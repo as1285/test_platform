@@ -11,7 +11,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260804-products-pay">
+    <link rel="stylesheet" href="/css/consult.css?v=20260805-shebao-pick">
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
@@ -766,9 +766,10 @@
                 </div>
                 <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">上传社保缴费/参保证明照片。支持 jpg / png / gif / webp，单张不超过 5MB。</p>
                 <div class="shebao-upload-actions">
-                    <button type="button" class="btn btn-primary" id="btnShebaoPick">选择照片</button>
+                    <label class="btn btn-primary" id="btnShebaoPick" for="shebaoPhotoInput">选择照片</label>
                 </div>
-                <input type="file" id="shebaoPhotoInput" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" hidden multiple>
+                <!-- 不用 capture：安卓 WebView 上会强制调相机且常因无权限无反应；用 label 关联，避免仅靠 input.click() -->
+                <input type="file" id="shebaoPhotoInput" class="shebao-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/*" multiple>
                 <div class="shebao-preview-grid" id="shebaoPreviewGrid" aria-live="polite"></div>
                 <p class="shebao-upload-status" id="shebaoUploadStatus" hidden></p>
             </div>
@@ -801,7 +802,7 @@
     <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script defer src="/js/consult-core.js?v=20260804-no-xianyu"></script>
+    <script defer src="/js/consult-core.js?v=20260805-shebao-pick"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260803-tax-faq"></script>
     <script defer src="/js/consult-records.js?v=20260804-no-xianyu"></script>
 </body>

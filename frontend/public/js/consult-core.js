@@ -2535,6 +2535,224 @@ function boot() {
     }
 })();
 
+/** 附加产品：社保截图上传（consult 页原先只有 UI，未接线导致安卓点「选择照片」无反应） */
+(function bindConsultShebaoPhotoUpload() {
+    function consultShebaoToken() {
+        try {
+            if (typeof window.authGetToken === 'function') {
+                var t = window.authGetToken();
+                if (t) return String(t).trim();
+            }
+        } catch (e0) {}
+        try {
+            return String(localStorage.getItem('token') || '').trim();
+        } catch (e1) {
+            return '';
+        }
+    }
+
+    function setShebaoStatus(text, show) {
+        var el = document.getElementById('shebaoUploadStatus');
+        if (!el) return;
+        if (show === false || !text) {
+            el.hidden = true;
+            el.textContent = '';
+            return;
+        }
+        el.hidden = false;
+        el.textContent = text;
+    }
+
+    var shebaoPreviewObjectUrls = [];
+
+    function clearShebaoPreviewObjectUrls() {
+        shebaoPreviewObjectUrls.forEach(function (url) {
+            try {
+                URL.revokeObjectURL(url);
+            } catch (e) {}
+        });
+        shebaoPreviewObjectUrls = [];
+    }
+
+    function renderShebaoPreview(items) {
+        var grid = document.getElementById('shebaoPreviewGrid');
+        if (!grid) return;
+        clearShebaoPreviewObjectUrls();
+        grid.innerHTML = '';
+        (items || []).forEach(function (it) {
+            var url = it && it.url ? String(it.url) : '';
+            if (!url) return;
+            var cell = document.createElement('div');
+            cell.className = 'shebao-preview-item';
+            var img = document.createElement('img');
+            img.alt = '社保照片';
+            img.loading = 'lazy';
+            cell.appendChild(img);
+            grid.appendChild(cell);
+            var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : fetch;
+            fetchFn(url, { method: 'GET', cache: 'no-store', credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('image_load_failed');
+                    return r.blob();
+                })
+                .then(function (blob) {
+                    var objectUrl = URL.createObjectURL(blob);
+                    shebaoPreviewObjectUrls.push(objectUrl);
+                    img.src = objectUrl;
+                })
+                .catch(function () {
+                    cell.remove();
+                });
+        });
+    }
+
+    function loadConsultShebaoPhotos() {
+        if (!document.getElementById('shebaoPhotoInput')) {
+            return Promise.resolve();
+        }
+        if (!consultShebaoToken()) {
+            setShebaoStatus('登录后可上传社保照片', true);
+            return Promise.resolve();
+        }
+        var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : fetch;
+        return fetchFn('/api/user/shebao-photo', { method: 'GET', credentials: 'same-origin' })
+            .then(function (r) {
+                return r.json().then(function (j) {
+                    return { status: r.status, body: j };
+                });
+            })
+            .then(function (x) {
+                if (x.status === 200 && x.body && x.body.code === 200 && x.body.data) {
+                    var items = x.body.data.items || [];
+                    renderShebaoPreview(items);
+                    setShebaoStatus(items.length ? '已上传 ' + items.length + ' 张' : '', !!items.length);
+                    return;
+                }
+                if (x.status === 401) {
+                    setShebaoStatus('登录后可上传社保照片', true);
+                }
+            })
+            .catch(function () {});
+    }
+
+    window.loadConsultShebaoPhotos = loadConsultShebaoPhotos;
+
+    function uploadShebaoFile(file) {
+        var token = consultShebaoToken();
+        if (!token) {
+            showMsg('请先登录后再上传', false);
+            setTimeout(function () {
+                window.location.href = 'login.html';
+            }, 900);
+            return Promise.reject(new Error('no_token'));
+        }
+        var fd = new FormData();
+        fd.append('file', file);
+        /* 勿用 authFetch：会带 application/json，破坏 multipart */
+        return fetch('/api/user/shebao-photo', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd,
+            credentials: 'same-origin'
+        }).then(function (r) {
+            return r.json().then(function (j) {
+                return { status: r.status, body: j };
+            });
+        });
+    }
+
+    function onShebaoFilesSelected(fileList) {
+        var files = Array.prototype.slice.call(fileList || [], 0).filter(function (f) {
+            return f && (/^image\//i.test(f.type || '') || /\.(jpe?g|png|gif|webp)$/i.test(f.name || ''));
+        });
+        if (!files.length) {
+            showMsg('请选择图片文件', false);
+            return;
+        }
+        var btn = document.getElementById('btnShebaoPick');
+        if (btn) btn.classList.add('is-disabled');
+        setShebaoStatus('正在上传…', true);
+        var chain = Promise.resolve();
+        var ok = 0;
+        var failMsg = '';
+        files.forEach(function (file) {
+            chain = chain.then(function () {
+                return uploadShebaoFile(file).then(function (x) {
+                    if (x.status === 200 && x.body && x.body.code === 200) {
+                        ok += 1;
+                        return;
+                    }
+                    failMsg = (x.body && x.body.msg) || '上传失败';
+                    if (x.status === 401) {
+                        failMsg = '登录状态已失效，请重新登录';
+                    }
+                });
+            });
+        });
+        chain
+            .then(function () {
+                if (ok > 0) {
+                    showMsg(ok === files.length ? '上传成功' : '已上传 ' + ok + ' 张', true);
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_shebao_photo_upload', {
+                            page: 'consult',
+                            count: ok
+                        });
+                    }
+                } else {
+                    showMsg(failMsg || '上传失败', false);
+                }
+                return loadConsultShebaoPhotos();
+            })
+            .catch(function () {
+                showMsg('上传失败，请稍后重试', false);
+            })
+            .then(function () {
+                if (btn) btn.classList.remove('is-disabled');
+                var input = document.getElementById('shebaoPhotoInput');
+                if (input) input.value = '';
+            });
+    }
+
+    var shebaoPickBtn = document.getElementById('btnShebaoPick');
+    var shebaoInput = document.getElementById('shebaoPhotoInput');
+    if (!shebaoPickBtn || !shebaoInput) return;
+
+    try {
+        shebaoInput.removeAttribute('capture');
+    } catch (eCap) {}
+
+    shebaoPickBtn.addEventListener('click', function (ev) {
+        if (!consultShebaoToken()) {
+            ev.preventDefault();
+            showMsg('请先登录后再上传', false);
+            setTimeout(function () {
+                window.location.href = 'login.html';
+            }, 900);
+            return;
+        }
+        if (shebaoPickBtn.classList.contains('is-disabled')) {
+            ev.preventDefault();
+            return;
+        }
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_shebao_photo_pick_click', { page: 'consult' });
+        }
+        if (shebaoPickBtn.tagName !== 'LABEL') {
+            if (typeof shebaoInput.showPicker === 'function') {
+                try {
+                    shebaoInput.showPicker();
+                    return;
+                } catch (eSp) {}
+            }
+            shebaoInput.click();
+        }
+    });
+    shebaoInput.addEventListener('change', function () {
+        onShebaoFilesSelected(shebaoInput.files);
+    });
+})();
+
 (function() {
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (isIOS) {

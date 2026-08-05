@@ -143,6 +143,25 @@
             flex: 1;
             min-width: 120px;
             margin-top: 0;
+            text-align: center;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        .shebao-upload-actions .btn.is-disabled {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+        .shebao-file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+            opacity: 0;
         }
         .shebao-preview-grid {
             display: grid;
@@ -715,9 +734,10 @@
             </div>
             <p class="card-hint">上传社保缴费/参保证明照片，便于客服核对。支持 jpg / png / gif / webp，单张不超过 5MB。</p>
             <div class="shebao-upload-actions">
-                <button type="button" class="btn btn-primary" id="btnShebaoPick">选择照片</button>
+                <label class="btn btn-primary" id="btnShebaoPick" for="shebaoPhotoInput">选择照片</label>
             </div>
-            <input type="file" id="shebaoPhotoInput" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" hidden multiple>
+            <!-- 不用 capture：安卓 WebView 上会强制调相机且常因无权限无反应；用 label 关联，避免仅靠 input.click() -->
+            <input type="file" id="shebaoPhotoInput" class="shebao-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/*" multiple>
             <div class="shebao-preview-grid" id="shebaoPreviewGrid" aria-live="polite"></div>
             <p class="shebao-upload-status" id="shebaoUploadStatus" hidden></p>
         </div>
@@ -2598,7 +2618,7 @@
             return;
         }
         var btn = document.getElementById('btnShebaoPick');
-        if (btn) btn.disabled = true;
+        if (btn) btn.classList.add('is-disabled');
         setShebaoStatus('正在上传…', true);
         var chain = Promise.resolve();
         var ok = 0;
@@ -2631,7 +2651,7 @@
                 showToast('上传失败，请稍后重试');
             })
             .then(function () {
-                if (btn) btn.disabled = false;
+                if (btn) btn.classList.remove('is-disabled');
                 var input = document.getElementById('shebaoPhotoInput');
                 if (input) input.value = '';
             });
@@ -2640,16 +2660,33 @@
     var shebaoPickBtn = document.getElementById('btnShebaoPick');
     var shebaoInput = document.getElementById('shebaoPhotoInput');
     if (shebaoPickBtn && shebaoInput) {
-        shebaoPickBtn.addEventListener('click', function () {
+        try {
+            shebaoInput.removeAttribute('capture');
+        } catch (eCap) {}
+        shebaoPickBtn.addEventListener('click', function (ev) {
             if (!purchaseGetToken()) {
+                ev.preventDefault();
                 showToast('请先登录后再上传');
                 setTimeout(function () {
                     window.location.href = 'index.html';
                 }, 900);
                 return;
             }
+            if (shebaoPickBtn.classList.contains('is-disabled')) {
+                ev.preventDefault();
+                return;
+            }
             trackPurchase('track_shebao_photo_pick_click');
-            shebaoInput.click();
+            /* label[for] 会原生打开；此处仅作兜底（部分 WebView 对 label 无效时） */
+            if (shebaoPickBtn.tagName !== 'LABEL') {
+                if (typeof shebaoInput.showPicker === 'function') {
+                    try {
+                        shebaoInput.showPicker();
+                        return;
+                    } catch (eSp) {}
+                }
+                shebaoInput.click();
+            }
         });
         shebaoInput.addEventListener('change', function () {
             onShebaoFilesSelected(shebaoInput.files);
