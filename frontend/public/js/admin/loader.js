@@ -16,7 +16,7 @@
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260802-paste-tpl',
-    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260804-lizhi-stats',
+    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260805-lizhi-users',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260803-ccb-flow',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260801-prefill-fix'

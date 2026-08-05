@@ -245,6 +245,32 @@
       '</div></div>';
     html += '</div>';
 
+    var users = data.usage_users || [];
+    html +=
+      '<div class="share-kpi-section-label">使用用户（' +
+      esc(String(users.length)) +
+      '，最多 200）</div>';
+    if (!users.length) {
+      html += '<div class="share-stats-empty">该区间暂无使用用户（无生成或付费）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>最近使用</th><th>用户</th><th>姓名</th><th>已解锁</th><th>生成</th><th>演示</th><th>去水印</th><th>付费单</th><th>付费金额</th></tr></thead><tbody>';
+      users.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.last_used_at || row.last_generated_at || row.last_paid_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + (row.unlocked ? '是' : '否') + '</td>';
+        html += '<td>' + esc(String(row.generates || 0)) + '</td>';
+        html += '<td>' + esc(String(row.generates_demo || 0)) + '</td>';
+        html += '<td>' + esc(String(row.generates_unlocked || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+        html += '<td>¥' + esc(String(row.paid_amount || '0.00')) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
     var daily = data.daily || [];
     html += '<div class="share-kpi-section-label">按日明细</div>';
     if (!daily.length) {

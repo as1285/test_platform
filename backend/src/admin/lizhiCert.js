@@ -133,6 +133,28 @@ function money2(n) {
   return (Math.round(v * 100) / 100).toFixed(2);
 }
 
+/** Avoid Illegal mix of collations between lizhi_cert_generations and users. */
+var USERNAME_JOIN =
+  'u.username COLLATE utf8mb4_unicode_ci = g.username COLLATE utf8mb4_unicode_ci';
+
+function mapUsageUserRow(r) {
+  return {
+    username: r.username != null ? String(r.username) : '',
+    real_name: r.real_name != null ? String(r.real_name) : '',
+    unlocked: r.unlocked === true || Number(r.unlocked) === 1,
+    generates: Number(r.generates) || 0,
+    generates_demo: Number(r.generates_demo) || 0,
+    generates_unlocked: Number(r.generates_unlocked) || 0,
+    paid_orders: Number(r.paid_orders) || 0,
+    paid_amount: money2(r.paid_amount),
+    last_generated_at: r.last_generated_at
+      ? new Date(r.last_generated_at).toISOString()
+      : '',
+    last_paid_at: r.last_paid_at ? new Date(r.last_paid_at).toISOString() : '',
+    last_used_at: r.last_used_at ? new Date(r.last_used_at).toISOString() : ''
+  };
+}
+
 /** C 端离职证明：付费解锁 + 生成次数 */
 async function handleAdminLizhiCertStats(req, res) {
   try {
@@ -141,6 +163,8 @@ async function handleAdminLizhiCertStats(req, res) {
     var cnCreatedDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
     var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
     var sinceSql = ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var gCreatedDay = cnCreatedDay.replace(/created_at/g, 'g.created_at');
+    var oPaidDay = cnPaidDay.replace(/paid_at/g, 'o.paid_at');
     var pool = getPool();
     const conn = await pool.getConnection();
     try {
@@ -174,6 +198,7 @@ async function handleAdminLizhiCertStats(req, res) {
       };
       var dailyGenMap = {};
       var recentGens = [];
+      var usageUsers = [];
       try {
         const [genSumRows] = await conn.query(
           `SELECT COUNT(*) AS generates,
@@ -216,8 +241,8 @@ async function handleAdminLizhiCertStats(req, res) {
           `SELECT g.id, g.username, g.demo, g.company_name, g.created_at,
                   u.real_name
            FROM lizhi_cert_generations g
-           LEFT JOIN users u ON u.username = g.username
-           WHERE ${cnCreatedDay.replace(/created_at/g, 'g.created_at')}${sinceSql}
+           LEFT JOIN users u ON ${USERNAME_JOIN}
+           WHERE ${gCreatedDay}${sinceSql}
            ORDER BY g.id DESC
            LIMIT 50`,
           [days]
@@ -232,6 +257,63 @@ async function handleAdminLizhiCertStats(req, res) {
             created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
           };
         });
+
+        /* 区间内有生成或付费的用户（按最近使用时间倒序） */
+        const [usageRows] = await conn.query(
+          `SELECT
+             base.username,
+             COALESCE(u.real_name, '') AS real_name,
+             COALESCE(u.lizhi_cert_unlocked, 0) AS unlocked,
+             COALESCE(g.generates, 0) AS generates,
+             COALESCE(g.generates_demo, 0) AS generates_demo,
+             COALESCE(g.generates_unlocked, 0) AS generates_unlocked,
+             g.last_generated_at,
+             COALESCE(p.paid_orders, 0) AS paid_orders,
+             COALESCE(p.paid_amount, 0) AS paid_amount,
+             p.last_paid_at,
+             GREATEST(
+               COALESCE(g.last_generated_at, '1970-01-01'),
+               COALESCE(p.last_paid_at, '1970-01-01')
+             ) AS last_used_at
+           FROM (
+             SELECT username FROM lizhi_cert_generations
+             WHERE ${cnCreatedDay}${sinceSql}
+             UNION
+             SELECT username FROM payment_orders
+             WHERE status = 'paid'
+               AND (sku_id = ? OR grant_kind = 'lizhi_cert')
+               AND paid_at IS NOT NULL
+               AND ${cnPaidDay}${sinceSql}
+           ) base
+           LEFT JOIN users u
+             ON u.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           LEFT JOIN (
+             SELECT username,
+                    COUNT(*) AS generates,
+                    SUM(CASE WHEN demo = 1 THEN 1 ELSE 0 END) AS generates_demo,
+                    SUM(CASE WHEN demo = 0 THEN 1 ELSE 0 END) AS generates_unlocked,
+                    MAX(created_at) AS last_generated_at
+             FROM lizhi_cert_generations
+             WHERE ${cnCreatedDay}${sinceSql}
+             GROUP BY username
+           ) g ON g.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           LEFT JOIN (
+             SELECT username,
+                    COUNT(*) AS paid_orders,
+                    COALESCE(SUM(amount), 0) AS paid_amount,
+                    MAX(paid_at) AS last_paid_at
+             FROM payment_orders
+             WHERE status = 'paid'
+               AND (sku_id = ? OR grant_kind = 'lizhi_cert')
+               AND paid_at IS NOT NULL
+               AND ${cnPaidDay}${sinceSql}
+             GROUP BY username
+           ) p ON p.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           ORDER BY last_used_at DESC, base.username ASC
+           LIMIT 200`,
+          [days, LIZHI_CERT_SKU_ID, days, days, LIZHI_CERT_SKU_ID, days]
+        );
+        usageUsers = (usageRows || []).map(mapUsageUserRow);
       } catch (genErr) {
         /* 表未迁移时仍返回付费统计 */
         console.error('[lizhi-cert] stats generations', genErr);
@@ -295,7 +377,7 @@ async function handleAdminLizhiCertStats(req, res) {
          WHERE o.status = 'paid'
            AND (o.sku_id = ? OR o.grant_kind = 'lizhi_cert')
            AND o.paid_at IS NOT NULL
-           AND ${cnPaidDay.replace(/paid_at/g, 'o.paid_at')}${sinceSql}
+           AND ${oPaidDay}${sinceSql}
          ORDER BY o.paid_at DESC
          LIMIT 50`,
         [LIZHI_CERT_SKU_ID, days]
@@ -311,6 +393,32 @@ async function handleAdminLizhiCertStats(req, res) {
         };
       });
 
+      /* 若生成表查询失败，至少用付费用户拼使用列表 */
+      if (!usageUsers.length && recentPaid.length) {
+        var seen = {};
+        usageUsers = recentPaid
+          .filter(function (r) {
+            if (!r.username || seen[r.username]) return false;
+            seen[r.username] = 1;
+            return true;
+          })
+          .map(function (r) {
+            return mapUsageUserRow({
+              username: r.username,
+              real_name: r.real_name,
+              unlocked: 0,
+              generates: 0,
+              generates_demo: 0,
+              generates_unlocked: 0,
+              paid_orders: 1,
+              paid_amount: r.amount,
+              last_generated_at: null,
+              last_paid_at: r.paid_at,
+              last_used_at: r.paid_at
+            });
+          });
+      }
+
       var paid = paidSumRows && paidSumRows[0] ? paidSumRows[0] : {};
       return res.json({
         code: 200,
@@ -321,7 +429,7 @@ async function handleAdminLizhiCertStats(req, res) {
             period_key: String(days)
           },
           note:
-            '生成次数自本次上线后开始统计；历史仅能看付费与已解锁用户。后台演示生成不计入。',
+            '使用用户 = 区间内有生成或付费的账号；生成次数自统计上线后累计。后台演示生成不计入。',
           summary: {
             unlocked_users: unlockRows && unlockRows[0] ? Number(unlockRows[0].n) || 0 : 0,
             paid_orders: Number(paid.orders) || 0,
@@ -332,9 +440,11 @@ async function handleAdminLizhiCertStats(req, res) {
             generates: genSummary.generates,
             generate_users: genSummary.generate_users,
             generates_demo: genSummary.generates_demo,
-            generates_unlocked: genSummary.generates_unlocked
+            generates_unlocked: genSummary.generates_unlocked,
+            usage_users: usageUsers.length
           },
           daily: daily,
+          usage_users: usageUsers,
           recent_paid: recentPaid,
           recent_generations: recentGens
         }
