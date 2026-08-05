@@ -28,26 +28,62 @@ COL_CO = (722, 944)
 DEFAULT_COUNTERPARTY_ACCOUNT = "140500616296"
 
 
+_FONT_CACHE = {}
+
+
+def _font_can_render(font):
+    """跳过空壳/缺字体会画出 □ 的字体。"""
+    try:
+        # 数字与汉字掩码都需有实际像素，且宽度不同（排除统一豆腐块）
+        m_digit = font.getmask("8")
+        m_cjk = font.getmask("工")
+        if not m_digit or not m_cjk:
+            return False
+        w1, h1 = m_digit.size
+        w2, h2 = m_cjk.size
+        if w1 < 3 or h1 < 3 or w2 < 3 or h2 < 3:
+            return False
+        im = Image.new("RGB", (480, 52), (255, 255, 255))
+        d = ImageDraw.Draw(im)
+        d.text((2, 4), "唐冬15,002.70", font=font, fill=(0, 0, 0))
+        arr = np.array(im)
+        dark = int((arr.mean(axis=2) < 200).sum())
+        return dark >= 40
+    except Exception:
+        return False
+
+
 def find_font(size):
+    size = int(size) if size else 14
+    cached = _FONT_CACHE.get(size)
+    if cached is not None:
+        return cached
     candidates = [
         os.environ.get("CCB_FLOW_FONT") or "",
-        "/app/assets/sbdy/SimSun_21.ttf",
-        "/app/assets/sbdy/PD4MLNSimSun_16.ttf",
+        # 完整 CJK 字体优先；PD4ML/SimSun_21 易缺字变 □
         "/app/assets/sbdy/NotoSerifCJKsc-Regular.otf",
         "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/app/assets/sbdy/PD4MLNSimSun_16.ttf",
     ]
     for path in candidates:
         if not path or not os.path.isfile(path):
             continue
         try:
             if path.lower().endswith(".ttc"):
-                return ImageFont.truetype(path, size=size, index=0)
-            return ImageFont.truetype(path, size=size)
+                font = ImageFont.truetype(path, size=size, index=0)
+            else:
+                font = ImageFont.truetype(path, size=size)
+            if not _font_can_render(font):
+                continue
+            _FONT_CACHE[size] = font
+            return font
         except Exception:
             continue
-    return ImageFont.load_default()
+    font = ImageFont.load_default()
+    _FONT_CACHE[size] = font
+    return font
 
 
 def parse_money(raw, default=None):
@@ -214,17 +250,17 @@ def process(cfg):
     if total_income is None:
         total_income = round(sum(amounts), 2)
 
-    # clear regions
+    # clear regions（金额/余额用 inset=0，避免原数字抗锯齿残留黑点）
     if name:
         clear_text_keep_seal(arr, NAME_BOX, inset=1)
     clear_text_keep_seal(arr, INCOME_BOX, inset=1)
     for i in range(N_ROWS):
         y0 = ROW0_Y + i * ROW_H
         y1 = y0 + ROW_H
-        clear_text_keep_seal(arr, (COL_AMT[0], y0 + 2, COL_AMT[1], y1 - 1), inset=1)
-        clear_text_keep_seal(arr, (COL_BAL[0], y0 + 2, COL_BAL[1], y1 - 1), inset=1)
+        clear_text_keep_seal(arr, (COL_AMT[0] + 1, y0 + 1, COL_AMT[1], y1), inset=0)
+        clear_text_keep_seal(arr, (COL_BAL[0] + 1, y0 + 1, COL_BAL[1], y1), inset=0)
         if account_name or company:
-            clear_text_keep_seal(arr, (COL_CO[0], y0 + 1, COL_CO[1], y1 - 1), inset=1)
+            clear_text_keep_seal(arr, (COL_CO[0] + 1, y0 + 1, COL_CO[1], y1), inset=0)
 
     out = Image.fromarray(arr)
     draw = ImageDraw.Draw(out)
