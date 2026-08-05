@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260731-concise"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260804-lizhi-stats">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260805-no-outline">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260731-concise">
 </head>
 <body>
@@ -1726,7 +1726,6 @@
                 </div>
 
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">核心转化指标、待激活跟进与用户触达</p></div>
                     <section>
                         <h2>支付页 A/B</h2>
                             <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=398 永久仅支付宝；B=298 日 / 398 周 / 498 月 / 698 年 / 998 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
@@ -1751,25 +1750,15 @@
                         </div>
                         <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
                     </section>
-                    <!-- 已下线：四段转化漏斗、运营 KPI -->
-                    <section hidden aria-hidden="true">
-                        <h2>四段转化漏斗</h2>
-                        <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom" hidden></select>
-                        <button type="button" id="btnRefreshRegistrationFunnel" hidden>刷新漏斗</button>
-                        <div id="analyticsRegistrationFunnel" hidden></div>
-                    </section>
-                    <section hidden aria-hidden="true">
-                        <h2>运营 KPI</h2>
-                        <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom" hidden></select>
-                        <button type="button" id="btnRefreshConversionKpis" hidden>刷新 KPI</button>
-                        <div id="analyticsConversionKpis" hidden></div>
-                    </section>
-                    <section>
-                        <h2>注册超 24h 未激活用户</h2>
-                        <p class="hint mt-0">注册已满 24 小时且仍未激活的账号，便于客服/运营跟进（演示环境）。</p>
-                        <button type="button" class="btn-page mb-10" id="btnRefreshPendingActivate24h">刷新列表</button>
-                        <div id="analyticsPendingActivate24h" class="analytics-conv-wrap" aria-live="polite">列表加载中…</div>
-                    </section>
+                    <!-- 已下线：四段转化漏斗、运营 KPI（保留节点供旧逻辑引用，勿用 section/h2 以免占位） -->
+                    <div hidden aria-hidden="true">
+                        <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                        <button type="button" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
+                        <div id="analyticsRegistrationFunnel"></div>
+                        <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
+                        <button type="button" id="btnRefreshConversionKpis">刷新 KPI</button>
+                        <div id="analyticsConversionKpis"></div>
+                    </div>
                     <section>
                         <h2>未激活用户站内信群发</h2>
                         <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>系统也会<strong>每 6 小时自动</strong>向「注册超 24h 未激活」且尚未收过自动推广信的用户发送一封（与下方模板一致，自动去重）。</p>
@@ -2442,8 +2431,8 @@
     </div>
 
     <script src="/js/admin/loader.js?v=20260803-ccb-flow"></script>
-    <script src="/js/admin/nav.js?v=20260802-simple-shell"></script>
+    <script src="/js/admin/nav.js?v=20260805-no-outline"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260804-pay-lizhi"></script>
+    <script src="/js/admin_panel.js?v=20260805-conv-overview"></script>
 </body>
 </html>

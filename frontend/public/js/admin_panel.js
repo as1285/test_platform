@@ -1940,7 +1940,6 @@
         function loadAnalyticsConversionPage() {
             loadAnalyticsPricingAb();
             loadAnalyticsDailyConversion();
-            loadPendingActivate24h(1);
         }
 
         /* ========== Analytics — Register Stats ========== */
@@ -3222,6 +3221,48 @@
             return '<p class="hint" style="margin:0 0 12px;">' + esc(hint) + '</p>';
         }
 
+        function renderDailyConversionPeriodOverview(data) {
+            var own = data && data.segments && data.segments.own;
+            var pt = own && own.period_total;
+            if (!pt) return '';
+            var label = (data && data.period_label) || '统计区间';
+            var registered = Number(pt.registered) || 0;
+            var activated = Number(pt.activated) || 0;
+            var ratePct =
+                pt.rate_pct != null ? pt.rate_pct : registered > 0 ? '0.0%' : '—';
+            var alipayPt =
+                data.segments.alipay && data.segments.alipay.period_total
+                    ? data.segments.alipay.period_total
+                    : null;
+            var alipayAct = alipayPt ? Number(alipayPt.activated) || 0 : null;
+            var html = '<div class="analytics-segment-block analytics-conv-overview">';
+            html += '<h3 class="analytics-segment-title">区间汇总（' + esc(label) + '）</h3>';
+            html += '<div class="user-data-stats analytics-conv-overview-stats">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">注册</div><div class="ud-val">' +
+                esc(String(registered)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">激活</div><div class="ud-val">' +
+                esc(String(activated)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">转化率</div><div class="ud-val" style="color:var(--admin-primary);">' +
+                esc(String(ratePct)) +
+                '</div></div>';
+            if (alipayAct != null) {
+                html +=
+                    '<div class="user-data-stat-card"><div class="ud-label">支付宝激活</div><div class="ud-val">' +
+                    esc(String(alipayAct)) +
+                    '</div></div>';
+            }
+            html += '</div>';
+            html +=
+                '<p class="hint" style="margin:0 0 4px;">按所选统计区间汇总自有流量注册与激活（激活 ÷ 注册）；下方为分日明细。</p>';
+            html += '</div>';
+            return html;
+        }
+
         function renderDailyConversionSegmentBlock(title, segmentData, pageData, options) {
             options = options || {};
             var activationOnly = !!options.activationOnly;
@@ -3239,7 +3280,8 @@
                 return html;
             }
             var pt = segmentData.period_total;
-            if (pageData && pageData.period_start && pt) {
+            /* 最近 N 天 / 自定义区间均展示区间合计（不再要求 period_start） */
+            if (pageData && pt && (pageData.period_label || pageData.period_start || pageData.days)) {
                 html += '<div class="analytics-conv-summary analytics-conv-period-total">';
                 html +=
                     '<div class="conv-label">区间合计（' +
@@ -3353,8 +3395,6 @@
                 return;
             }
             analyticsConvCache = data;
-            var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
-            var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
             var ownerHint = data.owner_admin_username
                 ? '（仅统计 <code>' + esc(data.owner_admin_username) + '</code> 名下用户）'
                 : '';
@@ -3362,19 +3402,13 @@
             if (ownerHint) {
                 html += '<p class="hint" style="margin:0 0 12px;">激活与注册均仅计入主管理员账号' + ownerHint + '，不含其他子管理员名下用户。</p>';
             }
-            /* 总览（注册/激活/转化率）置顶，渠道块在下 */
+            /* 区间汇总置顶：最近 7 天等所选周期的注册 / 激活 / 转化率 */
+            html += renderDailyConversionPeriodOverview(data);
             html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
             if (data.segments.alipay) {
                 html += renderDailyConversionSegmentBlock('支付宝激活', data.segments.alipay, data, {
                     activationOnly: true,
                     channelLabel: '支付宝'
-                });
-            }
-            html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data, { collapsed: true });
-            if (data.segments.xianyu) {
-                html += renderDailyConversionSegmentBlock('闲鱼激活', data.segments.xianyu, data, {
-                    activationOnly: true,
-                    channelLabel: '闲鱼'
                 });
             }
             el.innerHTML = html;
@@ -3447,11 +3481,8 @@
                 el.textContent = '漏斗暂无数据';
                 return;
             }
-            var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
-            var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
             var html = analyticsPeriodHintHtml(data);
             html += renderRegistrationFunnelSegmentBlock('自有流量', data.segments.own);
-            html += renderRegistrationFunnelSegmentBlock('代理推广' + agentHint, data.segments.agent, { collapsed: true });
             el.innerHTML = html;
         }
 
@@ -5066,66 +5097,6 @@
                     el.textContent = 'KPI 加载失败';
                 });
         }
-
-        var pendingActivate24hPage = 1;
-
-        function renderPendingActivate24h(data) {
-            var el = document.getElementById('analyticsPendingActivate24h');
-            if (!el) return;
-            var items = Array.isArray(data && data.items) ? data.items : [];
-            var total = data && data.total != null ? Number(data.total) : 0;
-            if (!items.length) {
-                el.textContent = '暂无注册超 24h 未激活用户';
-                return;
-            }
-            var html = '<p class="hint" style="margin:0 0 8px;">共 ' + esc(total) + ' 人（本页 ' + items.length + '）</p>';
-            html += '<div class="scroll-x"><table><thead><tr>';
-            html +=
-                '<th>账号</th><th>姓名</th><th>注册时间</th><th>渠道</th><th>注册后小时</th></tr></thead><tbody>';
-            items.forEach(function (row) {
-                html += '<tr>';
-                html += '<td>' + esc(row.username) + '</td>';
-                html += '<td>' + esc(row.real_name || '—') + '</td>';
-                html += '<td>' + esc(row.created_at || '—') + '</td>';
-                html += '<td>' + esc(row.register_source_channel || '—') + '</td>';
-                html += '<td>' + esc(row.hours_since_register) + '</td>';
-                html += '</tr>';
-            });
-            html += '</tbody></table></div>';
-            if (total > items.length) {
-                html +=
-                    '<p class="hint" style="margin-top:8px;">仅展示第 1 页；共 ' +
-                    Math.ceil(total / (data.page_size || 30)) +
-                    ' 页可翻页扩展。</p>';
-            }
-            el.innerHTML = html;
-        }
-
-        function loadPendingActivate24h(page) {
-            var el = document.getElementById('analyticsPendingActivate24h');
-            if (!el) return;
-            pendingActivate24hPage = page || 1;
-            el.textContent = '列表加载中…';
-            adminFetch(
-                'api/admin/users/pending-activate-24h?page=' +
-                    encodeURIComponent(pendingActivate24hPage) +
-                    '&page_size=30'
-            )
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        el.textContent = j.msg || '列表加载失败';
-                        return;
-                    }
-                    renderPendingActivate24h(j.data);
-                })
-                .catch(function () {
-                    el.textContent = '列表加载失败';
-                });
-        }
-
 
         function buildNoTaxPathDetailHtml(username, data) {
             var metrics = data.metrics || {};
@@ -8202,13 +8173,6 @@
                 loadConversionKpis();
             });
         }
-        var btnRefreshPendingActivate24h = document.getElementById('btnRefreshPendingActivate24h');
-        if (btnRefreshPendingActivate24h) {
-            btnRefreshPendingActivate24h.onclick = function () {
-                loadPendingActivate24h(1);
-            };
-        }
-
         function bulkMsgPayload(dryRun) {
             var skipEl = document.getElementById('bulkMsgSkipSent');
             return {

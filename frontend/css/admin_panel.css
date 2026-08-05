@@ -482,45 +482,10 @@ body.admin-command-open {
     line-height: 1.45;
 }
 .page-outline {
-    position: sticky;
-    top: 57px;
-    z-index: 8;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin: 0 -10px 4px;
-    padding: 8px 10px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--admin-border-light);
-    background: rgba(255, 255, 255, 0.96);
-    scrollbar-width: none;
-}
-.page-outline::-webkit-scrollbar {
-    display: none;
-}
-.page-outline-label {
-    flex: none;
-    margin-right: 4px;
-    color: var(--admin-text-muted);
-    font-size: 11px;
-}
-.page-outline button {
-    flex: none;
-    padding: 5px 9px;
-    border: 0;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--admin-text-secondary);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-}
-.page-outline button:hover {
-    background: var(--admin-primary-soft);
-    color: var(--admin-primary);
+    display: none !important;
 }
 .page-panel > section {
-    scroll-margin-top: 112px;
+    scroll-margin-top: 72px;
 }
 
 /* 业务工具：拖拽上传 / 分步 / 结果卡（社保图片·演示） */
@@ -1215,6 +1180,16 @@ tr.ud-salary-bucket-high td {
 }
 .analytics-conv-period-total .conv-today {
     color: var(--admin-primary-hover);
+}
+.analytics-conv-overview {
+    margin-bottom: 16px;
+}
+.analytics-conv-overview-stats {
+    margin-bottom: 8px;
+}
+.analytics-conv-overview-stats .user-data-stat-card .ud-val {
+    font-size: 22px;
+    font-weight: 700;
 }
 .analytics-conv-table-wrap {
     background: var(--admin-surface);

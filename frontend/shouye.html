@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260804-android-oppo-safe"></script>
+    <script src="/js/auth.js?v=20260805-shouye-bar-blue"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -10,7 +10,7 @@
     <script src="/js/app/core.js"></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#769aea">
+    <meta name="theme-color" content="#5c8eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,8 +36,8 @@
 
         body.page-shouye {
             --sy-rpx: calc(100vw / 750);
-            /* 与 ahead.png 顶缘取样一致，避免垫色/图片交界出现白缝 */
-            --shouye-top-bar-rgb: 118, 154, 234;
+            /* 与 ahead.png 顶缘取样一致，避免垫色/图片交界出现白缝；状态栏同色 */
+            --shouye-top-bar-rgb: 92, 142, 234;
             background: #f4f6f9;
         }
 
@@ -49,7 +49,7 @@
             right: 0;
             z-index: 999;
             padding: 0;
-            background: rgb(var(--shouye-top-bar-rgb, 118, 154, 234));
+            background: rgb(var(--shouye-top-bar-rgb, 92, 142, 234));
             box-shadow: none !important;
             border: 0 !important;
             outline: none;
@@ -66,7 +66,7 @@
             right: 0;
             top: 0;
             height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+            background: rgb(var(--shouye-top-bar-rgb, 92, 142, 234));
             z-index: 998;
             pointer-events: none;
         }
@@ -109,8 +109,8 @@
         html.app-android-client.app-top-safe-shell body.page-shouye {
             background-color: #f4f6f9;
             background-image: linear-gradient(
-                rgb(var(--shouye-top-bar-rgb, 118, 154, 234)),
-                rgb(var(--shouye-top-bar-rgb, 118, 154, 234))
+                rgb(var(--shouye-top-bar-rgb, 92, 142, 234)),
+                rgb(var(--shouye-top-bar-rgb, 92, 142, 234))
             );
             background-size: 100% var(--shouye-fixed-top-h, 52px);
             background-repeat: no-repeat;

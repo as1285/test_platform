@@ -129,39 +129,20 @@
   }
 
   function renderPageOutline(page) {
+    /* 已下线：页内「本页」锚点条占用版面，且会把 hidden 区块算进导航 */
     document.querySelectorAll('.page-outline').forEach(function (el) {
       el.remove();
     });
     var panel = document.getElementById('page-' + page);
     if (!panel) return;
     var sections = Array.prototype.slice.call(panel.children).filter(function (el) {
-      return el.tagName === 'SECTION' && el.querySelector('h2');
+      if (el.tagName !== 'SECTION' || !el.querySelector('h2')) return false;
+      if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+      if (el.hasAttribute('hidden')) return false;
+      var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      if (style && style.display === 'none') return false;
+      return true;
     });
-    if (sections.length < 3) return;
-    var outline = document.createElement('nav');
-    outline.className = 'page-outline';
-    outline.setAttribute('aria-label', '本页内容');
-    var label = document.createElement('span');
-    label.className = 'page-outline-label';
-    label.textContent = '本页';
-    outline.appendChild(label);
-    sections.forEach(function (section, index) {
-      var heading = section.querySelector('h2');
-      if (!section.id) section.id = 'admin-section-' + page + '-' + index;
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = heading.getAttribute('data-admin-title') || heading.textContent.trim();
-      btn.addEventListener('click', function () {
-        setSectionCollapsed(section, false);
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      outline.appendChild(btn);
-    });
-    var lede = Array.prototype.slice.call(panel.children).find(function (el) {
-      return el.classList && el.classList.contains('page-lede');
-    });
-    if (lede && lede.nextSibling) panel.insertBefore(outline, lede.nextSibling);
-    else panel.insertBefore(outline, panel.firstChild);
     enhanceSectionDensity(page, sections);
   }
 
@@ -176,29 +157,13 @@
   }
 
   function enhanceSectionDensity(page, sections) {
+    /* 转化概览页不再自动折叠后续区块，避免支付 A/B 与注册转化率之间出现大块空白 */
     if (page !== 'analytics-conversion') return;
-    sections.forEach(function (section, index) {
-      if (index < 2) return;
-      var heading = section.querySelector('h2');
-      if (!heading) return;
-      section.classList.add('admin-section-collapsible');
-      if (!heading.getAttribute('data-admin-title')) {
-        heading.setAttribute('data-admin-title', heading.textContent.trim());
-      }
-      var toggle = heading.querySelector('.section-collapse-toggle');
-      if (!toggle) {
-        toggle = document.createElement('button');
-        toggle.type = 'button';
-        toggle.className = 'section-collapse-toggle';
-        toggle.addEventListener('click', function () {
-          setSectionCollapsed(section, !section.classList.contains('is-section-collapsed'));
-        });
-        heading.appendChild(toggle);
-      }
-      if (!section.hasAttribute('data-density-ready')) {
-        section.setAttribute('data-density-ready', '1');
-        setSectionCollapsed(section, true);
-      }
+    (sections || []).forEach(function (section) {
+      section.classList.remove('admin-section-collapsible', 'is-section-collapsed');
+      section.removeAttribute('data-density-ready');
+      var toggle = section.querySelector('.section-collapse-toggle');
+      if (toggle && toggle.parentNode) toggle.parentNode.removeChild(toggle);
     });
   }
 
