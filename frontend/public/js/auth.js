@@ -1840,8 +1840,8 @@
           'html.app-android-redmi-note13-pro body.page-mine .user-name{font-size:13px !important;margin-bottom:4px !important;line-height:1.25 !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .user-id{font-size:10.5px !important;line-height:1.25 !important;gap:3px !important;white-space:nowrap !important;flex-wrap:nowrap !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .user-tax-label,html.app-android-redmi-note13-pro body.page-mine .user-tax-value{font-size:10.5px !important;letter-spacing:-0.03em !important;}' +
-          'html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn{width:16px !important;height:16px !important;flex-shrink:0 !important;}' +
-          'html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn svg{width:14px !important;height:14px !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn,html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn.reveal{width:calc(30 * var(--mine-rpx)) !important;height:calc(20 * var(--mine-rpx)) !important;flex-shrink:0 !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn img{width:calc(30 * var(--mine-rpx)) !important;height:calc(20 * var(--mine-rpx)) !important;object-fit:contain !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn{font-size:10px !important;padding:4px 8px 4px 10px !important;border-radius:16px 0 0 16px !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after{font-size:10px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +

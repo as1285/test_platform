@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260805-shouye-bar-blue"></script>
+    <script src="/js/auth.js?v=20260805-eye-sync"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -198,16 +198,19 @@
             top: auto;
             left: auto;
             flex: 0 0 auto;
-            width: calc(40 * var(--mine-rpx));
-            height: calc(20 * var(--mine-rpx));
-            /* 对齐官方：税号末位与眼睛约 20px 间距（原 4rpx 过近） */
-            margin-left: calc(36 * var(--mine-rpx));
+            /* 与税号字号（25rpx）对齐；开/关同盒，避免切换尺寸跳动 */
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
+            margin-left: calc(24 * var(--mine-rpx));
             z-index: 201;
             border: none;
             padding: 0;
             background: transparent;
             border-radius: 0;
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             -webkit-tap-highlight-color: transparent;
             box-shadow: none !important;
             filter: none !important;
@@ -215,15 +218,21 @@
 
         .mine-ov-eye img {
             display: block;
-            width: 100%;
-            height: 100%;
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
             object-fit: contain;
+            object-position: center;
             filter: none !important;
             -webkit-filter: none !important;
         }
 
         .mine-ov-eye.reveal {
-            width: calc(36 * var(--mine-rpx));
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
+        }
+
+        .mine-ov-eye.reveal img {
+            width: calc(32 * var(--mine-rpx));
             height: calc(22 * var(--mine-rpx));
         }
 
@@ -546,15 +555,16 @@
             letter-spacing: -0.02em;
         }
 
-        html.app-cordova-xiaomi-m2102 body.page-mine .tax-eye-btn {
-            width: 15px;
-            height: 15px;
+        html.app-cordova-xiaomi-m2102 body.page-mine .mine-ov-eye.tax-eye-btn,
+        html.app-cordova-xiaomi-m2102 body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
+            width: calc(30 * var(--mine-rpx));
+            height: calc(20 * var(--mine-rpx));
             flex-shrink: 0;
         }
 
-        html.app-cordova-xiaomi-m2102 body.page-mine .tax-eye-btn svg {
-            width: 13px;
-            height: 13px;
+        html.app-cordova-xiaomi-m2102 body.page-mine .mine-ov-eye.tax-eye-btn img {
+            width: calc(30 * var(--mine-rpx));
+            height: calc(20 * var(--mine-rpx));
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn {
@@ -599,15 +609,16 @@
             letter-spacing: -0.03em;
         }
 
-        html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn {
-            width: 16px;
-            height: 16px;
+        html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn,
+        html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
+            width: calc(30 * var(--mine-rpx));
+            height: calc(20 * var(--mine-rpx));
             flex-shrink: 0;
         }
 
-        html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn svg {
-            width: 14px;
-            height: 14px;
+        html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn img {
+            width: calc(30 * var(--mine-rpx));
+            height: calc(20 * var(--mine-rpx));
         }
 
         html.app-android-redmi-note13-pro body.page-mine .personal-info-btn {
@@ -960,17 +971,19 @@
             text-shadow: none !important;
         }
 
-        html.app-ios-client body.page-mine .tax-eye-btn,
-        html[class*='app-ios'] body.page-mine .tax-eye-btn {
-            width: 16px;
-            height: 16px;
+        html.app-ios-client body.page-mine .mine-ov-eye.tax-eye-btn,
+        html[class*='app-ios'] body.page-mine .mine-ov-eye.tax-eye-btn,
+        html.app-ios-client body.page-mine .mine-ov-eye.tax-eye-btn.reveal,
+        html[class*='app-ios'] body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
             color: #c87930;
         }
 
-        html.app-ios-client body.page-mine .tax-eye-btn svg,
-        html[class*='app-ios'] body.page-mine .tax-eye-btn svg {
-            width: 14px;
-            height: 14px;
+        html.app-ios-client body.page-mine .mine-ov-eye.tax-eye-btn img,
+        html[class*='app-ios'] body.page-mine .mine-ov-eye.tax-eye-btn img {
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
         }
 
         html.app-ios-client body.page-mine .personal-info-btn,
@@ -1004,8 +1017,6 @@
         }
 
         .tax-eye-btn {
-            width: 18px;
-            height: 18px;
             border: none;
             background: transparent;
             color: #c87930;
@@ -1018,6 +1029,21 @@
             padding: 0;
             flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 覆盖旧 18×18 方盒，与 .mine-ov-eye 统一（开/关同尺寸） */
+        body.page-mine .mine-ov-eye.tax-eye-btn,
+        body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
+        }
+
+        body.page-mine .mine-ov-eye.tax-eye-btn img,
+        body.page-mine .mine-ov-eye.tax-eye-btn.reveal img {
+            width: calc(32 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
+            object-fit: contain;
+            object-position: center;
         }
 
         .tax-eye-btn svg {
@@ -1039,7 +1065,7 @@
         }
 
         .tax-eye-btn.reveal {
-            opacity: 0.75;
+            opacity: 0.9;
         }
 
         .personal-info-btn {
