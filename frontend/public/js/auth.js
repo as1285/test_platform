@@ -68,8 +68,8 @@
   /** 通用顶栏蓝（登录 WebClip 等） */
   var APP_TOP_BAR_BLUE = '#2c80f4';
   /** 首页顶栏蓝：与 ahead.png 顶缘取样一致，状态栏/垫色/theme-color 统一用此色 */
-  var APP_SHOUYE_BAR_BLUE = '#4a90f0';
-  var APP_SHOUYE_BAR_RGB = '74, 144, 240';
+  var APP_SHOUYE_BAR_BLUE = '#5c8eea';
+  var APP_SHOUYE_BAR_RGB = '92, 142, 234';
   /** Cordova 壳通过 config AppendUserAgent 追加；若 UA 未透传到 iframe，则用被嵌入状态兜底识别 */
   var CORDOVA_SHELL_UA_RE = /TaxPlatformCordovaApp\//i;
   /** Dynamic Island / 刘海机（16 Pro 等）安全区高度兜底；iframe 内 env 常为 0 */
