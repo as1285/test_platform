@@ -195,10 +195,12 @@
             cursor: pointer;
         }
 
-        /* a1 通知条叠字 */
+        /* a1 通知条叠字；上移 2px 盖住与固定顶栏交界的亚像素白缝 */
         .sy-apk-a1 {
             position: relative;
             background: #2c80f4;
+            margin-top: -2px;
+            z-index: 1;
         }
 
         .sy-apk-marquee {
@@ -440,7 +442,7 @@
         <div class="sy-apk-stack" id="syApkStack">
             <!-- a1 通知条 -->
             <div class="sy-apk-block sy-apk-a1">
-                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260802-home" alt="" width="1284" height="223">
+                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260805-no-hairline" alt="" width="1284" height="223">
                 <div class="sy-apk-marquee" aria-hidden="true">
                     <span>国家税务总局令第57号:《个人所得税综合所得汇算清缴管理办法》</span>
                 </div>
@@ -589,8 +591,10 @@
                     }
                     var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
                     if (h > 0) {
-                        html.style.setProperty('--shouye-fixed-top-h', h + 'px');
-                        page.style.paddingTop = h + 'px';
+                        /* 内容区与顶栏重叠 1px，避免 ceil/亚像素露出灰白底 */
+                        var pad = Math.max(0, h - 1);
+                        html.style.setProperty('--shouye-fixed-top-h', pad + 'px');
+                        page.style.paddingTop = pad + 'px';
                     }
                 }
                 apply();
