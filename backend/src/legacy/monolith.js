@@ -7125,12 +7125,18 @@ async function requireAuth(req, res, next) {
     if ((tokSrv === null || isNaN(tokSrv)) && dbSrv > 0) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
-    /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录 */
+    /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录。
+       例外：提交激活码（action=activate）必须放行，否则过期用户无法续开。 */
     var tokAct = payload.act != null && payload.act !== '' ? Number(payload.act) : null;
+    var isActivateAction =
+      req.body &&
+      (String(req.body.action || '') === 'activate' ||
+        String(req.query && req.query.action ? req.query.action : '') === 'activate');
     if (
       tokAct === 1 &&
       !rowUserTypeIsGuest(row) &&
-      isTrialExpired(row)
+      isTrialExpired(row) &&
+      !isActivateAction
     ) {
       return res.status(401).json({
         code: 401,
