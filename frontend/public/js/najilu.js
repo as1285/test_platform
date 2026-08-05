@@ -1313,11 +1313,15 @@
     }
   }
 
-  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png';
+  /** 高清页眉图（国徽+标题）；带版本避免缓存旧的 305px 糊 JPEG */
+  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png?v=20260805-hd';
   /** 纳税记录页眉楷体（纳税人信息等正文） */
   var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
-  /** 页眉整图在画布上的显示宽度（原图约 305px 宽，避免大幅放大导致模糊） */
-  var CERT_HEADER_DISPLAY_W = 580;
+  /**
+   * 页眉显示宽度（逻辑像素）。高清原图约 1393px，2x 导出时物理宽约 1160，
+   * 属于缩小绘制，国徽与标题保持清晰。
+   */
+  var CERT_HEADER_DISPLAY_W = 560;
   /** 导出倍率：2x 像素密度，提升文字/表格/公章清晰度 */
   var CERT_RENDER_SCALE = 2;
 
@@ -1343,8 +1347,11 @@
   /** 绘制页眉整图（国徽+标题），返回实际占用高度；失败返回 0 */
   function drawTaxRecordHeader(ctx, headerImg, centerX, topY, targetW) {
     if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) return 0;
-    var maxW = headerImg.naturalWidth * CERT_RENDER_SCALE;
-    var w = Math.min(targetW || headerImg.naturalWidth, maxW);
+    var want = targetW || CERT_HEADER_DISPLAY_W;
+    /* 原图像素不足时不再强行放大超过 1.15 倍，避免再次发糊 */
+    var maxW = headerImg.naturalWidth / Math.max(1, CERT_RENDER_SCALE) * 1.15;
+    var w = Math.min(want, maxW);
+    if (w < 200) w = Math.min(want, headerImg.naturalWidth);
     var h = taxRecordHeaderDisplayHeight(headerImg, w);
     if (!h) return 0;
     ctx.save();
@@ -1358,11 +1365,23 @@
   }
 
   function drawCertificateTitleFallback(ctx, centerX, certTitleFont) {
-    drawText(ctx, '◉', centerX, 72, { size: 40, color: '#b92828', align: 'center' });
-    drawText(ctx, '中华人民共和国', centerX, 138, { size: 26, align: 'center', font: certTitleFont });
-    drawText(ctx, '个人所得税纳税记录', centerX, 166, { size: 30, align: 'center', font: certTitleFont });
-    drawText(ctx, '（原《税收完税证明》）', centerX, 188, { size: 16, align: 'center', font: certTitleFont });
-    return 188;
+    drawText(ctx, '◉', centerX, 72, { size: 44, color: '#c62828', align: 'center' });
+    drawText(ctx, '中华人民共和国', centerX, 132, {
+      size: 28,
+      align: 'center',
+      font: certTitleFont
+    });
+    drawText(ctx, '个人所得税纳税记录', centerX, 172, {
+      size: 36,
+      align: 'center',
+      font: certTitleFont
+    });
+    drawText(ctx, '（原《税收完税证明》）', centerX, 202, {
+      size: 18,
+      align: 'center',
+      font: certTitleFont
+    });
+    return 210;
   }
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
