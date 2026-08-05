@@ -1313,20 +1313,27 @@
     }
   }
 
-  /** 高清页眉图（国徽+标题）；带版本避免缓存旧的 305px 糊 JPEG */
-  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png?v=20260805-hd';
+  /** 高清整页眉（回退）；优先：国徽图 + 矢量标题 */
+  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png?v=20260805-hd2';
+  var TAX_RECORD_STA_LOGO_SRC = '/tax_record_sta_logo.png?v=20260805-hd2';
   /** 纳税记录页眉楷体（纳税人信息等正文） */
   var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
+  /** 页眉标题字体（宋体系更接近官方） */
+  var CERT_HEADER_TITLE_FONT = 'SimSun, STSong, "Noto Serif CJK SC", "Songti SC", serif';
   /**
-   * 页眉显示宽度（逻辑像素）。高清原图约 1393px，2x 导出时物理宽约 1160，
+   * 页眉显示宽度（逻辑像素）。高清原图约 1385px，2x 导出时物理宽约 1120，
    * 属于缩小绘制，国徽与标题保持清晰。
    */
   var CERT_HEADER_DISPLAY_W = 560;
-  /** 导出倍率：2x 像素密度，提升文字/表格/公章清晰度 */
-  var CERT_RENDER_SCALE = 2;
+  /** 矢量页眉（税徽+三行标题）固定高度，对齐官方截图比例 */
+  var CERT_HEADER_COMPOSED_H = 200;
 
-  function loadTaxRecordHeader() {
+  function loadImageSrc(src) {
     return new Promise(function (resolve) {
+      if (!src) {
+        resolve(null);
+        return;
+      }
       var img = new Image();
       img.onload = function () {
         resolve(img);
@@ -1334,25 +1341,78 @@
       img.onerror = function () {
         resolve(null);
       };
-      img.src = TAX_RECORD_HEADER_SRC;
+      img.src = src;
     });
   }
 
-  function taxRecordHeaderDisplayHeight(headerImg, targetW) {
+  function loadTaxRecordHeader() {
+    return Promise.all([
+      loadImageSrc(TAX_RECORD_STA_LOGO_SRC),
+      loadImageSrc(TAX_RECORD_HEADER_SRC)
+    ]).then(function (pair) {
+      return { logoImg: pair[0], headerImg: pair[1] };
+    });
+  }
+
+  function taxRecordHeaderDisplayHeight(headerPack, targetW) {
+    if (headerPack && headerPack.logoImg && headerPack.logoImg.naturalWidth) {
+      return CERT_HEADER_COMPOSED_H;
+    }
+    var headerImg = headerPack && headerPack.headerImg ? headerPack.headerImg : headerPack;
     if (!headerImg || !headerImg.naturalWidth) return 0;
     var w = targetW || headerImg.naturalWidth;
     return headerImg.naturalHeight * (w / headerImg.naturalWidth);
   }
 
-  /** 绘制页眉整图（国徽+标题），返回实际占用高度；失败返回 0 */
-  function drawTaxRecordHeader(ctx, headerImg, centerX, topY, targetW) {
+  /** 优先国徽+矢量标题；否则回退整图页眉。返回占用高度 */
+  function drawTaxRecordHeader(ctx, headerPack, centerX, topY, targetW) {
+    var logoImg = headerPack && headerPack.logoImg;
+    var headerImg = headerPack && headerPack.headerImg ? headerPack.headerImg : headerPack;
+    if (logoImg && logoImg.complete && logoImg.naturalWidth) {
+      /*
+       * 官方截图税徽约 50 逻辑像素高；过大只会放大源图像素显得发糊。
+       * 标题用矢量文字绘制，避免整图页眉里的模糊宋体。
+       */
+      var logoH = 50;
+      var logoW = (logoImg.naturalWidth / logoImg.naturalHeight) * logoH;
+      var y = topY + 6;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      if (typeof ctx.imageSmoothingQuality === 'string') {
+        ctx.imageSmoothingQuality = 'high';
+      }
+      ctx.drawImage(logoImg, centerX - logoW / 2, y, logoW, logoH);
+      ctx.restore();
+      y += logoH + 32;
+      drawText(ctx, '中华人民共和国', centerX, y, {
+        size: 30,
+        align: 'center',
+        font: CERT_HEADER_TITLE_FONT,
+        color: '#141414'
+      });
+      y += 40;
+      drawText(ctx, '个人所得税纳税记录', centerX, y, {
+        size: 40,
+        weight: 'bold',
+        align: 'center',
+        font: CERT_HEADER_TITLE_FONT,
+        color: '#111'
+      });
+      y += 32;
+      drawText(ctx, '（原《税收完税证明》）', centerX, y, {
+        size: 18,
+        align: 'center',
+        font: CERT_HEADER_TITLE_FONT,
+        color: '#333'
+      });
+      return Math.max(CERT_HEADER_COMPOSED_H, y - topY + 14);
+    }
     if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) return 0;
     var want = targetW || CERT_HEADER_DISPLAY_W;
-    /* 原图像素不足时不再强行放大超过 1.15 倍，避免再次发糊 */
     var maxW = headerImg.naturalWidth / Math.max(1, CERT_RENDER_SCALE) * 1.15;
     var w = Math.min(want, maxW);
     if (w < 200) w = Math.min(want, headerImg.naturalWidth);
-    var h = taxRecordHeaderDisplayHeight(headerImg, w);
+    var h = headerImg.naturalHeight * (w / headerImg.naturalWidth);
     if (!h) return 0;
     ctx.save();
     ctx.imageSmoothingEnabled = true;
