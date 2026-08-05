@@ -16223,8 +16223,15 @@ async function handleAdminUserDataDetail(req, res) {
       var maps = await buildUserDataBatchMaps(conn, [username]);
       var dm = maps[username] || {};
 
+      var taxLimit = 120;
+      if (req.query.tax_limit != null && String(req.query.tax_limit).trim() !== '') {
+        var tl = parseInt(req.query.tax_limit, 10);
+        if (isFinite(tl) && tl > 0) taxLimit = Math.min(800, tl);
+      }
       const [taxRows] = await conn.execute(
-        ADMIN_TAX_RECORD_SELECT_SQL + ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 120',
+        ADMIN_TAX_RECORD_SELECT_SQL +
+          ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT ' +
+          taxLimit,
         [username]
       );
 

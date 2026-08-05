@@ -118,6 +118,134 @@
     setStatus('已填入示例字段', false);
   }
 
+  function pad2(n) {
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  function formatYm(y, m) {
+    return String(y) + '-' + pad2(m);
+  }
+
+  function ymToIndex(ym) {
+    var s = String(ym || '').trim();
+    var m = s.match(/^(\d{4})-(\d{1,2})$/);
+    if (!m) return NaN;
+    var y = parseInt(m[1], 10);
+    var mo = parseInt(m[2], 10);
+    if (!isFinite(y) || !isFinite(mo) || mo < 1 || mo > 12) return NaN;
+    return y * 12 + mo;
+  }
+
+  /** 默认近 12 个自然月（含当月） */
+  function defaultTaxRange() {
+    var now = new Date();
+    var endY = now.getFullYear();
+    var endM = now.getMonth() + 1;
+    var start = new Date(endY, endM - 1 - 11, 1);
+    return {
+      from: formatYm(start.getFullYear(), start.getMonth() + 1),
+      to: formatYm(endY, endM)
+    };
+  }
+
+  function ensureTaxRangeDefaults() {
+    var fromEl = document.getElementById('ccbFlowTaxFrom');
+    var toEl = document.getElementById('ccbFlowTaxTo');
+    if (!fromEl && !toEl) return;
+    var d = defaultTaxRange();
+    if (fromEl && !String(fromEl.value || '').trim()) fromEl.value = d.from;
+    if (toEl && !String(toEl.value || '').trim()) toEl.value = d.to;
+  }
+
+  function parseMoneyNum(raw) {
+    var s = String(raw == null ? '' : raw)
+      .replace(/,/g, '')
+      .replace(/，/g, '')
+      .trim();
+    if (!s) return NaN;
+    var n = parseFloat(s);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function fmtMoney2(n) {
+    return (Math.round(Number(n) * 100) / 100).toFixed(2);
+  }
+
+  function isBonusSubtype(sub) {
+    var s = String(sub || '');
+    return /全年一次性奖金|年终奖|一次性奖金/.test(s);
+  }
+
+  function isSalaryLike(rec) {
+    var t = String(rec.income_type || '');
+    var sub = String(rec.income_subtype || '');
+    if (isBonusSubtype(sub)) return false;
+    if (/工资|薪金|劳务/.test(t) || /工资|薪金|劳务/.test(sub)) return true;
+    if (!t && !sub) return true;
+    return /正常工资/.test(sub);
+  }
+
+  /**
+   * 从个税记录提取时段内月收入（最多 12 个月，取区间内最近的 12 个月）。
+   * 返回 { amounts: string[], months: string[], company: string }
+   */
+  function buildAmountsFromTaxRecords(records, fromYm, toYm) {
+    var fromIdx = ymToIndex(fromYm);
+    var toIdx = ymToIndex(toYm);
+    if (!isFinite(fromIdx) || !isFinite(toIdx)) {
+      throw new Error('请选择有效的个税起止月份');
+    }
+    if (fromIdx > toIdx) {
+      var tmp = fromIdx;
+      fromIdx = toIdx;
+      toIdx = tmp;
+      var tmpYm = fromYm;
+      fromYm = toYm;
+      toYm = tmpYm;
+    }
+    var byMonth = {};
+    var companyCount = {};
+    (records || []).forEach(function (r) {
+      if (!r) return;
+      var y = parseInt(r.year, 10);
+      var m = parseInt(r.month, 10);
+      if (!isFinite(y) || !isFinite(m) || m < 1 || m > 12) return;
+      var idx = y * 12 + m;
+      if (idx < fromIdx || idx > toIdx) return;
+      if (!isSalaryLike(r)) return;
+      var income = parseMoneyNum(r.income_this_period);
+      if (!(income > 0)) income = parseMoneyNum(r.income);
+      if (!(income > 0)) return;
+      var key = formatYm(y, m);
+      if (!byMonth[key]) byMonth[key] = 0;
+      byMonth[key] = Math.round((byMonth[key] + income) * 100) / 100;
+      var co = String(r.company_name || '').trim();
+      if (co) companyCount[co] = (companyCount[co] || 0) + 1;
+    });
+    var months = Object.keys(byMonth).sort(function (a, b) {
+      return ymToIndex(a) - ymToIndex(b);
+    });
+    if (!months.length) {
+      return { amounts: [], months: [], company: '', from: fromYm, to: toYm };
+    }
+    /* 超过 12 个月：取最近 12 个月 */
+    if (months.length > 12) {
+      months = months.slice(months.length - 12);
+    }
+    var amounts = months.map(function (k) {
+      return fmtMoney2(byMonth[k]);
+    });
+    var company = '';
+    var best = 0;
+    Object.keys(companyCount).forEach(function (co) {
+      if (companyCount[co] > best) {
+        best = companyCount[co];
+        company = co;
+      }
+    });
+    return { amounts: amounts, months: months, company: company, from: fromYm, to: toYm };
+  }
+
   function loadTemplatePreview() {
     setStatus('加载内置模板…', false);
     fetchAdmin('/api/admin/ccb-flow/template')
@@ -167,8 +295,26 @@
       setStatus('请输入用户名', true);
       return;
     }
-    setStatus('加载用户数据…', false);
-    fetchAdmin('/api/admin/ccb-flow/prefill?username=' + encodeURIComponent(username))
+    ensureTaxRangeDefaults();
+    var fromYm = val('ccbFlowTaxFrom');
+    var toYm = val('ccbFlowTaxTo');
+    if (!fromYm || !toYm) {
+      setStatus('请选择个税起止月份', true);
+      return;
+    }
+    if (ymToIndex(fromYm) > ymToIndex(toYm)) {
+      var swap = fromYm;
+      fromYm = toYm;
+      toYm = swap;
+      setField('ccbFlowTaxFrom', fromYm);
+      setField('ccbFlowTaxTo', toYm);
+    }
+    setStatus('加载用户个税数据…', false);
+    fetchAdmin(
+      '/api/admin/ccb-flow/prefill?username=' +
+        encodeURIComponent(username) +
+        '&tax_limit=500'
+    )
       .then(function (r) {
         return r.json().then(function (j) {
           return { http: r.status, j: j };
@@ -183,16 +329,48 @@
         var d = j.data;
         var u = d.user || {};
         setField('ccbFlowName', u.real_name || '');
+        var taxPack;
+        try {
+          taxPack = buildAmountsFromTaxRecords(d.tax_records || [], fromYm, toYm);
+        } catch (eTax) {
+          setStatus((eTax && eTax.message) || '个税时段无效', true);
+          return;
+        }
         var employers = d.employers || [];
         var companies = d.companies || [];
-        var company = '';
-        if (employers.length) company = employers[0].company_name || '';
+        var company = taxPack.company || '';
+        if (!company && employers.length) company = employers[0].company_name || '';
         if (!company && companies.length) company = companies[0];
         if (company) {
           setField('ccbFlowCompany', company);
           setField('ccbFlowAccountName', company);
         }
-        setStatus('已预填「' + username + '」', false);
+        if (taxPack.amounts && taxPack.amounts.length) {
+          setField('ccbFlowAmount', taxPack.amounts.join(','));
+          var tip =
+            '已预填「' +
+            username +
+            '」· ' +
+            taxPack.months[0] +
+            '～' +
+            taxPack.months[taxPack.months.length - 1] +
+            ' 共 ' +
+            taxPack.amounts.length +
+            ' 个月收入';
+          if (taxPack.amounts.length < 12) {
+            tip += '（不足 12 行，生成时将用末月金额补齐）';
+          }
+          setStatus(tip, false);
+        } else {
+          setStatus(
+            '已预填姓名/公司；时段 ' +
+              fromYm +
+              '～' +
+              toYm +
+              ' 内无正常工资薪金记录，请改时段或手填金额',
+            true
+          );
+        }
       })
       .catch(function (e) {
         var msg = e && e.message ? e.message : '网络错误';
@@ -340,6 +518,7 @@
 
   function loadPage() {
     bind();
+    ensureTaxRangeDefaults();
     var srcImg = document.getElementById('ccbFlowPreviewSrc');
     if (srcImg && !srcImg.getAttribute('src')) {
       loadTemplatePreview();

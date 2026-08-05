@@ -1590,15 +1590,24 @@
                     <section>
                         <h2>工资流水修改</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">默认使用内置「中国建设银行个人活期账户工资交易明细」原图。可改客户姓名、对方账号与户名（公司名）、12 行交易金额与账户余额（按起始余额累加），并同步总收入。演示用途，非正式银行单据。</p></details>
-                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                        <div class="form-row flex-wrap gap-10" style="max-width:960px;">
                             <div>
                                 <label for="ccbFlowPrefillUser">按用户名预填</label>
                                 <input type="text" id="ccbFlowPrefillUser" maxlength="64" placeholder="注册用户名">
                             </div>
+                            <div>
+                                <label for="ccbFlowTaxFrom">个税起始月</label>
+                                <input type="month" id="ccbFlowTaxFrom" title="默认近一年">
+                            </div>
+                            <div>
+                                <label for="ccbFlowTaxTo">个税结束月</label>
+                                <input type="month" id="ccbFlowTaxTo" title="默认近一年">
+                            </div>
                             <div style="align-self:flex-end;">
-                                <button type="button" class="btn-page" id="ccbFlowPrefillBtn">预填</button>
+                                <button type="button" class="btn-page" id="ccbFlowPrefillBtn">预填个税</button>
                             </div>
                         </div>
+                        <p class="hint mt-0" style="max-width:960px;">预填姓名、公司，并加载所选时段内的<strong>正常工资薪金</strong>月收入到「交易金额」（默认近 12 个月；超过 12 个月取最近 12 个月，逗号分隔）。</p>
                         <div class="form-row form-stack" style="max-width:960px;">
                             <div class="admin-tool-step">① 原图（默认内置模板）</div>
                             <div class="admin-dropzone" id="ccbFlowDropzone" tabindex="0" role="button" aria-label="拖拽或点击上传原图">
@@ -1631,8 +1640,8 @@
                                     <input type="text" id="ccbFlowCounterparty" maxlength="32" value="140500616296" inputmode="numeric">
                                 </div>
                                 <div>
-                                    <label for="ccbFlowAmount">交易金额（12 行同额）</label>
-                                    <input type="text" id="ccbFlowAmount" maxlength="16" placeholder="15002.70" value="15002.70" inputmode="decimal">
+                                    <label for="ccbFlowAmount">交易金额（12 行 / 可逗号分隔）</label>
+                                    <input type="text" id="ccbFlowAmount" maxlength="320" placeholder="15002.70 或 12 个逗号分隔金额" value="15002.70" inputmode="decimal" style="min-width:220px;">
                                 </div>
                                 <div>
                                     <label for="ccbFlowOpening">入账前余额</label>
@@ -2430,7 +2439,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260803-ccb-flow"></script>
+    <script src="/js/admin/loader.js?v=20260805-tax-range"></script>
     <script src="/js/admin/nav.js?v=20260805-no-outline"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260805-goto-user"></script>
