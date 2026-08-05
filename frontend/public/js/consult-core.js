@@ -261,15 +261,6 @@ function syncConsultPurchaseEntry(user) {
     }
 }
 
-function syncConsultXianyuProductCard() {
-    var card = document.getElementById('cardConsultXianyu');
-    if (card) {
-        card.hidden = true;
-        card.style.display = 'none';
-    }
-}
-
-
 function loadUserInfoFromApi() {
     var userId = currentUserId();
     
@@ -300,64 +291,6 @@ function loadUserInfoFromApi() {
             syncConsultPurchaseEntry(null);
         });
 }
-
-var consultXianyuPurchaseUrl = '';
-
-function refreshConsultInstallPackageUrls() {
-    /* 优先复用 auth.js 已拉到的安装包配置，避免咨询页启动再打一遍 */
-    if (typeof window.getCachedPublicInstallPackages === 'function') {
-        var cached = window.getCachedPublicInstallPackages();
-        if (cached) {
-            consultXianyuPurchaseUrl =
-                cached.xianyu_purchase_url != null
-                    ? String(cached.xianyu_purchase_url).trim()
-                    : '';
-            if (typeof applyXianyuPurchaseVisibility === 'function') {
-                applyXianyuPurchaseVisibility(cached);
-            }
-            syncConsultXianyuProductCard(cached);
-            return Promise.resolve(cached);
-        }
-    }
-    if (typeof window.refreshPublicInstallPackagesUi === 'function') {
-        return window.refreshPublicInstallPackagesUi().then(function (data) {
-            if (data) {
-                consultXianyuPurchaseUrl =
-                    data.xianyu_purchase_url != null
-                        ? String(data.xianyu_purchase_url).trim()
-                        : '';
-                syncConsultXianyuProductCard(data);
-            }
-            return data;
-        });
-    }
-    var url =
-        typeof getPublicInstallPackagesUrl === 'function'
-            ? getPublicInstallPackagesUrl()
-            : '/api/public/install-packages';
-    return window.authFetch(url, { credentials: 'same-origin' })
-        .then(function (r) {
-            return r.json();
-        })
-        .then(function (body) {
-            if (body && body.code === 200 && body.data) {
-                consultXianyuPurchaseUrl =
-                    body.data.xianyu_purchase_url != null
-                        ? String(body.data.xianyu_purchase_url).trim()
-                        : '';
-                if (typeof applyXianyuPurchaseVisibility === 'function') {
-                    applyXianyuPurchaseVisibility(body.data);
-                }
-                syncConsultXianyuProductCard(body.data);
-                return body.data;
-            }
-            return null;
-        })
-        .catch(function () {
-            return null;
-        });
-}
-
 
 function updateProfileForm(user) {
     document.title = '个人中心 - ' + (user.real_name || '杰瑞');
@@ -2464,9 +2397,6 @@ function boot() {
             if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
                 window.appPageLoadingDispatchConsultDone();
             }
-            setTimeout(function () {
-                refreshConsultInstallPackageUrls();
-            }, 600);
         });
     tryEditFromUrl();
 }

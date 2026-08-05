@@ -332,8 +332,6 @@ body {
 }
 .activate-modal-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
 .activate-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
-#btnConsultActivateXianyu { margin-right: auto; }
-
 /* ===== 税务记录面板 ===== */
 #panel-records .card {
     padding: 14px;
@@ -526,16 +524,7 @@ body {
     background: #fff;
     font-family: inherit;
 }
-#panel-products .consult-xianyu-btn {
-    background: #ff6a00;
-    color: #fff;
-    border: none;
-}
-#panel-products .consult-xianyu-btn:active {
-    opacity: 0.92;
-}
-#panel-products .consult-purchase-entry[hidden],
-#panel-products #cardConsultXianyu[hidden] {
+#panel-products .consult-purchase-entry[hidden] {
     display: none !important;
 }
 #panel-records .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: stretch; }

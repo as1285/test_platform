@@ -797,19 +797,11 @@
             color: #fff;
         }
 
-        .activate-modal-btn.xianyu {
-            margin-right: auto;
-        }
-
         .activate-modal-actions-leading {
             display: flex;
             gap: 8px;
             margin-right: auto;
             flex-wrap: wrap;
-        }
-
-        .activate-modal-actions-leading .activate-modal-btn.xianyu {
-            margin-right: 0;
         }
 
         /*
@@ -1654,9 +1646,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         #mineGuestDownloadModal .activate-modal-input {
-            display: none;
-        }
-        #mineGuestDownloadModal .activate-modal-actions .activate-modal-btn.xianyu {
             display: none;
         }
     </style>
@@ -2633,44 +2622,6 @@
                 window.location.href = 'consult.html?tab=records';
             }
 
-            function copyMineXianyuPurchase() {
-                var t = String(mineXianyuPurchaseUrl || '').trim();
-                function doCopy(txt) {
-                    if (!txt) {
-                        alert('暂未配置闲鱼购买文案');
-                        return;
-                    }
-                    if (typeof copyXianyuPurchaseText !== 'function') {
-                        alert('复制功能不可用');
-                        return;
-                    }
-                    copyXianyuPurchaseText(txt).catch(function () {
-                        alert('复制失败，请长按手动复制');
-                    });
-                }
-                if (t) {
-                    doCopy(t);
-                    return;
-                }
-                fetch(
-                    typeof getPublicInstallPackagesUrl === 'function'
-                        ? getPublicInstallPackagesUrl()
-                        : '/api/public/install-packages',
-                    { credentials: 'same-origin' }
-                )
-                    .then(function (r) { return r.json(); })
-                    .then(function (body) {
-                        if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                            t = String(body.data.xianyu_purchase_url).trim();
-                            mineXianyuPurchaseUrl = t;
-                        }
-                        doCopy(t);
-                    })
-                    .catch(function () {
-                        alert('获取购买文案失败，请稍后重试');
-                    });
-            }
-
             function applyAvatarGender(gender) {
                 applyMineHeaderImage(gender);
             }
@@ -2734,56 +2685,6 @@
                     .catch(function () {
                         alert('网络错误');
                     });
-            }
-
-            var mineXianyuPurchaseUrl = '';
-
-            function fetchMineXianyuUrl() {
-                if (typeof window.getCachedPublicInstallPackages === 'function') {
-                    var cached = window.getCachedPublicInstallPackages();
-                    if (cached) {
-                        if (cached.xianyu_purchase_url) {
-                            mineXianyuPurchaseUrl = String(cached.xianyu_purchase_url).trim();
-                        }
-                        if (typeof applyXianyuPurchaseVisibility === 'function') {
-                            applyXianyuPurchaseVisibility(cached);
-                        }
-                        return;
-                    }
-                }
-                if (typeof window.refreshPublicInstallPackagesUi === 'function') {
-                    window
-                        .refreshPublicInstallPackagesUi()
-                        .then(function (data) {
-                            if (data && data.xianyu_purchase_url) {
-                                mineXianyuPurchaseUrl = String(data.xianyu_purchase_url).trim();
-                            }
-                        })
-                        .catch(function () {});
-                    return;
-                }
-                var req =
-                    typeof fetchPublicInstallPackages === 'function'
-                        ? fetchPublicInstallPackages()
-                        : fetch(
-                              typeof getPublicInstallPackagesUrl === 'function'
-                                  ? getPublicInstallPackagesUrl()
-                                  : '/api/public/install-packages',
-                              { credentials: 'same-origin' }
-                          );
-                req
-                    .then(function (r) { return r.json(); })
-                    .then(function (body) {
-                        if (body && body.code === 200 && body.data) {
-                            if (body.data.xianyu_purchase_url) {
-                                mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
-                            }
-                            if (typeof applyXianyuPurchaseVisibility === 'function') {
-                                applyXianyuPurchaseVisibility(body.data);
-                            }
-                        }
-                    })
-                    .catch(function () {});
             }
 
             function guestTaxRecordCountHint() {
@@ -3436,9 +3337,6 @@
                 updateCountsFromStorage();
             }
             syncMineProfileEditGate();
-            if (isMineLoggedIn()) {
-                fetchMineXianyuUrl();
-            }
             installLegacyActivatePromptShim();
 
             function handleConsultMenuClick(e) {
