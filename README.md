@@ -135,7 +135,7 @@ https://www.installguide1.top/
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
 | 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
-| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 2 小时、保留 48h / 最多 36 份） |
+| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 15 分钟、保留 48h / 最多 200 份） |
 | 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql[.gz]` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
 | 后端单元测试 | `cd backend && npm test`（Vitest；覆盖率：`npm run test:coverage`） |
@@ -179,7 +179,7 @@ https://www.installguide1.top/
 
 ### 数据库备份
 
-- **本机热备**：cron 每 2 小时执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`（安装：`./scripts/backup-mysql.sh --install-cron` 或 `./scripts/dr-install.sh`）
+- **本机热备**：cron 每 15 分钟执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`（安装：`./scripts/backup-mysql.sh --install-cron` 或 `./scripts/dr-install.sh`）
 - **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
 - **热备保留**：**48 小时**、最多 **36** 份（可用 `RETAIN_HOURS` / `MAX_BACKUPS` 覆盖）
 - **日备 / 周备 / uploads**：`./scripts/sync-backup-offsite.sh`（日备 14 天、周备 8 周；配置 `COS_*` 后异地上传）

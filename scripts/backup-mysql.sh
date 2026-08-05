@@ -3,9 +3,9 @@
 # 用法：
 #   ./scripts/backup-mysql.sh                 # 写入 data/db-backups/
 #   ./scripts/backup-mysql.sh --stdout        # 输出到 stdout（供管道使用）
-#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 2 小时备份（默认 48h / 36 份）
+#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 15 分钟备份（默认 48h / 200 份）
 #
-# 默认：保留 48 小时，最多 36 份（配合每 2 小时一次 ≈ 3 天热备）。
+# 默认：每 15 分钟一份；保留 48 小时，最多 200 份（≈ 2 天热备）。
 # 更长保留见 scripts/sync-backup-offsite.sh（日备 14 天 / 周备 8 周）。
 set -euo pipefail
 
@@ -15,10 +15,11 @@ DB_CONTAINER="${DB_CONTAINER:-test_platform_db}"
 DB_NAME="${DB_NAME:-personal_tax}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT/data/db-backups}"
 RETAIN_HOURS="${RETAIN_HOURS:-48}"
-MAX_BACKUPS="${MAX_BACKUPS:-36}"
+MAX_BACKUPS="${MAX_BACKUPS:-200}"
 LOG_FILE="${MYSQL_BACKUP_LOG:-/var/log/test_platform-mysql-backup.log}"
-CRON_EXPR="0 */2 * * *"
-CRON_LINE="${CRON_EXPR} /bin/bash ${SCRIPT_PATH} >> ${LOG_FILE} 2>&1"
+LOCK_FILE="${MYSQL_BACKUP_LOCK:-/var/lock/test_platform-mysql-backup.lock}"
+CRON_EXPR="*/15 * * * *"
+CRON_LINE="${CRON_EXPR} /usr/bin/flock -xn ${LOCK_FILE} -c '/bin/bash ${SCRIPT_PATH}' >> ${LOG_FILE} 2>&1"
 
 resolve_db_password() {
   if [[ -n "${DB_ROOT_PASSWORD:-}" ]]; then

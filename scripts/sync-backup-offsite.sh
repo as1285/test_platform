@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 备份分层保留 + 可选 COS 异地同步 + uploads 快照
-# - 热备：data/db-backups（由 backup-mysql.sh 维护，2 小时一份）
+# - 热备：data/db-backups（由 backup-mysql.sh 维护，每 15 分钟一份）
 # - 日备：data/db-backups-daily（每天 1 份，默认留 14 天）
 # - 周备：data/db-backups-weekly（每周 1 份，默认留 8 周）
 # - 异地：配置 COS_* 后上传日备/周备与 uploads（同名且同大小则跳过）

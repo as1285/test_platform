@@ -36,7 +36,7 @@ crontab -l 2>/dev/null | grep -v 'scripts/health-guard.sh' | grep -v 'scripts/sy
 
 {
   echo "*/2 * * * * /bin/bash ${HEALTH} >/dev/null 2>&1"
-  echo "0 */2 * * * /bin/bash ${MYSQL_BACKUP} >> /var/log/test_platform-mysql-backup.log 2>&1"
+  echo "*/15 * * * * /usr/bin/flock -xn /var/lock/test_platform-mysql-backup.lock -c '/bin/bash ${MYSQL_BACKUP}' >> /var/log/test_platform-mysql-backup.log 2>&1"
   echo "15 3 * * * /bin/bash ${OFFSITE} >> /var/log/test_platform-offsite-backup.log 2>&1"
 } >>"$tmp"
 
