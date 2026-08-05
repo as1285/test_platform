@@ -5823,9 +5823,32 @@
                         var actOwnerLower = actOwner.toLowerCase();
                         var actOwnedByAdmin = !actOwner || actOwnerLower === 'admin';
                         var actOwnerDisplay = actOwnerName || actOwner;
+                        /* 时效开通：先判断是否已过期，徽章用独立颜色区分 */
+                        var actKind = u.activation_kind != null ? String(u.activation_kind).trim() : '';
+                        var actUntil = u.active_until != null ? String(u.active_until).trim() : '';
+                        var untilMs =
+                            u.account_active && actUntil && actKind !== 'permanent'
+                                ? new Date(actUntil).getTime()
+                                : NaN;
+                        var isExpired =
+                            u.account_active &&
+                            actUntil &&
+                            actKind !== 'permanent' &&
+                            isFinite(untilMs) &&
+                            untilMs <= Date.now();
                         var act;
                         if (!u.account_active) {
                             act = '<span class="badge badge-no">未激活</span>';
+                        } else if (isExpired) {
+                            act =
+                                '<span class="badge badge-expired" title="试用已过期' +
+                                (actOwner
+                                    ? '（上线：' +
+                                      esc(actOwner) +
+                                      (actOwnerName ? '（' + esc(actOwnerName) + '）' : '') +
+                                      '）'
+                                    : '') +
+                                '">已过期</span>';
                         } else if (actOwnedByAdmin) {
                             act =
                                 '<span class="badge badge-yes" title="' +
@@ -5845,16 +5868,14 @@
                                 '）</span>';
                         }
                         /* 时效开通显示过期时间；永久不显示 */
-                        var actKind = u.activation_kind != null ? String(u.activation_kind).trim() : '';
-                        var actUntil = u.active_until != null ? String(u.active_until).trim() : '';
                         if (u.account_active && actUntil && actKind !== 'permanent') {
-                            var untilMs = new Date(actUntil).getTime();
-                            var expired = isFinite(untilMs) && untilMs <= Date.now();
                             act +=
-                                '<div class="risk-hint-line" title="' +
-                                (expired ? '试用已过期' : '试用到期时间') +
+                                '<div class="risk-hint-line' +
+                                (isExpired ? ' risk-hint-expired' : '') +
+                                '" title="' +
+                                (isExpired ? '试用已过期' : '试用到期时间') +
                                 '">' +
-                                (expired ? '已过期：' : '过期：') +
+                                (isExpired ? '已过期：' : '过期：') +
                                 esc(formatDt(actUntil)) +
                                 '</div>';
                         }
