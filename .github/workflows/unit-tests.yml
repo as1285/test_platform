@@ -1,19 +1,9 @@
 name: Unit Tests
 
+# 不再随 push/PR 自动跑，避免失败邮件刷屏；需要时在 Actions 里手动 Run workflow
 on:
-  pull_request:
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - ".github/workflows/unit-tests.yml"
-  push:
-    branches: [lkj, master, main]
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - ".github/workflows/unit-tests.yml"
+  workflow_dispatch:
 
-# 同一分支连续 push 时只保留最新一次，避免 Actions 一直排队
 concurrency:
   group: unit-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
