@@ -6823,6 +6823,32 @@
         }
 
         document.getElementById('btnSearchUsers').onclick = function() { loadUsers(1); };
+        var btnResetUsers = document.getElementById('btnResetUsers');
+        if (btnResetUsers) {
+            btnResetUsers.onclick = function () {
+                var usernameEl = document.getElementById('filterUsername');
+                var realNameEl = document.getElementById('filterRealName');
+                var exactEl = document.getElementById('filterExact');
+                var riskEl = document.getElementById('filterRisk');
+                var activeEl = document.getElementById('filterActive');
+                var bannedEl = document.getElementById('filterBanned');
+                var taxModEl = document.getElementById('filterTaxModifiedToday');
+                var loginInactiveEl = document.getElementById('filterLoginInactive');
+                var nameChangesGtEl = document.getElementById('filterNameChangesGt');
+                var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+                if (usernameEl) usernameEl.value = '';
+                if (realNameEl) realNameEl.value = '';
+                if (exactEl) exactEl.checked = false;
+                if (riskEl) riskEl.value = '';
+                if (activeEl) activeEl.value = '';
+                if (bannedEl) bannedEl.value = '';
+                if (taxModEl) taxModEl.value = '';
+                if (loginInactiveEl) loginInactiveEl.value = '';
+                if (nameChangesGtEl) nameChangesGtEl.value = '';
+                if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+                loadUsers(1);
+            };
+        }
         var btnSearchUserData = document.getElementById('btnSearchUserData');
         if (btnSearchUserData) {
             btnSearchUserData.onclick = function () {
