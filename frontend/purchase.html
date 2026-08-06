@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260806-safe-top-align"></script>
+    <script src="/js/auth.js?v=20260806-revert-mine"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -843,7 +843,7 @@
             <li><span><strong>可编辑</strong>：演示数据支持按需调整</span></li>
         </ul>
         <div class="purchase-offer-banner" id="purchaseOfferBanner">
-            新用户 24 小时内可享体验价（划线为对照原价）。想更便宜可先分享 B 站再减 ¥50。
+            新用户 24 小时内可享体验价（划线为对照原价）。想更便宜可先分享 1 次 B 站再减 ¥50。
         </div>
 
         <div class="card" id="cardAlipay" hidden>
@@ -856,7 +856,7 @@
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">体验价 · 打开支付宝付款</button>
             <div class="pay-status" id="alipayPayStatus" hidden role="status" aria-live="polite"></div>
             <div class="share-inline-teaser" id="shareInlineTeaser" hidden>
-                想再便宜？<a href="#foldShareDiscount" id="shareInlineTeaserLink">分享到 B 站，满 2 次立减 ¥50</a>
+                想再便宜？<a href="#foldShareDiscount" id="shareInlineTeaserLink">分享 1 次到 B 站，立减 ¥50</a>
             </div>
         </div>
 
@@ -870,14 +870,14 @@
                     <div class="share-activity-head">
                         <div>
                             <div class="share-activity-title">分享到 B 站，立减 50 元</div>
-                            <div class="share-activity-sub">完成 2 次分享即可解锁优惠</div>
+                            <div class="share-activity-sub">只需分享 1 次即可解锁优惠</div>
                         </div>
-                        <span class="share-discount-badge">2 次减 ¥50</span>
+                        <span class="share-discount-badge">分享 1 次减 ¥50</span>
                     </div>
                     <div class="share-progress" id="bilibiliShareProgress" aria-label="分享进度"></div>
                     <p class="share-activity-status" id="bilibiliShareStatus">正在读取活动进度…</p>
                     <button type="button" class="btn btn-bilibili-share" id="btnBilibiliShare">立即分享到 B 站</button>
-                    <p class="share-rules">分享完成后返回本页自动计数；满 2 次后，创建支付宝订单时由服务器自动减 50 元。每 2 次仅可抵扣 1 笔订单。</p>
+                    <p class="share-rules">分享完成后返回本页自动计数；完成 1 次后，创建支付宝订单时由服务器自动减 50 元。每次分享仅可抵扣 1 笔订单。</p>
                 </div>
             </div>
         </details>
@@ -900,7 +900,7 @@
                 </details>
                 <details class="purchase-faq-item" data-faq-id="bilibili_off">
                     <summary>B 站分享怎么减 50 元？</summary>
-                    <p>完成 2 次分享后返回本页自动计数；下次创建支付宝订单时由服务器自动减 ¥50。每满 2 次仅可抵扣 1 笔订单。</p>
+                    <p>完成 1 次分享后返回本页自动计数；下次创建支付宝订单时由服务器自动减 ¥50。每 1 次分享仅可抵扣 1 笔订单。</p>
                 </details>
                 <details class="purchase-faq-item" data-faq-id="pay_fail">
                     <summary>付错了 / 没开通怎么办？</summary>
@@ -1171,7 +1171,7 @@
         }
         if (offerBanner) {
             offerBanner.textContent =
-                '已开通账号可在此续费。付款成功后时效自动叠加；想更便宜可先分享 B 站再减 ¥50。';
+                '已开通账号可在此续费。付款成功后时效自动叠加；想更便宜可先分享 1 次 B 站再减 ¥50。';
         }
         try {
             document.title = '个人所得税 · 续费演示';
@@ -1574,8 +1574,8 @@
         available_count: 0,
         reserved_count: 0,
         progress_count: 0,
-        remaining_count: 2,
-        threshold: 2,
+        remaining_count: 1,
+        threshold: 1,
         discount_amount: '50.00',
         pending_discount_amount: '0.00',
         pending_discount_applied: false,
@@ -1685,7 +1685,7 @@
         Object.keys(shareActivityState).forEach(function (key) {
             if (data[key] != null) shareActivityState[key] = data[key];
         });
-        shareActivityState.threshold = Math.max(1, Number(shareActivityState.threshold) || 2);
+        shareActivityState.threshold = Math.max(1, Number(shareActivityState.threshold) || 1);
         shareActivityState.progress_count = Math.max(
             0,
             Math.min(
@@ -1731,15 +1731,21 @@
                 status.textContent =
                     '优惠已解锁！本次支付宝订单将自动立减 ¥' + shareActivityState.discount_amount;
             } else {
+                var need = Math.max(
+                    0,
+                    shareActivityState.threshold - shareActivityState.progress_count
+                );
                 status.textContent =
-                    '已完成 ' +
-                    shareActivityState.progress_count +
-                    '/' +
-                    shareActivityState.threshold +
-                    ' 次，再分享 ' +
-                    Math.max(0, shareActivityState.threshold - shareActivityState.progress_count) +
-                    ' 次可立减 ¥' +
-                    shareActivityState.discount_amount;
+                    shareActivityState.threshold === 1
+                        ? '分享 1 次即可立减 ¥' + shareActivityState.discount_amount
+                        : '已完成 ' +
+                          shareActivityState.progress_count +
+                          '/' +
+                          shareActivityState.threshold +
+                          ' 次，再分享 ' +
+                          need +
+                          ' 次可立减 ¥' +
+                          shareActivityState.discount_amount;
             }
         }
         if (btn) {

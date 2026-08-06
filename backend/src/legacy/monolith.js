@@ -5359,8 +5359,8 @@ function readPreferredPurchaseAbc(req) {
   return '';
 }
 
-/* 支付页引流：2 次分享立减 ¥50（原 5 次门槛过高，完成率低） */
-var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 2;
+/* 支付页引流：1 次分享立减 ¥50（原 2 次仍有流失，降到 1 次提升完成率） */
+var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 1;
 var BILIBILI_SHARE_DISCOUNT_AMOUNT = '50.00';
 var BILIBILI_SHARE_SESSION_TTL_MINUTES = 30;
 var BILIBILI_SHARE_MIN_COMPLETE_SECONDS = 2;
