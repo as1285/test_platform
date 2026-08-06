@@ -3,8 +3,10 @@
 # - 热备：data/db-backups（由 backup-mysql.sh 维护，每 15 分钟一份）
 # - 日备：data/db-backups-daily（每天 1 份，默认留 14 天）
 # - 周备：data/db-backups-weekly（每周 1 份，默认留 8 周）
-# - 异地：配置 COS_* 后上传日备/周备与 uploads（同名且同大小则跳过）
-# cron 建议：15 3 * * * （在凌晨备份之后）
+# - 异地：配置 COS_* 后上传
+#   - --hot-only：仅上传热备（建议每 15 分钟，抗打挂）
+#   - 默认 full：日备/周备/uploads + 热备（建议每天 03:15）
+# cron 见 scripts/dr-install.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,9 +22,16 @@ DB_NAME="${DB_NAME:-personal_tax}"
 DAILY_KEEP="${BACKUP_DAILY_KEEP:-14}"
 WEEKLY_KEEP="${BACKUP_WEEKLY_KEEP:-8}"
 UPLOADS_KEEP="${BACKUP_UPLOADS_KEEP:-7}"
+# COS 热备保留：与本机热备默认对齐（48h / 最多 200 份）
+COS_HOT_RETAIN_HOURS="${COS_HOT_RETAIN_HOURS:-${RETAIN_HOURS:-48}}"
+COS_HOT_MAX="${COS_HOT_MAX:-${MAX_BACKUPS:-200}}"
 LOG_FILE="${OFFSITE_BACKUP_LOG:-/var/log/test_platform-offsite-backup.log}"
 VENV_PY="${ROOT}/.venv-dr/bin/python"
 LOCK_FILE="${OFFSITE_LOCK_FILE:-/var/lock/test_platform-offsite-backup.lock}"
+MODE="full"
+if [[ "${1:-}" == "--hot-only" ]]; then
+  MODE="hot"
+fi
 
 log() {
   echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"
@@ -152,8 +161,11 @@ sync_cos() {
     return 1
   fi
   local prefix="${COS_PREFIX:-test_platform/dr}"
-  "$VENV_PY" - <<PY
-import os, sys
+  local mode_py="$MODE"
+  COS_HOT_RETAIN_HOURS="$COS_HOT_RETAIN_HOURS" COS_HOT_MAX="$COS_HOT_MAX" MODE="$mode_py" \
+  HOT_DIR="$HOT_DIR" DAILY_DIR="$DAILY_DIR" WEEKLY_DIR="$WEEKLY_DIR" UPLOADS_DIR="$UPLOADS_DIR" \
+  "$VENV_PY" - <<'PY'
+import os, time
 from qcloud_cos import CosConfig, CosS3Client
 
 sid = os.environ["COS_SECRET_ID"]
@@ -162,21 +174,31 @@ region = os.environ["COS_REGION"]
 bucket = os.environ["COS_BUCKET"]
 prefix = os.environ.get("COS_PREFIX", "test_platform/dr").rstrip("/")
 token = os.environ.get("COS_TOKEN") or None
+mode = os.environ.get("MODE", "full")
+hot_retain_h = int(os.environ.get("COS_HOT_RETAIN_HOURS") or "48")
+hot_max = int(os.environ.get("COS_HOT_MAX") or "200")
 
 cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https")
 client = CosS3Client(cfg)
 
+dirs = [(os.environ["HOT_DIR"], "hot")]
+if mode != "hot":
+    dirs.extend([
+        (os.environ["DAILY_DIR"], "daily"),
+        (os.environ["WEEKLY_DIR"], "weekly"),
+        (os.environ["UPLOADS_DIR"], "uploads"),
+    ])
+
 uploaded = skipped = 0
-for d, label in [
-    (r"${DAILY_DIR}", "daily"),
-    (r"${WEEKLY_DIR}", "weekly"),
-    (r"${UPLOADS_DIR}", "uploads"),
-]:
+for d, label in dirs:
     if not os.path.isdir(d):
         continue
     for name in sorted(os.listdir(d)):
         path = os.path.join(d, name)
         if not os.path.isfile(path):
+            continue
+        # 跳过导入前临时备份与临时文件
+        if name.endswith(".tmp") or "before-import" in name:
             continue
         key = f"{prefix}/{label}/{name}"
         local_size = os.path.getsize(path)
@@ -193,22 +215,75 @@ for d, label in [
         client.upload_file(Bucket=bucket, LocalFilePath=path, Key=key)
         uploaded += 1
 
-print(f"[cos] done uploaded={uploaded} skipped={skipped}", flush=True)
+# 清理 COS 过期热备，避免桶无限涨
+hot_prefix = f"{prefix}/hot/"
+marker = ""
+objs = []
+while True:
+    kwargs = {"Bucket": bucket, "Prefix": hot_prefix, "MaxKeys": 1000}
+    if marker:
+        kwargs["Marker"] = marker
+    resp = client.list_objects(**kwargs)
+    contents = resp.get("Contents") or []
+    for it in contents:
+        objs.append(it)
+    if resp.get("IsTruncated") == "true":
+        marker = resp.get("NextMarker") or (contents[-1]["Key"] if contents else "")
+        if not marker:
+            break
+    else:
+        break
+
+now = time.time()
+cutoff = now - hot_retain_h * 3600
+# 按 LastModified 新→旧
+def _mtime(it):
+    lm = it.get("LastModified")
+    if hasattr(lm, "timestamp"):
+        return lm.timestamp()
+    try:
+        from datetime import datetime
+        return datetime.strptime(str(lm), "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+    except Exception:
+        return 0
+
+objs.sort(key=_mtime, reverse=True)
+deleted = 0
+for idx, it in enumerate(objs):
+    key = it["Key"]
+    mt = _mtime(it)
+    too_old = mt and mt < cutoff
+    over_max = idx >= hot_max
+    if too_old or over_max:
+        print(f"[cos] delete old hot {key}", flush=True)
+        client.delete_object(Bucket=bucket, Key=key)
+        deleted += 1
+
+print(f"[cos] done mode={mode} uploaded={uploaded} skipped={skipped} hot_deleted={deleted}", flush=True)
 PY
 }
 
 main() {
   local rc=0
-  promote_daily || rc=1
-  promote_weekly || true
-  snapshot_uploads || true
-  if ! sync_cos; then
-    rc=1
+  if [[ "$MODE" == "hot" ]]; then
+    log "模式: hot-only（15 分钟热备上云）"
+    if ! sync_cos; then
+      rc=1
+    fi
+  else
+    log "模式: full（日备/周备/uploads/热备）"
+    promote_daily || rc=1
+    promote_weekly || true
+    snapshot_uploads || true
+    if ! sync_cos; then
+      rc=1
+    fi
   fi
 
   local summary
   summary="$(
     cat <<EOF
+模式: $MODE
 热备目录: $HOT_DIR ($(du -sh "$HOT_DIR" 2>/dev/null | awk '{print $1}' || echo 0))
 日备: $DAILY_DIR ($(ls -1 "$DAILY_DIR"/${DB_NAME}-daily-*.sql.gz 2>/dev/null | wc -l | tr -d ' ') 份)
 周备: $WEEKLY_DIR ($(ls -1 "$WEEKLY_DIR"/${DB_NAME}-weekly-*.sql.gz 2>/dev/null | wc -l | tr -d ' ') 份)
@@ -226,7 +301,7 @@ EOF
     fi
     exit 1
   fi
-  if [[ "${BACKUP_SUCCESS_MAIL:-0}" == "1" ]] && [[ "$(date +%u)" == "1" ]]; then
+  if [[ "$MODE" == "full" && "${BACKUP_SUCCESS_MAIL:-0}" == "1" && "$(date +%u)" == "1" ]]; then
     if dr_alert_cooldown_ok "offsite-ok" 86400; then
       dr_send_mail "[灾容] 周备份完成 $(hostname)" "$summary" || true
     fi
