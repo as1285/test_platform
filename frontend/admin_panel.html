@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
     <link rel="stylesheet" href="/css/admin_panel.css?v=20260806-admin-deadcode">
-    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260806-admin-deadcode">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260806-ms-pager">
 </head>
 <body>
     <div class="layout">
@@ -2396,6 +2396,11 @@
             </div>
             <p class="batch-ms-modal-hint" id="batchMsModalHint"></p>
             <div class="batch-ms-modal-scroll" id="batchMsModalBody"></div>
+            <div class="batch-ms-pager" id="batchMsModalPager" hidden>
+                <button type="button" class="batch-ms-pager-btn" id="batchMsPagerPrev">上一页</button>
+                <span class="batch-ms-pager-info" id="batchMsPagerInfo"></span>
+                <button type="button" class="batch-ms-pager-btn" id="batchMsPagerNext">下一页</button>
+            </div>
             <div class="batch-ms-modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" id="batchMsModalClear">清空本月自定义</button>
                 <button type="button" class="btn btn-default btn-sm" id="batchMsModalCancel">取消</button>

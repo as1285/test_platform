@@ -719,14 +719,26 @@ body {
 #taxFormulaCard .tax-try-result strong { color: var(--color-primary); font-size: 16px; }
 
 /* ===== 弹窗系统 ===== */
-.batch-ms-modal-root { position: fixed; inset: 0; z-index: 10050; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+/* 10055：须高于 .bottom-nav 的 10050 !important，否则底部导航会压住弹窗页脚按钮 */
+.batch-ms-modal-root { position: fixed; inset: 0; z-index: 10055; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
 .batch-ms-modal-root.is-open { display: flex; }
 .batch-ms-modal-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
 .batch-ms-modal-panel { position: relative; width: 100%; max-width: 420px; max-height: calc(100vh - 32px); background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden; }
+/* dvh 跟随移动端浏览器工具栏收放，避免面板超出可视区把页脚顶出屏幕 */
+@supports (max-height: 100dvh) {
+    .batch-ms-modal-panel { max-height: calc(100dvh - 32px - env(safe-area-inset-bottom, 0px)); }
+}
+/* 页脚常驻可见，不随长列表滚走 */
+.batch-ms-modal-footer { flex: 0 0 auto; position: sticky; bottom: 0; }
 .batch-ms-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--color-border-light); font-size: 15px; font-weight: 700; color: var(--color-text); }
 .batch-ms-modal-head button { border: none; background: none; font-size: 22px; line-height: 1; color: var(--color-text-muted); cursor: pointer; padding: 0 4px; }
 .batch-ms-modal-hint { padding: 10px 16px 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
 .batch-ms-modal-scroll { flex: 1; overflow-y: auto; padding: 10px 16px; -webkit-overflow-scrolling: touch; }
+.batch-ms-pager { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--color-border-light); flex: 0 0 auto; flex-wrap: wrap; }
+.batch-ms-pager[hidden] { display: none; }
+.batch-ms-pager-btn { min-width: 60px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); font-size: 13px; color: var(--color-text); cursor: pointer; }
+.batch-ms-pager-btn:disabled { opacity: 0.45; cursor: default; }
+.batch-ms-pager-info { font-size: 12px; color: var(--color-text-secondary); min-width: 108px; text-align: center; }
 .batch-ms-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .batch-ms-row label { flex: 0 0 92px; font-size: 13px; color: var(--color-text-secondary); }
 .batch-ms-row input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }

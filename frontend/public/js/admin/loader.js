@@ -110,7 +110,7 @@
   function ensureTaxBatchScripts() {
     var scripts = [
       '/js/consult-core.js?v=20260806-admin-tax-align',
-      '/js/consult-batch-tax.js?v=20260806-admin-tax-align',
+      '/js/consult-batch-tax.js?v=20260806-ms-pager',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

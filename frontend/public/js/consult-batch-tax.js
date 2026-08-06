@@ -2397,6 +2397,10 @@ function parseBatchEmploymentsFromDom() {
 
 var batchMsModalCurrentRow = null;
 var batchMsModalMonthsSnapshot = [];
+/* 分页后 DOM 只存当前页输入框，故所有月份的值统一存草稿，保存时以草稿为准，避免翻页丢数据 */
+var batchMsModalDraft = {};
+var batchMsModalPage = 0;
+var BATCH_MS_PAGE_SIZE = 12;
 
 function closeBatchMonthSalaryModal() {
     var root = document.getElementById('batchMonthSalaryModal');
@@ -2405,6 +2409,8 @@ function closeBatchMonthSalaryModal() {
     }
     batchMsModalCurrentRow = null;
     batchMsModalMonthsSnapshot = [];
+    batchMsModalDraft = {};
+    batchMsModalPage = 0;
 }
 
 function updateBatchEmpMonthSalaryBadge(row) {
@@ -2465,13 +2471,63 @@ function openBatchMonthSalaryModal(row) {
     hintEl.textContent =
         '共 ' +
         emp.months.length +
-        ' 个月。输入框默认显示月薪下限；修改并保存后该月使用自定义金额。若清空某月输入并保存，则该月恢复为「固定下限或区间内随机」。';
+        ' 个月' +
+        (emp.months.length > BATCH_MS_PAGE_SIZE
+            ? '（每页 ' + BATCH_MS_PAGE_SIZE + ' 个月，翻页不会丢失已填内容，最后点「保存」统一生效）'
+            : '') +
+        '。输入框默认显示月薪下限；修改并保存后该月使用自定义金额。若清空某月输入并保存，则该月恢复为「固定下限或区间内随机」。';
+
+    var map = row._monthSalaryMap || {};
+    batchMsModalDraft = {};
+    emp.months.forEach(function (ym) {
+        var mk = ym.year + '-' + pad2(ym.month);
+        batchMsModalDraft[mk] =
+            Object.prototype.hasOwnProperty.call(map, mk) && map[mk] !== '' && map[mk] != null
+                ? String(map[mk])
+                : String(emp.salaryMin);
+    });
+    batchMsModalPage = 0;
+    renderBatchMsModalPage();
+
+    root.classList.add('is-open');
+}
+
+/** 把当前页输入框的值回写草稿（翻页/保存前必须调用） */
+function syncBatchMsPageToDraft() {
+    var bodyEl = document.getElementById('batchMsModalBody');
+    if (!bodyEl) {
+        return;
+    }
+    bodyEl.querySelectorAll('input[data-ym-key]').forEach(function (inp) {
+        batchMsModalDraft[inp.dataset.ymKey] = inp.value != null ? String(inp.value) : '';
+    });
+}
+
+function batchMsTotalPages() {
+    var n = batchMsModalMonthsSnapshot.length;
+    return n > 0 ? Math.ceil(n / BATCH_MS_PAGE_SIZE) : 1;
+}
+
+function renderBatchMsModalPage() {
+    var bodyEl = document.getElementById('batchMsModalBody');
+    if (!bodyEl) {
+        return;
+    }
+    var months = batchMsModalMonthsSnapshot;
+    var total = batchMsTotalPages();
+    if (batchMsModalPage > total - 1) {
+        batchMsModalPage = total - 1;
+    }
+    if (batchMsModalPage < 0) {
+        batchMsModalPage = 0;
+    }
+    var start = batchMsModalPage * BATCH_MS_PAGE_SIZE;
+    var end = Math.min(start + BATCH_MS_PAGE_SIZE, months.length);
 
     bodyEl.innerHTML = '';
-    var map = row._monthSalaryMap || {};
     var mi;
-    for (mi = 0; mi < emp.months.length; mi++) {
-        var ym = emp.months[mi];
+    for (mi = start; mi < end; mi++) {
+        var ym = months[mi];
         var mk = ym.year + '-' + pad2(ym.month);
         var lab = document.createElement('label');
         lab.setAttribute('for', 'batch-ms-inp-' + mk.replace(/-/g, '_'));
@@ -2482,19 +2538,45 @@ function openBatchMonthSalaryModal(row) {
         inp.min = '0';
         inp.id = 'batch-ms-inp-' + mk.replace(/-/g, '_');
         inp.dataset.ymKey = mk;
-        if (Object.prototype.hasOwnProperty.call(map, mk) && map[mk] !== '' && map[mk] != null) {
-            inp.value = String(map[mk]);
-        } else {
-            inp.value = String(emp.salaryMin);
-        }
+        inp.value = Object.prototype.hasOwnProperty.call(batchMsModalDraft, mk)
+            ? String(batchMsModalDraft[mk])
+            : '';
         var wrap = document.createElement('div');
         wrap.className = 'batch-ms-row';
         wrap.appendChild(lab);
         wrap.appendChild(inp);
         bodyEl.appendChild(wrap);
     }
+    bodyEl.scrollTop = 0;
+    renderBatchMsPagerUi(start, end, total);
+}
 
-    root.classList.add('is-open');
+function renderBatchMsPagerUi(start, end, total) {
+    var pager = document.getElementById('batchMsModalPager');
+    var info = document.getElementById('batchMsPagerInfo');
+    var prev = document.getElementById('batchMsPagerPrev');
+    var next = document.getElementById('batchMsPagerNext');
+    if (!pager) {
+        return;
+    }
+    pager.hidden = total <= 1;
+    if (info) {
+        info.textContent =
+            '第 ' + (batchMsModalPage + 1) + '/' + total + ' 页（' +
+            (start + 1) + '-' + end + ' 月）';
+    }
+    if (prev) {
+        prev.disabled = batchMsModalPage <= 0;
+    }
+    if (next) {
+        next.disabled = batchMsModalPage >= total - 1;
+    }
+}
+
+function gotoBatchMsPage(delta) {
+    syncBatchMsPageToDraft();
+    batchMsModalPage += delta;
+    renderBatchMsModalPage();
 }
 
 function saveBatchMonthSalaryModal() {
@@ -2512,12 +2594,18 @@ function saveBatchMonthSalaryModal() {
         floorSal = 0;
     }
     var floorRounded = round2(floorSal);
-    var inputs = bodyEl.querySelectorAll('input[data-ym-key]');
+    /* 先把当前页回写草稿，再按草稿保存全部月份；否则未展示的页会被漏掉 */
+    syncBatchMsPageToDraft();
+    var keys = batchMsModalMonthsSnapshot.map(function (ym) {
+        return ym.year + '-' + pad2(ym.month);
+    });
     var i;
-    for (i = 0; i < inputs.length; i++) {
-        var inp = inputs[i];
-        var mk = inp.dataset.ymKey;
-        var trim = inp.value != null ? String(inp.value).trim() : '';
+    for (i = 0; i < keys.length; i++) {
+        var mk = keys[i];
+        var raw = Object.prototype.hasOwnProperty.call(batchMsModalDraft, mk)
+            ? batchMsModalDraft[mk]
+            : '';
+        var trim = raw != null ? String(raw).trim() : '';
         if (trim === '') {
             delete row._monthSalaryMap[mk];
             continue;
@@ -2556,9 +2644,11 @@ function clearBatchMonthSalaryModal() {
     if (Number.isNaN(empSalaryMin)) {
         empSalaryMin = 0;
     }
-    bodyEl.querySelectorAll('input[data-ym-key]').forEach(function (inp) {
-        inp.value = String(empSalaryMin);
+    /* 草稿整体复位，保证未展示页也被清空 */
+    batchMsModalMonthsSnapshot.forEach(function (ym) {
+        batchMsModalDraft[ym.year + '-' + pad2(ym.month)] = String(empSalaryMin);
     });
+    renderBatchMsModalPage();
     updateBatchEmpMonthSalaryBadge(row);
     scheduleBatchTaxDraftSave();
 }
@@ -2583,6 +2673,18 @@ function clearBatchMonthSalaryModal() {
     }
     if (clr) {
         clr.addEventListener('click', clearBatchMonthSalaryModal);
+    }
+    var prev = document.getElementById('batchMsPagerPrev');
+    var next = document.getElementById('batchMsPagerNext');
+    if (prev) {
+        prev.addEventListener('click', function () {
+            gotoBatchMsPage(-1);
+        });
+    }
+    if (next) {
+        next.addEventListener('click', function () {
+            gotoBatchMsPage(1);
+        });
     }
 })();
 
