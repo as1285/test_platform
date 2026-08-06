@@ -281,6 +281,17 @@ function renderListFromArray(list) {
 }
 
 function expandSingleTaxRecordCard() {
+    /* 单条表单嵌在「更多」卡片内，外层折叠时 .tax-more-body 为 display:none，
+       不先展开外层，内层展开也仍不可见，scrollIntoView 亦无效 */
+    var moreCard = document.getElementById('taxMoreCard');
+    var moreToggle = document.getElementById('taxMoreToggle');
+    if (moreCard) {
+        moreCard.classList.remove('is-collapsed');
+        moreCard.classList.add('is-open');
+    }
+    if (moreToggle) {
+        moreToggle.setAttribute('aria-expanded', 'true');
+    }
     var advCard = document.getElementById('singleTaxRecordCard');
     var advToggle = document.getElementById('singleTaxRecordToggle');
     if (advCard) {
@@ -297,23 +308,36 @@ function scrollToSingleTaxRecordForm() {
         return;
     }
     expandSingleTaxRecordCard();
-    try {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (e0) {
-        el.scrollIntoView(true);
+    /* 展开后需等一帧让 display 变更生效，否则元素仍为 0 高度，滚动位置算不准 */
+    var doScroll = function () {
+        try {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e0) {
+            el.scrollIntoView(true);
+        }
+    };
+    if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(doScroll);
+    } else {
+        doScroll();
     }
 }
 
 function editRecord(id) {
-    apiFetchRecords().then(function (list) {
-        var r = list.find(function (x) { return String(x.id) === String(id); });
-        if (!r) return;
-        applyToForm(r);
-        switchTab('records', true);
-        setTimeout(function () {
+    apiFetchRecords()
+        .then(function (list) {
+            var r = (list || []).find(function (x) { return String(x.id) === String(id); });
+            if (!r) {
+                showMsg('未找到该记录，请刷新后重试', false);
+                return;
+            }
+            applyToForm(r);
+            switchTab('records', true);
             scrollToSingleTaxRecordForm();
-        }, 0);
-    });
+        })
+        .catch(function (err) {
+            showMsg('打开编辑失败：' + (err && err.message ? err.message : ''), false);
+        });
 }
 
 function deleteRecord(id) {
