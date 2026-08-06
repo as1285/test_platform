@@ -16370,6 +16370,13 @@ async function handleAdminIssueCode(req, res) {
       if (grantMinutes) bits.push(grantMinutes + '分钟');
       note = '时效激活' + bits.join('');
     }
+    /* 保留调用方自定义备注（如发版自检 @@redeploy-selftest），便于事后清理 */
+    var customNote = body.note != null ? String(body.note).trim() : '';
+    if (customNote) {
+      customNote = customNote.replace(/\s+/g, ' ').substring(0, 120);
+      note = note ? note + '|' + customNote : customNote;
+      if (note.length > 255) note = note.substring(0, 255);
+    }
     const conn = await pool.getConnection();
     await conn.execute(
       'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)',

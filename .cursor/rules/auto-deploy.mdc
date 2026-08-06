@@ -26,6 +26,10 @@ alwaysApply: true
 - 用户明确表示本次不要部署
 - 仅改文档、注释、`.cursor/` 规则等不影响运行产物的内容
 
+## 发版自检
+
+若部署后做发码/注册/激活冒烟，必须用 `./scripts/redeploy-selftest.sh`（结束自动清理），或手动后跑 `./scripts/cleanup-redeploy-selftest.sh`。详见 `redeploy-selftest-cleanup.mdc`。可选：`DEPLOY_SELFTEST=1 ./scripts/deploy.sh`。
+
 ## 与提交的关系
 
 若同时适用 `git-commit-after-changes.mdc`：先提交再部署（部署失败时一般保留已提交内容，除非用户要求回滚）。

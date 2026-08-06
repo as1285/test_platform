@@ -1,0 +1,30 @@
+---
+description: 发版自检账号必须清理，禁止留下生产脏数据
+alwaysApply: true
+---
+
+# 发版自检数据清理
+
+对本仓库做发版后冒烟（发码 / 注册 / 激活 / 下单探测）时：
+
+1. **优先**使用仓库脚本，勿手写临时 curl 残留账号：
+
+```bash
+./scripts/redeploy-selftest.sh
+```
+
+该脚本结束时（含失败）会 `trap` 调用 `./scripts/cleanup-redeploy-selftest.sh` 删除自检用户与激活码。
+
+2. 若必须手写探测：用户名用 `st` + 数字前缀；发码 `note` 必须含 `@@redeploy-selftest`；**同一轮回复结束前**执行：
+
+```bash
+./scripts/cleanup-redeploy-selftest.sh '<username>'
+```
+
+3. 发现历史遗留（如 `act5991647`）时立即清理，不要只软删：
+
+```bash
+./scripts/cleanup-redeploy-selftest.sh act5991647
+```
+
+4. 部署时可选用：`DEPLOY_SELFTEST=1 ./scripts/deploy.sh`（自检后自动清理）。

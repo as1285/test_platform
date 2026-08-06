@@ -97,3 +97,16 @@ else
 fi
 echo "[deploy] public site: ${APP_URL}"
 echo "[deploy] 本机分支部署：在 .env 设 DEPLOY_BRANCH（lkj 站默认 lkj），然后执行 ./scripts/pull-and-deploy.sh"
+
+# 可选发版自检（发码/注册/激活后自动删掉脏数据）
+# DEPLOY_SELFTEST=1 ./scripts/deploy.sh
+if [[ "${DEPLOY_SELFTEST:-0}" == "1" ]]; then
+  if [[ -x "${ROOT}/scripts/redeploy-selftest.sh" ]]; then
+    echo "[deploy] running redeploy-selftest (will auto-cleanup)…"
+    bash "${ROOT}/scripts/redeploy-selftest.sh" || {
+      echo "[deploy] WARN: redeploy-selftest failed — leftovers cleaned by trap if any" >&2
+    }
+  else
+    echo "[deploy] WARN: scripts/redeploy-selftest.sh missing, skip selftest" >&2
+  fi
+fi
