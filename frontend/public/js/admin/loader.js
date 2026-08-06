@@ -6,7 +6,7 @@
   var inflight = Object.create(null);
 
   var MODULE_SRC = {
-    charts: '/js/admin/modules/charts.js?v=20260728-channel-analysis-fix',
+    charts: '/js/admin/modules/charts.js?v=20260806-admin-deadcode',
     analytics: '/js/admin/modules/analytics.js?v=20260721-p2',
     users: '/js/admin/modules/users.js?v=20260721-p2',
     'user-data': '/js/admin/modules/user-data.js?v=20260721-p2',
@@ -19,7 +19,7 @@
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260805-lizhi-users',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260805-tax-range',
-    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260801-prefill-fix'
+    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260806-admin-deadcode'
   };
 
   var PAGE_MODULE = {

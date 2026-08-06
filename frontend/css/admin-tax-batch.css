@@ -124,13 +124,7 @@
     box-shadow: none;
 }
 
-#adminTaxBatchRoot .form-row.form-row-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
 @media (max-width: 480px) {
-    #adminTaxBatchRoot .form-row.form-row-grid { grid-template-columns: 1fr; }
 }
 
 /* ===== 按钮系统（仅批量录入） ===== */

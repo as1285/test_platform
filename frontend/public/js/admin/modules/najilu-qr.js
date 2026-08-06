@@ -660,29 +660,6 @@
       });
   }
 
-  /** 主流程：原始完整图 + 替换图 → 结果图（无需开具记录） */
-  function previewFromFiles() {
-    var full = selectedFullFile();
-    var patch = selectedPatchFile();
-    if (!full) {
-      setStatus('请先上传原始完整完税证明图片', true);
-      return Promise.reject(new Error('no full'));
-    }
-    if (!patch) {
-      setStatus('请先上传替换图片（二维码块）', true);
-      return Promise.reject(new Error('no patch'));
-    }
-    var mode = val('najiluQrMode') || 'block';
-    setStatus('正在生成结果图…', false);
-    return Promise.all([loadImageFromFile(full), loadImageFromFile(patch)])
-      .then(function (imgs) {
-        var dataUrl = compositeOntoFull(imgs[0], imgs[1], mode);
-        showResultPreview(dataUrl);
-        setStatus('结果已生成，可下载；无需开具记录', false);
-        return dataUrl;
-      });
-  }
-
   function previewCert() {
     var patch = selectedPatchFile();
     var username = val('najiluQrUser');

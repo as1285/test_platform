@@ -146,16 +146,6 @@
     enhanceSectionDensity(page, sections);
   }
 
-  function setSectionCollapsed(section, collapsed) {
-    if (!section || !section.classList.contains('admin-section-collapsible')) return;
-    section.classList.toggle('is-section-collapsed', collapsed);
-    var btn = section.querySelector('.section-collapse-toggle');
-    if (btn) {
-      btn.textContent = collapsed ? '展开' : '收起';
-      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    }
-  }
-
   function enhanceSectionDensity(page, sections) {
     /* 转化概览页不再自动折叠后续区块，避免支付 A/B 与注册转化率之间出现大块空白 */
     if (page !== 'analytics-conversion') return;

@@ -12,40 +12,19 @@
             return el ? String(el.value || '1') : '1';
         }
 
-        /** 设备统计图标（与接口 icon_key 对应，含机型品牌分析） */
         /* charts: /js/admin/modules/charts.js (lazy) — 挂 window 供懒加载覆盖 */
-        var _deviceStatsChartInstances = [];
-        var _registerTimeChartInstances = [];
-        var _registerGenderChartInstances = [];
         var _installGuideChartInstances = [];
-        window.destroyDeviceStatsCharts = function () {};
         window.destroyRegisterTimeCharts = function () {};
-        window.destroyRegisterGenderCharts = function () {};
         window.destroyInstallGuideCharts = function () {};
         window.destroyChannelAnalysisCharts = function () {};
         window.loadChannelAnalysis = function () {};
-        window.loadAnalyticsRegisterGender = function () {};
         window.loadAnalyticsRegisterPlatform = function () {};
         window.loadAnalyticsRegisterTime = function () {};
-        window.renderDeviceStatsCharts = function () {};
-        window.renderRegisterGenderAnalysis = function () {};
         window.renderChannelAnalysis = function () {};
         window.renderRegisterTimeAnalysis = function () {};
         window.renderRegisterPlatformAnalysis = function () {};
-        window.statIconHtml = function () {
-            return '';
-        };
-        window.deviceStatRowHtml = function () {
-            return '';
-        };
-        function destroyDeviceStatsCharts() {
-            return window.destroyDeviceStatsCharts.apply(this, arguments);
-        }
         function destroyRegisterTimeCharts() {
             return window.destroyRegisterTimeCharts.apply(this, arguments);
-        }
-        function destroyRegisterGenderCharts() {
-            return window.destroyRegisterGenderCharts.apply(this, arguments);
         }
         function destroyInstallGuideCharts() {
             return window.destroyInstallGuideCharts.apply(this, arguments);
@@ -56,20 +35,11 @@
         function loadChannelAnalysis() {
             return window.loadChannelAnalysis.apply(this, arguments);
         }
-        function loadAnalyticsRegisterGender() {
-            return window.loadAnalyticsRegisterGender.apply(this, arguments);
-        }
         function loadAnalyticsRegisterPlatform() {
             return window.loadAnalyticsRegisterPlatform.apply(this, arguments);
         }
         function loadAnalyticsRegisterTime() {
             return window.loadAnalyticsRegisterTime.apply(this, arguments);
-        }
-        function renderDeviceStatsCharts() {
-            return window.renderDeviceStatsCharts.apply(this, arguments);
-        }
-        function renderRegisterGenderAnalysis() {
-            return window.renderRegisterGenderAnalysis.apply(this, arguments);
         }
         function renderChannelAnalysis() {
             return window.renderChannelAnalysis.apply(this, arguments);
@@ -79,12 +49,6 @@
         }
         function renderRegisterPlatformAnalysis() {
             return window.renderRegisterPlatformAnalysis.apply(this, arguments);
-        }
-        function statIconHtml() {
-            return window.statIconHtml.apply(this, arguments);
-        }
-        function deviceStatRowHtml() {
-            return window.deviceStatRowHtml.apply(this, arguments);
         }
 
         function formatDt(iso) {
@@ -4993,7 +4957,7 @@
                     if (typeof window.addBatchEmpRow === 'function') window.addBatchEmpRow();
                 });
             }
-            var moreFill = document.querySelector('#batchTaxMoreMenu .batch-tax-more-item');
+            var moreFill = document.getElementById('btnBatchTaxMoreFill') || document.querySelector('#batchTaxMoreMenu .batch-tax-more-item');
             if (moreFill && !moreFill.__adminBound) {
                 moreFill.__adminBound = true;
                 moreFill.addEventListener('click', function (e) {
@@ -5001,6 +4965,13 @@
                     if (typeof window.loadBatchEmploymentsFromExistingRecords === 'function') {
                         window.loadBatchEmploymentsFromExistingRecords();
                     }
+                    if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
+                });
+            }
+            bindAdminBatchClick('#btnBatchTaxMoreBonus', 'batchAddYearEndBonusOnly');
+            var moreBonus = document.getElementById('btnBatchTaxMoreBonus');
+            if (moreBonus && moreBonus.__adminBound) {
+                moreBonus.addEventListener('click', function () {
                     if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
                 });
             }
@@ -5122,43 +5093,6 @@
                 .catch(function () {
                     el.textContent = 'KPI 加载失败';
                 });
-        }
-
-        function buildNoTaxPathDetailHtml(username, data) {
-            var metrics = data.metrics || {};
-            var timeline = data.timeline || [];
-            var html = '<div class="user-detail-wrap" style="margin:0;">';
-            html +=
-                '<div class="user-detail-title">行为路径 · ' +
-                esc(username) +
-                '</div>';
-            html +=
-                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;font-size:13px;">停留：<strong>' +
-                esc(metrics.stay_label || '—') +
-                '</strong> · 活跃 ' +
-                esc(metrics.active_days) +
-                ' 天 · 行为 ' +
-                esc(metrics.event_count) +
-                ' 次 · 访问 ' +
-                esc(metrics.distinct_page_count) +
-                ' 个页面</div>';
-            if (!timeline.length) {
-                html += '<div style="color:#999;">暂无页面行为流水</div>';
-            } else {
-                html +=
-                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>#</th><th>时间</th><th>中文标题</th><th>接口名</th></tr></thead><tbody>';
-                timeline.forEach(function (step) {
-                    html += '<tr>';
-                    html += '<td>' + esc(step.step) + '</td>';
-                    html += '<td>' + esc(step.at ? formatDt(step.at) : '—') + '</td>';
-                    html += '<td>' + esc(step.title || '—') + '</td>';
-                    html += '<td class="cell-break"><code>' + esc(formatPageRouteKey(step.route_key)) + '</code></td>';
-                    html += '</tr>';
-                });
-                html += '</tbody></table></div>';
-            }
-            html += '</div>';
-            return html;
         }
 
         function buildUserDataDetailHtml(username, data) {
@@ -5432,10 +5366,6 @@
                     showCachedOrRender(false);
                 };
             }
-        }
-
-        function keyForUserData(username) {
-            return String(username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
         }
 
         function loadUserDataList(p) {

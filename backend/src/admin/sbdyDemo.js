@@ -138,11 +138,6 @@ function defaultPrintDateCn() {
   return p.y + '年' + String(p.m).padStart(2, '0') + '月' + String(p.d).padStart(2, '0') + '日';
 }
 
-function defaultQueryDate() {
-  var p = bjNowParts();
-  return p.y + '-' + String(p.m).padStart(2, '0') + '-' + String(p.d).padStart(2, '0');
-}
-
 function buildMonthRows(periodStart, periodEnd, opts) {
   opts = opts || {};
   var a = parseYm(periodStart);
