@@ -5380,7 +5380,8 @@ function buildBilibiliShareRewardStatus(row, pendingOrder) {
   ) {
     pendingDiscount = alipay.normalizeAmount(pendingOrder.discount_amount) || BILIBILI_SHARE_DISCOUNT_AMOUNT;
   }
-  var pendingApplied = Number(pendingDiscount) > 0 || reserved >= threshold;
+  /* 仅在确有金额时才算「已用于待支付订单」；只有预占无金额会渲染成「自动减 ¥0.00」 */
+  var pendingApplied = Number(pendingDiscount) > 0;
   return {
     completed_count: total,
     available_count: available,
@@ -5405,19 +5406,27 @@ function buildBilibiliShareRewardStatus(row, pendingOrder) {
 async function readBilibiliShareRewardStatus(username, conn) {
   var db = conn || pool;
   var user = String(username || '');
+  /* 预占口径须与下单时的释放逻辑一致：仅「未超时的 pending 订单」才算真占用，
+     否则已关闭/超时订单会把次数永久算成 reserved，页面误显示「优惠已用于待支付订单」 */
   const [rows] = await db.execute(
     `SELECT
-       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+       SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
        SUM(CASE
-         WHEN status = 'completed' AND consumed_at IS NULL AND reserved_order_no IS NULL THEN 1
+         WHEN se.status = 'completed' AND se.consumed_at IS NULL
+           AND (se.reserved_order_no IS NULL OR po.id IS NULL) THEN 1
          ELSE 0
        END) AS available_count,
        SUM(CASE
-         WHEN status = 'completed' AND consumed_at IS NULL AND reserved_order_no IS NOT NULL THEN 1
+         WHEN se.status = 'completed' AND se.consumed_at IS NULL
+           AND se.reserved_order_no IS NOT NULL AND po.id IS NOT NULL THEN 1
          ELSE 0
        END) AS reserved_count
-     FROM user_bilibili_share_events
-     WHERE username = ?`,
+     FROM user_bilibili_share_events se
+     LEFT JOIN payment_orders po
+       ON po.out_trade_no = se.reserved_order_no
+      AND po.status = 'pending'
+      AND po.created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     WHERE se.username = ?`,
     [user]
   );
   const [pendingRows] = await db.execute(
@@ -5993,7 +6002,7 @@ async function handleAlipayCreateOrder(req, res) {
       /* mysql2 execute 不支持 LIMIT ?，需内联安全整数 */
       var shareLimit = Math.max(
         1,
-        Math.min(50, parseInt(BILIBILI_SHARE_DISCOUNT_THRESHOLD, 10) || 2)
+        Math.min(50, parseInt(BILIBILI_SHARE_DISCOUNT_THRESHOLD, 10) || 1)
       );
       const [shareRows] = await conn.execute(
         `SELECT id
