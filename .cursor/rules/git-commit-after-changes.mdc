@@ -1,19 +1,20 @@
 ---
-description: 完成实质性修改后 commit 并 push 到 GitHub
+description: 每次实质性修改后必须 git commit 并 push
 alwaysApply: true
 ---
 
-# 修改后提交并推送 GitHub（test_platform）
+# 每次修改都提交并推送
 
-在本仓库中**对纳入版本控制的文件做了实质性修改**，并在**回复用户之前**完成提交与推送：
+对本仓库做了**实质性修改**后，在**回复用户之前**必须完成：
 
-1. 在仓库根目录执行 `git status`，确认变更文件与范围。
-2. 将**本轮实际改动且应入库**的路径 `git add`，使用语义清晰的提交说明执行 `git commit`（完整句子；可选用 `feat`/`fix` 等前缀）。
-3. **随即**执行 `git push origin HEAD`（当前分支，本域名主开发分支为 **`geshui`**）。推送需 `git_write` 与网络权限；失败时说明原因并保留本地 commit，不要静默跳过。若当前不在 `geshui`，先确认是否应切回 `geshui` 再提交（除非用户指定其它分支）。
-4. 不要把无关文件、生成物或未参与本轮任务的改动一并提交；若无任何可提交变更，**不要**制造空提交。
+1. `git status` / `git diff` 确认本轮应入库的文件范围。
+2. `git add` 相关路径，用清晰说明 `git commit`（完整句子；可选用 `feat`/`fix` 等前缀）。
+3. **立即** `git push origin HEAD`（本站开发分支为 **`lkj`**）。失败时说明原因并保留本地 commit，不要静默跳过。
+4. 不要夹带无关改动、生成物或 `.env`/密钥；无变更时不要空提交。
+5. 不要 `git push --force`（除非用户明确要求）。
 
-若用户在本轮明确表示**不要提交**、**不要推送**、或说明版本库由其本人处理，则跳过对应步骤。
+仅当用户本轮明确说「不要提交 / 不要推送」时才跳过。
 
-与 `auto-deploy.mdc` 配合时：在适用情况下顺序为 **`git commit` → `git push` → `./scripts/deploy.sh`**（部署失败时一般仍保留已提交内容，除非用户要求回滚）。
+与 `auto-deploy.mdc` 配合时顺序：`git commit` → `git push` → `./scripts/deploy.sh`（适用时）。
 
-**注意**：不要使用 `git push --force`；不要提交 `.env`、密钥等敏感文件。
+若 `/root/test_platform` 无法 fetch/push（历史不同步），可在已跟踪 `origin/lkj` 的工作副本（如 `/tmp/test_platform_push`）上叠加上本轮改动后 commit/push，并保证线上工作树文件一致。
