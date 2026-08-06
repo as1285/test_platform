@@ -1719,8 +1719,12 @@
             'track_purchase_activate_success',
             'track_purchase_activate_fail',
             'track_alipay_payment_start',
+            'track_purchase_pay_cta_click',
+            'track_alipay_order_create_ok',
+            'track_alipay_order_create_fail',
             'track_alipay_open_click',
             'track_alipay_payment_success',
+            'track_purchase_faq_expand',
             'track_kufaka_purchase_click',
             'track_purchase_wechat_view',
             'track_purchase_wechat_expand',
@@ -1738,8 +1742,12 @@
             track_purchase_activate_success: '激活成功',
             track_purchase_activate_fail: '激活失败',
             track_alipay_payment_start: '生成码',
+            track_purchase_pay_cta_click: 'CTA点击',
+            track_alipay_order_create_ok: '下单成功',
+            track_alipay_order_create_fail: '下单失败',
             track_alipay_open_click: '打开支付宝',
             track_alipay_payment_success: '支付宝成',
+            track_purchase_faq_expand: 'FAQ展开',
             track_kufaka_purchase_click: '酷发卡',
             track_purchase_wechat_view: '微信展示',
             track_purchase_wechat_expand: '展开微信',
@@ -2405,46 +2413,52 @@
                     var data = res.data;
                     var funnel = data.funnel || {};
                     var pay = data.payments || {};
+                    var survey = data.price_survey || {};
                     if (summaryEl) {
                         summaryEl.innerHTML =
                             analyticsPeriodHintHtml(data) +
-                            '激活弹窗 UV <strong>' +
-                            esc(String(funnel.prompt_open_uv || 0)) +
-                            '</strong>；确认激活 UV <strong>' +
-                            esc(String(funnel.prompt_confirm_uv || 0)) +
-                            '</strong>；购买页浏览 UV <strong>' +
+                            '购买页浏览 UV <strong>' +
                             esc(String(funnel.view_uv || 0)) +
-                            '</strong>；支付宝支付成功 UV <strong>' +
+                            '</strong>；CTA 点击 UV <strong>' +
+                            esc(String(funnel.pay_cta_uv || 0)) +
+                            '</strong>；下单成功 UV <strong>' +
+                            esc(String(funnel.order_create_ok_uv || 0)) +
+                            '</strong>；支付成功 UV <strong>' +
                             esc(String(funnel.alipay_success_uv || 0)) +
                             '</strong>（浏览→支付 ' +
                             esc(String(funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0)) +
-                            '%）；已付订单 <strong>' +
+                            '%）；FAQ 展开 UV <strong>' +
+                            esc(String(funnel.faq_expand_uv || 0)) +
+                            '</strong>；离开调研「偏贵」 <strong>' +
+                            esc(String(survey.expensive_pct != null ? survey.expensive_pct : 0)) +
+                            '%</strong>（' +
+                            esc(String(survey.expensive || 0)) +
+                            '/' +
+                            esc(String(survey.submitted || 0)) +
+                            '）；已付订单 <strong>' +
                             esc(String(pay.paid_orders || 0)) +
                             '</strong>，总 GMV ¥' +
                             esc(String(pay.gmv != null ? pay.gmv : 0)) +
-                            '（开通 ¥' +
-                            esc(String(pay.activation_gmv != null ? pay.activation_gmv : 0)) +
-                            ' + 离职证明 ¥' +
-                            esc(String(pay.lizhi_gmv != null ? pay.lizhi_gmv : 0)) +
-                            ' + 改名 ¥' +
-                            esc(String(pay.rename_gmv != null ? pay.rename_gmv : 0)) +
-                            '）。';
+                            '。';
                     }
                     if (cardsEl) {
                         var cards = [
-                            ['激活弹窗 UV', funnel.prompt_open_uv || 0],
-                            ['确认激活 UV', funnel.prompt_confirm_uv || 0],
                             ['浏览 UV', funnel.view_uv || 0],
-                            ['定价曝光 UV', funnel.expose_uv || 0],
+                            ['CTA 点击 UV', funnel.pay_cta_uv || 0],
+                            ['浏览→CTA', (funnel.view_to_cta_pct != null ? funnel.view_to_cta_pct : 0) + '%'],
                             ['生成付款 UV', funnel.alipay_start_uv || 0],
+                            ['下单成功 UV', funnel.order_create_ok_uv || 0],
+                            ['下单失败 UV', funnel.order_create_fail_uv || 0],
+                            ['CTA→下单', (funnel.cta_to_create_ok_pct != null ? funnel.cta_to_create_ok_pct : 0) + '%'],
                             ['打开支付宝 UV', funnel.alipay_open_uv || 0],
                             ['支付成功 UV', funnel.alipay_success_uv || 0],
+                            ['下单→成功', (funnel.create_ok_to_success_pct != null ? funnel.create_ok_to_success_pct : 0) + '%'],
                             ['浏览→支付', (funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0) + '%'],
-                            ['激活成功 UV', funnel.activate_ok_uv || 0],
+                            ['FAQ 展开 UV', funnel.faq_expand_uv || 0],
+                            ['浏览→FAQ', (funnel.view_to_faq_pct != null ? funnel.view_to_faq_pct : 0) + '%'],
+                            ['调研偏贵%', (survey.expensive_pct != null ? survey.expensive_pct : 0) + '%'],
                             ['已付订单', pay.paid_orders || 0],
-                            ['总 GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)],
-                            ['离职证明订单', pay.lizhi_orders || 0],
-                            ['离职证明 GMV', '¥' + (pay.lizhi_gmv != null ? pay.lizhi_gmv : 0)]
+                            ['总 GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)]
                         ];
                         var ch = '';
                         cards.forEach(function (c) {
@@ -2506,7 +2520,13 @@
                             esc(String(funnel.view_uv || 0)) +
                             '</td>' +
                             '<td>' +
+                            esc(String(funnel.pay_cta_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
                             esc(String(funnel.alipay_start_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
+                            esc(String(funnel.order_create_ok_uv || 0)) +
                             '</td>' +
                             '<td>' +
                             esc(String(funnel.alipay_open_uv || 0)) +
@@ -2518,10 +2538,16 @@
                             esc(String(funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0)) +
                             '%</td>' +
                             '<td>' +
-                            esc(String(funnel.start_to_open_pct != null ? funnel.start_to_open_pct : 0)) +
+                            esc(String(funnel.cta_to_create_ok_pct != null ? funnel.cta_to_create_ok_pct : 0)) +
                             '%</td>' +
                             '<td>' +
-                            esc(String(funnel.open_to_success_pct != null ? funnel.open_to_success_pct : 0)) +
+                            esc(String(funnel.create_ok_to_success_pct != null ? funnel.create_ok_to_success_pct : 0)) +
+                            '%</td>' +
+                            '<td>' +
+                            esc(String(funnel.faq_expand_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
+                            esc(String(survey.expensive_pct != null ? survey.expensive_pct : 0)) +
                             '%</td>' +
                             '</tr>';
                     }

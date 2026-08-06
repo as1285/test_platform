@@ -19358,9 +19358,18 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_pricing_ab_expose_control',
   'track_pricing_ab_expose_treatment',
   'track_pricing_ab_expose_code',
+  'track_purchase_pay_cta_click',
   'track_alipay_payment_start',
+  'track_alipay_order_create_ok',
+  'track_alipay_order_create_fail',
   'track_alipay_open_click',
   'track_alipay_payment_success',
+  'track_purchase_faq_expand',
+  'track_purchase_fold_expand',
+  'track_purchase_share_teaser_click',
+  'track_purchase_price_survey_open',
+  'track_purchase_price_survey_submit',
+  'track_purchase_price_survey_skip',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
   'track_kufaka_purchase_click',
@@ -19407,9 +19416,18 @@ function purchasePageTrackEventLabel(eventKey) {
     track_pricing_ab_expose_control: '支付页A曝光·对照',
     track_pricing_ab_expose_treatment: '支付页B曝光·多档',
     track_pricing_ab_expose_code: '支付页C曝光·激活码',
+    track_purchase_pay_cta_click: '支付CTA点击',
     track_alipay_payment_start: '生成支付宝付款',
+    track_alipay_order_create_ok: '下单创建成功',
+    track_alipay_order_create_fail: '下单创建失败',
     track_alipay_open_click: '打开支付宝',
     track_alipay_payment_success: '支付宝支付成功',
+    track_purchase_faq_expand: '支付FAQ展开',
+    track_purchase_fold_expand: '折叠区展开',
+    track_purchase_share_teaser_click: '分享优惠入口点击',
+    track_purchase_price_survey_open: '离开调研打开',
+    track_purchase_price_survey_submit: '离开调研提交',
+    track_purchase_price_survey_skip: '离开调研跳过',
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_kufaka_purchase_click: '酷发卡购买',
@@ -19466,9 +19484,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         prompt_confirm: {},
         view: {},
         expose: {},
+        pay_cta: {},
         alipay_start: {},
+        order_create_ok: {},
+        order_create_fail: {},
         alipay_open: {},
         alipay_success: {},
+        faq_expand: {},
         activate_ok: {},
         activate_fail: {}
       };
@@ -19496,9 +19518,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
               prompt_confirm: {},
               view: {},
               expose: {},
+              pay_cta: {},
               alipay_start: {},
+              order_create_ok: {},
+              order_create_fail: {},
               alipay_open: {},
               alipay_success: {},
+              faq_expand: {},
               activate_ok: {},
               activate_fail: {}
             }
@@ -19530,9 +19556,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         ) {
           markFunnel('expose');
         }
+        if (ek === 'track_purchase_pay_cta_click') markFunnel('pay_cta');
         if (ek === 'track_alipay_payment_start') markFunnel('alipay_start');
+        if (ek === 'track_alipay_order_create_ok') markFunnel('order_create_ok');
+        if (ek === 'track_alipay_order_create_fail') markFunnel('order_create_fail');
         if (ek === 'track_alipay_open_click') markFunnel('alipay_open');
         if (ek === 'track_alipay_payment_success') markFunnel('alipay_success');
+        if (ek === 'track_purchase_faq_expand') markFunnel('faq_expand');
         if (ek === 'track_purchase_activate_success') markFunnel('activate_ok');
         if (ek === 'track_purchase_activate_fail') markFunnel('activate_fail');
       });
@@ -19546,29 +19576,75 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
       }
 
       var viewUv = countSet(funnelUsers.view);
+      var payCtaUv = countSet(funnelUsers.pay_cta);
+      var startUv = countSet(funnelUsers.alipay_start);
+      var createOkUv = countSet(funnelUsers.order_create_ok);
+      var openUv = countSet(funnelUsers.alipay_open);
+      var successUv = countSet(funnelUsers.alipay_success);
+      var faqUv = countSet(funnelUsers.faq_expand);
       var funnel = {
         prompt_open_uv: countSet(funnelUsers.prompt_open),
         prompt_confirm_uv: countSet(funnelUsers.prompt_confirm),
         prompt_to_view_pct: pctRate(viewUv, countSet(funnelUsers.prompt_open)),
         view_uv: viewUv,
         expose_uv: countSet(funnelUsers.expose),
-        alipay_start_uv: countSet(funnelUsers.alipay_start),
-        alipay_open_uv: countSet(funnelUsers.alipay_open),
-        alipay_success_uv: countSet(funnelUsers.alipay_success),
+        pay_cta_uv: payCtaUv,
+        alipay_start_uv: startUv,
+        order_create_ok_uv: createOkUv,
+        order_create_fail_uv: countSet(funnelUsers.order_create_fail),
+        alipay_open_uv: openUv,
+        alipay_success_uv: successUv,
+        faq_expand_uv: faqUv,
         activate_ok_uv: countSet(funnelUsers.activate_ok),
         activate_fail_uv: countSet(funnelUsers.activate_fail),
-        view_to_start_pct: pctRate(countSet(funnelUsers.alipay_start), viewUv),
-        start_to_open_pct: pctRate(
-          countSet(funnelUsers.alipay_open),
-          countSet(funnelUsers.alipay_start)
-        ),
-        open_to_success_pct: pctRate(
-          countSet(funnelUsers.alipay_success),
-          countSet(funnelUsers.alipay_open)
-        ),
-        view_to_pay_pct: pctRate(countSet(funnelUsers.alipay_success), viewUv),
+        view_to_cta_pct: pctRate(payCtaUv, viewUv),
+        view_to_start_pct: pctRate(startUv, viewUv),
+        cta_to_create_ok_pct: pctRate(createOkUv, payCtaUv || startUv),
+        start_to_create_ok_pct: pctRate(createOkUv, startUv),
+        create_ok_to_success_pct: pctRate(successUv, createOkUv),
+        start_to_open_pct: pctRate(openUv, startUv),
+        open_to_success_pct: pctRate(successUv, openUv),
+        view_to_pay_pct: pctRate(successUv, viewUv),
+        view_to_faq_pct: pctRate(faqUv, viewUv),
         view_to_activate_pct: pctRate(countSet(funnelUsers.activate_ok), viewUv)
       };
+
+      var priceSurvey = {
+        total: 0,
+        submitted: 0,
+        skipped: 0,
+        expensive: 0,
+        fair: 0,
+        cheap: 0,
+        expensive_pct: 0
+      };
+      try {
+        var cnSurveyDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+        var surveyPf = analyticsPeriodCnDateFilter(cnSurveyDay, period);
+        const [surveyRows] = await conn.execute(
+          `SELECT skipped, sentiment, COUNT(*) AS cnt
+           FROM purchase_price_survey
+           WHERE ${surveyPf.sql}
+           GROUP BY skipped, sentiment`,
+          surveyPf.params
+        );
+        (surveyRows || []).forEach(function (r) {
+          var c = Number(r.cnt) || 0;
+          priceSurvey.total += c;
+          if (Number(r.skipped) === 1) {
+            priceSurvey.skipped += c;
+            return;
+          }
+          priceSurvey.submitted += c;
+          var s = String(r.sentiment || '').toLowerCase();
+          if (s === 'expensive') priceSurvey.expensive += c;
+          else if (s === 'cheap') priceSurvey.cheap += c;
+          else priceSurvey.fair += c;
+        });
+        priceSurvey.expensive_pct = pctRate(priceSurvey.expensive, priceSurvey.submitted);
+      } catch (eSurvey) {
+        console.error('[admin purchase-events] price_survey', eSurvey && eSurvey.message);
+      }
 
       var summary = PURCHASE_PAGE_TRACK_EVENT_KEYS.map(function (k) {
         return {
@@ -19696,9 +19772,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
               prompt_confirm: {},
               view: {},
               expose: {},
+              pay_cta: {},
               alipay_start: {},
+              order_create_ok: {},
+              order_create_fail: {},
               alipay_open: {},
               alipay_success: {},
+              faq_expand: {},
               activate_ok: {},
               activate_fail: {}
             }
@@ -19708,6 +19788,10 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           });
           var f = o.funnel;
           var dayView = countSet(f.view);
+          var dayStart = countSet(f.alipay_start);
+          var dayCreateOk = countSet(f.order_create_ok);
+          var daySuccess = countSet(f.alipay_success);
+          var dayFaq = countSet(f.faq_expand);
           var pay = paidDailyMap[d] || {
             paid_orders: 0,
             paid_users: 0,
@@ -19729,12 +19813,20 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             prompt_confirm_uv: countSet(f.prompt_confirm),
             view_uv: dayView,
             expose_uv: countSet(f.expose),
-            alipay_start_uv: countSet(f.alipay_start),
+            pay_cta_uv: countSet(f.pay_cta),
+            alipay_start_uv: dayStart,
+            order_create_ok_uv: dayCreateOk,
+            order_create_fail_uv: countSet(f.order_create_fail),
             alipay_open_uv: countSet(f.alipay_open),
-            alipay_success_uv: countSet(f.alipay_success),
+            alipay_success_uv: daySuccess,
+            faq_expand_uv: dayFaq,
             activate_ok_uv: countSet(f.activate_ok),
             activate_fail_uv: countSet(f.activate_fail),
-            view_to_pay_pct: pctRate(countSet(f.alipay_success), dayView),
+            view_to_cta_pct: pctRate(countSet(f.pay_cta), dayView),
+            start_to_create_ok_pct: pctRate(dayCreateOk, dayStart),
+            create_ok_to_success_pct: pctRate(daySuccess, dayCreateOk),
+            view_to_faq_pct: pctRate(dayFaq, dayView),
+            view_to_pay_pct: pctRate(daySuccess, dayView),
             paid_orders: pay.paid_orders,
             paid_users: pay.paid_users,
             gmv: pay.gmv,
@@ -19759,6 +19851,7 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           event_keys: PURCHASE_PAGE_TRACK_EVENT_KEYS.slice(),
           funnel: funnel,
           payments: paidSummary,
+          price_survey: priceSurvey,
           summary: summary,
           total_events: grandTotal,
           by_day: byDay
@@ -19882,9 +19975,18 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_activate_prompt_confirm',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
+  'track_purchase_pay_cta_click',
   'track_alipay_payment_start',
+  'track_alipay_order_create_ok',
+  'track_alipay_order_create_fail',
   'track_alipay_open_click',
   'track_alipay_payment_success',
+  'track_purchase_faq_expand',
+  'track_purchase_fold_expand',
+  'track_purchase_share_teaser_click',
+  'track_purchase_price_survey_open',
+  'track_purchase_price_survey_submit',
+  'track_purchase_price_survey_skip',
   'track_kufaka_purchase_click',
   'track_purchase_wechat_view',
   'track_purchase_wechat_expand',
@@ -19941,9 +20043,18 @@ function activateTrackEventLabel(eventKey) {
     track_activation_nudge_show: '激活引导弹窗-展示',
     track_activation_nudge_dismiss: '激活引导弹窗-关闭',
     track_activation_nudge_cta: '激活引导弹窗-去激活',
+    track_purchase_pay_cta_click: '支付CTA点击',
     track_alipay_payment_start: '生成支付宝付款码',
+    track_alipay_order_create_ok: '下单创建成功',
+    track_alipay_order_create_fail: '下单创建失败',
     track_alipay_open_click: '打开支付宝付款',
-    track_alipay_payment_success: '支付宝付款开通成功'
+    track_alipay_payment_success: '支付宝付款开通成功',
+    track_purchase_faq_expand: '支付FAQ展开',
+    track_purchase_fold_expand: '折叠区展开',
+    track_purchase_share_teaser_click: '分享优惠入口点击',
+    track_purchase_price_survey_open: '离开调研打开',
+    track_purchase_price_survey_submit: '离开调研提交',
+    track_purchase_price_survey_skip: '离开调研跳过'
   };
   return labels[eventKey] || eventKey;
 }

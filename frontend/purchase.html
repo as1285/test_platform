@@ -31,6 +31,9 @@
             background: var(--bg);
             padding-bottom: calc(28px + var(--safe-b));
         }
+        body.page-purchase.has-sticky-cta {
+            padding-bottom: calc(88px + var(--safe-b));
+        }
         .header {
             position: relative;
             z-index: 10;
@@ -205,6 +208,14 @@
         .pay-status.is-wait {
             background: var(--warn-soft);
             color: var(--warn);
+        }
+        .pay-status.is-ok {
+            background: #ecfdf5;
+            color: #047857;
+        }
+        .pay-status.is-fail {
+            background: #fef2f2;
+            color: #b91c1c;
         }
         .btn {
             display: flex;
@@ -653,6 +664,162 @@
             line-height: 1.45;
             color: rgba(255,255,255,.7);
         }
+        .purchase-fold {
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.055);
+            overflow: hidden;
+        }
+        .purchase-fold > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-fold > summary::-webkit-details-marker { display: none; }
+        .purchase-fold > summary::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid #94a3b8;
+            border-bottom: 2px solid #94a3b8;
+            transform: rotate(45deg);
+            transition: transform 0.15s ease;
+            flex-shrink: 0;
+        }
+        .purchase-fold[open] > summary::after {
+            transform: rotate(225deg);
+            margin-top: 4px;
+        }
+        .purchase-fold-hint {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--muted);
+        }
+        .purchase-fold-body {
+            padding: 0 12px 12px;
+            border-top: 1px solid var(--line);
+        }
+        .purchase-fold-body .card {
+            margin-top: 10px;
+            box-shadow: none;
+        }
+        .purchase-fold-body .card:first-child { margin-top: 12px; }
+        .purchase-faq {
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.055);
+            padding: 14px 16px 10px;
+        }
+        .purchase-faq-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .purchase-faq-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .purchase-faq-item {
+            border-top: 1px solid var(--line);
+        }
+        .purchase-faq-item summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 2px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-faq-item summary::-webkit-details-marker { display: none; }
+        .purchase-faq-item summary::after {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-right: 2px solid #94a3b8;
+            border-bottom: 2px solid #94a3b8;
+            transform: rotate(45deg);
+            flex-shrink: 0;
+            transition: transform 0.15s ease;
+        }
+        .purchase-faq-item[open] summary::after {
+            transform: rotate(225deg);
+            margin-top: 3px;
+        }
+        .purchase-faq-item p {
+            margin: 0 0 12px;
+            padding: 0 2px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--ink-soft);
+        }
+        .purchase-sticky-cta {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 40;
+            display: none;
+            padding: 10px 16px calc(10px + var(--safe-b));
+            background: rgba(255, 255, 255, 0.96);
+            border-top: 1px solid rgba(226, 232, 240, 0.95);
+            box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .purchase-sticky-cta.is-visible { display: block; }
+        .purchase-sticky-cta-inner {
+            max-width: var(--wrap);
+            margin: 0 auto;
+        }
+        .purchase-sticky-cta .btn {
+            margin: 0;
+            min-height: 48px;
+        }
+        .purchase-sticky-cta .sticky-cta-note {
+            margin: 0 0 6px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--muted);
+        }
+        #cardAlipay .btn-alipay.is-primary-hidden-by-sticky {
+            /* 保留占位高度，避免滚动跳动；视觉上由底栏承接 */
+            visibility: hidden;
+        }
+        .share-inline-teaser {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #fff1f5;
+            border: 1px solid #fecdd3;
+            color: #9f1239;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+        .share-inline-teaser a {
+            color: #be123c;
+            font-weight: 600;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body class="page-purchase">
@@ -667,96 +834,164 @@
         <div class="hero">
             <div class="brand-line">个人所得税</div>
             <h1 id="purchaseHeroTitle">开通完整演示</h1>
-            <p id="purchaseHeroDesc">付款后去除水印，完整查看收入与纳税明细；已有激活码可下滑填写开通。</p>
+            <p id="purchaseHeroDesc">付款后去除水印，完整查看收入与纳税明细。</p>
         </div>
 
         <ul class="purchase-benefits" aria-label="开通后可获得">
-            <li><span><strong>去除水印</strong>：收入明细、纳税记录可完整展示</span></li>
-            <li><span><strong>完整明细</strong>：按月查看收入与纳税演示数据</span></li>
-            <li><span><strong>演示数据</strong>：支持按需编辑，便于对照体验</span></li>
+            <li><span><strong>去除水印</strong>：收入与纳税明细完整展示</span></li>
+            <li><span><strong>完整明细</strong>：按月查看演示数据</span></li>
+            <li><span><strong>可编辑</strong>：演示数据支持按需调整</span></li>
         </ul>
         <div class="purchase-offer-banner" id="purchaseOfferBanner">
-            新用户 24 小时内可享体验价（下方划线为对照原价）。也可先分享 B 站再减 ¥50。
+            新用户 24 小时内可享体验价（划线为对照原价）。想更便宜可先分享 B 站再减 ¥50。
         </div>
 
         <div class="card" id="cardAlipay" hidden>
             <div class="card-head">
-                <div class="card-title">支付宝购买</div>
+                <div class="card-title">选套餐 · 支付宝付款</div>
                 <span class="badge-auto">付款后自动开通</span>
             </div>
             <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，可点其他套餐。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">打开支付宝付款</button>
-            <div class="pay-status" id="alipayPayStatus" hidden></div>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">体验价 · 打开支付宝付款</button>
+            <div class="pay-status" id="alipayPayStatus" hidden role="status" aria-live="polite"></div>
+            <div class="share-inline-teaser" id="shareInlineTeaser" hidden>
+                想再便宜？<a href="#foldShareDiscount" id="shareInlineTeaserLink">分享到 B 站，满 2 次立减 ¥50</a>
+            </div>
         </div>
 
-        <div class="card share-activity-card" id="cardShareActivity" hidden>
-            <div class="share-activity-head">
-                <div>
-                    <div class="share-activity-title">分享到 B 站，立减 50 元</div>
-                    <div class="share-activity-sub">完成 2 次分享即可解锁优惠</div>
+        <details class="purchase-fold" id="foldShareDiscount" hidden>
+            <summary>
+                <span>想更便宜？B 站分享立减 ¥50</span>
+                <span class="purchase-fold-hint">可选</span>
+            </summary>
+            <div class="purchase-fold-body">
+                <div class="card share-activity-card" id="cardShareActivity" hidden>
+                    <div class="share-activity-head">
+                        <div>
+                            <div class="share-activity-title">分享到 B 站，立减 50 元</div>
+                            <div class="share-activity-sub">完成 2 次分享即可解锁优惠</div>
+                        </div>
+                        <span class="share-discount-badge">2 次减 ¥50</span>
+                    </div>
+                    <div class="share-progress" id="bilibiliShareProgress" aria-label="分享进度"></div>
+                    <p class="share-activity-status" id="bilibiliShareStatus">正在读取活动进度…</p>
+                    <button type="button" class="btn btn-bilibili-share" id="btnBilibiliShare">立即分享到 B 站</button>
+                    <p class="share-rules">分享完成后返回本页自动计数；满 2 次后，创建支付宝订单时由服务器自动减 50 元。每 2 次仅可抵扣 1 笔订单。</p>
                 </div>
-                <span class="share-discount-badge">2 次减 ¥50</span>
             </div>
-            <div class="share-progress" id="bilibiliShareProgress" aria-label="分享进度"></div>
-            <p class="share-activity-status" id="bilibiliShareStatus">正在读取活动进度…</p>
-            <button type="button" class="btn btn-bilibili-share" id="btnBilibiliShare">立即分享到 B 站</button>
-            <p class="share-rules">分享完成后返回本页自动计数；满 2 次后，创建支付宝订单时由服务器自动减 50 元。每 2 次仅可抵扣 1 笔订单。</p>
-        </div>
+        </details>
 
-        <div class="card activate-box" id="cardActivate">
-            <div class="card-title">已有激活码？直接开通</div>
-            <p class="card-hint cheaper-channels-hint">填写激活码即可开通，无需再走支付宝标价。</p>
-            <label class="field-label" for="purchaseActivateCode">激活码</label>
-            <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
-            <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
-        </div>
-
-        <div class="card" id="cardLizhiCert">
-            <div class="card-head">
-                <div class="card-title">离职证明生成</div>
-                <span class="badge-auto">¥50 去水印</span>
+        <section class="purchase-faq" id="purchaseFaq" aria-label="支付常见问题">
+            <div class="purchase-faq-title">支付常见问题</div>
+            <p class="purchase-faq-sub" id="purchaseFaqSub">付款前可先看这几条，减少顾虑。</p>
+            <div id="purchaseFaqList">
+                <details class="purchase-faq-item" data-faq-id="when_active" open>
+                    <summary>付款后多久开通？</summary>
+                    <p>支付宝到账后一般几秒内自动开通。请勿关闭本页；若已付款仍未开通，可再点一次付款按钮刷新状态，或联系客服协助。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="pay_methods">
+                    <summary>支持哪些支付方式？</summary>
+                    <p>当前页支持支付宝付款，付款成功后权益自动到账。若您已有激活码，可在下方「已有激活码」折叠区直接开通。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="sku_diff">
+                    <summary>各套餐有什么区别？</summary>
+                    <p>权益相同，主要差别是可用时长。默认已选最低档体验价，适合先体验；需要更久可选用周卡、月卡或更长档位。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="bilibili_off">
+                    <summary>B 站分享怎么减 50 元？</summary>
+                    <p>完成 2 次分享后返回本页自动计数；下次创建支付宝订单时由服务器自动减 ¥50。每满 2 次仅可抵扣 1 笔订单。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="pay_fail">
+                    <summary>付错了 / 没开通怎么办？</summary>
+                    <p>先返回本页等待自动开通或再点一次付款按钮。若仍未开通，可通过支付失败提示中的客服入口联系处理，请尽量保留付款截图。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="code_vs_pay">
+                    <summary>激活码和直接付款有何不同？</summary>
+                    <p>开通后的演示权益一致。激活码多来自其它渠道购买；本页支付宝付款则当场下单、付款后自动开通。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="lizhi_extra">
+                    <summary>离职证明要另付吗？</summary>
+                    <p>主产品开通不等于离职证明。离职证明为独立 ¥50 去水印服务，可在下方「其它服务」中进入。</p>
+                </details>
             </div>
-            <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。电子生成件仅供个人留存，非用人单位出具。</p>
-            <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
-        </div>
+        </section>
 
-        <div class="card download-box" id="cardDownloadApp" hidden>
-            <div class="card-title">下载 App</div>
-            <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
-            <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
-        </div>
-
-        <div class="card" id="cardShebaoPhoto">
-            <div class="card-head">
-                <div class="card-title">上传社保照片</div>
-                <span class="badge-auto">可选</span>
+        <details class="purchase-fold" id="foldActivateCode">
+            <summary>
+                <span>已有激活码？直接开通</span>
+                <span class="purchase-fold-hint">点开填写</span>
+            </summary>
+            <div class="purchase-fold-body">
+                <div class="card activate-box" id="cardActivate">
+                    <div class="card-title">填写激活码</div>
+                    <p class="card-hint cheaper-channels-hint">粘贴激活码即可开通，无需再走支付宝标价。</p>
+                    <label class="field-label" for="purchaseActivateCode">激活码</label>
+                    <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+                    <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
+                </div>
             </div>
-            <p class="card-hint">上传社保缴费/参保证明照片，便于客服核对。支持 jpg / png / gif / webp，单张不超过 5MB。</p>
-            <div class="shebao-upload-actions">
-                <label class="btn btn-primary" id="btnShebaoPick" for="shebaoPhotoInput">选择照片</label>
+        </details>
+
+        <details class="purchase-fold" id="foldMoreServices">
+            <summary>
+                <span>其它服务</span>
+                <span class="purchase-fold-hint">下载 / 离职证明 / 社保</span>
+            </summary>
+            <div class="purchase-fold-body">
+                <div class="card download-box" id="cardDownloadApp" hidden>
+                    <div class="card-title">下载 App</div>
+                    <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
+                    <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
+                </div>
+
+                <div class="card" id="cardLizhiCert">
+                    <div class="card-head">
+                        <div class="card-title">离职证明生成</div>
+                        <span class="badge-auto">¥50 去水印</span>
+                    </div>
+                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。电子生成件仅供个人留存，非用人单位出具。</p>
+                    <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
+                </div>
+
+                <div class="card" id="cardShebaoPhoto">
+                    <div class="card-head">
+                        <div class="card-title">上传社保照片</div>
+                        <span class="badge-auto">可选</span>
+                    </div>
+                    <p class="card-hint">上传社保缴费/参保证明照片，便于客服核对。支持 jpg / png / gif / webp，单张不超过 5MB。</p>
+                    <div class="shebao-upload-actions">
+                        <label class="btn btn-primary" id="btnShebaoPick" for="shebaoPhotoInput">选择照片</label>
+                    </div>
+                    <!-- 不用 capture：安卓 WebView 上会强制调相机且常因无权限无反应；用 label 关联，避免仅靠 input.click() -->
+                    <input type="file" id="shebaoPhotoInput" class="shebao-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/*" multiple>
+                    <div class="shebao-preview-grid" id="shebaoPreviewGrid" aria-live="polite"></div>
+                    <p class="shebao-upload-status" id="shebaoUploadStatus" hidden></p>
+                </div>
+
+                <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
+                <div class="card" id="cardOtherChannels">
+                    <div class="channel-list" id="legacyChannelList">
+                        <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
+                            <span class="channel-icon kufaka">酷</span>
+                            <span class="channel-body">
+                                <strong>微信支付宝购买</strong>
+                                <span>跳转商品页下单获取激活码</span>
+                            </span>
+                            <span class="channel-arrow">›</span>
+                        </a>
+                    </div>
+                </div>
             </div>
-            <!-- 不用 capture：安卓 WebView 上会强制调相机且常因无权限无反应；用 label 关联，避免仅靠 input.click() -->
-            <input type="file" id="shebaoPhotoInput" class="shebao-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/*" multiple>
-            <div class="shebao-preview-grid" id="shebaoPreviewGrid" aria-live="polite"></div>
-            <p class="shebao-upload-status" id="shebaoUploadStatus" hidden></p>
+        </details>
+
+    </div>
+
+    <div class="purchase-sticky-cta" id="purchaseStickyCta" hidden>
+        <div class="purchase-sticky-cta-inner">
+            <p class="sticky-cta-note" id="purchaseStickyNote">付款后自动开通，请勿关闭页面</p>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipaySticky">体验价 · 打开支付宝付款</button>
         </div>
-
-        <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
-        <div class="card" id="cardOtherChannels">
-
-            <div class="channel-list" id="legacyChannelList">
-                <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
-                    <span class="channel-icon kufaka">酷</span>
-                    <span class="channel-body">
-                        <strong>微信支付宝购买</strong>
-                        <span>跳转商品页下单获取激活码</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </a>
-            </div>
-        </div>
-
     </div>
 
     <div class="purchase-toast" id="purchaseToast" role="status" aria-live="polite"></div>
@@ -932,12 +1167,11 @@
         if (headerTitle) headerTitle.textContent = '续费演示';
         if (heroTitle) heroTitle.textContent = '续费 / 延长演示';
         if (heroDesc) {
-            heroDesc.textContent =
-                '付款可叠加使用时长，继续使用去水印的完整个税演示；也可填写新激活码。';
+            heroDesc.textContent = '付款可叠加使用时长，继续使用去水印的完整个税演示。';
         }
         if (offerBanner) {
             offerBanner.textContent =
-                '已开通账号可在此续费。付款成功后时效自动叠加；也可先分享 B 站再减 ¥50。';
+                '已开通账号可在此续费。付款成功后时效自动叠加；想更便宜可先分享 B 站再减 ¥50。';
         }
         try {
             document.title = '个人所得税 · 续费演示';
@@ -1428,15 +1662,15 @@
                     '，付款后自动开通。';
             }
         }
-        if (payBtn) {
-            if (discounted) {
-                payBtn.textContent = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
-            } else if (selected) {
-                payBtn.textContent = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
-            } else {
-                payBtn.textContent = '打开支付宝付款';
-            }
+        var ctaText = '体验价 · 打开支付宝付款';
+        if (discounted) {
+            ctaText = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
+        } else if (selected) {
+            ctaText = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
         }
+        if (payBtn) payBtn.textContent = ctaText;
+        var stickyBtn = document.getElementById('btnPurchaseAlipaySticky');
+        if (stickyBtn) stickyBtn.textContent = ctaText;
     }
 
     function refreshShareDiscountPricingUi() {
@@ -1632,19 +1866,26 @@
             });
     }
 
-    function setAlipayStatus(text, waiting) {
+    function setAlipayStatus(text, state) {
         var el = document.getElementById('alipayPayStatus');
+        var stickyNote = document.getElementById('purchaseStickyNote');
         if (!el) return;
+        el.classList.remove('is-wait', 'is-ok', 'is-fail');
         if (!text) {
             el.hidden = true;
             el.textContent = '';
-            el.classList.remove('is-wait');
+            if (stickyNote) stickyNote.textContent = '付款后自动开通，请勿关闭页面';
             return;
         }
         el.hidden = false;
         el.textContent = text;
-        if (waiting) el.classList.add('is-wait');
-        else el.classList.remove('is-wait');
+        var kind = state;
+        if (kind === true) kind = 'wait';
+        if (kind === false || kind == null) kind = 'wait';
+        if (kind === 'ok') el.classList.add('is-ok');
+        else if (kind === 'fail') el.classList.add('is-fail');
+        else el.classList.add('is-wait');
+        if (stickyNote) stickyNote.textContent = text;
     }
 
     function activateAfterAlipayPaid(payload) {
@@ -1656,7 +1897,7 @@
             localStorage.removeItem('wm_cache_time');
         } catch (e) {}
         trackPurchase('track_alipay_payment_success');
-        setAlipayStatus('付款成功，账号已开通', false);
+        setAlipayStatus('付款成功，账号已开通，正在跳转…', 'ok');
         showToast('支付宝付款成功，账号已自动开通');
         if (typeof window.refreshWatermarkFromApi === 'function') {
             window.refreshWatermarkFromApi();
@@ -1693,7 +1934,7 @@
 
     function startAlipayOrderPolling() {
         if (alipayOrderPolling) return;
-        setAlipayStatus('等待付款中…付款成功后将自动开通', true);
+        setAlipayStatus('等待付款中…请勿关闭本页，付款成功后将自动开通', 'wait');
         alipayOrderPolling = setInterval(function () {
             checkAlipayLatestOrder();
         }, 2500);
@@ -1710,9 +1951,9 @@
         openAlipayPay(code);
         startAlipayOrderPolling();
         if (isHuaweiLikeUa() || isEmbeddedInAppShell()) {
-            setAlipayStatus('若未弹出支付宝，请再点一次「打开支付宝付款」', true);
+            setAlipayStatus('若未弹出支付宝，请再点一次付款按钮；付款成功后将自动开通', 'wait');
         } else {
-            setAlipayStatus('等待付款中…付款成功后将自动开通', true);
+            setAlipayStatus('已打开支付宝…请完成付款，成功后将自动开通', 'wait');
         }
     }
 
@@ -1725,9 +1966,11 @@
     var purchaseUiMode = 'legacy';
 
     function applyPurchaseUiMode() {
-        var isNew = purchaseUiMode === 'treatment';
         var isCodeOnly = purchaseUiMode === 'code_only';
         var activateBox = document.querySelector('.activate-box');
+        var foldActivate = document.getElementById('foldActivateCode');
+        var foldMore = document.getElementById('foldMoreServices');
+        var foldShare = document.getElementById('foldShareDiscount');
         var otherLabel = document.getElementById('otherChannelsLabel');
         var otherCard = document.getElementById('cardOtherChannels');
         var heroP = document.querySelector('.hero p');
@@ -1737,11 +1980,16 @@
         var cardDownload = document.getElementById('cardDownloadApp');
         var cardLizhi = document.getElementById('cardLizhiCert');
         var cardShebao = document.getElementById('cardShebaoPhoto');
+        var faq = document.getElementById('purchaseFaq');
+        var faqSub = document.getElementById('purchaseFaqSub');
+        var shareTeaser = document.getElementById('shareInlineTeaser');
+        var sticky = document.getElementById('purchaseStickyCta');
         var page = document.querySelector('.page');
         var hero = document.querySelector('.hero');
 
         /* A/B 均保留激活码出口 */
         if (activateBox) activateBox.hidden = false;
+        if (foldActivate) foldActivate.hidden = false;
         /* 酷发卡等旧渠道仍隐藏 */
         if (otherLabel) otherLabel.hidden = true;
         if (otherCard) otherCard.hidden = true;
@@ -1752,17 +2000,28 @@
         }
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
         if (isCodeOnly && cardShare) cardShare.hidden = true;
+        if (isCodeOnly && foldShare) foldShare.hidden = true;
+        if (isCodeOnly && shareTeaser) shareTeaser.hidden = true;
+        if (isCodeOnly && sticky) {
+            sticky.hidden = true;
+            sticky.classList.remove('is-visible');
+            document.body.classList.remove('has-sticky-cta');
+        }
+        if (faq) faq.hidden = false;
+        if (faqSub) {
+            faqSub.textContent = isCodeOnly
+                ? '用激活码开通前可先看这几条。'
+                : '付款前可先看这几条，减少顾虑。';
+        }
 
         if (heroP) {
             if (isCodeOnly) {
                 heroP.textContent =
                     '下载 App 后填写激活码，即可开通去水印的完整个税演示。';
             } else if (purchaseUserActive) {
-                heroP.textContent =
-                    '付款可叠加使用时长，继续使用去水印的完整个税演示；也可填写新激活码。';
+                heroP.textContent = '付款可叠加使用时长，继续使用去水印的完整个税演示。';
             } else {
-                heroP.textContent =
-                    '付款后去除水印，完整查看收入与纳税明细；已有激活码可下滑填写开通。';
+                heroP.textContent = '付款后去除水印，完整查看收入与纳税明细。';
             }
         }
         if (steps) {
@@ -1775,11 +2034,11 @@
                 steps.innerHTML =
                     '<li>选择套餐并打开支付宝付款</li>' +
                     '<li>付款成功后自动开通</li>' +
-                    '<li>已有激活码可向下填写</li>';
+                    '<li>已有激活码可点开下方填写</li>';
             }
         }
 
-        /* 首屏转化：支付宝紧贴 Hero；其余模块统一下移 */
+        /* 首屏转化：支付宝紧贴 Hero；FAQ / 折叠区下移 */
         function orderAfterHero(nodes) {
             if (!page || !hero) return;
             var anchor = hero;
@@ -1795,11 +2054,12 @@
         var benefits = document.querySelector('.purchase-benefits');
         var offerBanner = document.getElementById('purchaseOfferBanner');
         if (isCodeOnly) {
+            if (foldActivate) foldActivate.open = true;
             orderAfterHero([
-                cardDownload,
-                activateBox,
-                cardLizhi,
-                cardShebao,
+                benefits,
+                foldActivate,
+                foldMore,
+                faq,
                 otherLabel,
                 otherCard
             ]);
@@ -1808,15 +2068,13 @@
                 benefits,
                 offerBanner,
                 cardAlipay,
-                cardShare,
-                activateBox,
-                cardDownload,
-                cardLizhi,
-                cardShebao,
-                otherLabel,
-                otherCard
+                foldShare,
+                faq,
+                foldActivate,
+                foldMore
             ]);
         }
+        if (typeof window.syncPurchaseStickyCta === 'function') window.syncPurchaseStickyCta();
     }
 
     function formatSkuDuration(sku) {
@@ -1923,6 +2181,13 @@
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
                 var shareCard = document.getElementById('cardShareActivity');
+                var foldShare = document.getElementById('foldShareDiscount');
+                var shareTeaser = document.getElementById('shareInlineTeaser');
+                function setShareUiVisible(on) {
+                    if (shareCard) shareCard.hidden = !on;
+                    if (foldShare) foldShare.hidden = !on;
+                    if (shareTeaser) shareTeaser.hidden = !on;
+                }
                 var abc = String(data.abc_variant || '')
                     .trim()
                     .toLowerCase();
@@ -1948,7 +2213,7 @@
                 /* 以服务端 abc 为准；忽略残留 code_only */
                 if (x.status === 401 || x.status === 403) {
                     if (card) card.hidden = true;
-                    if (shareCard) shareCard.hidden = true;
+                    setShareUiVisible(false);
                     purchaseUiMode = 'legacy';
                     applyPurchaseUiMode();
                     try {
@@ -1961,6 +2226,7 @@
                 var treatAsCodeOnly = !serverForcesPay && data.hide_self_serve_pay === true;
                 if (treatAsCodeOnly) {
                     if (card) card.hidden = true;
+                    setShareUiVisible(false);
                     purchaseUiMode = 'code_only';
                     alipayPricing.variant = 'c';
                     applyPurchaseUiMode();
@@ -1972,7 +2238,7 @@
                     return checkAlipayLatestOrder();
                 }
                 card.hidden = !enabled;
-                if (shareCard) shareCard.hidden = !enabled;
+                setShareUiVisible(!!enabled);
                 if (enabled) {
                     var variant = data.pricing_variant || 'control';
                     var skus = Array.isArray(data.skus) ? data.skus : [];
@@ -2013,6 +2279,7 @@
                     /* 未启用支付宝时：非 C 仍显示卡片区提示，避免误当成「被藏掉」 */
                     purchaseUiMode = 'legacy';
                     alipayPricing.variant = 'control';
+                    setShareUiVisible(false);
                     if (card && purchaseUiMode !== 'code_only' && x.status === 200) {
                         /* enabled=false 且非 C：保持隐藏（配置未就绪） */
                         card.hidden = true;
@@ -2022,7 +2289,14 @@
                 return checkAlipayLatestOrder();
             })
             .catch(function () {
-                document.getElementById('cardAlipay').hidden = true;
+                var cardFail = document.getElementById('cardAlipay');
+                if (cardFail) cardFail.hidden = true;
+                var foldShareFail = document.getElementById('foldShareDiscount');
+                var teaserFail = document.getElementById('shareInlineTeaser');
+                var shareFail = document.getElementById('cardShareActivity');
+                if (foldShareFail) foldShareFail.hidden = true;
+                if (teaserFail) teaserFail.hidden = true;
+                if (shareFail) shareFail.hidden = true;
                 /* 接口失败时不要用本地 sticky 把整页切成仅激活码 */
                 purchaseUiMode = 'legacy';
                 alipayPricing.variant = 'control';
@@ -2214,25 +2488,34 @@
             updatePayCtaFromSelection();
         });
     }
-    document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
-        var btn = this;
+    function startPurchaseAlipayPay(ctaSource) {
+        var btn = document.getElementById('btnPurchaseAlipay');
+        var stickyBtn = document.getElementById('btnPurchaseAlipaySticky');
         var sku = getSelectedAlipaySku();
         if (!sku || !sku.id) {
             showToast('请选择套餐');
             return;
         }
+        trackPurchase('track_purchase_pay_cta_click', {
+            cta_source: ctaSource || 'main',
+            pricing_variant: alipayPricing.variant,
+            sku_id: sku.id,
+            amount: sku.amount
+        });
         /* 已有付款链接：直接唤起（保留用户手势，华为等机型更稳） */
         if (alipayPendingPayUrl) {
             launchAlipayPay(alipayPendingPayUrl);
             return;
         }
-        btn.disabled = true;
+        if (btn) btn.disabled = true;
+        if (stickyBtn) stickyBtn.disabled = true;
         trackPurchase('track_alipay_payment_start', {
             pricing_variant: alipayPricing.variant,
             sku_id: sku.id,
-            amount: sku.amount
+            amount: sku.amount,
+            cta_source: ctaSource || 'main'
         });
-        setAlipayStatus('正在创建付款订单…', true);
+        setAlipayStatus('正在创建付款订单，请稍候…', 'wait');
         paymentFetch('/api/payments/alipay/create', {
             method: 'POST',
             body: JSON.stringify({ sku_id: sku.id })
@@ -2242,6 +2525,12 @@
                     throw new Error((x.body && x.body.msg) || '创建支付订单失败');
                 }
                 var createdOrder = x.body.data.order || {};
+                trackPurchase('track_alipay_order_create_ok', {
+                    pricing_variant: alipayPricing.variant,
+                    sku_id: sku.id,
+                    amount: createdOrder.amount || sku.amount,
+                    cta_source: ctaSource || 'main'
+                });
                 if (Number(createdOrder.discount_amount || 0) > 0) {
                     showToast(
                         '分享优惠已生效：已减 ¥' +
@@ -2266,20 +2555,104 @@
                 }
                 var payUrl = x.body.data.qr_code || x.body.data.payment_url;
                 launchAlipayPay(payUrl);
-                btn.disabled = false;
+                if (btn) btn.disabled = false;
+                if (stickyBtn) stickyBtn.disabled = false;
                 return loadBilibiliShareStatus();
             })
             .catch(function (e) {
-                setAlipayStatus('', false);
                 var failMsg = e && e.message ? e.message : '创建支付订单失败，请稍后重试';
+                trackPurchase('track_alipay_order_create_fail', {
+                    pricing_variant: alipayPricing.variant,
+                    sku_id: sku.id,
+                    message: String(failMsg).slice(0, 120),
+                    cta_source: ctaSource || 'main'
+                });
+                setAlipayStatus('下单失败：' + failMsg + '。可重试或联系客服。', 'fail');
                 if (typeof showPaymentCreateFailDialog === 'function') {
                     showPaymentCreateFailDialog({ message: failMsg, source: 'purchase_alipay' });
                 } else {
                     showToast(failMsg);
                 }
-                btn.disabled = false;
+                if (btn) btn.disabled = false;
+                if (stickyBtn) stickyBtn.disabled = false;
             });
+    }
+
+    document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
+        startPurchaseAlipayPay('main');
     });
+    var stickyPayBtn = document.getElementById('btnPurchaseAlipaySticky');
+    if (stickyPayBtn) {
+        stickyPayBtn.addEventListener('click', function () {
+            startPurchaseAlipayPay('sticky');
+        });
+    }
+
+    (function initPurchaseConversionUi() {
+        var sticky = document.getElementById('purchaseStickyCta');
+        var mainBtn = document.getElementById('btnPurchaseAlipay');
+        var cardAlipay = document.getElementById('cardAlipay');
+        var faqList = document.getElementById('purchaseFaqList');
+        var foldShare = document.getElementById('foldShareDiscount');
+        var foldActivate = document.getElementById('foldActivateCode');
+        var foldMore = document.getElementById('foldMoreServices');
+        var teaserLink = document.getElementById('shareInlineTeaserLink');
+
+        function syncPurchaseStickyCta() {
+            if (!sticky || !mainBtn || !cardAlipay) return;
+            var payVisible = !cardAlipay.hidden && purchaseUiMode !== 'code_only';
+            if (!payVisible) {
+                sticky.hidden = true;
+                sticky.classList.remove('is-visible');
+                document.body.classList.remove('has-sticky-cta');
+                mainBtn.classList.remove('is-primary-hidden-by-sticky');
+                return;
+            }
+            sticky.hidden = false;
+            var rect = mainBtn.getBoundingClientRect();
+            var below = rect.bottom < 12;
+            var above = rect.top > window.innerHeight - 20;
+            var show = below || above;
+            sticky.classList.toggle('is-visible', show);
+            document.body.classList.toggle('has-sticky-cta', show);
+            mainBtn.classList.toggle('is-primary-hidden-by-sticky', show);
+        }
+        window.syncPurchaseStickyCta = syncPurchaseStickyCta;
+        window.addEventListener('scroll', syncPurchaseStickyCta, { passive: true });
+        window.addEventListener('resize', syncPurchaseStickyCta);
+        setTimeout(syncPurchaseStickyCta, 80);
+
+        if (faqList) {
+            faqList.addEventListener('toggle', function (e) {
+                var item = e.target;
+                if (!item || item.tagName !== 'DETAILS' || !item.open) return;
+                trackPurchase('track_purchase_faq_expand', {
+                    faq_id: item.getAttribute('data-faq-id') || ''
+                });
+            }, true);
+        }
+        function bindFoldTrack(el, action, foldId) {
+            if (!el) return;
+            el.addEventListener('toggle', function () {
+                if (!el.open) return;
+                trackPurchase(action, { fold_id: foldId });
+            });
+        }
+        bindFoldTrack(foldShare, 'track_purchase_fold_expand', 'share');
+        bindFoldTrack(foldActivate, 'track_purchase_fold_expand', 'activate');
+        bindFoldTrack(foldMore, 'track_purchase_fold_expand', 'more_services');
+        if (teaserLink && foldShare) {
+            teaserLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                foldShare.hidden = false;
+                foldShare.open = true;
+                try {
+                    foldShare.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } catch (eScroll) {}
+                trackPurchase('track_purchase_share_teaser_click');
+            });
+        }
+    })();
     document.getElementById('purchaseActivateCode').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
