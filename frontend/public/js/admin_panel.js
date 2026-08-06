@@ -4993,7 +4993,7 @@
                     if (typeof window.addBatchEmpRow === 'function') window.addBatchEmpRow();
                 });
             }
-            var moreFill = document.querySelector('#batchTaxMoreMenu .batch-tax-more-item');
+            var moreFill = document.getElementById('btnBatchTaxMoreFill') || document.querySelector('#batchTaxMoreMenu .batch-tax-more-item');
             if (moreFill && !moreFill.__adminBound) {
                 moreFill.__adminBound = true;
                 moreFill.addEventListener('click', function (e) {
@@ -5001,6 +5001,13 @@
                     if (typeof window.loadBatchEmploymentsFromExistingRecords === 'function') {
                         window.loadBatchEmploymentsFromExistingRecords();
                     }
+                    if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
+                });
+            }
+            bindAdminBatchClick('#btnBatchTaxMoreBonus', 'batchAddYearEndBonusOnly');
+            var moreBonus = document.getElementById('btnBatchTaxMoreBonus');
+            if (moreBonus && moreBonus.__adminBound) {
+                moreBonus.addEventListener('click', function () {
                     if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
                 });
             }

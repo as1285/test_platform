@@ -2,37 +2,50 @@
 
 > 源码：`backend/src/admin/menuRegistry.js`（阶段 2 单一来源；`ADMIN_MENU_KEYS` 由其派生）  
 > 前端侧栏：由 `/api/admin/me` 的 `menu_tree` 渲染（`frontend/public/js/admin/nav.js`）  
-> 快照日期：2026-07-21
+> 快照日期：2026-08-06（对齐当前 registry）
 
 超级管理员（环境变量 `ADMIN_PANEL_USER` 对应用户）拥有全部菜单。  
 子账号权限存 `admin_account_menus`，由「后台账号权限」配置；可选菜单列表来自 `menu_defs`。
 
+## 分组
+
+| group | 中文 |
+|-------|------|
+| `ops-desk` | 工作台 |
+| `ops-config` | 内容配置 |
+| `users` | 用户管理 |
+| `cert-tools` | 业务工具 |
+| `insights` | 数据分析 |
+| `system` | 系统与安全 |
+
 ## 正式菜单键（后端权威列表）
 
-| menu_key | 中文 | 典型 API 门闸 |
-|----------|------|----------------|
-| `settings` | 系统设置 | `GET/POST /api/admin/settings` |
-| `install-guide` | 引导安装 | settings 共用门闸之一 |
-| `appearance` | 用户端外观 | settings 共用门闸之一 |
-| `codes` | 激活码 | `issue-code`、`codes` |
-| `users` | 注册用户 | `users`、激活/删改/封禁等 |
-| `guest-users` | 游客用户 | `guest-users`、部分税记录查看（`super_only`） |
+| menu_key | 中文 | 典型用途 |
+|----------|------|----------|
+| `analytics-conversion` | 转化概览 | 转化 KPI |
+| `codes` | 激活码 | 发码 / 列表 |
+| `settings` | 定价与引导 | `/api/admin/settings` |
+| `install-guide` | 安装分发 | settings 共用门闸之一 |
+| `appearance` | 外观 | settings 共用门闸之一 |
+| `users` | 注册用户 | 用户 CRUD / 封禁等 |
 | `user-data` | 用户数据 | `/api/admin/user-data*` |
-| `user-behavior` | 用户行为 | 行为分析相关 |
-| `activated-user-analysis` | 激活用户分析 | `/api/admin/activated-user-analysis/*` |
-| `feedback` | 用户反馈 | `/api/admin/feedback*` |
-| `chat` | 在线客服 | `/api/admin/chat/*` |
-| `login-log` | 管理账号登录流水 | login/operation logs、login-recent |
-| `analytics-conversion` | 转化分析 | conversion KPIs / daily-conversion 等 |
+| `tax-records-edit` | 个税维护 | `/api/admin/user-tax-records` |
+| `sbdy-demo` | 社保演示 | 工具 |
+| `lizhi-cert` | 离职证明 | 工具 |
+| `ylbx-ps` | 社保图片 PS | 工具 |
+| `ccb-flow` | 工资流水 | 工具 |
+| `najilu-qr` | 完税二维码 | 工具 |
+| `analytics-register` | 注册分析 | 注册漏斗 |
 | `analytics-activity` | 用户活跃 | DAU 等 |
-| `analytics-register` | 注册分析 | register-* |
-| `analytics-tracking` | 埋点分析 | events 等 |
-| `analytics-devices` | 设备分析 | devices / device-stats |
-| `install-guide-stats` | 安装页统计 | install-guide-stats / install-track-stats |
-| `channel-analysis` | 渠道分析 | channel funnel 等 |
-| `api-analytics` | 接口统计 | `analytics/api-stats` |
-| `admin-accounts` | 后台账号权限 | accounts CRUD（另有超级管理员规则） |
-| `server-monitor` | 服务器监控 | `monitor/overview`、`test-email` |
+| `analytics-tracking` | 埋点分析 | events |
+| `analytics-purchase` | 支付分析 | 购买漏斗 |
+| `channel-analysis` | 渠道分析 | 渠道漏斗 |
+| `install-guide-stats` | 安装统计 | install-guide-stats |
+| `share-stats` | 分享统计 | share funnel |
+| `admin-accounts` | 账号权限 | 子账号（`super_only`） |
+| `login-log` | 管理登录 | 管理端登录流水 |
+| `server-monitor` | 监控 | `monitor/overview` |
+| `blocked-ips` | IP 黑名单 | 封禁 IP |
 
 ## 页面别名（同 menu_key）
 
@@ -40,6 +53,10 @@
 |------|---------------|------|
 | `users-deleted` | `users` | 已删除账号 |
 | `user-login-log` | `login-log` | 普通用户登录流水 |
+
+## 已废弃（勿再当作现行菜单）
+
+旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`analytics-devices`、`api-analytics` 等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。
 
 ## 权限变更检查单
 

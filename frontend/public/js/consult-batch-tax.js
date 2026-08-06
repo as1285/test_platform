@@ -1656,6 +1656,11 @@ function setBatchTaxCardCollapsed(collapsed) {
     }
 }
 
+/** C 端有三入口；管理端 / 旧 DOM 无 #taxStartChooser，须始终可操作表单 */
+function hasTaxStartChooser() {
+    return !!document.getElementById('taxStartChooser');
+}
+
 function showBatchTaxManualForm(opts) {
     opts = opts || {};
     var chooser = document.getElementById('taxStartChooser');
@@ -1672,6 +1677,11 @@ function showBatchTaxManualForm(opts) {
 
 function showTaxStartChooser(opts) {
     opts = opts || {};
+    /* 管理端等无三入口 DOM：禁止藏表单 */
+    if (!hasTaxStartChooser()) {
+        showBatchTaxManualForm({ scroll: opts.scroll === true ? true : false });
+        return;
+    }
     var chooser = document.getElementById('taxStartChooser');
     var formSec = document.getElementById('batchTaxFormSection');
     var inEdit = !!(batchTaxEditMode && batchTaxEditMode.scopeIds && batchTaxEditMode.scopeIds.length);
@@ -1720,12 +1730,30 @@ function syncBatchTaxEmptyState() {
     var list = window.__consultRecordsCache;
     var hasRecords = Array.isArray(list) && list.length > 0;
     var inEdit = !!(batchTaxEditMode && batchTaxEditMode.scopeIds && batchTaxEditMode.scopeIds.length);
+    var hasChooser = hasTaxStartChooser();
     if (empty) {
         empty.hidden = true;
     }
     if (inEdit) {
         showBatchTaxManualForm({ scroll: false });
         if (collapseBtn) collapseBtn.hidden = false;
+        return;
+    }
+    /* 管理端 / 旧 DOM：无三入口时始终可填表；有记录时仍可折叠卡片 */
+    if (!hasChooser) {
+        if (formSec) formSec.hidden = false;
+        window.__batchTaxFormVisible = true;
+        if (hasRecords) {
+            if (collapseBtn) collapseBtn.hidden = false;
+            if (!window.__batchTaxUserExpanded) {
+                setBatchTaxCardCollapsed(true);
+            } else {
+                setBatchTaxCardCollapsed(false);
+            }
+        } else {
+            if (collapseBtn) collapseBtn.hidden = true;
+            setBatchTaxCardCollapsed(false);
+        }
         return;
     }
     if (hasRecords) {
