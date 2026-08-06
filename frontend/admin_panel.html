@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
     <link rel="stylesheet" href="/css/admin_panel.css?v=20260805-goto-user">
-    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260806-admin-tax-align">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260731-concise">
 </head>
 <body>
     <div class="layout">
@@ -1089,8 +1089,7 @@
                     <button type="button" class="batch-tax-collapse-btn" id="batchTaxCollapseBtn" aria-expanded="true" hidden>收起</button>
                 </div>
                 <div id="batchTaxCardBody">
-                <div id="batchTaxFormSection" class="batch-tax-form-section">
-                <p class="batch-hint" id="batchTaxCardHint">为当前用户填写公司、起止年月与月薪后一键生成；也可示例填写或粘贴个税 APP 文本。</p>
+                <p class="batch-hint" id="batchTaxCardHint">填写工作经历后一键生成多月工资薪金；也可从个税 APP 粘贴导入。</p>
                 <div class="batch-tax-empty" id="batchTaxEmptyState" hidden>
                     <p class="batch-tax-empty-title">还没有税务记录</p>
                     <p class="batch-tax-empty-desc">先填一段工作经历，或用下面方式快速开始。</p>
@@ -1105,8 +1104,7 @@
                     <div class="batch-tax-more-wrap">
                         <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxMore" aria-expanded="false">更多</button>
                         <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
-                            <button type="button" class="batch-tax-more-item" id="btnBatchTaxMoreFill">从已有回填</button>
-                            <button type="button" class="batch-tax-more-item" id="btnBatchTaxMoreBonus">仅添加年终奖</button>
+                            <button type="button" class="batch-tax-more-item">从已有回填</button>
                             <button type="button" class="batch-tax-more-item" id="btnBatchTaxQuickStart" style="display:none;">30秒体验</button>
                         </div>
                     </div>
@@ -1261,7 +1259,6 @@
                     <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn">一键生成税务记录</button>
                     <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;">保存覆盖</button>
                     <button type="button" class="btn btn-block batch-bonus-only-btn">仅添加年终奖</button>
-                </div>
                 </div>
                 </div>
             </div>
@@ -2450,6 +2447,6 @@
     <script src="/js/admin/loader.js?v=20260805-tax-range"></script>
     <script src="/js/admin/nav.js?v=20260805-no-outline"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260806-admin-tax-align"></script>
+    <script src="/js/admin_panel.js?v=20260805-del-unused-codes"></script>
 </body>
 </html>
