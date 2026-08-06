@@ -850,12 +850,14 @@
       }
       var measured = 0;
       try {
-        if (document.body) {
+        /* auth.js 在 <head> 执行，首帧 body 还不存在；挂到 documentElement 也能取到 env */
+        var probeHost = document.body || document.documentElement;
+        if (probeHost) {
           var probe = document.createElement('div');
           probe.setAttribute('data-safe-top-probe', '1');
           probe.style.cssText =
             'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
-          document.body.appendChild(probe);
+          probeHost.appendChild(probe);
           measured = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
           if (probe.parentNode) probe.parentNode.removeChild(probe);
         }
@@ -882,7 +884,11 @@
         return;
       }
       if (inset < 20) {
-        /* 仅 iOS Cordova iframe / 异常 env：刘海与 Dynamic Island 用 59px */
+        /*
+         * 页面均带 viewport-fit=cover，真机刘海/灵动岛的 env 是可信的（≥44px）。
+         * 因此 env<20 只可能是：无刘海机型，或 Cordova iframe 拿不到 env。
+         * 仅后者按机型兜底 59px；其余一律不猜（旧版盲写 47px 会在真实安全区更小时露白带）。
+         */
         if (
           isCordovaTaxAppShell() ||
           isIPhone16ProLikeClient() ||
@@ -892,13 +898,14 @@
           isIPhone17ProMaxClient()
         ) {
           inset = IOS_DYNAMIC_ISLAND_INSET_PX;
-        } else if (isLikelyIOSViewportClient()) {
-          inset = 47;
+        } else {
+          inset = 0;
         }
       }
-      if (inset > 0) {
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', inset + 'px');
-      }
+      document.documentElement.style.setProperty(
+        '--app-shell-statusbar-top',
+        Math.round(inset) + 'px'
+      );
     } catch (e) {}
   }
 
@@ -993,20 +1000,33 @@
         if (old && old.parentNode) old.parentNode.removeChild(old);
         var st = document.createElement('style');
         st.setAttribute('data-mine-chrome', '1');
+        /*
+         * 顶部安全区统一走 --mine-top-bleed（mine.html 定义，回落 --app-shell-statusbar-top → env）。
+         * 勿再写 59px 兜底：状态栏不透明时真实安全区为 0，硬兜底会多出一条蓝带并把叠层顶偏。
+         */
+        var mineBleed = 'var(--mine-top-bleed,var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)))';
         st.textContent =
           /* 顶蓝底灰：html 底色浅灰，仅顶部 background-image 画状态栏高度蓝带，避免 iOS 底栏下露蓝 */
           'html{background-color:#f5f6fa !important;background-image:' +
           mineGrad +
-          ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
+          ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
           'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;min-height:100% !important;}' +
           'html.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background:' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:' +
+          mineBleed +
+          ' !important;background:' +
           mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,59px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * ' +
+          mineBleed +
+          ') !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          /* 叠字/热区跟随图片同值上移，避免被画布 padding 下推造成姓名税号错位 */
+          'html.app-top-safe-shell body.page-mine .mine-e1-layer{top:calc(-1 * ' +
+          mineBleed +
+          ') !important;}' +
           'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
           'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device,' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
@@ -1785,18 +1805,22 @@
           'html.app-android-honor-flc.app-top-safe-shell body.page-shuiming > .content,' +
           'html.app-android-honor-fcp.app-top-safe-shell body.page-shuiming > .content{padding-top:46px !important;}' +
           'html.app-top-safe-shell body.page-xiangqing{padding-top:calc(48px + var(--app-shell-statusbar-top)) !important;}' +
-          /* 我的：头图顶入安全区，兜底色与 grdb.jpg 顶色一致 */
-          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          /* 我的：头图顶入安全区，兜底色与 grdb.jpg 顶色一致（.header-bg 为旧 DOM，新版是 .mine-e1-canvas） */
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--mine-top-bleed,var(--app-shell-statusbar-top,0px)) !important;background:#2286ee !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--mine-top-bleed,var(--app-shell-statusbar-top,0px))) !important;display:block !important;width:100% !important;}' +
           'html.app-top-safe-shell body.page-mine::before{display:none !important;content:none !important;}' +
-          /* iOS：非 Cordova 用真实 env；Cordova iframe env 常为 0，锁 59px；16 Pro 强制至少 59 */
-          'html.app-ios-client.app-top-safe-shell:not(.app-cordova-shell){--app-shell-statusbar-top:env(safe-area-inset-top,59px) !important;--mine-ios-header-lift:0px;--mine-header-blue-top:#2286ee;}' +
-          'html.app-cordova-shell.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:59px !important;--mine-ios-header-lift:0px;--mine-header-blue-top:#2286ee;}' +
-          'html.app-ios-iphone16pro.app-top-safe-shell,html.app-ios-iphone16promax.app-top-safe-shell,html.app-ios-iphone15promax.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;}' +
+          /*
+           * iOS 顶部安全区：值由 syncAppShellStatusbarTop 以内联样式写入（唯一可信来源）。
+           * 这里只提供「变量缺失时」的样式表默认值，切勿加 !important —— 否则会反压内联测量值，
+           * 造成同一运行态下部分机型被锁死高度、状态栏露白带且叠层错位。
+           */
+          'html.app-ios-client.app-top-safe-shell:not(.app-cordova-shell){--app-shell-statusbar-top:env(safe-area-inset-top,0px);--mine-ios-header-lift:0px;--mine-header-blue-top:#2286ee;}' +
+          'html.app-cordova-shell.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:59px;--mine-ios-header-lift:0px;--mine-header-blue-top:#2286ee;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell,html.app-ios-iphone16promax.app-top-safe-shell,html.app-ios-iphone15promax.app-top-safe-shell{--app-shell-statusbar-top:env(safe-area-inset-top,59px);}' +
           /* iOS 我的：头图顶入，禁用拼接伪元素 */
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:0 !important;padding-top:var(--app-shell-statusbar-top,0px) !important;overflow:hidden !important;background:#2286ee !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;position:relative !important;z-index:1 !important;display:block !important;width:100% !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:0 !important;padding-top:var(--mine-top-bleed,var(--app-shell-statusbar-top,0px)) !important;overflow:hidden !important;background:#2286ee !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--mine-top-bleed,var(--app-shell-statusbar-top,0px))) !important;position:relative !important;z-index:1 !important;display:block !important;width:100% !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px)) !important;}' +
           'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
           'html body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{bottom:var(--bottom-nav-bottom,16px)!important;top:auto!important;margin:0!important;transform:none!important;-webkit-transform:none!important;}' +
