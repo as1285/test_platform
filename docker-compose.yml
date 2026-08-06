@@ -1,6 +1,7 @@
 services:
   db:
-    image: mysql:8.0
+    # 国内镜像加速（DaoCloud）；无官方名可改回 mysql:8.0
+    image: docker.m.daocloud.io/library/mysql:8.0
     container_name: test_platform_db
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -25,7 +26,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: docker.m.daocloud.io/library/redis:7-alpine
     container_name: test_platform_redis
     # volatile-ttl：仅淘汰带 TTL 的键（限流/OTP），避免 LRU 误删安全态
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy volatile-ttl
@@ -59,6 +60,8 @@ services:
       REDIS_DB: ${REDIS_DB:-0}
       # 生产环境请设置强随机串；未设置时使用 server.js 内默认开发密钥
       JWT_SECRET: ${JWT_SECRET:-}
+      ASSET_SIGN_SECRET: ${ASSET_SIGN_SECRET:-}
+      ASSET_SIGN_TTL_SEC: ${ASSET_SIGN_TTL_SEC:-1800}
       # 管理员发激活码：POST api/auth.php action=admin_issue_code，请求体带 admin_key 与同值；未设置则无法发码
       ADMIN_ACTIVATION_KEY: ${ADMIN_ACTIVATION_KEY:-}
       # 管理后台登录（务必在生产修改密码）

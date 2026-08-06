@@ -1,8 +1,9 @@
-FROM node:20-bookworm-slim
+# 国内镜像加速（DaoCloud）；海外可改回 node:20-bookworm-slim
+FROM docker.m.daocloud.io/library/node:20-bookworm-slim
 
 WORKDIR /app
 
-# 国内构建加速：Debian/PyPI 走镜像，避免 deb.debian.org 过慢导致部署卡住
+# 国内构建加速：Debian/PyPI/npm 走镜像
 RUN set -eux; \
   if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
     sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources; \
@@ -25,7 +26,12 @@ RUN set -eux; \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --registry=https://registry.npmmirror.com
+# npm ci 偶发 Exit handler never called；失败回退 npm install，并校验关键依赖
+RUN npm config set registry https://registry.npmmirror.com \
+  && (npm ci --omit=dev || npm install --omit=dev --no-audit --no-fund) \
+  && test -f node_modules/express/package.json \
+  && test -f node_modules/mysql2/package.json \
+  && test -f node_modules/jsonwebtoken/package.json
 
 COPY server.js alipay.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js ./
 COPY src ./src
@@ -40,7 +46,6 @@ RUN python3 /app/scripts/sbdy_extract_cjk_font.py \
 
 ENV SBDY_PYTHON=python3
 
-# 说明：运行时 /data/uploads 为命名卷，默认 root 可写；若改 USER node 需先 chown 卷
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
