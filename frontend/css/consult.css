@@ -452,6 +452,27 @@ body {
     flex: 1 1 auto; height: 1px; min-width: 12px; background: linear-gradient(90deg, var(--color-border), var(--color-primary-border));
 }
 
+/* ===== 开始方式三入口 ===== */
+#panel-records .tax-start-chooser {
+    margin: 4px 0 4px;
+    padding: 14px 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--color-primary-bg), var(--color-surface));
+    border: 1px solid var(--color-primary-border);
+}
+#panel-records .tax-start-chooser-title {
+    margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--color-text);
+}
+#panel-records .tax-start-chooser-desc {
+    margin: 0 0 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45;
+}
+#panel-records .tax-start-chooser-actions {
+    display: flex; flex-direction: column; gap: 8px;
+}
+#panel-records .tax-start-btn { border-radius: 10px; font-weight: 500; }
+#panel-records .batch-tax-form-section[hidden],
+#panel-records .tax-start-chooser[hidden] { display: none !important; }
+
 /* ===== 个税 FAQ ===== */
 #taxFaqCard { padding: 0; overflow: hidden; }
 #taxFaqCard .tax-faq-toggle {
@@ -463,10 +484,37 @@ body {
 #taxFaqCard.is-open .tax-faq-toggle-icon { transform: rotate(180deg); }
 #taxFaqCard .tax-faq-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--color-border-light); }
 #taxFaqCard.is-open .tax-faq-body { display: block; }
+#taxFaqCard .tax-faq-search-label {
+    display: block; font-size: 12px; color: var(--color-text-secondary); margin: 10px 0 6px;
+}
+#taxFaqCard .tax-faq-search {
+    width: 100%; box-sizing: border-box; height: 40px; padding: 0 12px;
+    border: 1px solid var(--color-border); border-radius: 10px; font-size: 14px;
+    background: var(--color-surface); font-family: inherit; color: var(--color-text);
+}
+#taxFaqCard .tax-faq-search:focus {
+    outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+#taxFaqCard .tax-faq-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px;
+}
+#taxFaqCard .tax-faq-chip {
+    border: 1px solid var(--color-border); background: var(--color-surface);
+    color: var(--color-text-secondary); border-radius: 999px; padding: 6px 12px;
+    font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;
+}
+#taxFaqCard .tax-faq-chip.is-active {
+    background: var(--color-primary-bg); border-color: var(--color-primary-border);
+    color: var(--color-primary);
+}
+#taxFaqCard .tax-faq-empty {
+    margin: 12px 0 4px; font-size: 12px; color: var(--color-text-muted); line-height: 1.45; text-align: center;
+}
 #taxFaqCard .tax-faq-item {
     border: 1px solid var(--color-border-light); border-radius: 10px; margin-top: 8px;
     background: var(--color-surface-alt); overflow: hidden;
 }
+#taxFaqCard .tax-faq-item[hidden] { display: none !important; }
 #taxFaqCard .tax-faq-item summary {
     list-style: none; cursor: pointer; padding: 11px 12px; font-size: 13px; font-weight: 600;
     color: var(--color-text); line-height: 1.4; -webkit-tap-highlight-color: transparent;
@@ -480,6 +528,26 @@ body {
 #taxFaqCard .tax-faq-item p {
     margin: 0; padding: 0 12px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.6;
 }
+
+/* ===== 更多：公式 / 单条 ===== */
+#panel-records .tax-more-card { padding: 0; overflow: hidden; }
+#panel-records .tax-more-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
+    color: var(--color-text); cursor: pointer; font-family: inherit; text-align: left;
+}
+#panel-records .tax-more-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#panel-records .tax-more-card.is-open .tax-more-toggle-icon,
+#panel-records .tax-more-card:not(.is-collapsed) .tax-more-toggle-icon { transform: rotate(180deg); }
+#panel-records .tax-more-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--color-border-light); }
+#panel-records .tax-more-card.is-open .tax-more-body,
+#panel-records .tax-more-card:not(.is-collapsed) .tax-more-body { display: block; }
+#panel-records .tax-more-inner-card {
+    margin-top: 10px; border: 1px solid var(--color-border-light); border-radius: 12px;
+    box-shadow: none; overflow: hidden;
+}
+#panel-records .tax-more-inner-card + .tax-more-inner-card,
+#panel-records .tax-more-inner-card + .consult-advanced-card { margin-top: 10px; }
 
 /* ===== 批量添加工具栏 ===== */
 #panel-records .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 12px; }

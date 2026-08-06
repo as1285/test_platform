@@ -11,7 +11,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260805-deadcode">
+    <link rel="stylesheet" href="/css/consult.css?v=20260806-tax-ux-faq">
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
@@ -244,7 +244,7 @@
 
         <div id="panel-records" class="tab-panel active">
             <div class="tax-flow-steps" id="taxFlowSteps" aria-label="税务记录流程">
-                <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">填工作经历</span></div>
+                <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">选方式</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
                 <div class="tax-flow-step"><span class="tax-flow-num">2</span><span class="tax-flow-label">一键生成</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
@@ -257,23 +257,28 @@
                     <button type="button" class="batch-tax-collapse-btn" id="batchTaxCollapseBtn" aria-expanded="true" hidden>收起</button>
                 </div>
                 <div id="batchTaxCardBody">
-                <p class="batch-hint" id="batchTaxCardHint">三步完成：填公司与月薪 → 点「一键生成」→ 在下方列表核对。可选粘贴导入或示例填写。</p>
-                <div class="batch-tax-empty" id="batchTaxEmptyState" hidden>
-                    <p class="batch-tax-empty-title">还没有个税记录</p>
-                    <p class="batch-tax-empty-desc">先点「立即示例填写」快速体验，或粘贴个税 APP 文本导入。</p>
-                    <div class="batch-tax-empty-actions">
-                        <button type="button" class="btn btn-primary btn-sm" id="btnBatchTaxEmptyExample" onclick="fillBatchTaxExample()">立即示例填写</button>
-                        <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxEmptyPaste" onclick="openTaxPasteImportModal()">粘贴导入</button>
+                <div class="tax-start-chooser" id="taxStartChooser">
+                    <p class="tax-start-chooser-title">怎么开始？</p>
+                    <p class="tax-start-chooser-desc">任选一种方式即可，不必先懂全部字段。</p>
+                    <div class="tax-start-chooser-actions">
+                        <button type="button" class="btn btn-primary btn-block tax-start-btn" id="btnTaxStartExample" onclick="openTaxStartPath('example')">示例填写（最快体验）</button>
+                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartPaste" onclick="openTaxStartPath('paste')">粘贴个税 APP 文本导入</button>
+                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartManual" onclick="openTaxStartPath('manual')">手动填写公司与月薪</button>
                     </div>
                 </div>
+                <div id="batchTaxFormSection" class="batch-tax-form-section" hidden>
+                <p class="batch-hint" id="batchTaxCardHint">只需填公司、起止年月和月薪，再点「一键生成」。税号、社保、年终奖可按需展开。</p>
+                <div class="batch-tax-empty" id="batchTaxEmptyState" hidden></div>
                 <div class="batch-tax-toolbar" id="batchTaxToolbar">
-                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="fillBatchTaxExample()">示例填写</button>
-                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxPasteImport" onclick="openTaxPasteImportModal()">粘贴导入</button>
+                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="openTaxStartPath('example')">示例填写</button>
+                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxPasteImport" onclick="openTaxStartPath('paste')">粘贴导入</button>
                     <div class="batch-tax-more-wrap">
                         <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxMore" aria-expanded="false">更多</button>
                         <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
                             <button type="button" class="batch-tax-more-item" onclick="loadBatchEmploymentsFromExistingRecords(); closeBatchTaxMoreMenu();">从已有回填</button>
-                            <button type="button" class="batch-tax-more-item" id="btnBatchTaxQuickStart" style="display:none;" onclick="fillBatchTaxExample(); closeBatchTaxMoreMenu();">30秒体验</button>
+                            <button type="button" class="batch-tax-more-item" onclick="batchAddYearEndBonusOnly(); closeBatchTaxMoreMenu();">仅添加年终奖</button>
+                            <button type="button" class="batch-tax-more-item" id="btnBatchTaxQuickStart" style="display:none;" onclick="openTaxStartPath('example'); closeBatchTaxMoreMenu();">30秒体验</button>
+                            <button type="button" class="batch-tax-more-item" onclick="openTaxStartPath('chooser'); closeBatchTaxMoreMenu();">返回开始方式</button>
                         </div>
                     </div>
                     <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;" onclick="exitBatchTaxEditMode()">退出修改</button>
@@ -433,7 +438,7 @@
                 <div class="batch-tax-actions">
                     <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="oneClickGenerateBatchTaxRecords()">一键生成税务记录</button>
                     <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">保存覆盖</button>
-                    <button type="button" class="btn btn-block batch-bonus-only-btn" onclick="batchAddYearEndBonusOnly()">仅添加年终奖</button>
+                </div>
                 </div>
                 </div>
             </div>
@@ -458,47 +463,93 @@
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
 
-            <div class="card" id="taxFaqCard">
-                <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="false">
+            <div class="card is-open" id="taxFaqCard">
+                <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="true">
                     <span>个税常见问题 FAQ</span>
                     <span class="tax-faq-toggle-icon" aria-hidden="true">▼</span>
                 </button>
                 <div class="tax-faq-body" id="taxFaqBody">
-                    <details class="tax-faq-item">
+                    <label class="tax-faq-search-label" for="taxFaqSearch">搜索问题</label>
+                    <input type="search" id="taxFaqSearch" class="tax-faq-search" placeholder="如：年终奖、粘贴、5000…" autocomplete="off">
+                    <div class="tax-faq-chips" id="taxFaqChips" role="tablist" aria-label="FAQ 分类">
+                        <button type="button" class="tax-faq-chip is-active" data-faq-filter="all" aria-pressed="true">全部</button>
+                        <button type="button" class="tax-faq-chip" data-faq-filter="calc" aria-pressed="false">计算说明</button>
+                        <button type="button" class="tax-faq-chip" data-faq-filter="howto" aria-pressed="false">本页用法</button>
+                        <button type="button" class="tax-faq-chip" data-faq-filter="myth" aria-pressed="false">常见误区</button>
+                    </div>
+                    <p class="tax-faq-empty" id="taxFaqEmpty" hidden>没有匹配的问题，试试换个关键词或切换分类。</p>
+                    <div id="taxFaqList">
+                    <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>累计预扣法是什么？和年终汇算有何区别？</summary>
                         <p>工资薪金按自然年度、同一扣缴单位累计预扣：每月先算累计应纳税所得额，再算累计应纳税额，本期应补/退 = 累计应纳税额 − 已预扣税额。年终汇算是次年对综合所得的年度清算，可多退少补。</p>
                     </details>
-                    <details class="tax-faq-item">
+                    <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>5000 元减除费用怎么算？</summary>
                         <p>居民个人工资薪金预扣时，每月减除费用 5000 元，并按任职月份累计（如任职 3 个月累计减除 15000）。本页「一键生成」按此口径累计。</p>
                     </details>
-                    <details class="tax-faq-item">
+                    <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>专项扣除和专项附加扣除有什么区别？</summary>
                         <p>专项扣除一般指三险一金等法定社保公积金个人缴费；专项附加扣除包括子女教育、继续教育、大病医疗、住房贷款利息/租金、赡养老人、婴幼儿照护等，需在个税 APP 申报后按月享受。</p>
                     </details>
-                    <details class="tax-faq-item">
+                    <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>年终奖应该单独计税还是并入综合所得？</summary>
-                        <p>政策允许对全年一次性奖金选择单独计税（奖金÷12 对照月度税率表）或并入综合所得。单独计税可能在部分收入区间更省税，也可能更贵，可对照公式区试算。本页填写年终奖时按单独计税生成独立记录。</p>
+                        <p>政策允许对全年一次性奖金选择单独计税（奖金÷12 对照月度税率表）或并入综合所得。单独计税可能在部分收入区间更省税，也可能更贵，可对照下方「更多」里的公式试算。本页填写年终奖时按单独计税生成独立记录。</p>
                     </details>
-                    <details class="tax-faq-item">
+                    <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>换工作后个税如何累计？</summary>
-                        <p>累计预扣通常按「同一扣缴义务人」分别累计。换单位后新单位一般从入职当月重新起算累计；原单位已预扣税款在汇算时一并纳入年度综合所得。</p>
+                        <p>累计预扣通常按「同一扣缴义务人」分别累计。换单位后新单位一般从入职当月重新起算累计；原单位已预扣税款在汇算时一并纳入年度综合所得。本页可添加多段工作经历分别生成。</p>
                     </details>
-                    <details class="tax-faq-item">
+                    <details class="tax-faq-item" data-faq-cat="calc">
+                        <summary>七级税率表怎么对照？</summary>
+                        <p>综合所得预扣按「累计应纳税所得额」落档：不超过 3.6 万 3%，再往上 10%、20%、25%、30%、35%、45%，并减去对应速算扣除数。详情见本页底部「更多 → 个税计算表与公式」。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="calc">
+                        <summary>本期应补 / 应退税额怎么来的？</summary>
+                        <p>先按累计口径算出「累计应纳税额」，再减去本年本单位「已预扣税额」。差额为正要补扣，为负表示本期应退（或抵减）。列表里每条记录的税额即按此逻辑推演。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>本页三步怎么走最快？</summary>
+                        <p>① 在上方选「示例填写 / 粘贴导入 / 手动填写」；② 核对公司与月薪后点「一键生成」；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>示例填写适合谁？</summary>
+                        <p>适合先摸清页面怎么用：一点即可填入演示公司与月薪，生成后可再改成你的真实数据，或用「回填修改」覆盖。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>粘贴导入怎么用？</summary>
+                        <p>在个税 APP 打开相关收入明细，复制文本后点「粘贴个税 APP 文本导入」粘贴即可尝试解析。字段不全时可再手动补公司、月薪或扣除项后生成。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>如何核对列表里的税额是否合理？</summary>
+                        <p>打开列表中某月记录，对照收入、减除费用 5000、三险一金与专项附加是否接近你的实际情况；也可用「更多 → 个税计算表」里的快速试算，用累计应纳税所得额验算税额档位。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>回填修改是干什么的？</summary>
+                        <p>把已有记录按公司/区间填回上方表单，改完月薪或日期后点「保存覆盖」，可批量更新该段工作经历对应月份，而不必一条条手改。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>社保、公积金不想填可以吗？</summary>
+                        <p>可以。默认折叠项可全部留空或填 0，系统仍按收入与 5000 减除做累计预扣演示。若要更接近真实到手税，再展开填写缴费基数或金额。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="myth">
                         <summary>本页记录和官方个税 APP 是什么关系？</summary>
                         <p>本页用于本地演练与留存对照，计税口径对齐常见累计预扣规则，但不是税务机关申报通道。正式申报、更正与汇算请以个人所得税 APP / 电子税务局为准。</p>
                     </details>
-                    <details class="tax-faq-item">
-                        <summary>粘贴导入怎么用？</summary>
-                        <p>在个税 APP 打开相关收入明细，复制文本后点「粘贴导入」粘贴即可尝试解析。字段不全时可再手动补公司、月薪或扣除项后生成。</p>
-                    </details>
-                    <details class="tax-faq-item">
+                    <details class="tax-faq-item" data-faq-cat="myth">
                         <summary>为什么生成前要分享到 B 站？</summary>
                         <p>首次一键生成前需完成分享校验（产品使用门槛）。完成一次后即可正常批量生成与修改记录。</p>
                     </details>
+                    </div>
                 </div>
             </div>
-            <div class="card" id="taxFormulaCard">
+
+            <div class="card tax-more-card is-collapsed" id="taxMoreCard">
+                <button type="button" class="tax-more-toggle" id="taxMoreToggle" aria-expanded="false">
+                    <span>更多：计算表、单条添加</span>
+                    <span class="tax-more-toggle-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="tax-more-body" id="taxMoreBody">
+            <div class="card tax-more-inner-card" id="taxFormulaCard">
                 <button type="button" class="tax-formula-toggle" id="taxFormulaToggle" aria-expanded="false">
                     <span>个税计算表与公式</span>
                     <span class="tax-formula-toggle-icon" aria-hidden="true">▼</span>
@@ -727,6 +778,8 @@
                 </form>
                 </div>
             </div>
+                </div>
+            </div>
 
         </div>
 
@@ -802,8 +855,8 @@
     <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script defer src="/js/consult-core.js?v=20260805-deadcode"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260803-tax-faq"></script>
+    <script defer src="/js/consult-core.js?v=20260806-tax-ux-faq"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260806-tax-ux-faq"></script>
     <script defer src="/js/consult-records.js?v=20260804-no-xianyu"></script>
 </body>
 </html>

@@ -1253,8 +1253,7 @@ function prepareBatchAddEmploymentsFromDom() {
 function fillBatchTaxExample() {
     var list = document.getElementById('batch_employment_list');
     if (!list) return;
-    window.__batchTaxUserExpanded = true;
-    setBatchTaxCardCollapsed(false);
+    showBatchTaxManualForm({ scroll: false });
     var d = new Date();
     var cy = d.getFullYear();
     var cm = d.getMonth() + 1;
@@ -1657,28 +1656,104 @@ function setBatchTaxCardCollapsed(collapsed) {
     }
 }
 
+function showBatchTaxManualForm(opts) {
+    opts = opts || {};
+    var chooser = document.getElementById('taxStartChooser');
+    var formSec = document.getElementById('batchTaxFormSection');
+    if (chooser) chooser.hidden = true;
+    if (formSec) formSec.hidden = false;
+    window.__batchTaxFormVisible = true;
+    window.__batchTaxUserExpanded = true;
+    setBatchTaxCardCollapsed(false);
+    if (opts.scroll !== false) {
+        scrollToBatchTaxCard();
+    }
+}
+
+function showTaxStartChooser(opts) {
+    opts = opts || {};
+    var chooser = document.getElementById('taxStartChooser');
+    var formSec = document.getElementById('batchTaxFormSection');
+    var inEdit = !!(batchTaxEditMode && batchTaxEditMode.scopeIds && batchTaxEditMode.scopeIds.length);
+    if (inEdit) {
+        showBatchTaxManualForm({ scroll: opts.scroll });
+        return;
+    }
+    if (chooser) chooser.hidden = false;
+    if (formSec) formSec.hidden = true;
+    window.__batchTaxFormVisible = false;
+    setBatchTaxCardCollapsed(false);
+    var collapseBtn = document.getElementById('batchTaxCollapseBtn');
+    if (collapseBtn) collapseBtn.hidden = true;
+    if (opts.scroll) {
+        scrollToBatchTaxCard();
+    }
+}
+
+function openTaxStartPath(path) {
+    var p = String(path || '').trim();
+    if (p === 'chooser') {
+        showTaxStartChooser({ scroll: true });
+        return;
+    }
+    showBatchTaxManualForm({ scroll: true });
+    if (p === 'example') {
+        if (typeof fillBatchTaxExample === 'function') {
+            fillBatchTaxExample();
+        }
+        return;
+    }
+    if (p === 'paste') {
+        if (typeof openTaxPasteImportModal === 'function') {
+            openTaxPasteImportModal();
+        }
+        return;
+    }
+    /* manual: form already shown */
+}
+
 function syncBatchTaxEmptyState() {
     var empty = document.getElementById('batchTaxEmptyState');
-    var toolbar = document.getElementById('batchTaxToolbar');
+    var chooser = document.getElementById('taxStartChooser');
+    var formSec = document.getElementById('batchTaxFormSection');
     var collapseBtn = document.getElementById('batchTaxCollapseBtn');
     var list = window.__consultRecordsCache;
     var hasRecords = Array.isArray(list) && list.length > 0;
     var inEdit = !!(batchTaxEditMode && batchTaxEditMode.scopeIds && batchTaxEditMode.scopeIds.length);
     if (empty) {
-        empty.hidden = !(!hasRecords && !inEdit);
+        empty.hidden = true;
     }
-    if (collapseBtn) {
-        collapseBtn.hidden = !hasRecords;
+    if (inEdit) {
+        showBatchTaxManualForm({ scroll: false });
+        if (collapseBtn) collapseBtn.hidden = false;
+        return;
     }
-    if (hasRecords && !inEdit && !window.__batchTaxUserExpanded) {
-        setBatchTaxCardCollapsed(true);
+    if (hasRecords) {
+        if (collapseBtn) collapseBtn.hidden = false;
+        if (!window.__batchTaxUserExpanded) {
+            setBatchTaxCardCollapsed(true);
+            if (chooser) chooser.hidden = true;
+            if (formSec) formSec.hidden = true;
+            window.__batchTaxFormVisible = false;
+        } else if (window.__batchTaxFormVisible) {
+            if (chooser) chooser.hidden = true;
+            if (formSec) formSec.hidden = false;
+            setBatchTaxCardCollapsed(false);
+        } else {
+            showTaxStartChooser({ scroll: false });
+            if (collapseBtn) collapseBtn.hidden = false;
+            setBatchTaxCardCollapsed(false);
+        }
+        return;
     }
-    if (!hasRecords) {
+    /* 无记录：默认三入口，不铺开整表 */
+    if (!window.__batchTaxFormVisible) {
+        showTaxStartChooser({ scroll: false });
+    } else {
+        if (chooser) chooser.hidden = true;
+        if (formSec) formSec.hidden = false;
         setBatchTaxCardCollapsed(false);
         if (collapseBtn) collapseBtn.hidden = true;
-    }
-    if (toolbar && empty && !empty.hidden) {
-        /* 空状态已有入口时，工具条仍保留便于回填 */
     }
 }
 
@@ -1762,6 +1837,13 @@ function initConsultRecordsUx() {
             var willCollapse = !(card && card.classList.contains('is-collapsed'));
             window.__batchTaxUserExpanded = !willCollapse;
             setBatchTaxCardCollapsed(willCollapse);
+            if (!willCollapse) {
+                if (window.__batchTaxFormVisible) {
+                    showBatchTaxManualForm({ scroll: false });
+                } else {
+                    showTaxStartChooser({ scroll: false });
+                }
+            }
         });
     }
     var advToggle = document.getElementById('singleTaxRecordToggle');
@@ -1772,6 +1854,16 @@ function initConsultRecordsUx() {
             var open = advCard.classList.contains('is-collapsed');
             advCard.classList.toggle('is-collapsed', !open);
             advToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+    var moreToggle = document.getElementById('taxMoreToggle');
+    var moreCard = document.getElementById('taxMoreCard');
+    if (moreToggle && moreCard && !moreToggle.__bound) {
+        moreToggle.__bound = true;
+        moreToggle.addEventListener('click', function () {
+            var open = moreCard.classList.toggle('is-open');
+            moreCard.classList.toggle('is-collapsed', !open);
+            moreToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
     }
     document.addEventListener('click', function () {
@@ -1822,6 +1914,7 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
                 showConsultStrongAlert('当前没有可回填的「正常工资薪金」记录，请先批量生成或逐条添加。');
                 return;
             }
+            showBatchTaxManualForm({ scroll: !!scrollFromList });
             var byCompany = {};
             salaryRecs.forEach(function (r) {
                 var cn = String(r.company_name || '').trim();
@@ -2772,6 +2865,7 @@ function openTaxPasteImportModal() {
     var ta = document.getElementById('taxPasteImportText');
     var preview = document.getElementById('taxPasteImportPreview');
     if (!root) return;
+    showBatchTaxManualForm({ scroll: false });
     _taxPasteImportLastParsed = null;
     if (preview) {
         preview.hidden = true;
@@ -3770,6 +3864,7 @@ window.batchAddEmploymentTaxRecords = batchAddEmploymentTaxRecords;
 window.batchUpdateEmploymentTaxRecords = batchUpdateEmploymentTaxRecords;
 window.batchAddYearEndBonusOnly = batchAddYearEndBonusOnly;
 window.fillBatchTaxExample = fillBatchTaxExample;
+window.openTaxStartPath = openTaxStartPath;
 window.openTaxPasteImportModal = openTaxPasteImportModal;
 window.addBatchEmpRow = addBatchEmpRow;
 window.loadBatchEmploymentsFromExistingRecords = loadBatchEmploymentsFromExistingRecords;

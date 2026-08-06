@@ -965,15 +965,74 @@ function initTaxFormulaCard() {
 }
 initTaxFormulaCard();
 
+function applyTaxFaqFilters() {
+    var card = document.getElementById('taxFaqCard');
+    if (!card) return;
+    var searchEl = document.getElementById('taxFaqSearch');
+    var emptyEl = document.getElementById('taxFaqEmpty');
+    var q = searchEl ? String(searchEl.value || '').trim().toLowerCase() : '';
+    var activeChip = card.querySelector('.tax-faq-chip.is-active');
+    var cat = activeChip ? String(activeChip.getAttribute('data-faq-filter') || 'all') : 'all';
+    var items = card.querySelectorAll('#taxFaqList .tax-faq-item');
+    var shown = 0;
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var itemCat = String(item.getAttribute('data-faq-cat') || '');
+        var catOk = cat === 'all' || itemCat === cat;
+        var text = '';
+        if (q) {
+            var sum = item.querySelector('summary');
+            var body = item.querySelector('p');
+            text = ((sum && sum.textContent) || '') + ' ' + ((body && body.textContent) || '');
+            text = text.toLowerCase();
+        }
+        var qOk = !q || text.indexOf(q) >= 0;
+        var ok = catOk && qOk;
+        item.hidden = !ok;
+        if (ok) shown += 1;
+    }
+    if (emptyEl) emptyEl.hidden = shown > 0;
+}
+
 function initTaxFaqCard() {
     var card = document.getElementById('taxFaqCard');
     var toggle = document.getElementById('taxFaqToggle');
-    if (!toggle || !card || toggle.__bound) return;
-    toggle.__bound = true;
-    toggle.addEventListener('click', function () {
-        var open = card.classList.toggle('is-open');
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
+    if (!card) return;
+    if (toggle && !toggle.__bound) {
+        toggle.__bound = true;
+        toggle.addEventListener('click', function () {
+            var open = card.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+    if (!card.classList.contains('is-open')) {
+        card.classList.add('is-open');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    }
+    if (card.__faqFilterBound) {
+        applyTaxFaqFilters();
+        return;
+    }
+    card.__faqFilterBound = true;
+    var searchEl = document.getElementById('taxFaqSearch');
+    if (searchEl) {
+        searchEl.addEventListener('input', applyTaxFaqFilters);
+        searchEl.addEventListener('search', applyTaxFaqFilters);
+    }
+    var chips = card.querySelectorAll('.tax-faq-chip');
+    for (var c = 0; c < chips.length; c++) {
+        chips[c].addEventListener('click', function (ev) {
+            var btn = ev.currentTarget;
+            for (var j = 0; j < chips.length; j++) {
+                chips[j].classList.remove('is-active');
+                chips[j].setAttribute('aria-pressed', 'false');
+            }
+            btn.classList.add('is-active');
+            btn.setAttribute('aria-pressed', 'true');
+            applyTaxFaqFilters();
+        });
+    }
+    applyTaxFaqFilters();
 }
 initTaxFaqCard();
 
