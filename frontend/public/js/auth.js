@@ -1687,6 +1687,8 @@
       var onePlus13Client = androidClient && isOnePlus13Client();
       var samsungOneUiFamily = androidClient && isSamsungOneUiFamilyClient();
       var samsungS24UltraClient = androidClient && isSamsungS24UltraClient();
+      var huaweiHarmonyFamily = androidClient && isHuaweiHarmonyOsFamilyClient();
+      var hiNovaFamily = androidClient && isHiNovaFamilyClient();
       var tallAndroidStatusBar =
         androidClient &&
         !redmiK70Client &&
@@ -1694,6 +1696,7 @@
         !oppoColorOsFamily &&
         !vivoOriginOsFamily &&
         !samsungOneUiFamily &&
+        !huaweiHarmonyFamily &&
         (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * 默认：Cordova / iOS / Android 用浅色根底，避免切页蓝闪。
@@ -1831,6 +1834,7 @@
               : androidOuterStatusBar ||
                   redmiK70Client ||
                   samsungOneUiFamily ||
+                  huaweiHarmonyFamily ||
                   (xiaomiHyperOsFamily && !xiaomi14Client) ||
                   (oppoColorOsFamily && !onePlus13Client) ||
                   vivoOriginOsFamily
