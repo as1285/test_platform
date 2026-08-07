@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260807-bancha-black-status"></script>
+    <script src="/js/auth.js?v=20260807-bancha-black-bar2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,14 +22,14 @@
             min-height: 100vh;
         }
 
-        /* 原版顶部黑状态栏：安全区画黑条；头图不再负 margin 顶入蓝底 */
+        /* 原版顶部黑状态栏：高度由 auth.js --bancha-black-bar 写入（Android 至少 40px） */
         body.page-bancha::before {
             content: '';
             position: fixed;
             left: 0;
             right: 0;
             top: 0;
-            height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            height: var(--bancha-black-bar, 40px);
             background: #000;
             z-index: 1000;
             pointer-events: none;
@@ -47,7 +47,7 @@
             /* 与 db.jpg 顶部左侧取样对齐，仅作头图未盖住时的兜底 */
             background: #2b81f2;
             overflow: hidden;
-            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            padding-top: var(--bancha-black-bar, 40px);
         }
 
         .bancha-header img {
@@ -57,7 +57,7 @@
         }
 
         html.app-top-safe-shell .bancha-header {
-            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            padding-top: var(--bancha-black-bar, 40px);
             background: #2b81f2;
             overflow: hidden;
         }
