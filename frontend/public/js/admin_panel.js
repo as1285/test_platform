@@ -2399,7 +2399,17 @@
                             esc(String(survey.expensive || 0)) +
                             '/' +
                             esc(String(survey.submitted || 0)) +
-                            '）；已付订单 <strong>' +
+                            '，均价期望 ¥' +
+                            esc(
+                                String(
+                                    survey.avg_expected_price != null
+                                        ? survey.avg_expected_price
+                                        : '-'
+                                )
+                            ) +
+                            '，' +
+                            esc(String(survey.with_expected_price || 0)) +
+                            ' 人填了价）；已付订单 <strong>' +
                             esc(String(pay.paid_orders || 0)) +
                             '</strong>，总 GMV ¥' +
                             esc(String(pay.gmv != null ? pay.gmv : 0)) +

@@ -19379,6 +19379,7 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_purchase_price_survey_open',
   'track_purchase_price_survey_submit',
   'track_purchase_price_survey_skip',
+  'track_purchase_price_survey_soft_dismiss',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
   'track_kufaka_purchase_click',
@@ -19437,6 +19438,7 @@ function purchasePageTrackEventLabel(eventKey) {
     track_purchase_price_survey_open: '离开调研打开',
     track_purchase_price_survey_submit: '离开调研提交',
     track_purchase_price_survey_skip: '离开调研跳过',
+    track_purchase_price_survey_soft_dismiss: '离开调研软关闭',
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_kufaka_purchase_click: '酷发卡购买',
@@ -19625,7 +19627,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         expensive: 0,
         fair: 0,
         cheap: 0,
-        expensive_pct: 0
+        expensive_pct: 0,
+        with_expected_price: 0,
+        avg_expected_price: null
       };
       try {
         var cnSurveyDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
@@ -19648,9 +19652,23 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           var s = String(r.sentiment || '').toLowerCase();
           if (s === 'expensive') priceSurvey.expensive += c;
           else if (s === 'cheap') priceSurvey.cheap += c;
-          else priceSurvey.fair += c;
+          else if (s === 'fair') priceSurvey.fair += c;
+          /* sentiment=skipped 且 skipped=0 的异常行不计入 fair */
         });
         priceSurvey.expensive_pct = pctRate(priceSurvey.expensive, priceSurvey.submitted);
+        const [priceAgg] = await conn.execute(
+          `SELECT COUNT(*) AS with_price, AVG(expected_price) AS avg_price
+           FROM purchase_price_survey
+           WHERE ${surveyPf.sql}
+             AND skipped = 0
+             AND expected_price IS NOT NULL`,
+          surveyPf.params
+        );
+        if (priceAgg && priceAgg[0]) {
+          priceSurvey.with_expected_price = Number(priceAgg[0].with_price) || 0;
+          var avgP = Number(priceAgg[0].avg_price);
+          priceSurvey.avg_expected_price = isFinite(avgP) ? Math.round(avgP * 100) / 100 : null;
+        }
       } catch (eSurvey) {
         console.error('[admin purchase-events] price_survey', eSurvey && eSurvey.message);
       }
@@ -19996,6 +20014,7 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_purchase_price_survey_open',
   'track_purchase_price_survey_submit',
   'track_purchase_price_survey_skip',
+  'track_purchase_price_survey_soft_dismiss',
   'track_kufaka_purchase_click',
   'track_purchase_wechat_view',
   'track_purchase_wechat_expand',
@@ -20063,7 +20082,8 @@ function activateTrackEventLabel(eventKey) {
     track_purchase_share_teaser_click: '分享优惠入口点击',
     track_purchase_price_survey_open: '离开调研打开',
     track_purchase_price_survey_submit: '离开调研提交',
-    track_purchase_price_survey_skip: '离开调研跳过'
+    track_purchase_price_survey_skip: '离开调研跳过',
+    track_purchase_price_survey_soft_dismiss: '离开调研软关闭'
   };
   return labels[eventKey] || eventKey;
 }

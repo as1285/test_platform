@@ -1,9 +1,14 @@
 /**
  * 支付页首次退出 · 价格调研
+ *
+ * 规则：
+ * - 正式提交：必须选 sentiment（expensive/fair/cheap）；expected_price 可选
+ * - 显式跳过：skipped=1，sentiment 记为 skipped（不再默认 fair，避免污染「合适」）
  */
 const { getPool } = require('../shared/db');
 
 var SENTIMENTS = { expensive: 1, fair: 1, cheap: 1 };
+var SKIP_SENTIMENT = 'skipped';
 
 function clean(s) {
   return String(s == null ? '' : s).trim();
@@ -54,11 +59,10 @@ async function handlePurchasePriceSurveySubmit(req, res) {
       if (!SENTIMENTS[sentiment]) {
         return res.status(400).json({ code: 400, msg: '请选择觉得贵了还是便宜' });
       }
-      if (expected == null) {
-        return res.status(400).json({ code: 400, msg: '请填写心理价位' });
-      }
+      /* 心理价位改为可选：只选态度也有统计价值 */
     } else {
-      if (!SENTIMENTS[sentiment]) sentiment = 'fair';
+      sentiment = SKIP_SENTIMENT;
+      expected = null;
     }
 
     var uname = String(req.authUserId);
@@ -70,7 +74,7 @@ async function handlePurchasePriceSurveySubmit(req, res) {
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           uname,
-          sentiment || 'fair',
+          sentiment || SKIP_SENTIMENT,
           expected,
           seenMin,
           seenMax,
@@ -99,5 +103,9 @@ function getHandlers() {
 }
 
 module.exports = {
-  getHandlers: getHandlers
+  getHandlers: getHandlers,
+  /* 供单测 / 管理端口径复用 */
+  SENTIMENTS: SENTIMENTS,
+  SKIP_SENTIMENT: SKIP_SENTIMENT,
+  parseMoney: parseMoney
 };

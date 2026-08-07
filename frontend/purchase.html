@@ -509,14 +509,19 @@
             color: var(--ink);
             margin: 0 0 8px;
         }
+        .price-survey-optional {
+            font-weight: 500;
+            color: var(--muted);
+            font-size: 12px;
+        }
         .price-survey-opts {
             display: flex;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         .price-survey-opt {
             flex: 1;
-            height: 40px;
+            height: 44px;
             border: 1px solid var(--line);
             border-radius: 10px;
             background: #fff;
@@ -525,8 +530,43 @@
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
         .price-survey-opt.is-selected {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+        }
+        .price-survey-price-block {
+            margin-bottom: 4px;
+            animation: priceSurveyIn 0.18s ease-out;
+        }
+        .price-survey-price-block[hidden] { display: none; }
+        @keyframes priceSurveyIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .price-survey-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .price-survey-chip {
+            min-width: 64px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--ink-soft);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .price-survey-chip.is-selected {
             border-color: var(--accent);
             background: var(--accent-soft);
             color: var(--accent-deep);
@@ -540,7 +580,9 @@
             font-size: 15px;
             font-family: inherit;
             margin-bottom: 8px;
+            box-sizing: border-box;
         }
+        .price-survey-input[hidden] { display: none; }
         .price-survey-hint {
             font-size: 12px;
             color: var(--muted);
@@ -570,12 +612,13 @@
         .price-survey-actions .btn-skip {
             background: #f1f5f9;
             color: var(--ink-soft);
+            flex: 0 0 96px;
         }
         .price-survey-actions .btn-submit {
             background: var(--accent);
             color: #fff;
         }
-        .price-survey-actions .btn-submit:disabled { opacity: 0.6; }
+        .price-survey-actions .btn-submit:disabled { opacity: 0.45; cursor: default; }
         .card#cardDownloadApp[hidden] { display: none !important; }
         /* App / WebClip / Cordova 壳内强制隐藏下载入口（防检测漏网） */
         html.app-installed-client #cardDownloadApp,
@@ -999,21 +1042,31 @@
     <div id="priceSurveyModal" class="price-survey-root" role="dialog" aria-modal="true" aria-labelledby="priceSurveyTitle" hidden>
         <div class="price-survey-mask" id="priceSurveyMask"></div>
         <div class="price-survey-panel">
-            <div class="price-survey-title" id="priceSurveyTitle">离开前想听您一句</div>
-            <p class="price-survey-sub">当前套餐约 ¥298 起。您觉得价格如何？您的反馈会帮助我们调整定价。</p>
+            <div class="price-survey-title" id="priceSurveyTitle">离开前，花 3 秒告诉我们</div>
+            <p class="price-survey-sub">当前最低约 ¥298。点一下即可，心理价位选填。</p>
             <label class="price-survey-label">您觉得现在的价格</label>
             <div class="price-survey-opts" id="priceSurveySentimentOpts">
                 <button type="button" class="price-survey-opt" data-sentiment="expensive">偏贵</button>
                 <button type="button" class="price-survey-opt" data-sentiment="fair">合适</button>
                 <button type="button" class="price-survey-opt" data-sentiment="cheap">偏便宜</button>
             </div>
-            <label class="price-survey-label" for="priceSurveyExpected">您的心理价位（元）</label>
-            <input type="number" id="priceSurveyExpected" class="price-survey-input" inputmode="decimal" min="1" max="999999" step="1" placeholder="例如：98">
-            <p class="price-survey-hint">可按「体验一天」或您最常会买的档位来估。</p>
+            <div id="priceSurveyPriceBlock" class="price-survey-price-block" hidden>
+                <label class="price-survey-label">您更认可的价位 <span class="price-survey-optional">选填</span></label>
+                <div class="price-survey-chips" id="priceSurveyPriceChips">
+                    <button type="button" class="price-survey-chip" data-price="50">¥50</button>
+                    <button type="button" class="price-survey-chip" data-price="98">¥98</button>
+                    <button type="button" class="price-survey-chip" data-price="148">¥148</button>
+                    <button type="button" class="price-survey-chip" data-price="198">¥198</button>
+                    <button type="button" class="price-survey-chip" data-price="298">¥298</button>
+                    <button type="button" class="price-survey-chip" data-price="other">其他</button>
+                </div>
+                <input type="number" id="priceSurveyExpected" class="price-survey-input" inputmode="decimal" min="1" max="999999" step="1" placeholder="填写金额，例如 128" hidden>
+                <p class="price-survey-hint" id="priceSurveyPriceHint">点选即可，不填也能提交。</p>
+            </div>
             <p class="price-survey-err" id="priceSurveyErr" aria-live="polite"></p>
             <div class="price-survey-actions">
-                <button type="button" class="btn btn-skip" id="priceSurveySkip">跳过</button>
-                <button type="button" class="btn btn-submit" id="priceSurveySubmit">提交并离开</button>
+                <button type="button" class="btn btn-skip" id="priceSurveySkip">不想说</button>
+                <button type="button" class="btn btn-submit" id="priceSurveySubmit" disabled>提交反馈</button>
             </div>
         </div>
     </div>
@@ -2673,11 +2726,14 @@
 
     /* ========== 首次退出价格调研 ========== */
     var PRICE_SURVEY_LS_KEY = 'purchase_price_survey_done_v1';
+    var PRICE_SURVEY_SESSION_SOFT_KEY = 'purchase_price_survey_soft_v1';
     var priceSurveyPendingLeaveHref = '';
     var priceSurveyOpen = false;
     var priceSurveyDone = false;
     var priceSurveySentiment = '';
+    var priceSurveyChipPrice = '';
     var priceSurveyHistoryPushed = false;
+    var priceSurveySubmitting = false;
 
     function priceSurveyMarkedLocal() {
         try {
@@ -2694,8 +2750,23 @@
         } catch (eSet) {}
     }
 
+    function priceSurveySoftSnoozed() {
+        try {
+            return sessionStorage.getItem(PRICE_SURVEY_SESSION_SOFT_KEY) === '1';
+        } catch (eSs) {
+            return false;
+        }
+    }
+
+    function markPriceSurveySoftSnooze() {
+        try {
+            sessionStorage.setItem(PRICE_SURVEY_SESSION_SOFT_KEY, '1');
+        } catch (eSsSet) {}
+    }
+
     function shouldShowPriceSurvey() {
         if (priceSurveyDone || priceSurveyMarkedLocal()) return false;
+        if (priceSurveySoftSnoozed()) return false;
         if (!purchaseGetToken()) return false;
         return true;
     }
@@ -2718,15 +2789,65 @@
         if (!sub) return;
         if (range.min != null) {
             sub.textContent =
-                '当前套餐约 ¥' +
+                '当前最低约 ¥' +
                 String(range.min) +
-                ' 起。您觉得价格如何？您的反馈会帮助我们调整定价。';
+                '。点一下「偏贵 / 合适 / 偏便宜」即可，心理价位选填。';
         }
     }
 
     function setPriceSurveyErr(msg) {
         var el = document.getElementById('priceSurveyErr');
         if (el) el.textContent = msg || '';
+    }
+
+    function syncPriceSurveySubmitEnabled() {
+        var submitBtn = document.getElementById('priceSurveySubmit');
+        if (submitBtn) {
+            submitBtn.disabled = !priceSurveySentiment || priceSurveySubmitting;
+        }
+    }
+
+    function resetPriceSurveyForm() {
+        priceSurveySentiment = '';
+        priceSurveyChipPrice = '';
+        priceSurveySubmitting = false;
+        var opts = document.getElementById('priceSurveySentimentOpts');
+        if (opts) {
+            opts.querySelectorAll('.price-survey-opt').forEach(function (el) {
+                el.classList.remove('is-selected');
+            });
+        }
+        var chips = document.getElementById('priceSurveyPriceChips');
+        if (chips) {
+            chips.querySelectorAll('.price-survey-chip').forEach(function (el) {
+                el.classList.remove('is-selected');
+            });
+        }
+        var block = document.getElementById('priceSurveyPriceBlock');
+        if (block) block.hidden = true;
+        var expectedEl = document.getElementById('priceSurveyExpected');
+        if (expectedEl) {
+            expectedEl.value = '';
+            expectedEl.hidden = true;
+        }
+        setPriceSurveyErr('');
+        syncPriceSurveySubmitEnabled();
+    }
+
+    function revealPriceSurveyPriceBlock() {
+        var block = document.getElementById('priceSurveyPriceBlock');
+        if (!block) return;
+        block.hidden = false;
+        var hint = document.getElementById('priceSurveyPriceHint');
+        if (hint) {
+            if (priceSurveySentiment === 'expensive') {
+                hint.textContent = '选个更能接受的价位（可不填）。';
+            } else if (priceSurveySentiment === 'cheap') {
+                hint.textContent = '若愿意，告诉我们您觉得合适的价位。';
+            } else {
+                hint.textContent = '也可补充您心里的价位，不填也能提交。';
+            }
+        }
     }
 
     function closePriceSurveyModal() {
@@ -2740,8 +2861,8 @@
 
     function openPriceSurveyModal(leaveHref) {
         priceSurveyPendingLeaveHref = leaveHref || resolveBackHref();
+        resetPriceSurveyForm();
         syncPriceSurveyCopy();
-        setPriceSurveyErr('');
         var root = document.getElementById('priceSurveyModal');
         if (root) {
             root.hidden = false;
@@ -2757,25 +2878,49 @@
         window.location.href = target;
     }
 
+    /** 点遮罩/误触：离开但不写库、不永久标记，本会话内不再弹 */
+    function softDismissPriceSurvey() {
+        if (priceSurveySubmitting) return;
+        markPriceSurveySoftSnooze();
+        trackPurchase('track_purchase_price_survey_soft_dismiss');
+        leavePurchasePage();
+    }
+
+    function readPriceSurveyExpected() {
+        if (priceSurveyChipPrice && priceSurveyChipPrice !== 'other') {
+            var chipN = Number(priceSurveyChipPrice);
+            if (isFinite(chipN) && chipN > 0) return chipN;
+        }
+        var expectedEl = document.getElementById('priceSurveyExpected');
+        var expectedRaw = expectedEl ? String(expectedEl.value || '').trim() : '';
+        if (expectedRaw === '') return null;
+        var expectedNum = Number(expectedRaw);
+        if (!isFinite(expectedNum) || expectedNum <= 0) return null;
+        return expectedNum;
+    }
+
     function submitPriceSurvey(opts) {
         opts = opts || {};
         var skipped = opts.skipped === true;
-        var expectedEl = document.getElementById('priceSurveyExpected');
-        var expectedRaw = expectedEl ? String(expectedEl.value || '').trim() : '';
-        var expectedNum = expectedRaw === '' ? null : Number(expectedRaw);
+        if (priceSurveySubmitting) return;
         if (!skipped) {
             if (!priceSurveySentiment) {
-                setPriceSurveyErr('请选择觉得偏贵、合适还是偏便宜');
+                setPriceSurveyErr('请先点选：偏贵、合适或偏便宜');
                 return;
             }
-            if (expectedNum == null || !isFinite(expectedNum) || expectedNum <= 0) {
-                setPriceSurveyErr('请填写您的心理价位');
-                return;
+            if (priceSurveyChipPrice === 'other') {
+                var custom = readPriceSurveyExpected();
+                if (custom == null) {
+                    setPriceSurveyErr('选了「其他」，请填写金额');
+                    return;
+                }
             }
         }
+        var expectedNum = skipped ? null : readPriceSurveyExpected();
         var range = getSeenSkuPriceRange();
         var submitBtn = document.getElementById('priceSurveySubmit');
         var skipBtn = document.getElementById('priceSurveySkip');
+        priceSurveySubmitting = true;
         if (submitBtn) submitBtn.disabled = true;
         if (skipBtn) skipBtn.disabled = true;
         var clientId = '';
@@ -2786,7 +2931,7 @@
             }
         } catch (eCid) {}
         var body = {
-            sentiment: priceSurveySentiment || 'fair',
+            sentiment: skipped ? 'skipped' : priceSurveySentiment,
             expected_price: expectedNum,
             seen_sku_min: range.min,
             seen_sku_max: range.max,
@@ -2795,7 +2940,8 @@
         };
         trackPurchase(skipped ? 'track_purchase_price_survey_skip' : 'track_purchase_price_survey_submit', {
             sentiment: body.sentiment,
-            expected_price: body.expected_price
+            expected_price: body.expected_price,
+            has_expected_price: expectedNum != null
         });
         markPriceSurveyDoneLocal();
         purchaseAuthFetch('/api/growth/purchase-price-survey', {
@@ -2862,8 +3008,44 @@
                     el.classList.toggle('is-selected', el === btn);
                 });
                 setPriceSurveyErr('');
+                revealPriceSurveyPriceBlock();
+                syncPriceSurveySubmitEnabled();
             });
         }
+
+        var chips = document.getElementById('priceSurveyPriceChips');
+        if (chips) {
+            chips.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('[data-price]');
+                if (!btn) return;
+                priceSurveyChipPrice = btn.getAttribute('data-price') || '';
+                chips.querySelectorAll('.price-survey-chip').forEach(function (el) {
+                    el.classList.toggle('is-selected', el === btn);
+                });
+                var expectedEl = document.getElementById('priceSurveyExpected');
+                if (expectedEl) {
+                    if (priceSurveyChipPrice === 'other') {
+                        expectedEl.hidden = false;
+                        expectedEl.value = '';
+                        try {
+                            expectedEl.focus();
+                        } catch (eFocus) {}
+                    } else {
+                        expectedEl.hidden = true;
+                        expectedEl.value = priceSurveyChipPrice || '';
+                    }
+                }
+                setPriceSurveyErr('');
+            });
+        }
+
+        var expectedEl = document.getElementById('priceSurveyExpected');
+        if (expectedEl) {
+            expectedEl.addEventListener('input', function () {
+                if (priceSurveyChipPrice === 'other') setPriceSurveyErr('');
+            });
+        }
+
         var submitBtn = document.getElementById('priceSurveySubmit');
         var skipBtn = document.getElementById('priceSurveySkip');
         var mask = document.getElementById('priceSurveyMask');
@@ -2879,9 +3061,10 @@
         }
         if (mask) {
             mask.addEventListener('click', function () {
-                submitPriceSurvey({ skipped: true });
+                softDismissPriceSurvey();
             });
         }
+        syncPriceSurveySubmitEnabled();
     }
 
     initPriceSurveyExitGate();
