@@ -1162,12 +1162,26 @@
           mineGrad +
           ' !important;overflow:hidden !important;}' +
           'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
-          /* 叠层必须与头图使用同一 bleed，避免 Android 上姓名税号相对米色卡整体上移 */
-          'html.app-top-safe-shell body.page-mine .mine-e1-layer{top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;}' +
           /*
-           * 外置状态栏族（vivo/iQOO/OPPO/小米/三星/荣耀折叠等）：我的页 e1 禁止再叠 bleed。
-           * 含 iQOO 15（V2505A）、Galaxy S24 Ultra 等，避免叠字压到米色卡边。
+           * 叠层绝对定位相对 padding edge：top:0 与负 margin 上拉后的头图顶对齐。
+           * 勿再写 top:-bleed，否则姓名/税号相对米色卡整体上移（Hi nova/华为/三星等均中招）。
            */
+          'html.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
+          /*
+           * Android「我的」页 e1：默认禁止 bleed（含未识别 OEM）。
+           * 一加 13 / MIX Fold 等真沉浸机型单独保留 inset。
+           */
+          'html.app-android-client.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
+          'html.app-android-oneplus-13.app-top-safe-shell body.page-mine,' +
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine{--mine-top-bleed:var(--app-shell-statusbar-top,40px) !important;}' +
+          'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:var(--mine-top-bleed) !important;}' +
+          'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:calc(-1 * var(--mine-top-bleed)) !important;}' +
+          /* 外置状态栏族：壳级 inset 也清零 */
           'html.app-android-vivo-family.app-top-safe-shell,' +
           'html.app-android-iqoo-15.app-top-safe-shell,' +
           'html.app-android-oppo-family.app-top-safe-shell,' +
@@ -1175,44 +1189,10 @@
           'html.app-android-redmi-k70.app-top-safe-shell,' +
           'html.app-android-samsung.app-top-safe-shell,' +
           'html.app-android-samsung-s24u.app-top-safe-shell,' +
+          'html.app-android-huawei-harmony.app-top-safe-shell,' +
+          'html.app-android-hinova.app-top-safe-shell,' +
           'html.app-android-honor-flc.app-top-safe-shell,' +
           'html.app-android-honor-fcp.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
-          'html.app-android-vivo-family.app-top-safe-shell body.page-mine,' +
-          'html.app-android-iqoo-15.app-top-safe-shell body.page-mine,' +
-          'html.app-android-oppo-family.app-top-safe-shell body.page-mine,' +
-          'html.app-android-mi-family.app-top-safe-shell body.page-mine,' +
-          'html.app-android-redmi-k70.app-top-safe-shell body.page-mine,' +
-          'html.app-android-samsung.app-top-safe-shell body.page-mine,' +
-          'html.app-android-samsung-s24u.app-top-safe-shell body.page-mine,' +
-          'html.app-android-honor-flc.app-top-safe-shell body.page-mine,' +
-          'html.app-android-honor-fcp.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;}' +
-          'html.app-android-vivo-family.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-iqoo-15.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-oppo-family.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-mi-family.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-redmi-k70.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-samsung.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-samsung-s24u.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-honor-flc.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-honor-fcp.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
-          'html.app-android-vivo-family.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-iqoo-15.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-oppo-family.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-mi-family.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-redmi-k70.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-samsung.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-samsung-s24u.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-honor-flc.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-honor-fcp.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;}' +
-          'html.app-android-vivo-family.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-iqoo-15.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-oppo-family.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-mi-family.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-redmi-k70.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-samsung.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-samsung-s24u.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-honor-flc.app-top-safe-shell body.page-mine .mine-e1-layer,' +
-          'html.app-android-honor-fcp.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
           'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
           'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device,' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
@@ -1984,6 +1964,12 @@
       }
       if (huaweiLioAn00Client) {
         document.documentElement.classList.add('app-android-huawei-lio-an00');
+      }
+      if (huaweiHarmonyFamily) {
+        document.documentElement.classList.add('app-android-huawei-harmony');
+      }
+      if (hiNovaFamily) {
+        document.documentElement.classList.add('app-android-hinova');
       }
       if (onePlus13Client) {
         document.documentElement.classList.add('app-android-oneplus-13');

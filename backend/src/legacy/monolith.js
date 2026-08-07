@@ -18790,25 +18790,6 @@ async function handleAdminUserRefund(req, res) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const [urows] = await conn.execute(
-      'SELECT id, account_active, activation_refunded_at FROM users WHERE username = ? FOR UPDATE',
-      [target]
-    );
-    if (urows.length === 0) {
-      await conn.rollback();
-      conn.release();
-      return res.status(404).json({ code: 404, msg: '用户不存在' });
-    }
-    if (urows[0].activation_refunded_at) {
-      await conn.rollback();
-      conn.release();
-      return res.status(400).json({ code: 400, msg: '该账号已退款' });
-    }
-    if (!(urows[0].account_active === 1 || urows[0].account_active === true)) {
-      await conn.rollback();
-      conn.release();
-      return res.status(400).json({ code: 400, msg: '仅已激活账号可退款' });
-    }
     var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
     if (!allowed) {
       await conn.rollback();
@@ -18816,12 +18797,30 @@ async function handleAdminUserRefund(req, res) {
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
     var adminName = req.admin && req.admin.username ? String(req.admin.username) : '';
+    var result = await applyActivationRefundForUser(conn, target, adminName);
+    if (result.missing) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (result.already) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已退款' });
+    }
+    if (result.inactive) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '仅已激活账号可退款' });
+    }
+    /* 管理端退款：尽量把该用户仍为 paid 的激活类订单标为 refunded，GMV 同步回退 */
     await conn.execute(
-      `UPDATE users SET banned = 1, session_rev = session_rev + 1, account_active = 0,
-              list_hidden_at = NOW(3), list_hidden_by = ?,
-              activation_refunded_at = NOW(3), activation_refunded_by = ?
-       WHERE username = ?`,
-      [adminName, adminName, target]
+      `UPDATE payment_orders
+       SET status = 'refunded'
+       WHERE username = ? AND status = 'paid'
+         AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
+         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%'))`,
+      [target]
     );
     await conn.commit();
     conn.release();
