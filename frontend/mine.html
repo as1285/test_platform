@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260806-safe-top-align"></script>
+    <script src="/js/auth.js?v=20260807-samsung-s24u-mine"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -125,6 +125,25 @@
             padding-bottom: calc(2127 / 1284 * 100%); /* e1 原始比例 1284×2127 */
             z-index: 2;
             pointer-events: none;
+        }
+
+        /* 三星 One UI / S24 Ultra：状态栏在 WebView 外，禁止再叠 bleed，避免姓名税号上移压到米色卡边 */
+        html.app-android-samsung body.page-mine,
+        html.app-android-samsung-s24u body.page-mine {
+            --mine-top-bleed: 0px;
+            --app-shell-statusbar-top: 0px;
+        }
+        html.app-android-samsung body.page-mine .mine-e1-canvas,
+        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas {
+            padding-top: 0 !important;
+        }
+        html.app-android-samsung body.page-mine .mine-e1-canvas > img,
+        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas > img {
+            margin-top: 0 !important;
+        }
+        html.app-android-samsung body.page-mine .mine-e1-layer,
+        html.app-android-samsung-s24u body.page-mine .mine-e1-layer {
+            top: 0 !important;
         }
 
         .mine-e1-layer > * {

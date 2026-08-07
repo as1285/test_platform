@@ -222,13 +222,14 @@
     if (/PKB110|B60P01/i.test(ua) || /Xiaomi\s*14|23127PN|2201PN/i.test(ua)) {
       return true;
     }
-    /* 国产 OEM / 折叠外屏：系统状态栏多为 WebView 外独立条，勿套 Android 15+ 的 56px */
+    /* 国产 OEM / 三星 One UI / 折叠外屏：系统状态栏多为 WebView 外独立条，勿套 Android 15+ 的 56px */
     if (
       /Redmi|Xiaomi|Miui|HyperOS/i.test(ua) ||
       isRedmiK70Client() ||
       /HONOR|MagicOS|FLC-AN|FCP-AN|VER-AN|PGT-AN|PTP-AN|ANN-AN/i.test(ua) ||
       isOppoColorOsFamilyClient() ||
-      isVivoOriginOsFamilyClient()
+      isVivoOriginOsFamilyClient() ||
+      isSamsungOneUiFamilyClient()
     ) {
       return false;
     }
@@ -274,10 +275,48 @@
     return /PJZ110|CPH2653|CPH2649|CPH2655|(?:OnePlus|一加)\s*13(?![a-zA-Z0-9])/i.test(ua);
   }
 
-  /** vivo / iQOO / OriginOS：状态栏处理同 OPPO/小米外置条 */
+  /**
+   * vivo / iQOO / OriginOS：状态栏处理同 OPPO/小米外置条。
+   * 注意：多数机型 UA 仅有型号码（如 iQOO 15=V2505A / I2501），不含 vivo/iqoo 字样。
+   */
   function isVivoOriginOsFamilyClient() {
     var ua = navigator.userAgent || '';
-    return /vivo|Vivo|OriginOS|iqoo|iQOO/i.test(ua) || isVivoX200ProLikeClient();
+    if (/vivo|Vivo|OriginOS|iqoo|iQOO/i.test(ua) || isVivoX200ProLikeClient()) {
+      return true;
+    }
+    if (!/Android/i.test(ua)) {
+      return false;
+    }
+    /* 国行 vivo/iQOO：V####A；国际版常见 I####；避免误伤其它品牌 */
+    if (/\bV\d{4}A\b/i.test(ua) || /\bI\d{4}\b/i.test(ua)) {
+      return true;
+    }
+    /* iQOO 15 及近世代际显式型号 */
+    return /V2505A|I2501|V2405A|V2405DA|V2413\b|V2419A|V2309A|V2241A|V2227A/i.test(ua);
+  }
+
+  /** iQOO 15（V2505A / I2501） */
+  function isIqoo15Client() {
+    var ua = navigator.userAgent || '';
+    return /V2505A|I2501|iQOO\s*15(?![a-zA-Z0-9])/i.test(ua);
+  }
+
+  /**
+   * 三星 One UI（含 Galaxy S24 Ultra=SM-S928*）：Cordova WebView 顶缘多在系统状态栏下方。
+   * 若再套 Android 15「高顶栏 56px」或 iOS 式 bleed，我的页 e1 叠字会整体上移压到米色卡边缘。
+   */
+  function isSamsungOneUiFamilyClient() {
+    var ua = navigator.userAgent || '';
+    if (!/Android/i.test(ua)) {
+      return false;
+    }
+    return /Samsung|SM-[A-Z]\d{3}|Galaxy/i.test(ua);
+  }
+
+  /** Galaxy S24 Ultra（SM-S9280 / SM-S928B 等） */
+  function isSamsungS24UltraClient() {
+    var ua = navigator.userAgent || '';
+    return /SM-S928|Galaxy\s*S24\s*Ultra/i.test(ua);
   }
 
   /** 系统状态栏在 WebView 外：首页/顶栏勿再叠 statusbar 占位 */
@@ -294,7 +333,8 @@
       isOppoColorOsFamilyClient() ||
       isVivoOriginOsFamilyClient() ||
       isHonorFoldableOuterBarClient() ||
-      isRedmiK70Client()
+      isRedmiK70Client() ||
+      isSamsungOneUiFamilyClient()
     );
   }
 
@@ -916,13 +956,17 @@
         }
       } catch (eProbe) {}
       if (isLikelyAndroidViewportClient()) {
-        if (measured >= 20) {
+        /*
+         * 外置状态栏机型：WebView 已在系统栏下方，env 偶发仍 >0（OriginOS/One UI 等）。
+         * 若按 measured 写入会二次上移，「我的」e1 叠字压到米色卡边。外置族一律 0。
+         */
+        if (isAndroidOuterStatusBarClient() || isHuaweiPura70LikeClient()) {
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
+        } else if (measured >= 20) {
           document.documentElement.style.setProperty(
             '--app-shell-statusbar-top',
             Math.round(measured) + 'px'
           );
-        } else if (isAndroidOuterStatusBarClient() || isHuaweiPura70LikeClient()) {
-          document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
         }
         return;
       }
@@ -1058,10 +1102,17 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background:' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,59px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          /* 叠层必须与头图使用同一 bleed，避免 Android/三星上姓名税号相对米色卡整体上移 */
+          'html.app-top-safe-shell body.page-mine .mine-e1-layer{top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;}' +
+          'html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-samsung.app-top-safe-shell body.page-mine,html.app-android-samsung-s24u.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;}' +
+          'html.app-android-samsung.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-android-samsung-s24u.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
+          'html.app-android-samsung.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-android-samsung-s24u.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;}' +
+          'html.app-android-samsung.app-top-safe-shell body.page-mine .mine-e1-layer,html.app-android-samsung-s24u.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
           'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
           'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device,' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
@@ -1493,6 +1544,7 @@
       var oppoColorOsFamily = androidClient && isOppoColorOsFamilyClient();
       var oppoFindX9Client = androidClient && isOppoFindX9Client();
       var vivoOriginOsFamily = androidClient && isVivoOriginOsFamilyClient();
+      var iqoo15Client = androidClient && isIqoo15Client();
       var androidOuterStatusBar =
         androidClient && isAndroidOuterStatusBarClient() && !xiaomi14Client && !xiaomiMixFoldClient;
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
@@ -1511,12 +1563,15 @@
       var huaweiTasAn00Client = androidClient && isHuaweiTasAn00Client();
       var huaweiLioAn00Client = androidClient && isHuaweiLioAn00Client();
       var onePlus13Client = androidClient && isOnePlus13Client();
+      var samsungOneUiFamily = androidClient && isSamsungOneUiFamilyClient();
+      var samsungS24UltraClient = androidClient && isSamsungS24UltraClient();
       var tallAndroidStatusBar =
         androidClient &&
         !redmiK70Client &&
         !(xiaomiHyperOsFamily && !xiaomi14Client) &&
         !oppoColorOsFamily &&
         !vivoOriginOsFamily &&
+        !samsungOneUiFamily &&
         (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * 默认：Cordova / iOS / Android 用浅色根底，避免切页蓝闪。
@@ -1653,6 +1708,7 @@
               ? '36px'
               : androidOuterStatusBar ||
                   redmiK70Client ||
+                  samsungOneUiFamily ||
                   (xiaomiHyperOsFamily && !xiaomi14Client) ||
                   (oppoColorOsFamily && !onePlus13Client) ||
                   vivoOriginOsFamily
@@ -1738,6 +1794,9 @@
       if (vivoOriginOsFamily) {
         document.documentElement.classList.add('app-android-vivo-family');
       }
+      if (iqoo15Client) {
+        document.documentElement.classList.add('app-android-iqoo-15');
+      }
       if (iosClient) {
         document.documentElement.classList.add('app-ios-client');
       }
@@ -1803,6 +1862,12 @@
       if (onePlus13Client) {
         document.documentElement.classList.add('app-android-oneplus-13');
       }
+      if (samsungOneUiFamily) {
+        document.documentElement.classList.add('app-android-samsung');
+      }
+      if (samsungS24UltraClient) {
+        document.documentElement.classList.add('app-android-samsung-s24u');
+      }
       var style = document.createElement('style');
       var barFill =
         'body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:' +
@@ -1833,11 +1898,8 @@
           ';}' +
           'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:72px !important;}' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
-          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell,html.app-android-vivo-family.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
-          /* 真小米 14 其它页可保留 72px；首页勿叠（状态栏常为黑条） */
-          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye{--app-shell-statusbar-top:0px !important;}' +
-          /* MIX Fold：首页必须保留顶距，避免搜索条吃进系统状态栏 */
-          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye{--app-shell-statusbar-top:40px !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell,html.app-android-vivo-family.app-top-safe-shell,html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          /* 首页顶距由下方 Android 统一规则接管，勿在此清零 */ +
           'html.app-android-client.app-top-safe-shell .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;z-index:120 !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
@@ -1848,6 +1910,8 @@
           'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-samsung body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-samsung-s24u body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .page-root,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
@@ -1904,16 +1968,15 @@
           'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-header{margin-top:calc(-1 * var(--shouye-fixed-top-h,78px)) !important;padding-top:var(--shouye-fixed-top-h,78px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;left:auto !important;right:auto !important;margin:2px 12px 14px !important;}' +
-          /* Android 首页（非荣耀沉浸/非小米折叠）：状态栏多在 WebView 外，搜索条顶贴齐 */
-          'html.app-android-client.app-top-safe-shell:not(.app-android-honor-magic):not(.app-android-honor-pgt-an20):not(.app-android-honor-ptp-an00):not(.app-android-ann-an00):not(.app-android-xiaomi-mix-fold) body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-android-honor-magic):not(.app-android-honor-pgt-an20):not(.app-android-honor-ptp-an00):not(.app-android-ann-an00):not(.app-android-xiaomi-mix-fold) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
-          /* 小米/OPPO/vivo/红米：外置状态栏，搜索条贴顶（MIX Fold 除外） */
-          'html.app-android-mi-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-oppo-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-vivo-family.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
-          'html.app-android-mi-family.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-oppo-family.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-vivo-family.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
-          /* MIX Fold：搜索条下移 + 蓝条铺满状态栏区 */
-          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;z-index:998 !important;pointer-events:none !important;}' +
-          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:var(--app-shell-statusbar-top,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;}' +
-          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
+          /*
+           * Android 首页统一：Cordova/沉浸 WebView 普遍仍会画到状态栏下，
+           * 勿再按厂商清零顶距（否则搜索条吃进系统时间栏）。
+           * Pura70 Cordova 壳已避让状态栏，排除在外。
+           */
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{--shouye-status-inset:40px;--app-shell-statusbar-top:var(--shouye-status-inset) !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;z-index:998 !important;pointer-events:none !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body:not(.page-shouye) .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(53px + var(--app-shell-statusbar-top,0px)) !important;}' +
@@ -1930,10 +1993,12 @@
           'html.app-android-honor-magic.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .message-header-toolbar{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
-          /* 荣耀 Magic V3 / Vs3：折叠外屏状态栏在 WebView 外，覆盖 honor-magic 顶距，去掉首页搜索条上方空蓝带 */
-          'html.app-android-honor-flc.app-top-safe-shell,html.app-android-honor-fcp.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
-          'html.app-android-honor-flc.app-top-safe-shell .search-bar-wrapper,html.app-android-honor-fcp.app-top-safe-shell .search-bar-wrapper,html.app-android-honor-flc.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:0 !important;}html.app-android-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{box-shadow:none !important;border:0 !important;overflow:hidden !important;}html.app-android-client.app-top-safe-shell body.page-shouye .search-bar-wrapper .sy-apk-ahead{margin-top:-1px !important;display:block !important;}html.app-android-client.app-top-safe-shell:has(body.page-shouye){background-color:#f4f6f9 !important;background-image:linear-gradient(rgb(var(--shouye-top-bar-rgb,92, 142, 234)),rgb(var(--shouye-top-bar-rgb,92, 142, 234))) !important;background-size:100% var(--shouye-fixed-top-h,52px) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
-          'html.app-android-honor-flc.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
+          /* 荣耀折叠：非首页仍可按外置状态栏；首页走上方统一 Android 顶距 */
+          'html.app-android-honor-flc.app-top-safe-shell:not(:has(body.page-shouye)),html.app-android-honor-fcp.app-top-safe-shell:not(:has(body.page-shouye)){--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell:not(:has(body.page-shouye)) .search-bar-wrapper,html.app-android-honor-fcp.app-top-safe-shell:not(:has(body.page-shouye)) .search-bar-wrapper{padding-top:0 !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{box-shadow:none !important;border:0 !important;overflow:hidden !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-shouye .search-bar-wrapper .sy-apk-ahead{margin-top:-1px !important;display:block !important;}' +
+          'html.app-android-client.app-top-safe-shell:has(body.page-shouye){background-color:#f4f6f9 !important;background-image:linear-gradient(rgb(var(--shouye-top-bar-rgb,92, 142, 234)),rgb(var(--shouye-top-bar-rgb,92, 142, 234))) !important;background-size:100% var(--shouye-fixed-top-h,92px) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
           'html.app-android-honor-flc.app-top-safe-shell body.page-mine .header-bg,html.app-android-honor-fcp.app-top-safe-shell body.page-mine .header-bg{padding-top:0 !important;}' +
           'html.app-android-honor-flc.app-top-safe-shell body.page-mine .header-bg > img,html.app-android-honor-fcp.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;}' +
           'html.app-android-honor-flc.app-top-safe-shell .daiban-header,html.app-android-honor-fcp.app-top-safe-shell .daiban-header,html.app-android-honor-flc.app-top-safe-shell .bancha-header,html.app-android-honor-fcp.app-top-safe-shell .bancha-header{padding-top:0 !important;}' +
@@ -2123,6 +2188,11 @@
           /* 一加 13 首页：沉浸蓝顶栏仍须顶距（白顶栏页由 applyImmersiveNotchWhitePageChrome overlays=false 走系统黑条） */
           'html.app-android-oneplus-13.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,40px)) !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(var(--shouye-fixed-top-h,52px) + var(--app-shell-statusbar-top,40px)) !important;}' +
+          /* 压过后续机型特例：Android 首页统一顶距（Pura70 Cordova 除外） */
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{--shouye-status-inset:40px;--app-shell-statusbar-top:var(--shouye-status-inset) !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;z-index:998 !important;pointer-events:none !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;box-shadow:none !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
@@ -4889,15 +4959,22 @@
   })();
 
   (function injectMessageBadge() {
-    if (isPublicPage() && !getToken()) return;
-    if (currentPageName() === 'admin_panel.html') return;
-    if (!document.querySelector('.bottom-nav')) return;
-    if (document.querySelector('script[data-message-badge-js]')) return;
-    var s = document.createElement('script');
-    s.src = '/js/message-badge.js?v=20260807-msg-badge';
-    s.setAttribute('data-message-badge-js', '1');
-    s.async = true;
-    document.head.appendChild(s);
+    function run() {
+      if (isPublicPage() && !getToken()) return;
+      if (currentPageName() === 'admin_panel.html') return;
+      if (!document.querySelector('.bottom-nav')) return;
+      if (document.querySelector('script[data-message-badge-js]')) return;
+      var s = document.createElement('script');
+      s.src = '/js/message-badge.js?v=20260807-msg-badge';
+      s.setAttribute('data-message-badge-js', '1');
+      s.async = true;
+      document.head.appendChild(s);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
   })();
 
   if (!isPublicPage()) {

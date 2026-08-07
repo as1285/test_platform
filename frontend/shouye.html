@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260807-mix-fold3"></script>
+    <script src="/js/auth.js?v=20260807-android-shouye-inset"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -76,26 +76,34 @@
             padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        html.app-android-mi-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-oppo-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-vivo-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-flc.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: 0 !important;
+        /*
+         * Android 首页统一顶距：Cordova/沉浸 WebView 普遍画到状态栏下，
+         * 勿再按厂商清零（否则搜索条吃进系统时间栏）。
+         * 华为 Pura70 Cordova 壳已避开状态栏，仍走贴顶。
+         */
+        html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye {
+            --shouye-status-inset: 40px;
         }
 
-        /* 小米 MIX Fold：勿清零顶距（Cordova 常沉浸，搜索条会顶进状态栏） */
-        html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: var(--app-shell-statusbar-top, 40px) !important;
+        html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before {
+            content: "";
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: var(--shouye-status-inset, 40px);
+            background: rgb(var(--shouye-top-bar-rgb, 92, 142, 234));
+            z-index: 998;
+            pointer-events: none;
         }
 
-        /* 荣耀折叠外屏：状态栏在 WebView 外，勿按普通 Android 预留 78px 顶距 */
-        html.app-android-honor-flc.app-top-safe-shell.app-android-client,
-        html.app-android-honor-fcp.app-top-safe-shell.app-android-client {
-            --shouye-fixed-top-h: 52px;
+        html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper {
+            padding-top: var(--shouye-status-inset, 40px) !important;
+            background: rgb(var(--shouye-top-bar-rgb, 92, 142, 234)) !important;
+        }
+
+        html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 6px !important;
         }
 
         .sy-apk-ahead {
@@ -117,7 +125,7 @@
                 rgb(var(--shouye-top-bar-rgb, 92, 142, 234)),
                 rgb(var(--shouye-top-bar-rgb, 92, 142, 234))
             );
-            background-size: 100% var(--shouye-fixed-top-h, 52px);
+            background-size: 100% var(--shouye-fixed-top-h, 92px);
             background-repeat: no-repeat;
             background-position: top center;
         }
@@ -290,17 +298,16 @@
         }
 
         /*
-         * MIX Fold 外屏 CSS 宽常偏窄（~300–360），按 3.35 分栏后卡片/字号明显小于直板原版。
-         * 改为约 2.85 分栏并设最小宽度，使框与文字更接近手机观感。
+         * Android：原版服务卡更大；3.35 分栏偏碎，统一加大卡宽与可见文字。
+         * 宽屏/折叠内屏按手机参考宽算，避免相对整屏过碎。
          */
-        html.app-android-xiaomi-mix-fold .sy-apk-hitem {
-            flex: 0 0 max(112px, calc((100% - 16px) / 2.85));
-            width: max(112px, calc((100% - 16px) / 2.85));
+        html.app-android-client .sy-apk-hitem {
+            flex: 0 0 max(112px, calc((100% - 16px) / 2.95));
+            width: max(112px, calc((100% - 16px) / 2.95));
         }
 
-        /* 展开内屏偏宽时：按手机参考宽算卡宽，避免卡片相对整屏显得过碎 */
         @media (min-width: 520px) {
-            html.app-android-xiaomi-mix-fold .sy-apk-hitem {
+            html.app-android-client .sy-apk-hitem {
                 flex: 0 0 calc((min(100%, 430px) - 16px) / 3.05);
                 width: calc((min(100%, 430px) - 16px) / 3.05);
             }
