@@ -285,6 +285,10 @@
     if (isOnePlus13Client()) {
       return false;
     }
+    /* MIX Fold：Cordova 仍常沉浸占满，不能当外置黑条清零顶距 */
+    if (isXiaomiMixFoldClient()) {
+      return false;
+    }
     return (
       isXiaomiHyperOsFamilyClient() ||
       isOppoColorOsFamilyClient() ||
@@ -319,6 +323,31 @@
   function isXiaomiHyperOsFamilyClient() {
     var ua = navigator.userAgent || '';
     return /Xiaomi|Miui|Redmi|HyperOS/i.test(ua) || isRedmiK70Client();
+  }
+
+  /**
+   * 小米 MIX Fold 系列（含 Fold3=2308CPXD0C）：折叠内外屏 Cordova 常仍沉浸绘制，
+   * 若按普通小米「外置状态栏」清零顶距，搜索条会顶进系统时间栏；宽/窄屏下服务卡也需单独缩放。
+   */
+  function isXiaomiMixFoldClient() {
+    var ua = navigator.userAgent || '';
+    if (/MIX\s*Fold|Mi\s*Mix\s*Fold|Xiaomi\s*Mix\s*Fold/i.test(ua)) {
+      return true;
+    }
+    /* Fold2 22061218C / Fold3 2308CPXD0C / Fold4 24072PX77C·2405CPX3DC 等 */
+    if (/22061218C|2308CPXD0C|2308MPH|24072PX77C|2405CPX3DC|2405CPX3DG|24072PX77G/i.test(ua)) {
+      return true;
+    }
+    try {
+      /* UA 无型号时：小米系 + 接近方屏/宽折叠内屏 */
+      if (!isXiaomiHyperOsFamilyClient()) return false;
+      var w = Math.min(screen.width || 0, screen.height || 0);
+      var h = Math.max(screen.width || 0, screen.height || 0);
+      if (w >= 600 && h > 0 && h / w < 1.45) return true;
+      /* 外屏偏窄（Fold3 外屏 CSS 宽常 <360） */
+      if (w > 0 && w <= 360 && h / w >= 2.2) return true;
+    } catch (eFold) {}
+    return false;
   }
 
   /**
@@ -1454,7 +1483,8 @@
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
       var redmiNote13Pro = androidClient && isRedmiNote13ProClient();
       var redmiK70Client = androidClient && isRedmiK70Client();
-      var xiaomiHyperOsFamily = androidClient && isXiaomiHyperOsFamilyClient();
+      var xiaomiMixFoldClient = androidClient && isXiaomiMixFoldClient();
+      var xiaomiHyperOsFamily = androidClient && isXiaomiHyperOsFamilyClient() && !xiaomiMixFoldClient;
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       lockAppSafeBottomInset({ cordovaXiaomi2410: cordovaXiaomi2410, iosClient: iosClient });
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
@@ -1464,7 +1494,7 @@
       var oppoFindX9Client = androidClient && isOppoFindX9Client();
       var vivoOriginOsFamily = androidClient && isVivoOriginOsFamilyClient();
       var androidOuterStatusBar =
-        androidClient && isAndroidOuterStatusBarClient() && !xiaomi14Client;
+        androidClient && isAndroidOuterStatusBarClient() && !xiaomi14Client && !xiaomiMixFoldClient;
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
       var iosIPhone17ProMax = iosClient && isIPhone17ProMaxClient();
@@ -1605,7 +1635,9 @@
        */
       var useTopSafeInset = cordovaShell || iosClient || androidClient;
       var statusInsetCss = androidClient
-        ? (cordovaHuaweiPura70
+        ? (xiaomiMixFoldClient
+            ? '40px'
+            : cordovaHuaweiPura70
             ? '0px'
             : huaweiPura70Client
             ? '32px'
@@ -1678,6 +1710,9 @@
       }
       if (redmiK70Client) {
         document.documentElement.classList.add('app-android-redmi-k70');
+      }
+      if (xiaomiMixFoldClient) {
+        document.documentElement.classList.add('app-android-xiaomi-mix-fold');
       }
       if (xiaomiHyperOsFamily && !xiaomi14Client) {
         document.documentElement.classList.add('app-android-mi-family');
@@ -1797,9 +1832,12 @@
           statusInsetCss +
           ';}' +
           'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:72px !important;}' +
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell,html.app-android-vivo-family.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
           /* 真小米 14 其它页可保留 72px；首页勿叠（状态栏常为黑条） */
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye{--app-shell-statusbar-top:0px !important;}' +
+          /* MIX Fold：首页必须保留顶距，避免搜索条吃进系统状态栏 */
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye{--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-client.app-top-safe-shell .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;z-index:120 !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
@@ -1866,12 +1904,16 @@
           'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-header{margin-top:calc(-1 * var(--shouye-fixed-top-h,78px)) !important;padding-top:var(--shouye-fixed-top-h,78px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;left:auto !important;right:auto !important;margin:2px 12px 14px !important;}' +
-          /* Android 首页（非荣耀沉浸特例）：状态栏多在 WebView 外，搜索条顶贴齐，消除空蓝带 */
-          'html.app-android-client.app-top-safe-shell:not(.app-android-honor-magic):not(.app-android-honor-pgt-an20):not(.app-android-honor-ptp-an00):not(.app-android-ann-an00) body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-android-honor-magic):not(.app-android-honor-pgt-an20):not(.app-android-honor-ptp-an00):not(.app-android-ann-an00) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
-          /* 小米/OPPO/vivo/红米：外置状态栏，搜索条贴顶 */
+          /* Android 首页（非荣耀沉浸/非小米折叠）：状态栏多在 WebView 外，搜索条顶贴齐 */
+          'html.app-android-client.app-top-safe-shell:not(.app-android-honor-magic):not(.app-android-honor-pgt-an20):not(.app-android-honor-ptp-an00):not(.app-android-ann-an00):not(.app-android-xiaomi-mix-fold) body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
+          'html.app-android-client.app-top-safe-shell:not(.app-android-honor-magic):not(.app-android-honor-pgt-an20):not(.app-android-honor-ptp-an00):not(.app-android-ann-an00):not(.app-android-xiaomi-mix-fold) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
+          /* 小米/OPPO/vivo/红米：外置状态栏，搜索条贴顶（MIX Fold 除外） */
           'html.app-android-mi-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-oppo-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-vivo-family.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
           'html.app-android-mi-family.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-oppo-family.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-vivo-family.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
+          /* MIX Fold：搜索条下移 + 蓝条铺满状态栏区 */
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;z-index:998 !important;pointer-events:none !important;}' +
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:var(--app-shell-statusbar-top,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;}' +
+          'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body:not(.page-shouye) .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(53px + var(--app-shell-statusbar-top,0px)) !important;}' +

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260806-safe-top-align"></script>
+    <script src="/js/auth.js?v=20260807-mix-fold3"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -85,6 +85,11 @@
         html.app-android-honor-flc.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 0 !important;
+        }
+
+        /* 小米 MIX Fold：勿清零顶距（Cordova 常沉浸，搜索条会顶进状态栏） */
+        html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: var(--app-shell-statusbar-top, 40px) !important;
         }
 
         /* 荣耀折叠外屏：状态栏在 WebView 外，勿按普通 Android 预留 78px 顶距 */
@@ -282,6 +287,23 @@
             width: calc((100% - 16px) / 3.35);
             margin: 0;
             text-decoration: none;
+        }
+
+        /*
+         * MIX Fold 外屏 CSS 宽常偏窄（~300–360），按 3.35 分栏后卡片/字号明显小于直板原版。
+         * 改为约 2.85 分栏并设最小宽度，使框与文字更接近手机观感。
+         */
+        html.app-android-xiaomi-mix-fold .sy-apk-hitem {
+            flex: 0 0 max(112px, calc((100% - 16px) / 2.85));
+            width: max(112px, calc((100% - 16px) / 2.85));
+        }
+
+        /* 展开内屏偏宽时：按手机参考宽算卡宽，避免卡片相对整屏显得过碎 */
+        @media (min-width: 520px) {
+            html.app-android-xiaomi-mix-fold .sy-apk-hitem {
+                flex: 0 0 calc((min(100%, 430px) - 16px) / 3.05);
+                width: calc((min(100%, 430px) - 16px) / 3.05);
+            }
         }
 
         .sy-apk-hitem img {
