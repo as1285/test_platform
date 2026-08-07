@@ -482,6 +482,13 @@ def render(payload, out_pdf):
         )
 
     doc.save(out_pdf, garbage=4, deflate=True, deflate_images=True)
+    # 预览图：安卓 WebView 无法在 iframe 里渲染 blob PDF，前端用 PNG 预览/分享
+    try:
+        preview_path = os.path.splitext(out_pdf)[0] + ".preview.png"
+        pix = doc[0].get_pixmap(matrix=fitz.Matrix(2.0, 2.0), alpha=False)
+        pix.save(preview_path)
+    except Exception as e:
+        print("preview_warn:" + str(e), file=sys.stderr)
     doc.close()
 
 

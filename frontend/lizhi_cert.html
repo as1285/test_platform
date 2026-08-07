@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260806-safe-top-align"></script>
+    <script src="/js/auth.js?v=20260806-revert-mine"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>离职证明生成</title>
     <style>
@@ -155,9 +155,11 @@
             margin: 10px 0 12px;
             border: 1px solid var(--line);
             border-radius: 12px;
-            overflow: hidden;
+            overflow: auto;
             background: #e8eef5;
             min-height: 280px;
+            max-height: 52vh;
+            -webkit-overflow-scrolling: touch;
         }
         .pdf-frame-wrap iframe {
             display: block;
@@ -165,6 +167,19 @@
             height: 360px;
             border: 0;
             background: #fff;
+        }
+        .pdf-preview-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #fff;
+        }
+        .pdf-preview-fallback {
+            margin: 0;
+            padding: 48px 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
         }
         .pdf-save-tip {
             font-size: 12px;
@@ -227,11 +242,14 @@
                 App 内无法直接写入「下载」目录。请点「系统分享保存」，在弹出面板里选择「存储到文件」或「保存到下载」。
             </p>
             <div class="pdf-frame-wrap">
-                <iframe id="lizhiPdfFrame" title="离职证明预览"></iframe>
+                <img id="lizhiPdfPreview" class="pdf-preview-img" alt="离职证明预览" hidden>
+                <iframe id="lizhiPdfFrame" title="离职证明预览" hidden></iframe>
+                <p class="pdf-preview-fallback" id="lizhiPdfPreviewFallback" hidden>预览图加载中…</p>
             </div>
+            <p class="pdf-save-tip" id="lizhiLongPressTip" hidden style="margin-top:8px;">也可长按上方预览图，选择「保存图片 / 下载图片」。</p>
             <button type="button" class="btn" id="btnLizhiShare">系统分享保存</button>
             <button type="button" class="btn btn-secondary" id="btnLizhiOpenPdf">打开预览</button>
-            <button type="button" class="btn btn-secondary" id="btnLizhiDesktopDl">浏览器下载（电脑端）</button>
+            <button type="button" class="btn btn-secondary" id="btnLizhiDesktopDl">浏览器下载 PDF（电脑端）</button>
             <p class="status" id="lizhiSaveStatus" hidden></p>
         </div>
     </div>
@@ -260,8 +278,10 @@
         el.classList.toggle('is-err', !!isErr);
     }
     var lastPdfBlob = null;
+    var lastPreviewBlob = null;
     var lastPdfName = '离职证明.pdf';
     var lastPdfUrl = '';
+    var lastPreviewUrl = '';
     var cardPay = document.getElementById('cardPay');
     var cardForm = document.getElementById('cardForm');
     var cardPdfSave = document.getElementById('cardPdfSave');
@@ -269,22 +289,33 @@
     var genStatus = document.getElementById('lizhiGenStatus');
     var saveStatus = document.getElementById('lizhiSaveStatus');
     var pdfFrame = document.getElementById('lizhiPdfFrame');
+    var pdfPreview = document.getElementById('lizhiPdfPreview');
+    var pdfPreviewFallback = document.getElementById('lizhiPdfPreviewFallback');
+    var longPressTip = document.getElementById('lizhiLongPressTip');
     var qrWrap = document.getElementById('lizhiQrWrap');
     var pollTimer = null;
     var pendingOtn = '';
     var feeAmount = '50.00';
 
-    function base64ToPdfBlob(b64) {
+    function base64ToBlob(b64, mime) {
         var bin = atob(b64);
         var arr = new Uint8Array(bin.length);
         for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-        return new Blob([arr], { type: 'application/pdf' });
+        return new Blob([arr], { type: mime || 'application/octet-stream' });
+    }
+
+    function base64ToPdfBlob(b64) {
+        return base64ToBlob(b64, 'application/pdf');
     }
 
     function revokeLastPdfUrl() {
         if (lastPdfUrl) {
             try { URL.revokeObjectURL(lastPdfUrl); } catch (e0) {}
             lastPdfUrl = '';
+        }
+        if (lastPreviewUrl) {
+            try { URL.revokeObjectURL(lastPreviewUrl); } catch (e1) {}
+            lastPreviewUrl = '';
         }
     }
 
@@ -306,27 +337,60 @@
         return /iPhone|iPad|iPod|Android/i.test(ua);
     }
 
-    function canSharePdfFile(file) {
+    function isAndroidLike() {
+        return /Android/i.test(navigator.userAgent || '');
+    }
+
+    function canShareFiles(files) {
         try {
             if (!navigator.share || typeof navigator.share !== 'function') return false;
+            if (!files || !files.length) return false;
             if (typeof File === 'undefined') return false;
-            if (navigator.canShare && !navigator.canShare({ files: [file] })) return false;
+            if (navigator.canShare && !navigator.canShare({ files: files })) return false;
             return true;
         } catch (e) {
             return false;
         }
     }
 
-    function sharePdfBlob(blob, filename) {
-        if (!blob) return Promise.reject(new Error('no_blob'));
-        var file = new File([blob], filename || '离职证明.pdf', { type: 'application/pdf' });
-        if (!canSharePdfFile(file)) {
+    function shareFiles(files, title) {
+        if (!canShareFiles(files)) {
             return Promise.reject(new Error('share_unsupported'));
         }
         return navigator.share({
-            files: [file],
-            title: filename || '离职证明'
+            files: files,
+            title: title || '离职证明'
         });
+    }
+
+    /** 安卓 WebView 对 PDF 文件分享支持差，优先分享预览 PNG；桌面仍用 PDF */
+    function sharePdfBlob(blob, filename) {
+        if (!blob && !lastPreviewBlob) return Promise.reject(new Error('no_blob'));
+        var preferImage = isAndroidLike() || isLikelyMobileAppShell();
+        var jobs = [];
+        if (preferImage && lastPreviewBlob) {
+            var pngName = String(filename || '离职证明.pdf').replace(/\.pdf$/i, '') + '.png';
+            jobs.push(function () {
+                var imgFile = new File([lastPreviewBlob], pngName, { type: 'image/png' });
+                return shareFiles([imgFile], pngName);
+            });
+        }
+        if (blob) {
+            jobs.push(function () {
+                var pdfFile = new File([blob], filename || '离职证明.pdf', { type: 'application/pdf' });
+                return shareFiles([pdfFile], filename || '离职证明');
+            });
+        }
+        if (!jobs.length) return Promise.reject(new Error('share_unsupported'));
+
+        function run(i) {
+            if (i >= jobs.length) return Promise.reject(new Error('share_unsupported'));
+            return jobs[i]().catch(function (err) {
+                if (err && err.name === 'AbortError') throw err;
+                return run(i + 1);
+            });
+        }
+        return run(0);
     }
 
     function triggerAnchorDownload(blob, filename) {
@@ -344,12 +408,53 @@
         }, 2000);
     }
 
-    function showPdfSavePanel(blob, filename) {
+    function showPdfSavePanel(blob, filename, previewBlob) {
         lastPdfBlob = blob;
+        lastPreviewBlob = previewBlob || null;
         lastPdfName = filename || '离职证明.pdf';
         revokeLastPdfUrl();
         lastPdfUrl = URL.createObjectURL(blob);
-        if (pdfFrame) pdfFrame.src = lastPdfUrl;
+        if (previewBlob) {
+            lastPreviewUrl = URL.createObjectURL(previewBlob);
+        }
+
+        var mobile = isLikelyMobileAppShell() || isAndroidLike();
+        if (pdfPreview) {
+            if (lastPreviewUrl) {
+                pdfPreview.src = lastPreviewUrl;
+                pdfPreview.hidden = false;
+            } else {
+                pdfPreview.removeAttribute('src');
+                pdfPreview.hidden = true;
+            }
+        }
+        if (pdfFrame) {
+            /* 安卓 WebView 里 iframe+blob PDF 基本空白，仅桌面用 iframe */
+            if (!mobile && lastPdfUrl) {
+                pdfFrame.src = lastPdfUrl;
+                pdfFrame.hidden = false;
+            } else {
+                pdfFrame.removeAttribute('src');
+                pdfFrame.hidden = true;
+            }
+        }
+        if (pdfPreviewFallback) {
+            pdfPreviewFallback.hidden = !!(lastPreviewUrl || (!mobile && lastPdfUrl));
+            if (!pdfPreviewFallback.hidden) {
+                pdfPreviewFallback.textContent = '预览暂不可用，请直接点「系统分享保存」或「浏览器下载 PDF」';
+            }
+        }
+        if (longPressTip) {
+            longPressTip.hidden = !lastPreviewUrl;
+        }
+        var tip = document.getElementById('lizhiPdfTip');
+        if (tip) {
+            tip.textContent = mobile
+                ? (lastPreviewUrl
+                    ? '请点「系统分享保存」把预览图存到相册/文件；也可长按上方图片保存。需要 PDF 文件时可用下方「浏览器下载 PDF」。'
+                    : '请点「系统分享保存」。若分享不可用，请改用「浏览器下载 PDF」。')
+                : '可在下方预览；电脑端可直接下载 PDF。';
+        }
         if (cardPdfSave) {
             cardPdfSave.hidden = false;
             try {
@@ -359,10 +464,18 @@
         setStatus(saveStatus, '');
     }
 
-    function deliverPdf(b64, filename) {
+    function deliverPdf(b64, filename, previewB64) {
         var name = filename || '离职证明.pdf';
         var blob = base64ToPdfBlob(b64);
-        showPdfSavePanel(blob, name);
+        var previewBlob = null;
+        if (previewB64) {
+            try {
+                previewBlob = base64ToBlob(previewB64, 'image/png');
+            } catch (ePrev) {
+                previewBlob = null;
+            }
+        }
+        showPdfSavePanel(blob, name, previewBlob);
 
         if (!isLikelyMobileAppShell()) {
             triggerAnchorDownload(blob, name);
@@ -372,7 +485,7 @@
 
         return sharePdfBlob(blob, name)
             .then(function () {
-                setStatus(genStatus, '已调起系统分享，请选择「存储到文件」或「保存到下载」');
+                setStatus(genStatus, '已调起系统分享，请选择保存到相册或文件');
                 setStatus(saveStatus, '分享面板已打开');
                 return 'shared';
             })
@@ -383,11 +496,18 @@
                     setStatus(genStatus, '已取消分享。可再点下方「系统分享保存」');
                     return 'aborted';
                 }
-                setStatus(genStatus, '请点下方「系统分享保存」，在面板中选择「存储到文件」');
+                setStatus(
+                    genStatus,
+                    lastPreviewBlob
+                        ? '请点「系统分享保存」，或长按上方预览图保存'
+                        : '请点下方「系统分享保存」；若仍失败请用「浏览器下载 PDF」'
+                );
                 setStatus(
                     saveStatus,
                     msg === 'share_unsupported'
-                        ? '当前环境不支持直接分享文件，请用「打开预览」后从系统菜单保存'
+                        ? (lastPreviewBlob
+                            ? '当前环境不支持系统分享文件，请长按预览图保存，或用「浏览器下载 PDF」'
+                            : '当前环境不支持系统分享，请用「浏览器下载 PDF」')
                         : '自动分享未成功，请手动点「系统分享保存」',
                     true
                 );
@@ -445,18 +565,27 @@
     });
 
     document.getElementById('btnLizhiOpenPdf').addEventListener('click', function () {
-        if (!lastPdfUrl) {
+        var url = lastPreviewUrl || lastPdfUrl;
+        if (!url) {
             setStatus(saveStatus, '请先生成 PDF', true);
             return;
         }
         var opened = null;
         try {
-            opened = window.open(lastPdfUrl, '_blank');
+            opened = window.open(url, '_blank');
         } catch (eOpen) {}
         if (!opened) {
-            setStatus(saveStatus, '已在上方预览；可用系统分享保存', true);
-            if (pdfFrame) {
-                try { pdfFrame.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {}
+            setStatus(
+                saveStatus,
+                lastPreviewUrl
+                    ? '请查看上方预览图；可长按保存或点「系统分享保存」'
+                    : '已在上方预览；可用系统分享保存',
+                true
+            );
+            if (pdfPreview && !pdfPreview.hidden) {
+                try { pdfPreview.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {}
+            } else if (pdfFrame) {
+                try { pdfFrame.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e3) {}
             }
             return;
         }
@@ -650,7 +779,11 @@
                         ? '演示水印版生成成功，正在调起保存…'
                         : '无演示水印版生成成功，正在调起保存…'
                 );
-                return deliverPdf(j.data.pdf_base64, j.data.filename || '离职证明.pdf');
+                return deliverPdf(
+                    j.data.pdf_base64,
+                    j.data.filename || '离职证明.pdf',
+                    j.data.preview_png_base64 || null
+                );
             })
             .catch(function () {
                 setStatus(genStatus, '网络错误', true);

@@ -11,11 +11,12 @@ var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
 
 const LIZHI_RENDER_SCRIPT = path.join(__dirname, '../../scripts/lizhi_render_pdf.py');
 
-function renderLizhiPdfBuffer(payload) {
+function renderLizhiPdfArtifacts(payload) {
   return new Promise(function (resolve, reject) {
     var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lizhi-'));
     var inJson = path.join(tmpDir, 'in.json');
     var outPdf = path.join(tmpDir, 'out.pdf');
+    var outPreview = path.join(tmpDir, 'out.preview.png');
     var cleaned = false;
     function cleanup() {
       if (cleaned) return;
@@ -59,13 +60,24 @@ function renderLizhiPdfBuffer(payload) {
         if (code !== 0 || !fs.existsSync(outPdf)) {
           throw new Error((err || 'pdf render failed').trim() + ' (code=' + code + ')');
         }
-        resolve(fs.readFileSync(outPdf));
+        var pdf = fs.readFileSync(outPdf);
+        var previewPng = null;
+        if (fs.existsSync(outPreview)) {
+          previewPng = fs.readFileSync(outPreview);
+        }
+        resolve({ pdf: pdf, previewPng: previewPng });
       } catch (e) {
         reject(e);
       } finally {
         cleanup();
       }
     });
+  });
+}
+
+function renderLizhiPdfBuffer(payload) {
+  return renderLizhiPdfArtifacts(payload).then(function (art) {
+    return art.pdf;
   });
 }
 
@@ -96,7 +108,8 @@ async function handleAdminLizhiCertGenerate(req, res) {
     if (!payload.position) {
       return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
-    var buf = await renderLizhiPdfBuffer(payload);
+    var art = await renderLizhiPdfArtifacts(payload);
+    var buf = art.pdf;
     var fname =
       '离职证明-' +
       payload.name.replace(/[\\/:*?"<>|]/g, '_') +
@@ -108,6 +121,7 @@ async function handleAdminLizhiCertGenerate(req, res) {
         filename: fname,
         mime: 'application/pdf',
         pdf_base64: buf.toString('base64'),
+        preview_png_base64: art.previewPng ? art.previewPng.toString('base64') : null,
         demo: true
       }
     });
@@ -467,5 +481,6 @@ function getHandlers() {
 
 module.exports = {
   getHandlers: getHandlers,
-  renderLizhiPdfBuffer: renderLizhiPdfBuffer
+  renderLizhiPdfBuffer: renderLizhiPdfBuffer,
+  renderLizhiPdfArtifacts: renderLizhiPdfArtifacts
 };

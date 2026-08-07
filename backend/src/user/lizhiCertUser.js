@@ -2,7 +2,7 @@
  * C 端 · 离职证明（¥50 终身解锁后无限次生成）
  */
 const { getPool } = require('../shared/db');
-const { renderLizhiPdfBuffer } = require('../admin/lizhiCert');
+const { renderLizhiPdfArtifacts } = require('../admin/lizhiCert');
 
 var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
 var LIZHI_CERT_AMOUNT = '50.00';
@@ -140,7 +140,8 @@ async function handleLizhiCertGenerate(req, res) {
     if (!payload.position) {
       return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
-    var buf = await renderLizhiPdfBuffer(payload);
+    var art = await renderLizhiPdfArtifacts(payload);
+    var buf = art.pdf;
     try {
       var pool = getPool();
       await pool.execute(
@@ -164,6 +165,7 @@ async function handleLizhiCertGenerate(req, res) {
         filename: fname,
         mime: 'application/pdf',
         pdf_base64: buf.toString('base64'),
+        preview_png_base64: art.previewPng ? art.previewPng.toString('base64') : null,
         note: LIZHI_MANDATORY_NOTE,
         demo: !unlocked,
         unlocked: unlocked
