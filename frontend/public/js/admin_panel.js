@@ -8357,6 +8357,18 @@
                 loadConversionKpis();
             });
         }
+        function bulkMsgAudienceLabel(audience) {
+            var labels = {
+                pending_activate_24h: '注册超 24h 未激活',
+                all_inactive: '全部未激活',
+                inactive_has_tax: '未激活且有个税记录',
+                inactive_no_tax: '未激活且无个税记录',
+                inactive_visited_purchase: '未激活且去过支付页',
+                inactive_purchase_no_pay: '未激活、去过支付页、未支付'
+            };
+            return labels[audience] || audience;
+        }
+
         function bulkMsgPayload(dryRun) {
             var skipEl = document.getElementById('bulkMsgSkipSent');
             return {
@@ -8430,9 +8442,7 @@
                         if (
                             !window.confirm(
                                 '确认向「' +
-                                    (payload.audience === 'all_inactive'
-                                        ? '全部未激活'
-                                        : '注册超 24h 未激活') +
+                                    bulkMsgAudienceLabel(payload.audience) +
                                     '」群发站内信？\n预计 ' +
                                     n +
                                     ' 人。'

@@ -126,6 +126,26 @@ html.app-ios-client body.page-mine {
     height: 22px;
     margin-bottom: 4px;
     line-height: 0;
+    position: relative;
+}
+
+.bottom-nav .nav-unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #ff3b30;
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    font-weight: 600;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .bottom-nav .nav-icon img {

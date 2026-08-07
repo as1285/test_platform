@@ -1955,6 +1955,7 @@
             localStorage.removeItem('wm_cache');
             localStorage.removeItem('wm_cache_time');
         } catch (e) {}
+        window.__purchasePageComplete = true;
         trackPurchase('track_alipay_payment_success');
         setAlipayStatus('付款成功，账号已开通，正在跳转…', 'ok');
         showToast('支付宝付款成功，账号已自动开通');
@@ -2464,6 +2465,7 @@
             })
             .then(function (x) {
                 if (x.status === 200 && x.body && x.body.code === 200) {
+                    window.__purchasePageComplete = true;
                     trackPurchase('track_purchase_activate_success');
                     var d = x.body.data || {};
                     if (d.token) localStorage.setItem('token', d.token);
@@ -3281,8 +3283,22 @@
             checkAlipayLatestOrder();
             completePendingBilibiliShare();
             loadBilibiliShareStatus();
+            return;
         }
+        maybeTrackPurchasePageLeave();
     });
+    window.addEventListener('pagehide', function () {
+        maybeTrackPurchasePageLeave();
+    });
+    function maybeTrackPurchasePageLeave() {
+        if (window.__purchasePageLeaveTracked) return;
+        if (window.__purchasePageComplete) return;
+        try {
+            if (localStorage.getItem('account_active') === '1') return;
+        } catch (eAct) {}
+        window.__purchasePageLeaveTracked = true;
+        trackPurchase('track_purchase_page_leave');
+    }
     window.addEventListener('pageshow', function () {
         checkAlipayLatestOrder();
         completePendingBilibiliShare();

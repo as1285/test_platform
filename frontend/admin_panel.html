@@ -1774,13 +1774,17 @@
                     </div>
                     <section>
                         <h2>未激活用户站内信群发</h2>
-                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>系统也会<strong>每 6 小时自动</strong>向「注册超 24h 未激活」且尚未收过自动推广信的用户发送一封（与下方模板一致，自动去重）。</p>
+                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>系统也会<strong>每 6 小时自动</strong>向「注册超 24h 未激活」且尚未收过自动推广信的用户发送一封（与下方模板一致，自动去重）。<br>另：<strong>填税后</strong>、<strong>支付页退出后</strong>会自动向未激活用户各发一封站内信（分别去重）。</p>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label for="bulkMsgAudience">发送对象</label>
                                 <select id="bulkMsgAudience" class="filter-select">
                                     <option value="pending_activate_24h" selected>注册超 24h 未激活</option>
                                     <option value="all_inactive">全部未激活</option>
+                                    <option value="inactive_has_tax">未激活且有个税记录</option>
+                                    <option value="inactive_no_tax">未激活且无个税记录</option>
+                                    <option value="inactive_visited_purchase">未激活且去过支付页</option>
+                                    <option value="inactive_purchase_no_pay">未激活、去过支付页、未支付</option>
                                 </select>
                             </div>
                             <div class="form-field">
@@ -2455,6 +2459,6 @@
     <script src="/js/admin/loader.js?v=20260806-admin-deadcode"></script>
     <script src="/js/admin/nav.js?v=20260806-admin-deadcode"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260807-price-survey"></script>
+    <script src="/js/admin_panel.js?v=20260807-price-survey-msg"></script>
 </body>
 </html>

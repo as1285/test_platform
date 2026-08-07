@@ -265,6 +265,15 @@
     );
   }
 
+  /**
+   * 一加 13（PJZ110 / CPH265x）：ColorOS 沉浸式 WebView，状态栏叠在页面上；
+   * 不可套用 OPPO 族「外置黑条 → inset 0」，否则白顶栏「返回」压到时间。
+   */
+  function isOnePlus13Client() {
+    var ua = navigator.userAgent || '';
+    return /PJZ110|CPH2653|CPH2649|CPH2655|(?:OnePlus|一加)\s*13(?![a-zA-Z0-9])/i.test(ua);
+  }
+
   /** vivo / iQOO / OriginOS：状态栏处理同 OPPO/小米外置条 */
   function isVivoOriginOsFamilyClient() {
     var ua = navigator.userAgent || '';
@@ -273,6 +282,9 @@
 
   /** 系统状态栏在 WebView 外：首页/顶栏勿再叠 statusbar 占位 */
   function isAndroidOuterStatusBarClient() {
+    if (isOnePlus13Client()) {
+      return false;
+    }
     return (
       isXiaomiHyperOsFamilyClient() ||
       isOppoColorOsFamilyClient() ||
@@ -770,6 +782,20 @@
     return /TAS-AN00|HUAWEITAS-AN00/i.test(navigator.userAgent || '');
   }
 
+  /**
+   * 华为 Mate 30 Pro 5G（LIO-AN00 等）：Cordova 默认 overlaysWebView，白顶栏页会与系统时间/电量重叠。
+   * 白顶栏页需 overlays=false + 黑状态栏，对齐「外置黑条」正常机型观感。
+   */
+  function isHuaweiLioAn00Client() {
+    var ua = navigator.userAgent || '';
+    if (!/Huawei|HUAWEI|HarmonyOS|HMSCore/i.test(ua) && !/LIO-/i.test(ua)) {
+      return false;
+    }
+    return /LIO-AN00|LIO-AL00|LIO-TL00|LIO-L29|LIO-N29|LIO-AN00m|LIO-AN00P|Mate\s*30\s*Pro/i.test(
+      ua
+    );
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -1191,6 +1217,59 @@
   }
 
   /**
+   * Cordova 沉浸壳 / 大刘海 Android：收入纳税明细等白顶栏页 overlays=false + 黑状态栏；
+   * 若 postMessage 未生效，由 CSS 用 --app-shell-statusbar-top 兜底下移（见 app-android-white-chrome-overlay-off）。
+   */
+  function applyImmersiveNotchWhitePageChrome() {
+    try {
+      var root = document.documentElement;
+      if (!root.classList.contains('app-android-client')) {
+        return;
+      }
+      var body = document.body;
+      var isWhitePage =
+        body &&
+        (body.classList.contains('page-shuiming') ||
+          body.classList.contains('page-shuiming-result') ||
+          body.classList.contains('page-xiangqing'));
+      if (!isWhitePage) {
+        try {
+          root.classList.remove('app-android-white-chrome-overlay-off');
+        } catch (eOff) {}
+        return;
+      }
+      var cordovaShell = root.classList.contains('app-cordova-shell');
+      var outerStatusBar = isAndroidOuterStatusBarClient();
+      var needsWhiteChrome =
+        cordovaShell ||
+        root.classList.contains('app-android-huawei-lio-an00') ||
+        root.classList.contains('app-android-oneplus-13') ||
+        (!outerStatusBar && isCordovaTaxAppShell());
+      if (!needsWhiteChrome) {
+        return;
+      }
+      upsertMeta('theme-color', '#000000');
+      upsertMeta('msapplication-navbutton-color', '#000000');
+      setStatusBarStyleMeta('black');
+      requestShellStatusBar({
+        style: 'light',
+        overlays: false,
+        color: '#000000',
+        paint_shell: true,
+        shell_bg: '#f5f6fa'
+      });
+      try {
+        root.classList.add('app-android-white-chrome-overlay-off');
+      } catch (eCls) {}
+    } catch (e) {}
+  }
+
+  /** @deprecated 使用 applyImmersiveNotchWhitePageChrome */
+  function applyHuaweiLioAn00WhitePageChrome() {
+    applyImmersiveNotchWhitePageChrome();
+  }
+
+  /**
    * 底栏位置锁：对齐参考站悬浮胶囊（默认/Web 16px；iOS 15px；Cordova 2410=32px）。
    * 用 html body … 高优先级覆盖页内硬编码，保证切 TAB 不跳动。
    */
@@ -1400,6 +1479,8 @@
       var cordovaHuaweiPura70 = cordovaShell && huaweiPura70Client;
       var huaweiClsAl00Client = androidClient && isHuaweiClsAl00Client();
       var huaweiTasAn00Client = androidClient && isHuaweiTasAn00Client();
+      var huaweiLioAn00Client = androidClient && isHuaweiLioAn00Client();
+      var onePlus13Client = androidClient && isOnePlus13Client();
       var tallAndroidStatusBar =
         androidClient &&
         !redmiK70Client &&
@@ -1528,6 +1609,10 @@
             ? '0px'
             : huaweiPura70Client
             ? '32px'
+            : huaweiLioAn00Client
+            ? '36px'
+            : onePlus13Client
+            ? '40px'
             : honorFoldableOuterBarClient
             ? '0px'
             : honorPtpAn00Client
@@ -1537,7 +1622,7 @@
               : androidOuterStatusBar ||
                   redmiK70Client ||
                   (xiaomiHyperOsFamily && !xiaomi14Client) ||
-                  oppoColorOsFamily ||
+                  (oppoColorOsFamily && !onePlus13Client) ||
                   vivoOriginOsFamily
                 ? '0px'
                 : annAn00Client
@@ -1677,6 +1762,12 @@
       if (huaweiTasAn00Client) {
         document.documentElement.classList.add('app-android-huawei-tas-an00');
       }
+      if (huaweiLioAn00Client) {
+        document.documentElement.classList.add('app-android-huawei-lio-an00');
+      }
+      if (onePlus13Client) {
+        document.documentElement.classList.add('app-android-oneplus-13');
+      }
       var style = document.createElement('style');
       var barFill =
         'body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:' +
@@ -1714,13 +1805,62 @@
           'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          /* 收入纳税明细：Android 系统状态栏多为独立黑条，勿再叠 statusbar 占位（否则导航上方白条） */
-          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
-          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
-          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          /* 收入纳税明细：外置黑条机型勿叠顶距；Cordova 沉浸壳用 shell 顶距兜底（压状态栏时） */
+          'html.app-android-client.app-top-safe-shell.app-android-oppo-family body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
+          'html.app-android-client.app-top-safe-shell.app-android-oppo-family body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-android-client.app-top-safe-shell.app-android-oppo-family body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-oppo-family body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-client.app-top-safe-shell.app-android-oppo-family body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
+          'html.app-android-client.app-top-safe-shell.app-android-oppo-family body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-vivo-family body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-mi-family body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-redmi-k70 body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top,48px) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;min-height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;padding:var(--app-shell-statusbar-top,48px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,48px) !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed{height:0 !important;margin:0 !important;padding:0 !important;overflow:visible !important;}' +
-          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
-          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;box-shadow:none !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
@@ -1938,6 +2078,9 @@
           /* Android：状态栏多为独立黑条，env/48px 会叠出大块留白（K70 至尊等） */
           'html.app-android-client.app-top-safe-shell body.page-shuiming > .header{padding-top:14px !important;padding-bottom:15px !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-shuiming > .content{padding-top:46px !important;}' +
+          /* 一加 13 首页：沉浸蓝顶栏仍须顶距（白顶栏页由 applyImmersiveNotchWhitePageChrome overlays=false 走系统黑条） */
+          'html.app-android-oneplus-13.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,40px)) !important;}' +
+          'html.app-android-oneplus-13.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(var(--shouye-fixed-top-h,52px) + var(--app-shell-statusbar-top,40px)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
@@ -2212,6 +2355,7 @@
   applyShouyePageChrome();
   applyIosStandaloneEntryChrome();
   applyIPhone16ProPageChrome();
+  applyHuaweiLioAn00WhitePageChrome();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       syncAppShellStatusbarTop();
@@ -2221,6 +2365,7 @@
       applyShouyePageChrome();
       applyIosStandaloneEntryChrome();
       applyIPhone16ProPageChrome();
+      applyHuaweiLioAn00WhitePageChrome();
     });
   } else {
     setTimeout(syncAppShellStatusbarTop, 0);
@@ -2231,6 +2376,13 @@
   window.addEventListener('resize', function () {
     setTimeout(syncAppShellStatusbarTop, 50);
   });
+  window.addEventListener('pageshow', function () {
+    setTimeout(function () {
+      syncAppShellStatusbarTop();
+      applyIPhone16ProPageChrome();
+      applyImmersiveNotchWhitePageChrome();
+    }, 0);
+  });
   /* Cordova StatusBar 插件常在 deviceready 后才可用，再刷一次蓝顶栏页 */
   function refreshImmersiveBluePageChrome() {
     syncAppShellStatusbarTop();
@@ -2239,6 +2391,8 @@
     applyMessagePageChrome();
     applyShouyePageChrome();
     applyIosStandaloneEntryChrome();
+    applyIPhone16ProPageChrome();
+    applyHuaweiLioAn00WhitePageChrome();
   }
   document.addEventListener('deviceready', refreshImmersiveBluePageChrome, false);
   try {
@@ -4688,6 +4842,18 @@
     var s = document.createElement('script');
     s.src = '/js/fast-nav.js?v=20260721d-bonus';
     s.setAttribute('data-fast-nav-js', '1');
+    s.async = true;
+    document.head.appendChild(s);
+  })();
+
+  (function injectMessageBadge() {
+    if (isPublicPage() && !getToken()) return;
+    if (currentPageName() === 'admin_panel.html') return;
+    if (!document.querySelector('.bottom-nav')) return;
+    if (document.querySelector('script[data-message-badge-js]')) return;
+    var s = document.createElement('script');
+    s.src = '/js/message-badge.js?v=20260807-msg-badge';
+    s.setAttribute('data-message-badge-js', '1');
     s.async = true;
     document.head.appendChild(s);
   })();

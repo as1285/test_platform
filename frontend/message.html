@@ -270,7 +270,7 @@
         }
         
         </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
+    <link rel="stylesheet" href="css/nav.css?v=20260807-msg-badge">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
 <body class="page-message">
@@ -460,6 +460,9 @@
                         }
                         renderMessageList();
                         bindMessageListClicks();
+                        if (typeof window.refreshMessageUnreadBadge === 'function') {
+                            window.refreshMessageUnreadBadge();
+                        }
                     } else {
                         allMessages = [];
                         document.getElementById('messageList').innerHTML =
@@ -493,6 +496,9 @@
                 .then(function (data) {
                     if (data.code === 200) {
                         loadMessages();
+                        if (typeof window.refreshMessageUnreadBadge === 'function') {
+                            window.refreshMessageUnreadBadge();
+                        }
                     }
                 })
                 .catch(function () {})

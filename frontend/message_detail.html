@@ -413,6 +413,9 @@
                             null,
                             parsed.link
                         );
+                        if (typeof window.refreshMessageUnreadBadge === 'function') {
+                            window.refreshMessageUnreadBadge();
+                        }
                         return;
                     }
                     renderDetail(
@@ -422,6 +425,9 @@
                         true,
                         buildWithholdingTitleHtml(msg)
                     );
+                    if (typeof window.refreshMessageUnreadBadge === 'function') {
+                        window.refreshMessageUnreadBadge();
+                    }
                 })
                 .catch(function () {
                     document.getElementById('detailRoot').innerHTML =

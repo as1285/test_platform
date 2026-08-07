@@ -41,6 +41,10 @@ const {
 } = require('./inviteReward');
 const { createPricingAb } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
+const {
+  computeUserLoginRisk,
+  userLoginRiskMatchSql
+} = require('../domain/userLoginRisk');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES = config.JWT_EXPIRES;
@@ -485,6 +489,25 @@ const MSG_AUTO_ACT24_MARKER = '@@auto_act24';
 const MSG_AUTO_ACT24_TITLE = '开通提醒：激活后去除水印';
 const MSG_AUTO_ACT24_BODY =
   '您好，检测到您的账号尚未激活。激活后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击下方「前往激活」即可开通。';
+/** 自动站内信：填税后未激活推广 */
+const MSG_AUTO_TAX_DONE_MARKER = '@@auto_tax_done';
+const MSG_AUTO_TAX_DONE_TITLE = '税务记录已生成，开通后可完整查看与导出';
+const MSG_AUTO_TAX_DONE_BODY =
+  '您已成功生成税务记录。开通后可去除水印，完整查看明细并导出纳税证明。';
+/** 自动站内信：支付页退出后未开通 */
+const MSG_AUTO_PURCHASE_EXIT_MARKER = '@@auto_purchase_exit';
+const MSG_AUTO_PURCHASE_EXIT_TITLE = '开通方案仍在等您';
+const MSG_AUTO_PURCHASE_EXIT_BODY =
+  '刚才您查看过开通页面。分享 B 站动态可享优惠，开通后即可完整使用导出等功能。';
+/** 后台群发受众 */
+const BULK_MSG_AUDIENCE_SET = {
+  pending_activate_24h: true,
+  all_inactive: true,
+  inactive_has_tax: true,
+  inactive_no_tax: true,
+  inactive_visited_purchase: true,
+  inactive_purchase_no_pay: true
+};
 const ACTIVATION_INBOX_PROMO_ENABLED =
   String(process.env.ACTIVATION_INBOX_PROMO_ENABLED || '1').trim() !== '0';
 const ACTIVATION_INBOX_PROMO_INTERVAL_MS = parseInt(
@@ -3978,6 +4001,7 @@ async function saveRecord(userId, record) {
       out.pendingChangeLog.after
     );
   }
+  maybeQueueAutoTaxDoneMessage(userId);
   return { id: out.id };
 }
 
@@ -4264,7 +4288,7 @@ async function batchSaveRecords(userId, records) {
       var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
       invalidateTaxRecordsListCache(userId);
       invalidateUserInfoApiCache(userId);
-      return {
+      var batchResult = {
         saved: out.saved.length,
         ids: out.saved.map(function (x) {
           return x.id;
@@ -4272,6 +4296,8 @@ async function batchSaveRecords(userId, records) {
         reassigned_ids: out.reassigned,
         auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
       };
+      maybeQueueAutoTaxDoneMessage(userId);
+      return batchResult;
     } catch (e) {
       try {
         await conn.rollback();
@@ -4320,7 +4346,7 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
       var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
       invalidateTaxRecordsListCache(userId);
       invalidateUserInfoApiCache(userId);
-      return {
+      var replaceResult = {
         deleted: deleted,
         saved: out.saved.length,
         ids: out.saved.map(function (x) {
@@ -4329,6 +4355,8 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
         reassigned_ids: out.reassigned,
         auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
       };
+      maybeQueueAutoTaxDoneMessage(userId);
+      return replaceResult;
     } catch (e) {
       try {
         await conn.rollback();
@@ -4976,12 +5004,13 @@ function validatePassword(p) {
 }
 
 /** 合并：user risk info */
-function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword) {
-  var info = computeUserLoginRisk(ipDistinctCount, deviceCount);
+function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword, registerIpAccountCount) {
+  var info = computeUserLoginRisk(ipDistinctCount, deviceCount, registerIpAccountCount);
   if (passwordLooksLikeSqlProbe(plainPassword)) {
     info = {
       distinct_ip_count: info.distinct_ip_count,
       device_count: info.device_count,
+      register_ip_account_count: info.register_ip_account_count,
       risk: true,
       risk_messages: info.risk_messages.concat(['可疑密码(SQL探测)'])
     };
@@ -8323,6 +8352,13 @@ async function handleUserPost(req, res) {
       }
       maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
+      var trackActUser = String(action || '').trim().toLowerCase();
+      if (
+        userId &&
+        (trackActUser === 'track_purchase_page_leave' || trackActUser === 'track_purchase_back_click')
+      ) {
+        queueAutoPurchaseExitMessage(userId);
+      }
       return res.json({ code: 200, data: { ok: true } });
     }
 
@@ -10822,6 +10858,7 @@ async function handleMessageGet(req, res) {
           String(detailId),
           String(userId)
         ]);
+        invalidateMessageListCache(String(userId));
         var r = rows[0];
         return res.json({
           code: 200,
@@ -10843,8 +10880,25 @@ async function handleMessageGet(req, res) {
       return res.status(500).json({ code: 500, msg: String(e.message) });
     }
   }
+  if (action === 'unread_count') {
+    try {
+      const conn = await pool.getConnection();
+      const [rows] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM messages WHERE user_id = ? AND is_read = 0',
+        [String(userId)]
+      );
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { unread: Number(rows[0] && rows[0].c) || 0 }
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, msg: String(e.message) });
+    }
+  }
   if (action !== 'list') {
-    return res.status(400).json({ code: 400, msg: 'action=list or detail required' });
+    return res.status(400).json({ code: 400, msg: 'action=list, detail or unread_count required' });
   }
   try {
     var uidMsg = String(userId);
@@ -12663,10 +12717,6 @@ function analyticsPeriodLoginDatetimeFilter(period) {
   };
 }
 
-/** 注册用户列表登录风控：不同登录 IP 数、关联设备数 */
-var USER_LOGIN_RISK_IP_THRESHOLD = 2;
-var USER_LOGIN_RISK_DEVICE_THRESHOLD = 3;
-
 /** 用户辅助：login inactive since sql */
 function userLoginInactiveSinceSql(days, usernameExpr) {
   var u = usernameExpr || 'users.username';
@@ -12683,24 +12733,17 @@ function userLoginInactiveSinceSql(days, usernameExpr) {
   );
 }
 
-/** 用户辅助：login risk ip union subquery */
-function userLoginRiskIpUnionSubquery(usernameExpr) {
-  var u = usernameExpr || 'users.username';
-  return (
-    '(SELECT TRIM(ip) AS ip_val FROM user_login_events WHERE username = ' +
-    u +
-    " AND ip IS NOT NULL AND TRIM(ip) <> '' AND (ok = 1 OR reason LIKE 'register_%') UNION ALL SELECT TRIM(ip_last) AS ip_val FROM user_devices WHERE username = " +
-    u +
-    " AND ip_last IS NOT NULL AND TRIM(ip_last) <> '')"
-  );
-}
-
 /** 构建：user login risk maps */
 async function buildUserLoginRiskMaps(conn, usernames) {
   var ipDistinct = {};
   var deviceCnt = {};
+  var registerIpAccountCountByUser = {};
   if (!conn || !usernames || !usernames.length) {
-    return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
+    return {
+      ipDistinct: ipDistinct,
+      deviceCnt: deviceCnt,
+      registerIpAccountCountByUser: registerIpAccountCountByUser
+    };
   }
   var uniq = [];
   var seen = {};
@@ -12711,7 +12754,11 @@ async function buildUserLoginRiskMaps(conn, usernames) {
     uniq.push(u);
   }
   if (!uniq.length) {
-    return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
+    return {
+      ipDistinct: ipDistinct,
+      deviceCnt: deviceCnt,
+      registerIpAccountCountByUser: registerIpAccountCountByUser
+    };
   }
   var ph = uniq.map(function () {
     return '?';
@@ -12738,42 +12785,56 @@ async function buildUserLoginRiskMaps(conn, usernames) {
   devRows.forEach(function (r) {
     deviceCnt[String(r.username)] = Number(r.cnt) || 0;
   });
-  return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
-}
 
-/** compute user login risk */
-function computeUserLoginRisk(ipDistinctCount, deviceCount) {
-  var ipCnt = Number(ipDistinctCount) || 0;
-  var devCnt = Number(deviceCount) || 0;
-  var msgs = [];
-  if (ipCnt >= USER_LOGIN_RISK_IP_THRESHOLD) {
-    msgs.push('不同IP' + ipCnt + '个');
-  }
-  if (devCnt >= USER_LOGIN_RISK_DEVICE_THRESHOLD) {
-    msgs.push('设备' + devCnt + '台');
-  }
-  return {
-    distinct_ip_count: ipCnt,
-    device_count: devCnt,
-    risk: msgs.length > 0,
-    risk_messages: msgs
-  };
-}
-
-/** 用户辅助：login risk match sql */
-function userLoginRiskMatchSql(usernameExpr) {
-  var u = usernameExpr || 'users.username';
-  return (
-    '((SELECT COUNT(DISTINCT ip_val) FROM ' +
-    userLoginRiskIpUnionSubquery(u) +
-    ' ip_union) >= ' +
-    USER_LOGIN_RISK_IP_THRESHOLD +
-    ' OR (SELECT COUNT(*) FROM user_devices ud WHERE ud.username = ' +
-    u +
-    ') >= ' +
-    USER_LOGIN_RISK_DEVICE_THRESHOLD +
-    ')'
+  var regIpByUser = {};
+  var [regIpRows] = await conn.execute(
+    'SELECT username, TRIM(ip) AS reg_ip FROM user_login_events WHERE username IN (' +
+      ph +
+      ") AND ip IS NOT NULL AND TRIM(ip) <> '' AND (reason = 'register_ok' OR reason LIKE 'register_%') ORDER BY username, (reason = 'register_ok') DESC, created_at ASC",
+    uniq
   );
+  (regIpRows || []).forEach(function (r) {
+    var un = String(r.username || '');
+    if (!un || regIpByUser[un]) return;
+    regIpByUser[un] = String(r.reg_ip || '').trim();
+  });
+
+  var ipsToLookup = [];
+  var seenIp = {};
+  for (var j = 0; j < uniq.length; j++) {
+    var regIp = regIpByUser[uniq[j]];
+    if (regIp && !seenIp[regIp]) {
+      seenIp[regIp] = 1;
+      ipsToLookup.push(regIp);
+    }
+  }
+  var regIpAccountCount = {};
+  if (ipsToLookup.length) {
+    var ipPh = ipsToLookup
+      .map(function () {
+        return '?';
+      })
+      .join(',');
+    var [ipCountRows] = await conn.execute(
+      "SELECT TRIM(ip) AS reg_ip, COUNT(DISTINCT username) AS cnt FROM user_login_events WHERE reason = 'register_ok' AND ip IS NOT NULL AND TRIM(ip) <> '' AND TRIM(ip) IN (" +
+        ipPh +
+        ') GROUP BY TRIM(ip)',
+      ipsToLookup
+    );
+    (ipCountRows || []).forEach(function (r) {
+      regIpAccountCount[String(r.reg_ip || '').trim()] = Number(r.cnt) || 0;
+    });
+  }
+  uniq.forEach(function (uname) {
+    var ipKey = regIpByUser[uname];
+    registerIpAccountCountByUser[uname] = ipKey ? regIpAccountCount[ipKey] || 0 : 0;
+  });
+
+  return {
+    ipDistinct: ipDistinct,
+    deviceCnt: deviceCnt,
+    registerIpAccountCountByUser: registerIpAccountCountByUser
+  };
 }
 
 /** 用户辅助：activation stats eligible sql */
@@ -14730,6 +14791,166 @@ async function saveActivationNudgeFromAdmin(bodyObj) {
   return merged;
 }
 
+/** 写入单用户自动站内信（按 marker 去重，仅未激活非游客） */
+async function insertAutoInAppMessageIfNew(userId, opts) {
+  opts = opts || {};
+  if (!pool || userId == null || String(userId).trim() === '') {
+    return { sent: false };
+  }
+  var uid = String(userId).trim();
+  if (uid.indexOf('__guest_') === 0) {
+    return { sent: false };
+  }
+  var marker = opts.marker != null ? String(opts.marker).trim() : '';
+  if (!marker) {
+    return { sent: false };
+  }
+  var title = opts.title != null ? String(opts.title).trim() : '';
+  var body = opts.body != null ? String(opts.body).trim() : '';
+  if (!title || !body) {
+    return { sent: false };
+  }
+  if (title.length > 120) title = title.substring(0, 120);
+  const conn = await pool.getConnection();
+  try {
+    const [userRows] = await conn.execute(
+      'SELECT account_active, activation_kind, active_until, user_type FROM users WHERE username = ? LIMIT 1',
+      [uid]
+    );
+    if (!userRows.length) {
+      return { sent: false };
+    }
+    var row = userRows[0];
+    if (rowUserTypeIsGuest(row)) {
+      return { sent: false };
+    }
+    if (isUserEffectivelyActive(row)) {
+      return { sent: false };
+    }
+    const [exists] = await conn.execute(
+      'SELECT 1 FROM messages WHERE user_id = ? AND company_name = ? AND content LIKE ? LIMIT 1',
+      [uid, MSG_COMPANY_SYSTEM_NOTICE, '%' + marker + '%']
+    );
+    if (exists.length) {
+      return { sent: false, duplicate: true };
+    }
+    var linkUrl = sanitizeInAppMessageLink(opts.linkUrl || 'purchase.html');
+    var fullContent = buildOpsMessageContent(body, linkUrl);
+    if (fullContent.indexOf(marker) < 0) {
+      fullContent = fullContent + '\n' + marker;
+    }
+    var idPrefix = opts.idPrefix != null ? String(opts.idPrefix) : 'auto';
+    var mid = 'msg_' + idPrefix + '_' + Date.now().toString(36);
+    var msgDate = new Date().toISOString().slice(0, 10);
+    await conn.execute(
+      'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)',
+      [mid, uid, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate]
+    );
+    invalidateMessageListCache(uid);
+    return { sent: true, id: mid };
+  } catch (e) {
+    console.error('insertAutoInAppMessageIfNew', e);
+    return { sent: false, error: String(e.message) };
+  } finally {
+    conn.release();
+  }
+}
+
+function queueAutoTaxDoneMessage(userId) {
+  insertAutoInAppMessageIfNew(userId, {
+    marker: MSG_AUTO_TAX_DONE_MARKER,
+    title: MSG_AUTO_TAX_DONE_TITLE,
+    body: MSG_AUTO_TAX_DONE_BODY,
+    linkUrl: 'purchase.html?from=msg_tax_done',
+    idPrefix: 'auto_tax'
+  })
+    .then(function (r) {
+      if (r && r.sent) {
+        console.log('[auto-msg-tax-done] sent user=' + userId);
+      }
+    })
+    .catch(function (e) {
+      console.error('[auto-msg-tax-done] failed', e);
+    });
+}
+
+function queueAutoPurchaseExitMessage(userId) {
+  insertAutoInAppMessageIfNew(userId, {
+    marker: MSG_AUTO_PURCHASE_EXIT_MARKER,
+    title: MSG_AUTO_PURCHASE_EXIT_TITLE,
+    body: MSG_AUTO_PURCHASE_EXIT_BODY,
+    linkUrl: 'purchase.html?from=msg_purchase_exit',
+    idPrefix: 'auto_purchase'
+  })
+    .then(function (r) {
+      if (r && r.sent) {
+        console.log('[auto-msg-purchase-exit] sent user=' + userId);
+      }
+    })
+    .catch(function (e) {
+      console.error('[auto-msg-purchase-exit] failed', e);
+    });
+}
+
+/** 有个税记录后尝试发送自动站内信（异步，不阻塞主流程） */
+function maybeQueueAutoTaxDoneMessage(userId) {
+  if (!pool || userId == null || String(userId).trim() === '') {
+    return;
+  }
+  var uid = String(userId).trim();
+  pool
+    .execute('SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND deleted_at IS NULL', [uid])
+    .then(function (result) {
+      var rows = result && result[0];
+      var c = Number(rows && rows[0] && rows[0].c) || 0;
+      if (c < 1) return;
+      queueAutoTaxDoneMessage(uid);
+    })
+    .catch(function (e) {
+      console.error('maybeQueueAutoTaxDoneMessage', e);
+    });
+}
+
+/** 群发受众 SQL 条件 */
+function appendBulkMsgAudienceFilters(audience, where, params) {
+  where.push('(u.account_active IS NULL OR u.account_active = 0)');
+  where.push(nonGuestUsernameSql('u.username'));
+  if (audience === 'pending_activate_24h') {
+    where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
+  } else if (audience === 'inactive_has_tax') {
+    where.push(
+      'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = u.username AND tr.deleted_at IS NULL)'
+    );
+  } else if (audience === 'inactive_no_tax') {
+    where.push(
+      'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = u.username AND tr.deleted_at IS NULL)'
+    );
+  } else if (audience === 'inactive_visited_purchase') {
+    where.push(
+      "EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_%'))"
+    );
+  } else if (audience === 'inactive_purchase_no_pay') {
+    where.push(
+      "EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND e.route_key LIKE '%track_purchase_page_view%')"
+    );
+    where.push(
+      "NOT EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND (e.route_key LIKE '%track_alipay_payment_success%' OR e.route_key LIKE '%track_purchase_activate_success%'))"
+    );
+  }
+}
+
+function bulkMsgAudienceLabel(audience) {
+  var labels = {
+    pending_activate_24h: '注册超 24h 未激活',
+    all_inactive: '全部未激活',
+    inactive_has_tax: '未激活且有个税记录',
+    inactive_no_tax: '未激活且无个税记录',
+    inactive_visited_purchase: '未激活且去过支付页',
+    inactive_purchase_no_pay: '未激活、去过支付页、未支付成功'
+  };
+  return labels[audience] || audience;
+}
+
 /**
  * 未激活用户站内信群发（管理端 / 定时任务共用）
  * opts: { audience, title, content, linkUrl, dryRun, skipAlreadySent, admin, idPrefix }
@@ -14737,16 +14958,28 @@ async function saveActivationNudgeFromAdmin(bodyObj) {
 async function sendInactiveUserMessages(opts) {
   opts = opts || {};
   var audience = opts.audience != null ? String(opts.audience).trim() : 'pending_activate_24h';
-  if (audience !== 'pending_activate_24h' && audience !== 'all_inactive') {
-    throw new Error('audience 须为 pending_activate_24h 或 all_inactive');
+  if (!BULK_MSG_AUDIENCE_SET[audience]) {
+    var audErr = new Error(
+      'audience 须为 pending_activate_24h、all_inactive、inactive_has_tax、inactive_no_tax、inactive_visited_purchase 或 inactive_purchase_no_pay'
+    );
+    audErr.code = 400;
+    throw audErr;
   }
   var title = opts.title != null ? String(opts.title).trim() : '';
   var content = opts.content != null ? String(opts.content).trim() : '';
   var dryRun = opts.dryRun === true;
   var skipAlreadySent = opts.skipAlreadySent === true;
   if (!dryRun) {
-    if (!title) throw new Error('请填写标题');
-    if (!content) throw new Error('请填写正文');
+    if (!title) {
+      var titleErr = new Error('请填写标题');
+      titleErr.code = 400;
+      throw titleErr;
+    }
+    if (!content) {
+      var contentErr = new Error('请填写正文');
+      contentErr.code = 400;
+      throw contentErr;
+    }
   }
   if (title.length > 120) title = title.substring(0, 120);
   var linkUrl = sanitizeInAppMessageLink(opts.linkUrl || 'purchase.html');
@@ -14758,14 +14991,9 @@ async function sendInactiveUserMessages(opts) {
     }
   }
 
-  var where = [
-    '(u.account_active IS NULL OR u.account_active = 0)',
-    nonGuestUsernameSql('u.username')
-  ];
+  var where = [];
   var params = [];
-  if (audience === 'pending_activate_24h') {
-    where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
-  }
+  appendBulkMsgAudienceFilters(audience, where, params);
   if (skipAlreadySent) {
     where.push(
       'NOT EXISTS (SELECT 1 FROM messages m WHERE m.user_id = u.username AND m.company_name = ? AND m.content LIKE ?)'
@@ -15682,7 +15910,8 @@ async function handleAdminUsers(req, res) {
       var riskInfo = mergeUserRiskInfo(
         riskMaps.ipDistinct[uname] || 0,
         riskMaps.deviceCnt[uname] || 0,
-        plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password)
+        plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password),
+        riskMaps.registerIpAccountCountByUser[uname] || 0
       );
       var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       var salesCh =
@@ -15721,6 +15950,7 @@ async function handleAdminUsers(req, res) {
         })(),
         distinct_ip_count: riskInfo.distinct_ip_count,
         device_count: riskInfo.device_count,
+        register_ip_account_count: riskInfo.register_ip_account_count,
         risk: riskInfo.risk,
         risk_messages: riskInfo.risk_messages,
         tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date),
@@ -19395,7 +19625,8 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_online_chat_click',
   'track_qq_group_click',
   'track_qq_add_click',
-  'track_purchase_back_click'
+  'track_purchase_back_click',
+  'track_purchase_page_leave'
 ];
 
 var PURCHASE_PAGE_TRACK_EVENT_KEY_SET = {};
@@ -19454,7 +19685,8 @@ function purchasePageTrackEventLabel(eventKey) {
     track_online_chat_click: '在线客服',
     track_qq_group_click: '加入QQ群',
     track_qq_add_click: '添加QQ号',
-    track_purchase_back_click: '购买页返回'
+    track_purchase_back_click: '购买页返回',
+    track_purchase_page_leave: '购买页离开'
   };
   return labels[eventKey] || eventKey;
 }
