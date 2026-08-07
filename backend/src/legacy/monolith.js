@@ -6600,6 +6600,24 @@ async function handleAlipayNotify(req, res) {
       return res.status(400).type('text/plain').send('failure');
     }
 
+    var orderStatus = String(order.status || '');
+    /* 已支付订单全额退款：TRADE_CLOSED，或带退款金额/退款时间的通知 */
+    if (
+      orderStatus === 'paid' &&
+      (tradeStatus === 'TRADE_CLOSED' || isAlipayFullRefundNotify(body, expectedAmount))
+    ) {
+      await markAlipayOrderRefunded(conn, order, {
+        tradeNo: tradeNo,
+        tradeStatus: tradeStatus || 'TRADE_CLOSED',
+        source: 'notify',
+        by: 'alipay_refund'
+      });
+      return res.type('text/plain').send('success');
+    }
+    if (orderStatus === 'refunded') {
+      return res.type('text/plain').send('success');
+    }
+
     if (tradeStatus === 'TRADE_CLOSED') {
       await conn.beginTransaction();
       try {
