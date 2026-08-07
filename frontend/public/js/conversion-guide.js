@@ -224,21 +224,21 @@
     );
   }
 
-  function goActivate() {
+  function goActivate(from) {
     try {
       if (localStorage.getItem('landing_guest_v1') === '1') {
         var taxN = taxRecordCount();
         track('track_landing_guest_activate_download', {
           page: currentPage(),
           landing_variant: 'c',
-          source: 'conversion_guide',
+          source: from || 'conversion_guide',
           tax_count: taxN
         });
         if (typeof window.trackPublicAction === 'function') {
           window.trackPublicAction('track_landing_guest_activate_download', {
             page: currentPage(),
             landing_variant: 'c',
-            source: 'conversion_guide',
+            source: from || 'conversion_guide',
             tax_count: taxN
           });
         }
@@ -254,7 +254,8 @@
         return;
       }
     } catch (e) {}
-    window.location.href = 'purchase.html';
+    var src = String(from || '').trim() || currentPage().replace(/\.html$/, '') || 'app';
+    window.location.href = 'purchase.html?from=' + encodeURIComponent(src);
   }
 
   function ensureTaxEditForFill() {
@@ -459,6 +460,17 @@
       '.cg-act-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:8px;font-size:16px;font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer}' +
       '.cg-act-nudge-btn.primary{background:#1e6fff;color:#fff}' +
       '.cg-act-nudge-btn.secondary{background:#f5f6fa;color:#666}' +
+      '.cg-pay-gate-root{position:fixed;inset:0;z-index:10300;display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
+      '.cg-pay-gate-mask{position:absolute;inset:0;background:rgba(15,23,42,.45)}' +
+      '.cg-pay-gate-panel{position:relative;z-index:1;width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(15,23,42,.12);box-sizing:border-box}' +
+      '.cg-pay-gate-title{margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a}' +
+      '.cg-pay-gate-body{margin:0 0 16px;font-size:14px;line-height:1.55;color:#475569}' +
+      '.cg-pay-gate-actions{display:flex;flex-direction:column;gap:8px}' +
+      '.cg-pay-gate-btn{display:block;width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}' +
+      '.cg-pay-gate-btn.primary{background:#1e6fff;color:#fff}' +
+      '.cg-pay-gate-btn.secondary{background:#eff6ff;color:#1d4ed8}' +
+      '.cg-pay-gate-btn.ghost{background:#f1f5f9;color:#64748b;font-weight:500}' +
+      '.cg-wm-pay-chip{position:fixed;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:1000001;height:36px;padding:0 14px;border:none;border-radius:999px;background:rgba(30,111,255,.95);color:#fff;font-size:13px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(30,111,255,.35);cursor:pointer;-webkit-tap-highlight-color:transparent}' +
       '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
       'body.page-shuiming > .content > #cg-shuiming-hint{margin:10px 16px 0;}' +
       '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
@@ -730,6 +742,20 @@
   }
 
   function toggleScreenshotMode() {
+    if (!isScreenshotModeOn() && !isAccountActive() && !isLandingGuest()) {
+      openPayGateModal({
+        feature: '截图',
+        from: 'gate_screenshot',
+        title: '无水印截图需开通',
+        message: '开通后页面不再叠加未激活水印，截图更干净。也可先进入截图模式（水印仍在）。',
+        allowContinue: true,
+        continueLabel: '先进入截图模式',
+        onContinue: function () {
+          setScreenshotMode(true);
+        }
+      });
+      return;
+    }
     setScreenshotMode(!isScreenshotModeOn());
   }
 
@@ -870,34 +896,134 @@
   }
 
   function showGateAlert(title, message, primaryLabel, primaryFn) {
+    openPayGateModal({
+      title: title || '提示',
+      message: message || '',
+      primaryLabel: primaryLabel || '确定',
+      onPrimary: primaryFn,
+      allowContinue: false
+    });
+  }
+
+  /**
+   * 未开通能力轻量卡点：主按钮去支付，可选「先看看」继续原操作。
+   * opts: { feature, from, title, message, allowContinue, continueLabel, onContinue, onPrimary }
+   */
+  function openPayGateModal(opts) {
+    opts = opts || {};
     ensureGateStyles();
-    var msg = (title ? title + '\n\n' : '') + (message || '');
-    if (primaryFn && window.confirm(msg + '\n\n点击「确定」' + (primaryLabel || '继续'))) {
-      primaryFn();
+    var existing = document.getElementById('cg-pay-gate-root');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    var feature = String(opts.feature || '').trim();
+    var from = String(opts.from || '').trim() || 'gate_' + (feature || currentPage().replace(/\.html$/, '') || 'feature');
+    var title = opts.title || (feature ? '「' + feature + '」需开通后使用' : '开通后可使用完整功能');
+    var message =
+      opts.message ||
+      (feature
+        ? '当前账号尚未开通。开通后可去水印，并完整使用「' + feature + '」等能力。'
+        : '当前账号尚未开通。开通后可去水印、导出证明并使用完整功能。');
+    var allowContinue = opts.allowContinue === true;
+    var primaryLabel = opts.primaryLabel || '去开通';
+    var continueLabel = opts.continueLabel || '先看看';
+
+    track('track_conversion_gate_activate', {
+      page: currentPage(),
+      feature: feature || '',
+      from: from
+    });
+
+    var root = document.createElement('div');
+    root.id = 'cg-pay-gate-root';
+    root.className = 'cg-pay-gate-root';
+    root.innerHTML =
+      '<div class="cg-pay-gate-mask" data-act="mask"></div>' +
+      '<div class="cg-pay-gate-panel" role="dialog" aria-modal="true" aria-labelledby="cgPayGateTitle">' +
+      '<h3 id="cgPayGateTitle" class="cg-pay-gate-title"></h3>' +
+      '<p class="cg-pay-gate-body"></p>' +
+      '<div class="cg-pay-gate-actions">' +
+      '<button type="button" class="cg-pay-gate-btn primary" data-act="primary"></button>' +
+      (allowContinue
+        ? '<button type="button" class="cg-pay-gate-btn secondary" data-act="continue"></button>'
+        : '') +
+      '<button type="button" class="cg-pay-gate-btn ghost" data-act="close">取消</button>' +
+      '</div></div>';
+    root.querySelector('.cg-pay-gate-title').textContent = title;
+    root.querySelector('.cg-pay-gate-body').textContent = message;
+    root.querySelector('[data-act="primary"]').textContent = primaryLabel;
+    if (allowContinue) {
+      root.querySelector('[data-act="continue"]').textContent = continueLabel;
     }
+
+    function close() {
+      if (root.parentNode) root.parentNode.removeChild(root);
+    }
+
+    root.addEventListener('click', function (ev) {
+      var t = ev.target.closest('[data-act]');
+      if (!t) return;
+      var act = t.getAttribute('data-act');
+      if (act === 'mask' || act === 'close') {
+        track('track_conversion_gate_dismiss', { page: currentPage(), feature: feature, from: from });
+        close();
+        return;
+      }
+      if (act === 'primary') {
+        track('track_conversion_gate_cta', { page: currentPage(), feature: feature, from: from });
+        close();
+        if (typeof opts.onPrimary === 'function') {
+          opts.onPrimary();
+        } else {
+          goActivate(from);
+        }
+        return;
+      }
+      if (act === 'continue') {
+        track('track_conversion_gate_continue', { page: currentPage(), feature: feature, from: from });
+        close();
+        if (typeof opts.onContinue === 'function') opts.onContinue();
+      }
+    });
+
+    document.body.appendChild(root);
   }
 
   function gateActivation(featureName) {
-    track('track_conversion_gate_activate', { page: currentPage(), feature: featureName || '' });
+    if (isAccountActive()) return true;
     if (isLandingGuest()) {
-      showGateAlert(
-        '下载 App 后可用',
-        '游客模式可先体验基础功能。下载 App 并注册后，可将已填写资料同步保存' +
+      openPayGateModal({
+        feature: featureName || '',
+        from: 'gate_guest_' + String(featureName || 'feature').replace(/\s+/g, '_'),
+        title: '下载 App 后可用',
+        message:
+          '游客模式可先体验基础功能。下载 App 并注册后，可将已填写资料同步保存' +
           (featureName ? '，再使用「' + featureName + '」' : '') +
           '。',
-        '去下载',
-        goActivate
-      );
+        primaryLabel: '去下载',
+        allowContinue: false,
+        onPrimary: function () {
+          goActivate('gate_guest');
+        }
+      });
       return false;
     }
-    showGateAlert(
-      '需要激活账号',
-      '该功能需先输入激活码开通。您可先浏览首页与「我的」，激活后即可' +
-        (featureName ? '使用「' + featureName + '」' : '填写个税演示数据') +
-        '。',
-      '去激活',
-      goActivate
-    );
+    openPayGateModal({
+      feature: featureName || '',
+      from: 'gate_' + String(featureName || 'feature').replace(/\s+/g, '_'),
+      allowContinue: false
+    });
+    return false;
+  }
+
+  /** 未开通时拦截并弹层；已开通返回 true。allowContinue 时提供「先看看」。 */
+  function requirePayOrContinue(featureName, from, onContinue) {
+    if (isAccountActive()) return true;
+    openPayGateModal({
+      feature: featureName || '',
+      from: from || 'gate_' + String(featureName || 'feature').replace(/\s+/g, '_'),
+      allowContinue: typeof onContinue === 'function',
+      onContinue: onContinue
+    });
     return false;
   }
 
@@ -1127,18 +1253,21 @@
     if (document.getElementById('cg-value-overlay')) return;
     ensureGateStyles();
     var guest = isLandingGuest();
+    var inactive = !guest && !isAccountActive();
     var ov = document.createElement('div');
     ov.id = 'cg-value-overlay';
     ov.className = 'cg-value-overlay';
     ov.innerHTML =
       '<div class="cg-value-panel" role="dialog" aria-labelledby="cgValueTitle">' +
       '<h3 id="cgValueTitle">' +
-      (guest ? '填写完成，下载可带走资料' : '演示数据已生成') +
+      (guest ? '填写完成，下载可带走资料' : inactive ? '记录已生成' : '演示数据已生成') +
       '</h3>' +
       '<p>' +
       (guest
         ? '已生成个税演示数据。建议立即下载 App 并注册，同步当前填写内容，避免清缓存后丢失。'
-        : '可立即查看收入纳税明细，或分享给好友体验。') +
+        : inactive
+          ? '开通后可去水印、完整查看详情，并导出纳税证明。也可先预览收入明细。'
+          : '可立即查看收入纳税明细，或分享给好友体验。') +
       '</p>' +
       '<p style="font-size:12px;color:#666;margin-bottom:10px;">' +
       EDIT_HINT +
@@ -1149,10 +1278,17 @@
       (guest
         ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDownload">下载 App 保存资料</button>'
         : '') +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueShareFriend">分享给好友</button>' +
+      (inactive
+        ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoPay">去开通完整功能</button>'
+        : '') +
+      (guest || inactive
+        ? ''
+        : '<button type="button" class="cg-btn cg-btn-primary" id="cgValueShareFriend">分享给好友</button>') +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail"' +
-      (guest ? ' style="background:#008afd;"' : '') +
-      '>查看收入纳税明细</button>' +
+      (guest || inactive ? ' style="background:#008afd;"' : '') +
+      '>' +
+      (inactive ? '先查看收入明细' : '查看收入纳税明细') +
+      '</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录证书预览</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueGoEdit">去修改或补充记录</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
@@ -1166,6 +1302,14 @@
       dlBtn.onclick = function () {
         closeOv('download');
         goGuestDownloadSave('value_confirm');
+      };
+    }
+    var payBtn = document.getElementById('cgValueGoPay');
+    if (payBtn) {
+      payBtn.onclick = function () {
+        track('track_tax_pay_guide_cta', { page: currentPage(), from: 'tax_done', source: 'value_confirm' });
+        closeOv('pay');
+        goActivate('tax_done');
       };
     }
     var shareBtn = document.getElementById('cgValueShareFriend');
@@ -1375,22 +1519,52 @@
       '</div>';
     document.body.appendChild(bar);
     document.getElementById('cgValueBarSave').onclick = function () {
-      var url =
-        typeof opts.getDataUrl === 'function'
-          ? opts.getDataUrl()
-          : buildShuimingSummaryDataUrl(opts.meta || {});
-      if (!url) {
-        alert('暂无可保存的图片');
+      var doSave = function () {
+        var url =
+          typeof opts.getDataUrl === 'function'
+            ? opts.getDataUrl()
+            : buildShuimingSummaryDataUrl(opts.meta || {});
+        if (!url) {
+          alert('暂无可保存的图片');
+          return;
+        }
+        downloadDataUrl(url, opts.filename || '收入纳税明细演示.png');
+      };
+      if (!isAccountActive() && !isLandingGuest()) {
+        openPayGateModal({
+          feature: '导出',
+          from: 'gate_export',
+          title: '导出图片需开通',
+          message: '开通后可导出无水印、带公章的清晰版本。也可先保存当前演示预览图。',
+          allowContinue: true,
+          continueLabel: '先保存演示图',
+          onContinue: doSave
+        });
         return;
       }
-      downloadDataUrl(url, opts.filename || '收入纳税明细演示.png');
+      doSave();
     };
     document.getElementById('cgValueBarShare').onclick = function () {
-      var url =
-        typeof opts.getDataUrl === 'function'
-          ? opts.getDataUrl()
-          : buildShuimingSummaryDataUrl(opts.meta || {});
-      shareImageDataUrl(url, opts.shareTitle || '收入纳税明细演示', opts.shareText || '');
+      var doShare = function () {
+        var url =
+          typeof opts.getDataUrl === 'function'
+            ? opts.getDataUrl()
+            : buildShuimingSummaryDataUrl(opts.meta || {});
+        shareImageDataUrl(url, opts.shareTitle || '收入纳税明细演示', opts.shareText || '');
+      };
+      if (!isAccountActive() && !isLandingGuest()) {
+        openPayGateModal({
+          feature: '分享导出',
+          from: 'gate_share_export',
+          title: '分享无水印图需开通',
+          message: '开通后可分享去水印版本。也可先分享当前演示预览。',
+          allowContinue: true,
+          continueLabel: '先分享演示图',
+          onContinue: doShare
+        });
+        return;
+      }
+      doShare();
     };
   }
 
@@ -1785,6 +1959,140 @@
     return Array.isArray(list) ? list.slice() : [];
   }
 
+  /** 详情 / 导出 / 截图 / 水印：未开通时轻量卡点引导去支付 */
+  function bindPayFeatureGates() {
+    if (!isLoggedIn() || isAccountActive()) return;
+    var page = currentPage();
+
+    if (page === 'shuiming_result.html') {
+      var list = document.getElementById('recordList') || document.querySelector('.list');
+      if (list && !list.__cgPayGateBound) {
+        list.__cgPayGateBound = true;
+        list.addEventListener(
+          'click',
+          function (ev) {
+            if (isAccountActive()) return;
+            var a = ev.target.closest('a.list-item');
+            if (!a) return;
+            var href = a.getAttribute('href') || '';
+            if (href.indexOf('xiangqing.html') < 0) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            openPayGateModal({
+              feature: '详情',
+              from: 'gate_detail',
+              title: '查看详情需开通完整功能',
+              message: '开通后可去水印并完整查看每条收入明细。也可先继续预览（仍带未开通水印）。',
+              allowContinue: true,
+              continueLabel: '先继续预览',
+              onContinue: function () {
+                window.location.href = href;
+              }
+            });
+          },
+          true
+        );
+      }
+    }
+
+    if (page === 'najilu.html') {
+      var genBtn = document.getElementById('generateBtn');
+      if (genBtn && !genBtn.__cgPayGateBound) {
+        genBtn.__cgPayGateBound = true;
+        genBtn.addEventListener(
+          'click',
+          function (ev) {
+            if (isAccountActive()) return;
+            if (genBtn.__cgPayGatePass) {
+              genBtn.__cgPayGatePass = false;
+              return;
+            }
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+            openPayGateModal({
+              feature: '纳税记录',
+              from: 'gate_najilu_generate',
+              title: '生成纳税记录需开通',
+              message: '开通后生成的记录可带公章、去水印，便于导出保存。也可先生成演示预览。',
+              allowContinue: true,
+              continueLabel: '先生成演示版',
+              onContinue: function () {
+                genBtn.__cgPayGatePass = true;
+                genBtn.click();
+              }
+            });
+          },
+          true
+        );
+      }
+
+      if (!document.body.__cgNajiluSaveGateBound) {
+        document.body.__cgNajiluSaveGateBound = true;
+        document.addEventListener(
+          'click',
+          function (ev) {
+            if (isAccountActive()) return;
+            var saveBtn = ev.target.closest(
+              '.application-action[data-action="save"], #btnShareCertificate'
+            );
+            if (!saveBtn) return;
+            if (saveBtn.__cgPayGatePass) {
+              saveBtn.__cgPayGatePass = false;
+              return;
+            }
+            ev.preventDefault();
+            ev.stopPropagation();
+            openPayGateModal({
+              feature: '导出',
+              from: 'gate_najilu_save',
+              title: '导出纳税记录需开通',
+              message: '开通后可导出带公章、无水印的清晰版本。也可先保存当前演示图。',
+              allowContinue: true,
+              continueLabel: '先保存演示图',
+              onContinue: function () {
+                saveBtn.__cgPayGatePass = true;
+                saveBtn.click();
+              }
+            });
+          },
+          true
+        );
+      }
+    }
+
+    mountWatermarkPayChip();
+    setTimeout(mountWatermarkPayChip, 800);
+  }
+
+  function mountWatermarkPayChip() {
+    if (isAccountActive() || isLandingGuest()) {
+      var old = document.getElementById('cg-wm-pay-chip');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+      return;
+    }
+    var hasWm =
+      document.getElementById('__wm_layer__') ||
+      document.getElementById('__test_account_purchase_wm__');
+    if (!hasWm) return;
+    if (document.getElementById('cg-wm-pay-chip')) return;
+    ensureGateStyles();
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.id = 'cg-wm-pay-chip';
+    chip.className = 'cg-wm-pay-chip';
+    chip.textContent = '去除水印';
+    chip.addEventListener('click', function () {
+      openPayGateModal({
+        feature: '去水印',
+        from: 'gate_watermark',
+        title: '开通后去除未激活水印',
+        message: '当前页面带有未开通水印。开通账号后即可去除，并解锁导出与完税证明。',
+        allowContinue: false
+      });
+    });
+    document.body.appendChild(chip);
+  }
+
   function init() {
     initCapturePrivacy();
     bindMinePageSecretGestures();
@@ -1828,6 +2136,7 @@
       maybeShowPostTaxSaveBanner();
       mountXiangqingEditEntry();
       mountShuimingResultManageEntry();
+      bindPayFeatureGates();
       /* 列表异步返回后可能再次变空：短延迟再补一次 */
       setTimeout(refreshShuimingResultEmptyCta, 400);
       setTimeout(renderConsultTaxStrongPrompt, 450);
@@ -2023,6 +2332,8 @@
     goNajilu: goNajilu,
     gateActivation: gateActivation,
     gateTaxRecords: gateTaxRecords,
+    openPayGateModal: openPayGateModal,
+    requirePayOrContinue: requirePayOrContinue,
     removeMineConversionUi: removeMineConversionUi,
     getBatchExampleProminent: getBatchExampleProminent,
     afterActivateSuccess: afterActivateSuccess,

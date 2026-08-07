@@ -249,9 +249,86 @@ function refreshRecordList(opts) {
             tryApplyBatchCompanyProfileFromInput
         );
         renderListFromArray(list);
+        syncTaxPayGuideBanner(list);
         syncBatchTaxEmptyState();
         return list;
     });
+}
+
+function isConsultAccountActiveLocal() {
+    try {
+        return localStorage.getItem('account_active') === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function taxPayGuideDismissedToday() {
+    try {
+        var d = new Date();
+        var key =
+            'tax_pay_guide_dismiss_' +
+            d.getFullYear() +
+            '-' +
+            String(d.getMonth() + 1).padStart(2, '0') +
+            '-' +
+            String(d.getDate()).padStart(2, '0');
+        return localStorage.getItem(key) === '1';
+    } catch (e2) {
+        return false;
+    }
+}
+
+function markTaxPayGuideDismissedToday() {
+    try {
+        var d = new Date();
+        var key =
+            'tax_pay_guide_dismiss_' +
+            d.getFullYear() +
+            '-' +
+            String(d.getMonth() + 1).padStart(2, '0') +
+            '-' +
+            String(d.getDate()).padStart(2, '0');
+        localStorage.setItem(key, '1');
+    } catch (e3) {}
+}
+
+/** 未激活且已有记录时，在列表上方展示去支付引导 */
+function syncTaxPayGuideBanner(list) {
+    var banner = document.getElementById('taxPayGuideBanner');
+    if (!banner) return;
+    var n = Array.isArray(list) ? list.length : 0;
+    var show = n > 0 && !isConsultAccountActiveLocal() && !taxPayGuideDismissedToday();
+    banner.hidden = !show;
+    if (!show) return;
+    var title = document.getElementById('taxPayGuideBannerTitle');
+    var desc = document.getElementById('taxPayGuideBannerDesc');
+    if (title) title.textContent = '已有 ' + n + ' 条税务记录';
+    if (desc) desc.textContent = '开通后可完整查看、去水印并导出纳税证明。';
+    var cta = document.getElementById('taxPayGuideBannerCta');
+    if (cta && !cta.__bound) {
+        cta.__bound = true;
+        cta.addEventListener('click', function () {
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_tax_pay_guide_cta', {
+                    page: 'consult',
+                    from: 'tax_done',
+                    tax_count: n
+                });
+            }
+        });
+    }
+    var dismiss = document.getElementById('taxPayGuideBannerDismiss');
+    if (dismiss && !dismiss.__bound) {
+        dismiss.__bound = true;
+        dismiss.addEventListener('click', function () {
+            markTaxPayGuideDismissedToday();
+            banner.hidden = true;
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_tax_pay_guide_dismiss', { page: 'consult' });
+            }
+        });
+    }
 }
 
 function renderListFromArray(list) {
@@ -259,6 +336,7 @@ function renderListFromArray(list) {
     if (!mount) return;
     if (!list.length) {
         mount.innerHTML = '<div class="empty">暂无税务记录</div>';
+        syncTaxPayGuideBanner([]);
         return;
     }
     var html = '';

@@ -11,7 +11,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260806-ms-pager">
+    <link rel="stylesheet" href="/css/consult.css?v=20260807-pay-guide">
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
@@ -465,6 +465,16 @@
                         </div>
                     </div>
                 </div>
+                <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>
+                    <div class="tax-pay-guide-banner-text">
+                        <strong id="taxPayGuideBannerTitle">记录已生成</strong>
+                        <span id="taxPayGuideBannerDesc">开通后可完整查看、去水印并导出纳税证明。</span>
+                    </div>
+                    <div class="tax-pay-guide-banner-actions">
+                        <a class="btn btn-primary btn-sm" id="taxPayGuideBannerCta" href="purchase.html?from=tax_done">去开通</a>
+                        <button type="button" class="tax-pay-guide-banner-dismiss" id="taxPayGuideBannerDismiss" aria-label="今日不再提示">×</button>
+                    </div>
+                </div>
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
 
@@ -862,6 +872,6 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script defer src="/js/consult-core.js?v=20260806-tax-ux-faq"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260806-ms-pager"></script>
-    <script defer src="/js/consult-records.js?v=20260806-edit-jump"></script>
+    <script defer src="/js/consult-records.js?v=20260807-pay-guide"></script>
 </body>
 </html>
