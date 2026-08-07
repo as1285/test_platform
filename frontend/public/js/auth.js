@@ -4798,7 +4798,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260807-pay-guide';
+    s.src = '/js/conversion-guide.js?v=20260807-detail-nav2';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     s.defer = true;

@@ -9,7 +9,7 @@ WORKDIR /work
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN cd frontend && npm ci 2>/dev/null || (cd frontend && npm install playwright@^1.52.0)
 
-COPY scripts/ui-smoke-browser.mjs ./scripts/ui-smoke-browser.mjs
+COPY frontend/tests/e2e/ui-smoke-browser.mjs ./frontend/tests/e2e/ui-smoke-browser.mjs
 COPY scripts/docker/ui-smoke/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

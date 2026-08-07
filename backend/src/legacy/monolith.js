@@ -5004,13 +5004,19 @@ function validatePassword(p) {
 }
 
 /** 合并：user risk info */
-function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword, registerIpAccountCount) {
-  var info = computeUserLoginRisk(ipDistinctCount, deviceCount, registerIpAccountCount);
+function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword, registerIpAccountCount, registerIpFirstUsername) {
+  var info = computeUserLoginRisk(
+    ipDistinctCount,
+    deviceCount,
+    registerIpAccountCount,
+    registerIpFirstUsername
+  );
   if (passwordLooksLikeSqlProbe(plainPassword)) {
     info = {
       distinct_ip_count: info.distinct_ip_count,
       device_count: info.device_count,
       register_ip_account_count: info.register_ip_account_count,
+      register_ip_first_username: info.register_ip_first_username,
       risk: true,
       risk_messages: info.risk_messages.concat(['可疑密码(SQL探测)'])
     };
@@ -10259,7 +10265,10 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   var detailJson = ex ? JSON.stringify(ex) : null;
   var clientId = ex && ex.client_id ? String(ex.client_id).substring(0, 128) : null;
   var uaDisp = displayUserAgentFromDevice(req);
-  var reasonKey = sanitizeAuditText(ok ? 'ok' : normalizeUserLoginFailReason(reason), 120);
+  var reasonKey = sanitizeAuditText(
+    ok ? normalizeUserLoginSuccessReason(reason) : normalizeUserLoginFailReason(reason),
+    120
+  );
   var reasonDetail = ok ? null : sanitizeAuditText(reason != null ? String(reason) : '', 255) || null;
   const conn = await pool.getConnection();
   try {
@@ -10296,6 +10305,13 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   } finally {
     conn.release();
   }
+}
+
+/** 规范化登录/注册成功原因（注册成功须保留 register_ok 供同 IP 风控统计） */
+function normalizeUserLoginSuccessReason(rawReason) {
+  var msg = String(rawReason || '').trim();
+  if (msg === 'register_ok') return 'register_ok';
+  return 'ok';
 }
 
 /** 规范化登录失败原因 */
@@ -12738,11 +12754,13 @@ async function buildUserLoginRiskMaps(conn, usernames) {
   var ipDistinct = {};
   var deviceCnt = {};
   var registerIpAccountCountByUser = {};
+  var registerIpFirstAccountByUser = {};
   if (!conn || !usernames || !usernames.length) {
     return {
       ipDistinct: ipDistinct,
       deviceCnt: deviceCnt,
-      registerIpAccountCountByUser: registerIpAccountCountByUser
+      registerIpAccountCountByUser: registerIpAccountCountByUser,
+      registerIpFirstAccountByUser: registerIpFirstAccountByUser
     };
   }
   var uniq = [];
@@ -12757,7 +12775,8 @@ async function buildUserLoginRiskMaps(conn, usernames) {
     return {
       ipDistinct: ipDistinct,
       deviceCnt: deviceCnt,
-      registerIpAccountCountByUser: registerIpAccountCountByUser
+      registerIpAccountCountByUser: registerIpAccountCountByUser,
+      registerIpFirstAccountByUser: registerIpFirstAccountByUser
     };
   }
   var ph = uniq.map(function () {
@@ -12809,6 +12828,7 @@ async function buildUserLoginRiskMaps(conn, usernames) {
     }
   }
   var regIpAccountCount = {};
+  var regIpFirstAccount = {};
   if (ipsToLookup.length) {
     var ipPh = ipsToLookup
       .map(function () {
@@ -12824,16 +12844,27 @@ async function buildUserLoginRiskMaps(conn, usernames) {
     (ipCountRows || []).forEach(function (r) {
       regIpAccountCount[String(r.reg_ip || '').trim()] = Number(r.cnt) || 0;
     });
+    var [firstRows] = await conn.execute(
+      "SELECT TRIM(ip) AS reg_ip, SUBSTRING_INDEX(GROUP_CONCAT(username ORDER BY created_at ASC, id ASC SEPARATOR ','), ',', 1) AS first_username FROM user_login_events WHERE reason = 'register_ok' AND ip IS NOT NULL AND TRIM(ip) <> '' AND TRIM(ip) IN (" +
+        ipPh +
+        ') GROUP BY TRIM(ip)',
+      ipsToLookup
+    );
+    (firstRows || []).forEach(function (r) {
+      regIpFirstAccount[String(r.reg_ip || '').trim()] = String(r.first_username || '').trim();
+    });
   }
   uniq.forEach(function (uname) {
     var ipKey = regIpByUser[uname];
     registerIpAccountCountByUser[uname] = ipKey ? regIpAccountCount[ipKey] || 0 : 0;
+    registerIpFirstAccountByUser[uname] = ipKey ? regIpFirstAccount[ipKey] || '' : '';
   });
 
   return {
     ipDistinct: ipDistinct,
     deviceCnt: deviceCnt,
-    registerIpAccountCountByUser: registerIpAccountCountByUser
+    registerIpAccountCountByUser: registerIpAccountCountByUser,
+    registerIpFirstAccountByUser: registerIpFirstAccountByUser
   };
 }
 
@@ -15911,7 +15942,8 @@ async function handleAdminUsers(req, res) {
         riskMaps.ipDistinct[uname] || 0,
         riskMaps.deviceCnt[uname] || 0,
         plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password),
-        riskMaps.registerIpAccountCountByUser[uname] || 0
+        riskMaps.registerIpAccountCountByUser[uname] || 0,
+        riskMaps.registerIpFirstAccountByUser[uname] || ''
       );
       var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       var salesCh =
@@ -15951,6 +15983,7 @@ async function handleAdminUsers(req, res) {
         distinct_ip_count: riskInfo.distinct_ip_count,
         device_count: riskInfo.device_count,
         register_ip_account_count: riskInfo.register_ip_account_count,
+        register_ip_first_username: riskInfo.register_ip_first_username || '',
         risk: riskInfo.risk,
         risk_messages: riskInfo.risk_messages,
         tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date),

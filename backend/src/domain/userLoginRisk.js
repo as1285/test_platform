@@ -18,10 +18,12 @@ function userLoginRiskIpUnionSubquery(usernameExpr) {
 }
 
 /** compute user login risk */
-function computeUserLoginRisk(ipDistinctCount, deviceCount, registerIpAccountCount) {
+function computeUserLoginRisk(ipDistinctCount, deviceCount, registerIpAccountCount, registerIpFirstUsername) {
   const ipCnt = Number(ipDistinctCount) || 0;
   const devCnt = Number(deviceCount) || 0;
   const regIpCnt = Number(registerIpAccountCount) || 0;
+  const firstUser =
+    registerIpFirstUsername != null ? String(registerIpFirstUsername).trim() : '';
   const msgs = [];
   if (ipCnt >= USER_LOGIN_RISK_IP_THRESHOLD) {
     msgs.push('不同IP' + ipCnt + '个');
@@ -30,12 +32,17 @@ function computeUserLoginRisk(ipDistinctCount, deviceCount, registerIpAccountCou
     msgs.push('设备' + devCnt + '台');
   }
   if (regIpCnt >= USER_REGISTER_IP_ACCOUNT_THRESHOLD) {
-    msgs.push('同IP注册' + regIpCnt + '个');
+    let sameIpMsg = '同IP注册' + regIpCnt + '个';
+    if (firstUser) {
+      sameIpMsg += '，首账号' + firstUser;
+    }
+    msgs.push(sameIpMsg);
   }
   return {
     distinct_ip_count: ipCnt,
     device_count: devCnt,
     register_ip_account_count: regIpCnt,
+    register_ip_first_username: firstUser,
     risk: msgs.length > 0,
     risk_messages: msgs
   };

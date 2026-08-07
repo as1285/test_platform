@@ -18,13 +18,21 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260807-cordova-shuiming-top"></script>
+    <script src="/js/auth.js?v=20260807-kill-wm-chip"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
+        /* 旧版 conversion-guide 缓存可能仍注入「去除水印」浮钮；页面侧强制隐藏并移除 */
+        #cg-wm-pay-chip {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -58,13 +66,13 @@
             letter-spacing: normal;
         }
 
-        /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
+        /* 主内容层；水印挂在 page-root 内（见 watermark.js），勿再用超高 z-index 盖住可点区域 */
         .page-root {
             --safe-top: env(safe-area-inset-top, 0px);
             --header-height: 48px;
             --list-summary-pad: 102px;
             position: relative;
-            z-index: 100000;
+            z-index: 1;
             min-height: 100vh;
             background: #f5f6fa;
             isolation: isolate;
@@ -389,6 +397,7 @@
             padding-bottom: 20px;
             background: #f5f6fa;
             position: relative;
+            z-index: 2;
             isolation: isolate;
         }
 
@@ -404,8 +413,10 @@
             outline: none;
             color: inherit;
             position: relative;
-            z-index: 1;
+            z-index: 2;
             border-top: none;
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
         .list-item:first-child {
@@ -1100,12 +1111,12 @@
         }
 
         .test-account-watermark-layer {
-            position: fixed;
+            position: absolute;
             inset: 0;
             width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1000;
+            min-height: 100%;
+            pointer-events: none !important;
+            z-index: 4;
             background-repeat: repeat;
             background-size: 260px 160px;
             user-select: none;
@@ -1223,8 +1234,8 @@
                 if (root) {
                     root.style.setProperty('--list-summary-pad', pad + 'px');
                 }
-                /* 二次校正：实测首条卡片与汇总末行的视觉缝，过大则收回 */
-                if (isAndroid && summary && list && root) {
+                /* 二次校正：首条与汇总末行缝过大则收回；过小/重叠则加大，避免盖住列表导致点不进详情 */
+                if (summary && list && root) {
                     var firstItem =
                         list.querySelector('.list-item') ||
                         list.querySelector('.list-empty') ||
@@ -1234,11 +1245,17 @@
                         var cb = summaryContentBottom(summary, sr);
                         var fr = firstItem.getBoundingClientRect();
                         var visualGap = fr.top - cb;
+                        var curPad = parseFloat(root.style.getPropertyValue('--list-summary-pad')) || pad;
+                        var minPad = isAndroid ? 52 : 48;
                         if (visualGap > 18) {
-                            var curPad = parseFloat(root.style.getPropertyValue('--list-summary-pad')) || pad;
-                            var nextPad = Math.max(52, Math.ceil(curPad - (visualGap - 10)));
+                            var nextPad = Math.max(minPad, Math.ceil(curPad - (visualGap - 10)));
                             if (nextPad < curPad) {
                                 root.style.setProperty('--list-summary-pad', nextPad + 'px');
+                            }
+                        } else if (visualGap < 8) {
+                            var growPad = Math.max(minPad, Math.ceil(curPad + (8 - visualGap)));
+                            if (growPad > curPad) {
+                                root.style.setProperty('--list-summary-pad', growPad + 'px');
                             }
                         }
                     }
@@ -1350,6 +1367,64 @@
             );
         };
 
+        function buildXiangqingUrl(record, listYear) {
+            var id = record && record.id != null ? String(record.id).trim() : '';
+            if (!id) return '';
+            var month = record.month != null ? Number(record.month) : 0;
+            var y =
+                record.year != null && String(record.year).trim() !== ''
+                    ? String(record.year)
+                    : String(listYear || '');
+            var q = 'xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(y);
+            if (month > 0) {
+                q += '&month=' + encodeURIComponent(String(month));
+            }
+            return q;
+        }
+
+        function goXiangqingHref(href) {
+            if (!href) return;
+            try {
+                var abs = new URL(href, window.location.href).href;
+                window.location.assign(abs);
+            } catch (e1) {
+                try {
+                    window.location.href = href;
+                } catch (e2) {}
+            }
+        }
+
+        function bindRecordListNavigation() {
+            var list = document.getElementById('recordList');
+            if (!list || list.__recordNavBound) return;
+            list.__recordNavBound = true;
+            /* 捕获阶段兜底：部分 WebView 上 <a> 默认跳转被吞时，用 assign 强制进入详情 */
+            list.addEventListener(
+                'click',
+                function (ev) {
+                    var item = ev.target.closest('a.list-item');
+                    if (!item) return;
+                    var href = item.getAttribute('href') || '';
+                    if (!href || href.indexOf('xiangqing.html') < 0) return;
+                    var idMatch = href.match(/[?&]id=([^&]+)/);
+                    if (!idMatch || !decodeURIComponent(idMatch[1] || '').trim()) {
+                        ev.preventDefault();
+                        alert('该记录缺少编号，请返回重新生成或刷新列表后再试。');
+                        return;
+                    }
+                    /* 不 preventDefault：优先走原生 <a>；若被其它脚本拦下再兜底 */
+                    setTimeout(function () {
+                        try {
+                            if (document.visibilityState === 'hidden') return;
+                            if (String(window.location.href || '').indexOf('xiangqing.html') >= 0) return;
+                        } catch (e0) {}
+                        goXiangqingHref(href);
+                    }, 120);
+                },
+                true
+            );
+        }
+
         function renderList(records, listYear) {
             var listHtml = '';
             records.forEach(function(record) {
@@ -1358,8 +1433,17 @@
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
                 var companyShow = truncateChars(company, 12);
-                var id = record.id != null ? record.id : '';
-                listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
+                var id = record.id != null ? String(record.id).trim() : '';
+                var detailHref = buildXiangqingUrl(record, listYear);
+                if (!detailHref) {
+                    listHtml +=
+                        '<div class="list-item list-item-disabled" style="text-decoration: none; display: block; opacity: 0.72;">';
+                } else {
+                    listHtml +=
+                        '<a href="' +
+                        detailHref +
+                        '" class="list-item" style="text-decoration: none; display: block;">';
+                }
                 listHtml += '<div class="list-header">';
                 listHtml += '<span class="list-title">' + escapeHtml(record.income_type || '') + '</span>';
                 listHtml += '<span class="list-date">' + escapeHtml(String(record.year) + '-' + month) + '</span>';
@@ -1379,10 +1463,11 @@
                     '<div class="list-row"><span class="list-label">已申报税额：<span class="list-amount">' +
                     escapeHtml(String(record.tax_reported)) +
                     '</span>元</span></div>';
-                listHtml += '</a>';
+                listHtml += detailHref ? '</a>' : '</div>';
             });
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
             syncRecordEmptyUi(records.length > 0);
+            bindRecordListNavigation();
             if (
                 records.length === 0 &&
                 window.ConversionGuide &&
@@ -1737,7 +1822,30 @@
             }
         });
         loadData();
+
+        (function killLegacyWmPayChip() {
+            function removeChip() {
+                var el = document.getElementById('cg-wm-pay-chip');
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+            }
+            removeChip();
+            try {
+                var obs = new MutationObserver(function () {
+                    removeChip();
+                });
+                obs.observe(document.documentElement, { childList: true, subtree: true });
+                setTimeout(function () {
+                    try {
+                        obs.disconnect();
+                    } catch (e0) {}
+                    removeChip();
+                }, 8000);
+            } catch (e1) {
+                setTimeout(removeChip, 800);
+                setTimeout(removeChip, 2500);
+            }
+        })();
     </script>
-    <script src="/js/watermark.js?v=20260730-wm-zindex"></script>
+    <script src="/js/watermark.js?v=20260807-wm-inside-root"></script>
 </body>
 </html>

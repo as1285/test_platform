@@ -35,6 +35,8 @@
   var captureHideTimer = null;
   var conversionCfg = null;
   var profileFetchInFlight = null;
+  /** 转化浮层须盖住页面内容与水印 */
+  var CG_OVERLAY_Z = 1000030;
 
   function normalizeTaxYearLocal(raw) {
     if (typeof globalThis !== 'undefined' && typeof globalThis.normalizeTaxYear === 'function') {
@@ -408,7 +410,9 @@
       '.cg-empty-cta p{margin:0 0 10px;font-size:13px;color:#888}' +
       '.cg-toast-recovery{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:800;padding:12px 14px;background:#fff8e6;border:1px solid #ffe0a3;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);font-size:13px;color:#664d03;line-height:1.45}' +
       '.cg-toast-recovery .cg-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}' +
-      '.cg-value-overlay{position:fixed;inset:0;z-index:10200;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}' +
+      '.cg-value-overlay{position:fixed;inset:0;z-index:' +
+      CG_OVERLAY_Z +
+      ';background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}' +
       '.cg-value-panel{max-width:340px;width:100%;max-height:min(86vh,640px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:12px;padding:18px 16px;box-sizing:border-box}' +
       '.cg-value-panel h3{margin:0 0 8px;font-size:17px;color:#333}' +
       '.cg-value-panel p{margin:0 0 14px;font-size:13px;color:#666;line-height:1.5}' +
@@ -451,7 +455,9 @@
       'body.cg-has-value-bar .page-root{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
       'body.cg-has-value-bar .list{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
       'body.cg-has-value-bar .preview-page{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
-      '.cg-act-nudge-root{position:fixed;inset:0;z-index:920;display:flex;align-items:center;justify-content:center;padding:20px}' +
+      '.cg-act-nudge-root{position:fixed;inset:0;z-index:' +
+      CG_OVERLAY_Z +
+      ';display:flex;align-items:center;justify-content:center;padding:20px}' +
       '.cg-act-nudge-mask{position:absolute;inset:0;background:rgba(0,0,0,.45)}' +
       '.cg-act-nudge-panel{position:relative;z-index:1;width:100%;max-width:320px;background:#fff;border-radius:12px;padding:22px 20px 18px;box-shadow:0 8px 32px rgba(0,0,0,.12)}' +
       '.cg-act-nudge-title{margin:0 0 10px;font-size:17px;font-weight:600;color:#333;text-align:center}' +
@@ -460,7 +466,9 @@
       '.cg-act-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:8px;font-size:16px;font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer}' +
       '.cg-act-nudge-btn.primary{background:#1e6fff;color:#fff}' +
       '.cg-act-nudge-btn.secondary{background:#f5f6fa;color:#666}' +
-      '.cg-pay-gate-root{position:fixed;inset:0;z-index:10300;display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
+      '.cg-pay-gate-root{position:fixed;inset:0;z-index:' +
+      CG_OVERLAY_Z +
+      ';display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
       '.cg-pay-gate-mask{position:absolute;inset:0;background:rgba(15,23,42,.45)}' +
       '.cg-pay-gate-panel{position:relative;z-index:1;width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(15,23,42,.12);box-sizing:border-box}' +
       '.cg-pay-gate-title{margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a}' +
@@ -470,7 +478,7 @@
       '.cg-pay-gate-btn.primary{background:#1e6fff;color:#fff}' +
       '.cg-pay-gate-btn.secondary{background:#eff6ff;color:#1d4ed8}' +
       '.cg-pay-gate-btn.ghost{background:#f1f5f9;color:#64748b;font-weight:500}' +
-      '.cg-wm-pay-chip{position:fixed;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:1000001;height:36px;padding:0 14px;border:none;border-radius:999px;background:rgba(30,111,255,.95);color:#fff;font-size:13px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(30,111,255,.35);cursor:pointer;-webkit-tap-highlight-color:transparent}' +
+      '#cg-wm-pay-chip{display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important}' +
       '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
       'body.page-shuiming > .content > #cg-shuiming-hint{margin:10px 16px 0;}' +
       '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
@@ -1964,37 +1972,6 @@
     if (!isLoggedIn() || isAccountActive()) return;
     var page = currentPage();
 
-    if (page === 'shuiming_result.html') {
-      var list = document.getElementById('recordList') || document.querySelector('.list');
-      if (list && !list.__cgPayGateBound) {
-        list.__cgPayGateBound = true;
-        list.addEventListener(
-          'click',
-          function (ev) {
-            if (isAccountActive()) return;
-            var a = ev.target.closest('a.list-item');
-            if (!a) return;
-            var href = a.getAttribute('href') || '';
-            if (href.indexOf('xiangqing.html') < 0) return;
-            ev.preventDefault();
-            ev.stopPropagation();
-            openPayGateModal({
-              feature: '详情',
-              from: 'gate_detail',
-              title: '查看详情需开通完整功能',
-              message: '开通后可去水印并完整查看每条收入明细。也可先继续预览（仍带未开通水印）。',
-              allowContinue: true,
-              continueLabel: '先继续预览',
-              onContinue: function () {
-                window.location.href = href;
-              }
-            });
-          },
-          true
-        );
-      }
-    }
-
     if (page === 'najilu.html') {
       var genBtn = document.getElementById('generateBtn');
       if (genBtn && !genBtn.__cgPayGateBound) {
@@ -2059,42 +2036,27 @@
         );
       }
     }
-
-    mountWatermarkPayChip();
-    setTimeout(mountWatermarkPayChip, 800);
   }
 
-  function mountWatermarkPayChip() {
-    if (isAccountActive() || isLandingGuest()) {
-      var old = document.getElementById('cg-wm-pay-chip');
-      if (old && old.parentNode) old.parentNode.removeChild(old);
-      return;
-    }
-    var hasWm =
-      document.getElementById('__wm_layer__') ||
-      document.getElementById('__test_account_purchase_wm__');
-    if (!hasWm) return;
-    if (document.getElementById('cg-wm-pay-chip')) return;
-    ensureGateStyles();
-    var chip = document.createElement('button');
-    chip.type = 'button';
-    chip.id = 'cg-wm-pay-chip';
-    chip.className = 'cg-wm-pay-chip';
-    chip.textContent = '去除水印';
-    chip.addEventListener('click', function () {
-      openPayGateModal({
-        feature: '去水印',
-        from: 'gate_watermark',
-        title: '开通后去除未激活水印',
-        message: '当前页面带有未开通水印。开通账号后即可去除，并解锁导出与完税证明。',
-        allowContinue: false
-      });
-    });
-    document.body.appendChild(chip);
+  function removeWatermarkPayChip() {
+    var old = document.getElementById('cg-wm-pay-chip');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+  }
+
+  /** 兼容旧缓存脚本仍会注入该浮钮：持续清理一段时间 */
+  function guardRemoveWatermarkPayChip() {
+    removeWatermarkPayChip();
+    var left = 12;
+    var timer = setInterval(function () {
+      removeWatermarkPayChip();
+      left -= 1;
+      if (left <= 0) clearInterval(timer);
+    }, 500);
   }
 
   function init() {
     initCapturePrivacy();
+    guardRemoveWatermarkPayChip();
     bindMinePageSecretGestures();
     try {
       window.dispatchEvent(

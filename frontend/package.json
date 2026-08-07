@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "../scripts/ui-smoke-playwright.sh",
-    "test:e2e:local": "UI_SMOKE_LOCAL=1 ../scripts/ui-smoke-playwright.sh"
+    "test:e2e:local": "UI_SMOKE_LOCAL=1 ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:docker": "UI_SMOKE_NODE_FALLBACK=1 ../scripts/ui-smoke-playwright.sh"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.7",

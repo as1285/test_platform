@@ -78,20 +78,42 @@
 
         var div = document.createElement('div');
         div.id = '__wm_layer__';
+        div.setAttribute('aria-hidden', 'true');
+        /*
+         * 挂到 .page-root 内，避免 body 上 z-index:1000000 全屏层
+         * 在部分 Android/iOS WebView 中即使 pointer-events:none 仍会吞掉点击。
+         */
         div.style.cssText = [
-            'position:fixed',
-            'top:0', 'left:0', 'right:0', 'bottom:0',
-            'width:100%', 'height:100%',
+            'position:absolute',
+            'top:0',
+            'left:0',
+            'right:0',
+            'bottom:0',
+            'width:100%',
+            'min-height:100%',
             'pointer-events:none',
-            /* 低于字体设置等交互浮层，避免 iOS WKWebView 点不穿 */
-            'z-index:1000000',
+            'z-index:5',
             'background-image:url(' + dataUrl + ')',
             'background-repeat:repeat',
             'background-size:' + w + 'px ' + h + 'px',
             'user-select:none',
             '-webkit-user-select:none'
         ].join(';');
-        document.body.appendChild(div);
+        var host = document.querySelector('.page-root') || document.body;
+        try {
+            var cs = window.getComputedStyle(host);
+            if (cs && cs.position === 'static') {
+                host.style.position = 'relative';
+            }
+        } catch (ePos) {}
+        host.appendChild(div);
+
+        function remountWm() {
+            var mount = document.querySelector('.page-root') || document.body;
+            if (!document.getElementById('__wm_layer__')) {
+                mount.appendChild(div);
+            }
+        }
 
         /* 防删守卫：移除前必须 disconnect，否则 remove 会被立刻加回（激活后仍见水印） */
         stopWmGuard();
@@ -101,15 +123,13 @@
                 m.removedNodes.forEach(function (node) {
                     if (node && node.id === '__wm_layer__') {
                         try {
-                            if (!document.getElementById('__wm_layer__')) {
-                                document.body.appendChild(div);
-                            }
+                            remountWm();
                         } catch (eRe) {}
                     }
                 });
             });
         });
-        _wmGuardObserver.observe(document.body, { childList: true });
+        _wmGuardObserver.observe(document.body, { childList: true, subtree: true });
     }
 
     function removeWatermarkLayer() {

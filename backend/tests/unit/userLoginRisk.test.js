@@ -9,10 +9,13 @@ const {
 
 describe('userLoginRisk', () => {
   it('flags same-ip registration when count reaches threshold', () => {
-    const info = computeUserLoginRisk(1, 0, USER_REGISTER_IP_ACCOUNT_THRESHOLD);
+    const info = computeUserLoginRisk(1, 0, USER_REGISTER_IP_ACCOUNT_THRESHOLD, 'first_user');
     expect(info.risk).toBe(true);
     expect(info.register_ip_account_count).toBe(USER_REGISTER_IP_ACCOUNT_THRESHOLD);
-    expect(info.risk_messages).toContain('同IP注册' + USER_REGISTER_IP_ACCOUNT_THRESHOLD + '个');
+    expect(info.register_ip_first_username).toBe('first_user');
+    expect(info.risk_messages).toContain(
+      '同IP注册' + USER_REGISTER_IP_ACCOUNT_THRESHOLD + '个，首账号first_user'
+    );
   });
 
   it('does not flag same-ip registration below threshold', () => {
@@ -22,9 +25,9 @@ describe('userLoginRisk', () => {
   });
 
   it('combines distinct login IP, device, and same-ip registration risks', () => {
-    const info = computeUserLoginRisk(2, 3, 3);
+    const info = computeUserLoginRisk(2, 3, 3, 'alpha');
     expect(info.risk).toBe(true);
-    expect(info.risk_messages).toEqual(['不同IP2个', '设备3台', '同IP注册3个']);
+    expect(info.risk_messages).toEqual(['不同IP2个', '设备3台', '同IP注册3个，首账号alpha']);
   });
 
   it('builds register-ip risk SQL fragment', () => {
