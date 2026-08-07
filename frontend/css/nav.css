@@ -71,13 +71,17 @@ html.app-ios-client body.page-mine {
     justify-content: space-around;
     height: auto;
     min-height: var(--bottom-nav-height);
-    background: rgba(255, 255, 255, 0.75);
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
+    /*
+     * 提高不透明度：半透明+强模糊会透出下方切片，像「底栏叠在页面截图上」。
+     * 接近原版实心底栏观感，仍保留圆角胶囊形态。
+     */
+    background: rgba(255, 255, 255, 0.96);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     border-radius: var(--bottom-nav-radius);
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.04);
     padding: 12px 0 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
     overflow: visible;
 }

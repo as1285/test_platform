@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260807-android-shouye-inset"></script>
+    <script src="/js/auth.js?v=20260807-shouye-seam"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -161,7 +161,7 @@
 
         .shouye-page {
             min-height: 100vh;
-            background: #f4f6f9;
+            background: #ebf0f8;
             padding-top: var(--shouye-fixed-top-h, 52px);
             padding-bottom: var(--bottom-nav-clearance, 70px);
         }
@@ -175,14 +175,19 @@
         .sy-apk-stack {
             position: relative;
             width: 100%;
-            background: #f4f6f9;
+            /* 与切片底缘接近的浅灰蓝，避免块间露 #fff/#f4f6f9 白缝 */
+            background: #ebf0f8;
             line-height: 0;
+            font-size: 0;
         }
 
         .sy-apk-slice {
             display: block;
             width: 100%;
             height: auto;
+            margin: 0;
+            padding: 0;
+            border: 0;
             vertical-align: top;
             pointer-events: none;
             user-select: none;
@@ -193,6 +198,15 @@
             position: relative;
             width: 100%;
             line-height: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            /* 相邻切片叠 1px，消除 WebView 亚像素白线 / 色彩断层 */
+            margin-top: -1px;
+        }
+
+        .sy-apk-stack > .sy-apk-block:first-child {
+            margin-top: 0;
         }
 
         .sy-apk-hit {
@@ -277,24 +291,32 @@
             width: 100%;
             display: flex;
             flex-wrap: nowrap;
-            gap: 8px;
+            gap: 6px;
             overflow-x: auto;
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
-            background: #f4f6f9;
-            padding: 4px 12px 8px;
+            /* 与 a3 底 / 轮播顶同色，去掉「厚重白边」感 */
+            background: #ebf0f8;
+            padding: 0 10px 2px;
+            margin-top: -1px;
             box-sizing: border-box;
+            line-height: 0;
         }
 
         .sy-apk-hscroll::-webkit-scrollbar { display: none; }
 
         .sy-apk-hitem {
             /* (内容宽 - 两道间距) / 3.35 ≈ 露出第四卡约三分之一 */
-            flex: 0 0 calc((100% - 16px) / 3.35);
-            width: calc((100% - 16px) / 3.35);
+            flex: 0 0 calc((100% - 12px) / 3.35);
+            width: calc((100% - 12px) / 3.35);
             margin: 0;
+            padding: 0;
             text-decoration: none;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /*
@@ -302,14 +324,14 @@
          * 宽屏/折叠内屏按手机参考宽算，避免相对整屏过碎。
          */
         html.app-android-client .sy-apk-hitem {
-            flex: 0 0 max(112px, calc((100% - 16px) / 2.95));
-            width: max(112px, calc((100% - 16px) / 2.95));
+            flex: 0 0 max(112px, calc((100% - 12px) / 2.95));
+            width: max(112px, calc((100% - 12px) / 2.95));
         }
 
         @media (min-width: 520px) {
             html.app-android-client .sy-apk-hitem {
-                flex: 0 0 calc((min(100%, 430px) - 16px) / 3.05);
-                width: calc((min(100%, 430px) - 16px) / 3.05);
+                flex: 0 0 calc((min(100%, 430px) - 12px) / 3.05);
+                width: calc((min(100%, 430px) - 12px) / 3.05);
             }
         }
 
@@ -319,18 +341,24 @@
             height: auto;
             aspect-ratio: 374 / 491;
             object-fit: cover;
-            border-radius: 8px;
+            /* 原版卡图自带圆角，勿再叠一层圆角+底色造成厚白边 */
+            border-radius: 0;
+            border: 0;
+            box-shadow: none;
+            background: transparent;
         }
 
         /* 轮播 */
         .sy-apk-swiper-wrap {
             width: 93%;
-            margin: 8px auto 12px;
+            margin: 2px auto 8px;
             position: relative;
             border-radius: 15px;
             overflow: hidden;
-            background: #fff;
+            background: #ebf0f8;
             line-height: 0;
+            border: 0;
+            box-shadow: none;
         }
 
         .sy-apk-swiper-track {
@@ -458,7 +486,7 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260807-msg-badge">
+    <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
     <script src="/js/theme-loader.js?v=20260729-zdb" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
@@ -503,6 +531,7 @@
                 <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
             </div>
 
+            <!-- 游客条插在切片流外，避免撑开 a3/a6 之间出现白带断层 -->
             <div class="guest-experience-bar" id="guestExperienceBar">
                 <div class="guest-experience-copy">
                     <strong id="guestExperienceTitle">游客体验模式</strong>

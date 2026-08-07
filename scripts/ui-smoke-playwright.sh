@@ -34,6 +34,7 @@ export API_CONTAINER="${API_CONTAINER:-personal-tax-api}"
 RUN_IMAGE="${PLAYWRIGHT_RUN_IMAGE:-mcr.microsoft.com/playwright:v1.52.0-jammy}"
 BUILT_IMAGE="${UI_SMOKE_IMAGE:-test_platform-ui-smoke:latest}"
 NODE_IMAGE="${UI_SMOKE_NODE_IMAGE:-node:20-bookworm-slim}"
+BUILT_NODE_IMAGE="${UI_SMOKE_NODE_BUILT_IMAGE:-test_platform-ui-smoke-node:latest}"
 PULL_TIMEOUT="${UI_SMOKE_PULL_TIMEOUT:-120}"
 
 run_docker_smoke() {
@@ -54,6 +55,21 @@ run_docker_smoke() {
 
 run_node_fallback_smoke() {
   local env_file="$1"
+  if [[ "${UI_SMOKE_USE_BUILT_NODE:-1}" == "1" ]] && docker image inspect "$BUILT_NODE_IMAGE" >/dev/null 2>&1; then
+    echo "[ui-smoke] node image (${BUILT_NODE_IMAGE}) — 预装 Chromium"
+    docker run --rm \
+      --network host \
+      --init \
+      --cap-add=SYS_ADMIN \
+      -e SITE_URL \
+      -e API_URL \
+      -e UI_SMOKE_PLAYWRIGHT_VERSION \
+      --env-file "$env_file" \
+      -v "${ROOT}:/work" \
+      "$BUILT_NODE_IMAGE"
+    return
+  fi
+
   mkdir -p "${ROOT}/.cache/ms-playwright"
   echo "[ui-smoke] node fallback (${NODE_IMAGE}) — 容器内安装 Chromium，无需本机浏览器"
   docker run --rm \

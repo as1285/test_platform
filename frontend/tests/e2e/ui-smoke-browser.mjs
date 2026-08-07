@@ -60,6 +60,23 @@ async function launchBrowser() {
   }
 }
 
+async function waitForUnreadBadge(page) {
+  await page.waitForSelector('.bottom-nav .nav-item[href="message.html"]', { timeout: 20000 });
+  await page.waitForFunction(() => typeof window.refreshMessageUnreadBadge === 'function', {
+    timeout: 20000
+  });
+  await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/api/message') && r.url().includes('unread_count') && r.status() === 200,
+      { timeout: 20000 }
+    ),
+    page.evaluate(() => window.refreshMessageUnreadBadge())
+  ]);
+  const badge = page.locator('.bottom-nav .nav-unread-badge');
+  await badge.waitFor({ state: 'visible', timeout: 20000 });
+  return badge;
+}
+
 async function main() {
   if (!USER || !PASS) {
     fail('缺少 UI_SMOKE_USER / UI_SMOKE_PASS（请先运行 ui-smoke-host-setup.sh）');
@@ -100,9 +117,7 @@ async function main() {
   if (msgRes.code !== 200) fail('add_message failed: ' + (msgRes.msg || ''));
 
   await page.goto(`${SITE_URL}/shouye.html`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.bottom-nav .nav-item[href="message.html"]', { timeout: 20000 });
-  const badge = page.locator('.bottom-nav .nav-unread-badge');
-  await badge.waitFor({ state: 'visible', timeout: 20000 });
+  const badge = await waitForUnreadBadge(page);
   const badgeText = (await badge.textContent())?.trim();
   if (!badgeText || badgeText === '0') fail(`badge unexpected: ${badgeText}`);
   log(`ok home message badge (${badgeText})`);

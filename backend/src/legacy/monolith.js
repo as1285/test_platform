@@ -6248,6 +6248,116 @@ function alipayNotifyPayloadHash(body) {
 }
 
 /**
+ * 激活退款副作用（封禁 + 隐藏 + 统计剔除）。调用方需已持有事务与用户行锁意图。
+ * @returns {Promise<{applied:boolean, already?:boolean, inactive?:boolean, missing?:boolean}>}
+ */
+async function applyActivationRefundForUser(conn, username, byLabel) {
+  var target = username != null ? String(username).trim() : '';
+  var by = byLabel != null ? String(byLabel).trim() : 'alipay_refund';
+  if (!target) return { applied: false, missing: true };
+  const [urows] = await conn.execute(
+    'SELECT id, account_active, activation_refunded_at FROM users WHERE username = ? FOR UPDATE',
+    [target]
+  );
+  if (!urows.length) return { applied: false, missing: true };
+  if (urows[0].activation_refunded_at) return { applied: false, already: true };
+  if (!(urows[0].account_active === 1 || urows[0].account_active === true)) {
+    return { applied: false, inactive: true };
+  }
+  await conn.execute(
+    `UPDATE users SET banned = 1, session_rev = session_rev + 1, account_active = 0,
+            list_hidden_at = NOW(3), list_hidden_by = ?,
+            activation_refunded_at = NOW(3), activation_refunded_by = ?
+     WHERE username = ?`,
+    [by, by, target]
+  );
+  return { applied: true };
+}
+
+/**
+ * 已支付订单全额退款：status=refunded（GMV 不再计入）并尽量做激活退款。
+ * 调用方需已持有连接；本函数自行开事务。幂等。
+ */
+async function markAlipayOrderRefunded(conn, order, info) {
+  if (!order || !order.id) return false;
+  var tradeNo = info && info.tradeNo != null ? String(info.tradeNo).trim() : '';
+  var tradeStatus = (info && info.tradeStatus) || 'TRADE_CLOSED';
+  var byLabel = (info && info.by) || 'alipay_refund';
+  await conn.beginTransaction();
+  try {
+    const [lockedRows] = await conn.execute(
+      `SELECT id, username, status, amount, out_trade_no, alipay_trade_no
+       FROM payment_orders WHERE id = ? FOR UPDATE`,
+      [order.id]
+    );
+    if (!lockedRows.length) {
+      await conn.rollback();
+      return false;
+    }
+    var locked = lockedRows[0];
+    if (String(locked.status) === 'refunded') {
+      await conn.commit();
+      return true;
+    }
+    if (String(locked.status) !== 'paid') {
+      await conn.rollback();
+      return false;
+    }
+    var outNo = String(locked.out_trade_no || order.out_trade_no || '');
+    var tradeForLog = tradeNo || String(locked.alipay_trade_no || '');
+    var payloadHash = alipayNotifyPayloadHash({
+      out_trade_no: outNo,
+      trade_no: tradeForLog,
+      trade_status: tradeStatus,
+      refund: '1',
+      source: (info && info.source) || 'notify'
+    });
+    if (tradeForLog) {
+      await conn.execute(
+        `INSERT IGNORE INTO payment_notify_logs
+         (out_trade_no, alipay_trade_no, payload_hash, trade_status)
+         VALUES (?, ?, ?, ?)`,
+        [outNo, tradeForLog, payloadHash, String(tradeStatus).slice(0, 64) || 'REFUND']
+      );
+    }
+    if (tradeNo) {
+      await conn.execute(`UPDATE payment_orders SET status = 'refunded', alipay_trade_no = ? WHERE id = ?`, [
+        tradeNo,
+        locked.id
+      ]);
+    } else {
+      await conn.execute(`UPDATE payment_orders SET status = 'refunded' WHERE id = ?`, [locked.id]);
+    }
+    await applyActivationRefundForUser(conn, locked.username, byLabel);
+    await conn.commit();
+    try {
+      invalidateUserAuthCache(locked.username);
+      invalidateUserInfoApiCache(locked.username);
+    } catch (eInv) {}
+    return true;
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    throw e;
+  }
+}
+
+/** 通知是否表示对已支付订单的全额退款 */
+function isAlipayFullRefundNotify(body, orderAmountNormalized) {
+  if (!body || !orderAmountNormalized) return false;
+  var refundFee = alipay.normalizeAmount(body.refund_fee);
+  if (refundFee && Number(refundFee) + 1e-9 >= Number(orderAmountNormalized)) {
+    return true;
+  }
+  var gmtRefund = String(body.gmt_refund || '').trim();
+  var tradeStatus = String(body.trade_status || '').trim();
+  /* 全额退后常见 TRADE_CLOSED；若仅有 gmt_refund 且无部分退款额，也按全额处理 */
+  if (tradeStatus === 'TRADE_CLOSED' && gmtRefund) return true;
+  return false;
+}
+
+/**
  * 将 pending 订单标记为已支付并开通账号（回调与主动查单共用）。
  * 调用方需已持有连接；本函数自行开事务。
  */

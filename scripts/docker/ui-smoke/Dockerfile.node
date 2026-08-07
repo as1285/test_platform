@@ -1,0 +1,22 @@
+# Node 回退镜像：预装 Playwright Chromium + 系统依赖（避免每次 docker run 都 apt install）
+# 构建: ./scripts/docker/ui-smoke/build-node-image.sh
+FROM node:20-bookworm-slim
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
+ENV UI_SMOKE_PLAYWRIGHT_VERSION=1.52.0
+
+WORKDIR /work/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci 2>/dev/null || npm install "playwright@${UI_SMOKE_PLAYWRIGHT_VERSION}"
+
+RUN npx playwright install chromium \
+ && npx playwright install-deps chromium \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/docker/ui-smoke/entrypoint-node.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

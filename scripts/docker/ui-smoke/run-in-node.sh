@@ -11,8 +11,16 @@ export PLAYWRIGHT_BROWSERS_PATH="$BROWSERS_PATH"
 mkdir -p "$BROWSERS_PATH"
 
 # 国内网络可设 UI_SMOKE_USE_MIRROR=1 或自行 export PLAYWRIGHT_DOWNLOAD_HOST
-if [[ "${UI_SMOKE_USE_MIRROR:-1}" == "1" ]] && [[ -z "${PLAYWRIGHT_DOWNLOAD_HOST:-}" ]]; then
-  export PLAYWRIGHT_DOWNLOAD_HOST="${PLAYWRIGHT_DOWNLOAD_HOST:-https://npmmirror.com/mirrors/playwright}"
+if [[ "${UI_SMOKE_USE_MIRROR:-1}" == "1" ]]; then
+  if [[ -z "${PLAYWRIGHT_DOWNLOAD_HOST:-}" ]]; then
+    export PLAYWRIGHT_DOWNLOAD_HOST="https://npmmirror.com/mirrors/playwright"
+  fi
+  if [[ -f /etc/apt/sources.list ]]; then
+    sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list || true
+  fi
+  if [[ -f /etc/apt/sources.list.d/debian.sources ]]; then
+    sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources || true
+  fi
 fi
 
 echo "[ui-smoke-node] image=${NODE_IMAGE} playwright=${PLAYWRIGHT_VERSION}"

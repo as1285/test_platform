@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260807-samsung-s24u-mine"></script>
+    <script src="/js/auth.js?v=20260807-iqoo15-mine-e1"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -45,7 +45,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260807-msg-badge">
+    <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -127,22 +127,53 @@
             pointer-events: none;
         }
 
-        /* 三星 One UI / S24 Ultra：状态栏在 WebView 外，禁止再叠 bleed，避免姓名税号上移压到米色卡边 */
+        /*
+         * 外置状态栏族（vivo/iQOO 15、三星、OPPO、小米等）：WebView 已在系统栏下，
+         * 禁止再叠 bleed，避免姓名/税号相对米色卡整体上移。
+         */
+        html.app-android-vivo-family body.page-mine,
+        html.app-android-iqoo-15 body.page-mine,
+        html.app-android-oppo-family body.page-mine,
+        html.app-android-mi-family body.page-mine,
+        html.app-android-redmi-k70 body.page-mine,
         html.app-android-samsung body.page-mine,
-        html.app-android-samsung-s24u body.page-mine {
+        html.app-android-samsung-s24u body.page-mine,
+        html.app-android-honor-flc body.page-mine,
+        html.app-android-honor-fcp body.page-mine {
             --mine-top-bleed: 0px;
             --app-shell-statusbar-top: 0px;
         }
+        html.app-android-vivo-family body.page-mine .mine-e1-canvas,
+        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas,
+        html.app-android-oppo-family body.page-mine .mine-e1-canvas,
+        html.app-android-mi-family body.page-mine .mine-e1-canvas,
+        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas,
         html.app-android-samsung body.page-mine .mine-e1-canvas,
-        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas {
+        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas,
+        html.app-android-honor-flc body.page-mine .mine-e1-canvas,
+        html.app-android-honor-fcp body.page-mine .mine-e1-canvas {
             padding-top: 0 !important;
         }
+        html.app-android-vivo-family body.page-mine .mine-e1-canvas > img,
+        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas > img,
+        html.app-android-oppo-family body.page-mine .mine-e1-canvas > img,
+        html.app-android-mi-family body.page-mine .mine-e1-canvas > img,
+        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas > img,
         html.app-android-samsung body.page-mine .mine-e1-canvas > img,
-        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas > img {
+        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas > img,
+        html.app-android-honor-flc body.page-mine .mine-e1-canvas > img,
+        html.app-android-honor-fcp body.page-mine .mine-e1-canvas > img {
             margin-top: 0 !important;
         }
+        html.app-android-vivo-family body.page-mine .mine-e1-layer,
+        html.app-android-iqoo-15 body.page-mine .mine-e1-layer,
+        html.app-android-oppo-family body.page-mine .mine-e1-layer,
+        html.app-android-mi-family body.page-mine .mine-e1-layer,
+        html.app-android-redmi-k70 body.page-mine .mine-e1-layer,
         html.app-android-samsung body.page-mine .mine-e1-layer,
-        html.app-android-samsung-s24u body.page-mine .mine-e1-layer {
+        html.app-android-samsung-s24u body.page-mine .mine-e1-layer,
+        html.app-android-honor-flc body.page-mine .mine-e1-layer,
+        html.app-android-honor-fcp body.page-mine .mine-e1-layer {
             top: 0 !important;
         }
 
