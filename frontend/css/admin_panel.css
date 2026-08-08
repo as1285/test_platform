@@ -652,6 +652,14 @@ tr.users-row-highlight > td {
 .btn-del-user { background: var(--admin-del-user); color: var(--admin-on-primary); white-space: nowrap; }
 .btn-refund { background: var(--admin-warning); color: var(--admin-on-primary); white-space: nowrap; }
 .btn-activate { background: var(--admin-primary); color: var(--admin-on-primary); white-space: nowrap; }
+.btn-make-permanent {
+    background: #0f766e;
+    color: #fff;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.btn-make-permanent:hover { filter: brightness(1.06); }
+.btn-make-permanent:disabled { opacity: 0.65; cursor: not-allowed; }
 .section-head-actions {
     display: flex;
     align-items: flex-start;
@@ -744,8 +752,12 @@ tr.users-detail-row td { background: transparent; }
     text-align: center;
 }
 .users-registry-table .col-ops {
-    width: 200px;
-    white-space: nowrap;
+    min-width: 280px;
+    width: 320px;
+    white-space: normal;
+}
+.users-registry-table .col-ops .btn-sm {
+    margin: 2px 2px 2px 0;
 }
 tr.users-detail-row > td {
     background: var(--admin-surface-soft);

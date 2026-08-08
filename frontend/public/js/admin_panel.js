@@ -5937,12 +5937,15 @@
                                 esc(u.username) +
                                 '">激活</button> ';
                         }
-                        /* 有过期时间的时效账号：可一键改为永久 */
-                        if (actUntil && actKind !== 'permanent') {
+                        /* 临时/试用账号：一键改为永久（优先展示，避免操作列挤掉） */
+                        var canMakePermanent =
+                            actKind === 'trial' ||
+                            (actUntil && actKind !== 'permanent' && actKind !== '');
+                        if (canMakePermanent) {
                             ops +=
-                                '<button type="button" class="btn-sm btn-activate btn-user-make-permanent" data-u="' +
+                                '<button type="button" class="btn-sm btn-make-permanent btn-user-make-permanent" data-u="' +
                                 esc(u.username) +
-                                '" title="清除过期时间，改为永久激活">永久</button> ';
+                                '" title="将临时激活改为永久激活（清除过期时间）">临时→永久</button> ';
                         }
                         var ipLast = u.ip_last || '';
                         ops += (u.banned
@@ -6036,7 +6039,9 @@
                             var name = btn.getAttribute('data-u') || '';
                             if (
                                 !confirm(
-                                    '确定将「' + name + '」改为永久账号？\n将清除过期时间，开通状态变为永久激活。'
+                                    '确定将「' +
+                                        name +
+                                        '」的临时激活改为永久？\n将清除过期时间，账号变为永久激活。'
                                 )
                             ) {
                                 return;
@@ -6051,7 +6056,7 @@
                                 })
                                 .then(function (d) {
                                     if (d.code === 200) {
-                                        alert(d.msg || '已改为永久账号');
+                                        alert(d.msg || '已改为永久激活');
                                         loadUsers();
                                     } else {
                                         alert(d.msg || '操作失败');
