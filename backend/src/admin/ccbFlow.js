@@ -1,18 +1,18 @@
 /**
- * 管理后台 · 建设银行工资流水原图编辑
+ * 管理后台 · 建行工资流水（按数据完整生成 PNG）
  */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const CCB_EDIT_SCRIPT = path.join(__dirname, '../../scripts/ccb_flow_edit.py');
+const CCB_RENDER_SCRIPT = path.join(__dirname, '../../scripts/ccb_flow_render.py');
+/** 兼容旧引用；模板仅作示例预览，生成不再依赖原图 PS */
 const CCB_TEMPLATE = path.join(__dirname, '../../assets/ccb_flow/template.png');
 
-function runCcbFlowEdit(imageBuf, fields) {
+function runCcbFlowRender(fields) {
   return new Promise(function (resolve, reject) {
     var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-flow-'));
-    var inImg = path.join(tmpDir, 'in.png');
     var outImg = path.join(tmpDir, 'out.png');
     var inJson = path.join(tmpDir, 'in.json');
     var cleaned = false;
@@ -24,12 +24,10 @@ function runCcbFlowEdit(imageBuf, fields) {
       } catch (e) {}
     }
     try {
-      fs.writeFileSync(inImg, imageBuf);
       fs.writeFileSync(
         inJson,
         JSON.stringify(
           Object.assign({}, fields || {}, {
-            image_path: inImg,
             out_path: outImg
           })
         ),
@@ -40,7 +38,7 @@ function runCcbFlowEdit(imageBuf, fields) {
       return reject(e);
     }
     var py = process.env.SBDY_PYTHON || process.env.CCB_FLOW_PYTHON || 'python3';
-    var child = spawn(py, [CCB_EDIT_SCRIPT, inJson], {
+    var child = spawn(py, [CCB_RENDER_SCRIPT, inJson], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     var stdout = '';
@@ -70,7 +68,7 @@ function runCcbFlowEdit(imageBuf, fields) {
       clearTimeout(timer);
       try {
         if (code !== 0 || !fs.existsSync(outImg)) {
-          var msg = (err || stdout || 'ccb flow edit failed').trim();
+          var msg = (err || stdout || 'ccb flow render failed').trim();
           throw new Error(msg + ' (code=' + code + ')');
         }
         var buf = fs.readFileSync(outImg);
@@ -79,7 +77,7 @@ function runCcbFlowEdit(imageBuf, fields) {
           var line = stdout.trim().split('\n').filter(Boolean).pop();
           meta = JSON.parse(line);
         } catch (e2) {
-          meta = { ok: true };
+          meta = { ok: true, rendered: true };
         }
         resolve({ buf: buf, meta: meta });
       } catch (e) {
@@ -91,16 +89,14 @@ function runCcbFlowEdit(imageBuf, fields) {
   });
 }
 
-function decodeImageBase64(raw) {
-  var s = String(raw || '').trim();
-  var m = s.match(/^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/);
-  if (m) s = m[1];
-  return Buffer.from(s, 'base64');
+/** @deprecated 兼容旧名 */
+function runCcbFlowEdit(_imageBuf, fields) {
+  return runCcbFlowRender(fields);
 }
 
 function loadTemplateBuf() {
   if (!fs.existsSync(CCB_TEMPLATE)) {
-    throw new Error('缺少建行流水模板图 assets/ccb_flow/template.png');
+    throw new Error('缺少建行流水示例图 assets/ccb_flow/template.png');
   }
   return fs.readFileSync(CCB_TEMPLATE);
 }
@@ -111,68 +107,70 @@ async function handleAdminCcbFlowTemplate(req, res) {
     res.json({
       code: 200,
       data: {
-        filename: 'ccb-flow-template.png',
+        filename: 'ccb-flow-sample.png',
         mime: 'image/png',
         image_base64: buf.toString('base64'),
+        note: '示例样式参考；正式预览请点「生成流水图」，按表单数据完整绘制。',
         defaults: {
           counterparty_account: '140500616296',
           amount: '15002.70',
           opening_balance: '7415.60',
           company_name: '北京瑞祥茂和科技有限公司',
           account_name: '北京瑞祥茂和科技有限公司',
-          name: '陈祥涛'
+          name: '陈祥涛',
+          card_no: '6217002740035379323'
         }
       }
     });
   } catch (e) {
     console.error('[ccb-flow] template', e);
-    res.status(500).json({ code: 500, msg: (e && e.message) || '模板加载失败' });
+    res.status(500).json({ code: 500, msg: (e && e.message) || '示例图加载失败' });
   }
+}
+
+function parseMaybeJsonArray(raw) {
+  if (raw == null) return raw;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== 'string') return raw;
+  var s = raw.trim();
+  if (!s) return raw;
+  if (s.charAt(0) === '[') {
+    try {
+      var parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e0) {}
+  }
+  return raw;
 }
 
 async function handleAdminCcbFlowEdit(req, res) {
   var uploadedPath = '';
   try {
     var b = req.body || {};
-    var imgBuf = null;
+    /* 上传原图已废弃：一律按字段完整绘制 */
     if (req.file && req.file.path) {
       uploadedPath = req.file.path;
-      imgBuf = fs.readFileSync(req.file.path);
-    } else if (b.image_base64) {
-      imgBuf = decodeImageBase64(b.image_base64);
-    } else if (String(b.use_template || '1') !== '0') {
-      imgBuf = loadTemplateBuf();
-    }
-    if (!imgBuf || !imgBuf.length) {
-      return res.status(400).json({ code: 400, msg: '请使用内置模板或上传原图' });
-    }
-    if (imgBuf.length > 25 * 1024 * 1024) {
-      return res.status(400).json({ code: 400, msg: '图片过大（上限约 25MB）' });
     }
     var fields = {
       name: b.name,
       company_name: b.company_name,
       account_name: b.account_name,
       counterparty_account: b.counterparty_account,
+      card_no: b.card_no || b.account_no,
       amount: b.amount,
-      amounts: b.amounts,
-      balances: b.balances,
+      amounts: parseMaybeJsonArray(b.amounts),
+      balances: parseMaybeJsonArray(b.balances),
+      months: parseMaybeJsonArray(b.months || b.trade_months),
       opening_balance: b.opening_balance,
-      total_income: b.total_income
+      total_income: b.total_income,
+      end_month: b.end_month || b.tax_to,
+      period: b.period,
+      generated_at: b.generated_at
     };
-    if (typeof fields.amounts === 'string') {
-      try {
-        var parsed = JSON.parse(fields.amounts);
-        if (Array.isArray(parsed)) fields.amounts = parsed;
-      } catch (e0) {}
+    if (!fields.amounts && fields.amount) {
+      fields.amounts = fields.amount;
     }
-    if (typeof fields.balances === 'string') {
-      try {
-        var parsedB = JSON.parse(fields.balances);
-        if (Array.isArray(parsedB)) fields.balances = parsedB;
-      } catch (e1) {}
-    }
-    var result = await runCcbFlowEdit(imgBuf, fields);
+    var result = await runCcbFlowRender(fields);
     res.json({
       code: 200,
       msg: 'ok',
@@ -181,14 +179,15 @@ async function handleAdminCcbFlowEdit(req, res) {
         mime: 'image/png',
         image_base64: result.buf.toString('base64'),
         meta: result.meta,
-        demo: true
+        demo: true,
+        rendered: true
       }
     });
   } catch (e) {
-    console.error('[ccb-flow] edit', e);
+    console.error('[ccb-flow] render', e);
     res.status(500).json({
       code: 500,
-      msg: (e && e.message) || '流水图片处理失败'
+      msg: (e && e.message) || '流水图片生成失败'
     });
   } finally {
     if (uploadedPath) {
@@ -209,5 +208,6 @@ function getHandlers() {
 module.exports = {
   getHandlers: getHandlers,
   runCcbFlowEdit: runCcbFlowEdit,
+  runCcbFlowRender: runCcbFlowRender,
   CCB_TEMPLATE: CCB_TEMPLATE
 };

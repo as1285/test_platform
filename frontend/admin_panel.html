@@ -1590,10 +1590,10 @@
                 </div>
 
                 <div id="page-ccb-flow" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">基于建行工资流水原图，修改姓名、公司名/户名、交易金额与余额</p></div>
+                    <div class="page-lede"><p class="page-lede-text">按姓名、公司、金额与月份<strong>完整绘制</strong>建行工资交易明细图（非原图 PS）</p></div>
                     <section>
-                        <h2>工资流水修改</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">默认使用内置「中国建设银行个人活期账户工资交易明细」原图。可改客户姓名、对方账号与户名（公司名）、12 行交易金额与账户余额（按起始余额累加），并同步总收入。演示用途，非正式银行单据。</p></details>
+                        <h2>工资流水生成</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">服务端根据表单数据绘制「中国建设银行个人活期账户工资交易明细」：表头、12 行交易（日期/金额/余额/对方账号户名）、总收入与红章。可从注册用户个税预填。演示用途，非正式银行单据。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:960px;">
                             <div>
                                 <label for="ccbFlowPrefillUser">按用户名预填</label>
@@ -1611,19 +1611,9 @@
                                 <button type="button" class="btn-page" id="ccbFlowPrefillBtn">预填个税</button>
                             </div>
                         </div>
-                        <p class="hint mt-0" style="max-width:960px;">预填姓名、公司，并加载所选时段内的<strong>正常工资薪金</strong>月收入到「交易金额」（默认近 12 个月；超过 12 个月取最近 12 个月，逗号分隔）。</p>
+                        <p class="hint mt-0" style="max-width:960px;">预填姓名、公司、月份与<strong>正常工资薪金</strong>月收入（默认近 12 个月；超过 12 个月取最近 12 个月）。生成时交易日期按各月 15 日写入。</p>
                         <div class="form-row form-stack" style="max-width:960px;">
-                            <div class="admin-tool-step">① 原图（默认内置模板）</div>
-                            <div class="admin-dropzone" id="ccbFlowDropzone" tabindex="0" role="button" aria-label="拖拽或点击上传原图">
-                                <input type="file" id="ccbFlowImageFile" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
-                                <div class="admin-dropzone-title">拖拽替换原图，或点击选择（可选）</div>
-                                <p class="hint mt-0 mb-0">可不上传，直接用内置建行流水模板</p>
-                                <p class="hint mt-6 mb-0" id="ccbFlowFileName">尚未加载</p>
-                            </div>
-                            <div class="form-actions" style="margin-top:0;">
-                                <button type="button" class="btn-page" id="ccbFlowTemplateBtn">加载内置模板</button>
-                            </div>
-                            <div class="admin-tool-step">② 修改字段</div>
+                            <div class="admin-tool-step">① 填写字段</div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
                                     <label for="ccbFlowName">姓名（客户名称）</label>
@@ -1640,35 +1630,46 @@
                             </div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
-                                    <label for="ccbFlowCounterparty">对方账号</label>
-                                    <input type="text" id="ccbFlowCounterparty" maxlength="32" value="140500616296" inputmode="numeric">
+                                    <label for="ccbFlowCardNo">卡号/账号</label>
+                                    <input type="text" id="ccbFlowCardNo" maxlength="32" value="6217002740035379323" inputmode="numeric">
                                 </div>
                                 <div>
-                                    <label for="ccbFlowAmount">交易金额（12 行 / 可逗号分隔）</label>
-                                    <input type="text" id="ccbFlowAmount" maxlength="320" placeholder="15002.70 或 12 个逗号分隔金额" value="15002.70" inputmode="decimal" style="min-width:220px;">
+                                    <label for="ccbFlowCounterparty">对方账号</label>
+                                    <input type="text" id="ccbFlowCounterparty" maxlength="32" value="140500616296" inputmode="numeric">
                                 </div>
                                 <div>
                                     <label for="ccbFlowOpening">入账前余额</label>
                                     <input type="text" id="ccbFlowOpening" maxlength="16" placeholder="7415.60" value="7415.60" inputmode="decimal">
                                 </div>
                             </div>
-                            <p class="hint mt-0">余额按「入账前余额 + 累计交易金额」自动推算；总收入=12 笔金额合计。金额也可填逗号分隔的 12 个值。</p>
+                            <div class="form-row flex-wrap gap-10">
+                                <div style="flex:1;min-width:280px;">
+                                    <label for="ccbFlowAmount">交易金额（12 行 / 可逗号分隔）</label>
+                                    <input type="text" id="ccbFlowAmount" maxlength="320" placeholder="15002.70 或 12 个逗号分隔金额" value="15002.70" inputmode="decimal">
+                                </div>
+                                <div style="flex:1;min-width:280px;">
+                                    <label for="ccbFlowMonths">对应月份（可选，逗号分隔）</label>
+                                    <input type="text" id="ccbFlowMonths" maxlength="220" placeholder="空则按结束月往前 12 个月，如 2025-09,2025-10…">
+                                </div>
+                            </div>
+                            <p class="hint mt-0">余额按「入账前余额 + 累计交易金额」自动推算；总收入=各笔金额合计。不足 12 行用末月金额/月份顺延补齐。</p>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="ccbFlowSampleBtn">填入示例</button>
-                                <button type="button" class="btn-primary" id="ccbFlowEditBtn">生成预览</button>
+                                <button type="button" class="btn-primary" id="ccbFlowEditBtn">生成流水图</button>
                                 <button type="button" class="btn-page" id="ccbFlowDownloadBtn" hidden>下载 PNG</button>
                                 <span class="hint" id="ccbFlowStatus" aria-live="polite"></span>
                             </div>
-                            <div class="admin-tool-preview-grid" id="ccbFlowPreviewWrap" hidden>
-                                <div>
-                                    <div class="hint">原图</div>
-                                    <img id="ccbFlowPreviewSrc" alt="原图" class="admin-tool-preview-img">
-                                </div>
-                                <div>
-                                    <div class="hint">结果</div>
-                                    <img id="ccbFlowPreviewOut" alt="结果" class="admin-tool-preview-img">
-                                </div>
+                            <div class="admin-tool-step">② 预览</div>
+                            <div id="ccbFlowPreviewWrap" hidden>
+                                <div class="hint">生成结果</div>
+                                <img id="ccbFlowPreviewOut" alt="工资流水生成结果" class="admin-tool-preview-img" style="max-width:100%;height:auto;">
                             </div>
+                            <!-- 兼容旧脚本节点（已隐藏） -->
+                            <input type="file" id="ccbFlowImageFile" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                            <img id="ccbFlowPreviewSrc" alt="" hidden>
+                            <button type="button" id="ccbFlowTemplateBtn" hidden>加载示例</button>
+                            <span id="ccbFlowFileName" hidden></span>
+                            <div id="ccbFlowDropzone" hidden></div>
                         </div>
                     </section>
                 </div>
@@ -2456,9 +2457,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260808-deadcode"></script>
+    <script src="/js/admin/loader.js?v=20260808-ccb-render"></script>
     <script src="/js/admin/nav.js?v=20260806-admin-deadcode"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260808-make-permanent"></script>
+    <script src="/js/admin_panel.js?v=20260808-ccb-render"></script>
 </body>
 </html>

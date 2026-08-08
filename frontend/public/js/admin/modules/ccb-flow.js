@@ -1,8 +1,7 @@
-/** Admin module: 建行工资流水原图编辑 */
+/** Admin module: 建行工资流水（按数据完整生成） */
 (function (global) {
   var lastResult = null;
-  var srcObjectUrl = '';
-  var usingTemplate = true;
+  var lastMonths = [];
 
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
@@ -34,7 +33,7 @@
     var btn = document.getElementById('ccbFlowEditBtn');
     if (btn) {
       btn.disabled = !!busy;
-      btn.textContent = busy ? '处理中…' : '生成预览';
+      btn.textContent = busy ? '生成中…' : '生成流水图';
     }
   }
 
@@ -69,53 +68,17 @@
     else btn.setAttribute('hidden', '');
   }
 
-  function acceptFile(file) {
-    if (!file) return;
-    if (!/^image\//.test(file.type || '') && !/\.(png|jpe?g|webp)$/i.test(file.name || '')) {
-      setStatus('请上传 PNG / JPG / WebP 图片', true);
-      return;
-    }
-    var input = document.getElementById('ccbFlowImageFile');
-    if (input) {
-      try {
-        var dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-      } catch (e0) {}
-    }
-    if (srcObjectUrl) {
-      try {
-        URL.revokeObjectURL(srcObjectUrl);
-      } catch (e1) {}
-    }
-    srcObjectUrl = URL.createObjectURL(file);
-    usingTemplate = false;
-    var srcImg = document.getElementById('ccbFlowPreviewSrc');
-    var outImg = document.getElementById('ccbFlowPreviewOut');
-    var nameEl = document.getElementById('ccbFlowFileName');
-    if (srcImg) srcImg.src = srcObjectUrl;
-    if (outImg) outImg.removeAttribute('src');
-    if (nameEl) nameEl.textContent = file.name + ' · ' + Math.round(file.size / 1024) + ' KB';
-    lastResult = null;
-    setDownloadVisible(false);
-    showPreviewWrap(true);
-    setStatus('已使用上传原图，可填写字段后生成预览', false);
-  }
-
-  function onFileChange() {
-    var input = document.getElementById('ccbFlowImageFile');
-    var file = input && input.files && input.files[0];
-    if (file) acceptFile(file);
-  }
-
   function fillSample() {
     setField('ccbFlowName', '张三丰');
     setField('ccbFlowCompany', '杭州测试科技有限公司');
     setField('ccbFlowAccountName', '杭州测试科技有限公司');
+    setField('ccbFlowCardNo', '6217002740035379323');
     setField('ccbFlowCounterparty', '140500616296');
     setField('ccbFlowAmount', '16888.00');
     setField('ccbFlowOpening', '8000');
-    setStatus('已填入示例字段', false);
+    setField('ccbFlowMonths', '');
+    lastMonths = [];
+    setStatus('已填入示例字段，点「生成流水图」按数据绘制', false);
   }
 
   function pad2(n) {
@@ -136,7 +99,6 @@
     return y * 12 + mo;
   }
 
-  /** 默认近 12 个自然月（含当月） */
   function defaultTaxRange() {
     var now = new Date();
     var endY = now.getFullYear();
@@ -185,10 +147,6 @@
     return /正常工资/.test(sub);
   }
 
-  /**
-   * 从个税记录提取时段内月收入（最多 12 个月，取区间内最近的 12 个月）。
-   * 返回 { amounts: string[], months: string[], company: string }
-   */
   function buildAmountsFromTaxRecords(records, fromYm, toYm) {
     var fromIdx = ymToIndex(fromYm);
     var toIdx = ymToIndex(toYm);
@@ -199,9 +157,6 @@
       var tmp = fromIdx;
       fromIdx = toIdx;
       toIdx = tmp;
-      var tmpYm = fromYm;
-      fromYm = toYm;
-      toYm = tmpYm;
     }
     var byMonth = {};
     var companyCount = {};
@@ -228,7 +183,6 @@
     if (!months.length) {
       return { amounts: [], months: [], company: '', from: fromYm, to: toYm };
     }
-    /* 超过 12 个月：取最近 12 个月 */
     if (months.length > 12) {
       months = months.slice(months.length - 12);
     }
@@ -244,49 +198,6 @@
       }
     });
     return { amounts: amounts, months: months, company: company, from: fromYm, to: toYm };
-  }
-
-  function loadTemplatePreview() {
-    setStatus('加载内置模板…', false);
-    fetchAdmin('/api/admin/ccb-flow/template')
-      .then(function (r) {
-        return r.json().then(function (j) {
-          return { http: r.status, j: j };
-        });
-      })
-      .then(function (pack) {
-        var j = pack.j;
-        if (!j || j.code !== 200 || !j.data || !j.data.image_base64) {
-          setStatus((j && j.msg) || '模板加载失败', true);
-          return;
-        }
-        usingTemplate = true;
-        var input = document.getElementById('ccbFlowImageFile');
-        if (input) input.value = '';
-        var dataUrl = 'data:image/png;base64,' + j.data.image_base64;
-        var srcImg = document.getElementById('ccbFlowPreviewSrc');
-        var outImg = document.getElementById('ccbFlowPreviewOut');
-        var nameEl = document.getElementById('ccbFlowFileName');
-        if (srcImg) srcImg.src = dataUrl;
-        if (outImg) outImg.removeAttribute('src');
-        if (nameEl) nameEl.textContent = '内置模板 · 建行工资流水原图';
-        var d = j.data.defaults || {};
-        if (d.name && !val('ccbFlowName')) setField('ccbFlowName', d.name);
-        if (d.company_name && !val('ccbFlowCompany')) setField('ccbFlowCompany', d.company_name);
-        if (d.account_name && !val('ccbFlowAccountName')) setField('ccbFlowAccountName', d.account_name);
-        if (d.counterparty_account && !val('ccbFlowCounterparty')) {
-          setField('ccbFlowCounterparty', d.counterparty_account);
-        }
-        if (d.amount && !val('ccbFlowAmount')) setField('ccbFlowAmount', d.amount);
-        if (d.opening_balance && !val('ccbFlowOpening')) setField('ccbFlowOpening', d.opening_balance);
-        lastResult = null;
-        setDownloadVisible(false);
-        showPreviewWrap(true);
-        setStatus('已加载内置模板，修改字段后点生成预览', false);
-      })
-      .catch(function (e) {
-        setStatus('模板加载失败：' + (e && e.message ? e.message : '网络错误'), true);
-      });
   }
 
   function prefill() {
@@ -347,6 +258,8 @@
         }
         if (taxPack.amounts && taxPack.amounts.length) {
           setField('ccbFlowAmount', taxPack.amounts.join(','));
+          lastMonths = taxPack.months.slice();
+          setField('ccbFlowMonths', lastMonths.join(','));
           var tip =
             '已预填「' +
             username +
@@ -356,12 +269,14 @@
             taxPack.months[taxPack.months.length - 1] +
             ' 共 ' +
             taxPack.amounts.length +
-            ' 个月收入';
+            ' 个月，可点「生成流水图」';
           if (taxPack.amounts.length < 12) {
-            tip += '（不足 12 行，生成时将用末月金额补齐）';
+            tip += '（不足 12 行将自动补齐）';
           }
           setStatus(tip, false);
         } else {
+          lastMonths = [];
+          setField('ccbFlowMonths', '');
           setStatus(
             '已预填姓名/公司；时段 ' +
               fromYm +
@@ -376,6 +291,21 @@
         var msg = e && e.message ? e.message : '网络错误';
         setStatus('预填失败：' + msg, true);
       });
+  }
+
+  function resolveMonthsPayload() {
+    var raw = val('ccbFlowMonths');
+    if (raw) {
+      return raw
+        .split(/[\n,;，；]+/)
+        .map(function (s) {
+          return String(s || '').trim();
+        })
+        .filter(Boolean);
+    }
+    if (lastMonths && lastMonths.length) return lastMonths.slice();
+    var toYm = val('ccbFlowTaxTo');
+    return toYm ? null : null;
   }
 
   function edit() {
@@ -396,22 +326,22 @@
       return;
     }
     var fd = new FormData();
-    var input = document.getElementById('ccbFlowImageFile');
-    var file = input && input.files && input.files[0];
-    if (file) {
-      fd.append('file', file);
-      fd.append('use_template', '0');
-    } else {
-      fd.append('use_template', '1');
-    }
+    fd.append('use_template', '0');
     fd.append('name', name);
     fd.append('company_name', company);
     fd.append('account_name', accountName);
+    fd.append('card_no', val('ccbFlowCardNo') || '6217002740035379323');
     fd.append('counterparty_account', val('ccbFlowCounterparty') || '140500616296');
     fd.append('amount', amount);
     fd.append('opening_balance', val('ccbFlowOpening') || '7415.60');
+    var months = resolveMonthsPayload();
+    if (months && months.length) {
+      fd.append('months', JSON.stringify(months));
+    }
+    var taxTo = val('ccbFlowTaxTo');
+    if (taxTo) fd.append('tax_to', taxTo);
     setBusy(true);
-    setStatus('处理中…', false);
+    setStatus('正在按数据绘制流水图…', false);
     var token = '';
     try {
       token = localStorage.getItem('admin_token') || '';
@@ -434,7 +364,7 @@
       .then(function (pack) {
         var j = pack.j;
         if (!j || j.code !== 200 || !j.data || !j.data.image_base64) {
-          setStatus((j && j.msg) || '处理失败（HTTP ' + pack.http + '）', true);
+          setStatus((j && j.msg) || '生成失败（HTTP ' + pack.http + '）', true);
           return;
         }
         lastResult = j.data;
@@ -444,12 +374,13 @@
         if (outImg) outImg.src = dataUrl;
         setDownloadVisible(true);
         var meta = j.data.meta || {};
-        var tip = '预览已生成';
+        var tip = '流水图已按数据生成';
         if (meta.total_income != null) tip += ' · 总收入 ' + meta.total_income;
+        if (meta.period) tip += ' · ' + meta.period;
         setStatus(tip, false);
       })
       .catch(function (e) {
-        setStatus('处理失败：' + (e && e.message ? e.message : '网络错误'), true);
+        setStatus('生成失败：' + (e && e.message ? e.message : '网络错误'), true);
       })
       .then(function () {
         setBusy(false);
@@ -458,71 +389,31 @@
 
   function download() {
     if (!lastResult || !lastResult.image_base64) {
-      setStatus('请先生成预览', true);
+      setStatus('请先生成流水图', true);
       return;
     }
     downloadBase64(lastResult.image_base64, lastResult.filename, lastResult.mime);
     setStatus('已开始下载（演示）', false);
   }
 
-  function bindDropzone() {
-    var zone = document.getElementById('ccbFlowDropzone');
-    var input = document.getElementById('ccbFlowImageFile');
-    if (!zone || zone.__ccbBound) return;
-    zone.__ccbBound = true;
-    zone.addEventListener('click', function () {
-      if (input) input.click();
-    });
-    zone.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
-        if (input) input.click();
-      }
-    });
-    ;['dragenter', 'dragover'].forEach(function (type) {
-      zone.addEventListener(type, function (ev) {
-        ev.preventDefault();
-        zone.classList.add('is-dragover');
-      });
-    });
-    ;['dragleave', 'drop'].forEach(function (type) {
-      zone.addEventListener(type, function (ev) {
-        ev.preventDefault();
-        zone.classList.remove('is-dragover');
-      });
-    });
-    zone.addEventListener('drop', function (ev) {
-      var file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
-      if (file) acceptFile(file);
-    });
-  }
-
   var bound = false;
   function bind() {
     if (bound) return;
     bound = true;
-    bindDropzone();
-    var f = document.getElementById('ccbFlowImageFile');
     var e = document.getElementById('ccbFlowEditBtn');
     var p = document.getElementById('ccbFlowPrefillBtn');
     var s = document.getElementById('ccbFlowSampleBtn');
     var d = document.getElementById('ccbFlowDownloadBtn');
-    var t = document.getElementById('ccbFlowTemplateBtn');
-    if (f) f.addEventListener('change', onFileChange);
     if (e) e.addEventListener('click', edit);
     if (p) p.addEventListener('click', prefill);
     if (s) s.addEventListener('click', fillSample);
     if (d) d.addEventListener('click', download);
-    if (t) t.addEventListener('click', loadTemplatePreview);
   }
 
   function loadPage() {
     bind();
     ensureTaxRangeDefaults();
-    var srcImg = document.getElementById('ccbFlowPreviewSrc');
-    if (srcImg && !srcImg.getAttribute('src')) {
-      loadTemplatePreview();
-    }
+    setStatus('填写字段或预填个税后，点「生成流水图」', false);
   }
 
   global.AdminModules = global.AdminModules || {};
