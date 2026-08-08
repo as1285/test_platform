@@ -5615,8 +5615,8 @@ async function handleAlipayConfig(req, res) {
             hide_self_serve_pay: false,
             skus: [
               {
-                id: 'sku_398_perm',
-                amount: '398.00',
+                id: 'sku_600_perm',
+                amount: '600.00',
                 label: '永久',
                 subject: '激活码·永久',
                 grant_kind: 'permanent',

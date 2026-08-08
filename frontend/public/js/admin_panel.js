@@ -6074,7 +6074,7 @@
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
                             var pick = prompt(
-                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=398永久  B=298日/398周/498月/698年/998永久  C=仅激活码',
+                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=600永久  B=199小时/328周/398月/600永久  C=仅激活码',
                                 'A'
                             );
                             if (pick == null) return;

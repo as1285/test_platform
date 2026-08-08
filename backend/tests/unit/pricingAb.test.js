@@ -87,12 +87,13 @@ describe('pricingAb SKU mojibake repair via load', () => {
       c_percent: 0,
       treatment_skus: [
         {
-          id: 'sku_298_1d',
+          id: 'sku_199_1h',
           label: badLabel,
           subject: badLabel,
-          amount: '298.00',
+          amount: '199.00',
           grant_kind: 'trial',
-          grant_days: 1
+          grant_hours: 1,
+          grant_days: 0
         }
       ]
     };
@@ -111,9 +112,12 @@ describe('pricingAb SKU mojibake repair via load', () => {
       alipayNormalizeAmount: (v) => String(v || '')
     });
     const cfg = await api.loadPricingAbParsed(true);
-    const day = (cfg.treatment_skus || []).find((s) => s.id === 'sku_298_1d');
-    expect(day).toBeTruthy();
-    expect(day.label).toBe('日卡');
-    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toContain('日卡');
+    const hour = (cfg.treatment_skus || []).find((s) => s.id === 'sku_199_1h');
+    expect(hour).toBeTruthy();
+    expect(hour.label).toBe('小时体验卡');
+    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toContain('小时体验卡');
+    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
+      '199.00|328.00|398.00|600.00'
+    );
   });
 });

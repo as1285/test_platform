@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * A(control)=398 永久；B(treatment)=298 日卡 / 398 周卡 / 498 月卡 / 698 年卡 / 998 永久。
+ * A(control)=600 永久；B(treatment)=199 小时体验 / 328 周卡 / 398 月卡 / 600 永久。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,10 +8,10 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-/** A 方案：单档 398 永久 */
-var SKU_CONTROL_320_WEEK = {
-  id: 'sku_398_perm',
-  amount: '398.00',
+/** A 方案：单档 600 永久 */
+var SKU_CONTROL_600_PERM = {
+  id: 'sku_600_perm',
+  amount: '600.00',
   label: '永久',
   subject: '激活码·永久',
   grant_kind: 'permanent',
@@ -20,9 +20,55 @@ var SKU_CONTROL_320_WEEK = {
   grant_minutes: 0
 };
 
-/** 兼容旧订单 id（sku_199_perm_legacy）查询；权益改为永久 */
-var SKU_CONTROL_199_PERM = SKU_CONTROL_320_WEEK;
+/** 兼容旧变量名 / 旧订单 id 查询 */
+var SKU_CONTROL_320_WEEK = SKU_CONTROL_600_PERM;
+var SKU_CONTROL_199_PERM = SKU_CONTROL_600_PERM;
 
+var SKU_199_HOUR = {
+  id: 'sku_199_1h',
+  amount: '199.00',
+  label: '小时体验卡',
+  subject: '激活码·小时体验',
+  grant_kind: 'trial',
+  grant_hours: 1,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+var SKU_328_WEEK = {
+  id: 'sku_328_7d',
+  amount: '328.00',
+  label: '周卡',
+  subject: '激活码·周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 7,
+  grant_minutes: 0
+};
+
+var SKU_398_MONTH = {
+  id: 'sku_398_30d',
+  amount: '398.00',
+  label: '月卡',
+  subject: '激活码·月卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 30,
+  grant_minutes: 0
+};
+
+var SKU_600_PERM = {
+  id: 'sku_600_perm',
+  amount: '600.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+/** 旧档：仅用于历史订单 sku_id 解析，不再出现在默认售卖列表 */
 var SKU_298_DAY = {
   id: 'sku_298_1d',
   amount: '298.00',
@@ -33,7 +79,6 @@ var SKU_298_DAY = {
   grant_days: 1,
   grant_minutes: 0
 };
-
 var SKU_398_WEEK = {
   id: 'sku_398_7d',
   amount: '398.00',
@@ -44,7 +89,6 @@ var SKU_398_WEEK = {
   grant_days: 7,
   grant_minutes: 0
 };
-
 var SKU_498_MONTH = {
   id: 'sku_498_30d',
   amount: '498.00',
@@ -55,7 +99,6 @@ var SKU_498_MONTH = {
   grant_days: 30,
   grant_minutes: 0
 };
-
 var SKU_698_YEAR = {
   id: 'sku_698_365d',
   amount: '698.00',
@@ -66,7 +109,6 @@ var SKU_698_YEAR = {
   grant_days: 365,
   grant_minutes: 0
 };
-
 var SKU_998_PERM = {
   id: 'sku_998_perm',
   amount: '998.00',
@@ -77,6 +119,25 @@ var SKU_998_PERM = {
   grant_days: 0,
   grant_minutes: 0
 };
+var SKU_398_PERM_LEGACY = {
+  id: 'sku_398_perm',
+  amount: '600.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+var LEGACY_CATALOG_SKUS = [
+  SKU_298_DAY,
+  SKU_398_WEEK,
+  SKU_498_MONTH,
+  SKU_698_YEAR,
+  SKU_998_PERM,
+  SKU_398_PERM_LEGACY
+];
 
 var DEFAULT_PRICING_AB = {
   enabled: true,
@@ -84,8 +145,8 @@ var DEFAULT_PRICING_AB = {
   b_percent: 50,
   c_percent: 0,
   treatment_percent: 50,
-  control_skus: [SKU_CONTROL_320_WEEK],
-  treatment_skus: [SKU_298_DAY, SKU_398_WEEK, SKU_498_MONTH, SKU_698_YEAR, SKU_998_PERM]
+  control_skus: [SKU_CONTROL_600_PERM],
+  treatment_skus: [SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM]
 };
 
 function cloneSku(s) {
@@ -267,12 +328,16 @@ function findSkuById(cfg, skuId) {
   var id = String(skuId || '');
   /* 旧订单 SKU id → 新档 */
   var legacyMap = {
-    sku_199_perm_legacy: 'sku_398_perm',
-    sku_499_perm: 'sku_498_30d',
-    sku_199_1y: 'sku_698_365d'
+    sku_199_perm_legacy: 'sku_600_perm',
+    sku_499_perm: 'sku_398_30d',
+    sku_199_1y: 'sku_398_30d'
   };
   if (legacyMap[id]) id = legacyMap[id];
-  var lists = [cfg.control_skus || [], cfg.treatment_skus || [], [SKU_298_DAY, SKU_398_WEEK, SKU_498_MONTH, SKU_698_YEAR, SKU_998_PERM]];
+  var lists = [
+    cfg.control_skus || [],
+    cfg.treatment_skus || [],
+    [SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM].concat(LEGACY_CATALOG_SKUS)
+  ];
   var i;
   var j;
   for (i = 0; i < lists.length; i++) {
