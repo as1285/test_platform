@@ -20,12 +20,68 @@ dr_alert_email() {
   echo "${MONITOR_ALERT_EMAIL:-${SMTP_USER:-498771018@qq.com}}"
 }
 
+# 站点完整 URL（去尾斜杠），多站点时用于邮件正文
+dr_site_origin() {
+  local raw="${PUBLIC_SITE_URL:-${APP_URL:-${HTTPS_APP_URL:-${SITE_PUBLIC_ORIGIN:-}}}}"
+  raw="${raw%%[[:space:]]*}"
+  raw="${raw%/}"
+  echo "$raw"
+}
+
+# 站点域名（hostname），用于邮件主题前缀
+dr_site_label() {
+  local raw origin host
+  raw="$(dr_site_origin)"
+  if [[ -z "$raw" ]]; then
+    echo ""
+    return 0
+  fi
+  if [[ ! "$raw" =~ ^https?:// ]]; then
+    raw="https://${raw#/}"
+  fi
+  origin="$raw"
+  host="${origin#*://}"
+  host="${host%%/*}"
+  host="${host%%:*}"
+  printf '%s\n' "$host" | tr '[:upper:]' '[:lower:]'
+}
+
+# 灾容邮件主题前缀：[域名] 或 [hostname]
+dr_mail_prefix() {
+  local site
+  site="$(dr_site_label)"
+  if [[ -n "$site" ]]; then
+    echo "[灾容][$site]"
+  else
+    echo "[灾容][$(hostname)]"
+  fi
+}
+
 # 用法: dr_send_mail "subject" "body"
+# subject 建议用 dr_mail_prefix；正文自动附加站点行（若尚未包含）。
 dr_send_mail() {
   local subject="$1"
   local body="$2"
-  local to
+  local to site origin prefix
   to="$(dr_alert_email)"
+  site="$(dr_site_label)"
+  origin="$(dr_site_origin)"
+  prefix="$(dr_mail_prefix)"
+  # 主题未带域名时自动加上，避免各调用方漏写
+  if [[ -n "$site" && "$subject" != *"[$site]"* ]]; then
+    if [[ "$subject" == \[灾容\]* ]]; then
+      subject="[灾容][$site]${subject#\[灾容\]}"
+    else
+      subject="${prefix} ${subject}"
+    fi
+  elif [[ -z "$site" && "$subject" != \[灾容\]* ]]; then
+    subject="${prefix} ${subject}"
+  fi
+  if [[ -n "$origin" && "$body" != *"站点:"* && "$body" != *"站点："* ]]; then
+    body="站点: ${origin}"$'\n'"主机: $(hostname)"$'\n'"${body}"
+  elif [[ -n "$site" && "$body" != *"站点:"* && "$body" != *"站点："* ]]; then
+    body="站点: ${site}"$'\n'"主机: $(hostname)"$'\n'"${body}"
+  fi
   if [[ -z "${SMTP_HOST:-}" || -z "${SMTP_USER:-}" || -z "${SMTP_PASS:-}" ]]; then
     echo "[dr] SMTP 未配置，跳过邮件: $subject" >&2
     return 1

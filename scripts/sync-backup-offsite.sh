@@ -283,6 +283,8 @@ main() {
   local summary
   summary="$(
     cat <<EOF
+站点: $(dr_site_origin)
+域名: $(dr_site_label)
 模式: $MODE
 热备目录: $HOT_DIR ($(du -sh "$HOT_DIR" 2>/dev/null | awk '{print $1}' || echo 0))
 日备: $DAILY_DIR ($(ls -1 "$DAILY_DIR"/${DB_NAME}-daily-*.sql.gz 2>/dev/null | wc -l | tr -d ' ') 份)
@@ -297,13 +299,13 @@ EOF
 
   if ((rc != 0)); then
     if dr_alert_cooldown_ok "offsite-backup" 3600; then
-      dr_send_mail "[灾容] 备份/异地同步异常 $(hostname)" "$summary" || true
+      dr_send_mail "$(dr_mail_prefix) 备份/异地同步异常 $(hostname)" "$summary" || true
     fi
     exit 1
   fi
   if [[ "$MODE" == "full" && "${BACKUP_SUCCESS_MAIL:-0}" == "1" && "$(date +%u)" == "1" ]]; then
     if dr_alert_cooldown_ok "offsite-ok" 86400; then
-      dr_send_mail "[灾容] 周备份完成 $(hostname)" "$summary" || true
+      dr_send_mail "$(dr_mail_prefix) 周备份完成 $(hostname)" "$summary" || true
     fi
   fi
 }

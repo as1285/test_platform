@@ -276,9 +276,12 @@ main() {
     write_fail_streak 0
   fi
 
-  local body
+  local body site_label
+  site_label="$(dr_site_label)"
   body="$(
     cat <<EOF
+站点: $(dr_site_origin)
+域名: ${site_label:-—}
 主机: $(hostname)
 时间: $(date '+%F %T %z')
 状态: $status_line
@@ -301,7 +304,7 @@ EOF
   )"
 
   if dr_alert_cooldown_ok "health" "$ALERT_COOLDOWN_SEC"; then
-    dr_send_mail "[灾容] $(hostname) $status_line" "$body" || true
+    dr_send_mail "$(dr_mail_prefix) $(hostname) $status_line" "$body" || true
   else
     log "告警冷却中，跳过邮件"
   fi
