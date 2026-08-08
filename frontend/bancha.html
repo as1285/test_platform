@@ -2,12 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260807-bancha-black-bar2"></script>
+    <script src="/js/auth.js?v=20260808-android-tab-inset"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#2b81f2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>办&查</title>
     <style>
         * {
@@ -20,19 +20,6 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-        }
-
-        /* 原版顶部黑状态栏：高度由 auth.js --bancha-black-bar 写入（Android 至少 40px） */
-        body.page-bancha::before {
-            content: '';
-            position: fixed;
-            left: 0;
-            right: 0;
-            top: 0;
-            height: var(--bancha-black-bar, 40px);
-            background: #000;
-            z-index: 1000;
-            pointer-events: none;
         }
         
         /* 办&查页面样式 */
@@ -47,24 +34,31 @@
             /* 与 db.jpg 顶部左侧取样对齐，仅作头图未盖住时的兜底 */
             background: #2b81f2;
             overflow: hidden;
-            padding-top: var(--bancha-black-bar, 40px);
         }
 
-        .bancha-header img {
-            margin-top: 0;
-            width: 100%;
-            display: block;
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .bancha-header {
+                padding-top: env(safe-area-inset-top, 0px);
+            }
+            .bancha-header img {
+                margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+            }
         }
 
         html.app-top-safe-shell .bancha-header {
-            padding-top: var(--bancha-black-bar, 40px);
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             background: #2b81f2;
             overflow: hidden;
         }
         html.app-top-safe-shell .bancha-header > img {
-            margin-top: 0;
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             display: block;
             width: 100%;
+        }
+
+        .bancha-header img {
+            width: 100%;
+            display: block;
         }
         
         .bancha-header-content {
