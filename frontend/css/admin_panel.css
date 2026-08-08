@@ -74,9 +74,6 @@
     --admin-neutral-btn: #6b7280;
     --admin-del-user: #6b5e58;
     --admin-emit: #5a7a9a;
-    --admin-gender-female: #e91e8c;
-    --admin-gender-female-bg: #fff5f9;
-    --admin-gender-female-border: #f5c2d9;
     --admin-code-bg: #f1f5f9;
     --admin-table-head-alt: #f9fafb;
 
@@ -857,23 +854,6 @@ tr.users-detail-row > td {
     border-radius: 10px;
     padding: 14px 16px;
     text-align: center;
-}
-.register-gender-card.gender-male {
-    border-color: var(--admin-primary-border);
-    background: var(--admin-surface-tint);
-}
-.register-gender-card.gender-male .rg-count {
-    color: var(--admin-primary);
-}
-.register-gender-card.gender-female {
-    border-color: var(--admin-gender-female-border);
-    background: var(--admin-gender-female-bg);
-}
-.register-gender-card.gender-female .rg-count {
-    color: var(--admin-gender-female);
-}
-.register-gender-card.gender-unknown .rg-count {
-    color: var(--admin-text-muted);
 }
 .register-gender-card .rg-label {
     font-size: 15px;

@@ -5,16 +5,9 @@
   var loaded = Object.create(null);
   var inflight = Object.create(null);
 
+  /* 空壳模块（仅 ready:true）已删除；PAGE_MODULE 仍映射以便按页拉 Chart/QR 等依赖 */
   var MODULE_SRC = {
-    charts: '/js/admin/modules/charts.js?v=20260806-admin-deadcode',
-    analytics: '/js/admin/modules/analytics.js?v=20260721-p2',
-    users: '/js/admin/modules/users.js?v=20260721-p2',
-    'user-data': '/js/admin/modules/user-data.js?v=20260721-p2',
-    codes: '/js/admin/modules/codes.js?v=20260721-p2',
-    settings: '/js/admin/modules/settings.js?v=20260721-p2',
-    accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
-    logs: '/js/admin/modules/logs.js?v=20260721-p2',
-    monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
+    charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260802-paste-tpl',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260805-lizhi-users',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',

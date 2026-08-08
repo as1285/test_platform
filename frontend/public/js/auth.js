@@ -521,14 +521,6 @@
     return /V2405A|V2405DA|V2413\b|V2419A|vivo[\s_]*X200\s*Pro/i.test(ua);
   }
 
-  /** Cordova 壳 + vivo X200 Pro：WebView 已由壳体下移，勿再叠 Android 15 的 56px 顶栏占位。 */
-  function isCordovaVivoX200ProClient() {
-    if (!isCordovaTaxAppShell()) {
-      return false;
-    }
-    return isVivoX200ProLikeClient();
-  }
-
   /**
    * iPhone 16 Pro（非 Max）。UA 含型号时优先匹配；否则按 screen 逻辑像素 402×874（容差）识别。
    */
@@ -1209,9 +1201,6 @@
       try {
         var old = document.querySelector('style[data-daiban-bancha-chrome]');
         if (old && old.parentNode) old.parentNode.removeChild(old);
-        try {
-          document.documentElement.style.removeProperty('--bancha-black-bar');
-        } catch (eClr) {}
         var st = document.createElement('style');
         st.setAttribute('data-daiban-bancha-chrome', '1');
         st.textContent =
@@ -1365,7 +1354,7 @@
 
   /**
    * Cordova 沉浸壳 / 大刘海 Android：收入纳税明细等白顶栏页 overlays=false + 黑状态栏；
-   * 若 postMessage 未生效，由 CSS 用 --app-shell-statusbar-top 兜底下移（见 app-android-white-chrome-overlay-off）。
+   * StatusBar 不生效时由 Android 统一 40px inset 兜底下移，勿再挂清零 class。
    */
   function applyImmersiveNotchWhitePageChrome() {
     try {
@@ -1380,9 +1369,6 @@
           body.classList.contains('page-shuiming-result') ||
           body.classList.contains('page-xiangqing'));
       if (!isWhitePage) {
-        try {
-          root.classList.remove('app-android-white-chrome-overlay-off');
-        } catch (eOff) {}
         return;
       }
       var cordovaShell = root.classList.contains('app-cordova-shell');
@@ -1398,11 +1384,6 @@
       upsertMeta('theme-color', '#000000');
       upsertMeta('msapplication-navbutton-color', '#000000');
       setStatusBarStyleMeta('black');
-      /*
-       * 仍请求 overlays=false（部分机型可外置黑条）；但不再挂 overlay-off 清零 CSS。
-       * 多机 StatusBar 不生效时 WebView 仍沉浸，清零会把「返回」压到系统时间上。
-       * 顶距改由下方 Android 统一 40px inset 兜底（与首页一致）。
-       */
       requestShellStatusBar({
         style: 'light',
         overlays: false,
@@ -1410,15 +1391,7 @@
         paint_shell: true,
         shell_bg: '#f5f6fa'
       });
-      try {
-        root.classList.remove('app-android-white-chrome-overlay-off');
-      } catch (eCls) {}
     } catch (e) {}
-  }
-
-  /** @deprecated 使用 applyImmersiveNotchWhitePageChrome */
-  function applyHuaweiLioAn00WhitePageChrome() {
-    applyImmersiveNotchWhitePageChrome();
   }
 
   /**
@@ -2032,18 +2005,12 @@
           'html.app-android-client.app-top-safe-shell.app-android-honor-flc body.page-shuiming-result .list,' +
           'html.app-android-client.app-top-safe-shell.app-android-honor-fcp body.page-shuiming-result .list,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .header .back-btn,' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-chrome-overlay-off body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top,48px) !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;min-height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;padding:var(--app-shell-statusbar-top,48px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .header .back-btn,' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,48px) !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
-          'html.app-cordova-shell.app-android-client.app-top-safe-shell:not(.app-android-white-chrome-overlay-off) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top,48px) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;min-height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;padding:var(--app-shell-statusbar-top,48px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,48px) !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed{height:0 !important;margin:0 !important;padding:0 !important;overflow:visible !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;box-shadow:none !important;}' +
@@ -2584,7 +2551,7 @@
   applyShouyePageChrome();
   applyIosStandaloneEntryChrome();
   applyIPhone16ProPageChrome();
-  applyHuaweiLioAn00WhitePageChrome();
+  applyImmersiveNotchWhitePageChrome();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       syncAppShellStatusbarTop();
@@ -2594,7 +2561,7 @@
       applyShouyePageChrome();
       applyIosStandaloneEntryChrome();
       applyIPhone16ProPageChrome();
-      applyHuaweiLioAn00WhitePageChrome();
+      applyImmersiveNotchWhitePageChrome();
     });
   } else {
     setTimeout(syncAppShellStatusbarTop, 0);
@@ -2621,7 +2588,7 @@
     applyShouyePageChrome();
     applyIosStandaloneEntryChrome();
     applyIPhone16ProPageChrome();
-    applyHuaweiLioAn00WhitePageChrome();
+    applyImmersiveNotchWhitePageChrome();
   }
   document.addEventListener('deviceready', refreshImmersiveBluePageChrome, false);
   try {
@@ -4156,16 +4123,6 @@
     } catch (e) {}
     setLandingAbAssignment('b', 'from_purchase_abc_force');
     return next;
-  }
-
-  /** 是否已被专属渠道强制过支付方案（防服务端普通分流覆盖） */
-  function hasAgentChannelForcedPurchaseAbc() {
-    try {
-      var a = getPurchaseAbcAssignment();
-      return !!(a && a.source === 'agent_channel' && (a.variant === 'a' || a.variant === 'b'));
-    } catch (e) {
-      return false;
-    }
   }
 
   function applyChannelForcedPricingAbc(data) {
