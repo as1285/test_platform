@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260808-deadcode"></script>
+    <script src="/js/auth.js?v=20260810-shuiming-top"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -85,7 +85,7 @@
             padding-top: calc(46px + var(--app-shell-statusbar-top, 48px));
         }
 
-        /* Android Cordova 常沉浸：顶距用壳变量（auth.js 统一至少 40px），勿清零顶到系统时间 */
+        /* Android：顶距跟 --app-shell-statusbar-top；白顶栏外置状态栏时由 auth.js 置 0，勿写死 40px */
         html.platform-android body.page-shuiming > .header,
         html.app-android-client body.page-shuiming > .header,
         html.app-android-client.app-top-safe-shell body.page-shuiming > .header,
@@ -93,7 +93,7 @@
         html.app-android-honor-magic body.page-shuiming > .header,
         html.app-android-honor-flc body.page-shuiming > .header,
         html.app-android-honor-fcp body.page-shuiming > .header {
-            padding-top: calc(14px + var(--app-shell-statusbar-top, 40px)) !important;
+            padding-top: calc(14px + var(--app-shell-statusbar-top, 0px)) !important;
             padding-bottom: 15px !important;
             top: 0 !important;
         }
@@ -105,7 +105,7 @@
         html.app-android-honor-magic body.page-shuiming > .content,
         html.app-android-honor-flc body.page-shuiming > .content,
         html.app-android-honor-fcp body.page-shuiming > .content {
-            padding-top: calc(46px + var(--app-shell-statusbar-top, 40px)) !important;
+            padding-top: calc(46px + var(--app-shell-statusbar-top, 0px)) !important;
         }
 
         /*

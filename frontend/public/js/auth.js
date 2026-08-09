@@ -1353,8 +1353,8 @@
   }
 
   /**
-   * Cordova 沉浸壳 / 大刘海 Android：收入纳税明细等白顶栏页 overlays=false + 黑状态栏；
-   * StatusBar 不生效时由 Android 统一 40px inset 兜底下移，勿再挂清零 class。
+   * Android 收入纳税明细等白顶栏页：状态栏外置（overlays=false）+ 顶距清零。
+   * 勿再叠 40px 占位，否则系统时间与「返回」之间会多出大块空白。
    */
   function applyImmersiveNotchWhitePageChrome() {
     try {
@@ -1373,12 +1373,20 @@
       }
       var cordovaShell = root.classList.contains('app-cordova-shell');
       var outerStatusBar = isAndroidOuterStatusBarClient();
-      var needsWhiteChrome =
+      var needsOuterBar =
         cordovaShell ||
+        outerStatusBar ||
         root.classList.contains('app-android-huawei-lio-an00') ||
         root.classList.contains('app-android-oneplus-13') ||
-        (!outerStatusBar && isCordovaTaxAppShell());
-      if (!needsWhiteChrome) {
+        isCordovaTaxAppShell();
+      try {
+        root.classList.add('app-android-white-page-outer');
+        root.style.setProperty('--app-shell-statusbar-top', '0px');
+        root.style.setProperty('--android-status-inset', '0px');
+        body.style.setProperty('--app-shell-statusbar-top', '0px');
+        body.style.setProperty('--android-status-inset', '0px');
+      } catch (eInset) {}
+      if (!needsOuterBar) {
         return;
       }
       upsertMeta('theme-color', '#000000');
@@ -2239,16 +2247,13 @@
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background:rgb(var(--shouye-top-bar-rgb,92, 142, 234)) !important;box-shadow:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           /*
-           * Android 待办/办&查/消息/纳税明细：与首页同理。
-           * Cordova 沉浸 WebView 常画到状态栏下；厂商「外置栏」清零顶距会把标题/返回顶进系统时间。
-           * 「我的」仍走零 bleed（e1 叠字），不在此列。Pura70 Cordova 除外。
+           * Android 待办/办&查/消息：与首页同理强制 40px，避免沉浸 WebView 顶进系统时间。
+           * 收入纳税明细 / 详情白顶栏页改走 overlays=false 外置状态栏（见 applyImmersiveNotchWhitePageChrome），
+           * 勿再叠 40px，否则状态栏与「返回」之间大块留白。
            */
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha,' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-message,' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming,' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result,' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-xiangqing{' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-message{' +
           '--android-status-inset:40px;--app-shell-statusbar-top:var(--android-status-inset) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header{' +
@@ -2258,25 +2263,40 @@
           'margin-top:calc(-1 * var(--android-status-inset,40px)) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-message .message-header-toolbar{' +
           'padding-top:calc(14px + var(--android-status-inset,40px)) !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming > .header{' +
-          'padding-top:calc(14px + var(--android-status-inset,40px)) !important;padding-bottom:15px !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming > .content{' +
-          'padding-top:calc(46px + var(--android-status-inset,40px)) !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-xiangqing{' +
-          'padding-top:calc(48px + var(--android-status-inset,40px)) !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result .page-root{' +
-          '--safe-top:var(--android-status-inset,40px) !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result .top-fixed .header{' +
-          'top:0 !important;height:calc(var(--header-height,48px) + var(--android-status-inset,40px)) !important;' +
-          'min-height:calc(var(--header-height,48px) + var(--android-status-inset,40px)) !important;' +
-          'padding:var(--android-status-inset,40px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result .top-fixed .header .back-btn,' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result .top-fixed .header .header-right{' +
-          'top:var(--android-status-inset,40px) !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result .top-fixed .summary{' +
-          'top:calc(var(--header-height,48px) + var(--android-status-inset,40px)) !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shuiming-result .list{' +
-          'margin-top:calc(var(--header-height,48px) + var(--android-status-inset,40px)) !important;}' +
+          /* 白顶栏纳税页：外置状态栏 / overlays=false 后顶距清零 */
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming > .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header{' +
+          'padding-top:14px !important;padding-bottom:15px !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming > .content,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content{' +
+          'padding-top:46px !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-xiangqing,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-xiangqing{' +
+          'padding-top:48px !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root{' +
+          '--safe-top:0px !important;--android-status-inset:0px !important;--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header{' +
+          'top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;' +
+          'padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right{' +
+          'top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary{' +
+          'top:var(--header-height,48px) !important;}' +
+          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming-result .list,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,' +
+          'html.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list{' +
+          'margin-top:var(--header-height,48px) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
