@@ -21,6 +21,8 @@ function registerUserRoutes(app, deps) {
   app.get('/api/lizhi-cert/status', mw.requireAuth, h.handleLizhiCertStatus);
   app.get('/api/lizhi-cert/prefill', mw.requireAuth, h.handleLizhiCertPrefill);
   app.post('/api/lizhi-cert/generate', mw.requireAuth, h.handleLizhiCertGenerate);
+  /* 短期下载链（无鉴权）：安卓系统浏览器保存预览图/PDF */
+  app.get('/api/lizhi-cert/temp-share/:token', h.handleLizhiCertTempShareGet);
 
   /* 社保照片：仅需登录（激活页未开通账号也可用） */
   app.get('/api/user/shebao-photo', mw.requireAuth, h.handleUserShebaoPhotoList);
