@@ -5954,7 +5954,19 @@
                             + ' <button type="button" class="btn-sm btn-block-ip btn-block-ip-act" data-u="' + esc(u.username) + '" data-ip="' + esc(ipLast) + '">封IP</button>'
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-page btn-user-pricing-abc" data-u="' + esc(u.username) + '">方案</button>'
-                            + ' <button type="button" class="btn-sm btn-page btn-user-rename-exempt" data-u="' + esc(u.username) + '" data-exempt="' + (u.rename_fee_exempt ? '1' : '0') + '">' + (u.rename_fee_exempt ? '恢复改名限制' : '取消改名限制') + '</button>'
+                            + ' <button type="button" class="btn-sm ' +
+                            (u.rename_fee_exempt ? 'btn-ban' : 'btn-page') +
+                            ' btn-user-rename-exempt" data-u="' +
+                            esc(u.username) +
+                            '" data-exempt="' +
+                            (u.rename_fee_exempt ? '1' : '0') +
+                            '" title="' +
+                            (u.rename_fee_exempt
+                                ? '该账号已豁免五次改名收费，点击重新加限制'
+                                : '取消后该账号改名不再收取费用') +
+                            '">' +
+                            (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
+                            '</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         if (u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
@@ -5982,6 +5994,11 @@
                             'font-size:11px;white-space:nowrap;" title="姓名历史修改次数">改名' +
                             esc(String(nameChangeCount)) +
                             '次</span>';
+                        if (u.rename_fee_exempt) {
+                            nameChangeBadge +=
+                                '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                                'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已取消改名收费限制">免改名费</span>';
+                        }
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
                         html +=
@@ -6114,7 +6131,9 @@
                             var name = btn.getAttribute('data-u') || '';
                             var isExempt = btn.getAttribute('data-exempt') === '1';
                             var nextExempt = !isExempt;
-                            var actionText = nextExempt ? '取消改名收费限制' : '恢复改名收费限制';
+                            var actionText = nextExempt
+                                ? '取消改名限制（之后改名不再收费）'
+                                : '重新加改名限制（达到次数后需付费改名）';
                             if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
                             btn.disabled = true;
                             adminFetch('api/admin/user-rename-fee-exempt', {
@@ -6127,7 +6146,12 @@
                                         alert(d.msg || '操作失败');
                                         return;
                                     }
-                                    alert(d.msg || '操作成功');
+                                    alert(
+                                        d.msg ||
+                                            (nextExempt
+                                                ? '已取消改名限制'
+                                                : '已重新加改名限制')
+                                    );
                                     loadUsers();
                                 })
                                 .catch(function () {

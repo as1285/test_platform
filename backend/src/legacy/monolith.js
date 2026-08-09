@@ -16098,6 +16098,10 @@ async function handleAdminUsers(req, res) {
             : String(r.active_until)
           : null,
         banned: r.banned === 1 || r.banned === true,
+        rename_fee_exempt:
+          r.rename_fee_exempt === 1 ||
+          r.rename_fee_exempt === true ||
+          Number(r.rename_fee_exempt) === 1,
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
@@ -17485,7 +17489,7 @@ async function handleAdminUserRenameFeeExempt(req, res) {
     invalidateUserInfoApiCache(canonicalUsername);
     return res.json({
       code: 200,
-      msg: exempt ? '已取消该账号的改名收费限制' : '已恢复该账号的改名收费限制',
+      msg: exempt ? '已取消该账号的改名限制' : '已重新加改名限制',
       data: { username: canonicalUsername, rename_fee_exempt: exempt }
     });
   } catch (e) {
