@@ -903,19 +903,28 @@
   }
 
   /**
-   * 状态栏样式：iOS standalone 只认文档解析时的静态 meta，JS 改动常被忽略。
-   * black-translucent 会让 WebClip 全屏铺到状态栏下，但在 iPhone 16 Pro 等机型上
-   * 视图高度仍按「扣掉状态栏」算并顶格摆放，导致底部凭空少 62pt、底栏被裁。
-   * 因此 iOS standalone 统一强制 default（不透明），把顶部让给系统状态栏、底部还原正常；
-   * 顶部蓝色改由页面 CSS 绘制，配合头图顶部同色过渡消除接缝。
+   * 状态栏样式：
+   * - 蓝顶栏页（办查/待办/我的/首页/消息）：用 black-translucent，蓝头图顶入刘海，
+   *   对齐原版个税 App（StatusBar overlays + lightContent + 蓝底），避免系统白条。
+   * - 白顶栏页：iOS standalone 用 default（不透明白底 + 深色字）。
+   * 静态 HTML 的 meta 也须写成 black-translucent，WebClip 常只认首屏解析值。
    */
   function setStatusBarStyleMeta(style) {
     try {
+      var want = String(style || 'default');
       if (isIosStandaloneApp()) {
+        var blueTop = '';
+        try {
+          blueTop = getImmersiveBlueTopColor() || '';
+        } catch (eBlue) {}
+        if (blueTop && want !== 'default') {
+          upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+          return;
+        }
         upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
         return;
       }
-      upsertMeta('apple-mobile-web-app-status-bar-style', style);
+      upsertMeta('apple-mobile-web-app-status-bar-style', want);
     } catch (e) {}
   }
 
@@ -1190,7 +1199,7 @@
     } catch (e) {}
   }
 
-  /** 待办 / 办&查：蓝底沉浸顶栏（与头图顶色对齐；勿页内画死黑条盖住时间电量） */
+  /** 待办 / 办&查：蓝底沉浸顶栏（对齐原版个税：透明状态栏 + 浅蓝图标 + 蓝头图顶入） */
   function applyDaibanBanchaPageChrome() {
     try {
       if (!document.body) return;
@@ -1203,25 +1212,31 @@
         if (old && old.parentNode) old.parentNode.removeChild(old);
         var st = document.createElement('style');
         st.setAttribute('data-daiban-bancha-chrome', '1');
+        /* html 底浅灰，仅顶部画状态栏高度蓝带，避免底栏下露蓝；头图 bleed 进刘海 */
         st.textContent =
-          'html{background:' +
-          topBlue +
-          ' !important;}' +
-          'html body.page-daiban,html body.page-bancha{background-color:#f5f6fa !important;background-image:linear-gradient(' +
+          'html{background-color:#f5f6fa !important;background-image:linear-gradient(' +
           topBlue +
           ',' +
           topBlue +
-          ');background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background-repeat:no-repeat;}' +
-          'html.app-top-safe-shell .daiban-header,html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top,0px) !important;background:' +
+          ') !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
+          'html body.page-daiban,html body.page-bancha{background-color:#f5f6fa !important;background-image:none !important;min-height:100% !important;}' +
+          'html.app-top-safe-shell .daiban-header,html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           topBlue +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell .daiban-header > img,html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell .daiban-header > img,html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;}' +
           'html.app-top-safe-shell body.page-daiban::before,html.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:' +
+          'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before,' +
+          'html.app-ios-standalone-entry body.page-daiban::before,html.app-ios-standalone-entry body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background:' +
           topBlue +
-          ' !important;z-index:40 !important;pointer-events:none !important;}';
+          ' !important;z-index:40 !important;pointer-events:none !important;}' +
+          /* iOS standalone 沉浸后保证底栏仍吃到底部安全区 */
+          'html.app-ios-client body.page-daiban,html.app-ios-client body.page-bancha{padding-bottom:0 !important;}' +
+          'html.app-ios-client body.page-daiban > .bottom-nav,html.app-ios-client body.page-bancha > .bottom-nav{bottom:var(--bottom-nav-bottom,env(safe-area-inset-bottom,16px)) !important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
+      try {
+        document.documentElement.classList.add('app-ios-blue-status');
+      } catch (eCls) {}
       syncAppShellStatusbarTop();
       applyImmersiveBlueStatusBar(topBlue);
     } catch (e) {}
@@ -2594,9 +2609,7 @@
   });
   window.addEventListener('pageshow', function () {
     setTimeout(function () {
-      syncAppShellStatusbarTop();
-      applyIPhone16ProPageChrome();
-      applyImmersiveNotchWhitePageChrome();
+      refreshImmersiveBluePageChrome();
     }, 0);
   });
   /* Cordova StatusBar 插件常在 deviceready 后才可用，再刷一次蓝顶栏页 */
