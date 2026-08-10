@@ -2,22 +2,24 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260806-safe-top-align"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260810-about-233"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>关于&amp;更新</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
         html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #f2f2f7;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+            background: #f5f6fa;
             min-height: 100vh;
             padding-bottom: env(safe-area-inset-bottom, 0);
+            color: #333;
         }
         .header {
             background: #fff;
-            padding: 14px 16px;
+            padding: 12px 16px;
+            padding-top: calc(12px + env(safe-area-inset-top, 0px));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -30,33 +32,40 @@
             position: absolute;
             left: 12px;
             color: #1e6fff;
-            font-size: 15px;
+            font-size: 16px;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 2px;
             -webkit-tap-highlight-color: transparent;
         }
-        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            display: block;
+        }
+        .header-title { font-size: 17px; font-weight: 600; color: #191e26; }
+        /* 对齐原版：更大顶距，图标约 90px，版本号 2.3.3 */
         .brand {
-            padding: 28px 16px 22px;
+            padding: 40px 16px 28px;
             text-align: center;
-            background: #f2f2f7;
+            background: #f5f6fa;
         }
         .app-icon {
-            margin: 0 auto 14px;
+            margin: 0 auto 16px;
             line-height: 0;
         }
         .app-icon img {
             display: block;
-            width: 88px;
-            height: 88px;
+            width: 90px;
+            height: 90px;
             margin: 0 auto;
             object-fit: contain;
+            border-radius: 20px;
         }
         .version {
             font-size: 15px;
-            color: #8e8e93;
+            color: #8a8f99;
             letter-spacing: 0.02em;
         }
         .list-wrap {
@@ -69,8 +78,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 13px 16px;
-            min-height: 48px;
+            padding: 14px 16px;
+            min-height: 50px;
             border-bottom: 1px solid #f0f0f0;
             text-decoration: none;
             color: #333;
@@ -85,15 +94,16 @@
             flex: 1;
             text-align: right;
             font-size: 15px;
-            color: #8e8e93;
+            color: #8a8f99;
             margin-left: 12px;
             line-height: 1.35;
         }
         .list-row .arrow {
             color: #c7c7cc;
-            font-size: 14px;
+            font-size: 16px;
             margin-left: 6px;
             flex-shrink: 0;
+            line-height: 1;
         }
         .list-row-link .value { color: transparent; width: 0; margin: 0; padding: 0; overflow: hidden; }
     </style>
@@ -101,7 +111,7 @@
 <body>
     <div class="header">
         <a href="mine.html" class="back-btn">
-            <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <img src="/jt.png" alt="">
             <span>返回</span>
         </a>
         <span class="header-title">关于&amp;更新</span>
@@ -109,9 +119,9 @@
 
     <div class="brand">
         <div class="app-icon">
-            <img src="about_app_icon.png" width="88" height="88" alt="个人所得税">
+            <img src="about_app_icon.png" width="90" height="90" alt="个人所得税">
         </div>
-        <p class="version">版本号：2.3.1</p>
+        <p class="version">版本号：2.3.3</p>
     </div>
 
     <div class="list-wrap">
@@ -119,10 +129,10 @@
             <span class="label">基本信息</span>
             <span class="value">自然人办税服务平台</span>
         </div>
-        <a class="list-row" href="install_guide.html">
+        <div class="list-row">
             <span class="label">版本更新</span>
             <span class="value">已是最新版本</span>
-        </a>
+        </div>
         <a class="list-row list-row-link" href="about_update_notes.html">
             <span class="label">更新说明</span>
             <span class="value"></span>
