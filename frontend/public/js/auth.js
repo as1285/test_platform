@@ -1220,14 +1220,16 @@
           topBlue +
           ') !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
           'html body.page-daiban,html body.page-bancha{background-color:#f5f6fa !important;background-image:none !important;min-height:100% !important;}' +
-          'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]),html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+          'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]),html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           topBlue +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img,html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;}' +
-          'html.app-top-safe-shell .daiban-header[data-header-mode="builtin"]{padding-top:0 !important;}' +
-          /* 默认头图 daiban.jpg 是整页截图，内置头模式下必须隐藏，否则与 HTML 标题叠成双层 */
+          'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img,html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell .daiban-header[data-header-mode="builtin"],html.app-top-safe-shell .bancha-header[data-header-mode="builtin"]{padding-top:0 !important;}' +
+          /* 默认头图截图层，内置头模式下必须隐藏 */
           'html body.page-daiban .daiban-header[data-header-mode="builtin"] > img,' +
-          'html body.page-daiban .daiban-header-custom-img[hidden]{display:none !important;margin:0 !important;height:0 !important;width:0 !important;visibility:hidden !important;}' +
+          'html body.page-daiban .daiban-header-custom-img[hidden],' +
+          'html body.page-bancha .bancha-header[data-header-mode="builtin"] > img,' +
+          'html body.page-bancha .bancha-header-custom-img[hidden]{display:none !important;margin:0 !important;height:0 !important;width:0 !important;visibility:hidden !important;}' +
           'html.app-top-safe-shell body.page-daiban::before,html.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before,' +
           'html.app-ios-standalone-entry body.page-daiban::before,html.app-ios-standalone-entry body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background:' +
@@ -2067,8 +2069,9 @@
           'html.app-android-honor-magic.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .daiban-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .message-header-toolbar{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
           /* 荣耀折叠：非首页仍可按外置状态栏；首页走上方统一 Android 顶距 */
           'html.app-android-honor-flc.app-top-safe-shell:not(:has(body.page-shouye)),html.app-android-honor-fcp.app-top-safe-shell:not(:has(body.page-shouye)){--app-shell-statusbar-top:0px !important;}' +
@@ -2084,8 +2087,9 @@
           'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-top-safe-shell .daiban-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
-          'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell .bancha-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
           'html.app-top-safe-shell body.page-daiban::before,html.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
           'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:20px !important;padding-left:16px !important;padding-right:16px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar{padding-bottom:20px !important;}' +
@@ -2129,9 +2133,9 @@
           /* iPhone 12 Pro Max：待办/办查/消息/我的 用头图 bleed，取消固色垫带 */
           'html.app-ios-iphone12promax.app-top-safe-shell{--mine-ios-header-lift:0px !important;--app-shell-statusbar-top:env(safe-area-inset-top,0px) !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-daiban::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]),html.app-ios-iphone12promax.app-top-safe-shell .bancha-header{padding-top:env(safe-area-inset-top,0px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]),html.app-ios-iphone12promax.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:env(safe-area-inset-top,0px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header[data-header-mode="builtin"],html.app-ios-iphone12promax.app-top-safe-shell .bancha-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-message::before{display:none !important;content:none !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;background:linear-gradient(135deg,#1e8fff 0%,#4d9aff 50%,#1e8fff 100%) !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
@@ -2142,8 +2146,9 @@
           'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:40px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .search-bar-wrapper{padding-top:6px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;margin:2px 12px 14px !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header{padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]){padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * var(--app-cordova-statusbar-chrome,40px)) !important;}' +
@@ -2279,12 +2284,13 @@
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-message{' +
           '--android-status-inset:40px;--app-shell-statusbar-top:var(--android-status-inset) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header:not([data-header-mode="builtin"]),' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header{' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header:not([data-header-mode="builtin"]){' +
           'padding-top:var(--android-status-inset,40px) !important;}' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header[data-header-mode="builtin"]{' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header[data-header-mode="builtin"],' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header[data-header-mode="builtin"]{' +
           'padding-top:0 !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header:not([data-header-mode="builtin"]) > img,' +
-          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header > img{' +
+          'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header:not([data-header-mode="builtin"]) > img{' +
           'margin-top:calc(-1 * var(--android-status-inset,40px)) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-message .message-header-toolbar{' +
           'padding-top:calc(14px + var(--android-status-inset,40px)) !important;}' +

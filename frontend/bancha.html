@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260810-bancha-blue-status"></script>
+    <script src="/js/auth.js?v=20260810-bancha-components"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#2b81f2">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,272 +11,517 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>办&查</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f6fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+            background: #f5f7fa;
             min-height: 100vh;
+            color: #191e26;
         }
-        
-        /* 办&查页面样式 */
+
         .bancha-page {
             min-height: 100vh;
-            background: #f5f6fa;
+            min-height: 100dvh;
+            background: #f5f7fa;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: var(--bottom-nav-clearance, 72px);
         }
-        
+
+        /* —— 顶栏（对齐 APK .zdj-service-container） —— */
         .bancha-header {
             position: relative;
             z-index: 1;
-            /* 与 db.jpg 顶部左侧取样对齐，仅作头图未盖住时的兜底 */
             background: #2b81f2;
             overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .bancha-header[data-header-mode="builtin"] {
+            padding-top: 0 !important;
+        }
+
+        .bancha-header-builtin {
+            background: linear-gradient(90deg, #2b81f2 0%, #3d92f6 45%, #4ea0f8 100%);
+            padding: 10px 16px 20px;
+            padding-top: calc(10px + env(safe-area-inset-top, 0px));
+        }
+
+        html.app-top-safe-shell .bancha-header-builtin {
+            padding-top: calc(10px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+
+        .bancha-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .bancha-title-row h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        .bancha-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.35;
+            opacity: 0.95;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bancha-header-custom-img {
+            width: 100%;
+            display: block;
+        }
+
+        .bancha-header-custom-img[hidden] {
+            display: none !important;
+            margin: 0 !important;
         }
 
         @supports (padding-top: env(safe-area-inset-top)) {
-            .bancha-header {
+            .bancha-header:not([data-header-mode="builtin"]) {
                 padding-top: env(safe-area-inset-top, 0px);
             }
-            .bancha-header img {
+            .bancha-header:not([data-header-mode="builtin"]) > .bancha-header-custom-img {
                 margin-top: calc(-1 * env(safe-area-inset-top, 0px));
             }
         }
 
-        html.app-top-safe-shell .bancha-header {
+        html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) {
             padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             background: #2b81f2;
             overflow: hidden;
         }
-        html.app-top-safe-shell .bancha-header > img {
+
+        html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > .bancha-header-custom-img {
             margin-top: calc(-1 * var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             display: block;
             width: 100%;
         }
 
-        .bancha-header img {
-            width: 100%;
-            display: block;
-        }
-        
-        .bancha-header-content {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-        }
-        
-        .bancha-title {
-            color: #fff;
-            font-size: 22px;
-            font-weight: 600;
-        }
-        
-        .bancha-subtitle {
-            color: rgba(255,255,255,0.8);
-            font-size: 13px;
-        }
-        
+        /* —— 内容区 —— */
         .bancha-content {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            margin-top: -12px;
+            border-radius: 20px 20px 0 0;
+            background: #f5f7fa;
+            padding: 4px 12px 28px;
+        }
+
+        .bancha-section {
+            margin-top: 14px;
+        }
+
+        .bancha-section-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #191e26;
+            line-height: 1.3;
+            margin: 0 4px 10px;
+        }
+
+        .bancha-card {
             background: #fff;
-            border-radius: 16px 16px 0 0;
-            position: relative;
-            z-index: 5;
-            min-height: calc(100vh - 120px);
-            padding-bottom: var(--bottom-nav-clearance);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(205, 210, 218, 0.18);
+            padding: 14px 12px 8px;
         }
 
-        /* 查询切片 cx.jpg：网格分热区 */
-        .bancha-cx-wrap {
-            position: relative;
-            display: block;
-            line-height: 0;
-        }
-        .bancha-cx-wrap > img {
-            width: 100%;
-            display: block;
-        }
-        .bancha-cx-wrap a {
-            position: absolute;
-            z-index: 6;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            outline: none;
-            background: transparent;
-        }
-        .bancha-cx-hot-shuiming {
-            left: 1%;
-            width: 32%;
-            top: 12%;
-            height: 26%;
-        }
-        .bancha-cx-hot-shenbao {
-            left: 34%;
-            width: 32%;
-            top: 12%;
-            height: 26%;
-        }
-        .bancha-cx-hot-yiyi {
-            left: 67%;
-            width: 32%;
-            top: 12%;
-            height: 26%;
-        }
-        .bancha-cx-hot-wenshu {
-            left: 1%;
-            width: 32%;
-            top: 38%;
-            height: 26%;
-        }
-        /* 新 cx 切片：涉税专业服务机构在第二行中间格 */
-        .bancha-cx-hot-zhuanye {
-            left: 34%;
-            width: 32%;
-            top: 38%;
-            height: 26%;
+        /* 办税顶部横幅 */
+        .bancha-banners {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 6px;
         }
 
-        /* 发票管理 ·「我的票夹」卡片热区（相对 fp.jpg，可按设计微调） */
-        .bancha-fp-wrap {
+        .bancha-banner {
+            display: block;
             position: relative;
-            display: block;
-            line-height: 0;
-        }
-        .bancha-fp-wrap > img {
-            width: 100%;
-            display: block;
-        }
-        .bancha-fp-hot-piaojia {
-            position: absolute;
-            z-index: 6;
-            left: 59%;
-            width: 38%;
-            top: 11%;
-            height: 20%;
+            border-radius: 10px;
+            padding: 14px 56px 14px 16px;
+            text-decoration: none;
+            overflow: hidden;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            outline: none;
-            background: transparent;
         }
 
-        /* 办税切片 bs.jpg：上分「综合所得年度汇算」、中块「专项附加扣除」分热区 */
-        .bancha-bs-wrap {
-            position: relative;
-            display: block;
-            line-height: 0;
+        .bancha-banner-zonghe {
+            background: linear-gradient(90deg, #e8f3ff 0%, #d7ebff 55%, #cfe7ff 100%);
         }
-        .bancha-bs-wrap > img {
-            width: 100%;
-            display: block;
-            border-radius: 16px 16px 0 0;
+
+        .bancha-banner-zxk {
+            background: linear-gradient(90deg, #fff3e8 0%, #ffe8d4 55%, #ffe0c8 100%);
         }
-        .bancha-bs-wrap a {
+
+        .bancha-banner h3 {
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
+
+        .bancha-banner-zonghe h3 { color: #1a5fb4; }
+        .bancha-banner-zxk h3 { color: #c45a12; }
+
+        .bancha-banner p {
+            font-size: 12px;
+            line-height: 1.35;
+            opacity: 0.85;
+        }
+
+        .bancha-banner-zonghe p { color: #3d7ec4; }
+        .bancha-banner-zxk p { color: #d07a3a; }
+
+        .bancha-banner-go {
             position: absolute;
-            z-index: 6;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .bancha-banner-zonghe .bancha-banner-go { background: #3b86f0; }
+        .bancha-banner-zxk .bancha-banner-go { background: #f08a3a; }
+
+        /* 3 列网格（查询 / 办税次级 / 发票） */
+        .bancha-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .bancha-grid-item {
+            width: 32%;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-decoration: none;
+            color: inherit;
+            padding: 10px 4px 12px;
+            position: relative;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            outline: none;
-            background: transparent;
         }
-        /* 综合 / 专项为上下两张横幅，热区仅覆盖各自卡片，勿延伸至下方网格 */
-        .bancha-bs-hot-zonghe {
-            left: 2%;
-            right: 2%;
-            top: 8%;
-            height: 13%;
-            z-index: 5;
+
+        .bancha-grid-item.center {
+            align-items: center;
+            text-align: center;
         }
-        .bancha-bs-hot-zxk {
-            left: 2%;
-            right: 2%;
-            top: 23%;
-            height: 13%;
-            z-index: 6;
+
+        .bancha-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: block;
+            object-fit: contain;
+            margin-bottom: 8px;
+            flex-shrink: 0;
         }
-        /* 办税网格首行（与 bs.jpg 三格图标对齐） */
-        .bancha-bs-hot-yanglao {
-            left: 1%;
-            width: 32%;
-            top: 47%;
-            height: 18%;
-            z-index: 10;
+
+        .bancha-icon-fallback {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06);
         }
-        .bancha-bs-hot-jingying {
-            left: 34%;
-            width: 32%;
-            top: 47%;
-            height: 18%;
-            z-index: 10;
+
+        .bancha-grid-item h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #191e26;
+            line-height: 1.3;
+            margin-bottom: 3px;
         }
-        .bancha-bs-hot-najilu {
-            left: 67%;
-            width: 32%;
-            top: 47%;
-            height: 18%;
-            z-index: 10;
+
+        .bancha-grid-item p {
+            font-size: 11px;
+            color: #8a8f99;
+            line-height: 1.35;
         }
-        /* 办税网格次行 */
-        .bancha-bs-hot-gongyi {
-            left: 1%;
-            width: 32%;
-            top: 66%;
-            height: 18%;
-            z-index: 10;
+
+        .bancha-badge-new {
+            position: absolute;
+            top: 4px;
+            left: 36px;
+            background: #ff3b30;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 3px 5px;
+            border-radius: 8px;
+            letter-spacing: 0.3px;
         }
-        .bancha-bs-hot-weituo {
-            left: 34%;
-            width: 32%;
-            top: 66%;
-            height: 18%;
-            z-index: 10;
+
+        /* 警示案例条 */
+        .bancha-warn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 4px;
+            padding: 10px 12px;
+            text-decoration: none;
+            color: inherit;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #fff8f0, #fff);
+            border: 1px solid #ffe8d0;
+            -webkit-tap-highlight-color: transparent;
         }
-        .bancha-bs-hot-sheshui {
-            left: 67%;
-            width: 32%;
-            top: 66%;
-            height: 18%;
-            z-index: 10;
+
+        .bancha-warn img {
+            width: 42px;
+            height: auto;
+            display: block;
+            flex-shrink: 0;
         }
-        
+
+        .bancha-warn-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bancha-warn-text strong {
+            display: block;
+            font-size: 14px;
+            color: #191e26;
+            margin-bottom: 2px;
+        }
+
+        .bancha-warn-text span {
+            font-size: 11px;
+            color: #8a8f99;
+        }
+
+        .bancha-warn-arrow {
+            color: #c0c4cc;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* 公众服务：图标居中 + 仅标题 */
+        .bancha-grid-public .bancha-grid-item {
+            align-items: center;
+            text-align: center;
+            padding-top: 12px;
+            padding-bottom: 14px;
+        }
+
+        .bancha-grid-public .bancha-grid-item h4 {
+            margin-bottom: 0;
+            font-size: 13px;
+            font-weight: 500;
+        }
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <script src="/js/theme-loader.js?v=20260810-bancha-components" defer></script>
 </head>
 <body class="page-bancha">
     <div class="bancha-page">
-        <div class="bancha-header">
-            <img id="assetBanchaHeader" src="db.jpg" alt="办&查">
+        <div class="bancha-header" data-header-mode="builtin">
+            <div id="banchaHeaderBuiltin" class="bancha-header-builtin">
+                <div class="bancha-title-row">
+                    <h1>办&查</h1>
+                    <p class="bancha-subtitle">请选择您需要办理或查询的事项</p>
+                </div>
+            </div>
+            <img id="assetBanchaHeader" class="bancha-header-custom-img" alt="" hidden>
         </div>
+
         <div class="bancha-content">
-            <div class="bancha-bs-wrap">
-                <img src="bs.jpg?v=20260523" alt="办税">
-                <a href="zonghe.html" class="bancha-bs-hot-zonghe" aria-label="综合所得年度汇算"></a>
-                <a href="zxkouchu.html" class="bancha-bs-hot-zxk" aria-label="专项附加扣除"></a>
-                <a href="gerenyanglao.html" class="bancha-bs-hot-yanglao" aria-label="个人养老金扣除管理"></a>
-                <a href="jingyingsuode.html" class="bancha-bs-hot-jingying" aria-label="经营所得申报"></a>
-                <a href="najilu.html" class="bancha-bs-hot-najilu" aria-label="纳税记录开具"></a>
-                <a href="gongyicishan.html" class="bancha-bs-hot-gongyi" aria-label="公益慈善捐赠扣除填报"></a>
-                <a href="weituodaili.html" class="bancha-bs-hot-weituo" aria-label="委托代理关系管理"></a>
-                <a href="sheshuifuwu.html" class="bancha-bs-hot-sheshui" aria-label="涉税服务人员信息管理"></a>
-            </div>
-            <div class="bancha-cx-wrap">
-                <img src="cx.jpg?v=20260729" alt="查询">
-                <a href="shuiming.html" class="bancha-cx-hot-shuiming" aria-label="收入纳税明细"></a>
-                <a href="shenbao_jilu.html" class="bancha-cx-hot-shenbao" aria-label="申报记录"></a>
-                <a href="yiyishensu.html" class="bancha-cx-hot-yiyi" aria-label="异议申诉"></a>
-                <a href="shuiwuwenshu.html" class="bancha-cx-hot-wenshu" aria-label="税务文书"></a>
-                <a href="sheshuizhuanye.html" class="bancha-cx-hot-zhuanye" aria-label="涉税专业服务机构"></a>
-            </div>
-            <div class="bancha-fp-wrap">
-                <img src="fp.jpg" alt="发票">
-                <a href="wodepiaojia.html" class="bancha-fp-hot-piaojia" aria-label="我的票夹"></a>
-            </div>
+            <!-- 办税 -->
+            <section class="bancha-section" aria-label="办税">
+                <h2 class="bancha-section-title">办税</h2>
+                <div class="bancha-card">
+                    <div class="bancha-banners">
+                        <a class="bancha-banner bancha-banner-zonghe" href="zonghe.html">
+                            <h3>综合所得年度汇算</h3>
+                            <p>申报与查询综合所得年度汇算</p>
+                            <span class="bancha-banner-go" aria-hidden="true">›</span>
+                        </a>
+                        <a class="bancha-banner bancha-banner-zxk" href="zxkouchu.html">
+                            <h3>专项附加扣除</h3>
+                            <p>填报与查询7项专项附加扣除信息</p>
+                            <span class="bancha-banner-go" aria-hidden="true">›</span>
+                        </a>
+                    </div>
+                    <div class="bancha-grid">
+                        <a class="bancha-grid-item" href="gerenyanglao.html">
+                            <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#3aa8ef,#2b81f2)">养</span>
+                            <h4>个人养老金扣除管理</h4>
+                            <p>录入或查看个人养老金扣除信息</p>
+                        </a>
+                        <a class="bancha-grid-item" href="jingyingsuode.html">
+                            <span class="bancha-badge-new">NEW</span>
+                            <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#2fd0b6,#18b89e)">经</span>
+                            <h4>经营所得申报</h4>
+                            <p>取得经营所得后办理申报</p>
+                        </a>
+                        <a class="bancha-grid-item" href="najilu.html">
+                            <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#36d0b8,#1eb89a)">纳</span>
+                            <h4>纳税记录开具</h4>
+                            <p>生成或查看纳税记录</p>
+                        </a>
+                        <a class="bancha-grid-item" href="gongyicishan.html">
+                            <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#9b7cff,#7a5af5)">公</span>
+                            <h4>公益慈善捐赠扣除填报</h4>
+                            <p>填报公益慈善捐赠扣除</p>
+                        </a>
+                        <a class="bancha-grid-item" href="weituodaili.html">
+                            <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#ff8a65,#f4511e)">委</span>
+                            <h4>委托代理关系管理</h4>
+                            <p>管理委托代理办税关系</p>
+                        </a>
+                        <a class="bancha-grid-item" href="sheshuifuwu.html">
+                            <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#64b5f6,#1e88e5)">涉</span>
+                            <h4>涉税服务人员信息管理</h4>
+                            <p>维护涉税服务人员信息</p>
+                        </a>
+                    </div>
+                    <a class="bancha-warn" href="help_center.html">
+                        <span class="bancha-icon-fallback" style="background:linear-gradient(145deg,#ffb74d,#fb8c00);margin-bottom:0;width:40px;height:40px;font-size:16px">警</span>
+                        <div class="bancha-warn-text">
+                            <strong>警示案例</strong>
+                            <span>了解常见涉税风险与合规提示</span>
+                        </div>
+                        <span class="bancha-warn-arrow" aria-hidden="true">›</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- 查询 -->
+            <section class="bancha-section" aria-label="查询">
+                <h2 class="bancha-section-title">查询</h2>
+                <div class="bancha-card">
+                    <div class="bancha-grid">
+                        <a class="bancha-grid-item" href="shuiming.html">
+                            <img class="bancha-icon" src="img/bancha/cx-shuiming.png" width="44" height="44" alt="" decoding="async">
+                            <h4>收入纳税明细</h4>
+                            <p>查看个人所得税纳税明细</p>
+                        </a>
+                        <a class="bancha-grid-item" href="shenbao_jilu.html">
+                            <img class="bancha-icon" src="img/bancha/cx-shenbao.png" width="44" height="44" alt="" decoding="async">
+                            <h4>申报记录</h4>
+                            <p>查看历史申报记录</p>
+                        </a>
+                        <a class="bancha-grid-item" href="yiyishensu.html">
+                            <img class="bancha-icon" src="img/bancha/cx-yiyi.png" width="44" height="44" alt="" decoding="async">
+                            <h4>异议申诉</h4>
+                            <p>查询最新申诉记录和结果</p>
+                        </a>
+                        <a class="bancha-grid-item" href="shuiwuwenshu.html">
+                            <img class="bancha-icon" src="img/bancha/cx-wenshu.png" width="44" height="44" alt="" decoding="async">
+                            <h4>税务文书</h4>
+                            <p>查看电子税务文书</p>
+                        </a>
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/cx-qiyema.png" width="44" height="44" alt="" decoding="async">
+                            <h4>企业助信码</h4>
+                            <p>查询企业助信码信息</p>
+                        </a>
+                        <a class="bancha-grid-item" href="sheshuizhuanye.html">
+                            <img class="bancha-icon" src="img/bancha/cx-zhuanye.png" width="44" height="44" alt="" decoding="async">
+                            <h4>涉税专业服务机构</h4>
+                            <p>查询涉税专业服务机构</p>
+                        </a>
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/cx-beian.png" width="44" height="44" alt="" decoding="async">
+                            <h4>备案信息</h4>
+                            <p>查询相关备案信息</p>
+                        </a>
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/cx-piaozheng.png" width="44" height="44" alt="" decoding="async">
+                            <h4>票证查验</h4>
+                            <p>查验税务票证真伪</p>
+                        </a>
+                        <a class="bancha-grid-item" href="shenbao_jilu.html">
+                            <img class="bancha-icon" src="img/bancha/cx-daibansb.png" width="44" height="44" alt="" decoding="async">
+                            <h4>代办申报明细</h4>
+                            <p>查看代办申报明细</p>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 发票管理 -->
+            <section class="bancha-section" aria-label="发票管理">
+                <h2 class="bancha-section-title">发票管理</h2>
+                <div class="bancha-card">
+                    <div class="bancha-grid">
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/fp-saoma.png" width="44" height="44" alt="" decoding="async">
+                            <h4>扫码开票</h4>
+                            <p>扫描开票二维码提交开票信息</p>
+                        </a>
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/fp-taitou.png" width="44" height="44" alt="" decoding="async">
+                            <h4>发票抬头</h4>
+                            <p>维护常用发票抬头信息</p>
+                        </a>
+                        <a class="bancha-grid-item" href="wodepiaojia.html">
+                            <img class="bancha-icon" src="img/bancha/fp-piaojia.png" width="44" height="44" alt="" decoding="async">
+                            <h4>我的票夹</h4>
+                            <p>查询和管理数电票</p>
+                        </a>
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/fp-kaipiao.png" width="44" height="44" alt="" decoding="async">
+                            <h4>开票申请记录</h4>
+                            <p>查看历史代开发票申请记录</p>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 公众服务 -->
+            <section class="bancha-section" aria-label="公众服务">
+                <h2 class="bancha-section-title">公众服务</h2>
+                <div class="bancha-card">
+                    <div class="bancha-grid bancha-grid-public">
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/gz-redian.png" width="44" height="44" alt="" decoding="async">
+                            <h4>热点问题</h4>
+                        </a>
+                        <a class="bancha-grid-item" href="zxk_zhengce.html">
+                            <img class="bancha-icon" src="img/bancha/gz-zhengce.png" width="44" height="44" alt="" decoding="async">
+                            <h4>政策解读</h4>
+                        </a>
+                        <a class="bancha-grid-item" href="help_center.html">
+                            <img class="bancha-icon" src="img/bancha/gz-banzhui.png" width="44" height="44" alt="" decoding="async">
+                            <h4>办税指南</h4>
+                        </a>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
-    
-    <!-- 底部导航 -->
+
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item" data-icon="sy">
             <div class="nav-icon">
@@ -310,10 +555,9 @@
         </a>
     </div>
     <script>
-        // 更新底部导航图标状态
         function updateNavIcons() {
             var navItems = document.querySelectorAll('.bottom-nav .nav-item');
-            navItems.forEach(function(item) {
+            navItems.forEach(function (item) {
                 var icon = item.getAttribute('data-icon');
                 var img = item.querySelector('.nav-icon img');
                 if (item.classList.contains('active')) {
@@ -326,18 +570,12 @@
                 window.__refreshNavFromMineUi();
             }
         }
-        
-        // 初始化时更新图标
         updateNavIcons();
-        
-        // iOS设备检测，底部导航上移
-        (function() {
+        (function () {
             var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             if (isIOS) {
                 var bottomNav = document.querySelector('.bottom-nav');
-                if (bottomNav) {
-                    bottomNav.classList.add('ios-device');
-                }
+                if (bottomNav) bottomNav.classList.add('ios-device');
             }
         })();
     </script>

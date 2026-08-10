@@ -120,8 +120,31 @@
       }
     }
     var bc = document.getElementById('assetBanchaHeader');
-    if (bc && cfg.bancha_header) {
-      setSrcIfChanged(bc, cfg.bancha_header);
+    var banchaBuiltin = document.getElementById('banchaHeaderBuiltin');
+    var banchaHeader = document.querySelector('.bancha-header');
+    if (banchaBuiltin) {
+      banchaBuiltin.style.display = '';
+    }
+    if (bc) {
+      var bp = cfg.bancha_header ? String(cfg.bancha_header).trim() : '';
+      var useBanchaCustom =
+        bp && bp !== 'db.jpg' && !/(^|\/)db\.jpg$/i.test(bp);
+      if (useBanchaCustom) {
+        setSrcIfChanged(bc, bp);
+        bc.hidden = false;
+        if (banchaBuiltin) {
+          banchaBuiltin.style.display = 'none';
+        }
+        if (banchaHeader) {
+          banchaHeader.setAttribute('data-header-mode', 'custom');
+        }
+      } else {
+        bc.removeAttribute('src');
+        bc.hidden = true;
+        if (banchaHeader) {
+          banchaHeader.setAttribute('data-header-mode', 'builtin');
+        }
+      }
     }
     var mh = document.getElementById('assetMessageHeader');
     var msgBuiltin = document.getElementById('messageHeaderBuiltin');
