@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260810-shuiming-top"></script>
+    <script src="/js/auth.js?v=20260810-shuiming-align"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -29,9 +29,10 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
+            color: #333;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -44,17 +45,17 @@
             left: 0;
             right: 0;
             z-index: 120;
-            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 15px;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #e8e8e8;
             box-sizing: border-box;
         }
         
         .back-btn {
             position: absolute;
-            left: 16px;
+            left: 12px;
             color: #1e6fff;
             font-size: 16px;
             text-decoration: none;
@@ -64,25 +65,31 @@
             -webkit-tap-highlight-color: transparent;
             outline: none;
         }
+
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            display: block;
+        }
         
         .header-title {
             font-size: 17px;
-            font-weight: 500;
-            color: #333;
+            font-weight: 600;
+            color: #191e26;
         }
 
         /* 内容区域 */
         .content {
-            padding: calc(46px + env(safe-area-inset-top, 0px)) 0 100px;
+            padding: calc(44px + env(safe-area-inset-top, 0px)) 0 32px;
         }
 
         /* Cordova iOS：壳内需 statusbar 占位；Android Cordova 黑条在 WebView 外，勿叠 */
         html.app-cordova-shell.app-ios-client.app-top-safe-shell body.page-shuiming > .header {
-            padding-top: calc(14px + var(--app-shell-statusbar-top, 48px));
+            padding-top: calc(12px + var(--app-shell-statusbar-top, 48px));
         }
 
         html.app-cordova-shell.app-ios-client.app-top-safe-shell body.page-shuiming > .content {
-            padding-top: calc(46px + var(--app-shell-statusbar-top, 48px));
+            padding-top: calc(44px + var(--app-shell-statusbar-top, 48px));
         }
 
         /* Android：顶距跟 --app-shell-statusbar-top；白顶栏外置状态栏时由 auth.js 置 0，勿写死 40px */
@@ -93,8 +100,8 @@
         html.app-android-honor-magic body.page-shuiming > .header,
         html.app-android-honor-flc body.page-shuiming > .header,
         html.app-android-honor-fcp body.page-shuiming > .header {
-            padding-top: calc(14px + var(--app-shell-statusbar-top, 0px)) !important;
-            padding-bottom: 15px !important;
+            padding-top: calc(12px + var(--app-shell-statusbar-top, 0px)) !important;
+            padding-bottom: 12px !important;
             top: 0 !important;
         }
 
@@ -105,7 +112,7 @@
         html.app-android-honor-magic body.page-shuiming > .content,
         html.app-android-honor-flc body.page-shuiming > .content,
         html.app-android-honor-fcp body.page-shuiming > .content {
-            padding-top: calc(46px + var(--app-shell-statusbar-top, 0px)) !important;
+            padding-top: calc(44px + var(--app-shell-statusbar-top, 0px)) !important;
         }
 
         /*
@@ -120,44 +127,44 @@
         }
 
         .form-section-card--first {
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .form-section-card + .form-section-card {
-            margin-top: 12px;
+            margin-top: 10px;
         }
 
         .form-section-card-title {
-            padding: 16px var(--form-card-pad-x) 12px;
+            padding: 14px var(--form-card-pad-x);
             font-size: 15px;
-            color: #000;
-            font-weight: 500;
+            color: #191e26;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 8px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #efefef;
         }
 
         .form-section-card-title::before {
             content: '';
             width: 3px;
-            height: 16px;
+            height: 15px;
             background: #1e6fff;
-            border-radius: 2px;
+            border-radius: 1px;
             flex-shrink: 0;
         }
         
-        /* 年度行：左「年度」、年份居中（与参考图红线位置）、右箭头 */
+        /* 年度行：左「年度」、年份约在 36%（对齐原版）、右箭头 */
         .year-select {
             position: relative;
             background: #fff;
             margin: 0;
             border-radius: 0;
-            padding: 14px var(--form-card-pad-x, 16px);
+            padding: 15px var(--form-card-pad-x, 16px);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 48px;
+            min-height: 50px;
             box-sizing: border-box;
         }
         
@@ -174,7 +181,7 @@
             position: absolute;
             left: 36%;
             transform: translateX(-50%);
-            color: #000;
+            color: #191e26;
             font-size: 15px;
             font-weight: 400;
             pointer-events: none;
@@ -182,8 +189,8 @@
         
         .year-chevron-wrap {
             flex: 0 0 auto;
-            width: 28px;
-            height: 28px;
+            width: 22px;
+            height: 22px;
             margin-left: auto;
             display: flex;
             align-items: center;
@@ -194,15 +201,15 @@
         }
         
         .year-chevron {
-            width: 18px;
-            height: 18px;
-            color: #ccc;
+            width: 16px;
+            height: 16px;
+            color: #c8c8c8;
             flex-shrink: 0;
         }
 
         .year-chevron path {
             stroke: currentColor;
-            stroke-width: 1.5;
+            stroke-width: 1.6;
             stroke-linecap: round;
             stroke-linejoin: round;
             fill: none;
@@ -216,11 +223,11 @@
         }
         
         .type-item {
-            padding: 16px var(--form-card-pad-x);
+            padding: 15px var(--form-card-pad-x);
             display: flex;
             align-items: center;
             gap: 12px;
-            border-bottom: 1px solid #f5f5f5;
+            border-bottom: 1px solid #f0f0f0;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
@@ -242,17 +249,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         
         .check-icon svg {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
         }
         
         /* 未选中的空心圆（与参考图一致） */
         .check-icon.check-off {
             background: transparent;
-            border: 2px solid #ccc;
+            border: 1.5px solid #c8c8c8;
             box-sizing: border-box;
         }
         .check-icon.check-off svg {
@@ -272,21 +280,21 @@
             display: block;
         }
         
-        /* 展开 / 收起：官方态 — 白卡片内一行，文案+双箭头整体居中，无右侧「>」 */
+        /* 展开 / 收起：官方态 — 文案+双箭头整体居中 */
         .type-toggle {
-            padding: 16px var(--form-card-pad-x);
+            padding: 14px var(--form-card-pad-x);
             color: #1e6fff;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 400;
             line-height: 1.4;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 2px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
-            border-top: 1px solid #ebebeb;
+            border-top: 1px solid #efefef;
         }
         .type-toggle.hidden {
             display: none;
@@ -294,24 +302,15 @@
         .type-toggle-text {
             flex: 0 0 auto;
         }
-        .type-toggle-icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-            display: block;
-            color: currentColor;
-        }
-        .type-toggle-icon path {
-            stroke: currentColor;
-            stroke-width: 1.65;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            fill: none;
+        .type-toggle-caret {
+            font-size: 12px;
+            line-height: 1;
+            margin-top: 1px;
         }
         
         .query-btn-wrapper {
-            padding: 24px 16px;
-            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            padding: 28px 16px 40px;
+            padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
             background: #f5f6fa;
         }
         
@@ -321,8 +320,8 @@
             background: #1e6fff;
             color: #fff;
             border: none;
-            border-radius: 6px;
-            padding: 14px;
+            border-radius: 8px;
+            padding: 13px;
             font-size: 16px;
             font-weight: 600;
             font-family: inherit;
@@ -490,8 +489,8 @@
 <body class="page-shuiming">
     <!-- 顶部导航 -->
     <div class="header">
-        <a href="shouye.html" class="back-btn">
-            <img src="/jt.png" style="width: 9px; vertical-align: middle;">
+        <a href="bancha.html" class="back-btn" id="shuimingBack">
+            <img src="/jt.png" alt="">
             <span>返回</span>
         </a>
         <span class="header-title">收入纳税明细</span>
@@ -552,10 +551,7 @@
 
         <div class="type-toggle" id="btnExpandTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">其他类型</span>
-            <svg class="type-toggle-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M5 4l5 5 5-5"/>
-                <path d="M5 10l5 5 5-5"/>
-            </svg>
+            <span class="type-toggle-caret" aria-hidden="true">︾</span>
         </div>
 
             <div id="incomeTypesExtra" class="income-types-extra" aria-hidden="true">
@@ -603,10 +599,7 @@
 
         <div class="type-toggle hidden" id="btnCollapseTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">收起</span>
-            <svg class="type-toggle-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M5 12l5-5 5 5"/>
-                <path d="M5 16l5-5 5 5"/>
-            </svg>
+            <span class="type-toggle-caret" aria-hidden="true">︽</span>
         </div>
             </div>
         </div>
@@ -639,6 +632,17 @@
     
     <script src="/js/tax-year.js?v=20260719-tax-year-open"></script>
     <script>
+        (function () {
+            var back = document.getElementById('shuimingBack');
+            if (!back) return;
+            back.addEventListener('click', function (e) {
+                if (window.history.length > 1) {
+                    e.preventDefault();
+                    window.history.back();
+                }
+            });
+        })();
+
         const yearSelect = document.getElementById('yearSelect');
         const yearDisplay = document.getElementById('yearDisplay');
         const pickerOverlay = document.getElementById('pickerOverlay');
