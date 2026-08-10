@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260810-bancha-blue-status"></script>
+    <script src="/js/auth.js?v=20260810-daiban-header-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#2b81f2">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,56 +18,219 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f6f7fb;
+            background: #f5f6fa;
             min-height: 100vh;
         }
 
         .daiban-page {
             min-height: 100vh;
-            background: #f6f7fb;
-            padding-bottom: var(--bottom-nav-clearance, 72px);
+            background: #f5f6fa;
         }
 
         .daiban-header {
             position: relative;
             z-index: 1;
-            /* 与 daiban.jpg 顶部左侧取样对齐，仅作头图未盖住时的兜底 */
             background: #2b81f2;
             overflow: hidden;
         }
 
+        /* 内置 HTML 头：安全区由 builtin 自己处理，避免与 .daiban-header 顶距叠加 */
+        .daiban-header[data-header-mode="builtin"] {
+            padding-top: 0 !important;
+        }
+
+        .daiban-header-builtin {
+            background: #2b81f2;
+            padding: 14px 16px 22px;
+            padding-top: calc(14px + env(safe-area-inset-top, 0px));
+        }
+
+        html.app-top-safe-shell .daiban-header-builtin {
+            padding-top: calc(14px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+
+        .daiban-header-custom-img[hidden] {
+            display: none !important;
+            margin: 0 !important;
+        }
+
+        .daiban-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .daiban-title-row h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;
+            letter-spacing: 0.5px;
+        }
+
+        .daiban-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.4;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .daiban-tip {
+            background: #fdf6e3;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: #c8840a;
+        }
+
+        .daiban-tip-icon {
+            font-weight: 600;
+            margin-right: 2px;
+        }
+
+        .daiban-header-custom-img {
+            width: 100%;
+            display: block;
+        }
+
         @supports (padding-top: env(safe-area-inset-top)) {
-            .daiban-header {
+            .daiban-header:not([data-header-mode="builtin"]) {
                 padding-top: env(safe-area-inset-top, 0px);
             }
-            .daiban-header img {
+            .daiban-header:not([data-header-mode="builtin"]) > .daiban-header-custom-img {
                 margin-top: calc(-1 * env(safe-area-inset-top, 0px));
             }
         }
 
-        html.app-top-safe-shell .daiban-header {
+        html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) {
             padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             background: #2b81f2;
             overflow: hidden;
         }
-        html.app-top-safe-shell .daiban-header > img {
+
+        html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > .daiban-header-custom-img {
             margin-top: calc(-1 * var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             display: block;
             width: 100%;
         }
 
-        .daiban-header img {
-            width: 100%;
+        .daiban-content {
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            margin-top: -10px;
+            position: relative;
+            z-index: 2;
+            min-height: calc(100vh - 160px);
+            padding-bottom: var(--bottom-nav-clearance, 72px);
+        }
+
+        .daiban-tabs {
+            display: flex;
+            border-bottom: 1px solid #f0f1f3;
+        }
+
+        .daiban-tab {
+            flex: 1;
+            padding: 15px 0 11px;
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #888;
+            position: relative;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .daiban-tab.active {
+            color: #222;
+            font-weight: 600;
+        }
+
+        .daiban-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 3px;
+            background: #2b81f2;
+            border-radius: 2px;
+        }
+
+        .daiban-panel {
+            display: none;
+        }
+
+        .daiban-panel.active {
             display: block;
+        }
+
+        .daiban-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 56px 24px 40px;
+            text-align: center;
+        }
+
+        .daiban-empty img {
+            width: 200px;
+            max-width: 58vw;
+            height: auto;
+            display: block;
+        }
+
+        .daiban-empty p {
+            margin-top: 20px;
+            font-size: 15px;
+            color: #999;
+            line-height: 1.5;
         }
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <script src="/js/theme-loader.js?v=20260810-daiban-header-fix" defer></script>
 </head>
 <body class="page-daiban">
     <div class="daiban-page">
-        <div class="daiban-header">
-            <img id="assetDaibanHeader" src="daiban.jpg?v=2" alt="待办">
+        <div class="daiban-header" data-header-mode="builtin">
+            <div id="daibanHeaderBuiltin" class="daiban-header-builtin">
+                <div class="daiban-title-row">
+                    <h1>待办</h1>
+                    <p class="daiban-subtitle">请及时办理相关业务并确认办结情况</p>
+                </div>
+                <div class="daiban-tip">
+                    <span class="daiban-tip-icon" aria-hidden="true">①</span>温馨提示：目前待办功能仅提供部分待办事项的服务，我们将持续升级，为您提供更全面的待办提醒。
+                </div>
+            </div>
+            <img id="assetDaibanHeader" class="daiban-header-custom-img" alt="" hidden>
+        </div>
+
+        <div class="daiban-content" id="daibanContentBuiltin">
+            <div class="daiban-tabs" role="tablist" aria-label="待办分类">
+                <button type="button" class="daiban-tab active" data-tab="pending" role="tab" aria-selected="true">未办结</button>
+                <button type="button" class="daiban-tab" data-tab="done" role="tab" aria-selected="false">已办结</button>
+            </div>
+            <div class="daiban-panels">
+                <div class="daiban-panel active" data-panel="pending" role="tabpanel">
+                    <div class="daiban-empty">
+                        <img src="daiban-empty.png" width="200" height="149" alt="" decoding="async">
+                        <p>暂无未办结事项</p>
+                    </div>
+                </div>
+                <div class="daiban-panel" data-panel="done" role="tabpanel">
+                    <div class="daiban-empty">
+                        <img src="daiban-empty.png" width="200" height="149" alt="" decoding="async">
+                        <p>暂无已办结事项</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -132,6 +295,7 @@
             }
         })();
     </script>
+    <script src="/js/daiban.js?v=20260810-daiban-header-guard" defer></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>

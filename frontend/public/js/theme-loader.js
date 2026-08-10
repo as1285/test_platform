@@ -93,8 +93,31 @@
       setSrcIfChanged(zdb, cfg.shouye_zdb);
     }
     var dh = document.getElementById('assetDaibanHeader');
-    if (dh && cfg.daiban_header) {
-      setSrcIfChanged(dh, cfg.daiban_header);
+    var daibanBuiltin = document.getElementById('daibanHeaderBuiltin');
+    var daibanHeader = document.querySelector('.daiban-header');
+    if (daibanBuiltin) {
+      daibanBuiltin.style.display = '';
+    }
+    if (dh) {
+      var dp = cfg.daiban_header ? String(cfg.daiban_header).trim() : '';
+      var useCustom =
+        dp && dp !== 'daiban.jpg' && !/(^|\/)daiban\.jpg$/i.test(dp);
+      if (useCustom) {
+        setSrcIfChanged(dh, dp);
+        dh.hidden = false;
+        if (daibanBuiltin) {
+          daibanBuiltin.style.display = 'none';
+        }
+        if (daibanHeader) {
+          daibanHeader.setAttribute('data-header-mode', 'custom');
+        }
+      } else {
+        dh.removeAttribute('src');
+        dh.hidden = true;
+        if (daibanHeader) {
+          daibanHeader.setAttribute('data-header-mode', 'builtin');
+        }
+      }
     }
     var bc = document.getElementById('assetBanchaHeader');
     if (bc && cfg.bancha_header) {
