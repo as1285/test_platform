@@ -1274,7 +1274,7 @@
           msgBlue +
           ' !important;z-index:40 !important;pointer-events:none !important;}' +
           'html.app-top-safe-shell .message-header-wrap{margin:0 !important;padding:0 !important;}' +
-          'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;background:linear-gradient(135deg,#1e8fff 0%,#4d9aff 50%,#1e8fff 100%) !important;}';
+          'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;background:linear-gradient(180deg,#1e8fff 0%,#3d96ff 55%,#4da0ff 100%) !important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
       syncAppShellStatusbarTop();
@@ -2137,7 +2137,7 @@
           'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header[data-header-mode="builtin"],html.app-ios-iphone12promax.app-top-safe-shell .bancha-header[data-header-mode="builtin"]{padding-top:0 !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]) > img,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]) > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-message::before{display:none !important;content:none !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;background:linear-gradient(135deg,#1e8fff 0%,#4d9aff 50%,#1e8fff 100%) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;background:linear-gradient(180deg,#1e8fff 0%,#3d96ff 55%,#4da0ff 100%) !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg{padding-top:env(safe-area-inset-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +

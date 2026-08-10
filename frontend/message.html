@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260810-bancha-blue-status"></script>
+    <script src="/js/auth.js?v=20260810-message-align"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e8fff">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,9 +17,10 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f6fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+            background: #f5f7fa;
             min-height: 100vh;
+            color: #191e26;
             /* 勿 overflow-x:hidden：iOS 会破坏底栏 position:fixed，切 TAB 时位置不统一且偏高 */
         }
         
@@ -29,7 +30,8 @@
         
         .message-page {
             min-height: 100vh;
-            background: #f5f6fa;
+            min-height: 100dvh;
+            background: #f5f7fa;
         }
         
         .message-header-wrap {
@@ -37,16 +39,19 @@
             z-index: 1;
         }
 
+        /* 对齐 APK .zdj-message-container 顶栏：蓝底 + 筛选 / 清除未读 */
         .message-header-toolbar {
-            background: linear-gradient(135deg, #1e8fff 0%, #4d9aff 50%, #1e8fff 100%);
-            padding: 50px 16px 20px;
+            background: linear-gradient(180deg, #1e8fff 0%, #3d96ff 55%, #4da0ff 100%);
+            padding: 12px 16px 18px;
+            padding-top: calc(12px + env(safe-area-inset-top, 0px));
             position: relative;
             border-radius: 0;
             box-shadow: none;
         }
 
         .message-header-title {
-            margin: 0 0 16px;
+            margin: 0 0 12px;
+            padding: 0 0 0 2px;
             font-size: 26px;
             font-weight: 700;
             color: #fff;
@@ -56,10 +61,10 @@
 
         /* 蓝渐变从屏幕顶缘铺进安全区，文字用 padding 避让 */
         html.app-top-safe-shell .message-header-toolbar {
-            padding-top: calc(14px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            padding-top: calc(12px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             padding-left: 16px;
             padding-right: 16px;
-            padding-bottom: 20px;
+            padding-bottom: 18px;
         }
 
         html.app-ios-client.app-top-safe-shell body.page-message::before {
@@ -75,23 +80,26 @@
             pointer-events: none;
         }
 
+        /* APK .list-box：圆角 24px + 顶部浅灰渐变 */
         .message-list {
-            background: #fff;
-            border-radius: 16px 16px 0 0;
-            margin-top: -10px;
+            background-image: linear-gradient(180deg, #f5f7fa 0%, #fff 28%);
+            background-color: #fff;
+            border-radius: 24px 24px 0 0;
+            margin-top: -8px;
             position: relative;
             z-index: 2;
+            padding-top: 4px;
             padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-            min-height: calc(100vh - 150px);
+            min-height: calc(100vh - 140px);
             overflow: hidden;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar {
-            padding-bottom: 20px;
+            padding-bottom: 18px;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell .message-header-title {
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .message-header-actions {
@@ -99,16 +107,22 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            min-height: 26px;
         }
 
+        /* APK .search-btn：76×26、圆角 4、字号 12 */
         .msg-filter-chip {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
+            justify-content: center;
+            gap: 4px;
+            height: 26px;
+            min-width: 76px;
+            padding: 0 16px;
             border: none;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
+            line-height: 26px;
             color: #fff;
             background: rgba(255, 255, 255, 0.28);
             -webkit-backdrop-filter: blur(8px);
@@ -123,33 +137,35 @@
         }
 
         .msg-filter-chip.active {
-            background: rgba(255, 255, 255, 0.42);
+            background: rgba(255, 255, 255, 0.45);
             box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
         }
 
         .msg-filter-icon {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             flex-shrink: 0;
             opacity: 0.95;
         }
 
+        /* APK .clear-btn */
         .msg-clear-unread {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 6px 2px;
+            padding: 4px 2px;
             border: none;
             background: transparent;
             font-size: 14px;
-            font-weight: 300;
-            color: rgba(255, 255, 255, 0.88);
+            font-weight: 400;
+            line-height: 20px;
+            color: rgba(255, 255, 255, 0.92);
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
 
         .msg-clear-unread span {
-            font-weight: 300;
+            font-weight: 400;
             letter-spacing: 0.02em;
         }
 
@@ -172,22 +188,30 @@
             vertical-align: top;
         }
         
+        /* APK .messsage-item */
         .message-item {
             display: flex;
             align-items: flex-start;
-            padding: 16px;
-            gap: 12px;
+            padding: 20px 24px 20px 0;
+            margin-left: 24px;
+            gap: 16px;
+            border-bottom: 1px solid #f7f7f7;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
+
+        .message-item:last-child {
+            border-bottom: none;
         }
 
         .message-item:active {
-            background: #f8f9fb;
+            background: #fafbfc;
         }
         
         .msg-item-icon {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             border-radius: 10px;
             overflow: hidden;
             display: flex;
@@ -198,8 +222,8 @@
         }
         
         .msg-item-icon img {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             object-fit: contain;
             display: block;
         }
@@ -207,41 +231,74 @@
         .message-content {
             flex: 1;
             min-width: 0;
+            padding-right: 8px;
         }
         
         .message-content-title {
             font-size: 14px;
-            color: #333;
-            font-weight: 500;
-            margin-bottom: 6px;
+            color: #191e26;
+            font-weight: 700;
+            line-height: 20px;
+            margin-bottom: 4px;
+            padding-right: 64px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
         
         .message-content-desc {
             font-size: 12px;
-            color: #999;
+            color: #4d5259;
+            line-height: 18px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            padding-right: 24px;
         }
         
         .message-meta {
+            position: absolute;
+            top: 20px;
+            right: 24px;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
-            gap: 8px;
+            gap: 10px;
             flex-shrink: 0;
         }
         
         .message-date {
-            font-size: 11px;
-            color: #999;
+            font-size: 12px;
+            color: #b2b7bf;
+            line-height: 18px;
         }
         
         .message-dot {
             width: 8px;
             height: 8px;
-            background: #ff4444;
+            background: #f51f0c;
             border-radius: 50%;
+            margin-top: 6px;
+        }
+
+        .message-empty {
+            text-align: center;
+            padding: 72px 24px 40px;
+            color: #999da6;
+        }
+
+        .message-empty img {
+            width: 180px;
+            max-width: 56%;
+            height: auto;
+            display: block;
+            margin: 0 auto 16px;
+        }
+
+        .message-empty p {
+            font-size: 14px;
+            line-height: 20px;
+            color: #999da6;
         }
 
         /* 华为 TAS-AN00（Mate 40 等）：消息页字号整体小两号 */
@@ -271,7 +328,7 @@
         
         </style>
     <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <script src="/js/theme-loader.js?v=20260810-message-align" defer></script>
 </head>
 <body class="page-message">
     <div class="message-page">
@@ -397,7 +454,7 @@
                     escapeHtml(String(msg.id || '')) +
                     '">';
                 html += '<div class="msg-item-icon">';
-                html += '<img src="message_item_icon.png" width="44" height="44" alt="">';
+                html += '<img src="message_item_icon.png" width="48" height="48" alt="">';
                 html += '</div>';
                 html += '<div class="message-content">';
                 html += '<div class="message-content-title">' + escapeHtml(msg.title) + '</div>';
@@ -413,7 +470,12 @@
             });
             var emptyHint = filterUnreadOnly ? '暂无未读消息' : '暂无消息';
             document.getElementById('messageList').innerHTML =
-                html || '<div style="text-align:center;padding:50px;color:#999;">' + emptyHint + '</div>';
+                html ||
+                '<div class="message-empty">' +
+                '<img src="img/message/empty.png" alt="" width="180" height="124" decoding="async">' +
+                '<p>' +
+                emptyHint +
+                '</p></div>';
         }
 
         function bindMessageListClicks() {
@@ -465,14 +527,13 @@
                         }
                     } else {
                         allMessages = [];
-                        document.getElementById('messageList').innerHTML =
-                            '<div style="text-align:center;padding:50px 16px;color:#999;">暂无消息</div>';
+                        renderMessageList();
                     }
                 })
                 .catch(function (error) {
                     console.error(error);
-                    document.getElementById('messageList').innerHTML =
-                        '<div style="text-align:center;padding:50px 16px;color:#999;">暂无消息</div>';
+                    allMessages = [];
+                    renderMessageList();
                 });
         }
 
