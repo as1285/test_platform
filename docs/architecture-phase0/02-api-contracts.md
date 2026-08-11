@@ -75,6 +75,7 @@
 | `restore_record` / `restore_all_deleted_records` / `restore_records_by_company` | 恢复 |
 | `dedupe_records` | 去重 |
 | `log_issue_application` | 开具类申请日志 |
+| `delete_issue_application` | 删除开具申请记录 |
 
 **批量覆盖请求骨架：**
 

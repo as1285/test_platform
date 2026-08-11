@@ -11748,6 +11748,28 @@ async function handleTaxPost(req, res) {
         connIssue.release();
       }
     }
+    if (action === 'delete_issue_application') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var delIssueId = String(body.id != null ? body.id : '').trim().substring(0, 128);
+      if (!delIssueId) {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      const connIssueDel = await pool.getConnection();
+      try {
+        const [delIssueRows] = await connIssueDel.execute(
+          'DELETE FROM tax_issue_applications WHERE id = ? AND user_id = ?',
+          [delIssueId, String(userId)]
+        );
+        if (!delIssueRows.affectedRows) {
+          return res.status(404).json({ code: 404, msg: '申请记录不存在' });
+        }
+        return res.json({ code: 200, data: { id: delIssueId, success: true } });
+      } finally {
+        connIssueDel.release();
+      }
+    }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {
     console.error(e);

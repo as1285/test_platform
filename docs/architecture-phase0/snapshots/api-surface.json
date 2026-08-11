@@ -53,6 +53,7 @@
     "delete_records_by_year",
     "delete_special_deduction_record",
     "deleted_records",
+    "delete_issue_application",
     "detail",
     "employers",
     "family_member",

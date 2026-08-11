@@ -340,15 +340,91 @@
       });
   }
 
-  /** 合并服务端开具记录到本地（保留本地已有 records 快照） */
+  function deletedIssueIdsKey() {
+    return storageKey() + ':deleted';
+  }
+
+  function loadDeletedIssueIds() {
+    try {
+      var raw = localStorage.getItem(deletedIssueIdsKey()) || '[]';
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveDeletedIssueIds(ids) {
+    try {
+      localStorage.setItem(deletedIssueIdsKey(), JSON.stringify((ids || []).slice(0, 100)));
+    } catch (e) {}
+  }
+
+  function markIssueDeletedLocally(id) {
+    var sid = String(id || '');
+    if (!sid) return;
+    var ids = loadDeletedIssueIds();
+    if (ids.indexOf(sid) === -1) {
+      ids.unshift(sid);
+      saveDeletedIssueIds(ids);
+    }
+  }
+
+  function clearIssueDeletedMark(id) {
+    var sid = String(id || '');
+    saveDeletedIssueIds(
+      loadDeletedIssueIds().filter(function (x) {
+        return x !== sid;
+      })
+    );
+  }
+
+  /** 服务端已无的删除标记可清理；仍存在于服务端的继续屏蔽合并 */
+  function pruneDeletedIssueIds(serverApps) {
+    var onServer = {};
+    (Array.isArray(serverApps) ? serverApps : []).forEach(function (s) {
+      if (s && s.id) onServer[String(s.id)] = true;
+    });
+    saveDeletedIssueIds(
+      loadDeletedIssueIds().filter(function (id) {
+        return !!onServer[String(id)];
+      })
+    );
+  }
+
+  function deleteIssueFromServer(id) {
+    if (typeof window.authFetch !== 'function') return Promise.resolve({ code: 200 });
+    return window
+      .authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_issue_application',
+          id: String(id || '').substring(0, 128)
+        })
+      })
+      .then(function (r) {
+        return r.json();
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  /** 合并服务端开具记录到本地（保留本地已有 records 快照；跳过本地已删除） */
   function mergeServerApplications(localApps, serverApps) {
+    var deleted = {};
+    loadDeletedIssueIds().forEach(function (id) {
+      deleted[String(id)] = true;
+    });
     var byId = {};
     (Array.isArray(localApps) ? localApps : []).forEach(function (app) {
-      if (app && app.id) byId[String(app.id)] = app;
+      if (app && app.id && !deleted[String(app.id)]) byId[String(app.id)] = app;
     });
     (Array.isArray(serverApps) ? serverApps : []).forEach(function (s) {
       if (!s || !s.id) return;
       var id = String(s.id);
+      if (deleted[id]) return;
       var prev = byId[id];
       byId[id] = Object.assign({}, prev || {}, {
         id: id,
@@ -725,13 +801,17 @@
     if (next.length === apps.length) {
       return false;
     }
+    markIssueDeletedLocally(id);
     saveApplications(next);
     return true;
   }
 
   var APP_LONG_PRESS_MS = 550;
+  var APP_LONG_PRESS_MOVE_PX = 12;
   var appLongPressTimer = null;
   var appLongPressTriggered = false;
+  var appLongPressStartX = 0;
+  var appLongPressStartY = 0;
 
   function clearApplicationLongPress() {
     if (appLongPressTimer) {
@@ -758,6 +838,11 @@
       return;
     }
     renderApplicationsPage();
+    deleteIssueFromServer(id).then(function (j) {
+      if (j && (j.code === 200 || j.code === 404)) {
+        clearIssueDeletedMark(id);
+      }
+    });
   }
 
   function startApplicationLongPress(cardEl, id) {
@@ -853,8 +938,8 @@
 
     paint(apps);
     fetchIssueApplicationsFromServer().then(function (serverApps) {
-      if (!serverApps || !serverApps.length) return;
-      var merged = mergeServerApplications(loadApplications(), serverApps);
+      pruneDeletedIssueIds(serverApps || []);
+      var merged = mergeServerApplications(loadApplications(), serverApps || []);
       saveApplications(merged);
       paint(merged);
     });
@@ -889,6 +974,13 @@
       }
     });
 
+    function pressPoint(ev) {
+      if (ev.touches && ev.touches[0]) {
+        return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+      }
+      return { x: ev.clientX || 0, y: ev.clientY || 0 };
+    }
+
     function onPressStart(ev) {
       if (ev.target.closest && ev.target.closest('.application-action')) {
         return;
@@ -899,7 +991,20 @@
       }
       var id = card.getAttribute('data-id');
       if (id) {
+        var pt = pressPoint(ev);
+        appLongPressStartX = pt.x;
+        appLongPressStartY = pt.y;
         startApplicationLongPress(card, id);
+      }
+    }
+
+    function onPressMove(ev) {
+      if (!appLongPressTimer) return;
+      var pt = pressPoint(ev);
+      var dx = pt.x - appLongPressStartX;
+      var dy = pt.y - appLongPressStartY;
+      if (Math.sqrt(dx * dx + dy * dy) > APP_LONG_PRESS_MOVE_PX) {
+        clearApplicationLongPress();
       }
     }
 
@@ -907,7 +1012,8 @@
     list.addEventListener('mousedown', onPressStart);
     list.addEventListener('touchend', clearApplicationLongPress);
     list.addEventListener('touchcancel', clearApplicationLongPress);
-    list.addEventListener('touchmove', clearApplicationLongPress);
+    list.addEventListener('touchmove', onPressMove, { passive: true });
+    list.addEventListener('mousemove', onPressMove);
     list.addEventListener('mouseup', clearApplicationLongPress);
     list.addEventListener('mouseleave', clearApplicationLongPress);
   }
