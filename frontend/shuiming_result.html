@@ -21,7 +21,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260811-mi15pro-top"></script>
+    <script src="/js/auth.js?v=20260811-bfcache-hide"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -1693,15 +1693,24 @@
             stripShuimingBottomBar();
             if (typeof window.appPageLoadingDispatchDataDone === 'function') {
                 window.appPageLoadingDispatchDataDone();
-            } else if (typeof window.forceHidePageLoading === 'function') {
+            }
+            /* 双保险：避免仅 dispatch、lifecycle 已 finished 时遮罩残留 */
+            if (typeof window.forceHidePageLoading === 'function') {
                 window.forceHidePageLoading();
             } else if (typeof window.hidePageLoading === 'function') {
                 window.hidePageLoading();
             }
         }
 
-        function loadData() {
-            if (typeof window.showPageLoading === 'function') {
+        function listStillShowingSpinner() {
+            var list = document.getElementById('recordList');
+            return !!(list && list.querySelector('.list-loading-spin'));
+        }
+
+        function loadData(opts) {
+            opts = opts || {};
+            var quiet = !!opts.quiet;
+            if (!quiet && typeof window.showPageLoading === 'function') {
                 window.showPageLoading();
             }
             var year = String(
@@ -1725,28 +1734,40 @@
 
             var fetchPromise = __shuimingRecordsInFlight[cacheKey];
             if (!fetchPromise) {
-                fetchPromise = window.authFetch(apiUrl)
-                    .then(function (response) {
-                        return response.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200 && data.data) {
-                            var records = data.data.records;
-                            if (!Array.isArray(records)) records = [];
-                            var payload = {
-                                records: records,
-                                income_total: data.data.income_total,
-                                tax_total: data.data.tax_total
-                            };
-                            writeShuimingRecordsCache(cacheKey, payload);
-                            return payload;
-                        }
-                        throw new Error('api_not_ok');
-                    })
-                    .finally(function () {
-                        delete __shuimingRecordsInFlight[cacheKey];
-                    });
-                __shuimingRecordsInFlight[cacheKey] = fetchPromise;
+                try {
+                    fetchPromise = window.authFetch(apiUrl)
+                        .then(function (response) {
+                            return response.json();
+                        })
+                        .then(function (data) {
+                            if (data.code === 200 && data.data) {
+                                var records = data.data.records;
+                                if (!Array.isArray(records)) records = [];
+                                var payload = {
+                                    records: records,
+                                    income_total: data.data.income_total,
+                                    tax_total: data.data.tax_total
+                                };
+                                writeShuimingRecordsCache(cacheKey, payload);
+                                return payload;
+                            }
+                            throw new Error('api_not_ok');
+                        })
+                        .finally(function () {
+                            delete __shuimingRecordsInFlight[cacheKey];
+                        });
+                    __shuimingRecordsInFlight[cacheKey] = fetchPromise;
+                } catch (eFetch) {
+                    applyTotals({ income_total: '0.00', tax_total: '0.00' });
+                    var listEl = document.getElementById('recordList');
+                    if (listEl) {
+                        listEl.innerHTML =
+                            '<div class="list-empty">无法加载数据，请确认已登录且税务记录服务可用</div>';
+                    }
+                    syncRecordEmptyUi(false);
+                    finishShuimingPageLoading();
+                    return;
+                }
             }
 
             fetchPromise
@@ -1852,13 +1873,18 @@
                 }
             });
         } catch (e) {}
-        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI */
-        window.addEventListener('pageshow', function () {
+        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI；并关掉残留转圈 */
+        window.addEventListener('pageshow', function (ev) {
             refreshActivateUiAfterReturn();
+            finishShuimingPageLoading();
+            if (ev && ev.persisted && listStillShowingSpinner()) {
+                loadData({ quiet: true });
+            }
         });
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'visible') {
                 refreshActivateUiAfterReturn();
+                finishShuimingPageLoading();
             }
         });
         loadData();

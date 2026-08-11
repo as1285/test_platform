@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260810-bancha-blue-status"></script>
+    <script src="/js/auth.js?v=20260811-bfcache-hide"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-help-icon-lock" data-scope="body.page-xiangqing"></script>
@@ -597,9 +597,47 @@
         function initBackLink() {
             var y = getUrlParam('year');
             var el = document.getElementById('backLink');
-            if (el) {
-                el.href = y ? ('shuiming_result.html?year=' + encodeURIComponent(y)) : 'shuiming_result.html';
-            }
+            if (!el) return;
+            var fallback = y
+                ? 'shuiming_result.html?year=' + encodeURIComponent(y)
+                : 'shuiming_result.html';
+            el.href = fallback;
+            /* 返回列表勿盖全屏转圈：目标页自己有 loading；且优先 history.back 走 bfcache */
+            el.setAttribute('data-no-page-loading', '1');
+            if (el.__backBound) return;
+            el.__backBound = true;
+            el.addEventListener('click', function (ev) {
+                var canBack = false;
+                try {
+                    var ref = String(document.referrer || '');
+                    canBack =
+                        window.history.length > 1 &&
+                        (ref.indexOf('shuiming_result.html') >= 0 ||
+                            /shuiming_result\.html/i.test(ref));
+                } catch (e0) {}
+                if (!canBack) return;
+                ev.preventDefault();
+                try {
+                    if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    }
+                } catch (e1) {}
+                try {
+                    window.history.back();
+                } catch (e2) {
+                    window.location.href = fallback;
+                    return;
+                }
+                setTimeout(function () {
+                    try {
+                        if (String(window.location.pathname || '').indexOf('xiangqing') >= 0) {
+                            window.location.href = fallback;
+                        }
+                    } catch (e3) {
+                        window.location.href = fallback;
+                    }
+                }, 450);
+            });
         }
 
         function loadData() {

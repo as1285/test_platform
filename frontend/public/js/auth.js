@@ -5317,7 +5317,7 @@
     window.__pageLoadingQueue.push(['show']);
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260803-nav-cover';
+      s.src = '/js/page-loading.js?v=20260811-bfcache-hide';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);
@@ -5329,7 +5329,7 @@
     if (currentPageName() === 'admin_panel.html') return;
     if (document.querySelector('script[data-fast-nav-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/fast-nav.js?v=20260721d-bonus';
+    s.src = '/js/fast-nav.js?v=20260811-bfcache-hide';
     s.setAttribute('data-fast-nav-js', '1');
     s.async = true;
     document.head.appendChild(s);

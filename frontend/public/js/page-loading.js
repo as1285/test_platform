@@ -5,7 +5,7 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260803-nav-cover';
+  var CSS_HREF = '/css/page-loading.css?v=20260811-bfcache-hide';
   var MIN_DISPLAY_MS = 40;
   var ABSOLUTE_MAX_MS = 6000;
   var ABSOLUTE_MAX_DATA_PAGE_MS = 15000;
@@ -438,11 +438,27 @@
     startPageLifecycle();
   }
 
+  /*
+   * bfcache 回退：页面 DOM/数据仍在，切勿再跑 startPageLifecycle。
+   * 否则会再次 showPageLoading，并等待 appPageLoadingDataDone；
+   * 业务页不会重跑 loadData，转圈会一直挂到超时（收入纳税明细 ← 详情 即此路径）。
+   */
   window.addEventListener('pageshow', function (ev) {
-    if (ev && ev.persisted) {
-      forceHidePageLoading();
-      document.documentElement.removeAttribute('data-app-page-loading-lifecycle');
-      startPageLifecycle();
+    if (!(ev && ev.persisted)) {
+      return;
     }
+    forceHidePageLoading();
+    try {
+      document.documentElement.classList.remove('app-nav-leaving');
+    } catch (eNav) {}
+    try {
+      if (
+        document.body &&
+        (document.body.classList.contains('page-shuiming-result') ||
+          document.body.classList.contains('page-xiangqing'))
+      ) {
+        dispatchLoadingEvent('appPageLoadingDataDone', '__appPageLoadingDataDone');
+      }
+    } catch (eData) {}
   });
 })();
