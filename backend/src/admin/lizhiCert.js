@@ -96,6 +96,7 @@ async function handleAdminLizhiCertGenerate(req, res) {
       issue_date: clean(b.issue_date),
       company_name: clean(b.company_name),
       position: clean(b.position),
+      department: clean(b.department),
       note: clean(b.note),
       demo: true
     };

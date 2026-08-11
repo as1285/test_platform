@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260810-daiban-align"></script>
+    <script src="/js/auth.js?v=20260811-ios-mine-vh"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#2b81f2">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -147,7 +147,7 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
-            padding-bottom: var(--bottom-nav-clearance, 72px);
+            padding-bottom: var(--bottom-nav-clearance, 86px);
         }
 
         .daiban-tabs {
@@ -213,10 +213,10 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 24px 24px 48px;
+            padding: 24px 24px 32px;
             text-align: center;
-            /* 略偏上，对齐原版空态视觉重心 */
-            padding-bottom: calc(48px + var(--bottom-nav-clearance, 72px) * 0.15);
+            /* 略偏上，对齐原版空态；勿再叠过大 clearance 导致底栏「悬空过高」 */
+            padding-bottom: 32px;
         }
 
         .daiban-empty img {
@@ -233,8 +233,8 @@
             line-height: 1.5;
         }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
-    <script src="/js/theme-loader.js?v=20260810-daiban-align" defer></script>
+    <link rel="stylesheet" href="css/nav.css?v=20260811-ios-mine-vh">
+    <script src="/js/theme-loader.js?v=20260811-ios-nav-8px" defer></script>
 </head>
 <body class="page-daiban">
     <div class="daiban-page">

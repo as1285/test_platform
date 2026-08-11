@@ -553,9 +553,16 @@
   function syncConsultModifyEditGate() {
     var link = document.getElementById('consultModifyLink');
     if (!link) return;
-    link.setAttribute('data-cg-tax-edit-gated', isTaxEditModeOn() ? '0' : '1');
+    var on = isTaxEditModeOn();
+    link.setAttribute('data-cg-tax-edit-gated', on ? '0' : '1');
+    /* 关闭编辑时禁止站内跳转转圈（点击会被拦截，转圈否则一直挂着） */
+    if (on) {
+      link.removeAttribute('data-no-page-loading');
+    } else {
+      link.setAttribute('data-no-page-loading', '1');
+    }
     var hint = document.getElementById('consultModifyHint');
-    if (hint && !isTaxEditModeOn()) {
+    if (hint && !on) {
       hint.setAttribute('hidden', '');
     }
   }
@@ -591,7 +598,12 @@
   var taxEditTapResetTimer = null;
   var taxEditLastPhysicalTapAt = 0;
   var TAX_EDIT_TAP_REQUIRED = 5;
-  var TAX_EDIT_TAP_WINDOW_MS = 1000;
+  /* 连续点击间隔上限：过短在真机上很难点满 5 次 */
+  var TAX_EDIT_TAP_WINDOW_MS = 2800;
+  /** 关闭编辑后禁止进入的个税修改相关页 */
+  var TAX_EDIT_BLOCKED_PAGES = {
+    'consult.html': true
+  };
 
   function registerTaxEditTap(e) {
     if (window.__cgScreenshotLongPress) {
@@ -623,8 +635,15 @@
   }
 
   function initTaxEditPageGuard() {
-    if (currentPage() !== 'consult.html') return;
+    var page = currentPage();
+    if (!TAX_EDIT_BLOCKED_PAGES[page]) return;
     if (isTaxEditModeOn()) return;
+    /* 尚无个税记录时允许进入引导填写，并自动打开编辑 */
+    if (page === 'consult.html' && !hasTaxRecords()) {
+      ensureTaxEditForFill();
+      return;
+    }
+    /* 关闭编辑时静默回「我的」，不弹提示 */
     window.location.replace('mine.html');
   }
 
@@ -636,14 +655,14 @@
     el.style.webkitUserSelect = 'none';
     var touchStartAt = 0;
     var touchMoved = false;
-    var MAX_TAP_MS = 520;
+    var MAX_TAP_MS = 750;
 
     function onShortTap(e) {
       if (e && e.target && e.target.closest && e.target.closest('#mineActivateBtn')) {
         return;
       }
       var dt = Date.now() - touchStartAt;
-      if (touchMoved || dt > MAX_TAP_MS) return;
+      if (touchMoved || (touchStartAt && dt > MAX_TAP_MS)) return;
       registerTaxEditTap(e);
     }
 

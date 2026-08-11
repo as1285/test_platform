@@ -40,41 +40,45 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'STHeiti', 'Microsoft YaHei', sans-serif;
             background-color: #fff;
             min-height: 100vh;
             color: #333;
             -webkit-font-smoothing: antialiased;
         }
         
-        /* 顶部导航（对齐官方登录页） */
+        /* 顶部导航（对齐 APK .its-header） */
         .header {
             background: #fff;
-            padding: 12px 16px;
-            padding-top: calc(12px + env(safe-area-inset-top, 0px));
+            padding: 0 12px;
+            padding-top: env(safe-area-inset-top, 0px);
             min-height: calc(44px + env(safe-area-inset-top, 0px));
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            border-bottom: 1px solid #eeeeee;
+            border-bottom: 1px solid #e3e4e8;
             box-sizing: border-box;
         }
 
         .back-btn {
             position: absolute;
-            left: 10px;
-            bottom: 10px;
-            color: #6a9fd8;
-            font-size: 17px;
+            left: 8px;
+            bottom: 0;
+            height: 44px;
+            color: #4285f4;
+            font-size: 15px;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 2px;
-            line-height: 1;
-            padding: 4px;
+            line-height: 21px;
+            padding: 0 4px;
             -webkit-tap-highlight-color: transparent;
             outline: none;
+        }
+        .back-btn:active {
+            color: #86b1f8;
         }
 
         .back-btn .back-chevron {
@@ -91,59 +95,63 @@
         }
 
         .header-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a1a;
-            letter-spacing: 0.04em;
+            font-size: 17px;
+            font-weight: 400;
+            line-height: 23px;
+            color: #333;
+            letter-spacing: 0;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
         }
 
-        /* 头像区域 */
+        /* Logo：APK .login-img img = 2.34666667rem ≈ 88px；资源为 geshuiicon.svg（自带圆角方） */
         .avatar-section {
             display: flex;
             justify-content: center;
-            padding: 48px 0 36px;
+            padding: 40px 0 56px;
         }
 
         .avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            overflow: hidden;
-            background: linear-gradient(180deg, #a8d4ff 0%, #e8f4ff 100%);
+            width: 88px;
+            height: 88px;
+            border-radius: 0;
+            overflow: visible;
+            background: transparent;
             flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(22, 119, 255, 0.12);
+            line-height: 0;
         }
 
         .avatar-img {
             display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            image-rendering: -webkit-optimize-contrast;
+            width: 88px;
+            height: 88px;
+            object-fit: contain;
         }
         
-        /* 表单区域 */
+        /* 表单：APK .login-input 底部分割线 #c4c6cf */
         .form-section {
-            padding: 0 24px;
+            padding: 0 16px;
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .form-item {
             display: flex;
             align-items: center;
-            min-height: 52px;
-            padding: 14px 0;
-            border-bottom: 1px solid #e8e8e8;
+            min-height: 48px;
+            padding: 12px 0;
+            border-bottom: 1px solid #c4c6cf;
         }
 
         .form-label {
-            width: 52px;
-            font-size: 16px;
-            font-weight: 500;
-            color: #1a1a1a;
+            width: 48px;
+            font-size: 15px;
+            font-weight: 400;
+            color: #333;
             flex-shrink: 0;
+            line-height: 21px;
             -webkit-font-smoothing: antialiased;
         }
 
@@ -152,8 +160,10 @@
             min-width: 0;
             border: none;
             outline: none;
-            font-size: 16px;
+            font-size: 15px;
+            line-height: 21px;
             color: #333;
+            caret-color: #4285f4;
             padding: 0 8px;
             background: transparent;
             -webkit-appearance: none;
@@ -161,17 +171,17 @@
         }
 
         .form-input::placeholder {
-            color: #c8c8c8;
+            color: #c4c6cf;
         }
 
-        /* 官方登录：浅灰描边圆形问号（非实心蓝底白字） */
+        /* 账号帮助：官方 login-input-icon-wenhao 为 #4285f4 */
         .form-help {
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            border: 1px solid #c8c8c8;
+            border: 1px solid #4285f4;
             background: transparent;
-            color: #c8c8c8;
+            color: #4285f4;
             font-size: 11px;
             font-weight: 500;
             font-family: Arial, Helvetica, sans-serif;
@@ -188,14 +198,18 @@
             opacity: 0.75;
         }
 
-        /* 滑块验证：拖动进度填充；通过后整条绿底 + 白圈勾 +「验证通过!」 */
+        /* 滑块：对齐 APK .nc_wrapper（#f0f2f5 / 高 48px / 手柄 52px） */
         .slider-section {
-            padding: 18px 24px 0;
+            padding: 18px 16px 0;
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }
         .slider-lane {
             position: relative;
-            height: 40px;
-            background: #ececec;
+            height: 48px;
+            background: #f0f2f5;
             border-radius: 4px;
             overflow: hidden;
         }
@@ -225,9 +239,9 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 0 12px;
-            font-size: 14px;
-            color: #b0b0b0;
+            padding: 0 12px 0 56px;
+            font-size: 16px;
+            color: #999da6;
             pointer-events: none;
             user-select: none;
             z-index: 1;
@@ -258,19 +272,20 @@
             color: #fff;
             font-size: 16px;
             font-weight: 500;
+            padding: 0 12px;
         }
         .slider-lane.is-verified .slider-hint-check {
             display: inline-flex;
         }
         .slider-arrows {
             position: absolute;
-            left: 2px;
-            top: 2px;
-            width: 46px;
-            height: calc(100% - 4px);
+            left: 0;
+            top: 0;
+            width: 52px;
+            height: 100%;
             background: #fff;
-            border-radius: 3px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+            border-radius: 4px;
+            box-shadow: 0 0 2px #a0a0a0;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -286,7 +301,7 @@
             display: block;
             width: 16px;
             height: 16px;
-            color: #a8a8a8;
+            color: #80858c;
         }
         .slider-lane.is-verified .slider-arrows {
             display: none;
@@ -296,48 +311,63 @@
             display: flex;
             justify-content: flex-end;
             align-items: center;
-            gap: 8px;
-            padding: 16px 24px 0;
-            font-size: 15px;
+            gap: 6px;
+            padding: 16px 16px 0;
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 14px;
+            line-height: 21px;
         }
         .login-aux a {
-            color: #6a9fd8;
+            color: #4285f4;
             text-decoration: none;
             -webkit-tap-highlight-color: transparent;
         }
         .login-aux-sep {
-            color: #6a9fd8;
+            color: #4285f4;
+            padding: 0 2px;
             user-select: none;
         }
 
-        /* 按钮区域：官方为小圆角矩形（非胶囊） */
+        /* 按钮：对齐 APK .its-btn / .its-btn_primary / _secondary */
         .btn-section {
-            padding: 28px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+            padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .login-btn {
             width: 100%;
-            height: 48px;
-            background: #4a90e8;
+            height: 47px;
+            background: #4285f4;
             border: none;
             border-radius: 4px;
             font-size: 17px;
             font-weight: 400;
+            line-height: 23px;
             color: #fff;
             cursor: pointer;
-            margin-bottom: 14px;
-            letter-spacing: 0.04em;
+            margin-bottom: 15px;
+            letter-spacing: 0;
             -webkit-tap-highlight-color: transparent;
+        }
+        .login-btn:not(.login-btn--locked):active {
+            background: #3574db;
         }
         .login-btn:disabled,
         .login-btn.login-btn--locked {
-            background: #d2e7fc;
+            background: #d2e7fb;
             color: #fff;
             cursor: pointer;
         }
         .login-form-tip {
             display: none;
-            margin: 10px 24px 0;
+            margin: 10px auto 0;
+            max-width: 343px;
             padding: 10px 12px;
             font-size: 14px;
             line-height: 1.5;
@@ -346,6 +376,8 @@
             border: 1px solid #ffd591;
             border-radius: 8px;
             text-align: center;
+            box-sizing: border-box;
+            width: calc(100% - 32px);
         }
         .login-form-tip.show {
             display: block;
@@ -365,17 +397,21 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            height: 48px;
+            height: 47px;
             background: #fff;
-            border: 1px solid #6a9fd8;
+            border: 1px solid #4285f4;
             border-radius: 4px;
             font-size: 17px;
-            color: #6a9fd8;
+            line-height: 23px;
+            color: #4285f4;
             cursor: pointer;
             text-decoration: none;
-            letter-spacing: 0.04em;
+            letter-spacing: 0;
             -webkit-tap-highlight-color: transparent;
             box-sizing: border-box;
+        }
+        .register-btn:active {
+            background: #eaf4ff;
         }
 
         #activateSection {
@@ -507,7 +543,7 @@
             height: 44px;
             border: none;
             border-radius: 8px;
-            background: #1e6fff;
+            background: #4285f4;
             color: #fff;
             font-size: 16px;
         }
@@ -525,7 +561,7 @@
             min-width: 0;
             font-size: 14px;
             line-height: 1.4;
-            color: #1e6fff;
+            color: #4285f4;
             text-decoration: none;
             text-align: left;
             -webkit-tap-highlight-color: transparent;
@@ -603,7 +639,7 @@
         <!-- 头像区域 -->
         <div class="avatar-section">
             <div class="avatar">
-                <img class="avatar-img" src="login_avatar.png?v=20260729-tax" width="100" height="100" alt="个人所得税" decoding="async">
+                <img class="avatar-img" src="geshuiicon.svg?v=20260811-apk" width="88" height="88" alt="个人所得税" decoding="async">
             </div>
         </div>
 
@@ -839,7 +875,7 @@
             var loginBtn = document.getElementById('loginSubmitBtn');
             if (!lane || !handle || !hintText || !loginBtn) return;
 
-            var HANDLE_INSET = 2;
+            var HANDLE_INSET = 0;
             var maxX = 0;
             var startLeft = 0;
             var startClientX = 0;
@@ -1021,6 +1057,9 @@
                         }
                         if (typeof window.clearShareAttribution === 'function') {
                             window.clearShareAttribution();
+                        }
+                        if (typeof window.clearIdentityLocalCaches === 'function') {
+                            window.clearIdentityLocalCaches();
                         }
                         if (d.token) {
                             localStorage.setItem('token', d.token);

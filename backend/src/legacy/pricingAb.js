@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * A(control)=600 永久；B(treatment)=199 小时体验 / 328 周卡 / 398 月卡 / 600 永久。
+ * A(control)=498 永久；B(treatment)=268 日卡 / 320 周卡 / 398 月卡 / 498 永久。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,10 +8,10 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-/** A 方案：单档 600 永久 */
+/** A 方案：单档 498 永久 */
 var SKU_CONTROL_600_PERM = {
   id: 'sku_600_perm',
-  amount: '600.00',
+  amount: '498.00',
   label: '永久',
   subject: '激活码·永久',
   grant_kind: 'permanent',
@@ -24,6 +24,7 @@ var SKU_CONTROL_600_PERM = {
 var SKU_CONTROL_320_WEEK = SKU_CONTROL_600_PERM;
 var SKU_CONTROL_199_PERM = SKU_CONTROL_600_PERM;
 
+/** 旧档：小时体验，仅历史订单 / 专属价解析 */
 var SKU_199_HOUR = {
   id: 'sku_199_1h',
   amount: '199.00',
@@ -35,9 +36,20 @@ var SKU_199_HOUR = {
   grant_minutes: 0
 };
 
+var SKU_268_DAY = {
+  id: 'sku_268_1d',
+  amount: '268.00',
+  label: '日卡',
+  subject: '激活码·日卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+
 var SKU_328_WEEK = {
   id: 'sku_328_7d',
-  amount: '328.00',
+  amount: '320.00',
   label: '周卡',
   subject: '激活码·周卡',
   grant_kind: 'trial',
@@ -59,7 +71,7 @@ var SKU_398_MONTH = {
 
 var SKU_600_PERM = {
   id: 'sku_600_perm',
-  amount: '600.00',
+  amount: '498.00',
   label: '永久',
   subject: '激活码·永久',
   grant_kind: 'permanent',
@@ -146,7 +158,7 @@ var DEFAULT_PRICING_AB = {
   c_percent: 0,
   treatment_percent: 50,
   control_skus: [SKU_CONTROL_600_PERM],
-  treatment_skus: [SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM]
+  treatment_skus: [SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM]
 };
 
 function cloneSku(s) {
@@ -336,7 +348,9 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM].concat(LEGACY_CATALOG_SKUS)
+    [SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM].concat(
+      LEGACY_CATALOG_SKUS
+    )
   ];
   var i;
   var j;

@@ -50,8 +50,8 @@
                     <section>
                         <h2>支付页 A/B</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A</strong>：支付宝「600 永久」+ 激活码；
-                            <strong>B</strong>：支付宝多档（199 小时体验 / 328 周 / 398 月 / 600 永久）+ 激活码。
+                            <strong>A</strong>：支付宝「498 永久」+ 激活码；
+                            <strong>B</strong>：支付宝多档（268 日卡 / 320 周 / 398 月 / 498 永久）+ 激活码。
                             A+B 必须为 100%。
                         </p></details>
                         <div class="form-row form-stack">
@@ -84,13 +84,44 @@
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignVariant">方案</label>
                                 <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 600 永久 + 仅支付宝</option>
-                                    <option value="b">B · 199小时/328周/398月/600永久</option>
+                                    <option value="a">A · 498 永久 + 仅支付宝</option>
+                                    <option value="b">B · 268日/320周/398月/498永久</option>
                                 </select>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnAssignPricingAbc">立即分配</button>
                                 <span class="hint" id="pricingAbcAssignHint" style="margin-left:8px;"></span>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack admin-panel-inset">
+                            <p class="hint mt-0"><strong>用户专属报价</strong>：为指定账号设置「套餐 + 特价」。用户打开购买页只看到该档，支付宝按特价下单；优先于 A/B/C。支付成功后报价仍保留，可手动取消。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="priceOfferUsername">账号</label>
+                                <input type="text" id="priceOfferUsername" maxlength="64" placeholder="用户名 / 手机号">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="priceOfferSku">套餐</label>
+                                <select id="priceOfferSku">
+                                    <option value="sku_600_perm">永久（原价 ¥498）</option>
+                                    <option value="sku_268_1d">日卡（原价 ¥268）</option>
+                                    <option value="sku_328_7d">周卡（原价 ¥320）</option>
+                                    <option value="sku_398_30d">月卡（原价 ¥398）</option>
+                                    <option value="sku_199_1h">小时体验（原价 ¥199）</option>
+                                </select>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="priceOfferAmount">特价（元）</label>
+                                <input type="number" id="priceOfferAmount" min="0.01" max="99999.99" step="0.01" placeholder="如 300">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="priceOfferNote">备注（可选）</label>
+                                <input type="text" id="priceOfferNote" maxlength="255" placeholder="如：客服议价">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSavePriceOffer">保存专属价</button>
+                                <button type="button" class="btn-sm btn-page" id="btnLoadPriceOffer">查询</button>
+                                <button type="button" class="btn-sm btn-ban" id="btnClearPriceOffer">取消专属价</button>
+                                <span class="hint" id="priceOfferHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
                     </section>
@@ -181,28 +212,6 @@
                                 <label for="qqGroupUrl">QQ 群链接（可选）</label>
                                 <input class="input-block" type="text" id="qqGroupUrl" maxlength="2048" placeholder="https://qm.qq.com/cgi-bin/qm/qr?k=…">
                                 <p class="hint mt-6">可选；用于安装页等「加入 QQ 群」入口。留空则不展示。</p>
-                            </div>
-                            <!-- 已下线：代理推广渠道 / 下属代理专属渠道 -->
-                            <div class="form-field mt-12" id="xianyuHideSalesChannelsField" hidden>
-                                <label for="xianyuHideSalesChannels">代理推广渠道（隐藏闲鱼购买）</label>
-                                <textarea class="textarea-block" id="xianyuHideSalesChannels" rows="4" maxlength="2048" placeholder="每行一个渠道 ID，例如：&#10;agent_zhang&#10;agent_li"></textarea>
-                                <div class="flex-actions gap-10 mt-10 flex-align-center">
-                                    <button type="button" class="btn-primary" id="btnGenerateAgentPromoLinks">生成代理推广链接</button>
-                                    <button type="button" class="btn-page" id="btnCopyAllAgentPromoLinks" style="display:none;">复制全部链接</button>
-                                </div>
-                                <div id="agentPromoLinksMount" class="agent-promo-links-mount mt-12" style="display:none;"></div>
-                            </div>
-                            <div class="form-field mt-16" id="agentExclusiveChannelsField" hidden>
-                                <div class="mine-ui-block max-w-760 mt-10" id="agentExclusiveChannelsBox">
-                                    <div id="agentExclusiveChannelsList" class="mt-12"></div>
-                                    <input type="hidden" id="agentExChannelId" value="">
-                                    <select id="agentExOwnerAdmin" hidden><option value=""></option></select>
-                                    <select id="agentExPricingAbc" hidden><option value="b" selected>B</option></select>
-                                    <input type="hidden" id="agentExNote" value="">
-                                    <input type="checkbox" id="agentExHideSelfServePay" hidden checked>
-                                    <input type="checkbox" id="agentExEnabled" hidden checked>
-                                    <button type="button" id="btnSaveAgentExclusiveChannel" hidden>保存专属渠道</button>
-                                </div>
                             </div>
                         </div>
                     </section>
@@ -1502,9 +1511,15 @@
                                 <label for="lizhiCompany">公司全称</label>
                                 <input type="text" id="lizhiCompany" maxlength="128" style="width:100%;max-width:640px;" value="北京外企市场营销顾问有限公司西安分公司">
                             </div>
-                            <div class="form-row" style="margin-top:10px;">
-                                <label for="lizhiPosition">担任岗位</label>
-                                <input type="text" id="lizhiPosition" maxlength="64" style="width:100%;max-width:640px;" value="市场营销顾问" placeholder="如：销售经理">
+                            <div class="form-row flex-wrap gap-10" style="margin-top:10px;">
+                                <div style="flex:1;min-width:200px;">
+                                    <label for="lizhiDepartment">部门</label>
+                                    <input type="text" id="lizhiDepartment" maxlength="64" style="width:100%;" value="市场部" placeholder="如：市场部">
+                                </div>
+                                <div style="flex:1;min-width:200px;">
+                                    <label for="lizhiPosition">担任岗位</label>
+                                    <input type="text" id="lizhiPosition" maxlength="64" style="width:100%;" value="市场营销顾问" placeholder="如：销售经理">
+                                </div>
                             </div>
                             <div class="form-row flex-wrap gap-10">
                                 <button type="button" class="btn-primary" id="lizhiGenerateBtn">生成并下载 PDF</button>
@@ -1664,12 +1679,6 @@
                                 <div class="hint">生成结果</div>
                                 <img id="ccbFlowPreviewOut" alt="工资流水生成结果" class="admin-tool-preview-img" style="max-width:100%;height:auto;">
                             </div>
-                            <!-- 兼容旧脚本节点（已隐藏） -->
-                            <input type="file" id="ccbFlowImageFile" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
-                            <img id="ccbFlowPreviewSrc" alt="" hidden>
-                            <button type="button" id="ccbFlowTemplateBtn" hidden>加载示例</button>
-                            <span id="ccbFlowFileName" hidden></span>
-                            <div id="ccbFlowDropzone" hidden></div>
                         </div>
                     </section>
                 </div>
@@ -1742,7 +1751,7 @@
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
                     <section>
                         <h2>支付页 A/B</h2>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=600 永久仅支付宝；B=199 小时体验 / 328 周 / 398 月 / 600 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=498 永久仅支付宝；B=268 日卡 / 320 周 / 398 月 / 498 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
@@ -1764,18 +1773,9 @@
                         </div>
                         <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
                     </section>
-                    <!-- 已下线：四段转化漏斗、运营 KPI（保留节点供旧逻辑引用，勿用 section/h2 以免占位） -->
-                    <div hidden aria-hidden="true">
-                        <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                        <button type="button" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
-                        <div id="analyticsRegistrationFunnel"></div>
-                        <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
-                        <button type="button" id="btnRefreshConversionKpis">刷新 KPI</button>
-                        <div id="analyticsConversionKpis"></div>
-                    </div>
                     <section>
                         <h2>未激活用户站内信群发</h2>
-                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>系统也会<strong>每 6 小时自动</strong>向「注册超 24h 未激活」且尚未收过自动推广信的用户发送一封（与下方模板一致，自动去重）。<br>另：<strong>填税后</strong>、<strong>支付页退出后</strong>会自动向未激活用户各发一封站内信（分别去重）。</p>
+                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>开通类<strong>自动站内信已关闭</strong>（填税后 / 支付页退出 / 注册超 24h 定时推送均不再自动发）。如需手动群发，仍可用下方表单。</p>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label for="bulkMsgAudience">发送对象</label>
@@ -1863,6 +1863,51 @@
                                         </tr>
                                     </thead>
                                     <tbody id="analyticsPurchaseProductTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
+                                </table>
+                            </div>
+                            <h3>离开支付页调研</h3>
+                            <p class="hint mt-0 mb-8">用户首次退出 <code>purchase.html</code> 时弹出的价格问卷（每账号最多 1 条）。态度占比仅统计正式提交；跳过另计。</p>
+                            <div id="analyticsPurchaseSurveyCards" class="user-data-stats mb-12"></div>
+                            <div class="analytics-grid mb-12">
+                                <div class="scroll-x">
+                                    <p class="stat">态度分布（正式提交）</p>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>选项</th>
+                                                <th>人数</th>
+                                                <th>占比</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="analyticsPurchaseSurveySentimentTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                                    </table>
+                                </div>
+                                <div class="scroll-x">
+                                    <p class="stat">心理价位分布（有填金额）</p>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>价位</th>
+                                                <th>人数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="analyticsPurchaseSurveyPriceTbody"><tr><td colspan="2">加载中…</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <h4 class="mt-0">最近提交</h4>
+                            <div class="scroll-x mb-12">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>时间</th>
+                                            <th>账号</th>
+                                            <th>态度</th>
+                                            <th>心理价</th>
+                                            <th>类型</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="analyticsPurchaseSurveyRecentTbody"><tr><td colspan="5">加载中…</td></tr></tbody>
                                 </table>
                             </div>
                             <h3>事件汇总</h3>
@@ -2457,9 +2502,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260808-ccb-render"></script>
+    <script src="/js/admin/loader.js?v=20260810-lizhi-tpl"></script>
     <script src="/js/admin/nav.js?v=20260806-admin-deadcode"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260809-rename-limit"></script>
+    <script src="/js/admin_panel.js?v=20260811-purchase-survey2"></script>
 </body>
 </html>

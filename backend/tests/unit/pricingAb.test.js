@@ -115,9 +115,9 @@ describe('pricingAb SKU mojibake repair via load', () => {
     const hour = (cfg.treatment_skus || []).find((s) => s.id === 'sku_199_1h');
     expect(hour).toBeTruthy();
     expect(hour.label).toBe('小时体验卡');
-    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toContain('小时体验卡');
+    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toContain('日卡');
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
-      '199.00|328.00|398.00|600.00'
+      '268.00|320.00|398.00|498.00'
     );
   });
 });

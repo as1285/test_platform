@@ -1490,57 +1490,6 @@ tr.users-detail-row > td {
 .btn-page-jump:hover {
     background: var(--admin-primary-press);
 }
-.agent-promo-links-mount {
-    border: 1px solid var(--admin-border);
-    border-radius: 10px;
-    background: var(--admin-surface-muted);
-    padding: 12px 14px;
-}
-.agent-promo-links-mount .agent-promo-links-head {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 13px;
-    color: var(--admin-text-secondary);
-}
-.agent-promo-channel-block + .agent-promo-channel-block {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px dashed var(--admin-border-dashed);
-}
-.agent-promo-channel-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--admin-text);
-    margin-bottom: 8px;
-}
-.agent-promo-link-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-}
-.agent-promo-link-row:last-child { margin-bottom: 0; }
-.agent-promo-link-label {
-    flex: 0 0 88px;
-    font-size: 12px;
-    color: var(--admin-text-muted);
-}
-.agent-promo-link-url {
-    flex: 1;
-    min-width: 180px;
-    font-size: 12px;
-    color: var(--admin-primary);
-    word-break: break-all;
-    background: var(--admin-surface);
-    border: 1px solid var(--admin-border);
-    border-radius: 6px;
-    padding: 6px 8px;
-}
 .mine-ui-block { max-width: 760px; display: flex; flex-direction: column; gap: 14px; }
 .mine-ui-block h3 { font-size: 14px; color: var(--admin-text); margin: 8px 0 0; font-weight: 600; }
 .mine-ui-row label { font-size: 13px; color: var(--admin-text-secondary); display: block; margin-bottom: 6px; }
@@ -2107,10 +2056,6 @@ tr.users-detail-row > td {
     max-height: 300px;
     overflow-y: auto;
 }
-.agent-promo-links-mount {
-    margin-top: 12px;
-}
-.agent-promo-links-mount[style*="display:none"] { display: none; }
 
 /* ========== Share stats page ========== */
 .share-land-pages {

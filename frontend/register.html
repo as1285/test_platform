@@ -738,6 +738,9 @@
                         if (typeof window.clearRegisterSourceChannel === 'function') {
                             window.clearRegisterSourceChannel();
                         }
+                        if (typeof window.clearIdentityLocalCaches === 'function') {
+                            window.clearIdentityLocalCaches();
+                        }
                         if (d.token) {
                             localStorage.setItem('token', d.token);
                         }

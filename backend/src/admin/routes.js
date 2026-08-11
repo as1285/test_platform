@@ -144,12 +144,6 @@ app.get(
   h.handleAdminUsersDailyConversion
 );
 app.get(
-  '/api/admin/analytics/registration-funnel',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
-  h.handleAdminRegistrationFunnel
-);
-app.get(
   '/api/admin/analytics/channel-registration-funnel',
   mw.requireAdminAuth,
   mw.requireAdminMenu('channel-analysis'),
@@ -178,18 +172,6 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   h.handleAdminInstallTrackStats
-);
-app.get(
-  '/api/admin/analytics/conversion-kpis',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
-  h.handleAdminConversionKpis
-);
-app.get(
-  '/api/admin/users/pending-activate-24h',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
-  h.handleAdminUsersPendingActivate24h
 );
 app.post(
   '/api/admin/messages/bulk',
@@ -267,11 +249,41 @@ app.post(
   h.handleAdminUserMakePermanent
 );
 app.post('/api/admin/user-pricing-abc', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPricingAbc);
+app.get(
+  '/api/admin/user-price-offer/catalog',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserPriceOfferCatalog
+);
+app.get(
+  '/api/admin/user-price-offer',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserPriceOfferGet
+);
+app.post(
+  '/api/admin/user-price-offer',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserPriceOfferSet
+);
+app.post(
+  '/api/admin/user-price-offer/clear',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserPriceOfferClear
+);
 app.post(
   '/api/admin/user-rename-fee-exempt',
   mw.requireAdminAuth,
   mw.requireAdminMenu('users'),
   h.handleAdminUserRenameFeeExempt
+);
+app.post(
+  '/api/admin/user-lizhi-cert-unlock',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserLizhiCertUnlock
 );
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
 app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);

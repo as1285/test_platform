@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260810-bancha-blue-status"></script>
+    <script src="/js/auth.js?v=20260811-ios-mine-vh"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -45,7 +45,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260807-nav-solid">
+    <link rel="stylesheet" href="css/nav.css?v=20260811-ios-mine-vh">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -57,10 +57,15 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
             background-color: #f5f6fa;
+            /* 必须 vh/dvh 撑满视口；100% 在 html 无高度时会矮一截，iOS fixed 底栏悬空 */
             min-height: 100vh;
+            min-height: 100dvh;
             max-width: 100vw;
             /* 勿在 body 上 overflow-x:hidden，iOS 会导致底栏 position:fixed 相对文档错位、看起来偏高 */
             -webkit-font-smoothing: antialiased;
+        }
+        html {
+            height: 100%;
         }
 
         /* 底栏避让改到 .content-wrapper，避免与 app-shell 的 body padding 叠高 */
@@ -419,19 +424,22 @@
             left: calc(579 * var(--mine-rpx));
         }
 
-        .mine-avatar-edit-hit {
+        /* 头像热区：对齐 e1 顶图卡通头像，供连续点击开关「数据编辑」 */
+        .mine-avatar-edit-hit,
+        .mine-e1-layer > .mine-avatar-edit-hit {
             position: absolute;
             left: 50%;
-            top: calc(120 * var(--mine-rpx));
-            width: calc(140 * var(--mine-rpx));
-            height: calc(140 * var(--mine-rpx));
-            margin-left: calc(-70 * var(--mine-rpx));
+            top: calc(108 * var(--mine-rpx));
+            width: calc(168 * var(--mine-rpx));
+            height: calc(168 * var(--mine-rpx));
+            margin-left: calc(-84 * var(--mine-rpx));
             border: none;
             padding: 0;
             background: transparent;
-            z-index: 120;
+            z-index: 140;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .mine-e1-footer {
@@ -471,25 +479,40 @@
         }
 
         /*
-         * 「我的」底栏与其它 TAB 同用 bottom + gap，首屏即悬浮，避免 JS top 硬钉闪烁。
+         * 「我的」底栏与其它 TAB 同用 bottom + gap；iOS 勿叠加 safe-area，避免整条上移。
          */
         body.page-mine {
             --bottom-nav-bottom: var(--bottom-nav-gap, 8px);
         }
         html body.page-mine > .bottom-nav,
-        html body.page-mine > .bottom-nav.ios-device,
-        html.app-ios-client body.page-mine > .bottom-nav,
-        html.app-ios-client body.page-mine > .bottom-nav.ios-device {
+        html body.page-mine > .bottom-nav.ios-device {
             position: fixed !important;
             left: var(--bottom-nav-side, 14px) !important;
             right: var(--bottom-nav-side, 14px) !important;
             bottom: var(--bottom-nav-bottom, 8px) !important;
             top: auto !important;
-            padding-bottom: 0 !important;
             z-index: 200 !important;
             margin: 0 !important;
             transform: none !important;
             -webkit-transform: none !important;
+        }
+        html.app-ios-client body.page-mine > .bottom-nav,
+        html.app-ios-client body.page-mine > .bottom-nav.ios-device {
+            bottom: 8px !important;
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 0 !important;
+            -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
+            -webkit-backface-visibility: visible !important;
+            backface-visibility: visible !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+        }
+        html.app-ios-iphone16pro body.page-mine > .bottom-nav,
+        html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
+        html.app-ios-iphone16promax body.page-mine > .bottom-nav,
+        html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
+            bottom: 2px !important;
         }
 
         /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
@@ -899,23 +922,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-
-        /* 头像热区：卡通头像在顶图内，信息卡上移后会挡住点击，单独留出触控区 */
-        .mine-avatar-edit-hit {
-            position: absolute;
-            left: 8px;
-            top: -62px;
-            width: 80px;
-            height: 80px;
-            border: none;
-            padding: 0;
-            margin: 0;
-            background: transparent;
-            z-index: 15;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
         }
 
         .user-info {
@@ -3265,18 +3271,36 @@
                     setCounts(u);
                 }
 
+                function currentMineUserScope() {
+                    try {
+                        return String(
+                            localStorage.getItem('user_id') ||
+                                localStorage.getItem('userName') ||
+                                localStorage.getItem('username') ||
+                                ''
+                        );
+                    } catch (e) {
+                        return '';
+                    }
+                }
+
                 function readMineSummarySessionCache() {
                     try {
                         var raw = sessionStorage.getItem('mine_summary_cache_v1');
                         if (!raw) return null;
                         var parsed = JSON.parse(raw);
+                        var scope = currentMineUserScope();
                         if (
                             parsed &&
                             parsed.t &&
                             Date.now() - Number(parsed.t) < MINE_SUMMARY_CLIENT_TTL_MS &&
-                            parsed.data
+                            parsed.data &&
+                            String(parsed.userId || '') === scope
                         ) {
                             return parsed.data;
+                        }
+                        if (parsed && String(parsed.userId || '') !== scope) {
+                            sessionStorage.removeItem('mine_summary_cache_v1');
                         }
                     } catch (e) {}
                     return null;
@@ -3286,7 +3310,11 @@
                     try {
                         sessionStorage.setItem(
                             'mine_summary_cache_v1',
-                            JSON.stringify({ t: Date.now(), data: data })
+                            JSON.stringify({
+                                t: Date.now(),
+                                userId: currentMineUserScope(),
+                                data: data
+                            })
                         );
                     } catch (e) {}
                 }
@@ -3338,15 +3366,16 @@
                         });
                 }
 
-                /* 45s 内有会话缓存则跳过网络；强制刷新或无缓存时后台拉取 */
-                if (!sessionSummary) {
-                    if (typeof requestIdleCallback === 'function') {
-                        requestIdleCallback(function () {
+                /* 有会话缓存也后台校验，避免换号后仍显示旧姓名；无缓存则立刻拉取 */
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(
+                        function () {
                             refreshSummaryInBackground();
-                        }, { timeout: 1200 });
-                    } else {
-                        setTimeout(refreshSummaryInBackground, 0);
-                    }
+                        },
+                        { timeout: sessionSummary ? 2500 : 1200 }
+                    );
+                } else {
+                    setTimeout(refreshSummaryInBackground, sessionSummary ? 200 : 0);
                 }
 
                 if (taxToggleBtn && !taxToggleBtn.__mineTaxToggleBound) {
@@ -3437,7 +3466,10 @@
                     typeof window.ConversionGuide.isTaxEditModeOn === 'function' &&
                     !window.ConversionGuide.isTaxEditModeOn()
                 ) {
-                    window.location.href = 'help_center.html';
+                    /* 关闭编辑：静默拦截，不弹提示；关掉链接点击触发的转圈 */
+                    if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    }
                     return;
                 }
                 goConsultPage();
@@ -3487,13 +3519,18 @@
 
             document.getElementById('mineLogout').addEventListener('click', function () {
                 try {
-                    sessionStorage.clear();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user_id');
-                    localStorage.removeItem('username');
-                    localStorage.removeItem('real_name');
-                    localStorage.removeItem('tax_id');
-                    localStorage.removeItem('landing_guest_v1');
+                    if (typeof window.authClearSession === 'function') {
+                        window.authClearSession();
+                    } else {
+                        sessionStorage.clear();
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user_id');
+                        localStorage.removeItem('username');
+                        localStorage.removeItem('userName');
+                        localStorage.removeItem('real_name');
+                        localStorage.removeItem('tax_id');
+                        localStorage.removeItem('landing_guest_v1');
+                    }
                 } catch (e) {}
                 window.location.href = 'mine.html';
             });

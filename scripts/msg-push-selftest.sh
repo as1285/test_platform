@@ -155,7 +155,7 @@ unread_resp="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" "$B
 unread="$(echo "$unread_resp" | json_field data unread)"
 assert_eq "$unread" "0" "unread_count initial"
 
-# --- 填税触发自动站内信 ---
+# --- 开通类自动站内信已关闭：填税 / 离开支付页均不应再写入 ---
 tax_resp="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" -H 'Content-Type: application/json' \
   -d '{"action":"save_record","record":{"year":2025,"month":1,"income_type":"工资薪金","company_name":"自检公司","income":10000,"tax_reported":300}}' \
   "$BASE/api/tax")"
@@ -163,21 +163,8 @@ tax_code="$(echo "$tax_resp" | json_field code)"
 [[ "$tax_code" == "200" ]] || { echo "[msg-selftest] FAIL: save_record code=$tax_code resp=$tax_resp" >&2; exit 1; }
 sleep 2
 tax_msg_cnt="$(count_msgs '@@auto_tax_done')"
-assert_eq "$tax_msg_cnt" "1" "auto tax message sent once"
+assert_eq "$tax_msg_cnt" "0" "auto tax message disabled"
 
-# 重复保存不应再发
-curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"action":"save_record","record":{"year":2025,"month":2,"income_type":"工资薪金","company_name":"自检公司","income":8000,"tax_reported":200}}' \
-  "$BASE/api/tax" >/dev/null
-sleep 2
-tax_msg_cnt2="$(count_msgs '@@auto_tax_done')"
-assert_eq "$tax_msg_cnt2" "1" "auto tax message dedup"
-
-# --- unread_count 应为 1 ---
-unread2="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" "$BASE/api/message?action=unread_count" | json_field data unread)"
-assert_eq "$unread2" "1" "unread_count after auto tax msg"
-
-# --- 支付页退出触发自动站内信 ---
 track_resp="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" -H 'Content-Type: application/json' \
   -H 'X-Page-Path: /event/track_purchase_page_leave' \
   -d '{"action":"track_purchase_page_leave","meta":{"page":"purchase"}}' \
@@ -186,30 +173,18 @@ track_code="$(echo "$track_resp" | json_field code)"
 [[ "$track_code" == "200" ]] || { echo "[msg-selftest] FAIL: track leave code=$track_code" >&2; exit 1; }
 sleep 1
 purchase_msg_cnt="$(count_msgs '@@auto_purchase_exit')"
-assert_eq "$purchase_msg_cnt" "1" "auto purchase exit message"
+assert_eq "$purchase_msg_cnt" "0" "auto purchase exit message disabled"
 
-# 重复 track 不应再发
-curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"action":"track_purchase_back_click"}' "$BASE/api/user" >/dev/null
-sleep 1
-purchase_msg_cnt2="$(count_msgs '@@auto_purchase_exit')"
-assert_eq "$purchase_msg_cnt2" "1" "auto purchase exit dedup"
+unread2="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" "$BASE/api/message?action=unread_count" | json_field data unread)"
+assert_eq "$unread2" "0" "unread_count stays 0 without auto promo"
 
-unread3="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" "$BASE/api/message?action=unread_count" | json_field data unread)"
-assert_eq "$unread3" "2" "unread_count after both auto msgs"
-
-# --- mark_all_read ---
+# --- mark_all_read 在无未读时也应成功 ---
 curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" -H 'Content-Type: application/json' \
   -d '{"action":"mark_all_read"}' "$BASE/api/message" >/dev/null
 unread4="$(curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" "$BASE/api/message?action=unread_count" | json_field data unread)"
 assert_eq "$unread4" "0" "unread_count after mark_all_read"
 
-# --- 已激活用户不再收自动信 ---
-mysql_q "UPDATE users SET account_active=1 WHERE username='${U}';"
-curl -sS --noproxy '*' -H "Authorization: Bearer $USER_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"action":"track_purchase_page_leave"}' "$BASE/api/user" >/dev/null
-sleep 1
 total_msgs="$(count_msgs)"
-assert_eq "$total_msgs" "2" "active user no new auto messages"
+assert_eq "$total_msgs" "0" "no activation auto messages created"
 
 echo "[msg-selftest] ALL PASSED"

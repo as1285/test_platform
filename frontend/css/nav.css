@@ -1,28 +1,46 @@
 /* 底部导航：对齐参考站悬浮半透明胶囊（tax.ezgen.top/tax/8082） */
 
 :root {
-    --bottom-nav-height: 58px;
+    --bottom-nav-height: 54px;
     --bottom-nav-side: 16px;
-    /* 参考：Android/Web 约 16px 浮起；iOS 约 15px */
-    --bottom-nav-gap: 16px;
+    /* 悬浮胶囊贴近底边（4~8px）；过大空隙像「悬空」 */
+    --bottom-nav-gap: 8px;
     --bottom-nav-bottom: var(--bottom-nav-gap);
-    --bottom-nav-radius: 35px;
+    --bottom-nav-radius: 32px;
     --bottom-nav-clearance: calc(
-        var(--bottom-nav-height) + var(--bottom-nav-bottom) + env(safe-area-inset-bottom, 0px) + 10px
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 12px
     );
     --bottom-nav-text: #999999;
     --bottom-nav-text-active: #1e6fff;
 }
 
+/*
+ * iOS：勿把 env(safe-area-inset-bottom) 再加进 bottom。
+ * WebView 已全屏时再叠加 safe-area 会把胶囊抬高一整截灰底（约 50px+）。
+ * 与 Android 一样只保留很小的悬浮间隙。
+ */
 html.app-ios-client {
-    --bottom-nav-gap: 15px;
-    --bottom-nav-bottom: 15px;
+    --bottom-nav-gap: 8px;
+    --bottom-nav-bottom: 8px;
     --bottom-nav-side: 16px;
 }
 
+/* iOS PWA：与其它环境同一小浮起，勿叠加 safe-area */
 html.ios-pwa {
-    --bottom-nav-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-    --bottom-nav-gap: var(--bottom-nav-bottom);
+    --bottom-nav-bottom: 8px;
+    --bottom-nav-gap: 8px;
+}
+
+/* 待办 / 办查：底栏贴底（iOS 见文末 app-ios-client 规则，须压过本段） */
+html body.page-daiban,
+html body.page-bancha {
+    --bottom-nav-bottom: 4px !important;
+    --bottom-nav-gap: 4px !important;
+}
+
+html body.page-daiban > .bottom-nav,
+html body.page-bancha > .bottom-nav {
+    bottom: 4px !important;
 }
 
 /*
@@ -61,8 +79,50 @@ html body.page-mine {
     --bottom-nav-bottom: var(--bottom-nav-gap) !important;
 }
 
+/*
+ * iOS 最终锁（必须在通用 bottom 规则之后）：
+ * 只用 8px 浮起，禁止 padding/bottom 再吃 safe-area。
+ */
 html.app-ios-client body.page-mine {
-    --bottom-nav-bottom: var(--bottom-nav-gap) !important;
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
+}
+
+html.app-ios-client body.page-daiban,
+html.app-ios-client body.page-bancha {
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
+}
+
+html.app-ios-client body > .bottom-nav,
+html.app-ios-client body > .bottom-nav.ios-device,
+html.app-ios-client body.page-daiban > .bottom-nav,
+html.app-ios-client body.page-bancha > .bottom-nav,
+html.app-ios-client body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-client body.page-shouye > .bottom-nav,
+html.app-ios-client body.page-message > .bottom-nav,
+html.app-ios-client body.page-mine > .bottom-nav,
+html.app-ios-client body.page-mine > .bottom-nav.ios-device {
+    bottom: 8px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 0 !important;
+    border-radius: 32px !important;
+    /* 关闭模糊，避免 iOS WebKit 把 fixed 底栏抬高一整截 */
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backface-visibility: visible !important;
+    backface-visibility: visible !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+}
+
+/* iPhone 16 Pro / Pro Max：我的页再压一档，与其它 TAB 齐底 */
+html.app-ios-iphone16pro body.page-mine > .bottom-nav,
+html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-mine > .bottom-nav,
+html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
+    bottom: 2px !important;
 }
 
 .bottom-nav {
@@ -80,14 +140,14 @@ html.app-ios-client body.page-mine {
     backdrop-filter: blur(8px);
     border-radius: var(--bottom-nav-radius);
     border: 1px solid rgba(0, 0, 0, 0.04);
-    padding: 12px 0 16px;
+    padding: 10px 0 10px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
     overflow: visible;
 }
 
 .bottom-nav.ios-device {
-    padding: 12px 0 16px !important;
+    padding: 10px 0 10px !important;
 }
 
 .bottom-nav .nav-item,
@@ -190,11 +250,11 @@ html.app-ios-client body.page-mine {
     }
 }
 
-/* Cordova 2410DPN6CC：env 常为 0，需额外抬高避开手势条（所有 TAB 同一值） */
+/* Cordova 2410DPN6CC：env 常为 0，需略抬高避开手势条（所有 TAB 同一值） */
 html.app-cordova-xiaomi-2410 {
-    --app-cordova-bottom-inset: 32px;
-    --bottom-nav-bottom: 32px;
-    --bottom-nav-gap: 32px;
+    --app-cordova-bottom-inset: 24px;
+    --bottom-nav-bottom: 24px;
+    --bottom-nav-gap: 24px;
     --bottom-nav-clearance: calc(
         var(--bottom-nav-height) + var(--bottom-nav-bottom) + 12px
     );

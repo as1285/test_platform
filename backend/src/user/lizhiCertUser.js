@@ -8,8 +8,6 @@ const { renderLizhiPdfArtifacts } = require('../admin/lizhiCert');
 var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
 var LIZHI_CERT_AMOUNT = '50.00';
 var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
-var LIZHI_MANDATORY_NOTE =
-  '电子生成件，仅供个人留存，非用人单位出具。请勿用于入职、签证等正式用途。';
 
 /** 安卓 WebView 无文件分享时，用短期 HTTPS 链接触发系统浏览器下载 */
 var TEMP_SHARE_TTL_MS = 30 * 60 * 1000;
@@ -110,7 +108,6 @@ async function handleLizhiCertStatus(req, res) {
         fee_subject: LIZHI_CERT_SUBJECT,
         sku_id: LIZHI_CERT_SKU_ID,
         product: 'lizhi_cert',
-        note: LIZHI_MANDATORY_NOTE,
         pay_disabled: false
       }
     });
@@ -162,8 +159,7 @@ async function handleLizhiCertPrefill(req, res) {
         company_name: company,
         position: position,
         hire_date: hire,
-        leave_date: leave,
-        note: LIZHI_MANDATORY_NOTE
+        leave_date: leave
       }
     });
   } catch (e) {
@@ -187,7 +183,7 @@ async function handleLizhiCertGenerate(req, res) {
       issue_date: clean(b.issue_date),
       company_name: clean(b.company_name),
       position: clean(b.position),
-      note: LIZHI_MANDATORY_NOTE,
+      department: clean(b.department),
       demo: !unlocked
     };
     if (!payload.name || !payload.id_number) {
@@ -233,7 +229,6 @@ async function handleLizhiCertGenerate(req, res) {
         pdf_share_token: pdfShareToken,
         preview_share_token: previewShareToken,
         share_expires_in: Math.floor(TEMP_SHARE_TTL_MS / 1000),
-        note: LIZHI_MANDATORY_NOTE,
         demo: !unlocked,
         unlocked: unlocked
       }
@@ -287,6 +282,5 @@ module.exports = {
   userHasLizhiUnlocked: userHasLizhiUnlocked,
   LIZHI_CERT_SKU_ID: LIZHI_CERT_SKU_ID,
   LIZHI_CERT_AMOUNT: LIZHI_CERT_AMOUNT,
-  LIZHI_CERT_SUBJECT: LIZHI_CERT_SUBJECT,
-  LIZHI_MANDATORY_NOTE: LIZHI_MANDATORY_NOTE
+  LIZHI_CERT_SUBJECT: LIZHI_CERT_SUBJECT
 };

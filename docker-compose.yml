@@ -53,6 +53,8 @@ services:
       DB_USER: root
       DB_PASSWORD: password
       DB_DATABASE: personal_tax
+      # 开通类自动站内信（填税后/离开支付页/注册超24h）：0=关闭（默认），1=开启
+      ACTIVATION_INBOX_PROMO_ENABLED: ${ACTIVATION_INBOX_PROMO_ENABLED:-0}
       # 限流 / OTP challenge：Redis（多实例与重启不丢）
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}

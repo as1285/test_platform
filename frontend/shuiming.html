@@ -7,6 +7,9 @@
             try {
                 var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
                 if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+                if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-15pro');
+                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -18,7 +21,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260810-shuiming-align"></script>
+    <script src="/js/auth.js?v=20260811-mi15pro-top"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -30,14 +33,15 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
-            background: #f5f6fa;
+            /* 对齐官方 .page-container */
+            background: #f4f6f9;
             min-height: 100vh;
             color: #333;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
         
-        /* 顶部导航：默认贴顶固定，安全区仅在有 inset 时追加 */
+        /* 顶部导航：对齐官方 its-header；安全区仅在有 inset 时追加 */
         .header {
             background: #fff;
             position: fixed;
@@ -49,14 +53,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 1px solid #e8e8e8;
+            border-bottom: 1px solid #e3e4e8;
             box-sizing: border-box;
         }
         
         .back-btn {
             position: absolute;
             left: 12px;
-            color: #1e6fff;
+            color: #4285f4;
             font-size: 16px;
             text-decoration: none;
             display: flex;
@@ -75,7 +79,7 @@
         .header-title {
             font-size: 17px;
             font-weight: 600;
-            color: #191e26;
+            color: #333;
         }
 
         /* 内容区域 */
@@ -115,8 +119,19 @@
             padding-top: calc(44px + var(--app-shell-statusbar-top, 0px)) !important;
         }
 
+        /* 小米 15 Pro：沉浸压栏，强制 40px 顶距 */
+        html.app-android-xiaomi-15pro body.page-shuiming > .header,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .header {
+            padding-top: calc(12px + 40px) !important;
+        }
+        html.app-android-xiaomi-15pro body.page-shuiming > .content,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .content {
+            padding-top: calc(44px + 40px) !important;
+        }
+
         /*
-         * 表单白卡片：标题与内容同卡片内；左右贴屏撑满（无两侧灰条），块与块之间仍用 margin-top 露出页底灰。
+         * 表单白卡片：对齐官方 its-group-cells + weui-cells
+         * 标题与内容同卡片；块间距 .32rem(12px)，页底 #f4f6f9
          */
         .form-section-card {
             --form-card-pad-x: 16px;
@@ -127,52 +142,60 @@
         }
 
         .form-section-card--first {
-            margin-top: 8px;
+            margin-top: 12px;
         }
 
         .form-section-card + .form-section-card {
-            margin-top: 10px;
+            margin-top: 12px;
         }
 
+        /* 官方 .its-group-cells：15/21、字重 700、蓝条 4×16 */
         .form-section-card-title {
-            padding: 14px var(--form-card-pad-x);
+            padding: 12px var(--form-card-pad-x);
             font-size: 15px;
-            color: #191e26;
-            font-weight: 600;
+            line-height: 21px;
+            color: #333;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
-            border-bottom: 1px solid #efefef;
+            border-bottom: 1px solid #e3e4e8;
         }
 
         .form-section-card-title::before {
             content: '';
-            width: 3px;
-            height: 15px;
-            background: #1e6fff;
-            border-radius: 1px;
+            width: 4px;
+            height: 16px;
+            margin-top: 2px;
+            background: #4285f4;
+            border-radius: 4px;
             flex-shrink: 0;
         }
         
-        /* 年度行：左「年度」、年份约在 36%（对齐原版）、右箭头 */
+        /* 年度行：左「年度」、年份约在 36%（官方截图像素测量）、右箭头 */
         .year-select {
             position: relative;
             background: #fff;
             margin: 0;
             border-radius: 0;
-            padding: 15px var(--form-card-pad-x, 16px);
+            padding: 12px var(--form-card-pad-x, 16px);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 50px;
+            min-height: 46px;
             box-sizing: border-box;
         }
         
         .year-label {
-            font-size: 15px;
+            font-size: 16px;
+            line-height: 22px;
             font-weight: 400;
-            color: #333;
+            color: #565a68;
+            min-width: 2em;
+            margin-right: 20px;
             flex: 0 0 auto;
+            white-space: nowrap;
+            word-break: keep-all;
             position: relative;
             z-index: 1;
         }
@@ -181,8 +204,9 @@
             position: absolute;
             left: 36%;
             transform: translateX(-50%);
-            color: #191e26;
-            font-size: 15px;
+            color: #333;
+            font-size: 16px;
+            line-height: 22px;
             font-weight: 400;
             pointer-events: none;
         }
@@ -201,9 +225,9 @@
         }
         
         .year-chevron {
-            width: 16px;
-            height: 16px;
-            color: #c8c8c8;
+            width: 12px;
+            height: 12px;
+            color: #d1d3d8;
             flex-shrink: 0;
         }
 
@@ -223,11 +247,11 @@
         }
         
         .type-item {
-            padding: 15px var(--form-card-pad-x);
+            padding: 12px var(--form-card-pad-x);
             display: flex;
             align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid #f0f0f0;
+            gap: 10px;
+            border-bottom: 1px solid #e3e4e8;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
@@ -241,10 +265,11 @@
             border-bottom: none;
         }
         
+        /* 官方 iconfont 勾选约 16–20px，选中 #4285f4 / 未选 #d1d3d8 */
         .check-icon {
-            width: 22px;
-            height: 22px;
-            background: #1e6fff;
+            width: 18px;
+            height: 18px;
+            background: #4285f4;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -253,14 +278,13 @@
         }
         
         .check-icon svg {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
         }
         
-        /* 未选中的空心圆（与参考图一致） */
         .check-icon.check-off {
             background: transparent;
-            border: 1.5px solid #c8c8c8;
+            border: 1.5px solid #d1d3d8;
             box-sizing: border-box;
         }
         .check-icon.check-off svg {
@@ -268,7 +292,8 @@
         }
         
         .type-text {
-            font-size: 15px;
+            font-size: 16px;
+            line-height: 22px;
             font-weight: 400;
             color: #333;
         }
@@ -280,21 +305,21 @@
             display: block;
         }
         
-        /* 展开 / 收起：官方态 — 文案+双箭头整体居中 */
+        /* 展开 / 收起：官方 .show-all-line #257cf5 */
         .type-toggle {
-            padding: 14px var(--form-card-pad-x);
-            color: #1e6fff;
+            padding: 12px var(--form-card-pad-x);
+            color: #257cf5;
             font-size: 15px;
             font-weight: 400;
             line-height: 1.4;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 2px;
+            gap: 4px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
-            border-top: 1px solid #efefef;
+            border-top: 1px solid #e3e4e8;
         }
         .type-toggle.hidden {
             display: none;
@@ -308,22 +333,28 @@
             margin-top: 1px;
         }
         
+        /* 官方 .income-query-btn margin-top .85333333rem ≈ 32px */
         .query-btn-wrapper {
-            padding: 28px 16px 40px;
+            padding: 32px 16px 40px;
             padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-            background: #f5f6fa;
+            background: #f4f6f9;
         }
         
+        /* 官方 .zdj-btn_primary 渐变；圆角取截图约 8px（非 pill） */
         .query-btn {
             width: 100%;
             max-width: 100%;
-            background: #1e6fff;
+            height: 44px;
+            background-image: linear-gradient(135deg, #257cf5, #4d97ff);
+            background-color: #257cf5;
+            box-shadow: 0 12px 32px 0 rgba(37, 123, 245, 0.3);
             color: #fff;
             border: none;
             border-radius: 8px;
-            padding: 13px;
+            padding: 0 16px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 500;
+            line-height: 44px;
             font-family: inherit;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
@@ -367,7 +398,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #e3e4e8;
         }
         
         .picker-cancel {
@@ -381,7 +412,7 @@
         }
         
         .picker-confirm {
-            color: #1e6fff;
+            color: #4285f4;
             font-size: 16px;
             font-weight: 400;
             font-family: inherit;

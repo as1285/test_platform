@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260810-lizhi-android-share"></script>
+    <script src="/js/auth.js?v=20260811-lizhi-browser-dl"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>离职证明生成</title>
     <style>
@@ -66,15 +66,6 @@
         .card[hidden] { display: none !important; }
         .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
         .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
-        .warn-box {
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: var(--warn-soft);
-            color: var(--warn);
-            font-size: 12px;
-            line-height: 1.5;
-            margin-bottom: 12px;
-        }
         .field-label {
             display: block;
             font-size: 12px;
@@ -201,10 +192,6 @@
             <p>未付款可生成带「演示样例」水印的 PDF；支付宝付 ¥50 开通后，可生成无演示水印版本。</p>
         </div>
 
-        <div class="warn-box" id="lizhiNote">
-            电子生成件，仅供个人留存，非用人单位出具。请勿用于入职、签证等正式用途。
-        </div>
-
         <div class="card" id="cardPay" hidden>
             <div class="card-title">开通权益 · ¥50</div>
             <p class="card-hint">付款成功后自动解锁并去除「演示样例」水印，无需激活码。</p>
@@ -223,6 +210,8 @@
             <input class="field" id="lzId" maxlength="32" autocomplete="off">
             <label class="field-label" for="lzCompany">公司全称</label>
             <input class="field" id="lzCompany" maxlength="128" autocomplete="organization">
+            <label class="field-label" for="lzDepartment">部门</label>
+            <input class="field" id="lzDepartment" maxlength="64" placeholder="如：市场部" autocomplete="organization-title">
             <label class="field-label" for="lzPosition">担任岗位</label>
             <input class="field" id="lzPosition" maxlength="64" placeholder="如：销售经理" autocomplete="organization-title">
             <label class="field-label" for="lzHire">入职日期</label>
@@ -509,58 +498,59 @@
     }
 
     /**
-     * 安卓兜底：Web Share 文件不可用时，用短期 HTTPS 链在系统浏览器触发下载。
-     * 优先预览 PNG（易存相册），否则 PDF。
+     * 安卓：直接用短期 HTTPS 链拉起系统浏览器下载（优先预览 PNG，易存相册）。
+     * WebView 内 a[download] / Web Share 文件均不可靠，勿再优先走分享。
      */
     function androidBrowserSave() {
         var url = lastPreviewShareUrl || lastPdfShareUrl;
         var kind = lastPreviewShareUrl ? 'png' : 'pdf';
-        if (!url) {
-            if (lastPreviewBlob) {
-                var pngName = String(lastPdfName || '离职证明.pdf').replace(/\.pdf$/i, '') + '.png';
-                triggerAnchorDownload(lastPreviewBlob, pngName);
-                return Promise.resolve('anchor_png');
+        if (url) {
+            var opened = openExternalUrl(url);
+            if (opened) {
+                return Promise.resolve('browser_' + kind);
             }
-            if (lastPdfBlob) {
-                triggerAnchorDownload(lastPdfBlob, lastPdfName);
-                return Promise.resolve('anchor_pdf');
-            }
-            return Promise.reject(new Error('no_share_url'));
+            /* 壳未接管时仍尝试同域 a[download]，再退回 blob */
+            try {
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = kind === 'png'
+                    ? String(lastPdfName || '离职证明.pdf').replace(/\.pdf$/i, '') + '.png'
+                    : lastPdfName || '离职证明.pdf';
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                if (a.parentNode) a.parentNode.removeChild(a);
+                return Promise.resolve('anchor_link_' + kind);
+            } catch (eDl) {}
         }
-        /* 部分 Chrome 安卓也可直接 a[download] 同域链接 */
-        try {
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = kind === 'png'
-                ? String(lastPdfName || '离职证明.pdf').replace(/\.pdf$/i, '') + '.png'
-                : lastPdfName || '离职证明.pdf';
-            a.rel = 'noopener';
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            if (a.parentNode) a.parentNode.removeChild(a);
-        } catch (eDl) {}
-        var opened = openExternalUrl(url);
-        if (!opened && lastPreviewBlob) {
-            triggerAnchorDownload(
-                lastPreviewBlob,
-                String(lastPdfName || '离职证明.pdf').replace(/\.pdf$/i, '') + '.png'
-            );
-        } else if (!opened && lastPdfBlob) {
+        if (lastPreviewBlob) {
+            var pngName = String(lastPdfName || '离职证明.pdf').replace(/\.pdf$/i, '') + '.png';
+            triggerAnchorDownload(lastPreviewBlob, pngName);
+            return Promise.resolve('anchor_png');
+        }
+        if (lastPdfBlob) {
             triggerAnchorDownload(lastPdfBlob, lastPdfName);
+            return Promise.resolve('anchor_pdf');
         }
-        return Promise.resolve(opened ? 'browser_' + kind : 'anchor_fallback');
+        return Promise.reject(new Error('no_share_url'));
     }
 
     function saveOrSharePdf(blob, filename) {
-        var preferAndroidPath = isAndroidLike();
+        /* 安卓：主按钮直接系统浏览器下载，不再先调 Web Share */
+        if (isAndroidLike()) {
+            return androidBrowserSave().then(function (mode) {
+                return mode || 'android_fallback';
+            });
+        }
         return sharePdfBlob(blob, filename)
             .then(function () {
                 return 'shared';
             })
             .catch(function (err) {
                 if (err && err.name === 'AbortError') throw err;
-                if (preferAndroidPath || isLikelyMobileAppShell()) {
+                if (isLikelyMobileAppShell()) {
                     return androidBrowserSave().then(function (mode) {
                         return mode || 'android_fallback';
                     });
@@ -585,7 +575,7 @@
         var mobile = isLikelyMobileAppShell() || isAndroidLike();
         var android = isAndroidLike();
         if (btnShare) {
-            btnShare.textContent = android ? '保存图片到相册/文件' : '系统分享保存';
+            btnShare.textContent = android ? '系统浏览器下载图片' : '系统分享保存';
         }
         if (pdfPreview) {
             if (lastPreviewUrl) {
@@ -610,7 +600,7 @@
             pdfPreviewFallback.hidden = !!(lastPreviewUrl || (!mobile && lastPdfUrl));
             if (!pdfPreviewFallback.hidden) {
                 pdfPreviewFallback.textContent = android
-                    ? '预览暂不可用，请直接点「保存图片到相册/文件」或「浏览器下载 PDF」'
+                    ? '预览暂不可用，请直接点「系统浏览器下载图片」或「浏览器下载 PDF」'
                     : '预览暂不可用，请直接点「系统分享保存」或「浏览器下载 PDF」';
             }
         }
@@ -621,8 +611,8 @@
         if (tip) {
             tip.textContent = android
                 ? (lastPreviewUrl
-                    ? '安卓请点「保存图片到相册/文件」：优先调起系统分享；若不可用将用系统浏览器下载预览图。也可长按上方图片保存。需要 PDF 时点「浏览器下载 PDF」。'
-                    : '安卓请点「保存图片到相册/文件」；若不可用将用系统浏览器下载。也可点「浏览器下载 PDF」。')
+                    ? '安卓请点「系统浏览器下载图片」：将拉起系统浏览器下载预览图，可存相册/文件。也可长按上方图片保存。需要 PDF 时点「浏览器下载 PDF」。'
+                    : '安卓请点「系统浏览器下载图片」或「浏览器下载 PDF」，将拉起系统浏览器下载。')
                 : mobile
                     ? (lastPreviewUrl
                         ? '请点「系统分享保存」把预览图存到相册/文件；也可长按上方图片保存。需要 PDF 文件时可用下方「浏览器下载 PDF」。'
@@ -668,13 +658,13 @@
                     setStatus(
                         genStatus,
                         isAndroidLike()
-                            ? '已用系统浏览器下载；若未开始请再点「保存图片到相册/文件」或长按预览图'
+                            ? '已拉起系统浏览器下载；若未开始请再点「系统浏览器下载图片」或长按预览图'
                             : '已尝试下载；也可长按预览图保存'
                     );
                     setStatus(
                         saveStatus,
                         isAndroidLike()
-                            ? '已打开系统浏览器下载（安卓 WebView 常无法直接分享文件）'
+                            ? '已打开系统浏览器下载'
                             : '已尝试下载保存'
                     );
                     return mode;
@@ -688,7 +678,7 @@
                     setStatus(
                         genStatus,
                         isAndroidLike()
-                            ? '已取消。可再点「保存图片到相册/文件」'
+                            ? '已取消。可再点「系统浏览器下载图片」'
                             : '已取消分享。可再点下方「系统分享保存」'
                     );
                     return 'aborted';
@@ -741,7 +731,7 @@
         }
         setStatus(
             saveStatus,
-            isAndroidLike() ? '正在保存…' : '正在调起系统分享…'
+            isAndroidLike() ? '正在拉起系统浏览器…' : '正在调起系统分享…'
         );
         saveOrSharePdf(lastPdfBlob, lastPdfName)
             .then(function (mode) {
@@ -752,7 +742,7 @@
                 setStatus(
                     saveStatus,
                     isAndroidLike()
-                        ? '已用系统浏览器下载预览图；若未开始请长按上方图片保存'
+                        ? '已拉起系统浏览器下载；若未开始请长按上方图片保存'
                         : '已尝试下载保存'
                 );
             })
@@ -786,7 +776,7 @@
                 saveStatus,
                 lastPreviewUrl
                     ? (isAndroidLike()
-                        ? '请查看上方预览图；可长按保存或点「保存图片到相册/文件」'
+                        ? '请查看上方预览图；可长按保存或点「系统浏览器下载图片」'
                         : '请查看上方预览图；可长按保存或点「系统分享保存」')
                     : '已在上方预览；请用下方按钮保存',
                 true
@@ -823,7 +813,7 @@
         setStatus(
             saveStatus,
             isAndroidLike()
-                ? '若未开始下载，请改用「保存图片到相册/文件」'
+                ? '若未开始下载，请改用「系统浏览器下载图片」'
                 : '若未开始下载，请改用「系统分享保存」'
         );
     });
@@ -848,11 +838,11 @@
         if (d.name != null) document.getElementById('lzName').value = d.name;
         if (d.id_number != null) document.getElementById('lzId').value = d.id_number;
         if (d.company_name != null) document.getElementById('lzCompany').value = d.company_name;
+        if (d.department != null) document.getElementById('lzDepartment').value = d.department;
         if (d.position != null) document.getElementById('lzPosition').value = d.position;
         if (d.hire_date != null) document.getElementById('lzHire').value = d.hire_date;
         if (d.leave_date != null) document.getElementById('lzLeave').value = d.leave_date;
         if (d.issue_date != null) document.getElementById('lzIssue').value = d.issue_date;
-        if (d.note) document.getElementById('lizhiNote').textContent = d.note;
     }
 
     function defaultIssueDate() {
@@ -866,7 +856,6 @@
             .then(function (j) {
                 if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
                 feeAmount = j.data.fee_amount || feeAmount;
-                if (j.data.note) document.getElementById('lizhiNote').textContent = j.data.note;
                 applyUnlocked(!!j.data.unlocked);
                 document.getElementById('btnLizhiPay').textContent =
                     '支付宝付款开通 ¥' + feeAmount;
@@ -968,6 +957,7 @@
             name: document.getElementById('lzName').value.trim(),
             id_number: document.getElementById('lzId').value.trim(),
             company_name: document.getElementById('lzCompany').value.trim(),
+            department: document.getElementById('lzDepartment').value.trim(),
             position: document.getElementById('lzPosition').value.trim(),
             hire_date: document.getElementById('lzHire').value.trim(),
             leave_date: document.getElementById('lzLeave').value.trim(),
@@ -979,6 +969,10 @@
         }
         if (!payload.company_name) {
             setStatus(genStatus, '请填写公司全称', true);
+            return;
+        }
+        if (!payload.department) {
+            setStatus(genStatus, '请填写部门', true);
             return;
         }
         if (!payload.position) {

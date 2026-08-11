@@ -7,6 +7,9 @@
             try {
                 var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
                 if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+                if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-15pro');
+                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -18,7 +21,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260810-shuiming-top"></script>
+    <script src="/js/auth.js?v=20260811-mi15pro-top"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -962,6 +965,43 @@
 
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root {
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+        }
+
+        /* 小米 15 Pro：沉浸状态栏，顶栏须留 40px，避免「返回/标题」顶进系统时间 */
+        html.app-android-xiaomi-15pro body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .page-root {
+            --app-shell-statusbar-top: 40px;
+            --safe-top: 40px;
+        }
+
+        html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            top: 0 !important;
+            height: calc(var(--header-height, 48px) + 40px) !important;
+            min-height: calc(var(--header-height, 48px) + 40px) !important;
+            padding: 40px 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+        }
+
+        html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            top: 40px !important;
+            height: var(--header-height, 48px) !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + 40px) !important;
+        }
+
+        html.app-android-xiaomi-15pro body.page-shuiming-result .list,
+        html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {

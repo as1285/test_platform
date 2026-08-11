@@ -9,7 +9,7 @@
   var MODULE_SRC = {
     charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260802-paste-tpl',
-    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260805-lizhi-users',
+    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260808-ccb-render',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260806-admin-deadcode'

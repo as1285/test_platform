@@ -17,32 +17,10 @@
             try {
                 query = new URLSearchParams(window.location.search);
             } catch (e0) {}
-            var downloadOnly = query && query.get('download') === '1';
-            /* 代理推广 ?ch=：必须留在安装页下包，禁止跳「我的」/游客落地 */
-            var hasSalesCh = !!(
-                query &&
-                String(query.get('ch') || query.get('sales_ch') || query.get('channel') || '').trim()
-            );
-            var stayOnInstall = !!(downloadOnly || hasSalesCh);
             /**
-             * 已登录正式账号再进安装页（书签 / 桌面图标 / 旧链接）会一直停在 B 版安装页。
-             * 非「仅下载 / 代理渠道」意图时直接进「我的」；?download=1 或 ?ch= 仍保留安装页。
+             * 安装页始终停留在本页展示下载/注册，不再自动跳「我的」。
+             * （含已登录、落地页 C 方案游客体验；?download=1 / ?ch= 行为不变。）
              */
-            try {
-                var earlyToken = localStorage.getItem('token') || '';
-                var earlyUserId = localStorage.getItem('user_id') || localStorage.getItem('userName') || '';
-                var earlyGuest = localStorage.getItem('landing_guest_v1') === '1';
-                if (
-                    !stayOnInstall &&
-                    earlyToken &&
-                    earlyUserId &&
-                    String(earlyUserId).indexOf('__guest_') !== 0 &&
-                    !earlyGuest
-                ) {
-                    window.location.replace('/mine.html');
-                    return;
-                }
-            } catch (eEarlyLoggedIn) {}
             var entry = {
                 referrer: String(document.referrer || '').substring(0, 500),
                 utm_source: query ? String(query.get('utm_source') || '').substring(0, 80) : '',
@@ -134,78 +112,9 @@
                             sales_ch: entry.sales_ch
                         });
                     }
-                    /* 代理渠道 / 仅下载：C 方案也不走游客→我的，直接展示安装下载 */
-                    if (variant === 'c' && stayOnInstall) {
+                    /* C 方案也不再跳「我的」/游客落地，统一展示安装下载页 */
+                    if (variant === 'c') {
                         return reveal('b');
-                    }
-                    if (variant === 'c' && !downloadOnly) {
-                        try {
-                            var existingToken = localStorage.getItem('token') || '';
-                            var existingUserId = localStorage.getItem('user_id') || '';
-                            var alreadyGuest = localStorage.getItem('landing_guest_v1') === '1';
-                            if (
-                                existingToken &&
-                                existingUserId &&
-                                existingUserId.indexOf('__guest_') !== 0 &&
-                                !alreadyGuest
-                            ) {
-                                window.location.replace('/mine.html');
-                                return 'c';
-                            }
-                        } catch (eExistingSession) {}
-                        if (typeof window.markInstallGuideReferral === 'function') {
-                            window.markInstallGuideReferral('landing_ab_c');
-                        }
-                        return fetch('/api/public/guest-session', {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            cache: 'no-store',
-                            headers: Object.assign(
-                                { 'Content-Type': 'application/json' },
-                                typeof window.getClientDeviceHeaders === 'function'
-                                    ? window.getClientDeviceHeaders()
-                                    : {}
-                            ),
-                            body: JSON.stringify({
-                                landing_variant: 'c',
-                                utm_source: entry.utm_source,
-                                sales_ch: entry.sales_ch
-                            })
-                        })
-                            .then(function (r) { return r.json(); })
-                            .then(function (guestBody) {
-                                var guest =
-                                    guestBody && guestBody.code === 200 && guestBody.data
-                                        ? guestBody.data
-                                        : null;
-                                if (!guest || !guest.token) {
-                                    throw new Error((guestBody && guestBody.msg) || '游客体验初始化失败');
-                                }
-                                try {
-                                    localStorage.setItem('token', guest.token);
-                                    localStorage.setItem('userName', guest.username || '');
-                                    localStorage.setItem('user_id', guest.user_id || guest.username || '');
-                                    localStorage.setItem('real_name', guest.real_name || '游客用户');
-                                    localStorage.setItem('tax_id', guest.tax_id || '');
-                                    localStorage.setItem('account_active', '0');
-                                    localStorage.setItem('is_test_account', '0');
-                                    localStorage.setItem('landing_guest_v1', '1');
-                                    if (guest.username) {
-                                        localStorage.setItem('guest_username_v1', String(guest.username));
-                                    }
-                                    if (guest.tax_record_count != null) {
-                                        localStorage.setItem(
-                                            'tax_record_count',
-                                            String(Number(guest.tax_record_count) || 0)
-                                        );
-                                    }
-                                    if (guest.sample_tax_seeded) {
-                                        localStorage.setItem('guest_sample_tax_seeded_v1', '1');
-                                    }
-                                } catch (eGuestStore) {}
-                                window.location.replace('/mine.html');
-                                return 'c';
-                            });
                     }
                     return reveal(variant);
                 })

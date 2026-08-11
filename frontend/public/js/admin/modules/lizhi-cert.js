@@ -50,6 +50,7 @@
     setField('lizhiLeaveDate', '2026/7/10');
     setField('lizhiIssueDate', '2026 年 7 月 13 日');
     setField('lizhiCompany', '北京外企市场营销顾问有限公司西安分公司');
+    setField('lizhiDepartment', '市场部');
     setField('lizhiPosition', '市场营销顾问');
     setStatus('已填入示例', false);
   }
@@ -106,7 +107,7 @@
         if (position) setField('lizhiPosition', position);
         if (hire) setField('lizhiHireDate', hire);
         if (leave) setField('lizhiLeaveDate', leave);
-        setStatus('已预填「' + username + '」（请核对离职日与开具日）', false);
+        setStatus('已预填「' + username + '」（请核对部门、离职日与开具日）', false);
       })
       .catch(function (e) {
         var msg = e && e.message ? e.message : '网络错误';
@@ -126,6 +127,7 @@
       leave_date: val('lizhiLeaveDate'),
       issue_date: val('lizhiIssueDate'),
       company_name: val('lizhiCompany'),
+      department: val('lizhiDepartment'),
       position: val('lizhiPosition')
     };
     if (!body.name || !body.id_number) {
@@ -134,6 +136,10 @@
     }
     if (!body.company_name) {
       setStatus('请填写公司全称', true);
+      return;
+    }
+    if (!body.department) {
+      setStatus('请填写部门', true);
       return;
     }
     if (!body.position) {

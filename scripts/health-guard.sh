@@ -91,10 +91,22 @@ check_containers() {
   done
 }
 
+# 本机探测公网域名时绕过 systemd-resolved stub 抖动（偶发 Resolving timed out）
+# 仍校验本机 :80/:443 上的 TLS/vhost；真外网 DNS 不在本机巡检职责内
 http_ok() {
   local url="$1"
   local code
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 15 -k "$url" 2>/dev/null || echo 000)"
+  local -a curl_args=(-sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 15 -k -4)
+  local host=""
+  if [[ "$url" =~ ^https?://\[([^\]]+)\] ]]; then
+    host="${BASH_REMATCH[1]}"
+  elif [[ "$url" =~ ^https?://([^/:]+) ]]; then
+    host="${BASH_REMATCH[1]}"
+  fi
+  if [[ -n "$host" && "$host" != "127.0.0.1" && "$host" != "localhost" && "$host" != "::1" ]]; then
+    curl_args+=(--resolve "${host}:443:127.0.0.1" --resolve "${host}:80:127.0.0.1")
+  fi
+  code="$(curl "${curl_args[@]}" "$url" 2>/dev/null || echo 000)"
   # API ping 未登录返回 401 也算活着；页面 200/301/302/304
   [[ "$code" =~ ^(200|301|302|304|401)$ ]]
 }
@@ -114,7 +126,7 @@ check_http() {
       if ! http_ok "http://127.0.0.1/mine.html"; then
         problems+=("前端不可用: $FRONTEND_URL 且本机 :80 失败")
       else
-        problems+=("前端外网探测失败: $FRONTEND_URL （本机 :80 正常，可能是 DNS/证书/防火墙）")
+        problems+=("前端公网 URL 探测失败: $FRONTEND_URL （本机 :80 正常；已绕过 DNS，可能是证书/443/防火墙）")
       fi
     fi
   fi

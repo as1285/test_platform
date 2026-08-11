@@ -993,7 +993,7 @@
                         <div class="card-title">离职证明生成</div>
                         <span class="badge-auto">¥50 去水印</span>
                     </div>
-                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。电子生成件仅供个人留存，非用人单位出具。</p>
+                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。</p>
                     <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
                 </div>
 
@@ -2320,6 +2320,9 @@
                     if (variant === 'treatment' && skus.length > 1) {
                         purchaseUiMode = 'treatment';
                     } else {
+                        purchaseUiMode = 'legacy';
+                    }
+                    if (data.custom_offer) {
                         purchaseUiMode = 'legacy';
                     }
                     updatePayCtaFromSelection();

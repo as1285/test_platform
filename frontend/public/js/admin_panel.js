@@ -316,337 +316,6 @@
             document.body.removeChild(ta);
         }
 
-        var _agentPromoLinksCache = [];
-
-        function parseAgentChannelIds(raw) {
-            return String(raw || '')
-                .split(/[\r\n,;]+/)
-                .map(function (s) {
-                    return s.trim();
-                })
-                .filter(function (s) {
-                    return /^[a-zA-Z0-9_-]+$/.test(s);
-                })
-                .filter(function (s, i, arr) {
-                    return arr.indexOf(s) === i;
-                });
-        }
-
-        function buildAgentPromoLink(origin, page, channelId) {
-            var base = String(origin || window.location.origin || '').replace(/\/+$/, '');
-            return base + '/' + page + '?ch=' + encodeURIComponent(channelId);
-        }
-
-        function renderAgentPromoLinks(channelIds) {
-            var mount = document.getElementById('agentPromoLinksMount');
-            var copyAllBtn = document.getElementById('btnCopyAllAgentPromoLinks');
-            if (!mount) {
-                return;
-            }
-            if (!channelIds.length) {
-                mount.style.display = 'none';
-                mount.innerHTML = '';
-                _agentPromoLinksCache = [];
-                if (copyAllBtn) {
-                    copyAllBtn.style.display = 'none';
-                }
-                alert('请先在上方填写至少一个渠道 ID（每行一个）');
-                return;
-            }
-            var origin = window.location.origin || '';
-            var linkDefs = [
-                { label: '安装引导页', page: 'install_guide.html' },
-                { label: '注册页', page: 'register.html' }
-            ];
-            var allLines = [];
-            var html =
-                '<div class="agent-promo-links-head"><span>站点：<code>' +
-                esc(origin) +
-                '</code></span><span>共 ' +
-                channelIds.length +
-                ' 个渠道</span></div>';
-            channelIds.forEach(function (ch) {
-                html += '<div class="agent-promo-channel-block">';
-                html += '<div class="agent-promo-channel-title">' + esc(ch) + '</div>';
-                linkDefs.forEach(function (def) {
-                    var url = buildAgentPromoLink(origin, def.page, ch);
-                    allLines.push(ch + ' · ' + def.label + '：' + url);
-                    html +=
-                        '<div class="agent-promo-link-row">' +
-                        '<span class="agent-promo-link-label">' +
-                        esc(def.label) +
-                        '</span>' +
-                        '<code class="agent-promo-link-url">' +
-                        esc(url) +
-                        '</code>' +
-                        '<button type="button" class="btn-sm btn-copy btn-copy-agent-promo" data-copy="' +
-                        esc(url) +
-                        '">复制</button>' +
-                        '</div>';
-                });
-                html += '</div>';
-            });
-            mount.innerHTML = html;
-            mount.style.display = 'block';
-            _agentPromoLinksCache = allLines;
-            if (copyAllBtn) {
-                copyAllBtn.style.display = 'inline-block';
-            }
-        }
-
-        function bindAgentPromoLinksUi() {
-            var genBtn = document.getElementById('btnGenerateAgentPromoLinks');
-            var copyAllBtn = document.getElementById('btnCopyAllAgentPromoLinks');
-            var mount = document.getElementById('agentPromoLinksMount');
-            if (genBtn && genBtn.getAttribute('data-bound') !== '1') {
-                genBtn.setAttribute('data-bound', '1');
-                genBtn.addEventListener('click', function () {
-                    var raw = document.getElementById('xianyuHideSalesChannels');
-                    var fromText = parseAgentChannelIds(raw ? raw.value : '');
-                    var fromExclusive = (_agentExclusiveChannelsCache || [])
-                        .filter(function (r) {
-                            return r && r.enabled !== false;
-                        })
-                        .map(function (r) {
-                            return String(r.channel_id || '');
-                        })
-                        .filter(Boolean);
-                    var merged = fromText.slice();
-                    fromExclusive.forEach(function (ch) {
-                        if (merged.indexOf(ch) < 0) merged.push(ch);
-                    });
-                    renderAgentPromoLinks(merged);
-                });
-            }
-            if (copyAllBtn && copyAllBtn.getAttribute('data-bound') !== '1') {
-                copyAllBtn.setAttribute('data-bound', '1');
-                copyAllBtn.addEventListener('click', function () {
-                    if (!_agentPromoLinksCache.length) {
-                        alert('请先生成代理推广链接');
-                        return;
-                    }
-                    copyCode(_agentPromoLinksCache.join('\n'));
-                });
-            }
-            if (mount && mount.getAttribute('data-copy-bound') !== '1') {
-                mount.setAttribute('data-copy-bound', '1');
-                mount.addEventListener('click', function (e) {
-                    var btn = e.target.closest('.btn-copy-agent-promo');
-                    if (!btn) {
-                        return;
-                    }
-                    copyCode(btn.getAttribute('data-copy') || '');
-                });
-            }
-        }
-
-        var _agentExclusiveChannelsCache = [];
-        var _agentExAdminOptionsLoaded = false;
-
-        function loadAgentExclusiveOwnerOptions() {
-            var sel = document.getElementById('agentExOwnerAdmin');
-            if (!sel) return Promise.resolve();
-            if (_agentExAdminOptionsLoaded && sel.options.length > 1) {
-                return Promise.resolve();
-            }
-            return adminFetch('api/admin/accounts')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    var list = (data && data.data && data.data.accounts) || data.data || [];
-                    if (!Array.isArray(list)) list = [];
-                    var html = '<option value="">可留空（平台自有）</option>';
-                    list.forEach(function (a) {
-                        if (!a || a.is_super || a.banned) return;
-                        var u = String(a.username || '').trim();
-                        if (!u) return;
-                        var name = a.full_name ? String(a.full_name) : '';
-                        html +=
-                            '<option value="' +
-                            esc(u) +
-                            '">' +
-                            esc(u) +
-                            (name ? '（' + esc(name) + '）' : '') +
-                            '</option>';
-                    });
-                    sel.innerHTML = html;
-                    _agentExAdminOptionsLoaded = true;
-                })
-                .catch(function () {
-                    sel.innerHTML = '<option value="">无法加载代理账号（需超管权限）</option>';
-                });
-        }
-
-        function renderAgentExclusiveChannelsList(list) {
-            var mount = document.getElementById('agentExclusiveChannelsList');
-            if (!mount) return;
-            _agentExclusiveChannelsCache = Array.isArray(list) ? list : [];
-            if (!_agentExclusiveChannelsCache.length) {
-                mount.innerHTML = '<p class="hint mt-0">暂无专属渠道。保存后，用户经 <code>?ch=渠道ID</code> 注册/登录会挂到对应代理名下。</p>';
-                return;
-            }
-            var origin = window.location.origin || '';
-            var html =
-                '<table class="data-table" style="width:100%;font-size:13px;"><thead><tr>' +
-                '<th>渠道 ID</th><th>下属代理</th><th>支付</th><th>仅激活码</th><th>状态</th><th>备注</th><th>推广链接</th><th></th>' +
-                '</tr></thead><tbody>';
-            _agentExclusiveChannelsCache.forEach(function (row) {
-                var ch = String(row.channel_id || '');
-                var link = buildAgentPromoLink(origin, 'install_guide.html', ch);
-                var codeOnly = !!(row.hide_self_serve_pay || row.code_only);
-                html +=
-                    '<tr>' +
-                    '<td><code>' +
-                    esc(ch) +
-                    '</code></td>' +
-                    '<td>' +
-                    esc(row.owner_admin_username || '—') +
-                    '</td>' +
-                    '<td>' +
-                    esc(String(row.default_pricing_abc || 'a').toUpperCase()) +
-                    '</td>' +
-                    '<td>' +
-                    (codeOnly ? '是' : '否') +
-                    '</td>' +
-                    '<td>' +
-                    (row.enabled ? '启用' : '停用') +
-                    '</td>' +
-                    '<td>' +
-                    esc(row.note || '') +
-                    '</td>' +
-                    '<td><button type="button" class="btn-sm btn-copy-agent-promo" data-copy="' +
-                    esc(link) +
-                    '">复制安装页</button></td>' +
-                    '<td><button type="button" class="btn-sm btn-danger btn-del-agent-ex-ch" data-ch="' +
-                    esc(ch) +
-                    '">删除</button></td>' +
-                    '</tr>';
-            });
-            html += '</tbody></table>';
-            mount.innerHTML = html;
-        }
-
-        function loadAgentExclusiveChannels() {
-            return adminFetch('api/admin/agent-channels')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (data && data.code === 200 && data.data) {
-                        renderAgentExclusiveChannelsList(data.data.channels || []);
-                        var hideEl = document.getElementById('xianyuHideSalesChannels');
-                        if (hideEl && _agentExclusiveChannelsCache.length) {
-                            var existing = parseAgentChannelIds(hideEl.value);
-                            var changed = false;
-                            _agentExclusiveChannelsCache.forEach(function (row) {
-                                if (!row || !row.enabled) return;
-                                var ch = String(row.channel_id || '');
-                                if (ch && existing.indexOf(ch) < 0) {
-                                    existing.push(ch);
-                                    changed = true;
-                                }
-                            });
-                            if (changed) {
-                                hideEl.value = existing.join('\n');
-                            }
-                        }
-                    }
-                })
-                .catch(function () {});
-        }
-
-        function bindAgentExclusiveChannelsUi() {
-            var saveBtn = document.getElementById('btnSaveAgentExclusiveChannel');
-            var listMount = document.getElementById('agentExclusiveChannelsList');
-            if (saveBtn && saveBtn.getAttribute('data-bound') !== '1') {
-                saveBtn.setAttribute('data-bound', '1');
-                saveBtn.addEventListener('click', function () {
-                    var channelId = (document.getElementById('agentExChannelId') || {}).value || '';
-                    var owner = (document.getElementById('agentExOwnerAdmin') || {}).value || '';
-                    var abc = String((document.getElementById('agentExPricingAbc') || {}).value || 'b')
-                        .trim()
-                        .toLowerCase();
-                    if (abc !== 'a' && abc !== 'b') abc = 'b';
-                    var note = (document.getElementById('agentExNote') || {}).value || '';
-                    var enabled = !!(document.getElementById('agentExEnabled') || {}).checked;
-                    var hidePayEl = document.getElementById('agentExHideSelfServePay');
-                    var hideSelfServePay = hidePayEl ? !!hidePayEl.checked : false;
-                    channelId = String(channelId).trim().toLowerCase();
-                    if (!/^[a-z0-9_-]{1,64}$/.test(channelId)) {
-                        alert('渠道 ID 无效（字母数字下划线连字符）');
-                        return;
-                    }
-                    saveBtn.disabled = true;
-                    adminFetch('api/admin/agent-channels', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            channel_id: channelId,
-                            owner_admin_username: String(owner).trim(),
-                            default_pricing_abc: abc,
-                            hide_self_serve_pay: hideSelfServePay,
-                            code_only: hideSelfServePay,
-                            enabled: enabled,
-                            note: note
-                        })
-                    })
-                        .then(function (r) {
-                            return r.json();
-                        })
-                        .then(function (data) {
-                            saveBtn.disabled = false;
-                            if (!data || data.code !== 200) {
-                                alert((data && data.msg) || '保存失败');
-                                return;
-                            }
-                            var idEl = document.getElementById('agentExChannelId');
-                            if (idEl) idEl.value = '';
-                            var noteEl = document.getElementById('agentExNote');
-                            if (noteEl) noteEl.value = '';
-                            loadAgentExclusiveChannels();
-                            alert('专属渠道已保存');
-                        })
-                        .catch(function () {
-                            saveBtn.disabled = false;
-                            alert('保存失败');
-                        });
-                });
-            }
-            if (listMount && listMount.getAttribute('data-bound') !== '1') {
-                listMount.setAttribute('data-bound', '1');
-                listMount.addEventListener('click', function (e) {
-                    var copyBtn = e.target.closest('.btn-copy-agent-promo');
-                    if (copyBtn) {
-                        copyCode(copyBtn.getAttribute('data-copy') || '');
-                        return;
-                    }
-                    var delBtn = e.target.closest('.btn-del-agent-ex-ch');
-                    if (!delBtn) return;
-                    var ch = delBtn.getAttribute('data-ch') || '';
-                    if (!ch || !confirm('确定删除专属渠道「' + ch + '」？已归属用户不会自动解除。')) return;
-                    adminFetch('api/admin/agent-channels/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ channel_id: ch })
-                    })
-                        .then(function (r) {
-                            return r.json();
-                        })
-                        .then(function (data) {
-                            if (!data || data.code !== 200) {
-                                alert((data && data.msg) || '删除失败');
-                                return;
-                            }
-                            loadAgentExclusiveChannels();
-                        })
-                        .catch(function () {
-                            alert('删除失败');
-                        });
-                });
-            }
-        }
-
         function keyForUser(username) {
             return encodeURIComponent(String(username || '')).replace(/%/g, '_');
         }
@@ -2346,12 +2015,22 @@
             var summaryTbody = document.getElementById('analyticsPurchaseSummaryTbody');
             var dailyTbody = document.getElementById('analyticsPurchaseDailyTbody');
             var dailyHint = document.getElementById('analyticsPurchaseDailyHint');
+            var surveyCardsEl = document.getElementById('analyticsPurchaseSurveyCards');
+            var surveySentimentTbody = document.getElementById('analyticsPurchaseSurveySentimentTbody');
+            var surveyPriceTbody = document.getElementById('analyticsPurchaseSurveyPriceTbody');
+            var surveyRecentTbody = document.getElementById('analyticsPurchaseSurveyRecentTbody');
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (cardsEl) cardsEl.innerHTML = '';
+            if (surveyCardsEl) surveyCardsEl.innerHTML = '';
             if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
             if (productTbody) productTbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="14">加载中…</td></tr>';
+            if (surveySentimentTbody) {
+                surveySentimentTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            }
+            if (surveyPriceTbody) surveyPriceTbody.innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
+            if (surveyRecentTbody) surveyRecentTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
             adminFetch('api/admin/analytics/purchase-events?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
@@ -2372,12 +2051,178 @@
                         if (dailyTbody) {
                             dailyTbody.innerHTML = '<tr><td colspan="14">' + esc(msg) + '</td></tr>';
                         }
+                        if (surveySentimentTbody) {
+                            surveySentimentTbody.innerHTML =
+                                '<tr><td colspan="3">' + esc(msg) + '</td></tr>';
+                        }
+                        if (surveyPriceTbody) {
+                            surveyPriceTbody.innerHTML = '<tr><td colspan="2">' + esc(msg) + '</td></tr>';
+                        }
+                        if (surveyRecentTbody) {
+                            surveyRecentTbody.innerHTML = '<tr><td colspan="5">' + esc(msg) + '</td></tr>';
+                        }
                         return;
                     }
                     var data = res.data;
                     var funnel = data.funnel || {};
                     var pay = data.payments || {};
                     var survey = data.price_survey || {};
+                    function surveySentimentLabel(key) {
+                        var k = String(key || '').toLowerCase();
+                        if (k === 'expensive') return '偏贵';
+                        if (k === 'fair') return '合适';
+                        if (k === 'cheap') return '偏便宜';
+                        if (k === 'skipped') return '跳过';
+                        return key || '—';
+                    }
+                    function renderPurchaseSurvey(surveyData) {
+                        var s = surveyData || {};
+                        if (surveyCardsEl) {
+                            var surveyCards = [
+                                ['总回应', s.total || 0],
+                                ['正式提交', s.submitted || 0],
+                                ['跳过', s.skipped || 0],
+                                ['跳过率', (s.skipped_pct != null ? s.skipped_pct : 0) + '%'],
+                                [
+                                    '偏贵',
+                                    (s.expensive || 0) +
+                                        '（' +
+                                        (s.expensive_pct != null ? s.expensive_pct : 0) +
+                                        '%）'
+                                ],
+                                [
+                                    '合适',
+                                    (s.fair || 0) +
+                                        '（' +
+                                        (s.fair_pct != null ? s.fair_pct : 0) +
+                                        '%）'
+                                ],
+                                [
+                                    '偏便宜',
+                                    (s.cheap || 0) +
+                                        '（' +
+                                        (s.cheap_pct != null ? s.cheap_pct : 0) +
+                                        '%）'
+                                ],
+                                [
+                                    '均价期望',
+                                    s.avg_expected_price != null ? '¥' + s.avg_expected_price : '—'
+                                ],
+                                ['填了价位', s.with_expected_price || 0]
+                            ];
+                            var surveyCardsHtml = '';
+                            surveyCards.forEach(function (c) {
+                                surveyCardsHtml +=
+                                    '<div class="user-data-stat-card"><div class="ud-label">' +
+                                    esc(c[0]) +
+                                    '</div><div class="ud-val">' +
+                                    esc(String(c[1])) +
+                                    '</div></div>';
+                            });
+                            surveyCardsEl.innerHTML = surveyCardsHtml;
+                        }
+                        if (surveySentimentTbody) {
+                            var sentimentRows = [
+                                ['偏贵', s.expensive || 0, s.expensive_pct],
+                                ['合适', s.fair || 0, s.fair_pct],
+                                ['偏便宜', s.cheap || 0, s.cheap_pct]
+                            ];
+                            if (!(s.submitted > 0)) {
+                                surveySentimentTbody.innerHTML =
+                                    '<tr><td colspan="3">区间内暂无正式提交</td></tr>';
+                            } else {
+                                var sentimentHtml = '';
+                                sentimentRows.forEach(function (row) {
+                                    sentimentHtml +=
+                                        '<tr><td>' +
+                                        esc(row[0]) +
+                                        '</td><td><strong>' +
+                                        esc(String(row[1])) +
+                                        '</strong></td><td>' +
+                                        esc(String(row[2] != null ? row[2] : 0)) +
+                                        '%</td></tr>';
+                                });
+                                surveySentimentTbody.innerHTML = sentimentHtml;
+                            }
+                        }
+                        if (surveyPriceTbody) {
+                            var buckets = Array.isArray(s.expected_price_buckets)
+                                ? s.expected_price_buckets
+                                : [];
+                            var withAny = buckets.some(function (b) {
+                                return b && Number(b.count) > 0;
+                            });
+                            if (!withAny) {
+                                surveyPriceTbody.innerHTML =
+                                    '<tr><td colspan="2">区间内暂无心理价位</td></tr>';
+                            } else {
+                                var priceHtml = '';
+                                buckets.forEach(function (b) {
+                                    if (!b || !(Number(b.count) > 0)) return;
+                                    priceHtml +=
+                                        '<tr><td>' +
+                                        esc(b.label || (b.price != null ? '¥' + b.price : '其他')) +
+                                        '</td><td><strong>' +
+                                        esc(String(b.count || 0)) +
+                                        '</strong></td></tr>';
+                                });
+                                surveyPriceTbody.innerHTML =
+                                    priceHtml || '<tr><td colspan="2">区间内暂无心理价位</td></tr>';
+                            }
+                        }
+                        if (surveyRecentTbody) {
+                            var recent = Array.isArray(s.recent) ? s.recent : [];
+                            if (!recent.length) {
+                                surveyRecentTbody.innerHTML =
+                                    '<tr><td colspan="5">区间内暂无记录</td></tr>';
+                            } else {
+                                var recentHtml = '';
+                                recent.forEach(function (row) {
+                                    var t = '—';
+                                    if (row.created_at) {
+                                        var dt = new Date(row.created_at);
+                                        t = isNaN(dt.getTime())
+                                            ? String(row.created_at)
+                                            : formatLocalDateTimeForExport(dt);
+                                    }
+                                    recentHtml +=
+                                        '<tr><td>' +
+                                        esc(t) +
+                                        '</td><td>' +
+                                        esc(row.username || '—') +
+                                        '</td><td>' +
+                                        esc(surveySentimentLabel(row.sentiment)) +
+                                        '</td><td>' +
+                                        esc(
+                                            row.expected_price != null
+                                                ? '¥' + row.expected_price
+                                                : '—'
+                                        ) +
+                                        '</td><td>' +
+                                        esc(row.skipped ? '跳过' : '提交') +
+                                        '</td></tr>';
+                                });
+                                surveyRecentTbody.innerHTML = recentHtml;
+                            }
+                        }
+                    }
+                    try {
+                        renderPurchaseSurvey(survey);
+                    } catch (surveyRenderErr) {
+                        console.error('purchase survey render', surveyRenderErr);
+                        if (surveySentimentTbody) {
+                            surveySentimentTbody.innerHTML =
+                                '<tr><td colspan="3">调研统计渲染失败</td></tr>';
+                        }
+                        if (surveyPriceTbody) {
+                            surveyPriceTbody.innerHTML =
+                                '<tr><td colspan="2">调研统计渲染失败</td></tr>';
+                        }
+                        if (surveyRecentTbody) {
+                            surveyRecentTbody.innerHTML =
+                                '<tr><td colspan="5">调研统计渲染失败</td></tr>';
+                        }
+                    }
                     if (summaryEl) {
                         summaryEl.innerHTML =
                             analyticsPeriodHintHtml(data) +
@@ -2608,6 +2453,16 @@
                     if (productTbody) productTbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                     if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                     if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="14">网络错误</td></tr>';
+                    if (surveyCardsEl) surveyCardsEl.innerHTML = '';
+                    if (surveySentimentTbody) {
+                        surveySentimentTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    }
+                    if (surveyPriceTbody) {
+                        surveyPriceTbody.innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                    }
+                    if (surveyRecentTbody) {
+                        surveyRecentTbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
+                    }
                 });
         }
 
@@ -3412,100 +3267,6 @@
                 });
             }
             el.innerHTML = html;
-        }
-
-        function renderRegistrationFunnelSegmentBlock(title, segmentData, options) {
-            options = options || {};
-            var collapsed = !!options.collapsed;
-            var wrapStart = collapsed
-                ? '<details class="analytics-segment-block analytics-segment-collapsible">'
-                : '<div class="analytics-segment-block">';
-            var titleHtml = collapsed
-                ? '<summary class="analytics-segment-title">' + esc(title) + '</summary>'
-                : '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
-            var html = wrapStart + titleHtml;
-            if (!segmentData || !segmentData.summary) {
-                html += '<p class="hint">暂无数据</p>' + (collapsed ? '</details>' : '</div>');
-                return html;
-            }
-            var s = segmentData.summary;
-            var cards = [
-                { label: '注册用户', val: s.registered },
-                { label: '7日内激活', val: (s.activated_7d || 0) + ' (' + (s.rate_activate_7d_pct || '—') + ')' },
-                { label: '7日内有个税', val: (s.tax_7d || 0) + ' (' + (s.rate_tax_7d_pct || '—') + ')' },
-                { label: '7日内看明细', val: (s.viewed_detail_7d || 0) + ' (' + (s.rate_detail_7d_pct || '—') + ')' }
-            ];
-            html += '<div class="user-data-stats" style="margin-bottom:12px;">';
-            cards.forEach(function (c) {
-                html +=
-                    '<div class="user-data-stat-card"><div class="ud-label">' +
-                    esc(c.label) +
-                    '</div><div class="ud-val">' +
-                    esc(String(c.val != null ? c.val : '—')) +
-                    '</div></div>';
-            });
-            html += '</div>';
-            html +=
-                '<p class="hint" style="margin:0 0 10px;">激活→有个税 ' +
-                esc(s.rate_tax_of_activated_pct || '—') +
-                ' · 有个税→看明细 ' +
-                esc(s.rate_detail_of_tax_pct || '—') +
-                '</p>';
-            var series = Array.isArray(segmentData.series) ? segmentData.series.slice().reverse() : [];
-            html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
-            html +=
-                '<th>注册日</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th></tr></thead><tbody>';
-            if (!series.length) {
-                html += '<tr><td colspan="7">暂无</td></tr>';
-            } else {
-                series.forEach(function (row) {
-                    html += '<tr>';
-                    html += '<td>' + esc(row.date || '—') + '</td>';
-                    html += '<td>' + esc(row.registered) + '</td>';
-                    html += '<td>' + esc(row.activated_7d) + '</td>';
-                    html += '<td>' + esc(row.tax_7d) + '</td>';
-                    html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
-                    html += '<td>' + esc(row.rate_activate_7d_pct || '—') + '</td>';
-                    html += '<td>' + esc(row.rate_tax_7d_pct || '—') + '</td>';
-                    html += '</tr>';
-                });
-            }
-            html += '</tbody></table></div>' + (collapsed ? '</details>' : '</div>');
-            return html;
-        }
-
-        function renderRegistrationFunnel(data) {
-            var el = document.getElementById('analyticsRegistrationFunnel');
-            if (!el) return;
-            if (!data || !data.segments) {
-                el.textContent = '漏斗暂无数据';
-                return;
-            }
-            var html = analyticsPeriodHintHtml(data);
-            html += renderRegistrationFunnelSegmentBlock('自有流量', data.segments.own);
-            el.innerHTML = html;
-        }
-
-        function loadRegistrationFunnel() {
-            var el = document.getElementById('analyticsRegistrationFunnel');
-            if (!el) return;
-            var daysEl = document.getElementById('analyticsFunnelDays');
-            var periodVal = analyticsPeriodVal(daysEl);
-            el.textContent = '漏斗加载中…';
-            adminFetch('api/admin/analytics/registration-funnel?days=' + encodeURIComponent(periodVal))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        el.textContent = j.msg || '漏斗加载失败';
-                        return;
-                    }
-                    renderRegistrationFunnel(j.data);
-                })
-                .catch(function () {
-                    el.textContent = '漏斗加载失败';
-                });
         }
 
         function renderChannelRegistrationFunnel(data) {
@@ -5018,93 +4779,6 @@
                 });
         }
 
-        function renderConversionKpis(data) {
-            var el = document.getElementById('analyticsConversionKpis');
-            if (!el) return;
-            if (!data) {
-                el.textContent = '暂无 KPI 数据';
-                return;
-            }
-            var html = analyticsPeriodHintHtml(data);
-            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">激活后 1 日个税填写率</div><div class="ud-val">' +
-                esc(data.rate_tax_after_activate_7d_pct || '—') +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
-                esc(data.tax_within_7d_after_activate) +
-                ' / ' +
-                esc(data.activated_in_window) +
-                ' 人</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">有个税后 1 日明细查看率</div><div class="ud-val">' +
-                esc(data.rate_detail_after_tax_7d_pct || '—') +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
-                esc(data.viewed_detail_within_7d_after_tax) +
-                ' / ' +
-                esc(data.users_with_first_tax_in_window) +
-                ' 人</div></div>';
-            html += '</div>';
-
-            var actSeries = Array.isArray(data.series_by_activate_day) ? data.series_by_activate_day.slice().reverse() : [];
-            html += '<p class="stat" style="margin:0 0 8px;">按激活日：激活后 1 日个税填写率</p>';
-            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
-            html += '<th>激活日</th><th>当日激活</th><th>1日内有个税</th><th>填写率</th></tr></thead><tbody>';
-            if (!actSeries.length) {
-                html += '<tr><td colspan="4">暂无</td></tr>';
-            } else {
-                actSeries.forEach(function (row) {
-                    html += '<tr>';
-                    html += '<td>' + esc(row.date || '—') + '</td>';
-                    html += '<td>' + esc(row.activated) + '</td>';
-                    html += '<td>' + esc(row.tax_within_7d) + '</td>';
-                    html += '<td>' + esc(row.rate_tax_after_activate_7d_pct || '—') + '</td>';
-                    html += '</tr>';
-                });
-            }
-            html += '</tbody></table></div>';
-
-            var taxSeries = Array.isArray(data.series_by_first_tax_day) ? data.series_by_first_tax_day.slice().reverse() : [];
-            html += '<p class="stat" style="margin:0 0 8px;">按首次有个税日：有个税后 1 日明细查看率</p>';
-            html += '<div class="scroll-x"><table><thead><tr>';
-            html += '<th>有个税日</th><th>当日有个税</th><th>1日内看明细</th><th>查看率</th></tr></thead><tbody>';
-            if (!taxSeries.length) {
-                html += '<tr><td colspan="4">暂无</td></tr>';
-            } else {
-                taxSeries.forEach(function (row) {
-                    html += '<tr>';
-                    html += '<td>' + esc(row.date || '—') + '</td>';
-                    html += '<td>' + esc(row.with_tax) + '</td>';
-                    html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
-                    html += '<td>' + esc(row.rate_detail_after_tax_7d_pct || '—') + '</td>';
-                    html += '</tr>';
-                });
-            }
-            html += '</tbody></table></div>';
-            el.innerHTML = html;
-        }
-
-        function loadConversionKpis() {
-            var el = document.getElementById('analyticsConversionKpis');
-            if (!el) return;
-            var daysEl = document.getElementById('analyticsConversionKpiDays');
-            var periodVal = analyticsPeriodVal(daysEl);
-            el.textContent = 'KPI 加载中…';
-            adminFetch('api/admin/analytics/conversion-kpis?days=' + encodeURIComponent(periodVal))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        el.textContent = j.msg || 'KPI 加载失败';
-                        return;
-                    }
-                    renderConversionKpis(j.data);
-                })
-                .catch(function () {
-                    el.textContent = 'KPI 加载失败';
-                });
-        }
-
         function buildUserDataDetailHtml(username, data) {
             var html = '<div class="user-detail-wrap">';
             html += '<div class="user-detail-title">账号「' + esc(username) + '」数据档案</div>';
@@ -5953,7 +5627,7 @@
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' <button type="button" class="btn-sm btn-block-ip btn-block-ip-act" data-u="' + esc(u.username) + '" data-ip="' + esc(ipLast) + '">封IP</button>'
                             + ' ' + detailBtn
-                            + ' <button type="button" class="btn-sm btn-page btn-user-pricing-abc" data-u="' + esc(u.username) + '">方案</button>'
+                            + ' <button type="button" class="btn-sm btn-page btn-user-price-offer" data-u="' + esc(u.username) + '" title="为该账号设置支付专属价">专属价</button>'
                             + ' <button type="button" class="btn-sm ' +
                             (u.rename_fee_exempt ? 'btn-ban' : 'btn-page') +
                             ' btn-user-rename-exempt" data-u="' +
@@ -5966,6 +5640,19 @@
                                 : '取消后该账号改名不再收取费用') +
                             '">' +
                             (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
+                            '</button>'
+                            + ' <button type="button" class="btn-sm ' +
+                            (u.lizhi_cert_unlocked ? 'btn-ban' : 'btn-page') +
+                            ' btn-user-lizhi-unlock" data-u="' +
+                            esc(u.username) +
+                            '" data-unlocked="' +
+                            (u.lizhi_cert_unlocked ? '1' : '0') +
+                            '" title="' +
+                            (u.lizhi_cert_unlocked
+                                ? '该账号已开通离职证明，点击关闭'
+                                : '为该账号开通离职证明生成权益（免付费）') +
+                            '">' +
+                            (u.lizhi_cert_unlocked ? '关闭离职证明' : '开通离职证明') +
                             '</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         if (u.account_active) {
@@ -5998,6 +5685,11 @@
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
                                 'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已取消改名收费限制">免改名费</span>';
+                        }
+                        if (u.lizhi_cert_unlocked) {
+                            nameChangeBadge +=
+                                '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                                'background:#eff6ff;color:#1d4ed8;font-size:11px;white-space:nowrap;" title="已开通离职证明生成权益">离职证明</span>';
                         }
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
@@ -6087,39 +5779,76 @@
                                 });
                         };
                     });
-                    document.getElementById('userTbody').querySelectorAll('.btn-user-pricing-abc').forEach(function (btn) {
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-price-offer').forEach(function (btn) {
                         btn.onclick = function () {
-                            var name = btn.getAttribute('data-u');
-                            var pick = prompt(
-                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=600永久  B=199小时/328周/398月/600永久  C=仅激活码',
-                                'A'
-                            );
-                            if (pick == null) return;
-                            var abc = String(pick).trim();
+                            var name = btn.getAttribute('data-u') || '';
+                            if (!name) return;
+                            var userInput = document.getElementById('priceOfferUsername');
+                            if (userInput) userInput.value = name;
                             try {
-                                if (typeof abc.normalize === 'function') abc = abc.normalize('NFKC');
-                            } catch (eNfkc) {}
-                            abc = abc.toLowerCase();
-                            if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
-                                alert('请输入 A、B 或 C（大小写均可）');
-                                return;
-                            }
-                            if (
-                                !confirm(
-                                    '确认将「' + name + '」立即设为方案 ' + abc.toUpperCase() + '？'
-                                )
-                            ) {
-                                return;
-                            }
-                            adminFetch('api/admin/user-pricing-abc', {
-                                method: 'POST',
-                                body: JSON.stringify({ username: name, abc: abc })
-                            })
+                                var pricingNav = document.querySelector(
+                                    '.sidebar-nav [data-page="settings"], [data-page="settings"]'
+                                );
+                                if (pricingNav) pricingNav.click();
+                            } catch (eNav) {}
+                            try {
+                                if (typeof showPage === 'function') showPage('settings');
+                            } catch (eShow) {}
+                            adminFetch(
+                                'api/admin/user-price-offer?username=' + encodeURIComponent(name)
+                            )
                                 .then(function (r) {
                                     return r.json();
                                 })
                                 .then(function (d) {
-                                    alert(d.msg || (d.code === 200 ? '已分配' : '失败'));
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '读取失败');
+                                        return;
+                                    }
+                                    var offer = d.data && d.data.offer;
+                                    var skuEl = document.getElementById('priceOfferSku');
+                                    var amountEl = document.getElementById('priceOfferAmount');
+                                    var noteEl = document.getElementById('priceOfferNote');
+                                    var hint = document.getElementById('priceOfferHint');
+                                    if (offer && offer.enabled) {
+                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_600_perm';
+                                        if (amountEl) amountEl.value = offer.amount || '';
+                                        if (noteEl) noteEl.value = offer.note || '';
+                                        if (hint) {
+                                            hint.textContent =
+                                                '当前：' +
+                                                (offer.catalog_label || offer.sku_id) +
+                                                ' ¥' +
+                                                offer.amount;
+                                        }
+                                        var amt = prompt(
+                                            '为「' +
+                                                name +
+                                                '」设置专属价（元）\n当前套餐：' +
+                                                (offer.catalog_label || offer.sku_id) +
+                                                ' ¥' +
+                                                offer.amount +
+                                                '\n直接改金额并确定；取消则只定位到「定价与引导」表单。',
+                                            String(offer.amount || '')
+                                        );
+                                        if (amt == null) return;
+                                        if (amountEl) amountEl.value = String(amt).trim();
+                                        document.getElementById('btnSavePriceOffer') &&
+                                            document.getElementById('btnSavePriceOffer').click();
+                                    } else {
+                                        if (hint) hint.textContent = '暂无专属价，请在表单中设置';
+                                        var amtNew = prompt(
+                                            '为「' +
+                                                name +
+                                                '」设置永久专属价（元），例如 300：\n（也可在「定价与引导」里选套餐后保存）',
+                                            '300'
+                                        );
+                                        if (amtNew == null) return;
+                                        if (skuEl) skuEl.value = 'sku_600_perm';
+                                        if (amountEl) amountEl.value = String(amtNew).trim();
+                                        document.getElementById('btnSavePriceOffer') &&
+                                            document.getElementById('btnSavePriceOffer').click();
+                                    }
                                 })
                                 .catch(function () {
                                     alert('网络错误');
@@ -6151,6 +5880,42 @@
                                             (nextExempt
                                                 ? '已取消改名限制'
                                                 : '已重新加改名限制')
+                                    );
+                                    loadUsers();
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-lizhi-unlock').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            var isUnlocked = btn.getAttribute('data-unlocked') === '1';
+                            var nextUnlocked = !isUnlocked;
+                            var actionText = nextUnlocked
+                                ? '开通离职证明功能（可免付费生成正式证明）'
+                                : '关闭离职证明功能';
+                            if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-lizhi-cert-unlock', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, unlocked: nextUnlocked ? 1 : 0 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '操作失败');
+                                        return;
+                                    }
+                                    alert(
+                                        d.msg ||
+                                            (nextUnlocked
+                                                ? '已开通离职证明'
+                                                : '已关闭离职证明')
                                     );
                                     loadUsers();
                                 })
@@ -7715,12 +7480,6 @@
                         if (qqGroupEl && data.data.qq_group_url != null) {
                             qqGroupEl.value = String(data.data.qq_group_url);
                         }
-                        var xyHideEl = document.getElementById('xianyuHideSalesChannels');
-                        if (xyHideEl && data.data.xianyu_hide_sales_channels != null) {
-                            xyHideEl.value = String(data.data.xianyu_hide_sales_channels);
-                        }
-                        loadAgentExclusiveOwnerOptions();
-                        loadAgentExclusiveChannels();
                     }
                     if (data.code === 200 && data.data && data.data.mine_ui) {
                         var m = data.data.mine_ui;
@@ -7880,6 +7639,188 @@
             });
         }
 
+        (function bindUserPriceOfferForm() {
+            var hint = document.getElementById('priceOfferHint');
+            function setHint(t) {
+                if (hint) hint.textContent = t || '';
+            }
+            var btnSave = document.getElementById('btnSavePriceOffer');
+            if (btnSave) {
+                btnSave.addEventListener('click', function () {
+                    var username = String(
+                        (document.getElementById('priceOfferUsername') || {}).value || ''
+                    ).trim();
+                    var skuId = String(
+                        (document.getElementById('priceOfferSku') || {}).value || ''
+                    ).trim();
+                    var amount = String(
+                        (document.getElementById('priceOfferAmount') || {}).value || ''
+                    ).trim();
+                    var note = String(
+                        (document.getElementById('priceOfferNote') || {}).value || ''
+                    ).trim();
+                    if (!username) {
+                        alert('请填写账号');
+                        return;
+                    }
+                    if (!skuId) {
+                        alert('请选择套餐');
+                        return;
+                    }
+                    if (!amount || !(Number(amount) > 0)) {
+                        alert('请填写有效特价金额');
+                        return;
+                    }
+                    if (
+                        !confirm(
+                            '确认给「' +
+                                username +
+                                '」设置专属价？\n套餐 ' +
+                                skuId +
+                                ' → ¥' +
+                                amount
+                        )
+                    ) {
+                        return;
+                    }
+                    btnSave.disabled = true;
+                    setHint('保存中…');
+                    adminFetch('api/admin/user-price-offer', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            username: username,
+                            sku_id: skuId,
+                            amount: amount,
+                            note: note
+                        })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data.code === 200) {
+                                setHint(
+                                    '已生效：' +
+                                        username +
+                                        ' → ¥' +
+                                        ((data.data &&
+                                            data.data.offer &&
+                                            data.data.offer.amount) ||
+                                            amount)
+                                );
+                                alert(data.msg || '已保存专属价');
+                            } else {
+                                setHint('');
+                                alert(data.msg || '保存失败');
+                            }
+                        })
+                        .catch(function () {
+                            setHint('');
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            btnSave.disabled = false;
+                        });
+                });
+            }
+            var btnLoad = document.getElementById('btnLoadPriceOffer');
+            if (btnLoad) {
+                btnLoad.addEventListener('click', function () {
+                    var username = String(
+                        (document.getElementById('priceOfferUsername') || {}).value || ''
+                    ).trim();
+                    if (!username) {
+                        alert('请填写账号');
+                        return;
+                    }
+                    btnLoad.disabled = true;
+                    setHint('查询中…');
+                    adminFetch(
+                        'api/admin/user-price-offer?username=' + encodeURIComponent(username)
+                    )
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data.code !== 200) {
+                                setHint('');
+                                alert(data.msg || '查询失败');
+                                return;
+                            }
+                            var offer = data.data && data.data.offer;
+                            var skuEl = document.getElementById('priceOfferSku');
+                            var amountEl = document.getElementById('priceOfferAmount');
+                            var noteEl = document.getElementById('priceOfferNote');
+                            if (offer && offer.enabled) {
+                                if (skuEl) skuEl.value = offer.sku_id || skuEl.value;
+                                if (amountEl) amountEl.value = offer.amount || '';
+                                if (noteEl) noteEl.value = offer.note || '';
+                                setHint(
+                                    '当前启用：' +
+                                        (offer.catalog_label || offer.sku_id) +
+                                        ' ¥' +
+                                        offer.amount
+                                );
+                            } else if (offer) {
+                                if (skuEl) skuEl.value = offer.sku_id || skuEl.value;
+                                if (amountEl) amountEl.value = offer.amount || '';
+                                if (noteEl) noteEl.value = offer.note || '';
+                                setHint('已取消（历史记录仍在）');
+                            } else {
+                                setHint('暂无专属报价');
+                            }
+                        })
+                        .catch(function () {
+                            setHint('');
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            btnLoad.disabled = false;
+                        });
+                });
+            }
+            var btnClear = document.getElementById('btnClearPriceOffer');
+            if (btnClear) {
+                btnClear.addEventListener('click', function () {
+                    var username = String(
+                        (document.getElementById('priceOfferUsername') || {}).value || ''
+                    ).trim();
+                    if (!username) {
+                        alert('请填写账号');
+                        return;
+                    }
+                    if (!confirm('确认取消「' + username + '」的专属报价？将恢复普通 A/B 定价。')) {
+                        return;
+                    }
+                    btnClear.disabled = true;
+                    setHint('取消中…');
+                    adminFetch('api/admin/user-price-offer/clear', {
+                        method: 'POST',
+                        body: JSON.stringify({ username: username })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data.code === 200) {
+                                setHint(data.msg || '已取消');
+                                alert(data.msg || '已取消专属价');
+                            } else {
+                                setHint('');
+                                alert(data.msg || '取消失败');
+                            }
+                        })
+                        .catch(function () {
+                            setHint('');
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            btnClear.disabled = false;
+                        });
+                });
+            }
+        })();
+
         function updateLandingAbSplitHint() {
             /* 落地页占比已并入支付页 A/B/C，保留空函数避免旧引用报错 */
         }
@@ -7960,7 +7901,6 @@
                     xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
                     qq_add_url: (document.getElementById('qqAddUrl') && document.getElementById('qqAddUrl').value.trim()) || '',
                     qq_group_url: (document.getElementById('qqGroupUrl') && document.getElementById('qqGroupUrl').value.trim()) || '',
-                    xianyu_hide_sales_channels: document.getElementById('xianyuHideSalesChannels').value.trim(),
                     mine_ui: (function () {
                         var ui = {
                             install_ios_video: document.getElementById('img_install_ios_video').value.trim(),
@@ -8139,8 +8079,6 @@
 
         bindMineUiUploads();
         bindInstallPackageUploads();
-        bindAgentPromoLinksUi();
-        bindAgentExclusiveChannelsUi();
         loadAdminSettings();
 
         var btnRefreshServerMonitor = document.getElementById('btnRefreshServerMonitor');
@@ -8278,18 +8216,6 @@
                 loadAnalyticsPricingAb();
             });
         }
-        var btnRefreshRegistrationFunnel = document.getElementById('btnRefreshRegistrationFunnel');
-        if (btnRefreshRegistrationFunnel) {
-            btnRefreshRegistrationFunnel.addEventListener('click', function () {
-                loadRegistrationFunnel();
-            });
-        }
-        var analyticsFunnelDays = document.getElementById('analyticsFunnelDays');
-        if (analyticsFunnelDays) {
-            analyticsFunnelDays.addEventListener('change', function () {
-                loadRegistrationFunnel();
-            });
-        }
         var btnRefreshChannelFunnel = document.getElementById('btnRefreshChannelFunnel');
         if (btnRefreshChannelFunnel) {
             btnRefreshChannelFunnel.onclick = function () {
@@ -8372,18 +8298,6 @@
         if (analyticsPurchaseDays) {
             analyticsPurchaseDays.addEventListener('change', function () {
                 loadAnalyticsPurchasePage();
-            });
-        }
-        var btnRefreshConversionKpis = document.getElementById('btnRefreshConversionKpis');
-        if (btnRefreshConversionKpis) {
-            btnRefreshConversionKpis.onclick = function () {
-                loadConversionKpis();
-            };
-        }
-        var analyticsConversionKpiDays = document.getElementById('analyticsConversionKpiDays');
-        if (analyticsConversionKpiDays) {
-            analyticsConversionKpiDays.addEventListener('change', function () {
-                loadConversionKpis();
             });
         }
         function bulkMsgAudienceLabel(audience) {

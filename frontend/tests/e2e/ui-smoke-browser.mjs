@@ -180,7 +180,7 @@ async function main() {
   }
   log('ok tax edit cards expand');
 
-  // 6) 支付页离开 → 自动站内信
+  // 6) 开通类自动站内信已关闭：支付页离开后消息页不应出现开通广告
   await page.goto(`${SITE_URL}/purchase.html`, { waitUntil: 'domcontentloaded' });
   await page.goto(`${SITE_URL}/shouye.html`, { waitUntil: 'domcontentloaded' });
   const trackRes = await apiPost(
@@ -192,13 +192,13 @@ async function main() {
   await new Promise((r) => setTimeout(r, 1500));
 
   await page.goto(`${SITE_URL}/message.html`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.message-item', { timeout: 20000 });
+  await page.waitForSelector('.message-list, .empty-tip, .message-empty, body', { timeout: 20000 });
   const titles = await page.locator('.message-content-title').allTextContents();
   const hasAuto = titles.some(
     (t) => t.includes('税务记录已生成') || t.includes('开通方案仍在等您')
   );
-  if (!hasAuto) fail('auto inbox message not found');
-  log('ok auto inbox message');
+  if (hasAuto) fail('activation auto inbox message should be disabled');
+  log('ok auto inbox promo disabled');
 
   await browser.close();
   log('ALL PASSED');

@@ -1,31 +1,37 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""离职证明 PDF：矢量正文（PyMuPDF 内置 china-s CID）+ 透明印章 PNG。
+"""离职证明 PDF：宋体排版（Noto Serif SC）整页栅格 + 透明公章叠盖。
 
-参考方向（GitHub）：
-- certificate-generator / pdf-lib：正文为真实矢量字，不整页栅格化
-- file_stamp：印章以透明 PNG 叠加，不压扁正文层
-
-字体选用 china-s（简体宋体 CID）：不嵌入整包 Noto，文件小、中文可复制、字形正确。
+视觉对齐参考样例：宋体正文/粗宋标题、填空下划线；公章红圈 + 弧形单位名 + 五角星。
 """
 from __future__ import print_function
 
 import json
 import math
 import os
+import re
 import sys
 import tempfile
 
 import fitz
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ASSETS = os.path.join(HERE, "..", "assets", "sbdy")
+NOTO_SERIF_SC = os.path.join(ASSETS, "NotoSerifCJKsc-Regular.otf")
+NOTO_SERIF_BOLD_TTC = "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc"
+NOTO_SERIF_REG_TTC = "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc"
 NOTO_SANS_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-PAGE_W, PAGE_H = 595.32, 841.92  # A4 pt
-MARGIN_L = 72.0
-MARGIN_R = 72.0
-CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R
-BODY_FONT = "china-s"  # 简体宋体 CID，不嵌入大字体文件
+
+# A4 @ 2x pt（72dpi→144dpi），清晰且体积可控
+PAGE_W_PT, PAGE_H_PT = 595.32, 841.92
+SCALE = 2.0
+PAGE_W = int(round(PAGE_W_PT * SCALE))
+PAGE_H = int(round(PAGE_H_PT * SCALE))
+MARGIN_L = int(72 * SCALE)
+MARGIN_R = int(72 * SCALE)
+SEAL_RED = (206, 16, 22, 255)
+INK = (15, 15, 15, 255)
 
 
 def _first_existing(*paths):
@@ -35,19 +41,18 @@ def _first_existing(*paths):
     return None
 
 
-def font_path_seal():
-    return _first_existing(
-        "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc",
-        os.path.join(HERE, "..", "assets", "sbdy", "NotoSerifCJKsc-Regular.otf"),
-        NOTO_SANS_BOLD,
-        "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
-    )
+def font_path_serif_reg():
+    return _first_existing(NOTO_SERIF_SC, NOTO_SERIF_REG_TTC, NOTO_SERIF_BOLD_TTC)
+
+
+def font_path_serif_bold():
+    return _first_existing(NOTO_SERIF_BOLD_TTC, NOTO_SERIF_SC, NOTO_SANS_BOLD)
 
 
 def load_pil_font(path, px, prefer_index=2):
     if not path:
         return ImageFont.load_default()
-    for idx in (prefer_index, 0, 1, 3):
+    for idx in (prefer_index, 0, 1, 3, 4):
         try:
             return ImageFont.truetype(path, size=px, index=idx)
         except Exception:
@@ -56,6 +61,21 @@ def load_pil_font(path, px, prefer_index=2):
         return ImageFont.truetype(path, size=px)
     except Exception:
         return ImageFont.load_default()
+
+
+def body_font(px):
+    # SC Regular：.otf 无 index；TTC 用 SC=2
+    path = font_path_serif_reg()
+    if path and path.endswith(".otf"):
+        return load_pil_font(path, px, prefer_index=0)
+    return load_pil_font(path, px, prefer_index=2)
+
+
+def bold_font(px):
+    path = font_path_serif_bold()
+    if path and path.endswith(".otf"):
+        return load_pil_font(path, px, prefer_index=0)
+    return load_pil_font(path, px, prefer_index=2)  # SC Bold
 
 
 def _draw_pentagram(draw, cx, cy, outer_r, inner_r, fill):
@@ -68,42 +88,41 @@ def _draw_pentagram(draw, cx, cy, outer_r, inner_r, fill):
 
 
 def make_seal(company):
-    """生成接近常见公章样式的圆形印章 PNG（正圆裁切）。"""
-    SS = 1600
-    RED = (200, 16, 21, 255)
+    """圆形公章：粗红圈 + 上弧单位名（粗宋）+ 中心五角星。"""
+    SS = 1800
+    RED = SEAL_RED
     seal = Image.new("RGBA", (SS, SS), (0, 0, 0, 0))
     d = ImageDraw.Draw(seal)
     c = SS / 2.0
 
-    # 常规企业公章：单层较粗外圆
-    R = SS * 0.46
-    ring_w = max(28, int(SS * 0.028))
+    R = SS * 0.455
+    ring_w = max(38, int(SS * 0.040))
 
     chars = list((company or "专用章").strip()) or list("专用章")
-    if len(chars) > 20:
-        chars = chars[:20]
+    if len(chars) > 22:
+        chars = chars[:22]
     n = len(chars)
 
     if n <= 4:
-        arc_deg = 72.0 + n * 6.0
+        arc_deg = 90.0 + n * 10.0
     elif n <= 8:
-        arc_deg = 120.0 + (n - 4) * 7.0
-    elif n <= 14:
-        arc_deg = 155.0 + (n - 8) * 6.0
+        arc_deg = 130.0 + (n - 4) * 10.0
+    elif n <= 12:
+        arc_deg = 175.0 + (n - 8) * 8.0
     else:
-        arc_deg = min(210.0, 190.0 + (n - 14) * 2.5)
+        arc_deg = min(230.0, 207.0 + (n - 12) * 3.5)
 
-    # 文字必须落在圆环内侧，留出环宽 + 字高余量
-    font_size = 90
-    arc_len = math.radians(arc_deg) * (R - ring_w - font_size * 0.55)
-    font_size = int(max(56, min(arc_len / max(n, 1) * 0.85, 108)))
-    font = load_pil_font(font_path_seal(), font_size, prefer_index=0)
-    text_r = R - ring_w - font_size * 0.72
+    text_band = R - ring_w
+    arc_len = math.radians(arc_deg) * (text_band * 0.90)
+    font_size = int(max(78, min(arc_len / max(n, 1) * 0.98, 175)))
+    font_size = int(min(font_size, text_band * 0.40))
+    font = bold_font(font_size)
+    text_r = R - ring_w - font_size * 0.55
 
     for i, ch in enumerate(chars):
         ang_deg = 90.0 + arc_deg / 2.0 - (arc_deg * (i + 0.5) / n)
         ang = math.radians(ang_deg)
-        pad = font_size * 3
+        pad = int(font_size * 3.4)
         g = Image.new("RGBA", (pad, pad), (0, 0, 0, 0))
         gd = ImageDraw.Draw(g)
         bb = gd.textbbox((0, 0), ch, font=font)
@@ -118,21 +137,13 @@ def make_seal(company):
         seal.alpha_composite(g, (int(round(x - pad / 2.0)), int(round(y - pad / 2.0))))
 
     d = ImageDraw.Draw(seal)
-    _draw_pentagram(d, c, c, SS * 0.100, SS * 0.040, RED)
-
-    foot = "专用章"
-    foot_font = load_pil_font(font_path_seal(), max(46, int(font_size * 0.55)), prefer_index=0)
-    fbb = d.textbbox((0, 0), foot, font=foot_font)
-    fw, fh = fbb[2] - fbb[0], fbb[3] - fbb[1]
-    d.text(
-        (c - fw / 2 - fbb[0], c + SS * 0.200 - fh / 2 - fbb[1]),
-        foot,
-        font=foot_font,
-        fill=RED,
-    )
-
-    # 最后只画一次外圆，避免二次描边产生“双环”错觉
+    star_outer = SS * 0.120
+    star_inner = star_outer * 0.40
+    _draw_pentagram(d, c, c, star_outer, star_inner, RED)
     d.ellipse([c - R, c - R, c + R, c + R], outline=RED, width=ring_w)
+
+    soft = seal.filter(ImageFilter.GaussianBlur(radius=1.1))
+    mixed = Image.blend(soft, seal, alpha=0.78)
 
     pad_px = int(ring_w * 0.55)
     box = [
@@ -141,23 +152,21 @@ def make_seal(company):
         int(c + R + pad_px),
         int(c + R + pad_px),
     ]
-    cropped = seal.crop(box)
+    cropped = mixed.crop(box)
     side = cropped.size[0]
-    # 圆形蒙版略大于外环，避免裁切出双边缘
     mask = Image.new("L", (side, side), 0)
     md = ImageDraw.Draw(mask)
     md.ellipse([0, 0, side - 1, side - 1], fill=255)
     out = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     out.paste(cropped, (0, 0), mask)
-    return out.resize((720, 720), Image.Resampling.LANCZOS)
+    return out.resize((760, 760), Image.Resampling.LANCZOS)
 
 
 def make_watermark_png():
-    """单张斜向水印图，重复盖印，避免嵌入大字体。"""
     W, H = 420, 220
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    font = load_pil_font(font_path_seal(), 54, prefer_index=2)
+    font = bold_font(54)
     text = "演示样例"
     bb = d.textbbox((0, 0), text, font=font)
     tw, th = bb[2] - bb[0], bb[3] - bb[1]
@@ -165,40 +174,41 @@ def make_watermark_png():
     return img.rotate(30, resample=Image.Resampling.BICUBIC, expand=True)
 
 
-class LayoutFont(object):
-    def __init__(self, fontname):
-        self.name = fontname
-
-    def width(self, text, size):
-        try:
-            return float(fitz.get_text_length(text or "", fontname=self.name, fontsize=size))
-        except Exception:
-            return len(text or "") * size * 0.55
+def text_width(font, text):
+    tmp = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
+    bb = tmp.textbbox((0, 0), text or "", font=font)
+    return max(0, bb[2] - bb[0])
 
 
-def draw_run(page, x, y, text, font, size, underline=False, color=(0, 0, 0)):
-    text = text or ""
-    if not text:
-        return x
-    page.insert_text(
-        fitz.Point(x, y),
-        text,
-        fontname=font.name,
-        fontsize=size,
-        color=color,
-    )
-    w = font.width(text, size)
-    if underline:
-        uy = y + max(1.6, size * 0.18)
-        page.draw_line(fitz.Point(x, uy), fitz.Point(x + w, uy), color=color, width=0.75)
-    return x + w
+def parse_ymd(raw):
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    m = re.search(r"(\d{4})\s*[年/\-.]\s*(\d{1,2})\s*[月/\-.]\s*(\d{1,2})", s)
+    if not m:
+        return None
+    return m.group(1), str(int(m.group(2))), str(int(m.group(3)))
 
 
-def wrap_company_lines(company, font, size, max_w):
+def blank_or(value, width=6):
+    v = str(value or "").strip()
+    if v:
+        return v
+    return "_" * max(2, int(width))
+
+
+def ymd_parts(raw, fallback_width=4):
+    ymd = parse_ymd(raw)
+    if ymd:
+        y, m, d = ymd
+        return [(y, True), ("年", False), (m, True), ("月", False), (d, True), ("日", False)]
+    return [(blank_or(raw, fallback_width), True)]
+
+
+def wrap_company_lines(company, font, max_w):
     company = (company or "").strip()
-    if font.width(company, size) <= max_w:
+    if text_width(font, company) <= max_w:
         return [company]
-    # 优先在常见公司名边界断开，避免「顾|问」这类硬切
     prefer_cuts = []
     for token in ("分公司", "有限公司", "股份有限公司", "有限责任公司", "公司"):
         idx = company.find(token)
@@ -209,13 +219,13 @@ def wrap_company_lines(company, font, size, max_w):
             idx = company.find(token, idx + 1)
     for cut in sorted(set(prefer_cuts)):
         a, b = company[:cut], company[cut:]
-        if font.width(a, size) <= max_w and font.width(b, size) <= max_w:
+        if text_width(font, a) <= max_w and text_width(font, b) <= max_w:
             return [a, b]
     best = None
     n = len(company)
     for i in range(max(1, n // 3), min(n - 1, (2 * n) // 3 + 1)):
         a, b = company[:i], company[i:]
-        wa, wb = font.width(a, size), font.width(b, size)
+        wa, wb = text_width(font, a), text_width(font, b)
         if wa <= max_w and wb <= max_w:
             score = abs(wa - wb)
             if best is None or score < best[0]:
@@ -226,52 +236,62 @@ def wrap_company_lines(company, font, size, max_w):
     return [company[:mid], company[mid:]]
 
 
-def fit_fontsize(text, font, max_w, start, min_size):
-    size = float(start)
-    while size > min_size and font.width(text, size) > max_w:
-        size -= 0.5
-    return size
+class PagePainter(object):
+    def __init__(self, img):
+        self.img = img
+        self.draw = ImageDraw.Draw(img)
 
-
-def draw_parts_wrap(page, start_x, y, parts, font, size, left, right, leading):
-    """按片段顺序绘制，超出右边界自动换行；支持下划线。"""
-    x = float(start_x)
-    for text, underline in parts:
+    def draw_run(self, x, y, text, font, underline=False):
         text = text or ""
-        i = 0
-        while i < len(text):
-            remain = right - x
-            if remain < size * 0.55:
-                y += leading
-                x = float(left)
+        if not text:
+            return x
+        self.draw.text((x, y), text, font=font, fill=INK)
+        w = text_width(font, text)
+        if underline:
+            # 基线下方横线（对齐参考填空样式）
+            ascent = font.getmetrics()[0] if hasattr(font, "getmetrics") else int(font.size * 0.8)
+            uy = y + ascent + max(2, int(font.size * 0.08))
+            self.draw.line([(x, uy), (x + w, uy)], fill=INK, width=max(2, int(SCALE)))
+        return x + w
+
+    def draw_parts_wrap(self, start_x, y, parts, font, left, right, leading):
+        x = float(start_x)
+        size = font.size
+        for text, underline in parts:
+            text = text or ""
+            i = 0
+            while i < len(text):
                 remain = right - x
-            lo, hi = 1, len(text) - i
-            best = 0
-            while lo <= hi:
-                mid = (lo + hi) // 2
-                chunk = text[i : i + mid]
-                if font.width(chunk, size) <= remain:
-                    best = mid
-                    lo = mid + 1
-                else:
-                    hi = mid - 1
-            if best <= 0:
-                # 单字也放不下时强制换行再试
-                if x > left + 0.5:
+                if remain < size * 0.55:
                     y += leading
                     x = float(left)
-                    continue
-                best = 1
-            chunk = text[i : i + best]
-            x = draw_run(page, x, y, chunk, font, size, underline=underline)
-            i += best
-            if i < len(text):
-                y += leading
-                x = float(left)
-    return x, y
+                    remain = right - x
+                lo, hi = 1, len(text) - i
+                best = 0
+                while lo <= hi:
+                    mid = (lo + hi) // 2
+                    chunk = text[i : i + mid]
+                    if text_width(font, chunk) <= remain:
+                        best = mid
+                        lo = mid + 1
+                    else:
+                        hi = mid - 1
+                if best <= 0:
+                    if x > left + 0.5:
+                        y += leading
+                        x = float(left)
+                        continue
+                    best = 1
+                chunk = text[i : i + best]
+                x = self.draw_run(x, y, chunk, font, underline=underline)
+                i += best
+                if i < len(text):
+                    y += leading
+                    x = float(left)
+        return x, y
 
 
-def render(payload, out_pdf):
+def render_page_image(payload):
     payload = payload or {}
     demo_value = payload.get("demo", True)
     is_demo = demo_value is not False and str(demo_value).lower() not in ("0", "false", "no")
@@ -284,212 +304,197 @@ def render(payload, out_pdf):
         str(payload.get("company_name") or payload.get("company") or "").strip()
         or "北京外企市场营销顾问有限公司西安分公司"
     )
-    position = (
-        str(payload.get("position") or payload.get("job_title") or "").strip() or "职员"
-    )
-    note = str(payload.get("note") or "").strip() or "电子生成件，仅供个人留存，非用人单位出具。请勿用于入职、签证等正式用途。"
+    department = str(payload.get("department") or payload.get("dept") or "").strip() or ""
+    position = str(payload.get("position") or payload.get("job_title") or "").strip() or "职员"
+    note = str(payload.get("note") or "").strip()
 
-    doc = fitz.open()
-    page = doc.new_page(width=PAGE_W, height=PAGE_H)
-    page.insert_font(fontname=BODY_FONT)
-    font = LayoutFont(BODY_FONT)
-    try:
-        doc.set_metadata(
-            {
-                "title": "离职证明（演示样例）" if is_demo else "离职证明",
-                "author": "演示系统" if is_demo else "",
-                "subject": "非正式离职证明 · 仅供个人留存",
-                "creator": "lizhi_render_pdf",
-            }
-        )
-    except Exception:
-        pass
+    img = Image.new("RGBA", (PAGE_W, PAGE_H), (255, 255, 255, 255))
+    painter = PagePainter(img)
 
-    # 未付费版重复盖「演示样例」水印；付费权益版不绘制该水印。
     if is_demo:
         wm = make_watermark_png()
-        wm_tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        wm_path = wm_tmp.name
-        wm_tmp.close()
-        try:
-            wm.save(wm_path, optimize=True)
-            ww, hh = wm.size
-            target_w = 150.0
-            target_h = hh * (target_w / float(ww))
-            for row in range(3):
-                for col in range(2):
-                    x0 = 55 + col * 250
-                    y0 = 170 + row * 190
-                    page.insert_image(
-                        fitz.Rect(x0, y0, x0 + target_w, y0 + target_h),
-                        filename=wm_path,
-                        keep_proportion=True,
-                        overlay=False,
-                    )
-        finally:
-            try:
-                os.remove(wm_path)
-            except Exception:
-                pass
+        ww, hh = wm.size
+        target_w = int(150 * SCALE)
+        target_h = int(hh * (target_w / float(ww)))
+        wm_r = wm.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        for row in range(3):
+            for col in range(2):
+                x0 = int(55 * SCALE) + col * int(250 * SCALE)
+                y0 = int(170 * SCALE) + row * int(190 * SCALE)
+                img.alpha_composite(wm_r, (x0, y0))
 
-    # 标题
+    title_font = bold_font(int(26 * SCALE))
+    body_f = body_font(int(13.5 * SCALE))
+    sign_f = body_font(int(12.5 * SCALE))
+    note_f = body_font(int(10 * SCALE))
+    demo_f = body_font(int(9.5 * SCALE))
+
     title = "离职证明"
-    title_size = 22
-    tw_title = font.width(title, title_size)
-    page.insert_text(
-        fitz.Point((PAGE_W - tw_title) / 2.0, 96),
-        title,
-        fontname=BODY_FONT,
-        fontsize=title_size,
-        color=(0, 0, 0),
-    )
+    tw = text_width(title_font, title)
+    painter.draw_run((PAGE_W - tw) / 2.0, int(72 * SCALE), title, title_font)
 
-    # 正文
-    body = 13.5
-    leading = 28.0
-    y = 168.0
-    indent = 28.0
+    leading = int(30 * SCALE)
+    y = int(150 * SCALE)
+    indent = int(28 * SCALE)
+    left = MARGIN_L + int(6 * SCALE)
+    right = PAGE_W - MARGIN_R
+    dept_show = blank_or(department, 6)
+    pos_show = blank_or(position, 6)
 
-    x = MARGIN_L + indent
-    x = draw_run(page, x, y, "兹证明", font, body)
-    x = draw_run(page, x, y, "  ", font, body)
-    x = draw_run(page, x, y, name, font, body, underline=True)
-    x = draw_run(page, x, y, "  ", font, body)
-    x = draw_run(page, x, y, "（身份证号码：", font, body)
-    id_size = fit_fontsize(
-        id_number,
-        font,
-        CONTENT_W - (x - MARGIN_L) - font.width(" ）自", body) - 8,
-        body,
-        10,
-    )
-    x = draw_run(page, x, y, id_number, font, id_size, underline=True)
-    draw_run(page, x, y, " ）自", font, body)
-
-    y += leading
-    x, y = draw_parts_wrap(
-        page,
-        MARGIN_L + 6,
+    x, y = painter.draw_parts_wrap(
+        MARGIN_L + indent,
         y,
         [
-            (hire_date, True),
-            ("  起在", False),
-            (company, True),
-            ("担任", False),
-            (position, True),
-            ("，", False),
+            ("兹证明：", False),
+            (name, True),
+            ("  身份证号码：", False),
+            (id_number, True),
         ],
-        font,
-        body,
-        MARGIN_L + 6,
-        PAGE_W - MARGIN_R,
+        body_f,
+        left,
+        right,
         leading,
     )
 
     y += leading
-    x, y = draw_parts_wrap(
-        page,
-        MARGIN_L + 6,
-        y,
+    body_parts = [("于", False)]
+    body_parts.extend(ymd_parts(hire_date))
+    body_parts.extend(
         [
-            ("至", False),
-            ("  ", False),
-            (leave_date, True),
-            ("  与我司劳动关系解除。", False),
-        ],
-        font,
-        body,
-        MARGIN_L + 6,
-        PAGE_W - MARGIN_R,
+            ("入职我单位，担任", False),
+            (dept_show, True),
+            ("部门", False),
+            (pos_show, True),
+            ("岗位职务。现因个人原因提出离职，已于", False),
+        ]
+    )
+    body_parts.extend(ymd_parts(leave_date))
+    body_parts.append(
+        (
+            "正式办理完所有离职手续，工作交接、薪资福利、社保公积金等均已结清，双方劳动关系正式解除，无任何劳动争议及经济纠纷。",
+            False,
+        )
+    )
+    x, y = painter.draw_parts_wrap(
+        MARGIN_L + indent,
+        y,
+        body_parts,
+        body_f,
+        left,
+        right,
         leading,
     )
 
-    y += leading + 6
-    draw_run(page, MARGIN_L + indent, y, "特此证明。", font, body)
+    y += leading + int(10 * SCALE)
+    painter.draw_run(MARGIN_L + indent, y, "特此证明！", body_f)
 
-    # 落款：公司名 → 印章 → 日期
-    seal_pt = 128.0
-    right_pad = 56.0
+    seal_pt = int(156 * SCALE)
+    right_pad = int(42 * SCALE)
     seal_x = PAGE_W - right_pad - seal_pt
-    seal_y = max(y + 72.0, 300.0)
+    seal_y = max(y + int(50 * SCALE), int(400 * SCALE))
 
-    company_size = 12.5
-    company_max_w = seal_pt + 40
-    wrap_limit = company_max_w * 1.15
-    company_lines = wrap_company_lines(company, font, company_size, wrap_limit)
-    while company_size > 9.5 and any(font.width(line, company_size) > wrap_limit for line in company_lines):
-        company_size -= 0.5
-        company_lines = wrap_company_lines(company, font, company_size, wrap_limit)
+    sign_size = int(12.5 * SCALE)
+    sign_f = body_font(sign_size)
+    sign_label = "单位名称（盖章）："
+    wrap_limit = seal_pt + int(36 * SCALE)
+    company_lines = wrap_company_lines(company, sign_f, wrap_limit)
+    while sign_size > int(9.5 * SCALE) and any(
+        text_width(sign_f, line) > wrap_limit for line in company_lines
+    ):
+        sign_size -= int(0.5 * SCALE) or 1
+        sign_f = body_font(sign_size)
+        company_lines = wrap_company_lines(company, sign_f, wrap_limit)
 
-    line_gap = company_size + 4
-    company_block_h = line_gap * len(company_lines)
-    company_top = seal_y - 14 - company_block_h
+    line_gap = sign_size + int(5 * SCALE)
+    sign_top = seal_y + int(26 * SCALE)
+    label_w = text_width(sign_f, sign_label)
+    sign_x0 = min(seal_x - int(4 * SCALE), PAGE_W - right_pad - max(label_w + int(36 * SCALE), wrap_limit))
+    painter.draw_run(sign_x0, sign_top, sign_label, sign_f)
+
+    company_top = sign_top + line_gap + int(2 * SCALE)
     for i, line in enumerate(company_lines):
-        lw = font.width(line, company_size)
+        lw = text_width(sign_f, line)
         lx = min(PAGE_W - right_pad - lw, seal_x + (seal_pt - lw) / 2.0)
-        page.insert_text(
-            fitz.Point(lx, company_top + (i + 1) * line_gap - 2),
-            line,
-            fontname=BODY_FONT,
-            fontsize=company_size,
-            color=(0, 0, 0),
+        if i == 0 and len(company_lines) == 1:
+            lx = max(sign_x0, min(lx, seal_x + (seal_pt - lw) / 2.0))
+        painter.draw_run(lx, company_top + i * line_gap, line, sign_f, underline=True)
+
+    date_size = sign_size
+    date_f = body_font(date_size)
+    date_y = company_top + len(company_lines) * line_gap + int(14 * SCALE)
+    date_x = sign_x0
+    painter.draw_run(date_x, date_y, "日期：", date_f)
+    dx = date_x + text_width(date_f, "日期：")
+    issue_ymd = parse_ymd(issue_date)
+    if issue_ymd:
+        for text, ul in [
+            (issue_ymd[0], True),
+            ("年", False),
+            (issue_ymd[1], True),
+            ("月", False),
+            (issue_ymd[2], True),
+            ("日", False),
+        ]:
+            dx = painter.draw_run(dx, date_y, text, date_f, underline=ul)
+    else:
+        painter.draw_run(dx, date_y, blank_or(issue_date, 10), date_f, underline=True)
+
+    # 公章叠盖单位名与日期
+    seal_img = make_seal(company)
+    seal_r = seal_img.resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
+    sa = seal_r.split()[-1].point(lambda v: int(v * 0.90))
+    seal_r.putalpha(sa)
+    img.alpha_composite(seal_r, (int(seal_x), int(seal_y)))
+
+    note_y = max(date_y + int(70 * SCALE), PAGE_H - int(96 * SCALE))
+    if note:
+        painter.draw_run(MARGIN_L - int(12 * SCALE), note_y, note, note_f)
+        note_y += int(36 * SCALE)
+    if is_demo:
+        painter.draw_run(
+            MARGIN_L - int(12 * SCALE),
+            note_y,
+            "（演示样例，非正式离职证明）",
+            demo_f,
         )
 
-    seal_img = make_seal(company)
-    sa = seal_img.split()[-1].point(lambda v: int(v * 0.92))
-    seal_img.putalpha(sa)
+    return img.convert("RGB"), is_demo
+
+
+def render(payload, out_pdf):
+    page_img, is_demo = render_page_image(payload)
+    preview_path = os.path.splitext(out_pdf)[0] + ".preview.png"
+    try:
+        page_img.save(preview_path, format="PNG", optimize=True)
+    except Exception as e:
+        print("preview_warn:" + str(e), file=sys.stderr)
+
     tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     tmp_path = tmp.name
     tmp.close()
     try:
-        seal_img.save(tmp_path, optimize=True)
-        seal_rect = fitz.Rect(seal_x, seal_y, seal_x + seal_pt, seal_y + seal_pt)
-        page.insert_image(seal_rect, filename=tmp_path, keep_proportion=True, overlay=True)
+        page_img.save(tmp_path, format="PNG", optimize=True)
+        doc = fitz.open()
+        page = doc.new_page(width=PAGE_W_PT, height=PAGE_H_PT)
+        page.insert_image(page.rect, filename=tmp_path, keep_proportion=False)
+        try:
+            doc.set_metadata(
+                {
+                    "title": "离职证明（演示样例）" if is_demo else "离职证明",
+                    "author": "演示系统" if is_demo else "",
+                    "subject": "离职证明（演示样例）" if is_demo else "离职证明",
+                    "creator": "lizhi_render_pdf",
+                }
+            )
+        except Exception:
+            pass
+        doc.save(out_pdf, garbage=4, deflate=True, deflate_images=True)
+        doc.close()
     finally:
         try:
             os.remove(tmp_path)
         except Exception:
             pass
-
-    date_size = 12.5
-    dw = font.width(issue_date, date_size)
-    dx = min(PAGE_W - right_pad - dw, seal_x + (seal_pt - dw) / 2.0)
-    date_y = seal_y + seal_pt + 22
-    page.insert_text(
-        fitz.Point(dx, date_y),
-        issue_date,
-        fontname=BODY_FONT,
-        fontsize=date_size,
-        color=(0, 0, 0),
-    )
-
-    note_y = max(date_y + 48, PAGE_H - 96)
-    page.insert_textbox(
-        fitz.Rect(MARGIN_L - 12, note_y, PAGE_W - MARGIN_R + 12, note_y + 36),
-        note,
-        fontname=BODY_FONT,
-        fontsize=10,
-        color=(0.15, 0.15, 0.15),
-        align=fitz.TEXT_ALIGN_LEFT,
-    )
-    if is_demo:
-        page.insert_text(
-            fitz.Point(MARGIN_L - 12, note_y + 42),
-            "（演示样例，非正式离职证明）",
-            fontname=BODY_FONT,
-            fontsize=9.5,
-            color=(0.25, 0.25, 0.25),
-        )
-
-    doc.save(out_pdf, garbage=4, deflate=True, deflate_images=True)
-    # 预览图：安卓 WebView 无法在 iframe 里渲染 blob PDF，前端用 PNG 预览/分享
-    try:
-        preview_path = os.path.splitext(out_pdf)[0] + ".preview.png"
-        pix = doc[0].get_pixmap(matrix=fitz.Matrix(2.0, 2.0), alpha=False)
-        pix.save(preview_path)
-    except Exception as e:
-        print("preview_warn:" + str(e), file=sys.stderr)
-    doc.close()
 
 
 def main():

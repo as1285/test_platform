@@ -1,0 +1,10 @@
+# 开发模式：挂载已构建的 frontend/site，改完 npm run build 后刷新浏览器即可，无需 sync / 重建镜像。
+# 一次性启用：
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d frontend
+# 日常改代码：
+#   cd frontend && npm run build
+#   （或 ./scripts/sync-frontend.sh 若未用本文件）
+services:
+  frontend:
+    volumes:
+      - ./frontend/site:/usr/share/nginx/html:ro

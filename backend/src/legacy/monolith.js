@@ -41,6 +41,7 @@ const {
 } = require('./inviteReward');
 const { createPricingAb } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
+const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql
@@ -508,8 +509,9 @@ const BULK_MSG_AUDIENCE_SET = {
   inactive_visited_purchase: true,
   inactive_purchase_no_pay: true
 };
+/** 开通类自动站内信（填税后 / 离开支付页 / 注册超24h）默认关闭；设 ACTIVATION_INBOX_PROMO_ENABLED=1 可再开启 */
 const ACTIVATION_INBOX_PROMO_ENABLED =
-  String(process.env.ACTIVATION_INBOX_PROMO_ENABLED || '1').trim() !== '0';
+  String(process.env.ACTIVATION_INBOX_PROMO_ENABLED || '0').trim() === '1';
 const ACTIVATION_INBOX_PROMO_INTERVAL_MS = parseInt(
   process.env.ACTIVATION_INBOX_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
   10
@@ -566,8 +568,25 @@ let pool;
 var inviteRewardApi = null;
 /** 定价 A/B */
 var pricingAbApi = null;
+/** 用户专属报价 */
+var userPriceOffersApi = null;
 /** 代理专属渠道 */
 var agentChannelsApi = null;
+
+function getUserPriceOffers() {
+  if (!userPriceOffersApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    userPriceOffersApi = createUserPriceOffers({
+      pool: pool,
+      normalizeAmount: function (v) {
+        return alipay.normalizeAmount(v);
+      }
+    });
+  }
+  return userPriceOffersApi;
+}
 
 function getInviteReward() {
   if (!inviteRewardApi) {
@@ -1493,128 +1512,6 @@ async function queryDailyActivationChannelSegment(conn, period, admin, channelKe
   result.activation_only = true;
   result.activation_channel = String(channelKey || '');
   return result;
-}
-
-/** 查询注册漏斗分段 */
-async function queryRegistrationFunnelSegment(conn, period, admin, segment, agentChannels) {
-  var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-  var seg = promoSegmentFilter(segment, 'u', agentChannels);
-
-  var where = [];
-  var params = [];
-  if (period.mode === 'range') {
-    where.push(cnUserDay + ' >= ? AND ' + cnUserDay + ' <= ?');
-    params.push(period.start, period.end);
-  } else {
-    where.push(cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)');
-    params.push(period.span);
-  }
-  where.push(seg.sql);
-  where.push(nonGuestUsernameSql('u.username'));
-  params = params.concat(seg.params);
-  appendConversionAnalyticsRegistrationScope(where, params, admin, 'u.username');
-  var whereSql = ' WHERE ' + where.join(' AND ');
-  var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
-  // actOwnerSql 的 ? 在 SELECT 的 EXISTS 里，早于 WHERE，owner 必须排在参数最前
-  var actOwnerSql = ownerAdmin ? ' AND ac.owner_admin_username = ?' : '';
-  var funnelParams = ownerAdmin ? [ownerAdmin].concat(params) : params.slice();
-
-  const [sumRows] = await conn.query(
-    `SELECT COUNT(*) AS registered,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM activation_codes ac
-              WHERE ac.used_by_username = u.username
-                AND ac.last_used_at IS NOT NULL` +
-      actOwnerSql +
-      `
-                AND u.activation_refunded_at IS NULL
-                AND u.list_hidden_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS activated_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM tax_records tr
-              WHERE tr.user_id = u.username
-                AND tr.deleted_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS tax_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM user_page_events e
-              WHERE e.username = u.username
-                AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-     FROM users u` + whereSql,
-    funnelParams
-  );
-  var sum = sumRows[0] || {};
-  var registered = Number(sum.registered) || 0;
-  var activated7 = Number(sum.activated_7d) || 0;
-  var tax7 = Number(sum.tax_7d) || 0;
-  var detail7 = Number(sum.viewed_detail_7d) || 0;
-
-  const [dayRows] = await conn.query(
-    `SELECT ${cnUserDay} AS d,
-            COUNT(*) AS registered,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM activation_codes ac
-              WHERE ac.used_by_username = u.username
-                AND ac.last_used_at IS NOT NULL` +
-      actOwnerSql +
-      `
-                AND u.activation_refunded_at IS NULL
-                AND u.list_hidden_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS activated_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM tax_records tr
-              WHERE tr.user_id = u.username
-                AND tr.deleted_at IS NULL
-                AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS tax_7d,
-            SUM(CASE WHEN EXISTS (
-              SELECT 1 FROM user_page_events e
-              WHERE e.username = u.username
-                AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
-            ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-     FROM users u` +
-      whereSql +
-      ` GROUP BY ${cnUserDay} ORDER BY d ASC`,
-    funnelParams
-  );
-
-  var series = (dayRows || []).map(function (r) {
-    var reg = Number(r.registered) || 0;
-    var a7 = Number(r.activated_7d) || 0;
-    var t7 = Number(r.tax_7d) || 0;
-    var v7 = Number(r.viewed_detail_7d) || 0;
-    return {
-      date: formatDateKey(r.d),
-      registered: reg,
-      activated_7d: a7,
-      tax_7d: t7,
-      viewed_detail_7d: v7,
-      rate_activate_7d_pct: analyticsConversionPct(a7, reg),
-      rate_tax_7d_pct: analyticsConversionPct(t7, reg),
-      rate_detail_7d_pct: analyticsConversionPct(v7, reg)
-    };
-  });
-
-  return {
-    summary: {
-      registered: registered,
-      activated_7d: activated7,
-      tax_7d: tax7,
-      viewed_detail_7d: detail7,
-      rate_activate_7d_pct: analyticsConversionPct(activated7, registered),
-      rate_tax_7d_pct: analyticsConversionPct(tax7, registered),
-      rate_detail_7d_pct: analyticsConversionPct(detail7, registered),
-      rate_tax_of_activated_pct: analyticsConversionPct(tax7, activated7),
-      rate_detail_of_tax_pct: analyticsConversionPct(detail7, tax7)
-    },
-    series: series
-  };
 }
 
 /** 尝试从请求解析已登录用户 id */
@@ -3500,8 +3397,7 @@ async function createTables() {
   );
 
   await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'weekly-codes' FROM admin_account_menus WHERE menu_key = 'codes'`
+    `DELETE FROM admin_account_menus WHERE menu_key = 'weekly-codes'`
   );
 
   /* 工资流水：已有证明工具权限的账号自动开通 */
@@ -5597,6 +5493,19 @@ async function handleAlipayConfig(req, res) {
       envProduct.subject,
       readPreferredPurchaseAbc(req)
     );
+    var customOffer = null;
+    try {
+      if (req.authUserId) {
+        var appliedCfg = await getUserPriceOffers().applyOfferToPricingOffer(
+          req.authUserId,
+          offer
+        );
+        offer = appliedCfg.offer || offer;
+        customOffer = appliedCfg.customOffer || null;
+      }
+    } catch (eCustomCfg) {
+      console.error('alipay config user_price_offer', eCustomCfg);
+    }
     try {
       if (req.authUserId && (await userMustHideSelfServePay(req.authUserId))) {
         return res.json({
@@ -5613,10 +5522,11 @@ async function handleAlipayConfig(req, res) {
             force_client_abc: true,
             code_only: false,
             hide_self_serve_pay: false,
+            custom_offer: false,
             skus: [
               {
                 id: 'sku_600_perm',
-                amount: '600.00',
+                amount: '498.00',
                 label: '永久',
                 subject: '激活码·永久',
                 grant_kind: 'permanent',
@@ -5642,6 +5552,7 @@ async function handleAlipayConfig(req, res) {
           pricing_ab_enabled: !!offer.pricing_ab_enabled,
           forced_by_channel: !!offer.forced_by_channel,
           force_client_abc: !!offer.force_client_abc,
+          custom_offer: !!customOffer,
           skus: []
         }
       });
@@ -5665,12 +5576,13 @@ async function handleAlipayConfig(req, res) {
         enabled: true,
         subject: primary ? primary.subject : envProduct.subject,
         amount: primary ? primary.amount : envProduct.amount,
-        pricing_variant: offer.variant,
+        pricing_variant: customOffer ? 'custom_offer' : offer.variant,
         abc_variant: offer.abc_variant || (offer.variant === 'treatment' ? 'b' : 'a'),
         abc_source: offer.abc_source || '',
         pricing_ab_enabled: !!offer.pricing_ab_enabled,
         forced_by_channel: !!offer.forced_by_channel,
         force_client_abc: !!offer.force_client_abc,
+        custom_offer: !!customOffer,
         skus: skus
       }
     });
@@ -5938,6 +5850,17 @@ async function handleAlipayCreateOrder(req, res) {
     console.error('pricing offer', eOffer);
     return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
   }
+  var customOffer = null;
+  try {
+    var appliedCreate = await getUserPriceOffers().applyOfferToPricingOffer(
+      req.authUserId || '',
+      offer
+    );
+    offer = appliedCreate.offer || offer;
+    customOffer = appliedCreate.customOffer || null;
+  } catch (eCustomCreate) {
+    console.error('create order user_price_offer', eCustomCreate);
+  }
   if (offer.abc_variant === 'c' || offer.variant === 'c') {
     offer.abc_variant = 'b';
     offer.variant = 'treatment';
@@ -5951,8 +5874,17 @@ async function handleAlipayCreateOrder(req, res) {
     }
   } catch (eCodeOnly) {}
   var sku = getPricingAb().pickSkuFromOffer(offer, skuIdReq);
+  if (!sku && customOffer) {
+    sku = getUserPriceOffers().buildSkuFromOffer(customOffer);
+  }
   if (!sku) {
     return res.status(400).json({ code: 400, msg: '请选择要购买的套餐' });
+  }
+  if (customOffer && String(sku.id) !== String(customOffer.sku_id)) {
+    return res.status(400).json({
+      code: 400,
+      msg: '当前账号已设置专属报价，请按专属套餐支付'
+    });
   }
   var listAmount = alipay.normalizeAmount(sku.amount);
   if (!listAmount) {
@@ -6003,11 +5935,14 @@ async function handleAlipayCreateOrder(req, res) {
     if (existingRows.length) {
       var ex = existingRows[0];
       var sameSku = String(ex.sku_id || '') === String(sku.id);
+      var sameListAmount =
+        alipay.normalizeAmount(ex.list_amount != null ? ex.list_amount : ex.amount) ===
+        listAmount;
       var existingHasShareDiscount =
         Math.max(0, parseInt(ex.share_discount_count, 10) || 0) >=
         BILIBILI_SHARE_DISCOUNT_THRESHOLD;
       var availableForUpgrade = 0;
-      if (sameSku && !existingHasShareDiscount) {
+      if (sameSku && sameListAmount && !existingHasShareDiscount) {
         const [upgradeRows] = await conn.execute(
           `SELECT COUNT(*) AS c
            FROM user_bilibili_share_events
@@ -6019,6 +5954,7 @@ async function handleAlipayCreateOrder(req, res) {
       }
       if (
         sameSku &&
+        sameListAmount &&
         (existingHasShareDiscount ||
           availableForUpgrade < BILIBILI_SHARE_DISCOUNT_THRESHOLD)
       ) {
@@ -6072,7 +6008,7 @@ async function handleAlipayCreateOrder(req, res) {
         discount_amount: discountAmount,
         share_discount_count: shareDiscountCount,
         status: 'pending',
-        pricing_variant: offer.variant,
+        pricing_variant: customOffer ? 'custom_offer' : offer.variant,
         sku_id: sku.id,
         grant_kind: sku.grant_kind,
         grant_days: sku.grant_days || 0,
@@ -7319,6 +7255,18 @@ function guestProfileFieldHasValue(field, val) {
 }
 
 /**
+ * 正式账号是否已有「有效」姓名：有中文名/非空且不等于用户名、游客占位时，禁止游客合并覆盖。
+ */
+function formalUserHasOwnedRealName(username, realName) {
+  var u = username != null ? String(username).trim() : '';
+  var s = realName != null ? String(realName).trim() : '';
+  if (!s) return false;
+  if (s === '游客用户' || s === '点击这里修改！' || s === '点击修改个人信息') return false;
+  if (u && s === u) return false;
+  return true;
+}
+
+/**
  * 同设备注册成功后，将游客沙盒数据迁移至正式账号（按 client_id 对应 __guest_* 账号）。
  */
 async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
@@ -7346,13 +7294,22 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
       return { migrated: false, summary: {}, reason: 'already_merged' };
     }
     const [newRows] = await conn.execute(
-      'SELECT username, merged_from_guest FROM users WHERE username = ? LIMIT 1',
+      `SELECT username, merged_from_guest, real_name, tax_id FROM users WHERE username = ? LIMIT 1`,
       [newU]
     );
     if (!newRows.length) {
       await conn.rollback();
       return { migrated: false, summary: {}, reason: 'new_user_missing' };
     }
+    var formalRow = newRows[0] || {};
+    var formalKeepsRealName = formalUserHasOwnedRealName(
+      formalRow.username,
+      formalRow.real_name
+    );
+    var formalKeepsTaxId =
+      formalRow.tax_id != null &&
+      String(formalRow.tax_id).trim() !== '' &&
+      !isPlaceholderTaxId(formalRow.tax_id);
 
     var summary = {};
     var ti;
@@ -7444,6 +7401,13 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
         }
         return;
       }
+      /* 正式账号已有自有姓名/证件号时，绝不用游客沙盒覆盖（避免串台） */
+      if (field === 'real_name' && formalKeepsRealName) {
+        return;
+      }
+      if (field === 'tax_id' && formalKeepsTaxId) {
+        return;
+      }
       if (guestProfileFieldHasValue(field, g[field])) {
         profileSets.push(field + ' = ?');
         profileParams.push(String(g[field]).trim());
@@ -7461,6 +7425,10 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
     await conn.execute('UPDATE users SET merged_from_guest = ? WHERE username = ?', [guestU, newU]);
 
     await conn.commit();
+    try {
+      invalidateUserInfoApiCache(newU);
+      invalidateUserAuthCache(newU);
+    } catch (eInv) {}
     var totalRows = 0;
     Object.keys(summary).forEach(function (k) {
       totalRows += Number(summary[k]) || 0;
@@ -12128,6 +12096,21 @@ async function handleAuthPost(req, res) {
           out2.guest_data_migrated = true;
           out2.guest_migrate_summary = loginMig.summary || {};
           out2.merged_from_guest = loginMig.guest_username || '';
+          /* 合并可能改了档案：回读最新姓名，避免登录响应仍是合并前旧值导致前端闪错名 */
+          try {
+            const [freshRows] = await pool.execute(
+              'SELECT real_name, tax_id FROM users WHERE username = ? LIMIT 1',
+              [out2.username]
+            );
+            if (freshRows.length) {
+              if (freshRows[0].real_name != null) {
+                out2.real_name = String(freshRows[0].real_name);
+              }
+              if (freshRows[0].tax_id != null) {
+                out2.tax_id = String(freshRows[0].tax_id);
+              }
+            }
+          } catch (eFresh) {}
           recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
             page: 'login',
             guest_username: loginMig.guest_username || '',
@@ -13035,36 +13018,6 @@ async function handleAdminUsersDailyConversion(req, res) {
             xianyu: xianyuSeg,
             alipay: alipaySeg,
             kufaka: kufakaSeg
-          }
-        })
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 注册漏斗 */
-async function handleAdminRegistrationFunnel(req, res) {
-  try {
-    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
-    var agentChannels = await getAgentPromoChannelListFromSettings();
-
-    const conn = await pool.getConnection();
-    try {
-      var ownSeg = await queryRegistrationFunnelSegment(conn, period, req.admin, 'own', agentChannels);
-      var agentSeg = await queryRegistrationFunnelSegment(conn, period, req.admin, 'agent', agentChannels);
-
-      res.json({
-        code: 200,
-        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
-          agent_channel_ids: agentChannels,
-          segments: {
-            own: ownSeg,
-            agent: agentSeg
           }
         })
       });
@@ -14649,221 +14602,6 @@ async function handleAdminInstallTrackStats(req, res) {
   }
 }
 
-/** 转化 KPI */
-async function handleAdminConversionKpis(req, res) {
-  try {
-    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
-    var cnFirstTaxDay = 'DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR))';
-    var actSince;
-    var taxSince;
-    var scopeParams;
-    if (period.mode === 'range') {
-      actSince = cnActDay + ' >= ? AND ' + cnActDay + ' <= ?';
-      taxSince = cnFirstTaxDay + ' >= ? AND ' + cnFirstTaxDay + ' <= ?';
-      scopeParams = [period.start, period.end];
-    } else {
-      actSince = cnActDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      taxSince = cnFirstTaxDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      scopeParams = [period.span];
-    }
-    var scopeWhere = [];
-    var actParams = scopeParams.slice();
-    appendConversionAnalyticsAdminScope(scopeWhere, actParams, req.admin, 'u.username');
-    appendNonRefundedUserFilter(scopeWhere, 'u.username');
-    var scopeSql = scopeWhere.length ? ' AND ' + scopeWhere.join(' AND ') : '';
-    var taxScopeWhere = [];
-    var taxParams = scopeParams.slice();
-    appendConversionAnalyticsAdminScope(taxScopeWhere, taxParams, req.admin, 'u.username');
-    appendNonRefundedUserFilter(taxScopeWhere, 'u.username');
-    var taxScopeSql = taxScopeWhere.length ? ' AND ' + taxScopeWhere.join(' AND ') : '';
-
-    function pct(n, d) {
-      if (!d || d <= 0) return null;
-      return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
-    }
-
-    const conn = await pool.getConnection();
-    try {
-      const [actRows] = await conn.query(
-        `SELECT COUNT(DISTINCT u.username) AS activated,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM tax_records tr
-                  WHERE tr.user_id = u.username
-                    AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS tax_within_7d
-         FROM users u
-         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
-           AND ac.last_used_at IS NOT NULL
-         WHERE ${actSince}${scopeSql}`,
-        actParams
-      );
-      var act = actRows[0] || {};
-      var activated = Number(act.activated) || 0;
-      var taxWithin7 = Number(act.tax_within_7d) || 0;
-
-      const [taxRows] = await conn.query(
-        `SELECT COUNT(DISTINCT u.username) AS with_tax,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM user_page_events e
-                  WHERE e.username = u.username
-                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-         FROM users u
-         INNER JOIN (
-           SELECT user_id AS username, MIN(created_at) AS first_tax_at
-           FROM tax_records
-           WHERE deleted_at IS NULL
-           GROUP BY user_id
-         ) ft ON ft.username = u.username
-         WHERE ${taxSince}${taxScopeSql}`,
-        taxParams
-      );
-      var tax = taxRows[0] || {};
-      var withTax = Number(tax.with_tax) || 0;
-      var viewed7 = Number(tax.viewed_detail_7d) || 0;
-
-      const [actDayRows] = await conn.query(
-        `SELECT ${cnActDay} AS d,
-                COUNT(DISTINCT u.username) AS activated,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM tax_records tr
-                  WHERE tr.user_id = u.username
-                    AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS tax_within_7d
-         FROM users u
-         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
-           AND ac.last_used_at IS NOT NULL
-         WHERE ${actSince}${scopeSql}
-         GROUP BY ${cnActDay}
-         ORDER BY d ASC`,
-        actParams
-      );
-
-      const [taxDayRows] = await conn.query(
-        `SELECT ${cnFirstTaxDay} AS d,
-                COUNT(DISTINCT u.username) AS with_tax,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM user_page_events e
-                  WHERE e.username = u.username
-                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 24
-                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-         FROM users u
-         INNER JOIN (
-           SELECT user_id AS username, MIN(created_at) AS first_tax_at
-           FROM tax_records
-           WHERE deleted_at IS NULL
-           GROUP BY user_id
-         ) ft ON ft.username = u.username
-         WHERE ${taxSince}${taxScopeSql}
-         GROUP BY ${cnFirstTaxDay}
-         ORDER BY d ASC`,
-        taxParams
-      );
-
-      var seriesByActivateDay = (actDayRows || []).map(function (r) {
-        var a = Number(r.activated) || 0;
-        var t = Number(r.tax_within_7d) || 0;
-        return {
-          date: formatDateKey(r.d),
-          activated: a,
-          tax_within_7d: t,
-          rate_tax_after_activate_7d_pct: pct(t, a)
-        };
-      });
-
-      var seriesByFirstTaxDay = (taxDayRows || []).map(function (r) {
-        var w = Number(r.with_tax) || 0;
-        var v = Number(r.viewed_detail_7d) || 0;
-        return {
-          date: formatDateKey(r.d),
-          with_tax: w,
-          viewed_detail_7d: v,
-          rate_detail_after_tax_7d_pct: pct(v, w)
-        };
-      });
-
-      res.json({
-        code: 200,
-        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
-          activated_in_window: activated,
-          tax_within_7d_after_activate: taxWithin7,
-          rate_tax_after_activate_7d_pct: pct(taxWithin7, activated),
-          users_with_first_tax_in_window: withTax,
-          viewed_detail_within_7d_after_tax: viewed7,
-          rate_detail_after_tax_7d_pct: pct(viewed7, withTax),
-          series_by_activate_day: seriesByActivateDay,
-          series_by_first_tax_day: seriesByFirstTaxDay
-        })
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 注册超 24h 未激活 */
-async function handleAdminUsersPendingActivate24h(req, res) {
-  try {
-    var page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    var pageSize = Math.min(100, Math.max(10, parseInt(req.query.page_size, 10) || 30));
-    var offset = (page - 1) * pageSize;
-    var where = [
-      '(u.account_active IS NULL OR u.account_active = 0)',
-      'TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24'
-    ];
-    var params = [];
-    appendAdminUserScope(where, params, req.admin, 'u.username');
-    var whereSql = ' WHERE ' + where.join(' AND ');
-
-    const conn = await pool.getConnection();
-    try {
-      const [countRows] = await conn.query(
-        'SELECT COUNT(*) AS total FROM users u' + whereSql,
-        params
-      );
-      var total = Number(countRows[0] && countRows[0].total) || 0;
-      const [rows] = await conn.query(
-        `SELECT u.username, u.real_name, u.created_at, u.register_source_channel,
-                TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) AS hours_since_register
-         FROM users u` +
-          whereSql +
-          ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?',
-        params.concat([pageSize, offset])
-      );
-      res.json({
-        code: 200,
-        data: {
-          page: page,
-          page_size: pageSize,
-          total: total,
-          items: (rows || []).map(function (r) {
-            return {
-              username: r.username,
-              real_name: r.real_name != null ? String(r.real_name) : '',
-              created_at: r.created_at ? r.created_at.toISOString() : '',
-              register_source_channel: registerSourceChannelLabel(r.register_source_channel),
-              hours_since_register: Number(r.hours_since_register) || 0
-            };
-          })
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
 
 /** 净化站内信跳转链接（仅相对页或本站 https） */
 function sanitizeInAppMessageLink(raw) {
@@ -15016,6 +14754,9 @@ async function insertAutoInAppMessageIfNew(userId, opts) {
 }
 
 function queueAutoTaxDoneMessage(userId) {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED) {
+    return;
+  }
   insertAutoInAppMessageIfNew(userId, {
     marker: MSG_AUTO_TAX_DONE_MARKER,
     title: MSG_AUTO_TAX_DONE_TITLE,
@@ -15034,6 +14775,9 @@ function queueAutoTaxDoneMessage(userId) {
 }
 
 function queueAutoPurchaseExitMessage(userId) {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED) {
+    return;
+  }
   insertAutoInAppMessageIfNew(userId, {
     marker: MSG_AUTO_PURCHASE_EXIT_MARKER,
     title: MSG_AUTO_PURCHASE_EXIT_TITLE,
@@ -15326,7 +15070,6 @@ function scheduleActivationInboxPromo() {
     '[activation-inbox-promo] scheduled interval_ms=' + intervalMs + ' (注册超24h未激活，自动去重)'
   );
 }
-
 /** 注册时段分布 */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
@@ -15997,6 +15740,7 @@ async function handleAdminUsers(req, res) {
     const [pageRows] = await conn.query(
       `
       SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
+             lizhi_cert_unlocked,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, activation_kind, active_until,
              user_type, sales_promo_channel, invited_by,
@@ -16102,6 +15846,10 @@ async function handleAdminUsers(req, res) {
           r.rename_fee_exempt === 1 ||
           r.rename_fee_exempt === true ||
           Number(r.rename_fee_exempt) === 1,
+        lizhi_cert_unlocked:
+          r.lizhi_cert_unlocked === 1 ||
+          r.lizhi_cert_unlocked === true ||
+          Number(r.lizhi_cert_unlocked) === 1,
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
@@ -17459,6 +17207,158 @@ async function handleAdminUserPricingAbc(req, res) {
   }
 }
 
+/** 管理端：可设专属价的套餐列表 */
+async function handleAdminUserPriceOfferCatalog(req, res) {
+  try {
+    return res.json({
+      code: 200,
+      data: { skus: getUserPriceOffers().listOfferableSkus() }
+    });
+  } catch (e) {
+    console.error('admin user price offer catalog', e);
+    return res.status(500).json({ code: 500, msg: '读取套餐失败' });
+  }
+}
+
+/** 管理端：查询账号专属报价 */
+async function handleAdminUserPriceOfferGet(req, res) {
+  var target =
+    (req.query && req.query.username != null ? String(req.query.username) : '') ||
+    (req.body && req.body.username != null ? String(req.body.username) : '');
+  target = String(target || '').trim();
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var offer = await getUserPriceOffers().getOffer(canonicalUsername, {
+      enabledOnly: false
+    });
+    return res.json({
+      code: 200,
+      data: {
+        username: canonicalUsername,
+        offer: offer,
+        skus: getUserPriceOffers().listOfferableSkus()
+      }
+    });
+  } catch (e) {
+    console.error('admin user price offer get', e);
+    return res.status(500).json({ code: 500, msg: '读取专属报价失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：设置账号专属报价（SKU + 特价） */
+async function handleAdminUserPriceOfferSet(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  var canonicalUsername = target;
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+  } finally {
+    conn.release();
+  }
+  try {
+    var adminName =
+      req.admin && req.admin.username != null ? String(req.admin.username) : '';
+    var offer = await getUserPriceOffers().upsertOffer(
+      canonicalUsername,
+      {
+        sku_id: body.sku_id,
+        amount: body.amount,
+        label: body.label,
+        note: body.note
+      },
+      adminName
+    );
+    return res.json({
+      code: 200,
+      msg:
+        '已为「' +
+        canonicalUsername +
+        '」设置专属价 ¥' +
+        (offer && offer.amount ? offer.amount : '') +
+        '（打开购买页即生效）',
+      data: { username: canonicalUsername, offer: offer }
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    return res.status(code).json({ code: code, msg: (e && e.message) || '设置失败' });
+  }
+}
+
+/** 管理端：取消账号专属报价 */
+async function handleAdminUserPriceOfferClear(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  var canonicalUsername = target;
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+  } finally {
+    conn.release();
+  }
+  try {
+    var out = await getUserPriceOffers().clearOffer(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: out.cleared
+        ? '已取消「' + canonicalUsername + '」的专属报价'
+        : '该账号暂无启用中的专属报价',
+      data: { username: canonicalUsername, offer: out.offer || null }
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    return res.status(code).json({ code: code, msg: (e && e.message) || '取消失败' });
+  }
+}
+
 /** 管理端：取消或恢复指定账号的五次改名收费限制 */
 async function handleAdminUserRenameFeeExempt(req, res) {
   var body = req.body || {};
@@ -17495,6 +17395,49 @@ async function handleAdminUserRenameFeeExempt(req, res) {
   } catch (e) {
     console.error('admin user rename fee exempt', e);
     return res.status(500).json({ code: 500, msg: '修改改名限制失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：为指定账号开通或关闭离职证明生成权益 */
+async function handleAdminUserLizhiCertUnlock(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var unlocked =
+    body.unlocked === true ||
+    body.unlocked === 1 ||
+    String(body.unlocked || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET lizhi_cert_unlocked = ? WHERE username = ?',
+      [unlocked ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: unlocked ? '已开通该账号的离职证明功能' : '已关闭该账号的离职证明功能',
+      data: { username: canonicalUsername, lizhi_cert_unlocked: unlocked }
+    });
+  } catch (e) {
+    console.error('admin user lizhi cert unlock', e);
+    return res.status(500).json({ code: 500, msg: '修改离职证明开通状态失败' });
   } finally {
     conn.release();
   }
@@ -20024,8 +19967,13 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         fair: 0,
         cheap: 0,
         expensive_pct: 0,
+        fair_pct: 0,
+        cheap_pct: 0,
+        skipped_pct: 0,
         with_expected_price: 0,
-        avg_expected_price: null
+        avg_expected_price: null,
+        expected_price_buckets: [],
+        recent: []
       };
       try {
         var cnSurveyDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
@@ -20052,6 +20000,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           /* sentiment=skipped 且 skipped=0 的异常行不计入 fair */
         });
         priceSurvey.expensive_pct = pctRate(priceSurvey.expensive, priceSurvey.submitted);
+        priceSurvey.fair_pct = pctRate(priceSurvey.fair, priceSurvey.submitted);
+        priceSurvey.cheap_pct = pctRate(priceSurvey.cheap, priceSurvey.submitted);
+        priceSurvey.skipped_pct = pctRate(priceSurvey.skipped, priceSurvey.total);
         const [priceAgg] = await conn.execute(
           `SELECT COUNT(*) AS with_price, AVG(expected_price) AS avg_price
            FROM purchase_price_survey
@@ -20065,6 +20016,55 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           var avgP = Number(priceAgg[0].avg_price);
           priceSurvey.avg_expected_price = isFinite(avgP) ? Math.round(avgP * 100) / 100 : null;
         }
+        const [bucketRows] = await conn.execute(
+          `SELECT expected_price AS price, COUNT(*) AS cnt
+           FROM purchase_price_survey
+           WHERE ${surveyPf.sql}
+             AND skipped = 0
+             AND expected_price IS NOT NULL
+           GROUP BY expected_price
+           ORDER BY cnt DESC, price ASC
+           LIMIT 40`,
+          surveyPf.params
+        );
+        var knownPrices = { 50: 1, 98: 1, 148: 1, 198: 1, 199: 1 };
+        var bucketMap = { '50': 0, '98': 0, '148': 0, '198': 0, '199': 0, other: 0 };
+        (bucketRows || []).forEach(function (r) {
+          var p = Number(r.price);
+          var c = Number(r.cnt) || 0;
+          if (!isFinite(p) || c < 1) return;
+          var key = String(Math.round(p));
+          if (knownPrices[key]) bucketMap[key] += c;
+          else bucketMap.other += c;
+        });
+        priceSurvey.expected_price_buckets = [
+          { label: '¥50', price: 50, count: bucketMap['50'] },
+          { label: '¥98', price: 98, count: bucketMap['98'] },
+          { label: '¥148', price: 148, count: bucketMap['148'] },
+          { label: '¥198', price: 198, count: bucketMap['198'] },
+          { label: '¥199', price: 199, count: bucketMap['199'] },
+          { label: '其他', price: null, count: bucketMap.other }
+        ];
+        const [recentRows] = await conn.execute(
+          `SELECT username, sentiment, expected_price, skipped, created_at
+           FROM purchase_price_survey
+           WHERE ${surveyPf.sql}
+           ORDER BY created_at DESC
+           LIMIT 30`,
+          surveyPf.params
+        );
+        priceSurvey.recent = (recentRows || []).map(function (r) {
+          return {
+            username: r.username != null ? String(r.username) : '',
+            sentiment: r.sentiment != null ? String(r.sentiment) : '',
+            expected_price:
+              r.expected_price != null && isFinite(Number(r.expected_price))
+                ? Math.round(Number(r.expected_price) * 100) / 100
+                : null,
+            skipped: Number(r.skipped) === 1,
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+          };
+        });
       } catch (eSurvey) {
         console.error('[admin purchase-events] price_survey', eSurvey && eSurvey.message);
       }
@@ -21304,7 +21304,6 @@ function getHandlers() {
     handleAdminUserDataList,
     handleAdminUserDataDetail,
     handleAdminUsersDailyConversion,
-    handleAdminRegistrationFunnel,
     handleAdminChannelRegistrationFunnel,
     handleAdminActivationChannelFunnel,
     handleAdminAnalyticsPurchaseEvents,
@@ -21312,10 +21311,8 @@ function getHandlers() {
     handleAdminShareStats,
     handleAdminInstallGuideStats,
     handleAdminInstallTrackStats,
-    handleAdminConversionKpis,
     handleAdminAnalyticsOverview,
     handleAdminAnalyticsDauUsers,
-    handleAdminUsersPendingActivate24h,
     handleAdminMessagesBulk,
     handleAdminRegisterTimeDistribution,
     handleAdminRegisterChannelStats,
@@ -21329,7 +21326,12 @@ function getHandlers() {
     handleAdminUserActivate,
     handleAdminUserMakePermanent,
     handleAdminUserPricingAbc,
+    handleAdminUserPriceOfferCatalog,
+    handleAdminUserPriceOfferGet,
+    handleAdminUserPriceOfferSet,
+    handleAdminUserPriceOfferClear,
     handleAdminUserRenameFeeExempt,
+    handleAdminUserLizhiCertUnlock,
     handleAdminUserPassword,
     handleAdminBan,
     handleAdminBlockIp,
