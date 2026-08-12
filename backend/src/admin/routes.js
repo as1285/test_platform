@@ -365,6 +365,24 @@ app.post(
   },
   h.handleAdminUserPrepImport
 );
+app.get(
+  '/api/admin/user-remote-sync/status',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('user-remote-sync'),
+  h.handleAdminUserRemoteSyncStatus
+);
+app.post(
+  '/api/admin/user-remote-sync/preview',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('user-remote-sync'),
+  h.handleAdminUserRemoteSyncPreview
+);
+app.post(
+  '/api/admin/user-remote-sync/push',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('user-remote-sync'),
+  h.handleAdminUserRemoteSyncPush
+);
 }
 
 module.exports = { registerAdminRoutes };

@@ -63,6 +63,25 @@ const LEGACY_USER_REDIRECT_URL = String(process.env.LEGACY_USER_REDIRECT_URL || 
 /** C 端：注册早于此日（不含）的已激活用户纳入引流 cohort（YYYY-MM-DD；默认 2026-07-21 = 含 6/1 前 + 6/1~7/20） */
 const LEGACY_REDIRECT_REGISTER_END = String(process.env.LEGACY_REDIRECT_REGISTER_END || '2026-07-21').trim();
 
+/** 管理端：单用户同步到远程新服（1/true 开启） */
+const USER_REMOTE_SYNC_ENABLED = /^(1|true|yes|on)$/i.test(
+  String(process.env.USER_REMOTE_SYNC_ENABLED || '').trim()
+);
+/** ssh | mysql */
+const USER_REMOTE_SYNC_MODE = String(process.env.USER_REMOTE_SYNC_MODE || 'ssh').trim() || 'ssh';
+const USER_REMOTE_SYNC_LABEL = String(process.env.USER_REMOTE_SYNC_LABEL || '').trim();
+const USER_REMOTE_SYNC_SSH_HOST = String(process.env.USER_REMOTE_SYNC_SSH_HOST || '').trim();
+const USER_REMOTE_SYNC_SSH_PORT = String(process.env.USER_REMOTE_SYNC_SSH_PORT || '22').trim() || '22';
+const USER_REMOTE_SYNC_SSH_USER = String(process.env.USER_REMOTE_SYNC_SSH_USER || 'root').trim() || 'root';
+const USER_REMOTE_SYNC_SSH_PASSWORD = String(process.env.USER_REMOTE_SYNC_SSH_PASSWORD || '');
+/** 远端执行导入的 mysql 命令（经 SSH） */
+const USER_REMOTE_SYNC_SSH_MYSQL_CMD = String(process.env.USER_REMOTE_SYNC_SSH_MYSQL_CMD || '').trim();
+const USER_REMOTE_SYNC_DB_HOST = String(process.env.USER_REMOTE_SYNC_DB_HOST || '').trim();
+const USER_REMOTE_SYNC_DB_PORT = String(process.env.USER_REMOTE_SYNC_DB_PORT || '3306').trim() || '3306';
+const USER_REMOTE_SYNC_DB_USER = String(process.env.USER_REMOTE_SYNC_DB_USER || '').trim();
+const USER_REMOTE_SYNC_DB_PASSWORD = String(process.env.USER_REMOTE_SYNC_DB_PASSWORD || '');
+const USER_REMOTE_SYNC_DB_DATABASE = String(process.env.USER_REMOTE_SYNC_DB_DATABASE || 'personal_tax').trim();
+
 module.exports = {
   BACKEND_ROOT,
   MIGRATIONS_DIR,
@@ -94,5 +113,18 @@ module.exports = {
   DB_POOL_QUEUE_LIMIT,
   LEGACY_ACTIVATION_CUTOFF,
   LEGACY_USER_REDIRECT_URL,
-  LEGACY_REDIRECT_REGISTER_END
+  LEGACY_REDIRECT_REGISTER_END,
+  USER_REMOTE_SYNC_ENABLED,
+  USER_REMOTE_SYNC_MODE,
+  USER_REMOTE_SYNC_LABEL,
+  USER_REMOTE_SYNC_SSH_HOST,
+  USER_REMOTE_SYNC_SSH_PORT,
+  USER_REMOTE_SYNC_SSH_USER,
+  USER_REMOTE_SYNC_SSH_PASSWORD,
+  USER_REMOTE_SYNC_SSH_MYSQL_CMD,
+  USER_REMOTE_SYNC_DB_HOST,
+  USER_REMOTE_SYNC_DB_PORT,
+  USER_REMOTE_SYNC_DB_USER,
+  USER_REMOTE_SYNC_DB_PASSWORD,
+  USER_REMOTE_SYNC_DB_DATABASE
 };

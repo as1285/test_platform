@@ -7,6 +7,8 @@ RUN apt-get update \
     python3 \
     python3-pip \
     fonts-noto-cjk \
+    openssh-client \
+    sshpass \
   && pip3 install --break-system-packages --no-cache-dir \
     pymupdf \
     'qrcode[pil]' \

@@ -18,7 +18,8 @@
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260802-info-tpl-auto2',
-    'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260728-block-tpl'
+    'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260728-block-tpl',
+    'user-remote-sync': '/js/admin/modules/user-remote-sync.js?v=20260810-sync1'
   };
 
   var PAGE_MODULE = {
@@ -34,6 +35,7 @@
     'users-deleted': 'users',
     'user-data': 'user-data',
     'user-prep-import': 'user-prep-import',
+    'user-remote-sync': 'user-remote-sync',
     'user-behavior': 'user-data',
     'activated-user-analysis': 'user-data',
     feedback: 'feedback',

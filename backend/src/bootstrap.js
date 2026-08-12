@@ -4,6 +4,7 @@
 const { createApp, startServer, getHandlers, getMiddleware } = require('./legacy/monolith');
 const sbdyDemo = require('./admin/sbdyDemo');
 const userPrepImport = require('./admin/userPrepImport');
+const userRemoteSync = require('./admin/userRemoteSync');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
 const { registerTaxRoutes } = require('./tax/routes');
@@ -17,7 +18,13 @@ const { registerPlatformRoutes } = require('./platform/routes');
 function buildApp() {
   const app = createApp();
   const deps = {
-    handlers: Object.assign({}, getHandlers(), sbdyDemo.getHandlers(), userPrepImport.getHandlers()),
+    handlers: Object.assign(
+      {},
+      getHandlers(),
+      sbdyDemo.getHandlers(),
+      userPrepImport.getHandlers(),
+      userRemoteSync.getHandlers()
+    ),
     middleware: Object.assign({}, getMiddleware(), userPrepImport.getMiddleware())
   };
 

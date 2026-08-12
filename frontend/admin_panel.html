@@ -1232,6 +1232,25 @@
                     </section>
                 </div>
 
+                <div id="page-user-remote-sync" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>同步到新服</h2>
+                        <p class="hint mt-0">
+                            将本机<strong>指定用户</strong>的账号资料、个税、异议、设备与行为等数据覆盖导入到已配置的新服务器。
+                            仅超级管理员可用；目标主机与凭据在服务器 <code>.env</code> 的 <code>USER_REMOTE_SYNC_*</code> 中配置，不会出现在页面上。
+                            冲突策略：新服同用户名整户替换（不覆盖其他用户，不固定沿用本机数字 id）。
+                        </p>
+                        <div id="userRemoteSyncStatus" class="user-data-stats" aria-live="polite">加载目标配置…</div>
+                        <div class="form-row flex-wrap gap-10 flex-align-center mt-12">
+                            <label for="userRemoteSyncUsername">用户名</label>
+                            <input type="text" id="userRemoteSyncUsername" maxlength="64" placeholder="如：15872584721" style="min-width:200px;">
+                            <button type="button" class="btn-page" id="btnUserRemoteSyncPreview">预览本机数据</button>
+                            <button type="button" class="btn-page" id="btnUserRemoteSyncPush">确认同步到新服</button>
+                        </div>
+                        <div id="userRemoteSyncResult" class="user-data-stats mt-12" aria-live="polite">输入用户名后可预览，再确认同步。</div>
+                    </section>
+                </div>
+
                 <div id="page-user-behavior" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户行为</h2>
@@ -2465,7 +2484,7 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260802-info-tpl-auto2"></script>
+    <script src="/js/admin/loader.js?v=20260810-sync1"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260728-legacy-redirect-stats"></script>

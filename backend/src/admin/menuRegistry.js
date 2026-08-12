@@ -138,6 +138,15 @@ const ADMIN_PAGE_DEFS = [
     order: 65
   },
   {
+    page: 'user-remote-sync',
+    menu_key: 'user-remote-sync',
+    label: '同步到新服',
+    group: 'users',
+    module: 'user-remote-sync',
+    order: 66,
+    super_only: true
+  },
+  {
     page: 'user-behavior',
     menu_key: 'user-behavior',
     label: '用户行为',
