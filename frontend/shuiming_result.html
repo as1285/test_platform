@@ -14,6 +14,12 @@
                     document.documentElement.classList.add('app-android-huawei-mate60');
                 }
                 if (
+                    /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
+                    (/Xiaomi\s*10|Mi\s*10(?!\s*T)|小米\s*10/i.test(u) && !/Mi\s*10\s*T|Xiaomi\s*10\s*T/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-10');
+                }
+                if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
                         navigator.platform === 'MacIntel' &&
@@ -24,7 +30,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260812-mate60-top"></script>
+    <script src="/js/auth.js?v=20260812-mi10-notch"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -970,9 +976,11 @@
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        /* 小米 15 Pro / Mate 60：沉浸状态栏，顶栏须留 40px，避免「返回/标题」顶进系统时间 */
+        /* 小米 15 Pro / 小米 10 刘海 / Mate 60：沉浸状态栏，顶栏须留 40px */
         html.app-android-xiaomi-15pro body.page-shuiming-result .page-root,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-10 body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60 body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px;
@@ -981,6 +989,8 @@
 
         html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
@@ -995,6 +1005,10 @@
         html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1007,6 +1021,8 @@
 
         html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 48px) + 40px) !important;
@@ -1014,6 +1030,8 @@
 
         html.app-android-xiaomi-15pro body.page-shuiming-result .list,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-xiaomi-10 body.page-shuiming-result .list,
+        html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-huawei-mate60 body.page-shuiming-result .list,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
