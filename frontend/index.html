@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <!--
       WebClip 启动文档：iOS 只认解析时的静态 meta。
-      入口改为「我的」页；登录页为 login.html。
+      入口默认进入「首页」；登录页为 login.html。
     -->
-    <meta name="theme-color" content="#2286ee">
+    <meta name="theme-color" content="#4f90f3">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="个人所得税">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
@@ -36,7 +36,7 @@
                 q = String(window.location.search || '');
                 h = String(window.location.hash || '');
             } catch (e0) {}
-            var target = 'mine.html';
+            var target = 'shouye.html';
             try {
                 var params = new URLSearchParams(q);
                 if (params.get('need_activate') === '1') {
@@ -46,7 +46,7 @@
             window.location.replace(target + q + h);
         })();
     </script>
-    <meta http-equiv="refresh" content="0;url=mine.html">
+    <meta http-equiv="refresh" content="0;url=shouye.html">
     <style>
         body {
             margin: 0;
@@ -62,6 +62,6 @@
     </style>
 </head>
 <body>
-    <p>正在进入… <a href="mine.html">点击进入</a> · <a href="login.html">登录</a></p>
+    <p>正在进入… <a href="shouye.html">点击进入</a> · <a href="login.html">登录</a></p>
 </body>
 </html>

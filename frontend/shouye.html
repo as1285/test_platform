@@ -301,19 +301,280 @@
             height: calc(90 * var(--sy-rpx));
         }
 
-        /* a3：相关政策 / 我要填报（对齐原版 jumpToss / jumpTos 热区） */
-        .sy-hit-policy {
-            top: calc(120 * var(--sy-rpx));
-            left: calc(500 * var(--sy-rpx));
-            width: calc(200 * var(--sy-rpx));
-            height: calc(70 * var(--sy-rpx));
+        /* a3 专项附加扣除：真实 DOM + 动态条数（对齐官方 zdj-home-important） */
+        .sy-zxk-block {
+            background: #ebf0f8;
+            padding: 0 0 2px;
+            line-height: normal;
+            font-size: 14px;
         }
 
-        .sy-hit-fill {
-            top: calc(320 * var(--sy-rpx));
-            left: calc(100 * var(--sy-rpx));
-            width: calc(550 * var(--sy-rpx));
-            height: calc(90 * var(--sy-rpx));
+        .sy-zxk-title {
+            padding: 8px 16px 4px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #191e26;
+            letter-spacing: 0;
+            line-height: 1.3;
+        }
+
+        .sy-zxk-card {
+            position: relative;
+            width: 100%;
+            /* 有数据：白底卡 */
+            aspect-ratio: 1125 / 560;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* 无数据：官方蓝底空态 */
+        .sy-zxk-card.is-empty {
+            aspect-ratio: 1125 / 520;
+        }
+
+        .sy-zxk-card-bg {
+            position: absolute;
+            left: -1.5%;
+            top: -4%;
+            width: 103%;
+            height: 108%;
+            object-fit: fill;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-card-bg {
+            left: -1%;
+            top: -2%;
+            width: 102%;
+            height: 104%;
+        }
+
+        .sy-zxk-card-head {
+            position: absolute;
+            z-index: 2;
+            top: 12.5%;
+            left: 8.5%;
+            right: 32%;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            pointer-events: none;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-card-head {
+            top: 14%;
+            left: 9%;
+        }
+
+        .sy-zxk-flame {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            display: block;
+            border-radius: 50%;
+        }
+
+        .sy-zxk-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #191e26;
+            line-height: 1.2;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-name {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        /* 叠在卡片右上角蓝色政策位上 */
+        .sy-zxk-policy {
+            position: absolute;
+            z-index: 3;
+            top: 11%;
+            right: 7.5%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 70px;
+            height: 24px;
+            padding: 0 8px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            line-height: 1;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-policy {
+            top: 12.5%;
+            right: 8%;
+        }
+
+        .sy-zxk-msg {
+            position: absolute;
+            z-index: 2;
+            left: 7%;
+            right: 7%;
+            top: 38%;
+            text-align: center;
+            color: #191e26;
+            font-size: 15px;
+            line-height: 1.3;
+            font-weight: 500;
+            pointer-events: none;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-msg {
+            color: #fff;
+            font-weight: 500;
+            font-size: 15px;
+            top: 40%;
+        }
+
+        .sy-zxk-num {
+            display: inline-block;
+            margin: 0 3px;
+            color: #ffb300;
+            font-size: 30px;
+            font-weight: 700;
+            line-height: 1;
+            vertical-align: -4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 有数据：双按钮 */
+        .sy-zxk-btns {
+            position: absolute;
+            z-index: 3;
+            left: 7.5%;
+            right: 7.5%;
+            bottom: 14%;
+            display: flex;
+            align-items: stretch;
+            height: 23%;
+            max-height: 48px;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-btns {
+            display: none;
+        }
+
+        .sy-zxk-btn {
+            position: relative;
+            flex: 1 1 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 0;
+        }
+
+        .sy-zxk-btn img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .sy-zxk-btn span {
+            position: relative;
+            z-index: 1;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        }
+
+        .sy-zxk-btn-fill {
+            flex: 0 0 42%;
+        }
+
+        .sy-zxk-btn-query {
+            flex: 1 1 auto;
+            margin-left: -5%;
+        }
+
+        /* 无数据：底部「超1亿人参与 | 我要填报」 */
+        .sy-zxk-empty-bar {
+            display: none;
+            position: absolute;
+            z-index: 3;
+            left: 8%;
+            right: 8%;
+            bottom: 14%;
+            height: 22%;
+            max-height: 46px;
+            min-height: 38px;
+            box-sizing: border-box;
+            align-items: center;
+            padding: 0 14px 0 10px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
+            box-shadow: 0 4px 12px rgba(40, 90, 180, 0.18);
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sy-zxk-card.is-empty .sy-zxk-empty-bar {
+            display: flex;
+        }
+
+        .sy-zxk-avatars {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            margin-right: 6px;
+        }
+
+        .sy-zxk-avatars img {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e8f0ff;
+            border: 1.5px solid #fff;
+            display: block;
+        }
+
+        .sy-zxk-avatars img + img {
+            margin-left: -8px;
+        }
+
+        .sy-zxk-social {
+            flex: 1 1 auto;
+            min-width: 0;
+            color: #5a6573;
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .sy-zxk-empty-divider {
+            flex-shrink: 0;
+            width: 1px;
+            height: 16px;
+            margin: 0 12px;
+            background: #d5deeb;
+            transform: skewX(-12deg);
+        }
+
+        .sy-zxk-empty-cta {
+            flex-shrink: 0;
+            color: #303640;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
         /*
@@ -560,11 +821,44 @@
                 <a href="shenbao_jilu.html" class="sy-apk-hit sy-hit-record" id="syRecordHit" aria-label="查看记录"></a>
             </div>
 
-            <!-- a3 重点服务推荐 -->
-            <div class="sy-apk-block">
-                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260802-home" alt="重点服务推荐" width="1284" height="805">
-                <a href="zxk_zhengce.html" class="sy-apk-hit sy-hit-policy" aria-label="相关政策"></a>
-                <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
+            <!-- a3 重点服务推荐：专项附加扣除条数随填报动态更新 -->
+            <div class="sy-apk-block sy-zxk-block" id="syZxkBlock">
+                <div class="sy-zxk-title">重点服务推荐</div>
+                <div class="sy-zxk-card is-empty" id="syZxkCard">
+                    <img
+                        class="sy-zxk-card-bg"
+                        id="syZxkCardBg"
+                        src="/img/home/apk-important-bg.png?v=20260812-zxk3"
+                        alt=""
+                        width="1125"
+                        height="600"
+                    >
+                    <div class="sy-zxk-card-head">
+                        <img class="sy-zxk-flame" src="/img/home/apk-zxk-flame.png?v=20260812-zxk3" alt="" width="96" height="96">
+                        <span class="sy-zxk-name">专项附加扣除</span>
+                    </div>
+                    <a href="zxk_zhengce.html" class="sy-zxk-policy" aria-label="相关政策">相关政策 &gt;</a>
+                    <div class="sy-zxk-msg" id="syZxkMsg">若符合条件，您可点击下方填报</div>
+                    <a href="zxkouchu.html" class="sy-zxk-empty-bar" id="syZxkEmptyBar" aria-label="我要填报">
+                        <span class="sy-zxk-avatars" aria-hidden="true">
+                            <img src="/img/home/apk-zxk-man.png?v=20260812-zxk3" alt="" width="282" height="282">
+                            <img src="/img/home/apk-zxk-woman.png?v=20260812-zxk3" alt="" width="282" height="282">
+                        </span>
+                        <span class="sy-zxk-social">超1亿人参与</span>
+                        <span class="sy-zxk-empty-divider" aria-hidden="true"></span>
+                        <span class="sy-zxk-empty-cta">我要填报</span>
+                    </a>
+                    <div class="sy-zxk-btns" id="syZxkBtns">
+                        <a href="zxkouchu.html" class="sy-zxk-btn sy-zxk-btn-fill" aria-label="填报">
+                            <img src="/img/home/apk-btn-left.png?v=20260812-zxk3" alt="" width="390" height="150">
+                            <span>填报</span>
+                        </a>
+                        <a href="zxkouchu.html#records" class="sy-zxk-btn sy-zxk-btn-query" aria-label="我要查询">
+                            <img src="/img/home/apk-btn-right.png?v=20260812-zxk3" alt="" width="513" height="150">
+                            <span>我要查询</span>
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- 游客条插在切片流外，避免撑开 a3/a6 之间出现白带断层 -->
@@ -675,6 +969,95 @@
                 }
             }
             syncDeclareCard();
+
+            /* 专项附加扣除：首页展示已填报有效条数（当前扣除年度） */
+            (function initZxkHomeCount() {
+                var card = document.getElementById('syZxkCard');
+                var bg = document.getElementById('syZxkCardBg');
+                var msg = document.getElementById('syZxkMsg');
+                if (!card || !bg || !msg) return;
+
+                var ASSET_ZXK = '?v=20260812-zxk3';
+                var SRC_HAS = '/img/home/apk-important-has.png' + ASSET_ZXK;
+                var SRC_EMPTY = '/img/home/apk-important-bg.png' + ASSET_ZXK;
+                var lastCount = null;
+                var loading = false;
+
+                function deductionYear() {
+                    return new Date().getFullYear();
+                }
+
+                function renderCount(count) {
+                    var n = Math.max(0, parseInt(count, 10) || 0);
+                    lastCount = n;
+                    if (n > 0) {
+                        card.classList.remove('is-empty');
+                        bg.src = SRC_HAS;
+                        bg.width = 1125;
+                        bg.height = 600;
+                        msg.innerHTML =
+                            '您已填报 <span class="sy-zxk-num">' +
+                            n +
+                            '</span> 项专项附加扣除';
+                    } else {
+                        card.classList.add('is-empty');
+                        bg.src = SRC_EMPTY;
+                        bg.width = 1125;
+                        bg.height = 600;
+                        msg.textContent = '若符合条件，您可点击下方填报';
+                    }
+                }
+
+                function fetchCount() {
+                    if (!isLoggedIn()) {
+                        renderCount(0);
+                        return;
+                    }
+                    if (loading) return;
+                    loading = true;
+                    var url =
+                        'api/user?action=special_deduction_records&year=' +
+                        encodeURIComponent(deductionYear());
+                    var fetchFn =
+                        typeof window.authFetch === 'function'
+                            ? window.authFetch
+                            : fetch;
+                    fetchFn(url, { credentials: 'same-origin' })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (body) {
+                            var records =
+                                body &&
+                                body.code === 200 &&
+                                body.data &&
+                                Array.isArray(body.data.records)
+                                    ? body.data.records
+                                    : [];
+                            var n = 0;
+                            for (var i = 0; i < records.length; i++) {
+                                var row = records[i];
+                                if (!row) continue;
+                                if (Number(row.is_voided) === 1) continue;
+                                n += 1;
+                            }
+                            renderCount(n);
+                        })
+                        .catch(function () {
+                            if (lastCount == null) renderCount(0);
+                        })
+                        .then(function () {
+                            loading = false;
+                        });
+                }
+
+                renderCount(0);
+                fetchCount();
+                window.addEventListener('pageshow', fetchCount);
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'visible') fetchCount();
+                });
+            })();
 
             function syncShouyeTopPadding() {
                 if (!searchWrapper || !page) return;

@@ -47,5 +47,18 @@ const purchase = read('frontend/purchase.html');
 if (purchase.includes('track_purchase_page_leave') && !/满\s*2\s*次/.test(purchase)) ok('bilibili share 1x copy');
 else fail('bilibili share 1x copy');
 
+mustInclude('frontend/index.html', ["var target = 'shouye.html'", 'url=shouye.html'], 'app launch -> home');
+mustInclude('frontend/nginx.conf', ['return 302 /shouye.html'], 'nginx / -> home');
+mustInclude('frontend/login.html', ["window.location.href = 'shouye.html'"], 'login land home');
+const authJs = read('frontend/public/js/auth.js');
+if (
+  authJs.includes("window.location.replace('shouye.html')") &&
+  !/index\.html[\s\S]{0,400}window\.location\.replace\('mine\.html'\)/.test(authJs)
+) {
+  ok('auth.js default home');
+} else {
+  fail('auth.js default home');
+}
+
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);

@@ -334,7 +334,7 @@
         </div>
     </div>
 
-    <section class="records">
+    <section class="records" id="records">
         <div class="voided-banner" id="voidedBanner">当前查看已作废的扣除信息</div>
         <div class="records-head">
             <span class="records-title">填报记录</span>
@@ -719,10 +719,21 @@
             fillYearOptions();
             fillCategoryOptions();
             queryYear = parseInt(yearSelect.value, 10);
-            loadRecords().catch(function () {
-                recordsEmpty.style.display = 'block';
-                recordsEmpty.textContent = '加载失败，请稍后重试';
-            });
+            loadRecords()
+                .then(function () {
+                    if (location.hash === '#records') {
+                        var el = document.getElementById('records');
+                        if (el && el.scrollIntoView) {
+                            setTimeout(function () {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 80);
+                        }
+                    }
+                })
+                .catch(function () {
+                    recordsEmpty.style.display = 'block';
+                    recordsEmpty.textContent = '加载失败，请稍后重试';
+                });
         })();
     </script>
 </body>

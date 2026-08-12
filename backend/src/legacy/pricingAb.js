@@ -183,9 +183,12 @@ function looksMojibakeText(s) {
 }
 
 function defaultSkuById(id) {
+  // 含旧档：DB/历史配置里仍可能残留 sku_199_1h 等，乱码修复需能命中
   var all = []
     .concat(DEFAULT_PRICING_AB.control_skus || [])
-    .concat(DEFAULT_PRICING_AB.treatment_skus || []);
+    .concat(DEFAULT_PRICING_AB.treatment_skus || [])
+    .concat([SKU_199_HOUR])
+    .concat(LEGACY_CATALOG_SKUS || []);
   for (var i = 0; i < all.length; i++) {
     if (all[i].id === id) return cloneSku(all[i]);
   }

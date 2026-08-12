@@ -207,15 +207,19 @@ print("1" if int(d.get("code") or 0)==200 and (d.get("data") or {}).get("enabled
     echo "[selftest] FAIL: alipay config not enabled" >&2
     exit 1
   fi
-  # 取最低档 sku 创建订单（不真实付款）
+  # 已用 grant_days=1 激活：须选更长时效/永久 sku，否则 coverLonger 会 409
   sku="$(echo "$cfg" | python3 -c 'import json,sys
 d=json.load(sys.stdin)
 skus=(d.get("data") or {}).get("skus") or []
-if skus:
-  skus=sorted(skus, key=lambda s: float(s.get("amount") or 0))
-  print(skus[0].get("id") or "")
-else:
-  print("")
+if not skus:
+  print(""); raise SystemExit
+def rank(s):
+  kind=str(s.get("grant_kind") or "")
+  if kind=="permanent":
+    return (3, 0, 0)
+  return (1, int(s.get("grant_days") or 0), int(s.get("grant_hours") or 0))
+skus=sorted(skus, key=rank, reverse=True)
+print(skus[0].get("id") or "")
 ')"
   if [[ -n "$sku" ]]; then
     pay="$(
@@ -226,7 +230,7 @@ else:
     pay_ok="$(echo "$pay" | python3 -c 'import json,sys
 d=json.load(sys.stdin)
 data=d.get("data") or {}
-ok=int(d.get("code") or 0)==200 and bool(data.get("qr_code") or data.get("payment_url"))
+ok=int(d.get("code") or 0)==200 and bool(data.get("qr_code") or data.get("payment_url") or (data.get("order") or {}).get("out_trade_no"))
 print("1" if ok else "0")
 ' 2>/dev/null || echo 0)"
     echo "[selftest] alipay_create=$(echo "$pay" | head -c 220)"
