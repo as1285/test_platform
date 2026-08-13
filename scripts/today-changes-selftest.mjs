@@ -67,17 +67,22 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260813-mate60-mine'],
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mate60-all'],
   'shuiming_result full company name'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isHuaweiMate60PhysicalScreen', 'ALN-AL00', 'app-android-huawei-mate60', 'padding-top:40px'],
-  'mate60 mine page top inset'
+  ['isHuaweiMate60PhysicalScreen', 'ALN-AL00', 'BRA-AL00', 'applyHuaweiMate60PageChrome', 'data-huawei-mate60-chrome', 'app-android-huawei-mate60', 'body.page-login', 'padding-top:40px'],
+  'mate60 global top inset'
+);
+mustInclude(
+  'frontend/login.html',
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate60-all'],
+  'login.html mate60 top inset'
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260813-mate60-mine'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate60-all'],
   'mine.html mate60 bleed exception'
 );
 mustInclude(

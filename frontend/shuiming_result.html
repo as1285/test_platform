@@ -31,8 +31,30 @@
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
-                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                if (
+                    /Mate\s*60|BRA-AL00|BRA-AN00|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|HUAWEIBRA/i.test(u) ||
+                    (/HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(u) &&
+                        (function () {
+                            try {
+                                var sw = Number(screen && screen.width) || 0;
+                                var sh = Number(screen && screen.height) || 0;
+                                var dpr = Number(window.devicePixelRatio) || 1;
+                                var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
+                                var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
+                                var c = Math.min(sw, sh);
+                                var d = Math.max(sw, sh);
+                                return (
+                                    (a >= 1180 && a <= 1320 && b >= 2550 && b <= 2800) ||
+                                    (c >= 390 && c <= 440 && d >= 840 && d <= 960 && dpr >= 2.8)
+                                );
+                            } catch (eMate) {
+                                return false;
+                            }
+                        })())
+                ) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('platform-android');
                 }
                 if (
                     /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
@@ -64,7 +86,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260813-mate60-mine"></script>
+    <script src="/js/auth.js?v=20260814-mate60-all"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
