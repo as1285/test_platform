@@ -60,5 +60,27 @@ if (
   fail('auth.js default home');
 }
 
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isIPhone12ProLikeClient', 'isIosWhiteStatusPage', "style: 'default'", 'app-ios-iphone12pro'],
+  'iphone12pro dark status bar'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['href="shouye.html"', 'resolveBackTarget', "var HOME = 'shouye.html'"],
+  'shuiming back -> home'
+);
+mustInclude('frontend/consult.html', ['>激活页面<'], 'consult tab 激活页面');
+mustInclude('frontend/public/js/consult-core.js', ["titleEl.textContent = '激活页面'"], 'consult title 激活页面');
+if (!read('frontend/consult.html').includes('>附加产品<')) ok('consult tab no 附加产品');
+else fail('consult tab no 附加产品');
+mustInclude(
+  'frontend/public/js/consult-batch-tax.js',
+  ['copyTaxPasteImportTemplate', 'TAX_PASTE_IMPORT_TEMPLATE', 'taxPasteImportCopyTplBtn'],
+  'tax paste copy template'
+);
+mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'consult copy tpl btn');
+mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'admin copy tpl btn');
+
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
