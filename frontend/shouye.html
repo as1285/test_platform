@@ -252,6 +252,21 @@
             cursor: pointer;
         }
 
+        /* 未填报：原 a3.png 热区 */
+        .sy-hit-policy {
+            top: calc(120 * var(--sy-rpx));
+            left: calc(500 * var(--sy-rpx));
+            width: calc(200 * var(--sy-rpx));
+            height: calc(70 * var(--sy-rpx));
+        }
+
+        .sy-hit-fill {
+            top: calc(320 * var(--sy-rpx));
+            left: calc(100 * var(--sy-rpx));
+            width: calc(550 * var(--sy-rpx));
+            height: calc(90 * var(--sy-rpx));
+        }
+
         /* a1 通知条叠字；上移 2px 盖住与固定顶栏交界的亚像素白缝 */
         .sy-apk-a1 {
             position: relative;
@@ -307,6 +322,11 @@
             padding: 0 0 2px;
             line-height: normal;
             font-size: 14px;
+        }
+
+        #syZxkEmptyWrap[hidden],
+        .sy-zxk-block[hidden] {
+            display: none !important;
         }
 
         .sy-zxk-title {
@@ -821,14 +841,19 @@
                 <a href="shenbao_jilu.html" class="sy-apk-hit sy-hit-record" id="syRecordHit" aria-label="查看记录"></a>
             </div>
 
-            <!-- a3 重点服务推荐：专项附加扣除条数随填报动态更新 -->
-            <div class="sy-apk-block sy-zxk-block" id="syZxkBlock">
+            <!-- 未填报：原 a3 切片；已填报：动态白卡 -->
+            <div class="sy-apk-block" id="syZxkEmptyWrap">
+                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260802-home" alt="重点服务推荐" width="1284" height="805">
+                <a href="zxk_zhengce.html" class="sy-apk-hit sy-hit-policy" aria-label="相关政策"></a>
+                <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
+            </div>
+            <div class="sy-apk-block sy-zxk-block" id="syZxkBlock" hidden>
                 <div class="sy-zxk-title">重点服务推荐</div>
-                <div class="sy-zxk-card is-empty" id="syZxkCard">
+                <div class="sy-zxk-card" id="syZxkCard">
                     <img
                         class="sy-zxk-card-bg"
                         id="syZxkCardBg"
-                        src="/img/home/apk-important-bg.png?v=20260812-zxk3"
+                        src="/img/home/apk-important-has.png?v=20260812-zxk3"
                         alt=""
                         width="1125"
                         height="600"
@@ -838,16 +863,7 @@
                         <span class="sy-zxk-name">专项附加扣除</span>
                     </div>
                     <a href="zxk_zhengce.html" class="sy-zxk-policy" aria-label="相关政策">相关政策 &gt;</a>
-                    <div class="sy-zxk-msg" id="syZxkMsg">若符合条件，您可点击下方填报</div>
-                    <a href="zxkouchu.html" class="sy-zxk-empty-bar" id="syZxkEmptyBar" aria-label="我要填报">
-                        <span class="sy-zxk-avatars" aria-hidden="true">
-                            <img src="/img/home/apk-zxk-man.png?v=20260812-zxk3" alt="" width="282" height="282">
-                            <img src="/img/home/apk-zxk-woman.png?v=20260812-zxk3" alt="" width="282" height="282">
-                        </span>
-                        <span class="sy-zxk-social">超1亿人参与</span>
-                        <span class="sy-zxk-empty-divider" aria-hidden="true"></span>
-                        <span class="sy-zxk-empty-cta">我要填报</span>
-                    </a>
+                    <div class="sy-zxk-msg" id="syZxkMsg">您已填报 <span class="sy-zxk-num">0</span> 项专项附加扣除</div>
                     <div class="sy-zxk-btns" id="syZxkBtns">
                         <a href="zxkouchu.html" class="sy-zxk-btn sy-zxk-btn-fill" aria-label="填报">
                             <img src="/img/home/apk-btn-left.png?v=20260812-zxk3" alt="" width="390" height="150">
@@ -970,16 +986,17 @@
             }
             syncDeclareCard();
 
-            /* 专项附加扣除：首页展示已填报有效条数（当前扣除年度） */
+            /* 专项附加扣除：未填报用原 a3；已填报展示动态条数白卡 */
             (function initZxkHomeCount() {
+                var emptyWrap = document.getElementById('syZxkEmptyWrap');
+                var filledWrap = document.getElementById('syZxkBlock');
                 var card = document.getElementById('syZxkCard');
                 var bg = document.getElementById('syZxkCardBg');
                 var msg = document.getElementById('syZxkMsg');
-                if (!card || !bg || !msg) return;
+                if (!emptyWrap || !filledWrap || !card || !bg || !msg) return;
 
                 var ASSET_ZXK = '?v=20260812-zxk3';
                 var SRC_HAS = '/img/home/apk-important-has.png' + ASSET_ZXK;
-                var SRC_EMPTY = '/img/home/apk-important-bg.png' + ASSET_ZXK;
                 var lastCount = null;
                 var loading = false;
 
@@ -991,6 +1008,8 @@
                     var n = Math.max(0, parseInt(count, 10) || 0);
                     lastCount = n;
                     if (n > 0) {
+                        emptyWrap.hidden = true;
+                        filledWrap.hidden = false;
                         card.classList.remove('is-empty');
                         bg.src = SRC_HAS;
                         bg.width = 1125;
@@ -1000,11 +1019,8 @@
                             n +
                             '</span> 项专项附加扣除';
                     } else {
-                        card.classList.add('is-empty');
-                        bg.src = SRC_EMPTY;
-                        bg.width = 1125;
-                        bg.height = 600;
-                        msg.textContent = '若符合条件，您可点击下方填报';
+                        emptyWrap.hidden = false;
+                        filledWrap.hidden = true;
                     }
                 }
 
