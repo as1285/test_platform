@@ -5,16 +5,14 @@ alwaysApply: true
 
 # 每次修改都提交并推送
 
-对本仓库做了**实质性修改**后，在**回复用户之前**必须完成：
+用户已明确：**以后每次修改都提交推送**。对本仓库做了实质性修改后，在回复用户之前必须完成：
 
 1. `git status` / `git diff` 确认本轮应入库的文件范围。
 2. `git add` 相关路径，用清晰说明 `git commit`（完整句子；可选用 `feat`/`fix` 等前缀）。
-3. **立即** `git push origin HEAD`（本站开发分支为 **`lkj`**）。失败时说明原因并保留本地 commit，不要静默跳过。
+3. **立即** `git push -u origin HEAD`（本站开发分支为 **`lkj`**）。失败时说明原因并保留本地 commit，不要静默跳过。
 4. 不要夹带无关改动、生成物或 `.env`/密钥；无变更时不要空提交。
 5. 不要 `git push --force`（除非用户明确要求）。
 
 仅当用户本轮明确说「不要提交 / 不要推送」时才跳过。
 
-与 `auto-deploy.mdc` 配合时顺序：`git commit` → `git push` → `./scripts/deploy.sh`（适用时）。
-
-若 `/root/test_platform` 无法 fetch/push（历史不同步），可在已跟踪 `origin/lkj` 的工作副本（如 `/tmp/test_platform_push`）上叠加上本轮改动后 commit/push，并保证线上工作树文件一致。
+与 `auto-deploy.mdc` / `deploy-commit-push.mdc` 配合时顺序：部署（前端 `./scripts/sync-frontend.sh`）→ `git commit` → `git push`。

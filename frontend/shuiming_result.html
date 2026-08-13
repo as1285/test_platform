@@ -18,6 +18,15 @@
                     (/Xiaomi\s*10|Mi\s*10(?!\s*T)|小米\s*10/i.test(u) && !/Mi\s*10\s*T|Xiaomi\s*10\s*T/i.test(u))
                 ) {
                     document.documentElement.classList.add('app-android-xiaomi-10');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-redmi-k70-ultra');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/22120RN86[CGHI]|22126RN91Y|2212ARNC4L|22127PC95[GHI]|(?:Redmi|POCO)[\s_-]*12C|POCO\s*C55/i.test(u)) {
+                    document.documentElement.classList.add('app-android-redmi-12c');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
@@ -30,7 +39,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260812-mi10-notch"></script>
+    <script src="/js/auth.js?v=20260813-k70u-12c"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -976,11 +985,15 @@
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        /* 小米 15 Pro / 小米 10 刘海 / Mate 60：沉浸状态栏，顶栏须留 40px */
+        /* 小米 15 Pro / 小米 10 / K70 至尊 / 红米 12C / Mate 60：沉浸状态栏，顶栏须留 40px */
         html.app-android-xiaomi-15pro body.page-shuiming-result .page-root,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-xiaomi-10 body.page-shuiming-result .page-root,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-redmi-k70-ultra body.page-shuiming-result .page-root,
+        html.app-android-redmi-12c body.page-shuiming-result .page-root,
+        html.app-android-immersive-white-top body.page-shuiming-result .page-root,
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60 body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px;
@@ -991,6 +1004,10 @@
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header,
+        html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header,
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
@@ -1009,6 +1026,12 @@
         html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1023,6 +1046,9 @@
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-12c body.page-shuiming-result .top-fixed .summary,
+        html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 48px) + 40px) !important;
@@ -1032,6 +1058,9 @@
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-xiaomi-10 body.page-shuiming-result .list,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-redmi-k70-ultra body.page-shuiming-result .list,
+        html.app-android-redmi-12c body.page-shuiming-result .list,
+        html.app-android-immersive-white-top body.page-shuiming-result .list,
         html.app-android-huawei-mate60 body.page-shuiming-result .list,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
