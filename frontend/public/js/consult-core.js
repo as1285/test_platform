@@ -151,7 +151,7 @@ function switchTab(tab, pushHistory) {
     var titleEl = document.getElementById('consultPageTitle');
     if (titleEl) {
         if (tab === 'employers') titleEl.textContent = '个人信息';
-        else if (tab === 'products') titleEl.textContent = '附加产品';
+        else if (tab === 'products') titleEl.textContent = '激活页面';
         else titleEl.textContent = '税务记录';
     }
     if (tab === 'employers') {
