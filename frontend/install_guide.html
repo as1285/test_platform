@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/site-config.js"></script>
-    <script src="/js/auth.js?v=20260814-mate70-air"></script>
+    <script src="/js/auth.js?v=20260814-harmony-apk"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1122,7 +1122,43 @@
             return toAbsoluteDownloadUrl(s);
         }
 
+        /**
+         * HarmonyOS NEXT / OpenHarmony（如 Mate 70 Air SUP-AL90）UA 常无 Android，
+         * 且偶发 MacIntel+触摸被误判成 iPadOS；下载页应按安卓 APK 引导。
+         */
+        function isHarmonyOsLikeClient() {
+            var ua = '';
+            try {
+                ua = String(navigator.userAgent || '');
+            } catch (eUa) {
+                ua = '';
+            }
+            if (/HarmonyOS|OpenHarmony|HMSCore|ArkWeb|HuaweiBrowser/i.test(ua)) {
+                return true;
+            }
+            if (/Huawei|HUAWEI/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+                return true;
+            }
+            if (
+                /SUP-AL90|SUP-AL\d{2}|SUP-AN\d{2}|HUAWEISUP|PLR-AL\d{2}|PLA-AL\d{2}|HBP-AL\d{2}|ALN-AL\d{2}|BRA-AL\d{2}|Mate\s*7\d/i.test(
+                    ua
+                )
+            ) {
+                return true;
+            }
+            try {
+                var p = String(navigator.platform || '');
+                if (/Harmony|OpenHarmony/i.test(p)) {
+                    return true;
+                }
+            } catch (ePlat) {}
+            return false;
+        }
+
         function isLikelyIOSClient() {
+            if (isHarmonyOsLikeClient()) {
+                return false;
+            }
             var ua = navigator.userAgent || '';
             if (/iPhone|iPad|iPod/i.test(ua)) {
                 return true;
@@ -1136,7 +1172,12 @@
         }
 
         function isLikelyAndroidClient() {
-            return /Android/i.test(navigator.userAgent || '');
+            var ua = navigator.userAgent || '';
+            if (/Android/i.test(ua)) {
+                return true;
+            }
+            /* HarmonyOS NEXT 无 AOSP，仍下 APK/壳包 */
+            return isHarmonyOsLikeClient();
         }
 
         function isInAppShell() {

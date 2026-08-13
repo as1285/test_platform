@@ -166,6 +166,13 @@
   /** 顶层 WKWebView 直接打开网址时 top===self 且无 Cordova UA，仍需避免蓝色安全区条盖住系统栏区域（仅 iOS 明显）。 */
   function isLikelyIOSViewportClient() {
     var ua = navigator.userAgent || '';
+    /* HarmonyOS NEXT 偶发 MacIntel+触摸，不能当 iOS */
+    if (/HarmonyOS|OpenHarmony|HMSCore|ArkWeb|HuaweiBrowser/i.test(ua)) {
+      return false;
+    }
+    if (/Huawei|HUAWEI/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+      return false;
+    }
     if (/iPhone|iPad|iPod/i.test(ua)) {
       return true;
     }
@@ -209,7 +216,21 @@
   }
 
   function isLikelyAndroidViewportClient() {
-    return /Android/i.test(navigator.userAgent || '');
+    var ua = navigator.userAgent || '';
+    if (/Android/i.test(ua)) {
+      return true;
+    }
+    /* OpenHarmony / HarmonyOS NEXT UA 常不含 Android，仍按安卓壳处理 */
+    if (/HarmonyOS|OpenHarmony|HMSCore|ArkWeb|HuaweiBrowser/i.test(ua)) {
+      return true;
+    }
+    if (/Huawei|HUAWEI/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+      return true;
+    }
+    if (/SUP-AL90|SUP-AL\d{2}|SUP-AN\d{2}|HUAWEISUP|Mate\s*7\d/i.test(ua)) {
+      return true;
+    }
+    return false;
   }
 
   function getAndroidMajorVersion() {

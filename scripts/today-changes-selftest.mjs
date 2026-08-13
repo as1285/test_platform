@@ -67,7 +67,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mate70-air'],
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-harmony-apk'],
   'shuiming_result full company name'
 );
 mustInclude(
@@ -76,13 +76,18 @@ mustInclude(
   'mate60 global top inset'
 );
 mustInclude(
+  'frontend/install_guide.html',
+  ['isHarmonyOsLikeClient', 'OpenHarmony', 'SUP-AL90', 'isLikelyAndroidClient'],
+  'harmony next install apk not ios'
+);
+mustInclude(
   'frontend/login.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate70-air'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-harmony-apk'],
   'login.html mate60 top inset'
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate70-air'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-harmony-apk'],
   'mine.html mate60 bleed exception'
 );
 mustInclude(

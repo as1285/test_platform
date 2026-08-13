@@ -82,9 +82,12 @@
     return false;
   }
 
-  /** iPhone / iPad / iPod 及 iPadOS 桌面模式 */
+  /** iPhone / iPad / iPod 及 iPadOS 桌面模式（排除 HarmonyOS NEXT 误判） */
   function isLikelyIOSClient() {
     var ua = navigator.userAgent || '';
+    if (/HarmonyOS|OpenHarmony|HMSCore|ArkWeb|HuaweiBrowser|Huawei|HUAWEI/i.test(ua)) {
+      return false;
+    }
     if (/iPhone|iPad|iPod/i.test(ua)) {
       return true;
     }
