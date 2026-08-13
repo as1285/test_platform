@@ -627,6 +627,38 @@
     return m ? parseInt(m[1], 10) : 0;
   }
 
+  /**
+   * iOS 逻辑屏短边/长边。WKWebView / Cordova 偶发上报物理像素（如 1170×2532），
+   * 需按 dpr 折回 CSS 点，否则 12 Pro 对不上 390×844。
+   */
+  function getIOSLogicalScreenSides() {
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        sw = window.innerWidth ? Number(window.innerWidth) : 0;
+        sh = window.innerHeight ? Number(window.innerHeight) : 0;
+      }
+      if (!sw || !sh) {
+        return null;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      var dpr = window.devicePixelRatio ? Number(window.devicePixelRatio) : 1;
+      if (dpr >= 2 && shortSide >= 700) {
+        var ls = Math.round(shortSide / dpr);
+        var ll = Math.round(longSide / dpr);
+        if (ls >= 300 && ls <= 500) {
+          shortSide = ls;
+          longSide = ll;
+        }
+      }
+      return { shortSide: shortSide, longSide: longSide };
+    } catch (e) {
+      return null;
+    }
+  }
+
   /** iPhone 17 / 17 Pro / 17 Air 等 6.3 寸档逻辑屏约 402×874（容差）。 */
   function isIPhone402x874Viewport() {
     try {
@@ -694,6 +726,42 @@
       return true;
     }
     return false;
+  }
+
+  /**
+   * iPhone 12 Pro（iPhone13,3，6.1 寸 390×844，刘海非灵动岛）。
+   * 与 12 / 13 / 13 Pro / 14 同逻辑屏；Safari UA 无型号时按 390×844 兜底。
+   */
+  function isIPhone12ProLikeClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    if (
+      isIPhone12ProMaxClient() ||
+      isIPhone16ProLikeClient() ||
+      isIPhone17ProLikeClient() ||
+      isIPhone14ProLikeClient() ||
+      isIPhone11ProLikeClient()
+    ) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*12\s*Pro\b|iPhone13,3\b/i.test(ua)) {
+      return true;
+    }
+    var sides = getIOSLogicalScreenSides();
+    if (!sides) {
+      return false;
+    }
+    return (
+      sides.shortSide >= 388 &&
+      sides.shortSide <= 392 &&
+      sides.longSide >= 840 &&
+      sides.longSide <= 848
+    );
   }
 
   /**
@@ -824,18 +892,20 @@
     if (/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,1|iPhone16,2/i.test(ua)) {
       return false;
     }
+    if (/iPhone\s*12\s*Pro\b(?!\s*Max)|iPhone13,3\b|iPhone13,2\b|iPhone14,2\b|iPhone14,5\b/i.test(ua)) {
+      return true;
+    }
     if (/iPhone\s*14\b|iPhone14,7\b/i.test(ua)) {
       return true;
     }
     try {
-      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
-      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
-      if (!sw || !sh) {
+      var sides = getIOSLogicalScreenSides();
+      if (!sides) {
         return false;
       }
-      var shortSide = Math.min(sw, sh);
-      var longSide = Math.max(sw, sh);
-      if (shortSide >= 391 && shortSide <= 405) {
+      var shortSide = sides.shortSide;
+      var longSide = sides.longSide;
+      if (shortSide >= 393 && shortSide <= 405) {
         return false;
       }
       return shortSide >= 388 && shortSide <= 392 && longSide >= 840 && longSide <= 848;
@@ -1148,7 +1218,8 @@
         } else if (opts.overlays === false && typeof sb.overlaysWebView === 'function') {
           sb.overlaysWebView(false);
         }
-        if (opts.style === 'default' && typeof sb.styleDefault === 'function') {
+        var darkIcons = opts.style === 'default' || opts.style === 'dark';
+        if (darkIcons && typeof sb.styleDefault === 'function') {
           sb.styleDefault();
         } else if (typeof sb.styleLightContent === 'function') {
           sb.styleLightContent();
@@ -1165,7 +1236,7 @@
           {
             source: 'tax-h5',
             type: 'status-bar',
-            style: opts.style === 'default' ? 'default' : 'light',
+            style: opts.style === 'default' || opts.style === 'dark' ? 'default' : 'light',
             overlays: opts.overlays !== false,
             color: opts.color || '#00000000',
             /* 原版 uni APK：statusbar.background 同步铺到壳层，消除刘海白条 */
@@ -1446,32 +1517,48 @@
     } catch (e) {}
   }
 
-  /** iPhone 14 / 16·17 Pro / Pro Max：白顶栏页状态栏与导航栏同色（覆盖全局蓝 theme-color） */
-  function applyIPhone16ProPageChrome() {
+  /** 收入纳税明细 / 筛选 / 详情：白顶栏页（路径在 head 脚本阶段即可判断） */
+  function isIosWhiteStatusPage() {
     try {
-      if (
-        !document.documentElement.classList.contains('app-ios-iphone14') &&
-        !document.documentElement.classList.contains('app-ios-iphone16pro') &&
-        !document.documentElement.classList.contains('app-ios-iphone17pro') &&
-        !document.documentElement.classList.contains('app-ios-iphone-promax-font') &&
-        !document.documentElement.classList.contains('app-ios-iphone15promax') &&
-        !document.documentElement.classList.contains('app-ios-iphone16promax')
-      ) {
-        return;
-      }
       var body = document.body;
       if (
-        !body ||
-        (!body.classList.contains('page-shuiming') &&
-          !body.classList.contains('page-shuiming-result'))
+        body &&
+        (body.classList.contains('page-shuiming') ||
+          body.classList.contains('page-shuiming-result') ||
+          body.classList.contains('page-xiangqing'))
       ) {
+        return true;
+      }
+      var p = String(window.location.pathname || '').split('/').pop() || '';
+      return p === 'shuiming.html' || p === 'shuiming_result.html' || p === 'xiangqing.html';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * iOS 白顶栏页：深色状态栏文字（styleDefault）。
+   * 从首页等蓝顶栏进入后 Cordova 会残留浅色图标，白底上看不见时间；充电时电池变绿才露出来。
+   * 不按 14/16/17 分档，12 Pro（390×844 刘海）同样需要。
+   */
+  function applyIPhone16ProPageChrome() {
+    try {
+      if (!isLikelyIOSViewportClient()) {
+        return;
+      }
+      if (!isIosWhiteStatusPage()) {
         return;
       }
       upsertMeta('theme-color', '#ffffff');
       upsertMeta('msapplication-navbutton-color', '#ffffff');
       setStatusBarStyleMeta('default');
-      /* Cordova iframe：白顶栏页使用深色状态栏文字，避免白底+浅色图标看不见时间/电量 */
-      requestShellStatusBar({ style: 'default', overlays: true, color: '#00000000' });
+      requestShellStatusBar({
+        style: 'default',
+        overlays: true,
+        color: '#00000000',
+        paint_shell: true,
+        shell_bg: '#ffffff'
+      });
     } catch (e) {}
   }
 
@@ -1898,6 +1985,7 @@
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var iosIPhone14Pro = iosClient && isIPhone14ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
+      var iosIPhone12Pro = iosClient && isIPhone12ProLikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
       var iosIPhone12ProMax = iosClient && isIPhone12ProMaxClient();
       var iosIPhoneProMaxFont = iosClient && isIPhoneProMaxLargeFontClient();
@@ -2203,8 +2291,12 @@
           upsertMeta('msapplication-navbutton-color', '#2c80f4');
         }
       }
-      if (iosIPhone14) {
+      if (iosIPhone14 || iosIPhone12Pro) {
+        /* 12 Pro 与 14 同为 390×844 刘海，复用白顶栏避让样式 */
         document.documentElement.classList.add('app-ios-iphone14');
+      }
+      if (iosIPhone12Pro) {
+        document.documentElement.classList.add('app-ios-iphone12pro');
       }
       if (iosIPhone15ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
@@ -2775,6 +2867,7 @@
         document.head.appendChild(shellExtra);
       }
     } catch (e) {}
+    applyIPhone16ProPageChrome();
     patchViewportFit();
     setTimeout(patchViewportFit, 0);
     if (document.readyState === 'loading') {
