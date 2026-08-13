@@ -33,6 +33,7 @@
                 }
                 if (
                     /Mate\s*60|BRA-AL00|BRA-AN00|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|HUAWEIBRA/i.test(u) ||
+                    /Mate\s*70|Mate70|SUP-AL90|SUP-AL\d{2}|SUP-AN\d{2}|HUAWEISUP|PLR-AL00|PLR-AL10|PLA-AL00|PLA-AL10|HBP-AL00/i.test(u) ||
                     (/HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(u) &&
                         (function () {
                             try {
@@ -44,8 +45,8 @@
                                 var c = Math.min(sw, sh);
                                 var d = Math.max(sw, sh);
                                 return (
-                                    (a >= 1180 && a <= 1320 && b >= 2550 && b <= 2800) ||
-                                    (c >= 390 && c <= 440 && d >= 840 && d <= 960 && dpr >= 2.8)
+                                    (a >= 1180 && a <= 1380 && b >= 2550 && b <= 2860) ||
+                                    (c >= 390 && c <= 500 && d >= 840 && d <= 1040 && dpr >= 2.5)
                                 );
                             } catch (eMate) {
                                 return false;
@@ -55,6 +56,9 @@
                     document.documentElement.classList.add('app-android-huawei-mate60');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                     document.documentElement.classList.add('platform-android');
+                    if (/Mate\s*70|Mate70|SUP-AL/i.test(u)) {
+                        document.documentElement.classList.add('app-android-huawei-mate70-air');
+                    }
                 }
                 if (
                     /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
@@ -86,7 +90,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-mate60-all"></script>
+    <script src="/js/auth.js?v=20260814-mate70-air"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>

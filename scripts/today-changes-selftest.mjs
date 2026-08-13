@@ -67,22 +67,22 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mate60-all'],
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mate70-air'],
   'shuiming_result full company name'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isHuaweiMate60PhysicalScreen', 'ALN-AL00', 'BRA-AL00', 'applyHuaweiMate60PageChrome', 'data-huawei-mate60-chrome', 'app-android-huawei-mate60', 'body.page-login', 'padding-top:40px'],
+  ['isHuaweiMate60PhysicalScreen', 'ALN-AL00', 'BRA-AL00', 'applyHuaweiMate60PageChrome', 'data-huawei-mate60-chrome', 'app-android-huawei-mate60', 'body.page-login', 'padding-top:40px', 'isHuaweiMate70LikeClient', 'SUP-AL90', 'app-android-huawei-mate70-air'],
   'mate60 global top inset'
 );
 mustInclude(
   'frontend/login.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate60-all'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate70-air'],
   'login.html mate60 top inset'
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate60-all'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate70-air'],
   'mine.html mate60 bleed exception'
 );
 mustInclude(

@@ -1104,6 +1104,60 @@
     );
   }
 
+  /** Mate 70 Air（SUP-AL90）物理屏约 1320×2760，7 寸；逻辑点常比 Mate 60 更宽 */
+  function isHuaweiMate70AirPhysicalScreen() {
+    try {
+      var sw = Number(screen && screen.width) || 0;
+      var sh = Number(screen && screen.height) || 0;
+      var dpr = Number(window.devicePixelRatio) || 1;
+      var pw = Math.round(sw * dpr);
+      var ph = Math.round(sh * dpr);
+      var a = Math.min(pw, ph);
+      var b = Math.max(pw, ph);
+      if (a >= 1280 && a <= 1380 && b >= 2680 && b <= 2860) {
+        return true;
+      }
+      var c = Math.min(sw, sh);
+      var d = Math.max(sw, sh);
+      if (c >= 1280 && c <= 1380 && d >= 2680 && d <= 2860) {
+        return true;
+      }
+      return dpr >= 2.5 && c >= 420 && c <= 500 && d >= 880 && d <= 1040;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Mate 70 / 70 Air / 70 Pro（SUP-AL90、PLR-AL00、PLA-AL10 等）。
+   * 与 Mate 60 一样 Harmony WebView 仍沉浸压栏。
+   */
+  function isHuaweiMate70LikeClient() {
+    try {
+      var cl = document.documentElement.classList;
+      if (cl.contains('app-android-huawei-mate70-air') || cl.contains('app-android-huawei-mate70')) {
+        return true;
+      }
+    } catch (eEarly) {}
+    var ua = clientUaBlob();
+    if (/Mate\s*70|Mate70/i.test(ua)) {
+      return true;
+    }
+    if (/SUP-AL90|SUP-AL\d{2}|SUP-AN\d{2}|HUAWEISUP|PLR-AL00|PLR-AL10|PLA-AL00|PLA-AL10|HBP-AL00/i.test(ua)) {
+      return true;
+    }
+    if (isHuaweiPura70LikeClient()) {
+      return false;
+    }
+    if (
+      /HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(ua) &&
+      isHuaweiMate70AirPhysicalScreen()
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   /** Mate 60 / 60 Pro 物理屏约 1216×2688 / 1260×2720；Harmony 常报 CSS 点×dpr */
   function isHuaweiMate60PhysicalScreen() {
     try {
@@ -1131,14 +1185,22 @@
 
   /**
    * 华为 Mate 60 / Mate 60 Pro / Pro+（BRA-AL00 / ALN-AL00 / ALN-AL10 / ALN-AL80 等）。
+   * 含 Mate 70 / 70 Air：同一套沉浸压栏，走 40px 顶距。
    * Harmony Cordova 常仍沉浸压栏，overlays=false 不可靠；不可按华为族「外置黑条」清零顶距。
    */
   function isHuaweiMate60Client() {
     try {
-      if (document.documentElement.classList.contains('app-android-huawei-mate60')) {
+      if (
+        document.documentElement.classList.contains('app-android-huawei-mate60') ||
+        document.documentElement.classList.contains('app-android-huawei-mate70-air') ||
+        document.documentElement.classList.contains('app-android-huawei-mate70')
+      ) {
         return true;
       }
     } catch (eEarly) {}
+    if (isHuaweiMate70LikeClient()) {
+      return true;
+    }
     var ua = clientUaBlob();
     if (/Mate\s*60/i.test(ua)) {
       return true;
@@ -1171,6 +1233,10 @@
     try {
       root.classList.add('app-android-client');
       root.classList.add('app-android-huawei-mate60');
+      if (isHuaweiMate70LikeClient()) {
+        root.classList.add('app-android-huawei-mate70');
+        root.classList.add('app-android-huawei-mate70-air');
+      }
       root.classList.add('app-android-immersive-white-top');
       root.classList.add('app-top-safe-shell');
       root.classList.remove('app-android-white-page-outer');
@@ -2599,6 +2665,10 @@
       }
       if (huaweiMate60Client) {
         document.documentElement.classList.add('app-android-huawei-mate60');
+        if (isHuaweiMate70LikeClient()) {
+          document.documentElement.classList.add('app-android-huawei-mate70');
+          document.documentElement.classList.add('app-android-huawei-mate70-air');
+        }
       }
       if (huaweiHarmonyFamily) {
         document.documentElement.classList.add('app-android-huawei-harmony');
