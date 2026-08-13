@@ -64,5 +64,7 @@ describe('sbdyDemo', () => {
     expect(html).toContain('林晓薇');
     expect(html).toContain('abc123');
     expect(html).toContain('44018826');
+    expect(html).toContain('.seal-top{position:absolute;right:8px;top:4px;width:86px');
+    expect(html).toContain('h1{text-align:center;font-size:18px;margin:58px 96px 12px 72px');
   });
 });

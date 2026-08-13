@@ -658,12 +658,13 @@ function renderSzCertHtml(payload, links, opts) {
     '<title>深圳市社会保险历年参保缴费明细表（个人）</title>' +
     '<style>' +
     'body{margin:0;background:#fff;font-family:SimSun,"宋体",serif;color:#000;font-size:12px}' +
-    '.page{width:210mm;max-width:100%;margin:0 auto;padding:10px 12px 24px;position:relative}' +
-    'h1{text-align:center;font-size:18px;margin:8px 90px 18px 90px;letter-spacing:1px}' +
-    '.qr{position:absolute;left:18px;top:4px;width:70px;text-align:center;font-size:11px}' +
-    '.qr canvas{width:64px;height:64px}' +
-    '.seal-top{position:absolute;right:90px;top:8px;width:110px}' +
-    '.info{font-size:12px;margin:0 8px 8px;line-height:1.8}' +
+    '.page{width:210mm;max-width:100%;margin:0 auto;padding:10px 12px 28px;position:relative}' +
+    'h1{text-align:center;font-size:18px;margin:58px 96px 12px 72px;letter-spacing:1px}' +
+    '.qr{position:absolute;left:10px;top:6px;width:58px;text-align:center;font-size:10px;line-height:1.2;z-index:2}' +
+    '.qr canvas{display:block;width:52px;height:52px;margin:0 auto 4px}' +
+    '.qr .qr-cap{display:block;margin-top:2px;white-space:nowrap}' +
+    '.seal-top{position:absolute;right:8px;top:4px;width:86px;z-index:1}' +
+    '.info{font-size:12px;margin:0 8px 10px;line-height:1.8}' +
     'table.grid{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}' +
     'table.grid th,table.grid td{border:1px solid #000;padding:2px 1px;text-align:center}' +
     '.notes{font-size:11px;line-height:1.7;margin-top:10px}' +
@@ -672,7 +673,7 @@ function renderSzCertHtml(payload, links, opts) {
     '.bureau{text-align:center;margin-top:18px}' +
     '.seal-bot{position:absolute;right:24px;bottom:10px;width:110px}' +
     '</style></head><body><div class="page">' +
-    '<div class="qr"><div id="qrPh"></div><canvas id="qrCanvas" width="64" height="64" style="display:none"></canvas><div>好差评二维码</div></div>' +
+    '<div class="qr"><div id="qrPh"></div><canvas id="qrCanvas" width="52" height="52" style="display:none"></canvas><div class="qr-cap">好差评二维码</div></div>' +
     '<img class="seal-top" src="/img/sbdy_sz_seal.png" alt="">' +
     '<h1>深圳市社会保险历年参保缴费明细表（个人）</h1>' +
     '<div class="info">姓名：' +
@@ -732,7 +733,7 @@ function renderSzCertHtml(payload, links, opts) {
     JSON.stringify(qrUrl) +
     ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
     'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
-    'QRCode.toCanvas(c,u,{width:64,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
+    'QRCode.toCanvas(c,u,{width:52,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
     '</body></html>'
   );
 }

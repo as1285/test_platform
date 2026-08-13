@@ -179,16 +179,17 @@ def collect_blob(p, months, auth_code):
 
 def draw_title(page, font_title, title_name, font_body, body_name, qr_path, page_idx, total_pages):
     title = '深圳市社会保险历年参保缴费明细表（个人）'
-    tsize = 16.0
+    tsize = 15.0
     tw = text_width(font_title, title, tsize)
-    page.insert_text(((PAGE_W - tw) / 2.0, 106.0), title, fontname=title_name, fontsize=tsize)
+    page.insert_text(((PAGE_W - tw) / 2.0, 88.0), title, fontname=title_name, fontsize=tsize)
     if qr_path and os.path.isfile(qr_path):
-        page.insert_image(fitz.Rect(55, 4, 125, 74), filename=qr_path)
-    page.insert_text((54.0, 123.0), '好差评二维码', fontname=body_name, fontsize=9.0)
+        page.insert_image(fitz.Rect(38, 8, 90, 60), filename=qr_path)
+    page.insert_text((36.0, 72.0), '好差评二维码', fontname=body_name, fontsize=8.0)
     if os.path.isfile(SEAL_PNG):
-        page.insert_image(fitz.Rect(335, 28, 455, 148), filename=SEAL_PNG, keep_proportion=True)
+        # 章盖在标题右侧空白，底边须高于表头，避免压住工伤/失业列
+        page.insert_image(fitz.Rect(508, 6, 600, 98), filename=SEAL_PNG, keep_proportion=True)
     page.insert_text(
-        (555.0, 135.0),
+        (555.0, 114.0),
         '页码：%d' % page_idx,
         fontname=body_name,
         fontsize=7.0,
@@ -199,15 +200,15 @@ def draw_info(page, font_body, body_name, p):
     line1 = '姓名：%s' % (p.get('name') or '')
     line1b = '社保电脑号：%s' % (p.get('computer_no') or '')
     line1c = '身份证号码：%s' % (p.get('id_number') or '')
-    page.insert_text((47.4, 135.0), line1, fontname=body_name, fontsize=7.0)
-    page.insert_text((159.1, 135.0), line1b, fontname=body_name, fontsize=7.0)
-    page.insert_text((301.2, 135.0), line1c, fontname=body_name, fontsize=7.0)
+    page.insert_text((47.4, 114.0), line1, fontname=body_name, fontsize=7.0)
+    page.insert_text((159.1, 114.0), line1b, fontname=body_name, fontsize=7.0)
+    page.insert_text((301.2, 114.0), line1c, fontname=body_name, fontsize=7.0)
     line2 = '最近参保单位名称：%s' % (p.get('company_name') or '')
     line2b = '单位编号：%s' % (p.get('unit_code') or '')
     line2c = '计算单位：元'
-    page.insert_text((47.4, 147.0), line2, fontname=body_name, fontsize=7.0)
-    page.insert_text((301.2, 147.0), line2b, fontname=body_name, fontsize=7.0)
-    page.insert_text((555.0, 147.0), line2c, fontname=body_name, fontsize=7.0)
+    page.insert_text((47.4, 128.0), line2, fontname=body_name, fontsize=7.0)
+    page.insert_text((301.2, 128.0), line2b, fontname=body_name, fontsize=7.0)
+    page.insert_text((555.0, 128.0), line2c, fontname=body_name, fontsize=7.0)
 
 
 def draw_table_head(page, font_title, title_name, y0):
@@ -359,7 +360,7 @@ def draw_footer(page, font_body, body_name, p, auth_code, mapping, y_top, page_h
 
 
 def page_height_for(n_rows, with_footer):
-    header = 156.0
+    header = 144.0
     table = HEAD1_H + HEAD2_H + ROW_H * n_rows + (18.0 if with_footer else 0)
     footer = 377.0 if with_footer else 40.0
     h = header + table + footer
@@ -399,7 +400,7 @@ def render(payload, auth_code, qr_url, out_path):
             draw_title(page, subset_title, title_name, subset_body, body_name, qr_path, page_idx, total_pages)
             if page_idx == 1:
                 draw_info(page, subset_body, body_name, p)
-            y_head = 156.0
+            y_head = 144.0
             y_data = draw_table_head(page, subset_title, title_name, y_head)
             y_end = draw_data_rows(
                 page, subset_body, body_name, chunk, y_data, is_last, tot
