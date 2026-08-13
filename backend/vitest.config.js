@@ -27,7 +27,8 @@ module.exports = defineConfig({
         'src/admin/sbdyDemo.js',
         'src/partner/bankSalaryFlow.js',
         'serverMonitor.js',
-        'opsStatsReport.js'
+        'opsStatsReport.js',
+        'unusedActivationCodes.js'
       ],
       thresholds: {
         lines: 50,

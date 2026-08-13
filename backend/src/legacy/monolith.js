@@ -15,6 +15,7 @@ const mysql = require('mysql2/promise');
 const registerGuard = require('../../register-guard');
 const serverMonitor = require('../../serverMonitor');
 const dbLogRetention = require('../../dbLogRetention');
+const unusedActivationCodes = require('../../unusedActivationCodes');
 const opsStatsReport = require('../../opsStatsReport');
 const alipay = require('../../alipay');
 const { inferBankNameFromCardNo } = require('../../bank_card_bins');
@@ -16693,28 +16694,26 @@ async function handleAdminDeleteUnusedCodes(req, res) {
     }
     const conn = await pool.getConnection();
     try {
-      var conditions = ['used_count = 0'];
-      var params = [];
-      conditions.push("(note IS NULL OR (note NOT LIKE '%批量%' AND note NOT LIKE '%周卡%'))");
+      var ownerAdmin = '';
       if (!(req.admin && req.admin.is_super)) {
-        var selfName = req.admin && req.admin.username ? String(req.admin.username) : '';
-        if (!selfName) {
+        ownerAdmin = req.admin && req.admin.username ? String(req.admin.username) : '';
+        if (!ownerAdmin) {
           return res.status(403).json({ code: 403, msg: '无权限' });
         }
-        conditions.push('owner_admin_username = ?');
-        params.push(selfName);
       }
-      var whereSql = ' WHERE ' + conditions.join(' AND ');
+      var where = unusedActivationCodes.unusedGeneralWhereSql({ ownerAdmin: ownerAdmin });
       const [cntRows] = await conn.execute(
-        'SELECT COUNT(*) AS c FROM activation_codes' + whereSql,
-        params
+        'SELECT COUNT(*) AS c FROM activation_codes WHERE ' + where.sql,
+        where.params
       );
       var before = Number((cntRows[0] && cntRows[0].c) || 0);
       if (before <= 0) {
         return res.json({ code: 200, msg: '没有可删除的未使用激活码', data: { deleted: 0 } });
       }
-      const [result] = await conn.execute('DELETE FROM activation_codes' + whereSql, params);
-      var deleted = result && result.affectedRows != null ? Number(result.affectedRows) : 0;
+      var purged = await unusedActivationCodes.purgeUnusedGeneralCodes(conn, {
+        ownerAdmin: ownerAdmin
+      });
+      var deleted = purged && purged.deleted != null ? Number(purged.deleted) : 0;
       return res.json({
         code: 200,
         msg: '已删除 ' + deleted + ' 个未使用激活码',
@@ -21423,6 +21422,9 @@ async function startServer() {
   scheduleDbLogRetention();
   scheduleActivationInboxPromo();
   opsStatsReport.scheduleOpsStatsReport(function () {
+    return pool;
+  });
+  unusedActivationCodes.scheduleUnusedCodesPurge(function () {
     return pool;
   });
   app.listen(PORT, '0.0.0.0', function () {
