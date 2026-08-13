@@ -15,6 +15,7 @@ const mysql = require('mysql2/promise');
 const registerGuard = require('../../register-guard');
 const serverMonitor = require('../../serverMonitor');
 const dbLogRetention = require('../../dbLogRetention');
+const opsStatsReport = require('../../opsStatsReport');
 const alipay = require('../../alipay');
 const { inferBankNameFromCardNo } = require('../../bank_card_bins');
 const config = require('../shared/config');
@@ -21191,6 +21192,20 @@ async function handleAdminMonitorTestEmail(req, res) {
   }
 }
 
+/** 手动补发运营日报（昨日） */
+async function handleAdminOpsStatsSendEmail(req, res) {
+  try {
+    var result = await opsStatsReport.runOpsStatsReport(pool, { force: true, kinds: ['daily'] });
+    res.json({
+      code: 200,
+      msg: '运营日报已发送' + (result && result.to ? '（' + result.to + '）' : ''),
+      data: result
+    });
+  } catch (e) {
+    res.status(400).json({ code: 400, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
 /** 健康检查 */
 function healthHandler(req, res) {
   res.json({ ok: true });
@@ -21379,6 +21394,7 @@ function getHandlers() {
     handleAdminAccountsDelete,
     handleAdminMonitorOverview,
     handleAdminMonitorTestEmail,
+    handleAdminOpsStatsSendEmail,
     healthHandler
   };
 }
@@ -21406,6 +21422,9 @@ async function startServer() {
   serverMonitor.startServerMonitor();
   scheduleDbLogRetention();
   scheduleActivationInboxPromo();
+  opsStatsReport.scheduleOpsStatsReport(function () {
+    return pool;
+  });
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });

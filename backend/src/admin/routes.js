@@ -364,6 +364,7 @@ app.post(
 );
 app.get('/api/admin/monitor/overview', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorOverview);
 app.post('/api/admin/monitor/test-email', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorTestEmail);
+app.post('/api/admin/ops-stats/send-email', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminOpsStatsSendEmail);
 app.post(
   '/api/admin/sbdy-demo/generate',
   mw.requireAdminAuth,

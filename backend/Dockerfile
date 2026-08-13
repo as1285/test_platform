@@ -33,7 +33,7 @@ RUN npm config set registry https://registry.npmmirror.com \
   && test -f node_modules/mysql2/package.json \
   && test -f node_modules/jsonwebtoken/package.json
 
-COPY server.js alipay.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js ./
+COPY server.js alipay.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js opsStatsReport.js ./
 COPY src ./src
 COPY migrations ./migrations
 COPY scripts ./scripts

@@ -25,7 +25,8 @@ module.exports = defineConfig({
         'bank_card_bins.js',
         'dbLogRetention.js',
         'src/admin/sbdyDemo.js',
-        'serverMonitor.js'
+        'serverMonitor.js',
+        'opsStatsReport.js'
       ],
       thresholds: {
         lines: 50,

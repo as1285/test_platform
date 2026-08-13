@@ -8139,6 +8139,27 @@
                     });
             });
         }
+        var btnOpsStatsSendEmail = document.getElementById('btnOpsStatsSendEmail');
+        if (btnOpsStatsSendEmail) {
+            btnOpsStatsSendEmail.addEventListener('click', function () {
+                if (!confirm('向运营日报邮箱补发昨日日活/注册/激活/付费日报？')) return;
+                var btn = this;
+                btn.disabled = true;
+                adminFetch('api/admin/ops-stats/send-email', { method: 'POST' })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        alert(j.code === 200 ? j.msg || '已发送' : j.msg || '发送失败');
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
         document.getElementById('btnRefreshConversion').addEventListener('click', function () {
             loadAnalyticsDailyConversion();
         });
