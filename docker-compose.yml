@@ -137,6 +137,10 @@ services:
       ALIPAY_PRODUCT_TITLE: ${ALIPAY_PRODUCT_TITLE:-激活码}
       ALIPAY_PRODUCT_AMOUNT: ${ALIPAY_PRODUCT_AMOUNT:-}
       ALIPAY_GATEWAY: ${ALIPAY_GATEWAY:-https://openapi.alipay.com/gateway.do}
+      # 银行模拟器对接：拉取个税工资流水
+      BANK_PARTNER_API_KEY: ${BANK_PARTNER_API_KEY:-}
+      BANK_PARTNER_IP_ALLOWLIST: ${BANK_PARTNER_IP_ALLOWLIST:-}
+      BANK_PARTNER_RATE_PER_IP_MIN: ${BANK_PARTNER_RATE_PER_IP_MIN:-30}
     ports:
       # 后端仅由前端 Nginx 通过 Docker 内网访问；宿主本机保留调试入口
       - "127.0.0.1:3000:3000"

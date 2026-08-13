@@ -25,6 +25,7 @@ module.exports = defineConfig({
         'bank_card_bins.js',
         'dbLogRetention.js',
         'src/admin/sbdyDemo.js',
+        'src/partner/bankSalaryFlow.js',
         'serverMonitor.js',
         'opsStatsReport.js'
       ],

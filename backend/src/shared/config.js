@@ -51,6 +51,17 @@ const HEAVY_ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.HEAVY_ADMIN_API_RAT
 const GUEST_SESSION_RATE_PER_IP_MIN = parseInt(process.env.GUEST_SESSION_RATE_PER_IP_MIN || '8', 10);
 /** 埋点写入：每 IP 每分钟上限 */
 const TRACK_RATE_PER_IP_MIN = parseInt(process.env.TRACK_RATE_PER_IP_MIN || '60', 10);
+/** 银行模拟器对接密钥（空则接口返回 503） */
+const BANK_PARTNER_API_KEY = String(process.env.BANK_PARTNER_API_KEY || '').trim();
+/** 逗号分隔的允许来源 IP；空则不限制 */
+const BANK_PARTNER_IP_ALLOWLIST = String(process.env.BANK_PARTNER_IP_ALLOWLIST || '')
+  .split(/[\s,]+/)
+  .map(function (s) {
+    return String(s || '').trim();
+  })
+  .filter(Boolean)
+  .join(',');
+const BANK_PARTNER_RATE_PER_IP_MIN = parseInt(process.env.BANK_PARTNER_RATE_PER_IP_MIN || '30', 10);
 /** 管理登录连续失败锁定 */
 const ADMIN_LOGIN_MAX_FAILS = parseInt(process.env.ADMIN_LOGIN_MAX_FAILS || '5', 10) || 5;
 const ADMIN_LOGIN_LOCK_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCK_MINUTES || '30', 10) || 30;
@@ -107,6 +118,9 @@ module.exports = {
   HEAVY_ADMIN_API_RATE_PER_IP_MIN,
   GUEST_SESSION_RATE_PER_IP_MIN,
   TRACK_RATE_PER_IP_MIN,
+  BANK_PARTNER_API_KEY,
+  BANK_PARTNER_IP_ALLOWLIST,
+  BANK_PARTNER_RATE_PER_IP_MIN,
   ADMIN_LOGIN_MAX_FAILS,
   ADMIN_LOGIN_LOCK_MINUTES,
   ADMIN_LOGIN_EMAIL_OTP,

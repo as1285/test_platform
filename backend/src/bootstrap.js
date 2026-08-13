@@ -17,6 +17,8 @@ const { registerPaymentsRoutes } = require('./payments/routes');
 const { registerGrowthRoutes } = require('./growth/routes');
 const { registerAdminRoutes } = require('./admin/routes');
 const { registerPlatformRoutes } = require('./platform/routes');
+const { registerPartnerRoutes } = require('./partner/routes');
+const bankSalaryFlow = require('./partner/bankSalaryFlow');
 
 /** 创建 Express 应用并按域挂载全部路由 */
 function buildApp() {
@@ -32,7 +34,8 @@ function buildApp() {
       ylbxPs.getHandlers(),
       ccbFlow.getHandlers(),
       najiluQr.getHandlers(),
-      purchasePriceSurvey.getHandlers()
+      purchasePriceSurvey.getHandlers(),
+      bankSalaryFlow.getHandlers()
     ),
     middleware: Object.assign({}, getMiddleware(), {
       userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload
@@ -46,6 +49,7 @@ function buildApp() {
   registerGrowthRoutes(app, deps);
   registerAdminRoutes(app, deps);
   registerPlatformRoutes(app, deps);
+  registerPartnerRoutes(app, deps);
 
   return app;
 }
