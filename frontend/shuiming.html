@@ -75,14 +75,17 @@
         .back-btn {
             position: absolute;
             left: 12px;
+            z-index: 2;
             color: #4285f4;
             font-size: 16px;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 2px;
+            padding: 8px 12px 8px 0;
             -webkit-tap-highlight-color: transparent;
             outline: none;
+            pointer-events: auto;
         }
 
         .back-btn img {
@@ -547,7 +550,7 @@
 <body class="page-shuiming">
     <!-- 顶部导航 -->
     <div class="header">
-        <a href="bancha.html" class="back-btn" id="shuimingBack">
+        <a href="shouye.html" class="back-btn" id="shuimingBack" data-no-page-loading="1">
             <img src="/jt.png" alt="">
             <span>返回</span>
         </a>
@@ -691,12 +694,29 @@
     <script src="/js/tax-year.js?v=20260719-tax-year-open"></script>
     <script>
         (function () {
+            var HOME = 'shouye.html';
+            var BANCHA = 'bancha.html';
             var back = document.getElementById('shuimingBack');
             if (!back) return;
+            function resolveBackTarget() {
+                try {
+                    var ref = String(document.referrer || '');
+                    if (/bancha\.html(?:[?#]|$)/i.test(ref)) return BANCHA;
+                    if (/shouye\.html(?:[?#]|$)/i.test(ref)) return HOME;
+                } catch (e0) {}
+                try {
+                    if (/[?&]reset=1(?:&|$)/.test(String(location.search || ''))) return HOME;
+                } catch (e1) {}
+                return HOME;
+            }
+            back.setAttribute('href', resolveBackTarget());
             back.addEventListener('click', function (e) {
-                if (window.history.length > 1) {
-                    e.preventDefault();
-                    window.history.back();
+                e.preventDefault();
+                var href = resolveBackTarget();
+                try {
+                    window.location.assign(href);
+                } catch (e2) {
+                    window.location.href = href;
                 }
             });
         })();
