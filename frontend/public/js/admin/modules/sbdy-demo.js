@@ -55,12 +55,38 @@
     }
   }
 
+  function currentRegion() {
+    var sz = document.getElementById('sbdyRegionSz');
+    return sz && sz.checked ? 'sz' : 'zj';
+  }
+
+  function syncRegionUi() {
+    var sz = currentRegion() === 'sz';
+    document.querySelectorAll('.sbdy-zj-only').forEach(function (el) {
+      el.hidden = sz;
+    });
+    document.querySelectorAll('.sbdy-sz-only').forEach(function (el) {
+      el.hidden = !sz;
+    });
+    var base = document.getElementById('sbdyBase');
+    if (sz && base && String(base.value) === '4986') {
+      base.value = '4492';
+    }
+    if (!sz && base && String(base.value) === '4492') {
+      base.value = '4986';
+    }
+    var med = document.getElementById('sbdyMedicalBase');
+    if (sz && med && !med.value) med.value = base ? base.value : '4492';
+  }
+
   function setBusy(busy) {
     var btn = document.getElementById('btnSbdyDemoGenerate');
     if (btn) {
       btn.disabled = !!busy;
       btn.textContent = busy ? '生成中…' : '生成演示样例';
     }
+    var pasteGen = document.getElementById('btnSbdyPasteGenerate');
+    if (pasteGen) pasteGen.disabled = !!busy;
   }
 
   function genderFromId(id) {
@@ -273,14 +299,21 @@
       };
     }
 
-    var baseRaw = pickLabeled(text, ['缴费基数', '基数']);
+    var unitCode = pickLabeled(text, ['单位编号', '社保单位编号']);
+    var computerNo = pickLabeled(text, ['社保电脑号', '电脑号']);
+    var looksSz = !!(
+      unitCode ||
+      computerNo ||
+      /深圳市社会保险|深圳社保|社保电脑号/.test(text)
+    );
+    var baseRaw = pickLabeled(text, ['医保基数', '医疗保险基数', '缴费基数', '基数']);
     var base = baseRaw ? Number(String(baseRaw).replace(/[^\d.]/g, '')) : NaN;
     if (!isFinite(base) || base <= 0) {
       var fromForm = Number(val('sbdyBase'));
-      base = isFinite(fromForm) && fromForm > 0 ? fromForm : 4986;
+      base = isFinite(fromForm) && fromForm > 0 ? fromForm : looksSz ? 4492 : 4986;
     }
     var pension = Math.round(base * 0.08 * 100) / 100;
-    var unemp = Math.round(base * 0.005 * 100) / 100;
+    var unemp = Math.round(base * (looksSz ? 0.002 : 0.005) * 100) / 100;
 
     var active = wantsActiveStatus(text);
     var status = active ? '正常参保' : '暂停缴费';
@@ -292,16 +325,20 @@
     }
 
     return {
+      region: looksSz ? 'sz' : 'zj',
       name: name,
       id_number: idNumber,
       gender: gender || genderFromId(idNumber) || '女',
       company_name: company,
       credit_code: credit,
-      area: area || '余杭区',
+      unit_code: unitCode,
+      computer_no: computerNo,
+      area: area || (looksSz ? '深圳市' : '余杭区'),
       period_start: period.start,
       period_end: period.end,
       month_count: monthCountBetween(period.start, period.end),
       base_amount: base,
+      medical_base: base,
       pension_pay: pension,
       unemployment_pay: unemp,
       status: status,
@@ -310,15 +347,26 @@
   }
 
   function applyParsedToForm(parsed) {
+    if (parsed.region === 'sz') {
+      var szRadio = document.getElementById('sbdyRegionSz');
+      if (szRadio) szRadio.checked = true;
+    } else if (parsed.region === 'zj') {
+      var zjRadio = document.getElementById('sbdyRegionZj');
+      if (zjRadio) zjRadio.checked = true;
+    }
+    syncRegionUi();
     setField('sbdyName', parsed.name);
     setField('sbdyIdNumber', parsed.id_number);
     setField('sbdyGender', parsed.gender || '女');
     setField('sbdyCompany', parsed.company_name || '');
     setField('sbdyCredit', parsed.credit_code || '');
-    setField('sbdyArea', parsed.area || '余杭区');
+    setField('sbdyArea', parsed.area || (parsed.region === 'sz' ? '深圳市' : '余杭区'));
+    setField('sbdyUnitCode', parsed.unit_code || '');
+    setField('sbdyComputerNo', parsed.computer_no || '');
     setField('sbdyPeriodStart', parsed.period_start);
     setField('sbdyPeriodEnd', parsed.period_end);
     setField('sbdyBase', parsed.base_amount);
+    if (parsed.medical_base) setField('sbdyMedicalBase', parsed.medical_base);
     setField('sbdyPensionPay', parsed.pension_pay);
     setField('sbdyUnempPay', parsed.unemployment_pay);
     setField('sbdyStatusPension', parsed.status);
@@ -450,16 +498,20 @@
     var tbody = document.getElementById('sbdyDemoListTbody');
     if (!tbody) return;
     if (!list || !list.length) {
-      tbody.innerHTML = '<tr><td colspan="6">暂无记录</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">暂无记录</td></tr>';
       return;
     }
     var html = '';
     list.forEach(function (row) {
       var links = row.links || {};
+      var region = row.region === 'sz' ? '深圳' : '浙江';
       html +=
         '<tr>' +
         '<td>' +
         esc(formatBjTime(row.created_at)) +
+        '</td>' +
+        '<td>' +
+        esc(region) +
         '</td>' +
         '<td>' +
         esc(row.name || '—') +
@@ -514,7 +566,9 @@
       '<strong>已生成演示样例</strong>' +
       '<span class="hint">非正式证明 · 带水印</span>' +
       '</div>' +
-      '<p class="stat mb-8">授权码：<code id="sbdyResultAuth">' +
+      '<p class="stat mb-8">' +
+      ((d.payload && d.payload.region === 'sz') ? '验真码：' : '授权码：') +
+      '<code id="sbdyResultAuth">' +
       esc(d.auth_code || '') +
       '</code></p>' +
       '<div class="form-actions">' +
@@ -568,16 +622,22 @@
   }
 
   function generate() {
+    var region = currentRegion();
     var body = {
+      region: region,
       name: val('sbdyName'),
       id_number: val('sbdyIdNumber'),
       gender: val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女',
       company_name: val('sbdyCompany'),
       credit_code: val('sbdyCredit'),
-      area: val('sbdyArea') || '余杭区',
+      area: val('sbdyArea') || (region === 'sz' ? '深圳市' : '余杭区'),
+      unit_code: val('sbdyUnitCode'),
+      computer_no: val('sbdyComputerNo'),
       period_start: normalizeYm(val('sbdyPeriodStart')),
       period_end: normalizeYm(val('sbdyPeriodEnd')),
-      base_amount: num('sbdyBase', 4986),
+      base_amount: num('sbdyBase', region === 'sz' ? 4492 : 4986),
+      pension_base: num('sbdyBase', 4492),
+      medical_base: num('sbdyMedicalBase', num('sbdyBase', 4492)),
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
       status_pension: val('sbdyStatusPension') || '正常参保',
@@ -654,6 +714,44 @@
       '月' +
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
+    if (currentRegion() === 'sz') {
+      var szSamples = [
+        {
+          name: '林晓薇',
+          id_number: '440305199208156018',
+          gender: '女',
+          company: '深圳市南山区云启信息技术有限公司',
+          unit_code: '44018826',
+          computer_no: '089216473',
+          base: 4492
+        },
+        {
+          name: '周浩然',
+          id_number: '440304199511083517',
+          gender: '男',
+          company: '深圳前海星河数据科技有限公司',
+          unit_code: '44019907',
+          computer_no: '076543210',
+          base: 5280
+        }
+      ];
+      var sz =
+        Math.random() < 0.6 ? szSamples[0] : szSamples[Math.floor(Math.random() * szSamples.length)];
+      setField('sbdyName', sz.name);
+      setField('sbdyIdNumber', sz.id_number);
+      setField('sbdyGender', sz.gender);
+      setField('sbdyCompany', sz.company);
+      setField('sbdyUnitCode', sz.unit_code);
+      setField('sbdyComputerNo', sz.computer_no);
+      setField('sbdyArea', '深圳市');
+      setField('sbdyPeriodStart', startY + '-' + String(startM).padStart(2, '0'));
+      setField('sbdyPeriodEnd', endY + '-' + String(endM).padStart(2, '0'));
+      setField('sbdyBase', sz.base);
+      setField('sbdyMedicalBase', sz.base);
+      setField('sbdyPrintDate', printDate);
+      setStatus('已填充深圳示例：' + sz.name + '（可再点生成）', false);
+      return;
+    }
     var samples = [
       {
         name: '李晓晴',
@@ -773,6 +871,10 @@
   function bind() {
     fillDefaults();
     bindGenderAuto();
+    document.querySelectorAll('input[name="sbdyRegion"]').forEach(function (el) {
+      el.addEventListener('change', syncRegionUi);
+    });
+    syncRegionUi();
     var fillBtn = document.getElementById('btnSbdyDemoFillSample');
     if (fillBtn) fillBtn.onclick = fillSample;
     var btn = document.getElementById('btnSbdyDemoGenerate');

@@ -13,6 +13,7 @@ const { getPool } = require('../shared/db');
 const { PUBLIC_SITE_URL } = require('../shared/config');
 
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
+const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
 
 /** qrUrl：二维码扫码目标（应为 PDF 样例页 show_url） */
 function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
@@ -45,7 +46,10 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
       return reject(e);
     }
     var py = process.env.SBDY_PYTHON || 'python3';
-    var child = spawn(py, [SBDY_RENDER_SCRIPT, inJson, outPdf], {
+    var region = String((payload && payload.region) || '').toLowerCase();
+    var script =
+      region === 'sz' || region === 'shenzhen' ? SBDY_SZ_RENDER_SCRIPT : SBDY_RENDER_SCRIPT;
+    var child = spawn(py, [script, inJson, outPdf], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     var err = '';
@@ -116,6 +120,23 @@ function formatYmCn(y, m) {
   return y + '年' + String(m).padStart(2, '0') + '月';
 }
 
+function round2(n) {
+  var x = Number(n);
+  if (!isFinite(x)) return 0;
+  return Math.round(x * 100) / 100;
+}
+
+function isSzRegion(body) {
+  var r = String((body && (body.region || body.layout)) || '').toLowerCase();
+  return r === 'sz' || r === 'shenzhen' || r === 'sz_official_v1';
+}
+
+function digitsFrom(s, n) {
+  var d = String(s || '').replace(/\D/g, '');
+  if (d.length >= n) return d.slice(-n);
+  return (d + randDigits(n)).slice(0, n);
+}
+
 function formatMoney(n) {
   var x = Number(n);
   if (!isFinite(x)) return '0.00';
@@ -178,7 +199,119 @@ function buildMonthRows(periodStart, periodEnd, opts) {
   return rows;
 }
 
+function buildSzMonthRows(periodStart, periodEnd, opts) {
+  opts = opts || {};
+  var a = parseYm(periodStart);
+  var b = parseYm(periodEnd);
+  if (!a || !b) return [];
+  var pensionBase = Number(opts.pension_base) || 0;
+  var medicalBase = Number(opts.medical_base) > 0 ? Number(opts.medical_base) : pensionBase;
+  var injuryBase = Number(opts.injury_base) > 0 ? Number(opts.injury_base) : Math.max(3000, pensionBase);
+  var unempBase = Number(opts.unemp_base) > 0 ? Number(opts.unemp_base) : injuryBase;
+  var unitCode = opts.unit_code || '';
+  var unitName = opts.company_name || '';
+  var rows = [];
+  var y = a.y;
+  var m = a.m;
+  var guard = 0;
+  while (guard < 60) {
+    rows.push({
+      year: y,
+      month: String(m).padStart(2, '0'),
+      unit_code: unitCode,
+      unit_name: unitName,
+      pension_base: pensionBase,
+      pension_unit: round2(pensionBase * 0.16),
+      pension_person: round2(pensionBase * 0.08),
+      medical_type: '1',
+      medical_base: medicalBase,
+      medical_unit: round2(medicalBase * 0.05),
+      medical_person: round2(medicalBase * 0.02),
+      maternity_type: '1',
+      maternity_base: medicalBase,
+      maternity_unit: round2(medicalBase * 0.005),
+      injury_base: injuryBase,
+      injury_unit: round2(injuryBase * 0.002),
+      unemp_base: unempBase,
+      unemp_unit: round2(unempBase * 0.008),
+      unemp_person: round2(unempBase * 0.002)
+    });
+    if (y === b.y && m === b.m) break;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    guard += 1;
+  }
+  return rows;
+}
+
+function normalizeSzPayload(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var name = String(b.name || '').trim().substring(0, 64);
+  var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
+  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
+  var unitCode = String(b.unit_code || b.unitCode || '').replace(/\D/g, '').substring(0, 12);
+  if (!unitCode) unitCode = digitsFrom(b.credit_code || b.creditCode || idNumber, 8);
+  var computerNo = String(b.computer_no || b.computerNo || '').replace(/\D/g, '').substring(0, 12);
+  if (!computerNo) computerNo = digitsFrom(idNumber, 9);
+  var periodStart = String(b.period_start || b.periodStart || '').trim();
+  var periodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var pensionBase = Number(b.pension_base != null ? b.pension_base : b.base_amount != null ? b.base_amount : b.baseAmount);
+  var medicalBase = Number(b.medical_base != null ? b.medical_base : b.medicalBase);
+  if (!isFinite(pensionBase) || pensionBase <= 0) pensionBase = 4492;
+  if (!isFinite(medicalBase) || medicalBase <= 0) medicalBase = pensionBase;
+  var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
+  if (!name || !idNumber) {
+    return { error: '姓名与证件号码必填' };
+  }
+  if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+    return { error: '缴费起止月份格式应为 YYYY-MM' };
+  }
+  var a0 = parseYm(periodStart);
+  var b0 = parseYm(periodEnd);
+  if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
+    var tmp = periodStart;
+    periodStart = periodEnd;
+    periodEnd = tmp;
+  }
+  var months = buildSzMonthRows(periodStart, periodEnd, {
+    pension_base: pensionBase,
+    medical_base: medicalBase,
+    unit_code: unitCode,
+    company_name: company
+  });
+  if (!months.length) {
+    return { error: '缴费月份区间无效' };
+  }
+  return {
+    region: 'sz',
+    layout: 'sz_official_v1',
+    name: name,
+    id_number: idNumber,
+    computer_no: computerNo,
+    company_name: company,
+    unit_code: unitCode,
+    unit_map: [{ unit_code: unitCode, unit_name: company }],
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_label:
+      formatYmCn(parseYm(periodStart).y, parseYm(periodStart).m) +
+      '-' +
+      formatYmCn(parseYm(periodEnd).y, parseYm(periodEnd).m),
+    pension_base: pensionBase,
+    medical_base: medicalBase,
+    base_amount: pensionBase,
+    print_date: printDate,
+    months: months
+  };
+}
+
 function normalizePayload(body) {
+  if (isSzRegion(body)) {
+    return normalizeSzPayload(body);
+  }
   var b = body && typeof body === 'object' ? body : {};
   var name = String(b.name || '').trim().substring(0, 64);
   var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
@@ -254,6 +387,7 @@ function normalizePayload(body) {
     status_medical: statusMedical,
     status_unemployment: statusUnemp,
     months: months,
+    region: 'zj',
     layout: 'zj_official_v2'
   };
 }
@@ -459,9 +593,156 @@ function migrateMonthsForShow(payload) {
   });
 }
 
+function renderSzCertHtml(payload, links, opts) {
+  opts = opts || {};
+  var p = payload || {};
+  var months = Array.isArray(p.months) ? p.months : [];
+  var qrUrl = (links && links.show_url) || (links && links.show_api_url) || '';
+  var authCode = opts.authCode || '';
+  var mapping = Array.isArray(p.unit_map) && p.unit_map.length
+    ? p.unit_map
+    : [{ unit_code: p.unit_code || '', unit_name: p.company_name || '' }];
+  var tot = {
+    pension_unit: 0,
+    pension_person: 0,
+    medical_unit: 0,
+    medical_person: 0,
+    maternity_unit: 0,
+    injury_unit: 0,
+    unemp_unit: 0,
+    unemp_person: 0
+  };
+  var rowsHtml = '';
+  months.forEach(function (r) {
+    if (!r) return;
+    tot.pension_unit += Number(r.pension_unit) || 0;
+    tot.pension_person += Number(r.pension_person) || 0;
+    tot.medical_unit += Number(r.medical_unit) || 0;
+    tot.medical_person += Number(r.medical_person) || 0;
+    tot.maternity_unit += Number(r.maternity_unit) || 0;
+    tot.injury_unit += Number(r.injury_unit) || 0;
+    tot.unemp_unit += Number(r.unemp_unit) || 0;
+    tot.unemp_person += Number(r.unemp_person) || 0;
+    rowsHtml +=
+      '<tr>' +
+      '<td>' + escHtml(r.year) + '</td><td>' + escHtml(r.month) + '</td>' +
+      '<td>' + escHtml(r.unit_code || '') + '</td>' +
+      '<td>' + escHtml(formatMoney(r.pension_base)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.pension_unit)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.pension_person)) + '</td>' +
+      '<td>' + escHtml(r.medical_type || '1') + '</td>' +
+      '<td>' + escHtml(formatMoney(r.medical_base)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.medical_unit)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.medical_person)) + '</td>' +
+      '<td>' + escHtml(r.maternity_type || '1') + '</td>' +
+      '<td>' + escHtml(formatMoney(r.maternity_base)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.maternity_unit)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.injury_base)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.injury_unit)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.unemp_base)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.unemp_unit)) + '</td>' +
+      '<td>' + escHtml(formatMoney(r.unemp_person)) + '</td>' +
+      '</tr>';
+  });
+  var mapHtml = '';
+  mapping.forEach(function (item) {
+    mapHtml +=
+      '<tr><td>' +
+      escHtml(item.unit_code || '') +
+      '</td><td>' +
+      escHtml(item.unit_name || '') +
+      '</td></tr>';
+  });
+  return (
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<title>深圳市社会保险历年参保缴费明细表（个人）</title>' +
+    '<style>' +
+    'body{margin:0;background:#fff;font-family:SimSun,"宋体",serif;color:#000;font-size:12px}' +
+    '.page{width:210mm;max-width:100%;margin:0 auto;padding:10px 12px 24px;position:relative}' +
+    'h1{text-align:center;font-size:18px;margin:8px 90px 18px 90px;letter-spacing:1px}' +
+    '.qr{position:absolute;left:18px;top:4px;width:70px;text-align:center;font-size:11px}' +
+    '.qr canvas{width:64px;height:64px}' +
+    '.seal-top{position:absolute;right:90px;top:8px;width:110px}' +
+    '.info{font-size:12px;margin:0 8px 8px;line-height:1.8}' +
+    'table.grid{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}' +
+    'table.grid th,table.grid td{border:1px solid #000;padding:2px 1px;text-align:center}' +
+    '.notes{font-size:11px;line-height:1.7;margin-top:10px}' +
+    'table.map{border-collapse:collapse;margin-top:6px;font-size:11px}' +
+    'table.map th,table.map td{border:1px solid #000;padding:3px 8px}' +
+    '.bureau{text-align:center;margin-top:18px}' +
+    '.seal-bot{position:absolute;right:24px;bottom:10px;width:110px}' +
+    '</style></head><body><div class="page">' +
+    '<div class="qr"><div id="qrPh"></div><canvas id="qrCanvas" width="64" height="64" style="display:none"></canvas><div>好差评二维码</div></div>' +
+    '<img class="seal-top" src="/img/sbdy_sz_seal.png" alt="">' +
+    '<h1>深圳市社会保险历年参保缴费明细表（个人）</h1>' +
+    '<div class="info">姓名：' +
+    escHtml(p.name || '') +
+    '　　社保电脑号：' +
+    escHtml(p.computer_no || '') +
+    '　　身份证号码：' +
+    escHtml(p.id_number || '') +
+    '　　页码：1<br>最近参保单位名称：' +
+    escHtml(p.company_name || '') +
+    '　　单位编号：' +
+    escHtml(p.unit_code || '') +
+    '　　计算单位：元</div>' +
+    '<table class="grid"><thead>' +
+    '<tr><th rowspan="2">缴费年</th><th rowspan="2">月</th><th rowspan="2">单位编号</th>' +
+    '<th colspan="3">养老保险</th><th colspan="4">医疗保险</th><th colspan="3">生育</th>' +
+    '<th colspan="2">工伤保险</th><th colspan="3">失业保险</th></tr>' +
+    '<tr><th>基数</th><th>单位交</th><th>个人交</th><th>险种</th><th>基数</th><th>单位交</th><th>个人交</th>' +
+    '<th>险种</th><th>基数</th><th>单位交</th><th>基数</th><th>单位交</th>' +
+    '<th>基数</th><th>单位交</th><th>个人交</th></tr></thead><tbody>' +
+    rowsHtml +
+    '<tr><td colspan="3">合计</td><td></td><td>' +
+    escHtml(formatMoney(tot.pension_unit)) +
+    '</td><td>' +
+    escHtml(formatMoney(tot.pension_person)) +
+    '</td><td></td><td></td><td>' +
+    escHtml(formatMoney(tot.medical_unit)) +
+    '</td><td>' +
+    escHtml(formatMoney(tot.medical_person)) +
+    '</td><td></td><td></td><td>' +
+    escHtml(formatMoney(tot.maternity_unit)) +
+    '</td><td></td><td>' +
+    escHtml(formatMoney(tot.injury_unit)) +
+    '</td><td></td><td>' +
+    escHtml(formatMoney(tot.unemp_unit)) +
+    '</td><td>' +
+    escHtml(formatMoney(tot.unemp_person)) +
+    '</td></tr></tbody></table>' +
+    '<div class="notes">备注：<br>1.本证明可作为参保人在本单位参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（' +
+    escHtml(authCode) +
+    '）核查，验真码有效期三个月。<br>' +
+    '2.生育保险中的险种“1”为生育保险，“2”为生育医疗。<br>' +
+    '3.医疗险种中的险种“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险医保，“6”为统筹医疗保险。<br>' +
+    '4.上述“缴费明细”表中带“*”标识为补缴，空行为断缴。<br>' +
+    '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。<br>' +
+    '6.单位编号对应的单位名称：</div>' +
+    '<table class="map"><tr><th>单位编号</th><th>单位名称</th></tr>' +
+    mapHtml +
+    '</table>' +
+    '<div class="bureau">深圳市社会保险基金管理局<br>打印日期：' +
+    escHtml(p.print_date || defaultPrintDateCn()) +
+    '</div>' +
+    '<img class="seal-bot" src="/img/sbdy_sz_seal.png" alt="">' +
+    '</div>' +
+    '<script src="/js/vendor/qrcode.min.js"><\/script>' +
+    '<script>(function(){var u=' +
+    JSON.stringify(qrUrl) +
+    ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
+    'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
+    'QRCode.toCanvas(c,u,{width:64,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
+    '</body></html>'
+  );
+}
+
 function renderCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
+  if (p.region === 'sz' || p.layout === 'sz_official_v1') {
+    return renderSzCertHtml(p, links, opts);
+  }
   var months = migrateMonthsForShow(p);
   var verifyUrl = (links && links.verify_url) || '';
   /* 二维码扫码直达 PDF 样例页（与纸质证明一致） */
@@ -662,7 +943,7 @@ async function handleAdminSbdyDemoGenerate(req, res) {
     if (normalized.error) {
       return res.status(400).json({ code: 400, msg: normalized.error });
     }
-    var authCode = randDigits(20);
+    var authCode = normalized.region === 'sz' ? randToken(16) : randDigits(20);
     var token = 'SBDY' + randToken(24);
     var pool = getPool();
     await pool.execute(
@@ -712,6 +993,7 @@ async function handleAdminSbdyDemoList(req, res) {
         name: payload && payload.name ? payload.name : '',
         id_number: payload && payload.id_number ? payload.id_number : '',
         company_name: payload && payload.company_name ? payload.company_name : '',
+        region: payload && payload.region === 'sz' ? 'sz' : 'zj',
         created_by_admin: r.created_by_admin,
         created_at: r.created_at,
         links: links
@@ -801,7 +1083,7 @@ async function handlePublicSbdyDemoShow(req, res) {
     if (payload && !payload.company_display) {
       payload.company_display = companyDisplayOf(payload);
     }
-    if (payload) {
+    if (payload && payload.region !== 'sz' && payload.layout !== 'sz_official_v1') {
       payload.months = migrateMonthsForShow(payload);
     }
     var links = buildLinks(req, row.auth_code, row.token);
