@@ -29,44 +29,7 @@
     <link rel="apple-touch-startup-image" href="splash/startup-iphone-8-plus.png?v=20260731-webclip" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
     <link rel="apple-touch-startup-image" href="splash/startup-iphone-8.png?v=20260731-webclip" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
     <link rel="apple-touch-startup-image" href="splash_screen.png?v=20260731-webclip" media="(orientation: portrait)">
-    <script>
-        (function () {
-            try {
-                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
-                var mate60 =
-                    /Mate\s*60|BRA-AL00|BRA-AN00|BRA-AL80|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|HUAWEIBRA/i.test(u) ||
-                    /Mate\s*70|Mate70|SUP-AL90|SUP-AL\d{2}|SUP-AN\d{2}|HUAWEISUP|PLR-AL00|PLR-AL10|PLA-AL00|PLA-AL10|HBP-AL00/i.test(u) ||
-                    (/HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(u) &&
-                        (function () {
-                            try {
-                                var sw = Number(screen && screen.width) || 0;
-                                var sh = Number(screen && screen.height) || 0;
-                                var dpr = Number(window.devicePixelRatio) || 1;
-                                var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
-                                var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
-                                var c = Math.min(sw, sh);
-                                var d = Math.max(sw, sh);
-                                return (
-                                    (a >= 1180 && a <= 1380 && b >= 2550 && b <= 2860) ||
-                                    (c >= 390 && c <= 500 && d >= 840 && d <= 1040 && dpr >= 2.5)
-                                );
-                            } catch (eMate) {
-                                return false;
-                            }
-                        })());
-                if (mate60) {
-                    document.documentElement.classList.add('app-android-huawei-mate60');
-                    document.documentElement.classList.add('app-android-client');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                    document.documentElement.classList.add('platform-android');
-                    if (/Mate\s*70|Mate70|SUP-AL/i.test(u)) {
-                        document.documentElement.classList.add('app-android-huawei-mate70-air');
-                    }
-                }
-            } catch (e0) {}
-        })();
-    </script>
-    <script src="/js/auth.js?v=20260814-mine-immersive"></script>
+    <script src="/js/auth.js?v=20260814-ui-aug13-10"></script>
     <script src="/js/browser-install-prompt.js?v=20260724-app-shell" defer></script>
     <title>登录</title>
     <style>
@@ -84,15 +47,6 @@
             -webkit-font-smoothing: antialiased;
         }
         
-        /* Mate 60：整页避开状态栏，勿再给 .header 叠 40px */
-        html.app-android-huawei-mate60 body.page-login {
-            padding-top: 40px;
-        }
-        html.app-android-huawei-mate60 body.page-login .header {
-            padding-top: 15px;
-            min-height: 44px;
-        }
-
         /* 顶部导航（对齐 APK .its-header） */
         .header {
             background: #fff;

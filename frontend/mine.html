@@ -18,40 +18,9 @@
             } catch (e2) {
                 document.documentElement.classList.add('mine-guest');
             }
-            /* Mate 60/70 / 纯血鸿蒙：首屏前打标，避免「我的」零 bleed 顶进状态栏 */
-            try {
-                var u = String(navigator.userAgent || '');
-                var mateImmersive =
-                    /Mate\s*60|Mate\s*70|BRA-AL|ALN-AL|SUP-AL|OpenHarmony|ArkWeb|HUAWEIALN|HUAWEIBRA|HUAWEISUP/i.test(u) ||
-                    (/HarmonyOS/i.test(u) && !/Android/i.test(u)) ||
-                    (/HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(u) &&
-                        (function () {
-                            try {
-                                var sw = Number(screen && screen.width) || 0;
-                                var sh = Number(screen && screen.height) || 0;
-                                var dpr = Number(window.devicePixelRatio) || 1;
-                                var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
-                                var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
-                                var c = Math.min(sw, sh);
-                                var d = Math.max(sw, sh);
-                                return (
-                                    (a >= 1180 && a <= 1380 && b >= 2550 && b <= 2860) ||
-                                    (c >= 390 && c <= 500 && d >= 840 && d <= 1040 && dpr >= 2.5)
-                                );
-                            } catch (eScr) {
-                                return false;
-                            }
-                        })());
-                if (mateImmersive) {
-                    document.documentElement.classList.add('app-android-huawei-mate60');
-                    document.documentElement.classList.add('app-android-client');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                    document.documentElement.classList.add('platform-android');
-                }
-            } catch (eMate) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-mine-immersive"></script>
+    <script src="/js/auth.js?v=20260814-ui-aug13-10"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -76,7 +45,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260814-mine-immersive">
+    <link rel="stylesheet" href="css/nav.css?v=20260811-ios-mine-vh">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -163,21 +132,21 @@
         }
 
         /*
-         * Android/Cordova「我的」e1：默认 40px 沉浸顶距（华为/未知机型压栏优先可修）。
-         * 已确认外置状态栏的 vivo / OPPO / 小米 / 三星 / 荣耀折叠再清零。
+         * Android「我的」e1：默认零 bleed，覆盖未识别 OEM（含 Hi nova MIZ-BD00、华为鸿蒙等）。
+         * 避免通用 24px / 误测 inset 导致姓名税号压到米色卡。
+         * 一加 13 / MIX Fold 真沉浸机型再单独开 bleed。
          */
         html.app-android-client body.page-mine {
-            --mine-top-bleed: 40px;
-            --app-shell-statusbar-top: 40px;
+            --mine-top-bleed: 0px;
         }
         html.app-android-client body.page-mine .mine-e1-canvas {
-            padding-top: 40px !important;
+            padding-top: 0 !important;
         }
         html.app-android-client body.page-mine .mine-e1-canvas > img {
             margin-top: 0 !important;
         }
         html.app-android-client body.page-mine .mine-e1-layer {
-            top: 40px !important;
+            top: 0 !important;
         }
         html.app-android-oneplus-13 body.page-mine,
         html.app-android-xiaomi-mix-fold body.page-mine {
@@ -198,81 +167,12 @@
         html.app-android-redmi-k70 body.page-mine,
         html.app-android-samsung body.page-mine,
         html.app-android-samsung-s24u body.page-mine,
+        html.app-android-huawei-harmony body.page-mine,
         html.app-android-hinova body.page-mine,
         html.app-android-honor-flc body.page-mine,
         html.app-android-honor-fcp body.page-mine {
             --mine-top-bleed: 0px;
             --app-shell-statusbar-top: 0px;
-        }
-        html.app-android-vivo-family body.page-mine .mine-e1-canvas,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas,
-        html.app-android-oppo-family body.page-mine .mine-e1-canvas,
-        html.app-android-mi-family body.page-mine .mine-e1-canvas,
-        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas,
-        html.app-android-samsung body.page-mine .mine-e1-canvas,
-        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas,
-        html.app-android-hinova body.page-mine .mine-e1-canvas,
-        html.app-android-honor-flc body.page-mine .mine-e1-canvas,
-        html.app-android-honor-fcp body.page-mine .mine-e1-canvas {
-            padding-top: 0 !important;
-        }
-        html.app-android-vivo-family body.page-mine .mine-e1-canvas > img,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas > img,
-        html.app-android-oppo-family body.page-mine .mine-e1-canvas > img,
-        html.app-android-mi-family body.page-mine .mine-e1-canvas > img,
-        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas > img,
-        html.app-android-samsung body.page-mine .mine-e1-canvas > img,
-        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas > img,
-        html.app-android-hinova body.page-mine .mine-e1-canvas > img,
-        html.app-android-honor-flc body.page-mine .mine-e1-canvas > img,
-        html.app-android-honor-fcp body.page-mine .mine-e1-canvas > img {
-            margin-top: 0 !important;
-        }
-        html.app-android-vivo-family body.page-mine .mine-e1-layer,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-layer,
-        html.app-android-oppo-family body.page-mine .mine-e1-layer,
-        html.app-android-mi-family body.page-mine .mine-e1-layer,
-        html.app-android-redmi-k70 body.page-mine .mine-e1-layer,
-        html.app-android-samsung body.page-mine .mine-e1-layer,
-        html.app-android-samsung-s24u body.page-mine .mine-e1-layer,
-        html.app-android-hinova body.page-mine .mine-e1-layer,
-        html.app-android-honor-flc body.page-mine .mine-e1-layer,
-        html.app-android-honor-fcp body.page-mine .mine-e1-layer {
-            top: 0 !important;
-        }
-
-        /*
-         * Mate 60 / 华为鸿蒙：WebView 仍沉浸压栏。勿负 margin 把头图拉进状态栏
-         *（overflow:hidden 会裁掉头像/姓名）；只垫 40px 蓝底，叠层随图下移。
-         */
-        html.app-android-huawei-mate60 body.page-mine,
-        html.app-android-huawei-harmony body.page-mine {
-            --mine-top-bleed: 40px;
-            --app-shell-statusbar-top: 40px;
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
-        html.app-android-huawei-harmony body.page-mine .mine-e1-canvas {
-            padding-top: 40px !important;
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
-        html.app-android-huawei-harmony body.page-mine .mine-e1-canvas > img {
-            margin-top: 0 !important;
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-layer,
-        html.app-android-huawei-harmony body.page-mine .mine-e1-layer {
-            top: 40px !important;
-        }
-        html.app-android-huawei-mate60,
-        html.app-android-huawei-mate60 body.page-mine,
-        html.app-android-huawei-harmony,
-        html.app-android-huawei-harmony body.page-mine {
-            height: auto !important;
-            min-height: 100%;
-        }
-        html.app-android-huawei-mate60 body.page-mine,
-        html.app-android-huawei-harmony body.page-mine {
-            min-height: 100vh !important;
-            min-height: 100dvh !important;
         }
 
         .mine-e1-layer > * {

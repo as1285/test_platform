@@ -61,98 +61,37 @@ if (
 }
 
 mustInclude(
-  'frontend/public/js/auth.js',
-  ['isXiaomi17UltraClient', '25128PNA1', '2512BPNDA', 'app-android-xiaomi-17u', 'isXiaomi17UltraScreen'],
-  'xiaomi 17 ultra immersive top'
-);
-mustInclude(
-  'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mine-immersive'],
-  'shuiming_result full company name'
-);
-mustInclude(
-  'frontend/public/js/auth.js',
-  ['isHuaweiMate60PhysicalScreen', 'ALN-AL00', 'BRA-AL00', 'applyHuaweiMate60PageChrome', 'data-huawei-mate60-chrome', 'app-android-huawei-mate60', 'body.page-login', 'padding-top:40px', 'isHuaweiMate70LikeClient', 'SUP-AL90', 'app-android-huawei-mate70-air'],
-  'mate60 global top inset'
-);
-mustInclude(
   'frontend/install_guide.html',
   ['isHarmonyOsLikeClient', 'OpenHarmony', 'SUP-AL90', 'isLikelyAndroidClient'],
   'harmony next install apk not ios'
 );
-mustInclude(
-  'frontend/public/js/auth.js',
-  ['isHarmonyNextLikeClient', 'OpenHarmony', 'mineE1Canvas', 'padding-top', '40px'],
-  'harmony next mate mine bleed'
-);
-mustInclude(
-  'frontend/mine.html',
-  ['app-android-huawei-mate60', 'OpenHarmony', '20260814-mine-immersive', 'html.app-android-client body.page-mine', 'padding-top: 40px'],
-  'mine.html mate early detect'
-);
-mustInclude(
-  'frontend/public/js/auth.js',
-  ['默认按沉浸 40px', 'isHuaweiHarmonyOsFamilyClient', 'mineE1Canvas', 'padding-top', '40px'],
-  'cordova mine immersive default'
-);
+/* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mine-immersive'],
-  'login.html mate60 top inset'
+  ['20260814-ui-aug13-10'],
+  'login.html auth cache rolled back'
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mine-immersive'],
-  'mine.html mate60 bleed exception'
+  ['20260814-ui-aug13-10'],
+  'mine.html auth cache rolled back'
 );
 mustInclude(
-  'frontend/public/js/auth.js',
-  ['isOppoFindX8sPlusClient', 'PLB110', 'PKT110', 'app-android-oppo-find-x8s'],
-  'oppo find x8s+ immersive top'
+  'frontend/public/js/fast-nav.js',
+  ['20260814-ui-aug13-10'],
+  'fast-nav auth cache rolled back'
 );
-mustInclude(
-  'frontend/shuiming_result.html',
-  ['PLB110', 'app-android-oppo-find-x8s'],
-  'shuiming_result find x8s+ class'
-);
+if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
+  ok('auth.js without post-0813 Mate70 chrome');
+} else {
+  fail('auth.js without post-0813 Mate70 chrome');
+}
+if (!read('frontend/public/js/auth.js').includes('isXiaomi17UltraClient')) {
+  ok('auth.js without post-0813 Xiaomi17 chrome');
+} else {
+  fail('auth.js without post-0813 Xiaomi17 chrome');
+}
 
-(function testOppoFindX8sUa() {
-  const reModel = /PLB110|PKT110/i;
-  const reName = /Find\s*X\s*8s(?:\s*\+|\s*Plus)?/i;
-  const hit = [
-    'Mozilla/5.0 (Linux; Android 15; PLB110 Build/UKQ1) AppleWebKit/537.36',
-    'Mozilla/5.0 (Linux; Android 15; PKT110) AppleWebKit/537.36 OPPO Find X8s',
-    'Mozilla/5.0 (Linux; Android 15) OPPO Find X8s+'
-  ];
-  const miss = [
-    'Mozilla/5.0 (Linux; Android 15; PKJ110) OPPO Find X8 Ultra',
-    'Mozilla/5.0 (Linux; Android 15; PHJ110) OPPO A58',
-    'Mozilla/5.0 (Linux; Android 15; CPH2797) OPPO Find X9'
-  ];
-  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
-  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
-  if (hitOk && missOk) ok('oppo find x8s+ UA match');
-  else fail('oppo find x8s+ UA match');
-})();
-
-(function testXiaomi17UltraUa() {
-  const reModel = /25128PNA1[A-Z0-9]*|2512BPNDA[A-Z0-9]*/i;
-  const reName = /(?:Xiaomi|Mi|小米)[\s_-]*17[\s_-]*U(?:ltra)?\b/i;
-  const hit = [
-    'Mozilla/5.0 (Linux; Android 16; 25128PNA1C Build/UKQ1) AppleWebKit/537.36',
-    'Mozilla/5.0 (Linux; Android 16; 2512BPNDAC Build/UKQ1) AppleWebKit/537.36 Xiaomi 17 Ultra',
-    'Mozilla/5.0 (Linux; Android 16; Xiaomi 17U Leica) AppleWebKit/537.36'
-  ];
-  const miss = [
-    'Mozilla/5.0 (Linux; Android 14; 23127PN0CC Build/UKQ1) Xiaomi 14',
-    'Mozilla/5.0 (Linux; Android 15; 2410DPN6CC Build/UKQ1) Xiaomi 15 Pro',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'
-  ];
-  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
-  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
-  if (hitOk && missOk) ok('xiaomi 17 ultra UA match');
-  else fail('xiaomi 17 ultra UA match');
-})();
 mustInclude(
   'frontend/shuiming.html',
   ['href="shouye.html"', 'resolveBackTarget', "var HOME = 'shouye.html'"],

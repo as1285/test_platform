@@ -11,27 +11,6 @@
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                 }
                 if (
-                    /25128PNA1[A-Z0-9]*|2512BPNDA[A-Z0-9]*/i.test(u) ||
-                    /(?:Xiaomi|Mi|小米)[\s_-]*17[\s_-]*U(?:ltra)?\b/i.test(u) ||
-                    /Leitzphone|(?:Xiaomi|Mi|小米)?\s*17\s*Ultra\s*(?:by\s*)?Leica/i.test(u) ||
-                    (function () {
-                        try {
-                            var sw = Number(screen && screen.width) || 0;
-                            var sh = Number(screen && screen.height) || 0;
-                            var dpr = Number(window.devicePixelRatio) || 1;
-                            var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
-                            var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
-                            return /Android/i.test(u) && a >= 1140 && a <= 1280 && b >= 2480 && b <= 2760;
-                        } catch (eScr) {
-                            return false;
-                        }
-                    })()
-                ) {
-                    document.documentElement.classList.add('app-android-xiaomi-17u');
-                    document.documentElement.classList.add('app-android-xiaomi-15pro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (
                     /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
                     (/Xiaomi\s*10|Mi\s*10(?!\s*T)|小米\s*10/i.test(u) && !/Mi\s*10\s*T|Xiaomi\s*10\s*T/i.test(u))
                 ) {
@@ -46,39 +25,6 @@
                     document.documentElement.classList.add('app-android-redmi-12c');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
-                if (/PLB110|PKT110|Find\s*X\s*8s(?:\s*\+|\s*Plus)?/i.test(u)) {
-                    document.documentElement.classList.add('app-android-oppo-find-x8s');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (
-                    /Mate\s*60|BRA-AL00|BRA-AN00|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|HUAWEIBRA/i.test(u) ||
-                    /Mate\s*70|Mate70|SUP-AL90|SUP-AL\d{2}|SUP-AN\d{2}|HUAWEISUP|PLR-AL00|PLR-AL10|PLA-AL00|PLA-AL10|HBP-AL00/i.test(u) ||
-                    (/HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(u) &&
-                        (function () {
-                            try {
-                                var sw = Number(screen && screen.width) || 0;
-                                var sh = Number(screen && screen.height) || 0;
-                                var dpr = Number(window.devicePixelRatio) || 1;
-                                var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
-                                var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
-                                var c = Math.min(sw, sh);
-                                var d = Math.max(sw, sh);
-                                return (
-                                    (a >= 1180 && a <= 1380 && b >= 2550 && b <= 2860) ||
-                                    (c >= 390 && c <= 500 && d >= 840 && d <= 1040 && dpr >= 2.5)
-                                );
-                            } catch (eMate) {
-                                return false;
-                            }
-                        })())
-                ) {
-                    document.documentElement.classList.add('app-android-huawei-mate60');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                    document.documentElement.classList.add('platform-android');
-                    if (/Mate\s*70|Mate70|SUP-AL/i.test(u)) {
-                        document.documentElement.classList.add('app-android-huawei-mate70-air');
-                    }
-                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -90,7 +36,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-mine-immersive"></script>
+    <script src="/js/auth.js?v=20260814-ui-aug13-10"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -191,7 +137,7 @@
             padding-top: calc(44px + var(--app-shell-statusbar-top, 0px)) !important;
         }
 
-        /* 沉浸压栏机（小米 15 Pro / 17 Ultra / 10 / K70 至尊 / 12C）：强制 40px 顶距 */
+        /* 沉浸压栏机（小米 15 Pro / 10 / K70 至尊 / 12C）：强制 40px 顶距 */
         html.app-android-xiaomi-15pro body.page-shuiming > .header,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-xiaomi-10 body.page-shuiming > .header,
