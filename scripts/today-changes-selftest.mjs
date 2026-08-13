@@ -67,7 +67,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mate-mine'],
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mine-immersive'],
   'shuiming_result full company name'
 );
 mustInclude(
@@ -87,17 +87,22 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'OpenHarmony', '20260814-mate-mine'],
+  ['app-android-huawei-mate60', 'OpenHarmony', '20260814-mine-immersive', 'html.app-android-client body.page-mine', 'padding-top: 40px'],
   'mine.html mate early detect'
 );
 mustInclude(
+  'frontend/public/js/auth.js',
+  ['默认按沉浸 40px', 'isHuaweiHarmonyOsFamilyClient', 'mineE1Canvas', 'padding-top', '40px'],
+  'cordova mine immersive default'
+);
+mustInclude(
   'frontend/login.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate-mine'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mine-immersive'],
   'login.html mate60 top inset'
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate-mine'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mine-immersive'],
   'mine.html mate60 bleed exception'
 );
 mustInclude(
