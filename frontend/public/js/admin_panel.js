@@ -970,25 +970,10 @@
         var userLoginLimit = 20;
         var currentAdminProfile = { username: '', full_name: '', is_super: false, menus: [] };
         var adminMenuKeyList = [];
-        var _adminAccountsLoaded = false;
-
-        var _adminUsersLoaded = false;
-        var _adminDeletedUsersLoaded = false;
-        var _adminUserDataLoaded = false;
         var userDataPage = 1;
         var userDataLimit = 15;
-        var _adminCodesLoaded = false;
-        var _adminAnalyticsConversionSeen = false;
-        var _adminAnalyticsRegisterSeen = false;
-        var _adminAnalyticsPurchaseSeen = false;
-        var _adminAnalyticsTrackingSeen = false;
-        var _adminAnalyticsActivitySeen = false;
-        var _adminInstallGuideStatsSeen = false;
-        var _adminShareStatsSeen = false;
-        var _adminTaxRecordsEditSeen = false;
-        var _adminChannelAnalysisSeen = false;
-        var _adminServerMonitorSeen = false;
-        var _adminBlockedIpsSeen = false;
+        /* 连续两次进入同一页时跳过（如登录后 applyAdminRoute 连调）；切走再回来会刷新 */
+        var _adminDataHash = '';
         var _channelAnalysisChartInstances = [];
 
         function adminHasMenu(menuKey) {
@@ -1180,131 +1165,89 @@
             }
         }
 
-        function applyAdminRoute() {
-            var pageKey = normalizeAdminPage(location.hash);
-            var rawHash = String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
-            /* hash 被回退时同步地址栏，避免 #lizhi-cert 却停在转化页 */
-            if (rawHash && pageKey && rawHash !== pageKey && location.hash !== '#' + pageKey) {
-                try {
-                    history.replaceState(null, '', '#' + pageKey);
-                } catch (eHash) {
-                    location.hash = pageKey;
-                }
+        function callAdminModuleLoadPage(key) {
+            var mod = window.AdminModules && window.AdminModules[key];
+            if (mod && typeof mod.loadPage === 'function') {
+                mod.loadPage();
+                return true;
             }
-            // 先立刻切页，避免等 Chart/CDN 时界面仍停在上一页（如「增长与触达配置」）
-            applyAdminRouteChrome(pageKey);
-            function runRouteBody() {
-            applyAdminRouteChrome(pageKey);
-            if (pageKey === 'users' && !_adminUsersLoaded) {
-                _adminUsersLoaded = true;
-                loadUsers(1);
+            return false;
+        }
+
+        function refreshAdminPageData(pageKey) {
+            if (pageKey === 'settings' || pageKey === 'appearance' || pageKey === 'install-guide') {
+                loadAdminSettings();
             }
-            if (pageKey === 'users-deleted' && !_adminDeletedUsersLoaded) {
-                _adminDeletedUsersLoaded = true;
-                loadDeletedUsers(1);
+            if (pageKey === 'users') {
+                loadUsers();
             }
-            if (pageKey === 'user-data' && !_adminUserDataLoaded) {
-                _adminUserDataLoaded = true;
-                loadUserDataList(1);
+            if (pageKey === 'users-deleted') {
+                loadDeletedUsers();
             }
-            if (pageKey === 'codes' && !_adminCodesLoaded) {
-                _adminCodesLoaded = true;
-                loadCodes(1);
+            if (pageKey === 'user-data') {
+                loadUserDataList();
+            }
+            if (pageKey === 'codes') {
+                loadCodes();
                 if (currentAdminProfile && currentAdminProfile.is_super) {
-                    loadXianyuCodes(1);
+                    loadXianyuCodes();
                 }
             }
-            if (pageKey === 'admin-accounts' && !_adminAccountsLoaded) {
-                _adminAccountsLoaded = true;
+            if (pageKey === 'admin-accounts') {
                 loadAdminAccounts();
             }
-            if (pageKey === 'analytics-conversion' && !_adminAnalyticsConversionSeen) {
-                _adminAnalyticsConversionSeen = true;
+            if (pageKey === 'analytics-conversion') {
                 loadAnalyticsConversionPage();
             }
-            if (pageKey === 'analytics-register' && !_adminAnalyticsRegisterSeen) {
-                _adminAnalyticsRegisterSeen = true;
+            if (pageKey === 'analytics-register') {
                 loadAnalyticsRegisterPage();
             }
-            if (pageKey === 'analytics-activity' && !_adminAnalyticsActivitySeen) {
-                _adminAnalyticsActivitySeen = true;
+            if (pageKey === 'analytics-activity') {
                 loadAnalyticsActivityPage();
             }
-            if (pageKey === 'analytics-purchase' && !_adminAnalyticsPurchaseSeen) {
-                _adminAnalyticsPurchaseSeen = true;
+            if (pageKey === 'analytics-purchase') {
                 loadAnalyticsPurchasePage();
             }
-            if (pageKey === 'analytics-tracking' && !_adminAnalyticsTrackingSeen) {
-                _adminAnalyticsTrackingSeen = true;
+            if (pageKey === 'analytics-tracking') {
                 loadAnalyticsTrackingPage();
             }
-            if (pageKey === 'install-guide-stats' && !_adminInstallGuideStatsSeen) {
-                _adminInstallGuideStatsSeen = true;
+            if (pageKey === 'install-guide-stats') {
                 loadInstallGuideStats();
             }
-            if (pageKey === 'share-stats' && !_adminShareStatsSeen) {
-                _adminShareStatsSeen = true;
+            if (pageKey === 'share-stats') {
                 loadShareStats();
             }
-            if (pageKey === 'tax-records-edit' && !_adminTaxRecordsEditSeen) {
-                _adminTaxRecordsEditSeen = true;
+            if (pageKey === 'tax-records-edit') {
                 initTaxRecordsEditPage();
             }
-            if (pageKey === 'channel-analysis' && !_adminChannelAnalysisSeen) {
-                _adminChannelAnalysisSeen = true;
+            if (pageKey === 'channel-analysis') {
                 renderChannelSourceLinks();
                 loadChannelAnalysis();
             }
-            if (pageKey === 'server-monitor' && !_adminServerMonitorSeen) {
-                _adminServerMonitorSeen = true;
+            if (pageKey === 'server-monitor') {
                 loadServerMonitor();
             }
-            if (pageKey === 'blocked-ips' && !_adminBlockedIpsSeen) {
-                _adminBlockedIpsSeen = true;
+            if (pageKey === 'blocked-ips') {
                 loadBlockedIps();
             }
             if (pageKey === 'sbdy-demo') {
                 if (typeof loadSbdyDemoPage === 'function') {
                     loadSbdyDemoPage();
-                } else if (
-                    window.AdminModules &&
-                    window.AdminModules['sbdy-demo'] &&
-                    typeof window.AdminModules['sbdy-demo'].loadPage === 'function'
-                ) {
-                    window.AdminModules['sbdy-demo'].loadPage();
+                } else {
+                    callAdminModuleLoadPage('sbdy-demo');
                 }
             }
-            if (
-                pageKey === 'lizhi-cert' &&
-                window.AdminModules &&
-                window.AdminModules['lizhi-cert'] &&
-                typeof window.AdminModules['lizhi-cert'].loadPage === 'function'
-            ) {
-                window.AdminModules['lizhi-cert'].loadPage();
+            if (pageKey === 'lizhi-cert') {
+                callAdminModuleLoadPage('lizhi-cert');
             }
-            if (
-                pageKey === 'ylbx-ps' &&
-                window.AdminModules &&
-                window.AdminModules['ylbx-ps'] &&
-                typeof window.AdminModules['ylbx-ps'].loadPage === 'function'
-            ) {
-                window.AdminModules['ylbx-ps'].loadPage();
+            if (pageKey === 'ylbx-ps') {
+                callAdminModuleLoadPage('ylbx-ps');
             }
-            if (
-                pageKey === 'ccb-flow' &&
-                window.AdminModules &&
-                window.AdminModules['ccb-flow'] &&
-                typeof window.AdminModules['ccb-flow'].loadPage === 'function'
-            ) {
-                window.AdminModules['ccb-flow'].loadPage();
+            if (pageKey === 'ccb-flow') {
+                callAdminModuleLoadPage('ccb-flow');
             }
-            if (
-                pageKey === 'najilu-qr' &&
-                window.AdminModules &&
-                window.AdminModules['najilu-qr'] &&
-                typeof window.AdminModules['najilu-qr'].loadPage === 'function'
-            ) {
-                window.AdminModules['najilu-qr'].loadPage();
+            if (pageKey === 'najilu-qr') {
+                callAdminModuleLoadPage('najilu-qr');
             }
             if (pageKey === 'login-log') {
                 loginRecentPage = 1;
@@ -1322,6 +1265,30 @@
                 }
                 loadUserLoginRecentPage(1);
             }
+        }
+
+        function applyAdminRoute(opts) {
+            var force = !!(opts && opts.force === true);
+            var pageKey = normalizeAdminPage(location.hash);
+            var rawHash = String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
+            /* hash 被回退时同步地址栏，避免 #lizhi-cert 却停在转化页 */
+            if (rawHash && pageKey && rawHash !== pageKey && location.hash !== '#' + pageKey) {
+                try {
+                    history.replaceState(null, '', '#' + pageKey);
+                } catch (eHash) {
+                    location.hash = pageKey;
+                }
+            }
+            // 先立刻切页，避免等 Chart/CDN 时界面仍停在上一页（如「增长与触达配置」）
+            applyAdminRouteChrome(pageKey);
+            /* 同一页连续 apply（如登录后 /me 回调）不重复打接口；切走再进会刷新 */
+            if (!force && pageKey === _adminDataHash) {
+                return;
+            }
+            _adminDataHash = pageKey;
+            function runRouteBody() {
+            applyAdminRouteChrome(pageKey);
+            refreshAdminPageData(pageKey);
             }
             function safeRunRouteBody() {
                 try {
@@ -5425,12 +5392,10 @@
             if (nameChangesGtEl) nameChangesGtEl.value = '';
             if (taxModDaysGtEl) taxModDaysGtEl.value = '';
             pendingHighlightUsername = name;
+            userPage = 1;
             var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
-            _adminUsersLoaded = false;
             if (alreadyUsers) {
-                applyAdminRouteChrome('users');
-                _adminUsersLoaded = true;
-                loadUsers(1);
+                applyAdminRoute({ force: true });
             } else {
                 location.hash = 'users';
             }
@@ -8270,7 +8235,7 @@
         var analyticsTrackingDays = document.getElementById('analyticsTrackingDays');
         if (analyticsTrackingDays) {
             analyticsTrackingDays.addEventListener('change', function () {
-                if (_adminAnalyticsTrackingSeen) loadAnalyticsTrackingPage();
+                loadAnalyticsTrackingPage();
             });
         }
         var btnRefreshInstallTrack = document.getElementById('btnRefreshInstallTrack');
@@ -8798,7 +8763,7 @@
         document.querySelectorAll('.nav-item').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var p = btn.getAttribute('data-page');
-                    if (p) location.hash = p;
+                    if (p) goAdminPage(p);
             });
         });
         }
@@ -8808,7 +8773,21 @@
                 if (typeof adminLogout === 'function') adminLogout();
             });
         }
-        window.addEventListener('hashchange', applyAdminRoute);
+        function goAdminPage(p) {
+            p = String(p || '').replace(/^#/, '').trim();
+            if (!p) return;
+            var cur = String(location.hash || '').replace(/^#/, '');
+            if (cur === p) {
+                applyAdminRoute({ force: true });
+            } else {
+                location.hash = p;
+            }
+        }
+        window.applyAdminRoute = applyAdminRoute;
+        window.goAdminPage = goAdminPage;
+        window.addEventListener('hashchange', function () {
+            applyAdminRoute();
+        });
         if (window.AdminAnalyticsPeriod) {
             AdminAnalyticsPeriod.initAll();
         }

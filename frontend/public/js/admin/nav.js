@@ -76,6 +76,21 @@
     navEl.innerHTML = html;
   }
 
+  function goToPage(p) {
+    p = String(p || '').replace(/^#/, '').trim();
+    if (!p) return;
+    if (typeof global.goAdminPage === 'function') {
+      global.goAdminPage(p);
+      return;
+    }
+    var cur = String(location.hash || '').replace(/^#/, '');
+    if (cur === p && typeof global.applyAdminRoute === 'function') {
+      global.applyAdminRoute({ force: true });
+      return;
+    }
+    location.hash = p;
+  }
+
   function bindNavClicks(navEl) {
     if (!navEl || navEl._adminNavBound) return;
     navEl._adminNavBound = true;
@@ -84,7 +99,7 @@
       if (!btn || !navEl.contains(btn)) return;
       var p = btn.getAttribute('data-page');
       if (p) {
-        location.hash = p;
+        goToPage(p);
         closeSidebar();
       }
     });
@@ -232,7 +247,7 @@
     if (!selected) return;
     var page = selected.getAttribute('data-command-page');
     closeCommand();
-    if (page) location.hash = page;
+    if (page) goToPage(page);
   }
 
   function openSidebar() {
@@ -312,7 +327,7 @@
         var item = ev.target.closest('[data-command-page]');
         if (!item) return;
         closeCommand();
-        location.hash = item.getAttribute('data-command-page');
+        goToPage(item.getAttribute('data-command-page'));
       });
     }
     if (input) {
