@@ -67,7 +67,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-harmony-apk'],
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260814-mate-mine'],
   'shuiming_result full company name'
 );
 mustInclude(
@@ -81,13 +81,23 @@ mustInclude(
   'harmony next install apk not ios'
 );
 mustInclude(
+  'frontend/public/js/auth.js',
+  ['isHarmonyNextLikeClient', 'OpenHarmony', 'mineE1Canvas', 'padding-top', '40px'],
+  'harmony next mate mine bleed'
+);
+mustInclude(
+  'frontend/mine.html',
+  ['app-android-huawei-mate60', 'OpenHarmony', '20260814-mate-mine'],
+  'mine.html mate early detect'
+);
+mustInclude(
   'frontend/login.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-harmony-apk'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate-mine'],
   'login.html mate60 top inset'
 );
 mustInclude(
   'frontend/mine.html',
-  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-harmony-apk'],
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260814-mate-mine'],
   'mine.html mate60 bleed exception'
 );
 mustInclude(

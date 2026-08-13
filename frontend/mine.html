@@ -18,9 +18,40 @@
             } catch (e2) {
                 document.documentElement.classList.add('mine-guest');
             }
+            /* Mate 60/70 / 纯血鸿蒙：首屏前打标，避免「我的」零 bleed 顶进状态栏 */
+            try {
+                var u = String(navigator.userAgent || '');
+                var mateImmersive =
+                    /Mate\s*60|Mate\s*70|BRA-AL|ALN-AL|SUP-AL|OpenHarmony|ArkWeb|HUAWEIALN|HUAWEIBRA|HUAWEISUP/i.test(u) ||
+                    (/HarmonyOS/i.test(u) && !/Android/i.test(u)) ||
+                    (/HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(u) &&
+                        (function () {
+                            try {
+                                var sw = Number(screen && screen.width) || 0;
+                                var sh = Number(screen && screen.height) || 0;
+                                var dpr = Number(window.devicePixelRatio) || 1;
+                                var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
+                                var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
+                                var c = Math.min(sw, sh);
+                                var d = Math.max(sw, sh);
+                                return (
+                                    (a >= 1180 && a <= 1380 && b >= 2550 && b <= 2860) ||
+                                    (c >= 390 && c <= 500 && d >= 840 && d <= 1040 && dpr >= 2.5)
+                                );
+                            } catch (eScr) {
+                                return false;
+                            }
+                        })());
+                if (mateImmersive) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('platform-android');
+                }
+            } catch (eMate) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-harmony-apk"></script>
+    <script src="/js/auth.js?v=20260814-mate-mine"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -45,7 +76,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260814-harmony-apk">
+    <link rel="stylesheet" href="css/nav.css?v=20260814-mate-mine">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {

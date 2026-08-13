@@ -1150,6 +1150,24 @@
   }
 
   /**
+   * HarmonyOS NEXT / 纯血：UA 常无 Android，Cordova 仍沉浸压栏。
+   * 不能走华为族「外置黑条 → 顶距 0」。
+   */
+  function isHarmonyNextLikeClient() {
+    var ua = clientUaBlob();
+    if (/OpenHarmony|ArkWeb/i.test(ua)) {
+      return true;
+    }
+    try {
+      var raw = String(navigator.userAgent || '');
+      if (/HarmonyOS/i.test(ua) && !/Android/i.test(raw)) {
+        return true;
+      }
+    } catch (eHn) {}
+    return false;
+  }
+
+  /**
    * Mate 70 / 70 Air / 70 Pro（SUP-AL90、PLR-AL00、PLA-AL10 等）。
    * 与 Mate 60 一样 Harmony WebView 仍沉浸压栏。
    */
@@ -1172,6 +1190,14 @@
     }
     if (
       /HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(ua) &&
+      isHuaweiMate70AirPhysicalScreen()
+    ) {
+      return true;
+    }
+    /* Cordova 壳内 UA 常剥掉品牌/型号，用 70 Air 屏参兜底 */
+    if (
+      isCordovaTaxAppShell() &&
+      !isLikelyIOSViewportClient() &&
       isHuaweiMate70AirPhysicalScreen()
     ) {
       return true;
@@ -1222,6 +1248,10 @@
     if (isHuaweiMate70LikeClient()) {
       return true;
     }
+    /* 纯血鸿蒙：整族 Cordova 仍沉浸，统一走 40px（含「我的」） */
+    if (isHarmonyNextLikeClient()) {
+      return true;
+    }
     var ua = clientUaBlob();
     if (/Mate\s*60/i.test(ua)) {
       return true;
@@ -1239,6 +1269,15 @@
     if (
       /HarmonyOS|OpenHarmony|HMSCore|Huawei|HUAWEI|ArkWeb/i.test(ua) &&
       isHuaweiMate60PhysicalScreen()
+    ) {
+      return true;
+    }
+    /* Cordova 壳内 UA 无品牌时：Mate 60 屏参 + 非 iOS */
+    if (
+      isCordovaTaxAppShell() &&
+      !isLikelyIOSViewportClient() &&
+      isHuaweiMate60PhysicalScreen() &&
+      !/Xiaomi|Redmi|MIUI|OPPO|vivo|iQOO|Samsung|SM-/i.test(ua)
     ) {
       return true;
     }
@@ -1341,6 +1380,23 @@
         'html.app-android-huawei-mate60 .message-header-toolbar{padding-top:calc(14px + 40px) !important;}';
       (document.head || root).appendChild(st);
     } catch (eCss) {}
+    /* 「我的」页：内联强制顶距，压过 data-mine-chrome 后写的安卓零 bleed */
+    try {
+      if (document.body && document.body.classList.contains('page-mine')) {
+        var canvas = document.getElementById('mineE1Canvas');
+        var layer = document.getElementById('mineE1Layer');
+        var img = document.getElementById('headerImg');
+        if (canvas) {
+          canvas.style.setProperty('padding-top', '40px', 'important');
+        }
+        if (layer) {
+          layer.style.setProperty('top', '40px', 'important');
+        }
+        if (img) {
+          img.style.setProperty('margin-top', '0px', 'important');
+        }
+      }
+    } catch (eMineForce) {}
     return true;
   }
 
@@ -1666,6 +1722,10 @@
           'bottom:2px!important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
+      /* mine-chrome 可能后写零 bleed；Mate/纯血鸿蒙必须再刷一次 40px */
+      try {
+        applyHuaweiMate60PageChrome();
+      } catch (eMateAfterMine) {}
       try {
         /* 仅设变量默认值；具体 bottom 由 pinTabBottomNav 钉死，避免反复打回 8px */
         if (!document.documentElement.style.getPropertyValue('--bottom-nav-bottom')) {
