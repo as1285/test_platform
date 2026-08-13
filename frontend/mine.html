@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260811-ios-mine-vh"></script>
+    <script src="/js/auth.js?v=20260813-mate60-mine"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -45,7 +45,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260811-ios-mine-vh">
+    <link rel="stylesheet" href="css/nav.css?v=20260813-mate60-mine">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -167,12 +167,39 @@
         html.app-android-redmi-k70 body.page-mine,
         html.app-android-samsung body.page-mine,
         html.app-android-samsung-s24u body.page-mine,
-        html.app-android-huawei-harmony body.page-mine,
+        html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine,
         html.app-android-hinova body.page-mine,
         html.app-android-honor-flc body.page-mine,
         html.app-android-honor-fcp body.page-mine {
             --mine-top-bleed: 0px;
             --app-shell-statusbar-top: 0px;
+        }
+
+        /*
+         * Mate 60 Pro：WebView 仍沉浸压栏。勿负 margin 把头图拉进状态栏
+         *（overflow:hidden 会裁掉头像/姓名）；只垫 40px 蓝底，叠层随图下移。
+         */
+        html.app-android-huawei-mate60 body.page-mine {
+            --mine-top-bleed: 40px;
+            --app-shell-statusbar-top: 40px;
+        }
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas {
+            padding-top: 40px !important;
+        }
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img {
+            margin-top: 0 !important;
+        }
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-layer {
+            top: 40px !important;
+        }
+        html.app-android-huawei-mate60,
+        html.app-android-huawei-mate60 body.page-mine {
+            height: auto !important;
+            min-height: 100%;
+        }
+        html.app-android-huawei-mate60 body.page-mine {
+            min-height: 100vh !important;
+            min-height: 100dvh !important;
         }
 
         .mine-e1-layer > * {

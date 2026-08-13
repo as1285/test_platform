@@ -67,9 +67,48 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260813-mi17u-full'],
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260813-mate60-mine'],
   'shuiming_result full company name'
 );
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isHuaweiMate60PhysicalScreen', 'ALN-AL00', 'app-android-huawei-mate60', 'padding-top:40px'],
+  'mate60 mine page top inset'
+);
+mustInclude(
+  'frontend/mine.html',
+  ['app-android-huawei-mate60', 'padding-top: 40px', '20260813-mate60-mine'],
+  'mine.html mate60 bleed exception'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isOppoFindX8sPlusClient', 'PLB110', 'PKT110', 'app-android-oppo-find-x8s'],
+  'oppo find x8s+ immersive top'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['PLB110', 'app-android-oppo-find-x8s'],
+  'shuiming_result find x8s+ class'
+);
+
+(function testOppoFindX8sUa() {
+  const reModel = /PLB110|PKT110/i;
+  const reName = /Find\s*X\s*8s(?:\s*\+|\s*Plus)?/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 15; PLB110 Build/UKQ1) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 15; PKT110) AppleWebKit/537.36 OPPO Find X8s',
+    'Mozilla/5.0 (Linux; Android 15) OPPO Find X8s+'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 15; PKJ110) OPPO Find X8 Ultra',
+    'Mozilla/5.0 (Linux; Android 15; PHJ110) OPPO A58',
+    'Mozilla/5.0 (Linux; Android 15; CPH2797) OPPO Find X9'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('oppo find x8s+ UA match');
+  else fail('oppo find x8s+ UA match');
+})();
 
 (function testXiaomi17UltraUa() {
   const reModel = /25128PNA1[A-Z0-9]*|2512BPNDA[A-Z0-9]*/i;

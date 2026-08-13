@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260813-mi17u-full"></script>
+    <script src="/js/auth.js?v=20260813-mate60-mine"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -120,17 +120,17 @@
         }
 
         /* OPPO/ColorOS 外置状态栏（含 A58 PHJ110）：WebView 已在系统栏下，首页顶距压到 6px */
-        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13) body.page-shouye,
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s) body.page-shouye,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye {
             --shouye-status-inset: 6px;
         }
 
-        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13) body.page-shouye::before,
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s) body.page-shouye::before,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye::before {
             height: 6px;
         }
 
-        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13) body.page-shouye .search-bar-wrapper,
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s) body.page-shouye .search-bar-wrapper,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 6px !important;
         }
