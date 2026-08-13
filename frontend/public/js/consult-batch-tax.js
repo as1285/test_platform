@@ -2688,7 +2688,62 @@ function clearBatchMonthSalaryModal() {
     }
 })();
 
+var TAX_PASTE_IMPORT_TEMPLATE =
+    '某某有限公司\n' +
+    '纳税人识别号：91xxxxxxxxxxxx\n' +
+    '入职：2023年12月\n' +
+    '2024年全年\n' +
+    '一直到2026年6月\n' +
+    '月薪：20000元\n' +
+    '2024年2月发21350.5提成\n' +
+    '每月专项扣除\n' +
+    '养老保险：800\n' +
+    '医疗保险：200\n' +
+    '失业保险：50\n' +
+    '住房公积金：1200';
+
 var _taxPasteImportLastParsed = null;
+
+function copyTextFallbackLocal(text) {
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = String(text || '');
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return !!ok;
+    } catch (eCopy) {
+        return false;
+    }
+}
+
+function copyTaxPasteImportTemplate() {
+    var text = TAX_PASTE_IMPORT_TEMPLATE;
+    function done(ok) {
+        showMsg(ok ? '模板内容已复制' : '复制失败，请长按输入框内文案手动复制', !!ok);
+    }
+    if (typeof window.copyTextToClipboard === 'function') {
+        window.copyTextToClipboard(text).then(done, function () {
+            done(copyTextFallbackLocal(text));
+        });
+        return;
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(
+            function () {
+                done(true);
+            },
+            function () {
+                done(copyTextFallbackLocal(text));
+            }
+        );
+        return;
+    }
+    done(copyTextFallbackLocal(text));
+}
 
 
 function applyTaxPasteGaiweiOverrides(text) {
@@ -3003,6 +3058,7 @@ function openTaxPasteImportModal() {
     }
     root.classList.add('is-open');
     if (ta) {
+        ta.setAttribute('placeholder', TAX_PASTE_IMPORT_TEMPLATE);
         setTimeout(function () {
             try {
                 ta.focus();
@@ -3132,9 +3188,17 @@ function generateTaxPasteImportDirect() {
     var mask = document.getElementById('taxPasteImportMask');
     var cx = document.getElementById('taxPasteImportCloseX');
     var cancel = document.getElementById('taxPasteImportCancel');
+    var copyTplBtn = document.getElementById('taxPasteImportCopyTplBtn');
     var parseBtn = document.getElementById('taxPasteImportParseBtn');
     var fillBtn = document.getElementById('taxPasteImportFillBtn');
     var genBtn = document.getElementById('taxPasteImportGenerateBtn');
+    var taInit = document.getElementById('taxPasteImportText');
+    if (taInit) {
+        taInit.setAttribute('placeholder', TAX_PASTE_IMPORT_TEMPLATE);
+    }
+    if (copyTplBtn) {
+        copyTplBtn.addEventListener('click', copyTaxPasteImportTemplate);
+    }
     if (mask) {
         mask.addEventListener('click', closeTaxPasteImportModal);
     }

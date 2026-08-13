@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
     <link rel="stylesheet" href="/css/admin_panel.css?v=20260808-make-permanent">
-    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260806-ms-pager">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
     <div class="layout">
@@ -2466,7 +2466,10 @@
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
             <p class="batch-ms-modal-hint">解析引擎 v0721d。支持：① 个税 APP 月明细；② 聊天摘要（公司/税号/入职、全年区间、月薪、奖金、每月专项扣除三险一金）。标签可带【】[]。可一次粘贴多家公司；「改为」「数字改为」会覆盖原金额。</p>
-            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="示例（摘要）：&#10;1某某有限公司&#10;扣缴义务人纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月开始&#10;2024年全年个税&#10;一直到2026年6月份&#10;正常工资薪金：月薪税前2万（改为20000—23000区间）&#10;2024年2月2号发2万提成（改为21350.5）&#10;每月专项扣除&#10;基本养老保险：800&#10;基本医疗保险：200&#10;失业保险：50&#10;住房公积金：1200&#10;&#10;也可粘贴 APP 月明细（收入+税额）。"></textarea>
+            <div class="tax-paste-import-toolbar">
+                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">复制模板内容</button>
+            </div>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="11" placeholder="某某有限公司&#10;纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月&#10;2024年全年&#10;一直到2026年6月&#10;月薪：20000元&#10;2024年2月发21350.5提成&#10;每月专项扣除&#10;养老保险：800&#10;医疗保险：200&#10;失业保险：50&#10;住房公积金：1200"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
             <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
