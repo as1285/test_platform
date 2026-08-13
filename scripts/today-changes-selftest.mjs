@@ -62,9 +62,33 @@ if (
 
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isIPhone12ProLikeClient', 'isIosWhiteStatusPage', "style: 'default'", 'app-ios-iphone12pro'],
-  'iphone12pro dark status bar'
+  ['isXiaomi17UltraClient', '25128PNA1', '2512BPNDA', 'app-android-xiaomi-17u', 'isXiaomi17UltraScreen'],
+  'xiaomi 17 ultra immersive top'
 );
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['var companyShow = company', 'word-break: break-word', 'app-android-xiaomi-17u', '20260813-mi17u-full'],
+  'shuiming_result full company name'
+);
+
+(function testXiaomi17UltraUa() {
+  const reModel = /25128PNA1[A-Z0-9]*|2512BPNDA[A-Z0-9]*/i;
+  const reName = /(?:Xiaomi|Mi|小米)[\s_-]*17[\s_-]*U(?:ltra)?\b/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 16; 25128PNA1C Build/UKQ1) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 16; 2512BPNDAC Build/UKQ1) AppleWebKit/537.36 Xiaomi 17 Ultra',
+    'Mozilla/5.0 (Linux; Android 16; Xiaomi 17U Leica) AppleWebKit/537.36'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 14; 23127PN0CC Build/UKQ1) Xiaomi 14',
+    'Mozilla/5.0 (Linux; Android 15; 2410DPN6CC Build/UKQ1) Xiaomi 15 Pro',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('xiaomi 17 ultra UA match');
+  else fail('xiaomi 17 ultra UA match');
+})();
 mustInclude(
   'frontend/shuiming.html',
   ['href="shouye.html"', 'resolveBackTarget', "var HOME = 'shouye.html'"],

@@ -10,6 +10,27 @@
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                 }
+                if (
+                    /25128PNA1[A-Z0-9]*|2512BPNDA[A-Z0-9]*/i.test(u) ||
+                    /(?:Xiaomi|Mi|小米)[\s_-]*17[\s_-]*U(?:ltra)?\b/i.test(u) ||
+                    /Leitzphone|(?:Xiaomi|Mi|小米)?\s*17\s*Ultra\s*(?:by\s*)?Leica/i.test(u) ||
+                    (function () {
+                        try {
+                            var sw = Number(screen && screen.width) || 0;
+                            var sh = Number(screen && screen.height) || 0;
+                            var dpr = Number(window.devicePixelRatio) || 1;
+                            var a = Math.min(Math.round(sw * dpr), Math.round(sh * dpr));
+                            var b = Math.max(Math.round(sw * dpr), Math.round(sh * dpr));
+                            return /Android/i.test(u) && a >= 1140 && a <= 1280 && b >= 2480 && b <= 2760;
+                        } catch (eScr) {
+                            return false;
+                        }
+                    })()
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-17u');
+                    document.documentElement.classList.add('app-android-xiaomi-15pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
                 }
@@ -39,7 +60,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260813-iphone12pro"></script>
+    <script src="/js/auth.js?v=20260813-mi17u-full"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -624,12 +645,13 @@
             font-size: 15px;
             font-weight: 400;
             color: #999;
-            line-height: 1.3;
-            white-space: nowrap;
+            line-height: 1.4;
+            white-space: normal;
             display: block;
             max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         /*
@@ -985,7 +1007,7 @@
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        /* 小米 15 Pro / 小米 10 / K70 至尊 / 红米 12C / Mate 60：沉浸状态栏，顶栏须留 40px */
+        /* 小米 15 Pro / 17 Ultra / 小米 10 / K70 至尊 / 红米 12C / Mate 60：沉浸状态栏，顶栏须留 40px */
         html.app-android-xiaomi-15pro body.page-shuiming-result .page-root,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-xiaomi-10 body.page-shuiming-result .page-root,
@@ -1064,6 +1086,33 @@
         html.app-android-huawei-mate60 body.page-shuiming-result .list,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
+        }
+
+        /* 小米 17 Ultra 状态栏更高，压过 15 Pro 的 40px */
+        html.app-android-xiaomi-17u body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-17u.app-top-safe-shell body.page-shuiming-result .page-root {
+            --app-shell-statusbar-top: 48px;
+            --safe-top: 48px;
+        }
+        html.app-android-xiaomi-17u body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-17u.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            height: calc(var(--header-height, 48px) + 48px) !important;
+            min-height: calc(var(--header-height, 48px) + 48px) !important;
+            padding: 48px 16px 0 !important;
+        }
+        html.app-android-xiaomi-17u body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-17u body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-17u.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-17u.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            top: 48px !important;
+        }
+        html.app-android-xiaomi-17u body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-17u.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + 48px) !important;
+        }
+        html.app-android-xiaomi-17u body.page-shuiming-result .list,
+        html.app-android-xiaomi-17u.app-top-safe-shell body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + 48px) !important;
         }
 
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
@@ -1534,7 +1583,7 @@
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
-                var companyShow = truncateChars(company, 12);
+                var companyShow = company;
                 var id = record.id != null ? String(record.id).trim() : '';
                 var detailHref = buildXiangqingUrl(record, listYear);
                 if (!detailHref) {
