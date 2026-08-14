@@ -68,18 +68,18 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260814-ui-aug13-10'],
-  'login.html auth cache rolled back'
+  ['20260814-ace2pro'],
+  'login.html auth cache ace2pro'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260814-ui-aug13-10'],
-  'mine.html auth cache rolled back'
+  ['20260814-ace2pro'],
+  'mine.html auth cache ace2pro'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260814-ui-aug13-10'],
-  'fast-nav auth cache rolled back'
+  ['20260814-ace2pro'],
+  'fast-nav auth cache ace2pro'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
   ok('auth.js without post-0813 Mate70 chrome');
@@ -91,6 +91,36 @@ if (!read('frontend/public/js/auth.js').includes('isXiaomi17UltraClient')) {
 } else {
   fail('auth.js without post-0813 Xiaomi17 chrome');
 }
+
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isOnePlusAce2ProClient', 'PJA110', 'app-android-oneplus-ace2pro'],
+  'oneplus ace 2 pro immersive top'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260814-ace2pro'],
+  'shuiming_result ace 2 pro class'
+);
+
+(function testOnePlusAce2ProUa() {
+  const reModel = /PJA110/i;
+  const reName = /(?:OnePlus|一加)\s*Ace\s*2\s*Pro/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 14; PJA110 Build/UKQ1) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 14) OnePlus Ace 2 Pro',
+    'Mozilla/5.0 (Linux; Android 14) 一加 Ace 2 Pro'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 14; PHK110) OnePlus Ace 2',
+    'Mozilla/5.0 (Linux; Android 14; PHP110) OnePlus Ace 2V',
+    'Mozilla/5.0 (Linux; Android 15; PJZ110) OnePlus 13'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('oneplus ace 2 pro UA match');
+  else fail('oneplus ace 2 pro UA match');
+})();
 
 mustInclude(
   'frontend/shuiming.html',
