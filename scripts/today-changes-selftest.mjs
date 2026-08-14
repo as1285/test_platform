@@ -99,7 +99,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260814-iphone13-co'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260814-iphone13-c2'],
   'shuiming_result ace 2 pro class'
 );
 mustInclude(
@@ -109,7 +109,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['isIPhone13FullCompanyClient', 'app-ios-iphone13', 'fullCompany ? company'],
+  ['isIPhone13FullCompanyClient', 'app-ios-iphone13', 'fullCompany ? company', '-webkit-text-fill-color: #666'],
   'shuiming_result iphone13 full company'
 );
 

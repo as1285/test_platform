@@ -53,7 +53,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-iphone13-co"></script>
+    <script src="/js/auth.js?v=20260814-iphone13-c2"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -792,6 +792,27 @@
             text-overflow: clip !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
+        }
+
+        /*
+         * iPhone 13：PingFang 把 #999 渲得过浅，明细四行（小类/扣缴义务人/收入/税额）对不上官方灰。
+         * 锁 #666 + text-fill，避免 <a> 访问后把字色漂成更浅的灰。
+         */
+        html.app-ios-iphone13 body.page-shuiming-result a.list-item,
+        html.app-ios-iphone13 body.page-shuiming-result a.list-item:visited,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result a.list-item,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result a.list-item:visited {
+            color: inherit;
+        }
+        html.app-ios-iphone13 body.page-shuiming-result .list-label,
+        html.app-ios-iphone13 body.page-shuiming-result .list-company,
+        html.app-ios-iphone13 body.page-shuiming-result .list-amount,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-label,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-company,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-amount {
+            color: #666 !important;
+            -webkit-text-fill-color: #666 !important;
+            opacity: 1 !important;
         }
 
 
