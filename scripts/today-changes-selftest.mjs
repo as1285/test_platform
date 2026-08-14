@@ -68,18 +68,18 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260814-ace2pro'],
-  'login.html auth cache ace2pro'
+  ['20260814-iphone13-co'],
+  'login.html auth cache iphone13-co'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260814-ace2pro'],
-  'mine.html auth cache ace2pro'
+  ['20260814-iphone13-co'],
+  'mine.html auth cache iphone13-co'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260814-ace2pro'],
-  'fast-nav auth cache ace2pro'
+  ['20260814-iphone13-co'],
+  'fast-nav auth cache iphone13-co'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
   ok('auth.js without post-0813 Mate70 chrome');
@@ -99,8 +99,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260814-ace2pro'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260814-iphone13-co'],
   'shuiming_result ace 2 pro class'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isIPhone13Client', 'iPhone14,5', 'app-ios-iphone13'],
+  'iphone 13 company full name detect'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['isIPhone13FullCompanyClient', 'app-ios-iphone13', 'fullCompany ? company'],
+  'shuiming_result iphone13 full company'
 );
 
 (function testOnePlusAce2ProUa() {

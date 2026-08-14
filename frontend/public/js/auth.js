@@ -927,6 +927,31 @@
     }
   }
 
+  /**
+   * iPhone 13（iPhone14,5 / MLDY3CH/A）。勿匹配 13 Pro / mini / Pro Max。
+   * Safari UA 常无型号码，Cordova 用 device.model。
+   */
+  function isIPhone13Client() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var blob = navigator.userAgent || '';
+    try {
+      if (window.device && window.device.model) {
+        blob += ' ' + String(window.device.model);
+      }
+    } catch (e0) {}
+    try {
+      if (window.top && window.top !== window && window.top.device && window.top.device.model) {
+        blob += ' ' + String(window.top.device.model);
+      }
+    } catch (e1) {}
+    if (/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,2\b|iPhone14,3\b|iPhone14,4\b/i.test(blob)) {
+      return false;
+    }
+    return /iPhone\s*13\b|iPhone14,5\b/i.test(blob);
+  }
+
   function isIPhone16ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
@@ -2008,6 +2033,7 @@
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var iosIPhone14Pro = iosClient && isIPhone14ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
+      var iosIPhone13 = iosClient && isIPhone13Client();
       var iosIPhone12Pro = iosClient && isIPhone12ProLikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
       var iosIPhone12ProMax = iosClient && isIPhone12ProMaxClient();
@@ -2318,6 +2344,9 @@
       if (iosIPhone14 || iosIPhone12Pro) {
         /* 12 Pro 与 14 同为 390×844 刘海，复用白顶栏避让样式 */
         document.documentElement.classList.add('app-ios-iphone14');
+      }
+      if (iosIPhone13) {
+        document.documentElement.classList.add('app-ios-iphone13');
       }
       if (iosIPhone12Pro) {
         document.documentElement.classList.add('app-ios-iphone12pro');

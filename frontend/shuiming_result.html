@@ -40,10 +40,20 @@
                 ) {
                     document.documentElement.classList.add('platform-ios');
                 }
+                var model = '';
+                try {
+                    if (window.device && window.device.model) model = String(window.device.model);
+                } catch (eM) {}
+                if (
+                    /iPhone\s*13\b|iPhone14,5\b/i.test(u + ' ' + model) &&
+                    !/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,[234]\b/i.test(u + ' ' + model)
+                ) {
+                    document.documentElement.classList.add('app-ios-iphone13');
+                }
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-ace2pro"></script>
+    <script src="/js/auth.js?v=20260814-iphone13-co"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -772,6 +782,16 @@
         html.app-ios-iphone14pro body.page-shuiming-result .list-label,
         html.app-ios-iphone14pro body.page-shuiming-result .list-company {
             line-height: 21px !important;
+        }
+
+        /* iPhone 13：扣缴义务人显示全称，允许换行，不要省略号 */
+        html.app-ios-iphone13 body.page-shuiming-result .list-company,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-company {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
         }
 
 
@@ -1543,14 +1563,46 @@
             );
         }
 
+        function isIPhone13FullCompanyClient() {
+            try {
+                var root = document.documentElement;
+                if (root.classList.contains('app-ios-iphone13')) {
+                    return true;
+                }
+                /* Safari 无型号码：iPhone 13 会落入 390×844 档（app-ios-iphone14），不含 14 Pro */
+                if (
+                    root.classList.contains('app-ios-iphone14') &&
+                    !root.classList.contains('app-ios-iphone14pro')
+                ) {
+                    return true;
+                }
+                var blob = navigator.userAgent || '';
+                try {
+                    if (window.device && window.device.model) blob += ' ' + String(window.device.model);
+                } catch (e0) {}
+                if (/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,[234]\b/i.test(blob)) {
+                    return false;
+                }
+                return /iPhone\s*13\b|iPhone14,5\b/i.test(blob);
+            } catch (e) {
+                return false;
+            }
+        }
+
         function renderList(records, listYear) {
             var listHtml = '';
+            var fullCompany = isIPhone13FullCompanyClient();
+            if (fullCompany) {
+                try {
+                    document.documentElement.classList.add('app-ios-iphone13');
+                } catch (eCls) {}
+            }
             records.forEach(function(record) {
                 var month = record.month < 10 ? '0' + record.month : record.month;
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
-                var companyShow = truncateChars(company, 12);
+                var companyShow = fullCompany ? company : truncateChars(company, 12);
                 var id = record.id != null ? String(record.id).trim() : '';
                 var detailHref = buildXiangqingUrl(record, listYear);
                 if (!detailHref) {
