@@ -18,9 +18,15 @@
             } catch (e2) {
                 document.documentElement.classList.add('mine-guest');
             }
+            try {
+                var u = String(navigator.userAgent || '');
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                }
+            } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260814-iphone13-co"></script>
+    <script src="/js/auth.js?v=20260815-iqoo-neo8pro"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -150,16 +156,19 @@
         }
         html.app-android-oneplus-13 body.page-mine,
         html.app-android-oneplus-ace2pro body.page-mine,
+        html.app-android-huawei-mate60 body.page-mine,
         html.app-android-xiaomi-mix-fold body.page-mine {
             --mine-top-bleed: var(--app-shell-statusbar-top, 40px);
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
         html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas,
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed) !important;
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas > img,
         html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas > img,
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas > img {
             margin-top: calc(-1 * var(--mine-top-bleed)) !important;
         }
@@ -170,7 +179,7 @@
         html.app-android-redmi-k70 body.page-mine,
         html.app-android-samsung body.page-mine,
         html.app-android-samsung-s24u body.page-mine,
-        html.app-android-huawei-harmony body.page-mine,
+        html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine,
         html.app-android-hinova body.page-mine,
         html.app-android-honor-flc body.page-mine,
         html.app-android-honor-fcp body.page-mine {

@@ -73,13 +73,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260814-iphone13-co'],
-  'mine.html auth cache iphone13-co'
+  ['20260815-iqoo-neo8pro', 'app-android-huawei-mate60', 'ALN-AL00'],
+  'mine.html mate60 pro top bleed'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260814-iphone13-co'],
-  'fast-nav auth cache iphone13-co'
+  ['20260815-iqoo-neo8pro'],
+  'fast-nav auth cache iqoo-neo8pro'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine', 'isIqooNeo8ProClient', 'V2307A'],
+  'auth.js mate60 mine bleed + neo8pro'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
   ok('auth.js without post-0813 Mate70 chrome');
