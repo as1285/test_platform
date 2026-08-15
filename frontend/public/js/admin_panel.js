@@ -1606,7 +1606,7 @@
                             a.variant === 'control'
                                 ? 'A·对照'
                                 : a.variant === 'treatment'
-                                  ? 'B·两档'
+                                  ? 'B·四档'
                                   : a.variant === 'b'
                                     ? 'C·激活码'
                                     : a.variant;
@@ -5798,7 +5798,7 @@
                                     var noteEl = document.getElementById('priceOfferNote');
                                     var hint = document.getElementById('priceOfferHint');
                                     if (offer && offer.enabled) {
-                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_398_forever';
+                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_999_perm';
                                         if (amountEl) amountEl.value = offer.amount || '';
                                         if (noteEl) noteEl.value = offer.note || '';
                                         if (hint) {
@@ -5831,7 +5831,7 @@
                                             '300'
                                         );
                                         if (amtNew == null) return;
-                                        if (skuEl) skuEl.value = 'sku_398_forever';
+                                        if (skuEl) skuEl.value = 'sku_999_perm';
                                         if (amountEl) amountEl.value = String(amtNew).trim();
                                         document.getElementById('btnSavePriceOffer') &&
                                             document.getElementById('btnSavePriceOffer').click();

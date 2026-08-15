@@ -113,12 +113,16 @@ describe('pricingAb SKU mojibake repair via load', () => {
     });
     const cfg = await api.loadPricingAbParsed(true);
     expect((cfg.treatment_skus || []).map((s) => s.id).join('|')).toBe(
-      'sku_298_1d|sku_398_forever'
+      'sku_249_1d|sku_300_7d|sku_398_30d|sku_999_perm'
     );
-    expect((cfg.control_skus || []).map((s) => s.amount).join('|')).toBe('298.00|398.00');
-    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toBe('日卡|永久');
+    expect((cfg.control_skus || []).map((s) => s.amount).join('|')).toBe(
+      '249.00|300.00|398.00|999.00'
+    );
+    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toBe(
+      '日卡|周卡|月卡|永久'
+    );
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
-      '298.00|398.00'
+      '249.00|300.00|398.00|999.00'
     );
   });
 });

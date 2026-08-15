@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * 现售仅两档：日卡 298 / 永久 398（A/B 分流仍保留，两边 SKU 相同）。
+ * 现售四档：日卡 249 / 周卡 300 / 月卡 398 / 永久 999（A/B 分流仍保留，两边 SKU 相同）。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,10 +8,46 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-/** 现售永久档：398 */
-var SKU_398_PERM = {
-  id: 'sku_398_forever',
+/** 现售日卡：249 */
+var SKU_249_DAY = {
+  id: 'sku_249_1d',
+  amount: '249.00',
+  label: '日卡',
+  subject: '激活码·日卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+
+/** 现售周卡：300 */
+var SKU_300_WEEK = {
+  id: 'sku_300_7d',
+  amount: '300.00',
+  label: '周卡',
+  subject: '激活码·周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 7,
+  grant_minutes: 0
+};
+
+/** 现售月卡：398 */
+var SKU_398_MONTH = {
+  id: 'sku_398_30d',
   amount: '398.00',
+  label: '月卡',
+  subject: '激活码·月卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 30,
+  grant_minutes: 0
+};
+
+/** 现售永久档：999 */
+var SKU_999_PERM = {
+  id: 'sku_999_perm',
+  amount: '999.00',
   label: '永久',
   subject: '激活码·永久',
   grant_kind: 'permanent',
@@ -20,7 +56,7 @@ var SKU_398_PERM = {
   grant_minutes: 0
 };
 
-/** 现售日卡：298 */
+/** 旧档：298 日卡 / 398 永久，仅历史订单 / 专属价解析 */
 var SKU_298_DAY = {
   id: 'sku_298_1d',
   amount: '298.00',
@@ -29,6 +65,16 @@ var SKU_298_DAY = {
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 1,
+  grant_minutes: 0
+};
+var SKU_398_PERM = {
+  id: 'sku_398_forever',
+  amount: '398.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
   grant_minutes: 0
 };
 
@@ -79,17 +125,6 @@ var SKU_328_WEEK = {
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 7,
-  grant_minutes: 0
-};
-
-var SKU_398_MONTH = {
-  id: 'sku_398_30d',
-  amount: '398.00',
-  label: '月卡',
-  subject: '激活码·月卡',
-  grant_kind: 'trial',
-  grant_hours: 0,
-  grant_days: 30,
   grant_minutes: 0
 };
 
@@ -157,6 +192,8 @@ var SKU_398_PERM_LEGACY = {
 };
 
 var LEGACY_CATALOG_SKUS = [
+  SKU_298_DAY,
+  SKU_398_PERM,
   SKU_398_WEEK,
   SKU_498_MONTH,
   SKU_698_YEAR,
@@ -164,7 +201,7 @@ var LEGACY_CATALOG_SKUS = [
   SKU_398_PERM_LEGACY
 ];
 
-var LIVE_CATALOG_SKUS = [SKU_298_DAY, SKU_398_PERM];
+var LIVE_CATALOG_SKUS = [SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM];
 
 var DEFAULT_PRICING_AB = {
   enabled: true,
@@ -370,7 +407,7 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM].concat(
+    [SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
       LEGACY_CATALOG_SKUS
     )
   ];

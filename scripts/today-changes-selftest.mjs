@@ -68,13 +68,13 @@ mustInclude(
 mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banner');
 mustInclude(
   'backend/src/legacy/pricingAb.js',
-  ['sku_298_1d', 'sku_398_forever', "amount: '298.00'", "amount: '398.00'"],
-  'pricing live catalog 298/398'
+  ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', "amount: '249.00'", "amount: '999.00'"],
+  'pricing live catalog 249/300/398/999'
 );
 mustInclude(
   'frontend/purchase.html',
-  ['sku_298_1d', 'sku_398_forever', '日卡可用 1 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
-  'purchase two-sku copy + hide bili share'
+  ['sku_249_1d', 'sku_999_perm', '日卡 1 天、周卡 7 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
+  'purchase four-sku copy + hide bili share'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -83,8 +83,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['sku_298_1d', 'sku_398_forever', '298 日卡 / 398 永久'],
-  'admin offer two-sku'
+  ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', '249 日卡 / 300 周卡'],
+  'admin offer four-sku'
 );
 
 const purchase = read('frontend/purchase.html');
