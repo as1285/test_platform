@@ -3,7 +3,31 @@
  */
 'use strict';
 
-var OFFERABLE_SKUS = [
+var LIVE_OFFERABLE_SKUS = [
+  {
+    id: 'sku_298_1d',
+    amount: '298.00',
+    label: '日卡',
+    subject: '激活码·日卡',
+    grant_kind: 'trial',
+    grant_hours: 0,
+    grant_days: 1,
+    grant_minutes: 0
+  },
+  {
+    id: 'sku_398_forever',
+    amount: '398.00',
+    label: '永久',
+    subject: '激活码·永久',
+    grant_kind: 'permanent',
+    grant_hours: 0,
+    grant_days: 0,
+    grant_minutes: 0
+  }
+];
+
+/** 旧档：已有专属价仍可解析，不再出现在新建下拉 */
+var LEGACY_OFFERABLE_SKUS = [
   {
     id: 'sku_268_1d',
     amount: '268.00',
@@ -56,6 +80,8 @@ var OFFERABLE_SKUS = [
   }
 ];
 
+var OFFERABLE_SKUS = LIVE_OFFERABLE_SKUS.concat(LEGACY_OFFERABLE_SKUS);
+
 function cloneSku(s) {
   return {
     id: String(s.id || ''),
@@ -78,7 +104,7 @@ function findOfferableSku(skuId) {
 }
 
 function listOfferableSkus() {
-  return OFFERABLE_SKUS.map(cloneSku);
+  return LIVE_OFFERABLE_SKUS.map(cloneSku);
 }
 
 function normalizeOfferAmount(raw, normalizeAmountFn) {
@@ -152,7 +178,7 @@ function createUserPriceOffers(deps) {
       throw e0;
     }
     if (!base) {
-      var e1 = new Error('请选择有效套餐（日/周/月/永久）');
+      var e1 = new Error('请选择有效套餐（日卡/永久）');
       e1.statusCode = 400;
       throw e1;
     }

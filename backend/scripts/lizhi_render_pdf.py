@@ -30,7 +30,8 @@ PAGE_W = int(round(PAGE_W_PT * SCALE))
 PAGE_H = int(round(PAGE_H_PT * SCALE))
 MARGIN_L = int(72 * SCALE)
 MARGIN_R = int(72 * SCALE)
-SEAL_RED = (206, 16, 22, 255)
+# 印泥朱红：浅朱红、略透，避免酒红实心块
+SEAL_RED = (230, 118, 108, 255)
 INK = (15, 15, 15, 255)
 
 
@@ -88,7 +89,7 @@ def _draw_pentagram(draw, cx, cy, outer_r, inner_r, fill):
 
 
 def make_seal(company):
-    """圆形公章：粗红圈 + 上弧单位名（粗宋）+ 中心五角星。"""
+    """圆形公章：细红圈 + 上弧单位名（粗宋）+ 中心五角星。"""
     SS = 1800
     RED = SEAL_RED
     seal = Image.new("RGBA", (SS, SS), (0, 0, 0, 0))
@@ -96,7 +97,8 @@ def make_seal(company):
     c = SS / 2.0
 
     R = SS * 0.455
-    ring_w = max(38, int(SS * 0.040))
+    # 约 1.2% 画布：细边框（原先 4% 粗环），接近浅印泥细圈
+    ring_w = max(14, int(SS * 0.012))
 
     chars = list((company or "专用章").strip()) or list("专用章")
     if len(chars) > 22:
@@ -142,8 +144,8 @@ def make_seal(company):
     _draw_pentagram(d, c, c, star_outer, star_inner, RED)
     d.ellipse([c - R, c - R, c + R, c + R], outline=RED, width=ring_w)
 
-    soft = seal.filter(ImageFilter.GaussianBlur(radius=1.1))
-    mixed = Image.blend(soft, seal, alpha=0.78)
+    soft = seal.filter(ImageFilter.GaussianBlur(radius=0.35))
+    mixed = Image.blend(soft, seal, alpha=0.88)
 
     pad_px = int(ring_w * 0.55)
     box = [
@@ -442,7 +444,7 @@ def render_page_image(payload):
     # 公章叠盖单位名与日期
     seal_img = make_seal(company)
     seal_r = seal_img.resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
-    sa = seal_r.split()[-1].point(lambda v: int(v * 0.90))
+    sa = seal_r.split()[-1].point(lambda v: int(v * 0.64))
     seal_r.putalpha(sa)
     img.alpha_composite(seal_r, (int(seal_x), int(seal_y)))
 

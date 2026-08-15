@@ -112,12 +112,13 @@ describe('pricingAb SKU mojibake repair via load', () => {
       alipayNormalizeAmount: (v) => String(v || '')
     });
     const cfg = await api.loadPricingAbParsed(true);
-    const hour = (cfg.treatment_skus || []).find((s) => s.id === 'sku_199_1h');
-    expect(hour).toBeTruthy();
-    expect(hour.label).toBe('小时体验卡');
-    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toContain('日卡');
+    expect((cfg.treatment_skus || []).map((s) => s.id).join('|')).toBe(
+      'sku_298_1d|sku_398_forever'
+    );
+    expect((cfg.control_skus || []).map((s) => s.amount).join('|')).toBe('298.00|398.00');
+    expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toBe('日卡|永久');
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
-      '268.00|320.00|398.00|498.00'
+      '298.00|398.00'
     );
   });
 });

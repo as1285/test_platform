@@ -10,6 +10,10 @@
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                 }
+                if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-14pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (
                     /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
                     (/Xiaomi\s*10|Mi\s*10(?!\s*T)|小米\s*10/i.test(u) && !/Mi\s*10\s*T|Xiaomi\s*10\s*T/i.test(u))
@@ -40,7 +44,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260815-mi14pro-top"></script>
+    <script src="/js/auth.js?v=20260815-mi14pro-inset2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

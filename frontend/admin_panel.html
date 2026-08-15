@@ -50,8 +50,7 @@
                     <section>
                         <h2>支付页 A/B</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A</strong>：支付宝「498 永久」+ 激活码；
-                            <strong>B</strong>：支付宝多档（268 日卡 / 320 周 / 398 月 / 498 永久）+ 激活码。
+                            <strong>A / B</strong>：支付宝两档（298 日卡 / 398 永久）+ 激活码。
                             A+B 必须为 100%。
                         </p></details>
                         <div class="form-row form-stack">
@@ -84,8 +83,8 @@
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignVariant">方案</label>
                                 <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 498 永久 + 仅支付宝</option>
-                                    <option value="b">B · 268日/320周/398月/498永久</option>
+                                    <option value="a">A · 298日卡 / 398永久</option>
+                                    <option value="b">B · 298日卡 / 398永久</option>
                                 </select>
                             </div>
                             <div class="form-actions">
@@ -102,11 +101,8 @@
                             <div class="form-field form-field-narrow">
                                 <label for="priceOfferSku">套餐</label>
                                 <select id="priceOfferSku">
-                                    <option value="sku_600_perm">永久（原价 ¥498）</option>
-                                    <option value="sku_268_1d">日卡（原价 ¥268）</option>
-                                    <option value="sku_328_7d">周卡（原价 ¥320）</option>
-                                    <option value="sku_398_30d">月卡（原价 ¥398）</option>
-                                    <option value="sku_199_1h">小时体验（原价 ¥199）</option>
+                                    <option value="sku_298_1d">日卡（原价 ¥298）</option>
+                                    <option value="sku_398_forever">永久（原价 ¥398）</option>
                                 </select>
                             </div>
                             <div class="form-field form-field-narrow">
@@ -1550,6 +1546,84 @@
                     </section>
                 </div>
 
+                <div id="page-zaizhi-cert" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>在职证明使用统计</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端在职/工作证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="zaizhiStatsDays">统计区间</label>
+                                <select id="zaizhiStatsDays" class="filter-select">
+                                    <option value="1">今天</option>
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshZaizhiStats">刷新统计</button>
+                        </div>
+                        <div id="zaizhiStatsMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
+                    </section>
+                    <section style="margin-top:28px;">
+                        <h2>工作证明生成</h2>
+                        <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式工作证明），带「演示样例」标注，不能用于入职/签证等正式用途。</p>
+                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                            <div>
+                                <label for="zaizhiPrefillUser">按用户名预填</label>
+                                <input type="text" id="zaizhiPrefillUser" maxlength="64" placeholder="注册用户名">
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="button" class="btn-page" id="zaizhiPrefillBtn">预填</button>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack" style="max-width:880px;">
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="zaizhiName">姓名</label>
+                                    <input type="text" id="zaizhiName" maxlength="64" placeholder="如：王嵩嵩">
+                                </div>
+                                <div>
+                                    <label for="zaizhiGender">性别</label>
+                                    <input type="text" id="zaizhiGender" maxlength="8" placeholder="男 / 女" value="男">
+                                </div>
+                                <div>
+                                    <label for="zaizhiIdNumber">身份证号</label>
+                                    <input type="text" id="zaizhiIdNumber" maxlength="32" placeholder="身份证号">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="zaizhiHireDate">入职日期</label>
+                                    <input type="text" id="zaizhiHireDate" maxlength="32" placeholder="2025/12/15" value="2025/12/15">
+                                </div>
+                                <div>
+                                    <label for="zaizhiIssueDate">开具日期</label>
+                                    <input type="text" id="zaizhiIssueDate" maxlength="48" placeholder="2026 年 8 月 15 日" value="2026 年 8 月 15 日">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="zaizhiCompany">公司全称</label>
+                                <input type="text" id="zaizhiCompany" maxlength="128" style="width:100%;max-width:640px;" value="北京外企市场营销顾问有限公司西安分公司">
+                            </div>
+                            <div class="form-row flex-wrap gap-10" style="margin-top:10px;">
+                                <div style="flex:1;min-width:200px;">
+                                    <label for="zaizhiDepartment">部门</label>
+                                    <input type="text" id="zaizhiDepartment" maxlength="64" style="width:100%;" value="市场部" placeholder="如：市场部">
+                                </div>
+                                <div style="flex:1;min-width:200px;">
+                                    <label for="zaizhiPosition">担任岗位</label>
+                                    <input type="text" id="zaizhiPosition" maxlength="64" style="width:100%;" value="市场营销顾问" placeholder="如：销售经理">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <button type="button" class="btn-primary" id="zaizhiGenerateBtn">生成并下载 PDF</button>
+                                <button type="button" class="btn-page" id="zaizhiSampleBtn">填入示例</button>
+                            </div>
+                            <p id="zaizhiStatus" class="hint" aria-live="polite"></p>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-ylbx-ps" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">上传陕西养老缴费证明原图，像素级改第 2 行月份与金额</p></div>
                     <section>
@@ -1771,7 +1845,7 @@
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
                     <section>
                         <h2>支付页 A/B</h2>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=498 永久仅支付宝；B=268 日卡 / 320 周 / 398 月 / 498 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售两档：298 日卡 / 398 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
@@ -2518,7 +2592,7 @@
             <div class="admin-command-head">
                 <span class="sr-only" id="adminCommandTitle">搜索管理功能</span>
                 <span class="admin-command-icon" aria-hidden="true">⌕</span>
-                <input type="search" id="adminCommandInput" autocomplete="off" placeholder="输入功能名称，如“用户”“离职证明”">
+                <input type="search" id="adminCommandInput" autocomplete="off" placeholder="输入功能名称，如“用户”“离职证明”“在职证明”">
                 <kbd>Esc</kbd>
             </div>
             <div class="admin-command-results" id="adminCommandResults"></div>

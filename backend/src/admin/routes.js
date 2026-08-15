@@ -67,7 +67,7 @@ app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-d
 app.get(
   '/api/admin/user-data/detail',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'ylbx-ps', 'ccb-flow', 'najilu-qr']),
+  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'zaizhi-cert', 'ylbx-ps', 'ccb-flow', 'najilu-qr']),
   h.handleAdminUserDataDetail
 );
 app.get(
@@ -388,6 +388,30 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminMenu('lizhi-cert'),
   h.handleAdminLizhiCertStats
+);
+app.get(
+  '/api/admin/zaizhi-cert/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['zaizhi-cert', 'user-data']),
+  h.handleAdminUserDataDetail
+);
+app.post(
+  '/api/admin/zaizhi-cert/generate',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('zaizhi-cert'),
+  h.handleAdminZaizhiCertGenerate
+);
+app.get(
+  '/api/admin/zaizhi-cert/stats',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('zaizhi-cert'),
+  h.handleAdminZaizhiCertStats
+);
+app.post(
+  '/api/admin/user-zaizhi-cert-unlock',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserZaizhiCertUnlock
 );
 app.post(
   '/api/admin/ylbx-ps/edit',

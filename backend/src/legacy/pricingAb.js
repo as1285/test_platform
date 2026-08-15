@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * A(control)=498 永久；B(treatment)=268 日卡 / 320 周卡 / 398 月卡 / 498 永久。
+ * 现售仅两档：日卡 298 / 永久 398（A/B 分流仍保留，两边 SKU 相同）。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,7 +8,31 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-/** A 方案：单档 498 永久 */
+/** 现售永久档：398 */
+var SKU_398_PERM = {
+  id: 'sku_398_forever',
+  amount: '398.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+/** 现售日卡：298 */
+var SKU_298_DAY = {
+  id: 'sku_298_1d',
+  amount: '298.00',
+  label: '日卡',
+  subject: '激活码·日卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+
+/** 旧档：498 永久，仅历史订单 / 专属价解析 */
 var SKU_CONTROL_600_PERM = {
   id: 'sku_600_perm',
   amount: '498.00',
@@ -81,16 +105,6 @@ var SKU_600_PERM = {
 };
 
 /** 旧档：仅用于历史订单 sku_id 解析，不再出现在默认售卖列表 */
-var SKU_298_DAY = {
-  id: 'sku_298_1d',
-  amount: '298.00',
-  label: '日卡',
-  subject: '激活码·日卡',
-  grant_kind: 'trial',
-  grant_hours: 0,
-  grant_days: 1,
-  grant_minutes: 0
-};
 var SKU_398_WEEK = {
   id: 'sku_398_7d',
   amount: '398.00',
@@ -143,7 +157,6 @@ var SKU_398_PERM_LEGACY = {
 };
 
 var LEGACY_CATALOG_SKUS = [
-  SKU_298_DAY,
   SKU_398_WEEK,
   SKU_498_MONTH,
   SKU_698_YEAR,
@@ -151,14 +164,16 @@ var LEGACY_CATALOG_SKUS = [
   SKU_398_PERM_LEGACY
 ];
 
+var LIVE_CATALOG_SKUS = [SKU_298_DAY, SKU_398_PERM];
+
 var DEFAULT_PRICING_AB = {
   enabled: true,
   a_percent: 50,
   b_percent: 50,
   c_percent: 0,
   treatment_percent: 50,
-  control_skus: [SKU_CONTROL_600_PERM],
-  treatment_skus: [SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM]
+  control_skus: LIVE_CATALOG_SKUS.slice(),
+  treatment_skus: LIVE_CATALOG_SKUS.slice()
 };
 
 function cloneSku(s) {
@@ -174,6 +189,10 @@ function cloneSku(s) {
   };
 }
 
+function cloneLiveCatalog() {
+  return LIVE_CATALOG_SKUS.map(cloneSku);
+}
+
 /** UTF-8 中文被当成 Latin-1 再存回时会出现 æ/å/Ã 等乱码 */
 function looksMojibakeText(s) {
   var t = String(s || '');
@@ -187,7 +206,7 @@ function defaultSkuById(id) {
   var all = []
     .concat(DEFAULT_PRICING_AB.control_skus || [])
     .concat(DEFAULT_PRICING_AB.treatment_skus || [])
-    .concat([SKU_199_HOUR])
+    .concat([SKU_199_HOUR, SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM])
     .concat(LEGACY_CATALOG_SKUS || []);
   for (var i = 0; i < all.length; i++) {
     if (all[i].id === id) return cloneSku(all[i]);
@@ -351,7 +370,7 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM].concat(
+    [SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM].concat(
       LEGACY_CATALOG_SKUS
     )
   ];
@@ -475,11 +494,9 @@ function createPricingAb(deps) {
           out.b_percent = pct.b_percent;
           out.c_percent = pct.c_percent;
           out.treatment_percent = pct.treatment_percent;
-          out.control_skus = normalizeSkuList(parsed.control_skus, DEFAULT_PRICING_AB.control_skus);
-          out.treatment_skus = normalizeSkuList(
-            parsed.treatment_skus,
-            DEFAULT_PRICING_AB.treatment_skus
-          );
+          /* 售卖目录以代码为准，忽略库里残留的周/月/小时档 */
+          out.control_skus = cloneLiveCatalog();
+          out.treatment_skus = cloneLiveCatalog();
         }
       }
     } catch (e) {
@@ -513,8 +530,8 @@ function createPricingAb(deps) {
       b_percent: b,
       c_percent: c,
       treatment_percent: b,
-      control_skus: normalizeSkuList(body.control_skus, cur.control_skus),
-      treatment_skus: normalizeSkuList(body.treatment_skus, cur.treatment_skus)
+      control_skus: cloneLiveCatalog(),
+      treatment_skus: cloneLiveCatalog()
     };
     const conn = await pool.getConnection();
     try {
@@ -718,16 +735,12 @@ function createPricingAb(deps) {
           force_client_abc: true
         };
       }
-      var amt = alipayNormalizeAmount(envFallbackAmount);
-      var legacy = cloneSku(SKU_CONTROL_199_PERM);
-      if (amt) legacy.amount = amt;
-      if (envSubject) legacy.subject = String(envSubject).slice(0, 128);
       return {
         enabled: true,
-        variant: 'control',
-        abc_variant: 'a',
+        variant: 'treatment',
+        abc_variant: 'b',
         abc_source: 'disabled',
-        skus: [legacy],
+        skus: cloneLiveCatalog(),
         pricing_ab_enabled: false,
         forced_by_channel: false,
         force_client_abc: false
@@ -791,10 +804,10 @@ function createPricingAb(deps) {
       skus = cfg.control_skus.map(cloneSku);
     }
     if (!skus.length) {
-      skus = [cloneSku(SKU_CONTROL_199_PERM)];
-      variant = 'control';
-      abc = 'a';
-      abcSource = abcSource || 'fallback_a';
+      skus = cloneLiveCatalog();
+      variant = 'treatment';
+      abc = 'b';
+      abcSource = abcSource || 'fallback_live';
     }
     return {
       enabled: true,

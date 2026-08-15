@@ -886,7 +886,7 @@
             <li><span><strong>可编辑</strong>：演示数据支持按需调整</span></li>
         </ul>
         <div class="purchase-offer-banner" id="purchaseOfferBanner">
-            新用户 24 小时内可享体验价（划线为对照原价）。想更便宜可先分享 1 次 B 站再减 ¥50。
+            新用户 24 小时内可享体验价（划线为对照原价）。
         </div>
 
         <div class="card" id="cardAlipay" hidden>
@@ -939,9 +939,9 @@
                 </details>
                 <details class="purchase-faq-item" data-faq-id="sku_diff">
                     <summary>各套餐有什么区别？</summary>
-                    <p>权益相同，主要差别是可用时长。默认已选最低档体验价，适合先体验；需要更久可选用周卡、月卡或更长档位。</p>
+                    <p>权益相同，主要差别是可用时长。日卡可用 1 天，永久长期开通。默认已选日卡。</p>
                 </details>
-                <details class="purchase-faq-item" data-faq-id="bilibili_off">
+                <details class="purchase-faq-item" data-faq-id="bilibili_off" hidden>
                     <summary>B 站分享怎么减 50 元？</summary>
                     <p>完成 1 次分享后返回本页自动计数；下次创建支付宝订单时由服务器自动减 ¥50。每 1 次分享仅可抵扣 1 笔订单。</p>
                 </details>
@@ -979,7 +979,7 @@
         <details class="purchase-fold" id="foldMoreServices">
             <summary>
                 <span>其它服务</span>
-                <span class="purchase-fold-hint">下载 / 离职证明 / 社保</span>
+                <span class="purchase-fold-hint">下载 / 离职证明 / 在职证明 / 社保</span>
             </summary>
             <div class="purchase-fold-body">
                 <div class="card download-box" id="cardDownloadApp" hidden>
@@ -995,6 +995,15 @@
                     </div>
                     <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。</p>
                     <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
+                </div>
+
+                <div class="card" id="cardZaizhiCert">
+                    <div class="card-head">
+                        <div class="card-title">在职证明生成</div>
+                        <span class="badge-auto">¥50 去水印</span>
+                    </div>
+                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
+                    <a class="btn btn-primary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
                 </div>
 
                 <div class="card" id="cardShebaoPhoto">
@@ -1198,6 +1207,7 @@
                     // 离职证明页默认「返回」到本页，不能再把本页「返回」指回去，否则来回跳
                     if (
                         path.indexOf('lizhi_cert') >= 0 ||
+                        path.indexOf('zaizhi_cert') >= 0 ||
                         path.indexOf('purchase') >= 0 ||
                         path.indexOf('login') >= 0 ||
                         path.indexOf('register') >= 0
@@ -1224,7 +1234,7 @@
         }
         if (offerBanner) {
             offerBanner.textContent =
-                '已开通账号可在此续费。付款成功后时效自动叠加；想更便宜可先分享 1 次 B 站再减 ¥50。';
+                '已开通账号可在此续费。付款成功后时效自动叠加。';
         }
         try {
             document.title = '个人所得税 · 续费演示';
@@ -1622,6 +1632,8 @@
     }
 
     var BILIBILI_SHARE_PENDING_KEY = 'purchase_bilibili_share_pending_v1';
+    /** 先隐藏 B 站分享减 50：入口/FAQ/划线优惠都不展示，下单也不走该抵扣 */
+    var BILIBILI_SHARE_DISCOUNT_HIDDEN = true;
     var shareActivityState = {
         completed_count: 0,
         available_count: 0,
@@ -1637,6 +1649,7 @@
     };
 
     function shareDiscountUnlocked() {
+        if (BILIBILI_SHARE_DISCOUNT_HIDDEN) return false;
         return (
             shareActivityState.eligible === true ||
             shareActivityState.pending_discount_applied === true ||
@@ -1811,6 +1824,7 @@
     }
 
     function loadBilibiliShareStatus() {
+        if (BILIBILI_SHARE_DISCOUNT_HIDDEN) return Promise.resolve(null);
         return paymentFetch('/api/growth/bilibili-share/status')
             .then(function (x) {
                 if (x.status === 200 && x.body && x.body.data) {
@@ -1842,6 +1856,7 @@
     }
 
     function completePendingBilibiliShare() {
+        if (BILIBILI_SHARE_DISCOUNT_HIDDEN) return Promise.resolve(null);
         var pending = readPendingBilibiliShare();
         if (!pending || shareActivityState.completing) return Promise.resolve(null);
         var age = Date.now() - Number(pending.started_at || 0);
@@ -1883,6 +1898,7 @@
     }
 
     function startBilibiliDiscountShare() {
+        if (BILIBILI_SHARE_DISCOUNT_HIDDEN) return;
         var btn = document.getElementById('btnBilibiliShare');
         if (btn) btn.disabled = true;
         trackPurchase('track_purchase_bilibili_share_start');
@@ -2059,9 +2075,11 @@
             cardDownload.hidden = !!purchasePageInApp ? true : false;
         }
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
-        if (isCodeOnly && cardShare) cardShare.hidden = true;
-        if (isCodeOnly && foldShare) foldShare.hidden = true;
-        if (isCodeOnly && shareTeaser) shareTeaser.hidden = true;
+        if (BILIBILI_SHARE_DISCOUNT_HIDDEN || isCodeOnly) {
+            if (cardShare) cardShare.hidden = true;
+            if (foldShare) foldShare.hidden = true;
+            if (shareTeaser) shareTeaser.hidden = true;
+        }
         if (isCodeOnly && sticky) {
             sticky.hidden = true;
             sticky.classList.remove('is-visible');
@@ -2244,6 +2262,7 @@
                 var foldShare = document.getElementById('foldShareDiscount');
                 var shareTeaser = document.getElementById('shareInlineTeaser');
                 function setShareUiVisible(on) {
+                    if (BILIBILI_SHARE_DISCOUNT_HIDDEN) on = false;
                     if (shareCard) shareCard.hidden = !on;
                     if (foldShare) foldShare.hidden = !on;
                     if (shareTeaser) shareTeaser.hidden = !on;
@@ -2305,19 +2324,29 @@
                     if (!skus.length && data.amount) {
                         skus = [
                             {
-                                id: 'sku_320_7d',
-                                amount: data.amount,
-                                label: '周卡',
-                                subject: data.subject || '激活码·周卡',
+                                id: 'sku_298_1d',
+                                amount: '298.00',
+                                label: '日卡',
+                                subject: '激活码·日卡',
                                 grant_kind: 'trial',
-                                grant_days: 7,
+                                grant_days: 1,
+                                grant_hours: 0,
+                                grant_minutes: 0
+                            },
+                            {
+                                id: 'sku_398_forever',
+                                amount: '398.00',
+                                label: '永久',
+                                subject: data.subject || '激活码·永久',
+                                grant_kind: 'permanent',
+                                grant_days: 0,
                                 grant_hours: 0,
                                 grant_minutes: 0
                             }
                         ];
                     }
                     renderAlipaySkus(skus, variant);
-                    if (variant === 'treatment' && skus.length > 1) {
+                    if (skus.length > 1) {
                         purchaseUiMode = 'treatment';
                     } else {
                         purchaseUiMode = 'legacy';

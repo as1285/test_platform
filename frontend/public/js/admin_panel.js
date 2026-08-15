@@ -1132,6 +1132,7 @@
                 'server-monitor': 1,
                 'sbdy-demo': 1,
                 'lizhi-cert': 1,
+                'zaizhi-cert': 1,
                 'ylbx-ps': 1,
                 'ccb-flow': 1,
                 'najilu-qr': 1,
@@ -1239,6 +1240,9 @@
             }
             if (pageKey === 'lizhi-cert') {
                 callAdminModuleLoadPage('lizhi-cert');
+            }
+            if (pageKey === 'zaizhi-cert') {
+                callAdminModuleLoadPage('zaizhi-cert');
             }
             if (pageKey === 'ylbx-ps') {
                 callAdminModuleLoadPage('ylbx-ps');
@@ -1602,7 +1606,7 @@
                             a.variant === 'control'
                                 ? 'A·对照'
                                 : a.variant === 'treatment'
-                                  ? 'B·多档'
+                                  ? 'B·两档'
                                   : a.variant === 'b'
                                     ? 'C·激活码'
                                     : a.variant;
@@ -5619,6 +5623,19 @@
                             '">' +
                             (u.lizhi_cert_unlocked ? '关闭离职证明' : '开通离职证明') +
                             '</button>'
+                            + ' <button type="button" class="btn-sm ' +
+                            (u.zaizhi_cert_unlocked ? 'btn-ban' : 'btn-page') +
+                            ' btn-user-zaizhi-unlock" data-u="' +
+                            esc(u.username) +
+                            '" data-unlocked="' +
+                            (u.zaizhi_cert_unlocked ? '1' : '0') +
+                            '" title="' +
+                            (u.zaizhi_cert_unlocked
+                                ? '该账号已开通在职证明，点击关闭'
+                                : '为该账号开通在职证明生成权益（免付费）') +
+                            '">' +
+                            (u.zaizhi_cert_unlocked ? '关闭在职证明' : '开通在职证明') +
+                            '</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         if (u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
@@ -5655,6 +5672,11 @@
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
                                 'background:#eff6ff;color:#1d4ed8;font-size:11px;white-space:nowrap;" title="已开通离职证明生成权益">离职证明</span>';
+                        }
+                        if (u.zaizhi_cert_unlocked) {
+                            nameChangeBadge +=
+                                '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                                'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已开通在职证明生成权益">在职证明</span>';
                         }
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
@@ -5776,7 +5798,7 @@
                                     var noteEl = document.getElementById('priceOfferNote');
                                     var hint = document.getElementById('priceOfferHint');
                                     if (offer && offer.enabled) {
-                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_600_perm';
+                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_398_forever';
                                         if (amountEl) amountEl.value = offer.amount || '';
                                         if (noteEl) noteEl.value = offer.note || '';
                                         if (hint) {
@@ -5809,7 +5831,7 @@
                                             '300'
                                         );
                                         if (amtNew == null) return;
-                                        if (skuEl) skuEl.value = 'sku_600_perm';
+                                        if (skuEl) skuEl.value = 'sku_398_forever';
                                         if (amountEl) amountEl.value = String(amtNew).trim();
                                         document.getElementById('btnSavePriceOffer') &&
                                             document.getElementById('btnSavePriceOffer').click();
@@ -5845,6 +5867,42 @@
                                             (nextExempt
                                                 ? '已取消改名限制'
                                                 : '已重新加改名限制')
+                                    );
+                                    loadUsers();
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-zaizhi-unlock').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            var isUnlocked = btn.getAttribute('data-unlocked') === '1';
+                            var nextUnlocked = !isUnlocked;
+                            var actionText = nextUnlocked
+                                ? '开通在职证明功能（可免付费生成正式证明）'
+                                : '关闭在职证明功能';
+                            if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-zaizhi-cert-unlock', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, unlocked: nextUnlocked ? 1 : 0 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '操作失败');
+                                        return;
+                                    }
+                                    alert(
+                                        d.msg ||
+                                            (nextUnlocked
+                                                ? '已开通在职证明'
+                                                : '已关闭在职证明')
                                     );
                                     loadUsers();
                                 })
@@ -6417,6 +6475,7 @@
             'server-monitor': '监控',
             'sbdy-demo': '社保演示',
             'lizhi-cert': '离职证明',
+            'zaizhi-cert': '在职证明',
             'ylbx-ps': '社保图片PS',
             'ccb-flow': '工资流水',
             'najilu-qr': '完税二维码',

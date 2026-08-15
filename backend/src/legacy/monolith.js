@@ -41,7 +41,7 @@ const {
   isTrialExpired,
   activationFieldsForApi
 } = require('./inviteReward');
-const { createPricingAb } = require('./pricingAb');
+const { createPricingAb, DEFAULT_PRICING_AB } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const {
@@ -3406,7 +3406,14 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT DISTINCT admin_id, 'ccb-flow' FROM admin_account_menus
-     WHERE menu_key IN ('ylbx-ps', 'lizhi-cert', 'sbdy-demo', 'najilu-qr')`
+     WHERE menu_key IN ('ylbx-ps', 'lizhi-cert', 'zaizhi-cert', 'sbdy-demo', 'najilu-qr')`
+  );
+
+  /* 在职证明：已有离职证明权限的账号自动开通 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'zaizhi-cert' FROM admin_account_menus
+     WHERE menu_key = 'lizhi-cert'`
   );
 
   await conn.execute(
@@ -5168,15 +5175,23 @@ function isRenameFeeSkuId(skuId) {
 var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
 var LIZHI_CERT_AMOUNT = '50.00';
 var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
+var ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
+var ZAIZHI_CERT_AMOUNT = '50.00';
+var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
 function isLizhiCertSkuId(skuId) {
   return String(skuId || '') === LIZHI_CERT_SKU_ID;
+}
+function isZaizhiCertSkuId(skuId) {
+  return String(skuId || '') === ZAIZHI_CERT_SKU_ID;
 }
 function isNonActivationSkuId(skuId, grantKind) {
   return (
     isRenameFeeSkuId(skuId) ||
     isLizhiCertSkuId(skuId) ||
+    isZaizhiCertSkuId(skuId) ||
     String(grantKind || '') === 'rename_credit' ||
-    String(grantKind || '') === 'lizhi_cert'
+    String(grantKind || '') === 'lizhi_cert' ||
+    String(grantKind || '') === 'zaizhi_cert'
   );
 }
 
@@ -5292,7 +5307,8 @@ function readPreferredPurchaseAbc(req) {
   return '';
 }
 
-/* 支付页引流：1 次分享立减 ¥50（原 2 次仍有流失，降到 1 次提升完成率） */
+/* 支付页引流：1 次分享立减 ¥50。先下线展示与抵扣，开关打开即可恢复 */
+var BILIBILI_SHARE_DISCOUNT_ENABLED = false;
 var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 1;
 var BILIBILI_SHARE_DISCOUNT_AMOUNT = '50.00';
 var BILIBILI_SHARE_SESSION_TTL_MINUTES = 30;
@@ -5525,18 +5541,18 @@ async function handleAlipayConfig(req, res) {
             code_only: false,
             hide_self_serve_pay: false,
             custom_offer: false,
-            skus: [
-              {
-                id: 'sku_600_perm',
-                amount: '498.00',
-                label: '永久',
-                subject: '激活码·永久',
-                grant_kind: 'permanent',
-                grant_days: 0,
-                grant_hours: 0,
-                grant_minutes: 0
-              }
-            ]
+            skus: (DEFAULT_PRICING_AB.treatment_skus || []).map(function (s) {
+              return {
+                id: s.id,
+                amount: s.amount,
+                label: s.label,
+                subject: s.subject,
+                grant_kind: s.grant_kind,
+                grant_days: s.grant_days,
+                grant_hours: s.grant_hours,
+                grant_minutes: s.grant_minutes || 0
+              };
+            })
           }
         });
       }
@@ -5605,18 +5621,18 @@ async function handleAlipayConfig(req, res) {
         pricing_variant: 'control',
         abc_variant: 'a',
         pricing_ab_enabled: false,
-        skus: [
-          {
-            id: 'sku_320_7d',
-            amount: envProduct.amount,
-            label: '周卡',
-            subject: envProduct.subject || '激活码·周卡',
-            grant_kind: 'trial',
-            grant_days: 7,
-            grant_hours: 0,
-            grant_minutes: 0
-          }
-        ]
+        skus: (DEFAULT_PRICING_AB.treatment_skus || []).map(function (s) {
+          return {
+            id: s.id,
+            amount: s.amount,
+            label: s.label,
+            subject: s.subject,
+            grant_kind: s.grant_kind,
+            grant_days: s.grant_days,
+            grant_hours: s.grant_hours,
+            grant_minutes: s.grant_minutes || 0
+          };
+        })
       }
     });
   }
@@ -5736,6 +5752,113 @@ async function handleAlipayCreateOrder(req, res) {
     } finally {
       try {
         connLizhi.release();
+      } catch (eRel2) {}
+    }
+  }
+
+  var isZaizhiCert =
+    product === 'zaizhi_cert' || isZaizhiCertSkuId(skuIdReq) || skuIdReq === 'zaizhi_cert';
+
+  /* —— 在职/工作证明终身权益（不走开通激活逻辑） —— */
+  if (isZaizhiCert) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    const [zaizhiUsers] = await pool.execute(
+      'SELECT zaizhi_cert_unlocked FROM users WHERE username = ? LIMIT 1',
+      [req.authUserId]
+    );
+    if (
+      zaizhiUsers.length &&
+      (zaizhiUsers[0].zaizhi_cert_unlocked === true ||
+        Number(zaizhiUsers[0].zaizhi_cert_unlocked) === 1)
+    ) {
+      return res.status(409).json({ code: 409, msg: '在职证明无水印权益已开通，无需重复购买' });
+    }
+    var zaizhiAmount = alipay.normalizeAmount(ZAIZHI_CERT_AMOUNT);
+    if (!zaizhiAmount) {
+      return res.status(503).json({ code: 503, msg: '在职证明费用配置无效' });
+    }
+    const connZaizhi = await pool.getConnection();
+    var zaizhiOrder = null;
+    try {
+      await connZaizhi.beginTransaction();
+      const [existingZaizhi] = await connZaizhi.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, ZAIZHI_CERT_SKU_ID]
+      );
+      if (existingZaizhi.length) {
+        zaizhiOrder = existingZaizhi[0];
+      } else {
+        zaizhiOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: ZAIZHI_CERT_SUBJECT,
+          amount: zaizhiAmount,
+          status: 'pending',
+          pricing_variant: 'zaizhi_cert',
+          sku_id: ZAIZHI_CERT_SKU_ID,
+          grant_kind: 'zaizhi_cert',
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connZaizhi.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            zaizhiOrder.out_trade_no,
+            req.authUserId,
+            zaizhiOrder.subject,
+            zaizhiOrder.amount,
+            zaizhiOrder.pricing_variant,
+            zaizhiOrder.sku_id,
+            zaizhiOrder.grant_kind,
+            zaizhiOrder.grant_days,
+            zaizhiOrder.grant_hours,
+            zaizhiOrder.grant_minutes
+          ]
+        );
+      }
+      await connZaizhi.commit();
+    } catch (eZaizhiDb) {
+      try {
+        await connZaizhi.rollback();
+      } catch (eRb) {}
+      console.error('create zaizhi cert order db', eZaizhiDb);
+      try {
+        connZaizhi.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建在职证明订单失败' });
+    }
+    try {
+      var zaizhiPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(zaizhiOrder.out_trade_no),
+        subject: String(zaizhiOrder.subject),
+        amount: alipay.normalizeAmount(zaizhiOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(zaizhiOrder),
+          qr_code: zaizhiPre.qrCode,
+          payment_url: zaizhiPre.qrCode,
+          pricing_variant: 'zaizhi_cert',
+          sku_id: ZAIZHI_CERT_SKU_ID,
+          product: 'zaizhi_cert'
+        }
+      });
+    } catch (eZaizhiPay) {
+      console.error('create zaizhi cert precreate', eZaizhiPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝在职证明订单失败' });
+    } finally {
+      try {
+        connZaizhi.release();
       } catch (eRel2) {}
     }
   }
@@ -5977,16 +6100,19 @@ async function handleAlipayCreateOrder(req, res) {
         1,
         Math.min(50, parseInt(BILIBILI_SHARE_DISCOUNT_THRESHOLD, 10) || 1)
       );
-      const [shareRows] = await conn.execute(
-        `SELECT id
-         FROM user_bilibili_share_events
-         WHERE username = ? AND status = 'completed'
-           AND consumed_at IS NULL AND reserved_order_no IS NULL
-         ORDER BY completed_at ASC, id ASC
-         LIMIT ${shareLimit} FOR UPDATE`,
-        [req.authUserId]
-      );
+      const [shareRows] = BILIBILI_SHARE_DISCOUNT_ENABLED
+        ? await conn.execute(
+            `SELECT id
+             FROM user_bilibili_share_events
+             WHERE username = ? AND status = 'completed'
+               AND consumed_at IS NULL AND reserved_order_no IS NULL
+             ORDER BY completed_at ASC, id ASC
+             LIMIT ${shareLimit} FOR UPDATE`,
+            [req.authUserId]
+          )
+        : [[]];
       var shareDiscountCount =
+        BILIBILI_SHARE_DISCOUNT_ENABLED &&
         shareRows.length >= BILIBILI_SHARE_DISCOUNT_THRESHOLD
           ? BILIBILI_SHARE_DISCOUNT_THRESHOLD
           : 0;
@@ -6389,6 +6515,24 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       try {
         invalidateUserInfoApiCache(locked.username);
       } catch (eInv2) {}
+      return true;
+    }
+
+    /* 在职/工作证明：标记终身权益，不开通账号 */
+    if (isZaizhiCertSkuId(meta.sku_id) || grantKind === 'zaizhi_cert') {
+      await conn.execute('UPDATE users SET zaizhi_cert_unlocked = 1 WHERE username = ?', [
+        locked.username
+      ]);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInv3) {}
       return true;
     }
 
@@ -15765,6 +15909,7 @@ async function handleAdminUsers(req, res) {
       `
       SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
              lizhi_cert_unlocked,
+             zaizhi_cert_unlocked,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, activation_kind, active_until,
              user_type, sales_promo_channel, invited_by,
@@ -15874,6 +16019,10 @@ async function handleAdminUsers(req, res) {
           r.lizhi_cert_unlocked === 1 ||
           r.lizhi_cert_unlocked === true ||
           Number(r.lizhi_cert_unlocked) === 1,
+        zaizhi_cert_unlocked:
+          r.zaizhi_cert_unlocked === 1 ||
+          r.zaizhi_cert_unlocked === true ||
+          Number(r.zaizhi_cert_unlocked) === 1,
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
@@ -17465,6 +17614,49 @@ async function handleAdminUserLizhiCertUnlock(req, res) {
   }
 }
 
+/** 管理端：为指定账号开通或关闭在职/工作证明生成权益 */
+async function handleAdminUserZaizhiCertUnlock(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var unlocked =
+    body.unlocked === true ||
+    body.unlocked === 1 ||
+    String(body.unlocked || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET zaizhi_cert_unlocked = ? WHERE username = ?',
+      [unlocked ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: unlocked ? '已开通该账号的在职证明功能' : '已关闭该账号的在职证明功能',
+      data: { username: canonicalUsername, zaizhi_cert_unlocked: unlocked }
+    });
+  } catch (e) {
+    console.error('admin user zaizhi cert unlock', e);
+    return res.status(500).json({ code: 500, msg: '修改在职证明开通状态失败' });
+  } finally {
+    conn.release();
+  }
+}
+
 /** 管理员重置密码 */
 async function handleAdminUserPassword(req, res) {
   var body = req.body || {};
@@ -18788,7 +18980,7 @@ async function handleAdminUserRefund(req, res) {
        SET status = 'refunded'
        WHERE username = ? AND status = 'paid'
          AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
-         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%'))`,
+         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%'))`,
       [target]
     );
     await conn.commit();
@@ -20118,6 +20310,10 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         "(sku_id = '" +
         LIZHI_CERT_SKU_ID +
         "' OR grant_kind = 'lizhi_cert')";
+      var zaizhiSkuSql =
+        "(sku_id = '" +
+        ZAIZHI_CERT_SKU_ID +
+        "' OR grant_kind = 'zaizhi_cert')";
       var renameSkuSql =
         "(sku_id = '" +
         RENAME_FEE_SKU_ID +
@@ -20126,11 +20322,15 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         'CASE WHEN ' +
         lizhiSkuSql +
         ' THEN 0 WHEN ' +
+        zaizhiSkuSql +
+        ' THEN 0 WHEN ' +
         renameSkuSql +
         ' THEN 0 ELSE 1 END';
       var activationAmountCase =
         'CASE WHEN ' +
         lizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        zaizhiSkuSql +
         ' THEN 0 WHEN ' +
         renameSkuSql +
         ' THEN 0 ELSE amount END';
@@ -21368,6 +21568,7 @@ function getHandlers() {
     handleAdminUserPriceOfferClear,
     handleAdminUserRenameFeeExempt,
     handleAdminUserLizhiCertUnlock,
+    handleAdminUserZaizhiCertUnlock,
     handleAdminUserPassword,
     handleAdminBan,
     handleAdminBlockIp,

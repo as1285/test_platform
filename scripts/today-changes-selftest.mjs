@@ -39,9 +39,53 @@ mustInclude('frontend/public/js/consult-batch-tax.js', ['batchMsModalDraft', 're
 mustInclude('frontend/public/js/conversion-guide.js', ['openPayGateModal', 'bindPayFeatureGates'], 'conversion pay gate');
 mustInclude('frontend/public/js/consult-records.js', ['expandSingleTaxRecordCard', 'taxMoreCard', 'syncTaxPayGuideBanner'], 'editRecord + pay guide');
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
-mustInclude('backend/scripts/lizhi_render_pdf.py', ['.preview.png'], 'lizhi render png');
+mustInclude(
+  'backend/scripts/lizhi_render_pdf.py',
+  ['.preview.png', 'SEAL_RED = (230, 118, 108, 255)', 'SS * 0.012', 'int(v * 0.64)'],
+  'lizhi render png + thinner lighter seal'
+);
 mustInclude('frontend/lizhi_cert.html', ['lizhiPdfPreview', 'preview_png_base64'], 'lizhi cert img preview');
+mustInclude(
+  'backend/scripts/zaizhi_render_pdf.py',
+  ['工作证明', '性别', '为我公司在职员工', 'zaizhi_render_pdf'],
+  'zaizhi render work cert'
+);
+mustInclude(
+  'backend/src/user/zaizhiCertUser.js',
+  ['sku_zaizhi_cert_50', 'handleZaizhiCertGenerate', 'zaizhi_cert_unlocked'],
+  'zaizhi user api'
+);
+mustInclude(
+  'frontend/zaizhi_cert.html',
+  ['/api/zaizhi-cert/generate', 'lzGender', '工作证明.pdf'],
+  'zaizhi cert c-end page'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['page-zaizhi-cert', 'zaizhiGenerateBtn'],
+  'admin zaizhi cert page'
+);
 mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banner');
+mustInclude(
+  'backend/src/legacy/pricingAb.js',
+  ['sku_298_1d', 'sku_398_forever', "amount: '298.00'", "amount: '398.00'"],
+  'pricing live catalog 298/398'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['sku_298_1d', 'sku_398_forever', '日卡可用 1 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
+  'purchase two-sku copy + hide bili share'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['BILIBILI_SHARE_DISCOUNT_ENABLED = false'],
+  'bili share discount off'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['sku_298_1d', 'sku_398_forever', '298 日卡 / 398 永久'],
+  'admin offer two-sku'
+);
 
 const purchase = read('frontend/purchase.html');
 if (purchase.includes('track_purchase_page_leave') && !/满\s*2\s*次/.test(purchase)) ok('bilibili share 1x copy');
@@ -78,8 +122,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260815-iqoo-neo8pro'],
-  'fast-nav auth cache iqoo-neo8pro'
+  ['20260815-mi14pro-inset2'],
+  'fast-nav auth cache mi14pro-inset2'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -104,8 +148,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260814-iphone13-c2'],
-  'shuiming_result ace 2 pro class'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260815-mi14pro-inset2', 'app-android-xiaomi-14pro', '23116PN5'],
+  'shuiming_result ace 2 pro + mi14pro class'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn'],
+  'auth.js mi14pro inset + back-btn'
 );
 mustInclude(
   'frontend/public/js/auth.js',

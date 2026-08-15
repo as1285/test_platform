@@ -24,6 +24,12 @@ function registerUserRoutes(app, deps) {
   /* 短期下载链（无鉴权）：安卓系统浏览器保存预览图/PDF */
   app.get('/api/lizhi-cert/temp-share/:token', h.handleLizhiCertTempShareGet);
 
+  /* 在职/工作证明：仅需登录，不要求账号已激活 */
+  app.get('/api/zaizhi-cert/status', mw.requireAuth, h.handleZaizhiCertStatus);
+  app.get('/api/zaizhi-cert/prefill', mw.requireAuth, h.handleZaizhiCertPrefill);
+  app.post('/api/zaizhi-cert/generate', mw.requireAuth, h.handleZaizhiCertGenerate);
+  app.get('/api/zaizhi-cert/temp-share/:token', h.handleZaizhiCertTempShareGet);
+
   /* 社保照片：仅需登录（激活页未开通账号也可用） */
   app.get('/api/user/shebao-photo', mw.requireAuth, h.handleUserShebaoPhotoList);
   app.get('/api/user/shebao-photo/:id/file', mw.requireAuth, h.handleUserShebaoPhotoFile);

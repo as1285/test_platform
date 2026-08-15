@@ -10,6 +10,7 @@
     charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260813-sz',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
+    'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260815-zaizhi',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260808-ccb-render',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260806-admin-deadcode'
@@ -22,6 +23,7 @@
     codes: 'codes',
     'sbdy-demo': 'sbdy-demo',
     'lizhi-cert': 'lizhi-cert',
+    'zaizhi-cert': 'zaizhi-cert',
     'ylbx-ps': 'ylbx-ps',
     'ccb-flow': 'ccb-flow',
     'najilu-qr': 'najilu-qr',

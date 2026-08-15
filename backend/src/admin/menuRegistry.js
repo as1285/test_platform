@@ -137,6 +137,14 @@ const ADMIN_PAGE_DEFS = [
     order: 20
   },
   {
+    page: 'zaizhi-cert',
+    menu_key: 'zaizhi-cert',
+    label: '在职证明',
+    group: 'cert-tools',
+    module: 'zaizhi-cert',
+    order: 25
+  },
+  {
     page: 'ylbx-ps',
     menu_key: 'ylbx-ps',
     label: '社保图片PS',
