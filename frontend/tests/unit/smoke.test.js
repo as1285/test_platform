@@ -8,6 +8,6 @@ describe('frontend smoke', () => {
     // eslint-disable-next-line no-eval
     eval(code);
     expect(typeof window.normalizeTaxYear).toBe('function');
-    expect(window.getMinTaxYear()).toBe(1900);
+    expect(window.getMinTaxYear()).toBe(2019);
   });
 });
