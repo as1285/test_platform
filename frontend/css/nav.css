@@ -31,16 +31,13 @@ html.ios-pwa {
     --bottom-nav-gap: 8px;
 }
 
-/* 待办 / 办查：底栏贴底（iOS 见文末 app-ios-client 规则，须压过本段） */
+/* 待办 / 办查 / 消息 / 我的：同一悬浮间隙，避免切 TAB 高低不一 */
 html body.page-daiban,
-html body.page-bancha {
-    --bottom-nav-bottom: 4px !important;
-    --bottom-nav-gap: 4px !important;
-}
-
-html body.page-daiban > .bottom-nav,
-html body.page-bancha > .bottom-nav {
-    bottom: 4px !important;
+html body.page-bancha,
+html body.page-message,
+html body.page-mine {
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
 }
 
 /*
@@ -117,12 +114,24 @@ html.app-ios-client body.page-mine > .bottom-nav.ios-device {
     background: rgba(255, 255, 255, 0.98) !important;
 }
 
-/* iPhone 16 Pro / Pro Max：我的页再压一档，与其它 TAB 齐底 */
+/* iPhone 16 Pro / Pro Max：待办 / 我的 / 消息同一底边，勿再单独压「我的」 */
+html.app-ios-iphone16pro body.page-daiban > .bottom-nav,
+html.app-ios-iphone16pro body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-bancha > .bottom-nav,
+html.app-ios-iphone16pro body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-iphone16pro body.page-message > .bottom-nav,
+html.app-ios-iphone16pro body.page-message > .bottom-nav.ios-device,
 html.app-ios-iphone16pro body.page-mine > .bottom-nav,
 html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-daiban > .bottom-nav,
+html.app-ios-iphone16promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-bancha > .bottom-nav,
+html.app-ios-iphone16promax body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-iphone16promax body.page-message > .bottom-nav,
+html.app-ios-iphone16promax body.page-message > .bottom-nav.ios-device,
 html.app-ios-iphone16promax body.page-mine > .bottom-nav,
 html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
-    bottom: 2px !important;
+    bottom: 8px !important;
 }
 
 .bottom-nav {

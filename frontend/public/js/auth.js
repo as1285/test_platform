@@ -1481,9 +1481,12 @@
           'html.app-ios-client body.page-mine{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
           'bottom:8px!important;padding-top:10px!important;padding-bottom:10px!important;margin-bottom:0!important;}' +
-          'html.app-ios-iphone16pro body.page-mine > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,' +
-          'html.app-ios-iphone16promax body.page-mine > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{' +
-          'bottom:2px!important;}';
+          'html.app-ios-iphone16pro body.page-daiban > .bottom-nav,html.app-ios-iphone16pro body.page-bancha > .bottom-nav,' +
+          'html.app-ios-iphone16pro body.page-message > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav,' +
+          'html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,' +
+          'html.app-ios-iphone16promax body.page-daiban > .bottom-nav,html.app-ios-iphone16promax body.page-bancha > .bottom-nav,' +
+          'html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,' +
+          'html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
       try {
@@ -1520,7 +1523,7 @@
           topBlue +
           ',' +
           topBlue +
-          ') !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100% !important;height:100% !important;}' +
+          ') !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100% !important;}' +
           'html body.page-daiban,html body.page-bancha{background-color:#f5f6fa !important;background-image:none !important;min-height:100vh !important;min-height:100dvh !important;}' +
           'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]),html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           topBlue +
@@ -1542,7 +1545,7 @@
           'html.app-ios-client body.page-daiban > .bottom-nav,html.app-ios-client body.page-bancha > .bottom-nav,' +
           'html.app-ios-client body.page-daiban > .bottom-nav.ios-device,html.app-ios-client body.page-bancha > .bottom-nav.ios-device{' +
           'bottom:8px !important;padding-top:10px !important;padding-bottom:10px !important;margin-bottom:0 !important;}' +
-          'html body.page-daiban,html body.page-bancha{--bottom-nav-bottom:4px !important;--bottom-nav-gap:4px !important;--bottom-nav-clearance:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,4px) + 16px) !important;}';
+          'html body.page-daiban,html body.page-bancha{--bottom-nav-bottom:8px !important;--bottom-nav-gap:8px !important;--bottom-nav-clearance:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 16px) !important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
       try {
@@ -1589,6 +1592,9 @@
       } catch (eCss) {}
       syncAppShellStatusbarTop();
       applyImmersiveBlueStatusBar(msgBlue);
+      try {
+        schedulePinTabBottomNav();
+      } catch (ePin) {}
     } catch (e) {}
   }
 
@@ -1911,20 +1917,8 @@
       if (document.documentElement.classList.contains('app-cordova-xiaomi-2410')) {
         targetGap = 24;
       } else if (iosClient) {
-        /* iOS：与 Android 一样小幅浮起；16 Pro 我的页再贴底，避免相对其它 TAB 悬空 */
+        /* iOS TAB（含 16 Pro 待办/我的/消息）统一 8px */
         targetGap = 8;
-        try {
-          if (
-            document.body &&
-            document.body.classList.contains('page-mine') &&
-            (document.documentElement.classList.contains('app-ios-iphone16pro') ||
-              document.documentElement.classList.contains('app-ios-iphone16promax'))
-          ) {
-            targetGap = 2;
-          }
-        } catch (e16) {}
-      } else if (document.body && (document.body.classList.contains('page-daiban') || document.body.classList.contains('page-bancha'))) {
-        targetGap = 4;
       } else {
         var cssGap = String(
           document.documentElement.style.getPropertyValue('--bottom-nav-bottom') ||
@@ -1973,32 +1967,36 @@
       document.documentElement.style.setProperty('--bottom-nav-gap', targetGap + 'px');
     } catch (eStyle) {}
 
-    /* iOS：若仍被 safe-area / 祖先定位抬高，按实测空隙下拉到约 8px */
-    if (iosClient) {
-      try {
+    /* 待办/我的若被 safe-area 或错误包含块抬高，按实测空隙下拉到与消息页相同 */
+    try {
+      closeIosBottomNavExtraGap(nav, targetGap);
+      requestAnimationFrame(function () {
         closeIosBottomNavExtraGap(nav, targetGap);
         requestAnimationFrame(function () {
           closeIosBottomNavExtraGap(nav, targetGap);
-          requestAnimationFrame(function () {
-            closeIosBottomNavExtraGap(nav, targetGap);
-          });
         });
-        setTimeout(function () {
-          closeIosBottomNavExtraGap(nav, targetGap);
-        }, 50);
-        setTimeout(function () {
-          closeIosBottomNavExtraGap(nav, targetGap);
-        }, 200);
-        setTimeout(function () {
-          closeIosBottomNavExtraGap(nav, targetGap);
-        }, 600);
-      } catch (eClose) {}
-    }
+      });
+      setTimeout(function () {
+        closeIosBottomNavExtraGap(nav, targetGap);
+      }, 50);
+      setTimeout(function () {
+        closeIosBottomNavExtraGap(nav, targetGap);
+      }, 200);
+      setTimeout(function () {
+        closeIosBottomNavExtraGap(nav, targetGap);
+      }, 600);
+    } catch (eClose) {}
   }
 
   function closeIosBottomNavExtraGap(nav, wantGap) {
     if (!nav) return;
     wantGap = typeof wantGap === 'number' ? wantGap : 8;
+    var iphone16Pro = false;
+    try {
+      iphone16Pro =
+        document.documentElement.classList.contains('app-ios-iphone16pro') ||
+        document.documentElement.classList.contains('app-ios-iphone16promax');
+    } catch (e16) {}
     /* 只用视口高度，勿用 body.clientHeight（我的页 e1 画布很高会误判空隙） */
     var layoutH = 0;
     try {
@@ -2019,8 +2017,9 @@
     if (!layoutH) return;
     var rect = nav.getBoundingClientRect();
     var gap = layoutH - rect.bottom;
-    /* 允许 wantGap±6；明显偏大则下拉（我的页 iPhone 16 Pro 常见 50~80px 悬空） */
-    if (!(gap > wantGap + 6)) return;
+    /* 16 Pro 待办/我的空隙阈值收紧，避免比消息页多出一截灰底 */
+    var slop = iphone16Pro ? 2 : 6;
+    if (!(gap > wantGap + slop)) return;
     var cs = window.getComputedStyle(nav);
     var curBottom = parseFloat(cs.bottom);
     if (isNaN(curBottom)) curBottom = wantGap;
@@ -2718,7 +2717,7 @@
           'html body.page-mine > .bottom-nav{bottom:var(--bottom-nav-bottom,8px)!important;top:auto!important;margin:0!important;transform:none!important;-webkit-transform:none!important;}' +
           'html.app-ios-client body.page-mine{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{bottom:8px!important;padding-top:10px!important;padding-bottom:10px!important;margin-bottom:0!important;top:auto!important;transform:none!important;-webkit-transform:none!important;}' +
-          'html.app-ios-iphone16pro body.page-mine > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,html.app-ios-iphone16promax body.page-mine > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:2px!important;}' +
+          'html.app-ios-iphone16pro body.page-daiban > .bottom-nav,html.app-ios-iphone16pro body.page-bancha > .bottom-nav,html.app-ios-iphone16pro body.page-message > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,html.app-ios-iphone16promax body.page-daiban > .bottom-nav,html.app-ios-iphone16promax body.page-bancha > .bottom-nav,html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#2b81f2 !important;z-index:40 !important;pointer-events:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-message::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#1e8fff !important;z-index:40 !important;pointer-events:none !important;}' +
           /* iPhone 12 Pro Max：待办/办查/消息/我的 用头图 bleed，取消固色垫带 */

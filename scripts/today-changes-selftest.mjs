@@ -112,17 +112,17 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260816-ace2v-php110'],
+  ['20260816-iphone16pro-nav'],
   'login.html auth cache ace2v'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260816-ace2v-php110', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A'],
+  ['20260816-iphone16pro-nav', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A'],
   'mine.html mate60 + ace2v cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260816-ace2v-php110'],
+  ['20260816-iphone16pro-nav'],
   'fast-nav auth cache ace2v'
 );
 mustInclude(
@@ -132,12 +132,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-ace2v-php110', 'PHP110', 'app-android-oneplus-ace2v'],
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-iphone16pro-nav', 'PHP110', 'app-android-oneplus-ace2v'],
   'shuiming ace2v + neo8pro inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-ace2v-php110'],
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-iphone16pro-nav'],
   'message ace2v cache + neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -163,12 +163,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260816-ace2v-php110', 'app-android-oneplus-ace2v'],
+  ['20260816-iphone16pro-nav', 'app-android-oneplus-ace2v'],
   'shouye ace 2v black bar'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260816-ace2v-php110', 'PHP110', 'app-android-oneplus-ace2v', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260816-iphone16pro-nav', 'PHP110', 'app-android-oneplus-ace2v', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A'],
   'shuiming_result ace 2 pro + ace 2v + mi14pro + neo8pro'
 );
 mustInclude(
@@ -186,6 +186,26 @@ mustInclude(
   ['isIPhone13FullCompanyClient', 'app-ios-iphone13', 'fullCompany ? company', '-webkit-text-fill-color: #666'],
   'shuiming_result iphone13 full company'
 );
+mustInclude(
+  'frontend/css/nav.css',
+  ['html body.page-message', '--bottom-nav-bottom: 8px !important'],
+  'tab pages share 8px bottom nav'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['html body.page-daiban,html body.page-bancha{--bottom-nav-bottom:8px'],
+  'daiban nav gap matches message'
+);
+mustInclude(
+  'frontend/css/nav.css',
+  ['html.app-ios-iphone16pro body.page-daiban > .bottom-nav', 'html.app-ios-iphone16pro body.page-message > .bottom-nav'],
+  'iphone 16 pro tab nav same bottom'
+);
+if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .bottom-nav') && read('frontend/public/js/auth.js').includes('bottom:2px!important')) {
+  fail('iphone 16 pro mine-only 2px leftover');
+} else {
+  ok('iphone 16 pro without mine-only 2px');
+}
 
 (function testOnePlusAce2ProUa() {
   const reModel = /PJA110/i;
