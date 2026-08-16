@@ -132,8 +132,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260815-neo8pro-v2302'],
-  'shuiming neo8pro v2302 inset'
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-ace2v-php110', 'PHP110', 'app-android-oneplus-ace2v'],
+  'shuiming ace2v + neo8pro inset'
 );
 mustInclude(
   'frontend/message.html',
@@ -168,8 +168,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260815-neo8pro-v2302', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A'],
-  'shuiming_result ace 2 pro + mi14pro + neo8pro'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260816-ace2v-php110', 'PHP110', 'app-android-oneplus-ace2v', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A'],
+  'shuiming_result ace 2 pro + ace 2v + mi14pro + neo8pro'
 );
 mustInclude(
   'frontend/public/js/auth.js',

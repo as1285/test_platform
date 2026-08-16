@@ -119,21 +119,18 @@
             background-repeat: no-repeat !important;
         }
 
-        /* OPPO/ColorOS 外置状态栏（含 A58 PHJ110 / 一加 Ace 2V PHP110）：WebView 已在系统栏下，首页顶距压到 6px */
-        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro) body.page-shouye,
-        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye,
+        /* OPPO/ColorOS 外置状态栏（含 A58 PHJ110）：WebView 已在系统栏下，首页顶距压到 6px */
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye {
             --shouye-status-inset: 6px;
         }
 
-        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro) body.page-shouye::before,
-        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye::before,
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye::before,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye::before {
             height: 6px;
         }
 
-        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro) body.page-shouye .search-bar-wrapper,
-        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye .search-bar-wrapper,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 6px !important;
         }

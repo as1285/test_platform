@@ -1463,7 +1463,7 @@
           /* 外置状态栏族：壳级 inset 也清零（Ace 2 Pro / Ace 2V 仍沉浸，勿清零） */
           'html.app-android-vivo-family.app-top-safe-shell,' +
           'html.app-android-iqoo-15.app-top-safe-shell,' +
-          'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-ace2v),' +
+          'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v),' +
           'html.app-android-mi-family.app-top-safe-shell,' +
           'html.app-android-redmi-k70.app-top-safe-shell,' +
           'html.app-android-samsung.app-top-safe-shell,' +
@@ -2870,19 +2870,15 @@
            * 首页勿再强制 40px，否则搜索条上方大块空蓝（一加 13 沉浸除外）。
            */
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye,' +
-          'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye,' +
           'html.app-android-oppo-a58.app-top-safe-shell body.page-shouye{' +
           '--shouye-status-inset:6px;--app-shell-statusbar-top:6px !important;}' +
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye::before,' +
-          'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye::before,' +
           'html.app-android-oppo-a58.app-top-safe-shell body.page-shouye::before{' +
           'height:6px !important;}' +
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye .search-bar-wrapper,' +
-          'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye .search-bar-wrapper,' +
           'html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .search-bar-wrapper{' +
           'padding-top:6px !important;}' +
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v) body.page-shouye .shouye-page,' +
-          'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye .shouye-page,' +
           'html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .shouye-page{' +
           'padding-top:var(--shouye-fixed-top-h,58px) !important;}' +
           /*
@@ -3069,7 +3065,9 @@
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .page-root,' +
           'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .page-root,' +
-          'html.app-android-oneplus-ace2pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root{' +
+          'html.app-android-oneplus-ace2pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,' +
+          'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .page-root,' +
+          'html.app-android-oneplus-ace2v.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root{' +
           '--safe-top:var(--app-shell-statusbar-top,40px) !important;--android-status-inset:40px !important;--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .top-fixed .header,' +
           'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header{' +
@@ -3404,6 +3402,11 @@
         document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-android-white-page-outer');
         document.documentElement.classList.remove('app-android-mi-family');
+      }
+      if (isOnePlusAce2VClient()) {
+        document.documentElement.classList.add('app-android-oneplus-ace2v');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-android-white-page-outer');
       }
     } catch (eMi14p) {}
     syncAppShellStatusbarTop();

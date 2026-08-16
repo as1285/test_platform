@@ -36,6 +36,10 @@
                     document.documentElement.classList.add('app-android-oneplus-ace2pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/PHP110|(?:OnePlus|一加)\s*Ace\s*2\s*V/i.test(u)) {
+                    document.documentElement.classList.add('app-android-oneplus-ace2v');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-neo8pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -61,7 +65,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260815-neo8pro-v2302"></script>
+    <script src="/js/auth.js?v=20260816-ace2v-php110"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -1053,6 +1057,8 @@
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-oneplus-ace2v body.page-shuiming-result .page-root,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px;
@@ -1073,6 +1079,8 @@
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
@@ -1109,6 +1117,10 @@
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1131,7 +1143,9 @@
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .summary,
-        html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+        html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .summary,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
@@ -1147,7 +1161,9 @@
         html.app-android-huawei-mate60 body.page-shuiming-result .list,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .list,
-        html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .list {
+        html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-oneplus-ace2v body.page-shuiming-result .list,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
