@@ -12,13 +12,13 @@ describe('tax-year', () => {
   it('normalizes invalid years to current max', () => {
     const max = window.getMaxTaxYear();
     expect(window.normalizeTaxYear('')).toBe(max);
-    expect(window.normalizeTaxYear('1800')).toBe(max);
+    expect(window.normalizeTaxYear('2018')).toBe(max);
     expect(window.normalizeTaxYear(String(max))).toBe(max);
   });
 
-  it('listTaxYears spans 1900..max', () => {
+  it('listTaxYears spans 2019..max', () => {
     const years = window.listTaxYears();
-    expect(years[0]).toBe(1900);
+    expect(years[0]).toBe(2019);
     expect(years[years.length - 1]).toBe(window.getMaxTaxYear());
   });
 

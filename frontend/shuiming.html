@@ -33,6 +33,10 @@
                     document.documentElement.classList.add('app-android-oneplus-ace2pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-neo8pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -44,7 +48,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260815-mi14pro-inset2"></script>
+    <script src="/js/auth.js?v=20260815-neo8pro-v2302"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -152,6 +156,8 @@
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-redmi-k70-ultra body.page-shuiming > .header,
         html.app-android-redmi-12c body.page-shuiming > .header,
+        html.app-android-iqoo-neo8pro body.page-shuiming > .header,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-immersive-white-top body.page-shuiming > .header,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .header {
             padding-top: calc(12px + 40px) !important;
@@ -162,6 +168,8 @@
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-redmi-k70-ultra body.page-shuiming > .content,
         html.app-android-redmi-12c body.page-shuiming > .content,
+        html.app-android-iqoo-neo8pro body.page-shuiming > .content,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-immersive-white-top body.page-shuiming > .content,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .content {
             padding-top: calc(44px + 40px) !important;
@@ -694,12 +702,12 @@
             <!-- 上下渐变遮罩 -->
             <div class="picker-mask-top"></div>
             <div class="picker-mask-bottom"></div>
-            <!-- 滚动列表：由 tax-year.js 动态填充 1900…当前年 -->
+            <!-- 滚动列表：由 tax-year.js 动态填充 2019…当前年 -->
             <div class="picker-list" id="pickerList"></div>
         </div>
     </div>
     
-    <script src="/js/tax-year.js?v=20260719-tax-year-open"></script>
+    <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script>
         (function () {
             var HOME = 'shouye.html';
@@ -746,7 +754,7 @@
             var years = typeof listTaxYears === 'function' ? listTaxYears() : [];
             if (!years.length) {
                 var maxY = typeof getMaxTaxYear === 'function' ? getMaxTaxYear() : new Date().getFullYear();
-                var minY = typeof getMinTaxYear === 'function' ? getMinTaxYear() : 1900;
+                var minY = typeof getMinTaxYear === 'function' ? getMinTaxYear() : 2019;
                 for (var y = minY; y <= maxY; y++) years.push(y);
             }
             pickerList.innerHTML = '';
