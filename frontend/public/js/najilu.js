@@ -2003,11 +2003,25 @@
         renderPreviewDetailHeader() + '<div class="empty-records">申请记录不存在</div>';
       return;
     }
+    var previewUrls = [];
+    var previewApp = null;
     document.body.innerHTML =
       '<div class="preview-page">' +
       renderPreviewDetailHeader() +
-      '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div><img id="certificatePreview" class="preview-img" alt="纳税记录" style="display:none;"></div>' +
-      '</div>';
+      '<div class="preview-body">' +
+      '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div></div>' +
+      '<div class="preview-pager" id="previewPager" hidden></div>' +
+      '</div>' +
+      '<div class="preview-footer">' +
+      '<button type="button" class="preview-album-btn" id="btnAddToAlbum" disabled>添加到相册</button>' +
+      '</div></div>';
+    var btnAlbum = document.getElementById('btnAddToAlbum');
+    if (btnAlbum) {
+      btnAlbum.onclick = function () {
+        if (!previewUrls.length || !previewApp) return;
+        shareCertificateImages(previewUrls, previewApp);
+      };
+    }
     applicationWithCurrentData(app)
       .then(function (freshApp) {
         return renderCertificateDataUrl(freshApp).then(function (url) {
@@ -2018,10 +2032,18 @@
         var wrap = document.querySelector('.preview-wrap');
         var loading = document.getElementById('previewLoading');
         if (loading) loading.style.display = 'none';
+        previewUrls = Array.isArray(ret.url) ? ret.url : [ret.url];
+        previewApp = ret.app;
         if (wrap) {
-          var urls = Array.isArray(ret.url) ? ret.url : [ret.url];
-          wrap.innerHTML = certificateImageHtml(urls[0], 'preview-img', '纳税记录');
+          wrap.innerHTML = certificateImageHtml(previewUrls, 'preview-img', '纳税记录');
         }
+        var pager = document.getElementById('previewPager');
+        if (pager && previewUrls.length) {
+          pager.hidden = false;
+          pager.textContent =
+            previewUrls.length === 1 ? '1 / 1' : '共 ' + previewUrls.length + ' 页';
+        }
+        if (btnAlbum) btnAlbum.disabled = false;
       })
       .catch(function (err) {
         var loading = document.getElementById('previewLoading');

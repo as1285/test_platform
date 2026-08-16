@@ -542,11 +542,18 @@
         .preview-page {
             min-height: 100vh;
             background: #f5f6fa;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-body {
+            flex: 1;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .preview-wrap {
-            padding: 16px 4px calc(20px + env(safe-area-inset-bottom, 0px));
+            padding: 16px 4px 8px;
         }
 
         .preview-img {
@@ -557,6 +564,46 @@
             vertical-align: top;
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
+        }
+
+        .preview-pager {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            line-height: 1;
+            padding: 4px 0 12px;
+        }
+
+        .preview-footer {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            background: #fff;
+            border-top: 1px solid #e8e8e8;
+        }
+
+        .preview-album-btn {
+            display: block;
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            background: #1677ff;
+            color: #fff;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: 500;
+            padding: 14px 16px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .preview-album-btn:active {
+            opacity: 0.88;
+        }
+
+        .preview-album-btn:disabled {
+            opacity: 0.55;
+            cursor: default;
         }
 
         .save-result-page {
@@ -745,7 +792,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260731-najilu-qr"></script>
+    <script src="/js/najilu.js?v=20260816-preview-album"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>
