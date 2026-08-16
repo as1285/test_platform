@@ -41,8 +41,13 @@ ROWS_PER_PAGE = 36
 MAX_MONTHS = 60
 
 
-def draw_hline(page, y, width=0.5):
-    page.draw_line(fitz.Point(X0, y), fitz.Point(X1, y), color=(0, 0, 0), width=width)
+def draw_hline(page, y, width=0.5, x0=None, x1=None):
+    page.draw_line(
+        fitz.Point(X0 if x0 is None else x0, y),
+        fitz.Point(X1 if x1 is None else x1, y),
+        color=(0, 0, 0),
+        width=width,
+    )
 
 
 def draw_vline(page, x, y0, y1, width=0.5):
@@ -92,37 +97,42 @@ def ensure_months(p):
 
 
 def chunk_months(months, size=ROWS_PER_PAGE):
-    rows = list(months or [])
+    """按页切分缴费行；末页不补空白行（无数据行紧贴合计）。"""
+    rows = [r for r in (months or []) if r]
     if not rows:
-        return [[None] * size]
+        return [[]]
     chunks = []
     i = 0
     while i < len(rows):
-        part = list(rows[i : i + size])
-        while len(part) < size:
-            part.append(None)
-        chunks.append(part)
+        chunks.append(list(rows[i : i + size]))
         i += size
     return chunks
 
 
 def unit_map(p, months):
-    mapping = list(p.get('unit_map') or [])
-    if mapping:
-        return mapping
+    """备注第 6 项：按官方清单汇总单位编号→名称（可多行，无表格线）。"""
     seen = {}
+    order = []
+
+    def add(code, name):
+        code = str(code or '').strip()
+        if not code or code in seen:
+            return
+        seen[code] = True
+        order.append({'unit_code': code, 'unit_name': str(name or '').strip()})
+
+    for item in p.get('unit_map') or []:
+        if isinstance(item, dict):
+            add(item.get('unit_code'), item.get('unit_name'))
     company = str(p.get('company_name') or '')
-    default_code = str(p.get('unit_code') or '')
-    if default_code:
-        seen[default_code] = company
-    for r in months:
+    for r in months or []:
         if not r:
             continue
-        code = str(r.get('unit_code') or '')
-        name = str(r.get('unit_name') or company)
-        if code and code not in seen:
-            seen[code] = name
-    return [{'unit_code': k, 'unit_name': seen[k]} for k in seen]
+        add(r.get('unit_code'), r.get('unit_name') or company)
+    add(p.get('unit_code'), company)
+    if not order:
+        order.append({'unit_code': '', 'unit_name': company})
+    return order
 
 
 def totals_of(months):
@@ -169,6 +179,10 @@ def collect_blob(p, months, auth_code):
         str(auth_code or ''),
         str(p.get('print_date') or ''),
     ]
+    for item in p.get('unit_map') or []:
+        if isinstance(item, dict):
+            parts.append(str(item.get('unit_code') or ''))
+            parts.append(str(item.get('unit_name') or ''))
     for r in months:
         if not r:
             continue
@@ -211,13 +225,21 @@ def draw_info(page, font_body, body_name, p):
     page.insert_text((555.0, 128.0), line2c, fontname=body_name, fontsize=7.0)
 
 
+# 表头第一行只在险种分组边界拉竖线，组内竖线从第二行起（对齐邱智锋原件）
+HEAD_GROUP_BOUNDARIES = (0, 1, 2, 3, 6, 10, 13, 15, 18)
+HEAD_INNER_VLINES = (4, 5, 7, 8, 9, 11, 12, 14, 16, 17)
+
+
 def draw_table_head(page, font_title, title_name, y0):
     y1 = y0 + HEAD1_H
     y2 = y1 + HEAD2_H
     draw_rect(page, y0, y2)
-    draw_hline(page, y1)
-    for x in COL_X:
-        draw_vline(page, x, y0, y2)
+    # 中间横线不穿过「缴费年 / 月 / 单位编号」跨行格
+    draw_hline(page, y1, x0=COL_X[3], x1=COL_X[-1])
+    for i in HEAD_GROUP_BOUNDARIES:
+        draw_vline(page, COL_X[i], y0, y2)
+    for i in HEAD_INNER_VLINES:
+        draw_vline(page, COL_X[i], y1, y2)
     # 缴费年 / 月 / 单位编号 跨两行
     cell_box(page, font_title, title_name, '缴费年', COL_X[0], COL_X[1], y0, y2, size=7.0)
     cell_box(page, font_title, title_name, '月', COL_X[1], COL_X[2], y0, y2, size=7.0)
@@ -328,24 +350,26 @@ def draw_footer(page, font_body, body_name, p, auth_code, mapping, y_top, page_h
     ]
     for i, line in enumerate(notes):
         page.insert_text((47.4, y + i * 11.0), line, fontname=body_name, fontsize=7.0)
-    y2 = y + len(notes) * 11.0 + 4
-    # mini unit table
-    tx0, tx1, tx2 = 47.4, 120.0, 400.0
-    th = 12.0
-    nmap = max(1, len(mapping))
-    page.draw_rect(fitz.Rect(tx0, y2, tx2, y2 + th * (nmap + 1)), color=(0, 0, 0), width=0.5)
-    page.draw_line(fitz.Point(tx1, y2), fitz.Point(tx1, y2 + th * (nmap + 1)), color=(0, 0, 0), width=0.5)
-    page.draw_line(fitz.Point(tx0, y2 + th), fitz.Point(tx2, y2 + th), color=(0, 0, 0), width=0.5)
-    cell_box(page, font_body, body_name, '单位编号', tx0, tx1, y2, y2 + th, size=7.0)
-    cell_box(page, font_body, body_name, '单位名称', tx1, tx2, y2, y2 + th, size=7.0)
-    for i, item in enumerate(mapping):
-        yy0 = y2 + th * (i + 1)
-        yy1 = yy0 + th
-        page.draw_line(fitz.Point(tx0, yy1), fitz.Point(tx2, yy1), color=(0, 0, 0), width=0.4)
-        cell_box(page, font_body, body_name, item.get('unit_code') or '', tx0, tx1, yy0, yy1, size=7.0)
-        cell_box(
-            page, font_body, body_name, item.get('unit_name') or '',
-            tx1, tx2, yy0, yy1, size=7.0, align='left', pad=3.0,
+    # 官方版式：无框双列，左单位编号、右单位名称（对齐邱智锋社保.pdf）
+    y2 = y + len(notes) * 11.0
+    code_x = 67.9
+    name_x = 256.7
+    th = 8.0
+    page.insert_text((code_x, y2), '单位编号', fontname=body_name, fontsize=7.0)
+    page.insert_text((name_x, y2), '单位名称', fontname=body_name, fontsize=7.0)
+    for i, item in enumerate(mapping or []):
+        yy = y2 + th * (i + 1)
+        page.insert_text(
+            (code_x, yy),
+            str(item.get('unit_code') or ''),
+            fontname=body_name,
+            fontsize=7.0,
+        )
+        page.insert_text(
+            (name_x, yy),
+            str(item.get('unit_name') or ''),
+            fontname=body_name,
+            fontsize=7.0,
         )
     bureau = '深圳市社会保险基金管理局'
     page.insert_text((402.2, page_h - 88), bureau, fontname=body_name, fontsize=8.0)
@@ -392,7 +416,6 @@ def render(payload, auth_code, qr_url, out_path):
         make_qr_png(qr_url or 'https://sipub.sz.gov.cn/vp/', qr_path)
         for page_idx, chunk in enumerate(chunks, start=1):
             is_last = page_idx == total_pages
-            filled = [r for r in chunk if r]
             n_draw = len(chunk)
             ph = page_height_for(n_draw, is_last)
             page = doc.new_page(width=PAGE_W, height=ph)

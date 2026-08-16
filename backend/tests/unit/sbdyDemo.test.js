@@ -66,5 +66,36 @@ describe('sbdyDemo', () => {
     expect(html).toContain('44018826');
     expect(html).toContain('.seal-top{position:absolute;right:8px;top:4px;width:86px');
     expect(html).toContain('h1{text-align:center;font-size:18px;margin:58px 96px 12px 72px');
+    expect(html).toContain('<th colspan="3">养老保险</th><th colspan="4">医疗保险</th><th colspan="3">生育</th>');
+    expect(html).toContain('<th colspan="2">工伤保险</th><th colspan="3">失业保险</th>');
+    expect(html).toContain('<colgroup>');
+    expect(html).toContain('unit-map');
+    expect(html).not.toContain('table.map');
+  });
+
+  it('Shenzhen unit map supports multiple employers without table borders', () => {
+    const p = normalizePayload({
+      region: 'sz',
+      name: '邱测',
+      id_number: '440305199001011234',
+      company_name: '武汉佰钧成技术有限责任公司深圳分公司',
+      unit_code: '31572310',
+      period_start: '2024-05',
+      period_end: '2024-06',
+      unit_map: [
+        { unit_code: '31572310', unit_name: '武汉佰钧成技术有限责任公司深圳分公司' },
+        { unit_code: '31199615', unit_name: '人力宝科技有限公司深圳分公司' },
+        { unit_code: '167120', unit_name: '深圳中智经济技术合作有限公司（一）' }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.unit_map.length).toBe(3);
+    const html = renderCertHtml(p, {}, { authCode: '3391ece788896b7h' });
+    expect(html).toContain('unit-map-row');
+    expect(html).toContain('31572310');
+    expect(html).toContain('31199615');
+    expect(html).toContain('167120');
+    expect(html).toContain('人力宝科技有限公司深圳分公司');
+    expect(html).not.toMatch(/table\.map|class="map"/);
   });
 });

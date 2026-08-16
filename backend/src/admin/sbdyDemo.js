@@ -285,6 +285,7 @@ function normalizeSzPayload(body) {
   if (!months.length) {
     return { error: '缴费月份区间无效' };
   }
+  var unitMap = normalizeSzUnitMapInput(b.unit_map || b.unitMap, unitCode, company);
   return {
     region: 'sz',
     layout: 'sz_official_v1',
@@ -293,7 +294,7 @@ function normalizeSzPayload(body) {
     computer_no: computerNo,
     company_name: company,
     unit_code: unitCode,
-    unit_map: [{ unit_code: unitCode, unit_name: company }],
+    unit_map: unitMap,
     period_start: periodStart,
     period_end: periodEnd,
     period_label:
@@ -593,15 +594,65 @@ function migrateMonthsForShow(payload) {
   });
 }
 
+function normalizeSzUnitMapInput(raw, fallbackCode, fallbackName) {
+  var out = [];
+  var seen = {};
+  function add(code, name) {
+    code = String(code || '').trim();
+    if (!code || seen[code]) return;
+    seen[code] = 1;
+    out.push({
+      unit_code: code,
+      unit_name: String(name || '').trim()
+    });
+  }
+  if (Array.isArray(raw)) {
+    raw.forEach(function (item) {
+      if (!item || typeof item !== 'object') return;
+      add(item.unit_code || item.unitCode, item.unit_name || item.unitName);
+    });
+  }
+  add(fallbackCode, fallbackName);
+  return out;
+}
+
+/** 备注第 6 项：按官方清单做无框双列对照（非表格线） */
+function resolveSzUnitMap(p) {
+  p = p || {};
+  var months = Array.isArray(p.months) ? p.months : [];
+  var seen = {};
+  var out = [];
+  function add(code, name) {
+    code = String(code || '').trim();
+    if (!code || seen[code]) return;
+    seen[code] = 1;
+    out.push({
+      unit_code: code,
+      unit_name: String(name || '').trim()
+    });
+  }
+  if (Array.isArray(p.unit_map)) {
+    p.unit_map.forEach(function (item) {
+      if (item) add(item.unit_code, item.unit_name);
+    });
+  }
+  months.forEach(function (r) {
+    if (r) add(r.unit_code, r.unit_name || p.company_name);
+  });
+  add(p.unit_code, p.company_name);
+  if (!out.length) {
+    out.push({ unit_code: '', unit_name: p.company_name || '' });
+  }
+  return out;
+}
+
 function renderSzCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
   var months = Array.isArray(p.months) ? p.months : [];
   var qrUrl = (links && links.show_url) || (links && links.show_api_url) || '';
   var authCode = opts.authCode || '';
-  var mapping = Array.isArray(p.unit_map) && p.unit_map.length
-    ? p.unit_map
-    : [{ unit_code: p.unit_code || '', unit_name: p.company_name || '' }];
+  var mapping = resolveSzUnitMap(p);
   var tot = {
     pension_unit: 0,
     pension_person: 0,
@@ -644,14 +695,15 @@ function renderSzCertHtml(payload, links, opts) {
       '<td>' + escHtml(formatMoney(r.unemp_person)) + '</td>' +
       '</tr>';
   });
-  var mapHtml = '';
+  var mapHtml =
+    '<div class="unit-map-row unit-map-head"><span>单位编号</span><span>单位名称</span></div>';
   mapping.forEach(function (item) {
     mapHtml +=
-      '<tr><td>' +
+      '<div class="unit-map-row"><span>' +
       escHtml(item.unit_code || '') +
-      '</td><td>' +
+      '</span><span>' +
       escHtml(item.unit_name || '') +
-      '</td></tr>';
+      '</span></div>';
   });
   return (
     '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
@@ -666,10 +718,17 @@ function renderSzCertHtml(payload, links, opts) {
     '.seal-top{position:absolute;right:8px;top:4px;width:86px;z-index:1}' +
     '.info{font-size:12px;margin:0 8px 10px;line-height:1.8}' +
     'table.grid{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}' +
-    'table.grid th,table.grid td{border:1px solid #000;padding:2px 1px;text-align:center}' +
+    'table.grid th,table.grid td{border:1px solid #000;padding:2px 1px;text-align:center;vertical-align:middle}' +
+    'table.grid col.c-year{width:4.7%}table.grid col.c-mon{width:2.3%}table.grid col.c-unit{width:7.1%}' +
+    'table.grid col.c-pbase{width:5.9%}table.grid col.c-pay{width:7.1%}table.grid col.c-type{width:4.7%}' +
+    'table.grid col.c-mbase{width:4.7%}table.grid col.c-sbase{width:4.7%}table.grid col.c-spay{width:5.9%}' +
+    'table.grid col.c-ibase{width:4.7%}table.grid col.c-ipay{width:5.9%}table.grid col.c-ubase{width:4.7%}' +
+    'table.grid col.c-upay{width:5.9%}' +
     '.notes{font-size:11px;line-height:1.7;margin-top:10px}' +
-    'table.map{border-collapse:collapse;margin-top:6px;font-size:11px}' +
-    'table.map th,table.map td{border:1px solid #000;padding:3px 8px}' +
+    '.unit-map{margin:2px 0 0 16px;font-size:11px;line-height:1.55}' +
+    '.unit-map-row{display:flex;align-items:flex-start}' +
+    '.unit-map-row>span:first-child{width:118px;flex-shrink:0}' +
+    '.unit-map-row>span:last-child{flex:1;min-width:0}' +
     '.bureau{text-align:center;margin-top:18px}' +
     '.seal-bot{position:absolute;right:24px;bottom:10px;width:110px}' +
     '</style></head><body><div class="page">' +
@@ -687,7 +746,14 @@ function renderSzCertHtml(payload, links, opts) {
     '　　单位编号：' +
     escHtml(p.unit_code || '') +
     '　　计算单位：元</div>' +
-    '<table class="grid"><thead>' +
+    '<table class="grid"><colgroup>' +
+    '<col class="c-year"><col class="c-mon"><col class="c-unit">' +
+    '<col class="c-pbase"><col class="c-pay"><col class="c-pay">' +
+    '<col class="c-type"><col class="c-mbase"><col class="c-pay"><col class="c-pay">' +
+    '<col class="c-type"><col class="c-sbase"><col class="c-spay">' +
+    '<col class="c-ibase"><col class="c-ipay">' +
+    '<col class="c-ubase"><col class="c-upay"><col class="c-upay">' +
+    '</colgroup><thead>' +
     '<tr><th rowspan="2">缴费年</th><th rowspan="2">月</th><th rowspan="2">单位编号</th>' +
     '<th colspan="3">养老保险</th><th colspan="4">医疗保险</th><th colspan="3">生育</th>' +
     '<th colspan="2">工伤保险</th><th colspan="3">失业保险</th></tr>' +
@@ -719,10 +785,10 @@ function renderSzCertHtml(payload, links, opts) {
     '3.医疗险种中的险种“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险医保，“6”为统筹医疗保险。<br>' +
     '4.上述“缴费明细”表中带“*”标识为补缴，空行为断缴。<br>' +
     '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。<br>' +
-    '6.单位编号对应的单位名称：</div>' +
-    '<table class="map"><tr><th>单位编号</th><th>单位名称</th></tr>' +
+    '6.单位编号对应的单位名称：' +
+    '<div class="unit-map">' +
     mapHtml +
-    '</table>' +
+    '</div></div>' +
     '<div class="bureau">深圳市社会保险基金管理局<br>打印日期：' +
     escHtml(p.print_date || defaultPrintDateCn()) +
     '</div>' +
