@@ -803,7 +803,7 @@
 
         buildYearPickerList();
 
-        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（1900–当前年）
+        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（2019–当前年）
         function getInitialYear() {
             var urlParams = new URLSearchParams(window.location.search);
             // reset=1 时清除记忆，回到当前年份

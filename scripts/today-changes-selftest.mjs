@@ -112,18 +112,18 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260814-iphone13-co'],
-  'login.html auth cache iphone13-co'
+  ['20260816-ace2v-php110'],
+  'login.html auth cache ace2v'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260815-neo8pro-v2302', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A'],
-  'mine.html mate60 + neo8pro v2302'
+  ['20260816-ace2v-php110', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A'],
+  'mine.html mate60 + ace2v cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260815-neo8pro-v2302'],
-  'fast-nav auth cache neo8pro-v2302'
+  ['20260816-ace2v-php110'],
+  'fast-nav auth cache ace2v'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -137,8 +137,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260815-neo8pro-v2302'],
-  'message neo8pro v2302 inset'
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-ace2v-php110'],
+  'message ace2v cache + neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
   ok('auth.js without post-0813 Mate70 chrome');
@@ -155,6 +155,16 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['isOnePlusAce2ProClient', 'PJA110', 'app-android-oneplus-ace2pro'],
   'oneplus ace 2 pro immersive top'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isOnePlusAce2VClient', 'PHP110', 'app-android-oneplus-ace2v', "color: '#000000'"],
+  'oneplus ace 2v black status bar'
+);
+mustInclude(
+  'frontend/shouye.html',
+  ['20260816-ace2v-php110', 'app-android-oneplus-ace2v'],
+  'shouye ace 2v black bar'
 );
 mustInclude(
   'frontend/shuiming_result.html',
@@ -194,6 +204,25 @@ mustInclude(
   const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
   if (hitOk && missOk) ok('oneplus ace 2 pro UA match');
   else fail('oneplus ace 2 pro UA match');
+})();
+
+(function testOnePlusAce2VUa() {
+  const reModel = /PHP110/i;
+  const reName = /(?:OnePlus|一加)\s*Ace\s*2\s*V/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 15; PHP110 Build/UKQ1) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 15) OnePlus Ace 2V',
+    'Mozilla/5.0 (Linux; Android 15) 一加 Ace 2V'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 14; PJA110) OnePlus Ace 2 Pro',
+    'Mozilla/5.0 (Linux; Android 14; PHK110) OnePlus Ace 2',
+    'Mozilla/5.0 (Linux; Android 15; PJZ110) OnePlus 13'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('oneplus ace 2v UA match');
+  else fail('oneplus ace 2v UA match');
 })();
 
 mustInclude(

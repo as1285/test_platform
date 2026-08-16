@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260814-iphone13-co"></script>
+    <script src="/js/auth.js?v=20260816-ace2v-php110"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -119,18 +119,21 @@
             background-repeat: no-repeat !important;
         }
 
-        /* OPPO/ColorOS 外置状态栏（含 A58 PHJ110）：WebView 已在系统栏下，首页顶距压到 6px */
+        /* OPPO/ColorOS 外置状态栏（含 A58 PHJ110 / 一加 Ace 2V PHP110）：WebView 已在系统栏下，首页顶距压到 6px */
         html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro) body.page-shouye,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye {
             --shouye-status-inset: 6px;
         }
 
         html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro) body.page-shouye::before,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye::before,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye::before {
             height: 6px;
         }
 
         html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oppo-find-x8s):not(.app-android-oneplus-ace2pro) body.page-shouye .search-bar-wrapper,
+        html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 6px !important;
         }
@@ -606,6 +609,7 @@
             width: 100%;
             display: flex;
             flex-wrap: nowrap;
+            align-items: stretch;
             gap: 8px;
             overflow-x: auto;
             overflow-y: hidden;
@@ -624,6 +628,9 @@
         .sy-apk-hitem {
             flex: 0 0 max(118px, calc((100% - 16px) / 2.75));
             width: max(118px, calc((100% - 16px) / 2.75));
+            aspect-ratio: 374 / 491;
+            display: flex;
+            align-items: stretch;
             margin: 0;
             padding: 0;
             text-decoration: none;
@@ -653,11 +660,10 @@
         .sy-apk-hitem img {
             display: block;
             width: 100%;
-            height: auto;
-            aspect-ratio: 374 / 491;
-            /* contain：完整露出「去申报」等底部操作，避免 cover 裁切 */
-            object-fit: contain;
-            object-position: top center;
+            height: 100%;
+            /* 四张 a6 原图同高不同宽，contain 会在底部留空导致卡底不齐 */
+            object-fit: fill;
+            object-position: center center;
             /* 原版卡图自带圆角，勿再叠一层圆角+底色造成厚白边 */
             border-radius: 0;
             border: 0;

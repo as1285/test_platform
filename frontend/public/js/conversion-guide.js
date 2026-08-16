@@ -42,7 +42,7 @@
     if (typeof globalThis !== 'undefined' && typeof globalThis.normalizeTaxYear === 'function') {
       return globalThis.normalizeTaxYear(raw);
     }
-    var minY = 1900;
+    var minY = 2019;
     var now = new Date().getFullYear();
     var maxY = now && !isNaN(now) && now >= minY ? now : minY;
     var defY = maxY;

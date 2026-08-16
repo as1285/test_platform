@@ -59,9 +59,18 @@
     return d.getFullYear() + '-01';
   }
 
+  function minIssueYear() {
+    if (typeof getMinTaxYear === 'function') return getMinTaxYear();
+    return 2019;
+  }
+
+  function minIssueYm() {
+    return minIssueYear() + '-01';
+  }
+
   function ymParts(ym) {
     var p = String(ym || '').split('-');
-    return { y: parseInt(p[0], 10) || 1900, m: parseInt(p[1], 10) || 1 };
+    return { y: parseInt(p[0], 10) || minIssueYear(), m: parseInt(p[1], 10) || 1 };
   }
 
   function buildYm(y, m) {
@@ -73,10 +82,11 @@
     return /Android/i.test(ua) && (/;\s*wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
   }
 
-  /** Cordova / Android WebView 上 type=month 的 showPicker 常失败，用自定义面板 */
+  /** 安卓原生 type=month 年份列表会从 1900 起，一律改用自定义面板 */
   function shouldUseCustomMonthPicker() {
     var ua = navigator.userAgent || '';
     if (/TaxPlatformCordovaApp\//i.test(ua)) return true;
+    if (/Android/i.test(ua)) return true;
     if (isAndroidWebView()) return true;
     return false;
   }
@@ -128,7 +138,11 @@
   }
 
   function fillMonthPickerSelects(inp) {
-    var minP = ymParts(inp.min || '1900-01');
+    var minP = ymParts(inp.min || minIssueYm());
+    if (minP.y < minIssueYear()) {
+      minP.y = minIssueYear();
+      minP.m = 1;
+    }
     var maxP = ymParts(inp.max || todayYm());
     var cur = ymParts(inp.value || todayYm());
     var y;
@@ -200,10 +214,18 @@
   }
 
   function bindMonthPickerRows(clampOrderFn) {
+    if (shouldUseCustomMonthPicker()) {
+      try {
+        document.documentElement.classList.add('mp-use-custom');
+      } catch (eCls) {}
+    }
     document.querySelectorAll('.info-row-month-picker').forEach(function (row) {
       var inp = row.querySelector('.month-picker-native');
       if (!inp) return;
       var touchOpened = false;
+      if (shouldUseCustomMonthPicker()) {
+        inp.setAttribute('tabindex', '-1');
+      }
 
       function afterPick() {
         var startInp = document.getElementById('rangeStartInput');
@@ -1019,6 +1041,9 @@
   }
 
   function generateRecord(start, end, user, records) {
+    var ymMin = minIssueYm();
+    if (start && start < ymMin) start = ymMin;
+    if (end && end < ymMin) end = ymMin;
     var filtered = recordsInPeriod(records, start, end);
     if (!filtered.length) {
       throw new Error('所选期间暂无纳税明细，无法生成纳税记录');
@@ -1063,20 +1088,28 @@
     });
 
     if (rangeStartInput && rangeEndInput) {
+      var ymMin = minIssueYm();
+      rangeStartInput.min = ymMin;
+      rangeEndInput.min = ymMin;
       rangeStartInput.max = ymMax;
       rangeEndInput.max = ymMax;
       rangeStartInput.value = ymDefaultStart;
       rangeEndInput.value = ymDefaultEnd;
+      if (rangeStartInput.value && rangeStartInput.value < ymMin) rangeStartInput.value = ymMin;
+      if (rangeEndInput.value && rangeEndInput.value < ymMin) rangeEndInput.value = ymMin;
       if (rangeStartInput.value > rangeEndInput.value) rangeEndInput.value = rangeStartInput.value;
       rangeStartLabel.textContent = rangeStartInput.value;
       rangeEndLabel.textContent = rangeEndInput.value;
 
       function clampOrder() {
+        if (rangeStartInput.value && rangeStartInput.value < ymMin) rangeStartInput.value = ymMin;
+        if (rangeEndInput.value && rangeEndInput.value < ymMin) rangeEndInput.value = ymMin;
         if (rangeStartInput.value && rangeEndInput.value && rangeStartInput.value > rangeEndInput.value) {
           rangeEndInput.value = rangeStartInput.value;
           rangeEndLabel.textContent = rangeEndInput.value;
         }
-        rangeEndInput.min = rangeStartInput.value || '1900-01';
+        rangeStartInput.min = ymMin;
+        rangeEndInput.min = rangeStartInput.value && rangeStartInput.value > ymMin ? rangeStartInput.value : ymMin;
         rangeStartInput.max = rangeEndInput.value || ymMax;
         if (rangeStartInput.max > ymMax) rangeStartInput.max = ymMax;
         if (rangeEndInput.max !== ymMax) rangeEndInput.max = ymMax;
@@ -1097,7 +1130,7 @@
         el.addEventListener('click', function (e) {
           e.stopPropagation();
           e.preventDefault();
-          alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 1900 年 1 月，最晚不超过当前月。');
+          alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 2019 年 1 月，最晚不超过当前月。');
         });
       });
       clampOrder();
