@@ -117,18 +117,28 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260815-iqoo-neo8pro', 'app-android-huawei-mate60', 'ALN-AL00'],
-  'mine.html mate60 pro top bleed'
+  ['20260815-neo8pro-v2302', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A'],
+  'mine.html mate60 + neo8pro v2302'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260815-mi14pro-inset2'],
-  'fast-nav auth cache mi14pro-inset2'
+  ['20260815-neo8pro-v2302'],
+  'fast-nav auth cache neo8pro-v2302'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine', 'isIqooNeo8ProClient', 'V2307A'],
-  'auth.js mate60 mine bleed + neo8pro'
+  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine', 'isIqooNeo8ProClient', 'V2302A', 'clientUaBlob'],
+  'auth.js mate60 mine bleed + neo8pro v2302'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260815-neo8pro-v2302'],
+  'shuiming neo8pro v2302 inset'
+);
+mustInclude(
+  'frontend/message.html',
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260815-neo8pro-v2302'],
+  'message neo8pro v2302 inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
   ok('auth.js without post-0813 Mate70 chrome');
@@ -148,8 +158,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260815-mi14pro-inset2', 'app-android-xiaomi-14pro', '23116PN5'],
-  'shuiming_result ace 2 pro + mi14pro class'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260815-neo8pro-v2302', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A'],
+  'shuiming_result ace 2 pro + mi14pro + neo8pro'
 );
 mustInclude(
   'frontend/public/js/auth.js',

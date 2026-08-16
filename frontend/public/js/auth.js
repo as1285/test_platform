@@ -322,12 +322,12 @@
   }
 
   /**
-   * iQOO Neo8 Pro（V2307A）：Cordova WebView 仍压在系统状态栏下，
-   * 勿按 vivo 族「外置黑条」清零顶距，否则消息页「消息」会与系统时间重叠。
+   * iQOO Neo8 Pro（国行 V2302A / 另码 V2307A）：Cordova WebView 仍压在系统状态栏下，
+   * 勿按 vivo 族「外置黑条」清零顶距，否则消息页「消息」、纳税明细「返回」会与系统时间重叠。
    */
   function isIqooNeo8ProClient() {
-    var ua = navigator.userAgent || '';
-    if (/V2307A\b/i.test(ua)) {
+    var ua = clientUaBlob();
+    if (/V2302A|V2302B|PD2302|V2307A\b/i.test(ua)) {
       return true;
     }
     return /iQOO\s*Neo\s*8\s*Pro|IQOO\s*Neo\s*8\s*Pro/i.test(ua);
@@ -1682,15 +1682,17 @@
       if (!isWhitePage) {
         return;
       }
-      /* 小米 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / 一加 Ace 2 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
+      /* 小米 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / 一加 Ace 2 Pro / Neo8 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
       var immersiveTopInsetClient =
         isXiaomiImmersiveTopClient() ||
         isOnePlusAce2ProClient() ||
+        isIqooNeo8ProClient() ||
         root.classList.contains('app-android-immersive-white-top') ||
         root.classList.contains('app-android-xiaomi-14pro') ||
         root.classList.contains('app-android-xiaomi-15pro') ||
         root.classList.contains('app-android-xiaomi-10') ||
         root.classList.contains('app-android-oneplus-ace2pro') ||
+        root.classList.contains('app-android-iqoo-neo8pro') ||
         isHuaweiMate60Client() ||
         root.classList.contains('app-android-huawei-mate60');
       if (immersiveTopInsetClient) {
@@ -1717,6 +1719,9 @@
           }
           if (isOnePlusAce2ProClient() || root.classList.contains('app-android-oneplus-ace2pro')) {
             root.classList.add('app-android-oneplus-ace2pro');
+          }
+          if (isIqooNeo8ProClient() || root.classList.contains('app-android-iqoo-neo8pro')) {
+            root.classList.add('app-android-iqoo-neo8pro');
           }
           root.style.setProperty('--app-shell-statusbar-top', '40px');
           root.style.setProperty('--android-status-inset', '40px');
