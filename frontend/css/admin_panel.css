@@ -740,7 +740,7 @@ tr.users-detail-row td { background: transparent; }
 }
 .scroll-x { overflow-x: auto; }
 .users-registry-table {
-    min-width: 1180px;
+    min-width: 1360px;
     table-layout: fixed;
 }
 .users-registry-table th,
@@ -751,12 +751,35 @@ tr.users-detail-row td { background: transparent; }
     width: 72px;
     text-align: center;
 }
+.users-registry-table .col-cert-perm {
+    width: 176px;
+    min-width: 168px;
+    white-space: normal;
+}
+.user-cert-perm-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.btn-cert-grant {
+    background: #1d4ed8;
+    color: #fff;
+    white-space: nowrap;
+}
+.btn-cert-grant:hover { filter: brightness(1.06); }
+.btn-cert-grant-both {
+    background: #0f766e;
+    color: #fff;
+    white-space: nowrap;
+}
+.btn-cert-grant-both:hover { filter: brightness(1.06); }
 .users-registry-table .col-ops {
     min-width: 280px;
     width: 320px;
     white-space: normal;
 }
-.users-registry-table .col-ops .btn-sm {
+.users-registry-table .col-ops .btn-sm,
+.users-registry-table .col-cert-perm .btn-sm {
     margin: 2px 2px 2px 0;
 }
 tr.users-detail-row > td {

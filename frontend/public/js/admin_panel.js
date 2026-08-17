@@ -977,6 +977,7 @@
         var _channelAnalysisChartInstances = [];
 
         function adminHasMenu(menuKey) {
+            menuKey = String(menuKey || '');
             if (!menuKey) return false;
             if (menuKey === 'user-login-log') menuKey = 'login-log';
             if (menuKey === 'users-deleted') menuKey = 'users';
@@ -996,6 +997,13 @@
                     }
                 }
             } catch (e0) {}
+            /* 侧栏按钮已画出时，勿因 allowlist/缓存落后把点击打回转化概览 */
+            try {
+                if (/^[a-z0-9-]+$/.test(menuKey)) {
+                    var navBtn = document.querySelector('.nav-item[data-page="' + menuKey + '"]');
+                    if (navBtn && navBtn.style.display !== 'none') return true;
+                }
+            } catch (e1) {}
             return false;
         }
 
@@ -1138,6 +1146,10 @@
                 'najilu-qr': 1,
                 'blocked-ips': 1
             };
+            /* DOM 已有面板则视为已知页，避免新业务页未写入 ok 表时被打回转化概览 */
+            if (k && document.getElementById('page-' + k)) {
+                ok[k] = 1;
+            }
             if (!ok[k] || !adminHasMenu(k)) {
                 return firstAllowedAdminPage();
             }
@@ -1273,10 +1285,22 @@
 
         function applyAdminRoute(opts) {
             var force = !!(opts && opts.force === true);
-            var pageKey = normalizeAdminPage(location.hash);
             var rawHash = String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
-            /* hash 被回退时同步地址栏，避免 #lizhi-cert 却停在转化页 */
-            if (rawHash && pageKey && rawHash !== pageKey && location.hash !== '#' + pageKey) {
+            var pageKey = (opts && opts.page) ? String(opts.page).replace(/^#/, '').trim().toLowerCase() : '';
+            if (pageKey && document.getElementById('page-' + pageKey)) {
+                /* 侧栏点击指定页：有面板就进入，勿被 allowlist 打回 */
+            } else {
+                pageKey = normalizeAdminPage(location.hash);
+                /* 侧栏已画出且页面存在时，以 hash 为准（修复在职证明点了仍停在转化概览） */
+                if (rawHash && rawHash !== pageKey && document.getElementById('page-' + rawHash)) {
+                    var navHit = document.querySelector('.nav-item[data-page="' + rawHash + '"]');
+                    if (navHit || adminHasMenu(rawHash)) {
+                        pageKey = rawHash;
+                    }
+                }
+            }
+            /* hash 被回退时同步地址栏，避免 #lizhi-cert / #zaizhi-cert 却停在转化页 */
+            if (pageKey && location.hash !== '#' + pageKey) {
                 try {
                     history.replaceState(null, '', '#' + pageKey);
                 } catch (eHash) {
@@ -5610,8 +5634,11 @@
                             '">' +
                             (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
                             '</button>'
-                            + ' <button type="button" class="btn-sm ' +
-                            (u.lizhi_cert_unlocked ? 'btn-ban' : 'btn-page') +
+                            + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
+                        var certPermHtml =
+                            '<div class="user-cert-perm-btns">' +
+                            '<button type="button" class="btn-sm ' +
+                            (u.lizhi_cert_unlocked ? 'btn-ban' : 'btn-cert-grant') +
                             ' btn-user-lizhi-unlock" data-u="' +
                             esc(u.username) +
                             '" data-unlocked="' +
@@ -5621,10 +5648,10 @@
                                 ? '该账号已开通离职证明，点击关闭'
                                 : '为该账号开通离职证明生成权益（免付费）') +
                             '">' +
-                            (u.lizhi_cert_unlocked ? '关闭离职证明' : '开通离职证明') +
-                            '</button>'
-                            + ' <button type="button" class="btn-sm ' +
-                            (u.zaizhi_cert_unlocked ? 'btn-ban' : 'btn-page') +
+                            (u.lizhi_cert_unlocked ? '关闭离职' : '开通离职') +
+                            '</button>' +
+                            '<button type="button" class="btn-sm ' +
+                            (u.zaizhi_cert_unlocked ? 'btn-ban' : 'btn-cert-grant') +
                             ' btn-user-zaizhi-unlock" data-u="' +
                             esc(u.username) +
                             '" data-unlocked="' +
@@ -5634,9 +5661,15 @@
                                 ? '该账号已开通在职证明，点击关闭'
                                 : '为该账号开通在职证明生成权益（免付费）') +
                             '">' +
-                            (u.zaizhi_cert_unlocked ? '关闭在职证明' : '开通在职证明') +
-                            '</button>'
-                            + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
+                            (u.zaizhi_cert_unlocked ? '关闭在职' : '开通在职') +
+                            '</button>';
+                        if (!u.lizhi_cert_unlocked || !u.zaizhi_cert_unlocked) {
+                            certPermHtml +=
+                                '<button type="button" class="btn-sm btn-cert-grant-both btn-user-cert-unlock-both" data-u="' +
+                                esc(u.username) +
+                                '" title="同时开通离职证明和在职证明（免付费）">两项都开</button>';
+                        }
+                        certPermHtml += '</div>';
                         if (u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
                         }
@@ -5707,13 +5740,14 @@
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
+                        html += '<td class="col-cert-perm">' + certPermHtml + '</td>';
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html += '<td colspan="10"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="11"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="11">暂无数据</td></tr>';
                     highlightPendingUserRow();
 
                     // 重新绑定事件
@@ -5944,6 +5978,43 @@
                                 })
                                 .catch(function () {
                                     alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-cert-unlock-both').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            if (!name) return;
+                            if (!confirm('确定为账号「' + name + '」同时开通离职证明和在职证明（可免付费生成正式证明）？')) {
+                                return;
+                            }
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-lizhi-cert-unlock', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, unlocked: 1 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (dLizhi) {
+                                    if (dLizhi.code !== 200) {
+                                        throw new Error(dLizhi.msg || '开通离职证明失败');
+                                    }
+                                    return adminFetch('api/admin/user-zaizhi-cert-unlock', {
+                                        method: 'POST',
+                                        body: JSON.stringify({ username: name, unlocked: 1 })
+                                    }).then(function (r2) { return r2.json(); });
+                                })
+                                .then(function (dZaizhi) {
+                                    if (dZaizhi.code !== 200) {
+                                        throw new Error(dZaizhi.msg || '开通在职证明失败');
+                                    }
+                                    alert('已开通离职证明和在职证明');
+                                    loadUsers();
+                                })
+                                .catch(function (err) {
+                                    alert((err && err.message) || '网络错误');
                                 })
                                 .then(function () {
                                     btn.disabled = false;
@@ -8784,7 +8855,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v11-perm-fix';
+                var MENU_TREE_VER = 'ops-ia-v12-zaizhi-nav';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);
@@ -8835,6 +8906,10 @@
         function goAdminPage(p) {
             p = String(p || '').replace(/^#/, '').trim();
             if (!p) return;
+            if (document.getElementById('page-' + p)) {
+                applyAdminRoute({ force: true, page: p });
+                return;
+            }
             var cur = String(location.hash || '').replace(/^#/, '');
             if (cur === p) {
                 applyAdminRoute({ force: true });

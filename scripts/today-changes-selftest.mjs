@@ -62,8 +62,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['page-zaizhi-cert', 'zaizhiGenerateBtn'],
+  ['page-zaizhi-cert', 'zaizhiGenerateBtn', '20260817-zaizhi-nav'],
   'admin zaizhi cert page'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ["'zaizhi-cert': 1", 'opts.page', "page-' + rawHash", 'ops-ia-v12-zaizhi-nav'],
+  'admin zaizhi-cert hash not bounced'
 );
 mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banner');
 mustInclude(
@@ -312,6 +317,31 @@ mustInclude(
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'consult copy tpl btn');
 mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'admin copy tpl btn');
+mustInclude(
+  'frontend/admin_panel.html',
+  ['col-cert-perm', '20260817-cert-unlock'],
+  'admin users cert perm column + cache'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  [
+    'btn-user-lizhi-unlock',
+    'btn-user-zaizhi-unlock',
+    'btn-user-cert-unlock-both',
+    'col-cert-perm',
+    '开通离职',
+    '开通在职',
+    '两项都开',
+    'api/admin/user-lizhi-cert-unlock',
+    'api/admin/user-zaizhi-cert-unlock'
+  ],
+  'admin users cert unlock buttons'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['handleAdminUserLizhiCertUnlock', 'handleAdminUserZaizhiCertUnlock'],
+  'admin cert unlock apis'
+);
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
