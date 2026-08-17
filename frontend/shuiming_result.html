@@ -677,11 +677,16 @@
         }
 
         /*
-         * 小米 15：HyperOS MiSans 行盒偏紧，明细四行（小类/扣缴义务人/收入/税额）几乎贴在一起。
+         * 小米 15：HyperOS MiSans 行盒偏紧；且「扣缴义务人/收入」包在 .list-row-with-arrow 里，
+         * 外层 4px + 内层 7px 会叠出中间两行更挤、上下更疏。外层去垫，四行只走同一套行距。
          */
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-row-with-arrow {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
         html.app-android-xiaomi-15 body.page-shuiming-result .list-row {
-            padding-top: 7px !important;
-            padding-bottom: 7px !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
         }
         html.app-android-xiaomi-15 body.page-shuiming-result .list-label,
         html.app-android-xiaomi-15 body.page-shuiming-result .list-company {
