@@ -117,13 +117,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260816-iphone16pro-nav', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A'],
-  'mine.html mate60 + ace2v cache'
+  ['20260817-reno10-phw110', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A', 'PGP110', 'PHW110', 'app-android-oppo-reno10'],
+  'mine.html mate60 + reno10 cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260816-iphone16pro-nav'],
-  'fast-nav auth cache ace2v'
+  ['20260817-reno10-phw110'],
+  'fast-nav auth cache reno10'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -132,8 +132,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-iphone16pro-nav', 'PHP110', 'app-android-oneplus-ace2v'],
-  'shuiming ace2v + neo8pro inset'
+  ['V2302A', 'app-android-iqoo-neo8pro', '20260817-reno10-phw110', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
+  'shuiming acepro + reno10 + neo8pro inset'
 );
 mustInclude(
   'frontend/message.html',
@@ -158,18 +158,28 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
+  ['isOnePlusAceProClient', 'PGP110', 'app-android-oneplus-acepro'],
+  'oneplus ace pro immersive top'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
   ['isOnePlusAce2VClient', 'PHP110', 'app-android-oneplus-ace2v', "color: '#000000'"],
   'oneplus ace 2v black status bar'
 );
 mustInclude(
+  'frontend/public/js/auth.js',
+  ['isOppoReno10Client', 'PHW110', 'CPH2531', 'app-android-oppo-reno10'],
+  'oppo reno10 5g immersive top'
+);
+mustInclude(
   'frontend/shouye.html',
-  ['20260816-iphone16pro-nav', 'app-android-oneplus-ace2v'],
-  'shouye ace 2v black bar'
+  ['20260817-reno10-phw110', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10'],
+  'shouye ace 2v + reno10 inset'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260816-iphone16pro-nav', 'PHP110', 'app-android-oneplus-ace2v', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A'],
-  'shuiming_result ace 2 pro + ace 2v + mi14pro + neo8pro'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260817-reno10-phw110', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'PHW110', 'app-android-oppo-reno10'],
+  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8pro'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -207,6 +217,26 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
   ok('iphone 16 pro without mine-only 2px');
 }
 
+(function testOnePlusAceProUa() {
+  const reModel = /PGP110|CPH2413|CPH2415|CPH2417/i;
+  const reName = /(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 15; PGP110 Build/UKQ1) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 15) OnePlus Ace Pro',
+    'Mozilla/5.0 (Linux; Android 15) 一加 Ace Pro'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 14; PJA110) OnePlus Ace 2 Pro',
+    'Mozilla/5.0 (Linux; Android 14; PHK110) OnePlus Ace 2',
+    'Mozilla/5.0 (Linux; Android 15; PHP110) OnePlus Ace 2V',
+    'Mozilla/5.0 (Linux; Android 15; PJZ110) OnePlus 13'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('oneplus ace pro UA match');
+  else fail('oneplus ace pro UA match');
+})();
+
 (function testOnePlusAce2ProUa() {
   const reModel = /PJA110/i;
   const reName = /(?:OnePlus|一加)\s*Ace\s*2\s*Pro/i;
@@ -243,6 +273,27 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
   const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
   if (hitOk && missOk) ok('oneplus ace 2v UA match');
   else fail('oneplus ace 2v UA match');
+})();
+
+(function testOppoReno10Ua() {
+  const reModel = /PHW110|CPH2531|CPH2525/i;
+  const reName = /(?:OPPO\s*)?Reno\s*10\s*5G/i;
+  const rePro = /Reno\s*10\s*Pro/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 15; PHW110 Build/UKQ1) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 15; CPH2531) OPPO Reno10 5G',
+    'Mozilla/5.0 (Linux; Android 15) OPPO Reno 10 5G'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 15; PHV110) OPPO Reno10 Pro 5G',
+    'Mozilla/5.0 (Linux; Android 15; PHU110) OPPO Reno10 Pro+',
+    'Mozilla/5.0 (Linux; Android 15; PGP110) OnePlus Ace Pro',
+    'Mozilla/5.0 (Linux; Android 14; PJA110) OnePlus Ace 2 Pro'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || (reName.test(ua) && !rePro.test(ua)));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !(reName.test(ua) && !rePro.test(ua)));
+  if (hitOk && missOk) ok('oppo reno10 5g UA match');
+  else fail('oppo reno10 5g UA match');
 })();
 
 mustInclude(

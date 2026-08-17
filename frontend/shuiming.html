@@ -33,8 +33,16 @@
                     document.documentElement.classList.add('app-android-oneplus-ace2pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-oneplus-acepro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/PHP110|(?:OnePlus|一加)\s*Ace\s*2\s*V/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-ace2v');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/PHW110|CPH2531|CPH2525/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
+                    document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
@@ -52,7 +60,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260816-iphone16pro-nav"></script>
+    <script src="/js/auth.js?v=20260817-reno10-phw110"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
