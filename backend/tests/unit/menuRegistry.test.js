@@ -73,6 +73,24 @@ describe('menuRegistry', () => {
     expect(def.assignable).toBe(false);
   });
 
+  it('downline-admins is assignable to sub-admins and hidden from super sidebar', () => {
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['downline-admins'] }, 'downline-admins')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'downline-admins')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: true, menus: [] }, 'downline-admins')
+    ).toBe(false);
+    const def = getPageDef('downline-admins');
+    expect(def.super_only).toBeFalsy();
+    expect(def.assignable).not.toBe(false);
+    expect(def.hide_for_super).toBe(true);
+    const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
+    expect(tree.pages.map((p) => p.page)).not.toContain('downline-admins');
+  });
+
   it('buildMenuTreeForAdmin returns ordered groups', () => {
     const payload = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const tree = payload.menu_tree;

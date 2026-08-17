@@ -670,8 +670,8 @@
 
                 <div id="page-admin-accounts" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>后台账号权限</h2>
-                        <p class="hint">仅 admin 超级账号可见。可新增后台账号，并为该账号勾选可用菜单。非 admin 账号仅可看到自己被授权的菜单。</p>
+                        <h2 id="adminAccountsPageTitle">后台账号权限</h2>
+                        <p class="hint" id="adminAccountsPageHint">仅 admin 超级账号可见。可新增后台账号，并为该账号勾选可用菜单。非 admin 账号仅可看到自己被授权的菜单。</p>
                         <div class="form-row flex-align-start">
                             <div>
                                 <label>账号</label>
@@ -693,7 +693,7 @@
                         <div id="adminAccountMenuSelector" class="form-row flex-align-center gap-16"></div>
                     </section>
                     <section>
-                        <h2>后台账号列表</h2>
+                        <h2 id="adminAccountsListTitle">后台账号列表</h2>
                         <button type="button" class="btn-primary mb-12" id="btnRefreshAdminAccounts">刷新列表</button>
                         <div class="scroll-x">
                             <table>
@@ -701,6 +701,7 @@
                                     <tr>
                                         <th>账号</th>
                                         <th>姓名</th>
+                                        <th>上级</th>
                                         <th>权限</th>
                                         <th>菜单</th>
                                         <th>重置密码</th>
@@ -2606,6 +2607,6 @@
     <script src="/js/admin/loader.js?v=20260813-sz"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260817-zaizhi-nav"></script>
+    <script src="/js/admin_panel.js?v=20260817-downline-admins"></script>
 </body>
 </html>

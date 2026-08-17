@@ -28,6 +28,7 @@
     'ccb-flow': 'ccb-flow',
     'najilu-qr': 'najilu-qr',
     'admin-accounts': 'accounts',
+    'downline-admins': 'accounts',
     users: 'users',
     'users-deleted': 'users',
     'user-data': 'user-data',

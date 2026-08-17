@@ -24,6 +24,7 @@ const signedAssets = require('../shared/signedAssets');
 const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
+const adminDownline = require('../admin/downline');
 const settingsPolicy = require('../shared/settingsPolicy');
 const {
   consumeRateLimit,
@@ -1238,29 +1239,51 @@ async function attachUserFromRequestChannel(username, req, body) {
  * 子管理员可见：激活码名下 或 专属渠道归属（owner_agent_admin）
  * @param {string} userCol 如 users.username / u.username
  */
-function appendSubAdminOwnedUsersScope(whereClauses, params, adminUsername, userCol) {
-  var owner = String(adminUsername || '').trim();
-  if (!owner || !userCol) return;
-  var ownerCol = /\.username$/.test(userCol) ? userCol.replace(/\.username$/, '.owner_agent_admin') : '';
-  if (ownerCol) {
+function appendSubAdminOwnedUsersScope(whereClauses, params, adminUsername, userCol, extraOwners) {
+  var owners = adminDownline.uniqueUsernames([adminUsername].concat(extraOwners || []));
+  if (!owners.length || !userCol) return;
+  var m = /^([a-zA-Z_][\w]*)\.username$/.exec(String(userCol));
+  var alias = m ? m[1] : '';
+  var useSameTable = alias === 'users' || alias === 'u';
+  if (useSameTable) {
+    var agentSql = adminDownline.ownerAdminInSql(alias + '.owner_agent_admin', params, owners);
+    var codeSql = adminDownline.ownerAdminInSql('ac.owner_admin_username', params, owners);
     whereClauses.push(
       '(' +
-        ownerCol +
-        ' = ? OR EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+        agentSql +
+        ' OR EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
         userCol +
-        ' AND ac.owner_admin_username = ?))'
+        ' AND ' +
+        codeSql +
+        '))'
     );
-    params.push(owner, owner);
     return;
   }
+  var agentSql2 = adminDownline.ownerAdminInSql('__oa.owner_agent_admin', params, owners);
+  var codeSql2 = adminDownline.ownerAdminInSql('ac.owner_admin_username', params, owners);
   whereClauses.push(
     '(EXISTS (SELECT 1 FROM users __oa WHERE __oa.username = ' +
       userCol +
-      ' AND __oa.owner_agent_admin = ?) OR EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      ' AND ' +
+      agentSql2 +
+      ') OR EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       userCol +
-      ' AND ac.owner_admin_username = ?))'
+      ' AND ' +
+      codeSql2 +
+      '))'
   );
-  params.push(owner, owner);
+}
+
+/** 按当前管理员（含下线）追加用户归属范围 */
+function appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol) {
+  if (!admin) return;
+  appendSubAdminOwnedUsersScope(
+    whereClauses,
+    params,
+    admin.username,
+    userCol,
+    admin.downline_usernames
+  );
 }
 
 /** promo segment filter */
@@ -1429,8 +1452,13 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
     var regWhereParts = [regWhere];
     appendConversionAnalyticsRegistrationScope(regWhereParts, regParams, admin, 'users.username');
     regWhere = regWhereParts.join(' AND ');
-    actWhere += ' AND ac.owner_admin_username = ?';
-    actParams.push(ownerAdmin);
+    actWhere +=
+      ' AND ' +
+      adminDownline.ownerAdminInSql(
+        'ac.owner_admin_username',
+        actParams,
+        adminDownline.adminScopeUsernames(admin)
+      );
   }
 
   const [regRows] = await conn.query(
@@ -1488,8 +1516,13 @@ async function queryDailyActivationChannelSegment(conn, period, admin, channelKe
   var actWhere = 'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' + chFilter;
   var actParams = chParams.slice();
   if (ownerAdmin) {
-    actWhere += ' AND ac.owner_admin_username = ?';
-    actParams.push(ownerAdmin);
+    actWhere +=
+      ' AND ' +
+      adminDownline.ownerAdminInSql(
+        'ac.owner_admin_username',
+        actParams,
+        adminDownline.adminScopeUsernames(admin)
+      );
   }
   if (period.mode === 'range') {
     actWhere += ' AND ' + cnActDay + ' >= ? AND ' + cnActDay + ' <= ?';
@@ -3427,6 +3460,12 @@ async function createTables() {
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT DISTINCT admin_id, 'zaizhi-cert' FROM admin_account_menus
      WHERE menu_key = 'lizhi-cert'`
+  );
+
+  /* 下线管理员：现有子管理员自动开通，便于发展下线并查看其数据 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'downline-admins' FROM admin_accounts WHERE is_super = 0`
   );
 
   await conn.execute(
@@ -6885,24 +6924,26 @@ function signAdminToken(username) {
 
 /** 按名加载管理员账号 */
 async function loadAdminAccountByUsername(conn, username) {
-  var rows;
-  try {
-    const r1 = await conn.execute(
-      'SELECT id, username, full_name, email, salt, hash, is_super, banned, login_fail_count, locked_until, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
-      [username]
-    );
-    rows = r1[0];
-  } catch (eCol) {
-    if (eCol && eCol.errno === 1054) {
-      const r0 = await conn.execute(
-        'SELECT id, username, full_name, salt, hash, is_super, banned, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
-        [username]
-      );
-      rows = r0[0];
-    } else {
-      throw eCol;
+  var selects = [
+    'SELECT id, username, full_name, parent_admin_username, email, salt, hash, is_super, banned, login_fail_count, locked_until, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
+    'SELECT id, username, full_name, email, salt, hash, is_super, banned, login_fail_count, locked_until, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
+    'SELECT id, username, full_name, salt, hash, is_super, banned, created_at FROM admin_accounts WHERE username = ? LIMIT 1'
+  ];
+  var rows = [];
+  var lastErr = null;
+  var si;
+  for (si = 0; si < selects.length; si++) {
+    try {
+      const r = await conn.execute(selects[si], [username]);
+      rows = r[0];
+      lastErr = null;
+      break;
+    } catch (eCol) {
+      lastErr = eCol;
+      if (!eCol || eCol.errno !== 1054) throw eCol;
     }
   }
+  if (lastErr) throw lastErr;
   if (!rows.length) {
     return null;
   }
@@ -6915,6 +6956,8 @@ async function loadAdminAccountByUsername(conn, username) {
     id: Number(row.id) || 0,
     username: String(row.username),
     full_name: row.full_name != null ? String(row.full_name) : '',
+    parent_admin_username:
+      row.parent_admin_username != null ? String(row.parent_admin_username).trim() : '',
     email: row.email != null ? String(row.email).trim() : '',
     salt: row.salt != null ? String(row.salt) : '',
     hash: row.hash != null ? String(row.hash) : '',
@@ -7105,18 +7148,21 @@ function requireAdminAnyMenu(menuKeys) {
 async function adminCanAccessTargetUser(conn, admin, username) {
   if (!username) return false;
   if (!admin || adminHasFullUserScope(admin)) return true;
+  var owners = adminDownline.adminScopeUsernames(admin);
+  if (!owners.length) return false;
+  var codeParams = [];
+  var codeOwnerSql = adminDownline.ownerAdminInSql('owner_admin_username', codeParams, owners);
+  codeParams.push(username);
   const [rows] = await conn.execute(
-    `SELECT id FROM activation_codes
-     WHERE owner_admin_username = ? AND used_by_username = ?
-     LIMIT 1`,
-    [admin.username, username]
+    'SELECT id FROM activation_codes WHERE ' + codeOwnerSql + ' AND used_by_username = ? LIMIT 1',
+    codeParams
   );
   if (rows.length > 0) return true;
+  var ownedParams = [username];
+  var agentSql = adminDownline.ownerAdminInSql('owner_agent_admin', ownedParams, owners);
   const [owned] = await conn.execute(
-    `SELECT username FROM users
-     WHERE username = ? AND owner_agent_admin = ?
-     LIMIT 1`,
-    [username, admin.username]
+    'SELECT username FROM users WHERE username = ? AND ' + agentSql + ' LIMIT 1',
+    ownedParams
   );
   if (owned.length > 0) return true;
   /* 运营子账号 admin：可操作「新注册可见」期内的注册用户（仅配合注册用户页） */
@@ -7159,6 +7205,7 @@ async function requireAdminAuth(req, res, next) {
       if (admin.banned) {
         return res.status(403).json({ code: 403, msg: '管理账号已被停用' });
       }
+      await adminDownline.attachAdminDownlineScope(conn, admin);
       req.admin = admin;
       if (!res.__adminJsonHooked) {
         var oldJson = res.json.bind(res);
@@ -12467,17 +12514,95 @@ async function handleAdminMe(req, res) {
   });
 }
 
+/** 超管或拥有下线管理员菜单 */
+function adminCanManageAccountsPage(admin) {
+  if (!admin) return false;
+  if (admin.is_super) return true;
+  return adminHasMenu(admin, 'downline-admins') || adminHasMenu(admin, 'admin-accounts');
+}
+
+/** 子管理员只能分配自己已有的菜单 */
+function constrainMenusToActor(actor, rawMenus) {
+  var menus = normalizeAdminMenuList(rawMenus, false);
+  if (!actor || actor.is_super) {
+    return menus.filter(function (k) {
+      return k !== 'admin-accounts';
+    });
+  }
+  return adminDownline.intersectMenuKeys(menus, actor.menus || []);
+}
+
+/** 返回当前操作者可勾选的菜单定义 */
+function menuDefsForActor(admin) {
+  var defs = adminMenuRegistry.getAssignableMenuDefs();
+  if (!admin || admin.is_super) return defs;
+  var allowed = Object.create(null);
+  (admin.menus || []).forEach(function (k) {
+    allowed[String(k)] = 1;
+  });
+  return defs.filter(function (d) {
+    return d && d.key && allowed[d.key] && !d.super_only;
+  });
+}
+
 /** 管理员账号列表 */
 async function handleAdminAccountsList(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   try {
     const conn = await pool.getConnection();
     try {
-      const [rows] = await conn.execute(
-        'SELECT id, username, full_name, is_super, banned, created_at FROM admin_accounts ORDER BY id ASC'
-      );
+      var listSql =
+        'SELECT id, username, full_name, parent_admin_username, is_super, banned, created_at FROM admin_accounts';
+      var listParams = [];
+      if (!req.admin.is_super) {
+        var downs = req.admin.downline_usernames || [];
+        if (!downs.length) {
+          return res.json({
+            code: 200,
+            data: {
+              accounts: [],
+              menu_keys: menuDefsForActor(req.admin).map(function (d) {
+                return d.key;
+              }),
+              menu_defs: menuDefsForActor(req.admin),
+              mode: 'downline'
+            }
+          });
+        }
+        listSql += ' WHERE ' + adminDownline.ownerAdminInSql('username', listParams, downs);
+      }
+      listSql += ' ORDER BY id ASC';
+      var rows;
+      try {
+        const rList = await conn.execute(listSql, listParams);
+        rows = rList[0];
+      } catch (eCol) {
+        if (!eCol || eCol.errno !== 1054) throw eCol;
+        var fallbackSql = 'SELECT id, username, full_name, is_super, banned, created_at FROM admin_accounts';
+        var fallbackParams = [];
+        if (!req.admin.is_super) {
+          var downsFb = req.admin.downline_usernames || [];
+          if (!downsFb.length) {
+            return res.json({
+              code: 200,
+              data: {
+                accounts: [],
+                menu_keys: menuDefsForActor(req.admin).map(function (d) {
+                  return d.key;
+                }),
+                menu_defs: menuDefsForActor(req.admin),
+                mode: 'downline'
+              }
+            });
+          }
+          fallbackSql += ' WHERE ' + adminDownline.ownerAdminInSql('username', fallbackParams, downsFb);
+        }
+        fallbackSql += ' ORDER BY id ASC';
+        const rFb = await conn.execute(fallbackSql, fallbackParams);
+        rows = rFb[0];
+      }
       var menuByAdmin = Object.create(null);
       if (rows.length) {
         var ids = rows.map(function (r) {
@@ -12507,6 +12632,8 @@ async function handleAdminAccountsList(req, res) {
           id: id,
           username: String(rows[i].username),
           full_name: rows[i].full_name != null ? String(rows[i].full_name) : '',
+          parent_admin_username:
+            rows[i].parent_admin_username != null ? String(rows[i].parent_admin_username).trim() : '',
           is_super: rows[i].is_super === 1 || rows[i].is_super === true,
           banned: rows[i].banned === 1 || rows[i].banned === true,
           created_at: rows[i].created_at ? rows[i].created_at.toISOString() : '',
@@ -12516,12 +12643,16 @@ async function handleAdminAccountsList(req, res) {
           )
         });
       }
+      var defs = menuDefsForActor(req.admin);
       return res.json({
         code: 200,
         data: {
           accounts: out,
-          menu_keys: ADMIN_MENU_KEYS,
-          menu_defs: adminMenuRegistry.getAssignableMenuDefs()
+          menu_keys: defs.map(function (d) {
+            return d.key;
+          }),
+          menu_defs: defs,
+          mode: req.admin.is_super ? 'all' : 'downline'
         }
       });
     } finally {
@@ -12535,14 +12666,14 @@ async function handleAdminAccountsList(req, res) {
 
 /** 创建管理员 */
 async function handleAdminAccountsCreate(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var body = req.body || {};
   var username = String(body.username || '').trim();
   var fullName = String(body.full_name || '').trim();
   var password = String(body.password || '');
-  var menus = normalizeAdminMenuList(body.menus, false);
+  var menus = constrainMenusToActor(req.admin, body.menus);
   if (!username || username.length < 3 || username.length > 64 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
     return res.status(400).json({ code: 400, msg: '账号仅支持 3-64 位字母数字._-' });
   }
@@ -12568,13 +12699,31 @@ async function handleAdminAccountsCreate(req, res) {
       if (exists.length) {
         return res.status(400).json({ code: 400, msg: '该管理账号已存在' });
       }
+      var parentName = req.admin.is_super ? null : String(req.admin.username || '').trim() || null;
+      if (parentName) {
+        var depth = await adminDownline.countAdminParentDepth(conn, parentName);
+        if (depth >= adminDownline.MAX_DOWNLINE_DEPTH) {
+          return res.status(400).json({ code: 400, msg: '下线层级已达上限' });
+        }
+      }
       var saltBuf = crypto.randomBytes(16);
       var saltHex = saltBuf.toString('hex');
       var hashHex = hashPasswordWithSalt(password, saltBuf);
-      const [ins] = await conn.execute(
-        'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 0, 0)',
-        [username, fullName, saltHex, hashHex]
-      );
+      var ins;
+      try {
+        const rIns = await conn.execute(
+          'INSERT INTO admin_accounts (username, full_name, parent_admin_username, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, ?, 0, 0)',
+          [username, fullName, parentName, saltHex, hashHex]
+        );
+        ins = rIns[0];
+      } catch (eIns) {
+        if (!eIns || eIns.errno !== 1054) throw eIns;
+        const rOld = await conn.execute(
+          'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 0, 0)',
+          [username, fullName, saltHex, hashHex]
+        );
+        ins = rOld[0];
+      }
       var adminId = ins.insertId ? Number(ins.insertId) : 0;
       if (menus.length && adminId) {
         var values = menus.map(function () {
@@ -12601,8 +12750,8 @@ async function handleAdminAccountsCreate(req, res) {
 
 /** 更新管理员 */
 async function handleAdminAccountsUpdate(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var body = req.body || {};
   var username = String(body.username || '').trim();
@@ -12615,7 +12764,7 @@ async function handleAdminAccountsUpdate(req, res) {
   if (hasPasswordUpdate && (updatePassword.length < 4 || updatePassword.length > 128)) {
     return res.status(400).json({ code: 400, msg: '密码长度需为 4-128 位' });
   }
-  var menus = normalizeAdminMenuList(body.menus, false);
+  var menus = constrainMenusToActor(req.admin, body.menus);
   if (!menus.length) {
     return res.status(400).json({ code: 400, msg: '请至少选择一个可用菜单' });
   }
@@ -12628,6 +12777,9 @@ async function handleAdminAccountsUpdate(req, res) {
       var admin = await loadAdminAccountByUsername(conn, username);
       if (!admin) {
         return res.status(404).json({ code: 404, msg: '管理账号不存在' });
+      }
+      if (!adminDownline.canManageTargetAdmin(req.admin, admin)) {
+        return res.status(403).json({ code: 403, msg: '只能管理自己的下线管理员' });
       }
       if (admin.is_super) {
         return res.status(400).json({ code: 400, msg: '不能修改 admin 超级账号权限' });
@@ -12665,12 +12817,15 @@ async function handleAdminAccountsUpdate(req, res) {
 
 /** 管理员开通的用户 */
 async function handleAdminAccountActivatedUsers(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var ownerAdmin = String(req.query.owner_admin || '').trim();
   if (!ownerAdmin) {
     return res.status(400).json({ code: 400, msg: 'owner_admin required' });
+  }
+  if (!adminDownline.canViewTargetAdmin(req.admin, ownerAdmin)) {
+    return res.status(403).json({ code: 403, msg: '只能查看自己或下线管理员的开通用户' });
   }
   var page = parseInt(req.query.page, 10) || 1;
   var limit = parseInt(req.query.limit, 10) || 10;
@@ -12744,8 +12899,8 @@ async function handleAdminAccountActivatedUsers(req, res) {
 
 /** 删除管理员 */
 async function handleAdminAccountsDelete(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  if (!adminCanManageAccountsPage(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
   }
   var body = req.body || {};
   var username = String(body.username || '').trim();
@@ -12764,6 +12919,18 @@ async function handleAdminAccountsDelete(req, res) {
       }
       if (admin.is_super) {
         return res.status(400).json({ code: 400, msg: '不能删除 admin 超级账号' });
+      }
+      if (!adminDownline.canManageTargetAdmin(req.admin, admin)) {
+        return res.status(403).json({ code: 403, msg: '只能管理自己的下线管理员' });
+      }
+      var reparentTo = req.admin.is_super ? null : String(req.admin.username || '').trim() || null;
+      try {
+        await conn.execute(
+          'UPDATE admin_accounts SET parent_admin_username = ? WHERE parent_admin_username = ?',
+          [reparentTo, username]
+        );
+      } catch (eRep) {
+        if (!eRep || eRep.errno !== 1054) throw eRep;
       }
       await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [admin.id]);
       await conn.execute('DELETE FROM admin_accounts WHERE id = ?', [admin.id]);
@@ -15275,9 +15442,9 @@ async function handleAdminRegisterTimeDistribution(req, res) {
     var params = pf.params.slice();
 
     if (!req.admin || !req.admin.is_super) {
-      where +=
-        ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-      params.push(req.admin.username);
+      var regScope = [];
+      appendSubAdminOwnedUsersScopeForAdmin(regScope, params, req.admin, 'users.username');
+      if (regScope.length) where += ' AND ' + regScope.join(' AND ');
     }
 
     const conn = await pool.getConnection();
@@ -15515,9 +15682,9 @@ function buildRegisterUserScopeWhere(daysRaw, admin) {
     params = params.concat(pf.params);
   }
   if (!admin || !admin.is_super) {
-    where +=
-      ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-    params.push(admin.username);
+    var regUserScope = [];
+    appendSubAdminOwnedUsersScopeForAdmin(regUserScope, params, admin, 'users.username');
+    if (regUserScope.length) where += ' AND ' + regUserScope.join(' AND ');
   }
   var spanDays = allTime
     ? 0
@@ -16169,7 +16336,7 @@ function summarizeTextList(items, maxItems, maxChars) {
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
   if (!admin || adminHasFullUserScope(admin)) return;
-  appendSubAdminOwnedUsersScope(whereClauses, params, admin.username, userCol);
+  appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
 }
 
 /** append admin registered users scope */
@@ -16186,19 +16353,26 @@ function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
     if (createdCol === String(userCol || '')) {
       createdCol = 'users.created_at';
     }
+    var ownerSql = adminDownline.ownerAdminInSql(
+      'ac.owner_admin_username',
+      params,
+      adminDownline.adminScopeUsernames(admin)
+    );
     whereClauses.push(
       '(' +
         'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
         userCol +
-        ' AND ac.owner_admin_username = ?) OR ' +
+        ' AND ' +
+        ownerSql +
+        ') OR ' +
         createdCol +
         ' >= ?' +
         ')'
     );
-    params.push(admin.username, adminOpsSeeRegisteredSinceUtc(admin));
+    params.push(adminOpsSeeRegisteredSinceUtc(admin));
     return;
   }
-  appendSubAdminOwnedUsersScope(whereClauses, params, admin.username, userCol);
+  appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
 }
 
 /** conversion analytics owner admin；超管返回 null 表示全站（不按归属过滤） */
@@ -16219,7 +16393,7 @@ function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCo
   if (!owner) {
     return;
   }
-  appendSubAdminOwnedUsersScope(whereClauses, params, owner, userCol);
+  appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
 }
 
 /** append conversion analytics registration scope */
@@ -16229,7 +16403,7 @@ function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, u
   if (!owner) {
     return;
   }
-  appendSubAdminOwnedUsersScope(whereParts, params, owner, userCol);
+  appendSubAdminOwnedUsersScopeForAdmin(whereParts, params, admin, userCol);
 }
 
 /** activation channel filter sql */
@@ -17073,8 +17247,13 @@ async function handleAdminCodes(req, res) {
     var conditions = [];
     var params = [];
     if (!req.admin || !req.admin.is_super) {
-      conditions.push('ac.owner_admin_username = ?');
-      params.push(req.admin.username);
+      conditions.push(
+        adminDownline.ownerAdminInSql(
+          'ac.owner_admin_username',
+          params,
+          adminDownline.adminScopeUsernames(req.admin)
+        )
+      );
     } else if (qOwnerAdmin) {
       conditions.push(
         '(ac.owner_admin_username LIKE ? OR IFNULL(aa.full_name, \'\') LIKE ?)'
@@ -19119,10 +19298,7 @@ async function handleAdminDeletedUsers(req, res) {
       }
     }
     if (!req.admin || !adminHasFullUserScope(req.admin)) {
-      whereClauses.push(
-        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
-      );
-      params.push(req.admin.username);
+      appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, req.admin, 'users.username');
     }
 
     var whereSql = ' WHERE ' + whereClauses.join(' AND ');
@@ -21178,10 +21354,12 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
     }
     appendUserLoginReasonFilter(where, params, qReason);
     if (!req.admin || !req.admin.is_super) {
-      where.push(
-        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = user_login_events.username AND ac.owner_admin_username = ?)'
+      appendSubAdminOwnedUsersScopeForAdmin(
+        where,
+        params,
+        req.admin,
+        'user_login_events.username'
       );
-      params.push(req.admin.username);
     }
     var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
     const conn = await pool.getConnection();

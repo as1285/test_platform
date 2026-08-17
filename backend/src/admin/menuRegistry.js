@@ -197,6 +197,15 @@ const ADMIN_PAGE_DEFS = [
 
   /* —— 系统 —— */
   {
+    page: 'downline-admins',
+    menu_key: 'downline-admins',
+    label: '下线管理员',
+    group: 'system',
+    module: 'accounts',
+    order: 18,
+    hide_for_super: true
+  },
+  {
     page: 'admin-accounts',
     menu_key: 'admin-accounts',
     label: '账号权限',
@@ -330,6 +339,7 @@ function getPageDef(page) {
 function adminProfileCanAccessPage(admin, page) {
   var def = getPageDef(page);
   if (!def) return false;
+  if (def.hide_for_super && admin && admin.is_super) return false;
   if (def.super_only && !(admin && admin.is_super)) return false;
   if (admin && admin.is_super) return true;
   var menus = admin && Array.isArray(admin.menus) ? admin.menus : [];

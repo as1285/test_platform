@@ -1032,6 +1032,7 @@
                 'analytics-tracking',
                 'appearance',
                 'admin-accounts',
+                'downline-admins',
                 'login-log',
                 'user-login-log',
                 'server-monitor'
@@ -1123,6 +1124,7 @@
                 appearance: 1,
                 codes: 1,
                 'admin-accounts': 1,
+                'downline-admins': 1,
                 users: 1,
                 'users-deleted': 1,
                 'user-data': 1,
@@ -1156,9 +1158,19 @@
             return k;
         }
 
+        function adminPagePanelId(pageKey) {
+            if (pageKey === 'downline-admins') return 'page-admin-accounts';
+            return 'page-' + pageKey;
+        }
+
+        function canOpenAdminAccountsPage() {
+            return adminHasMenu('admin-accounts') || adminHasMenu('downline-admins');
+        }
+
         function applyAdminRouteChrome(pageKey) {
+            var panelId = adminPagePanelId(pageKey);
             document.querySelectorAll('.page-panel').forEach(function (el) {
-                var on = el.id === 'page-' + pageKey;
+                var on = el.id === panelId;
                 el.classList.toggle('active', on);
                 if (on) el.removeAttribute('hidden');
                 else el.setAttribute('hidden', '');
@@ -1206,7 +1218,7 @@
                     loadXianyuCodes();
                 }
             }
-            if (pageKey === 'admin-accounts') {
+            if (pageKey === 'admin-accounts' || pageKey === 'downline-admins') {
                 loadAdminAccounts();
             }
             if (pageKey === 'analytics-conversion') {
@@ -1287,12 +1299,12 @@
             var force = !!(opts && opts.force === true);
             var rawHash = String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
             var pageKey = (opts && opts.page) ? String(opts.page).replace(/^#/, '').trim().toLowerCase() : '';
-            if (pageKey && document.getElementById('page-' + pageKey)) {
+            if (pageKey && document.getElementById(adminPagePanelId(pageKey))) {
                 /* 侧栏点击指定页：有面板就进入，勿被 allowlist 打回 */
             } else {
                 pageKey = normalizeAdminPage(location.hash);
                 /* 侧栏已画出且页面存在时，以 hash 为准（修复在职证明点了仍停在转化概览） */
-                if (rawHash && rawHash !== pageKey && document.getElementById('page-' + rawHash)) {
+                if (rawHash && rawHash !== pageKey && document.getElementById(adminPagePanelId(rawHash))) {
                     var navHit = document.querySelector('.nav-item[data-page="' + rawHash + '"]');
                     if (navHit || adminHasMenu(rawHash)) {
                         pageKey = rawHash;
@@ -6543,6 +6555,7 @@
             'share-stats': '分享统计',
             'channel-analysis': '渠道分析',
             'admin-accounts': '账号权限',
+            'downline-admins': '下线管理员',
             'server-monitor': '监控',
             'sbdy-demo': '社保演示',
             'lizhi-cert': '离职证明',
@@ -6672,11 +6685,28 @@
             rootEl.innerHTML = html;
         }
 
+        function syncAdminAccountsPageCopy() {
+            var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
+            var title = document.getElementById('adminAccountsPageTitle');
+            var hint = document.getElementById('adminAccountsPageHint');
+            var listTitle = document.getElementById('adminAccountsListTitle');
+            var createBtn = document.getElementById('btnCreateAdminAccount');
+            if (title) title.textContent = isSuper ? '后台账号权限' : '下线管理员';
+            if (listTitle) listTitle.textContent = isSuper ? '后台账号列表' : '我的下线管理员';
+            if (createBtn) createBtn.textContent = isSuper ? '新增账号' : '新增下线';
+            if (hint) {
+                hint.textContent = isSuper
+                    ? '可新增后台账号并勾选可用菜单。给子管理员勾选「下线管理员」后，她可以再发展自己的下线，并查看下线的用户、激活码等全部业务数据。'
+                    : '可新增自己的下线管理员，并查看其激活用户、注册用户与激活码等全部业务数据。下线账号的菜单不能超出你当前拥有的权限。';
+            }
+        }
+
         /* ========== Bot Purge ========== */
         function loadAdminAccounts() {
-            if (!adminHasMenu('admin-accounts')) {
+            if (!canOpenAdminAccountsPage()) {
                 return;
             }
+            syncAdminAccountsPageCopy();
             adminFetch('api/admin/accounts')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
@@ -6690,17 +6720,20 @@
                     } else {
                     adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
                     }
-                    renderAdminMenuSelector(document.getElementById('adminAccountMenuSelector'), ['codes']);
+                    var defaultMenus = adminMenuKeyList.indexOf('codes') >= 0 ? ['codes'] : adminMenuKeyList.slice(0, 1);
+                    renderAdminMenuSelector(document.getElementById('adminAccountMenuSelector'), defaultMenus);
                     var list = Array.isArray(data.data.accounts) ? data.data.accounts : [];
                     var html = '';
                     list.forEach(function (a) {
                         var isSuper = !!a.is_super;
                         var accKey = keyForAdminAccount(a.username);
                         var menuText = isSuper ? '全部菜单（超级账号）' : (Array.isArray(a.menus) ? a.menus.map(menuLabel).join('、') : '—');
+                        var roleText = isSuper ? 'admin(超级)' : (a.parent_admin_username ? '下线' : '子账号');
                         html += '<tr>';
                         html += '<td>' + esc(a.username) + '</td>';
                         html += '<td>' + esc(a.full_name || '—') + '</td>';
-                        html += '<td>' + esc(isSuper ? 'admin(超级)' : '子账号') + '</td>';
+                        html += '<td>' + esc(a.parent_admin_username || '—') + '</td>';
+                        html += '<td>' + esc(roleText) + '</td>';
                         html += '<td class="cell-break">' + esc(menuText || '—') + '</td>';
                         html += '<td>';
                         if (!isSuper) {
@@ -6718,7 +6751,7 @@
                         html += '</td>';
                         html += '</tr>';
                         if (!isSuper) {
-                            html += '<tr id="admin_acc_edit_row_' + accKey + '" style="display:none;"><td colspan="6">';
+                            html += '<tr id="admin_acc_edit_row_' + accKey + '" style="display:none;"><td colspan="7">';
                             html += '<div class="admin-account-edit-panel" data-username="' + esc(a.username) + '">';
                             html += '<div class="form-row" style="margin:0 0 6px;align-items:center;gap:8px;">';
                             html += '<label style="font-size:12px;color:#666;">姓名</label>';
@@ -6742,11 +6775,11 @@
                         html +=
                             '<tr id="admin_acc_detail_row_' +
                             accKey +
-                            '" style="display:none;"><td colspan="6"><div id="admin_acc_detail_box_' +
+                            '" style="display:none;"><td colspan="7"><div id="admin_acc_detail_box_' +
                             accKey +
                             '" style="padding:4px 0;color:#888;">点击详情查看该账号下的激活账号…</div></td></tr>';
                     });
-                    document.getElementById('adminAccountTbody').innerHTML = html || '<tr><td colspan="6">暂无后台账号</td></tr>';
+                    document.getElementById('adminAccountTbody').innerHTML = html || '<tr><td colspan="7">暂无下线管理员</td></tr>';
                 })
                 .catch(function () {
                     alert('网络错误');
@@ -8855,7 +8888,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v12-zaizhi-nav';
+                var MENU_TREE_VER = 'ops-ia-v13-downline-admins';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);
@@ -8906,8 +8939,15 @@
         function goAdminPage(p) {
             p = String(p || '').replace(/^#/, '').trim();
             if (!p) return;
-            if (document.getElementById('page-' + p)) {
+            if (document.getElementById(adminPagePanelId(p))) {
                 applyAdminRoute({ force: true, page: p });
+                if (location.hash !== '#' + p) {
+                    try {
+                        history.replaceState(null, '', '#' + p);
+                    } catch (eHash) {
+                        location.hash = p;
+                    }
+                }
                 return;
             }
             var cur = String(location.hash || '').replace(/^#/, '');

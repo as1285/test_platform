@@ -62,13 +62,43 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['page-zaizhi-cert', 'zaizhiGenerateBtn', '20260817-zaizhi-nav'],
+  ['page-zaizhi-cert', 'zaizhiGenerateBtn'],
   'admin zaizhi cert page'
 );
 mustInclude(
+  'frontend/admin_panel.html',
+  ['20260817-downline-admins', 'adminAccountsPageHint', '上级'],
+  'admin downline accounts page'
+);
+mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'zaizhi-cert': 1", 'opts.page', "page-' + rawHash", 'ops-ia-v12-zaizhi-nav'],
+  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v13-downline-admins'],
   'admin zaizhi-cert hash not bounced'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ["'downline-admins': 1", 'canOpenAdminAccountsPage', 'syncAdminAccountsPageCopy', '新增下线'],
+  'admin downline-admins page routing'
+);
+mustInclude(
+  'backend/src/admin/menuRegistry.js',
+  ["page: 'downline-admins'", "label: '下线管理员'", 'hide_for_super: true'],
+  'menuRegistry downline-admins'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'parent_admin_username',
+    'appendSubAdminOwnedUsersScopeForAdmin',
+    'adminCanManageAccountsPage',
+    'constrainMenusToActor'
+  ],
+  'monolith downline admin scope'
+);
+mustInclude(
+  'backend/migrations/030_admin_downline.sql',
+  ['parent_admin_username', 'downline-admins'],
+  'migration admin downline parent column'
 );
 mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banner');
 mustInclude(

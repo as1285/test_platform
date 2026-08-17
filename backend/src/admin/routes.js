@@ -337,29 +337,34 @@ app.post(
 app.get('/api/admin/analytics/login-recent', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminAnalyticsLoginRecent);
 app.get('/api/admin/admin-login-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminLoginLogs);
 app.get('/api/admin/admin-operation-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminOperationLogs);
-app.get('/api/admin/accounts', mw.requireAdminAuth, mw.requireAdminMenu('admin-accounts'), h.handleAdminAccountsList);
+app.get(
+  '/api/admin/accounts',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['admin-accounts', 'downline-admins']),
+  h.handleAdminAccountsList
+);
 app.get(
   '/api/admin/accounts/activated-users',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('admin-accounts'),
+  mw.requireAdminAnyMenu(['admin-accounts', 'downline-admins']),
   h.handleAdminAccountActivatedUsers
 );
 app.post(
   '/api/admin/accounts/create',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('admin-accounts'),
+  mw.requireAdminAnyMenu(['admin-accounts', 'downline-admins']),
   h.handleAdminAccountsCreate
 );
 app.post(
   '/api/admin/accounts/update',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('admin-accounts'),
+  mw.requireAdminAnyMenu(['admin-accounts', 'downline-admins']),
   h.handleAdminAccountsUpdate
 );
 app.post(
   '/api/admin/accounts/delete',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('admin-accounts'),
+  mw.requireAdminAnyMenu(['admin-accounts', 'downline-admins']),
   h.handleAdminAccountsDelete
 );
 app.get('/api/admin/monitor/overview', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorOverview);
