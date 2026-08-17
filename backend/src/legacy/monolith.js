@@ -532,14 +532,27 @@ const ADMIN_OPS_SEE_REGISTERED_SINCE = String(
 ).trim();
 
 /** 额外运营子账号 → 新注册可见起始时间（UTC） */
-const ADMIN_OPS_EXTRA_SEE_SINCE = {
-  '19106014552': '2026-08-01 00:00:00'
+const ADMIN_OPS_EXTRA_SEE_SINCE = {};
+
+/** 非超管但可看/操作全部注册用户与用户数据的运营账号 */
+const ADMIN_FULL_USER_SCOPE_USERNAMES = {
+  '19106014552': true
 };
 
-function isOpsNamedAdmin(admin) {
-  var u = String((admin && admin.username) || '')
+function adminUsernameKey(admin) {
+  return String((admin && admin.username) || '')
     .trim()
     .toLowerCase();
+}
+
+function adminHasFullUserScope(admin) {
+  if (!admin) return false;
+  if (admin.is_super) return true;
+  return !!ADMIN_FULL_USER_SCOPE_USERNAMES[adminUsernameKey(admin)];
+}
+
+function isOpsNamedAdmin(admin) {
+  var u = adminUsernameKey(admin);
   if (!u) return false;
   if (u === 'admin') return true;
   return Object.prototype.hasOwnProperty.call(ADMIN_OPS_EXTRA_SEE_SINCE, u);
@@ -3418,6 +3431,20 @@ async function createTables() {
 
   await conn.execute(
     `DELETE FROM admin_account_menus WHERE menu_key = 'sales-contacts'`
+  );
+
+  /* 指定运营账号：注册用户列表 + 用户数据全量可见 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'users' FROM admin_accounts WHERE username = '19106014552'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'user-data' FROM admin_accounts WHERE username = '19106014552'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username = '19106014552'`
   );
 
   conn.release();
@@ -7077,7 +7104,7 @@ function requireAdminAnyMenu(menuKeys) {
 /** 管理辅助：can access target user */
 async function adminCanAccessTargetUser(conn, admin, username) {
   if (!username) return false;
-  if (!admin || admin.is_super) return true;
+  if (!admin || adminHasFullUserScope(admin)) return true;
   const [rows] = await conn.execute(
     `SELECT id FROM activation_codes
      WHERE owner_admin_username = ? AND used_by_username = ?
@@ -16141,15 +16168,15 @@ function summarizeTextList(items, maxItems, maxChars) {
 /** append admin user scope */
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
-  if (!admin || admin.is_super) return;
+  if (!admin || adminHasFullUserScope(admin)) return;
   appendSubAdminOwnedUsersScope(whereClauses, params, admin.username, userCol);
 }
 
 /** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
-  /* 超级管理员：全部注册用户（含各子账号激活码开通的用户） */
-  if (admin.is_super) return;
+  /* 超级管理员 / 全量用户数据账号：全部注册用户 */
+  if (adminHasFullUserScope(admin)) return;
   /*
    * 运营子账号 admin：本人激活码开通用户 ∪ 截止时间后新注册用户。
    * 仅用于「注册用户」列表；其它数据页仍走 appendAdminUserScope（仅激活码归属）。
@@ -19091,7 +19118,7 @@ async function handleAdminDeletedUsers(req, res) {
         params.push('%' + qRealName + '%');
       }
     }
-    if (!req.admin || !req.admin.is_super) {
+    if (!req.admin || !adminHasFullUserScope(req.admin)) {
       whereClauses.push(
         'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
       );

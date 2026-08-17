@@ -342,6 +342,21 @@ mustInclude(
   ['handleAdminUserLizhiCertUnlock', 'handleAdminUserZaizhiCertUnlock'],
   'admin cert unlock apis'
 );
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    "ADMIN_FULL_USER_SCOPE_USERNAMES",
+    "'19106014552': true",
+    'function adminHasFullUserScope',
+    'if (!admin || adminHasFullUserScope(admin)) return true'
+  ],
+  'admin 19106014552 full registered user scope'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['19106014552', '全部注册用户'],
+  'admin hint 19106014552 full user list'
+);
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
