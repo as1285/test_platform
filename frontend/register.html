@@ -2,7 +2,19 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260814-ace2pro"></script>
+    <script>
+        (function () {
+            try {
+                var u = navigator.userAgent || '';
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260817-mate60-reg"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -15,11 +27,15 @@
             --reg-accent: #1d6fd8;
             --reg-accent-deep: #1860be;
             --reg-danger: #dc6b6b;
-            --safe-t: env(safe-area-inset-top, 0px);
+            /* Cordova/Mate60 等沉浸壳 env(safe-area) 常为 0，须吃壳顶距 */
+            --safe-t: max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px));
             --safe-b: env(safe-area-inset-bottom, 0px);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+        html {
+            scroll-padding-top: calc(12px + var(--safe-t));
+        }
         body.page-register {
             font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
             color: var(--reg-ink);
@@ -33,7 +49,23 @@
             margin: 0 auto;
             padding: 0 20px;
         }
-        .reg-top { padding: calc(12px + var(--safe-t)) 0 0; }
+        .reg-top {
+            padding: calc(12px + var(--safe-t)) 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: var(--reg-bg);
+            margin-left: -20px;
+            margin-right: -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-bottom: 4px;
+        }
+        html.app-android-huawei-mate60 body.page-register,
+        html.app-android-immersive-white-top body.page-register {
+            --safe-t: var(--app-shell-statusbar-top, 40px);
+            --app-shell-statusbar-top: 40px;
+        }
         .back-btn {
             display: inline-flex;
             align-items: center;

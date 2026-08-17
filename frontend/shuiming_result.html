@@ -10,6 +10,12 @@
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                 }
+                if (
+                    /24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u) &&
+                    !/2410DPN6CC|24101PNB7C|25019PNF3|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(u)
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-15');
+                }
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -52,6 +58,10 @@
                     document.documentElement.classList.add('app-android-iqoo-neo8pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2502A|V2502DA|V2514\b|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x300pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -73,7 +83,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260817-reno10-phw110"></script>
+    <script src="/js/auth.js?v=20260817-xiaomi15-line"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -667,6 +677,18 @@
         }
 
         /*
+         * 小米 15：HyperOS MiSans 行盒偏紧，明细四行（小类/扣缴义务人/收入/税额）几乎贴在一起。
+         */
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-row {
+            padding-top: 7px !important;
+            padding-bottom: 7px !important;
+        }
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-label,
+        html.app-android-xiaomi-15 body.page-shuiming-result .list-company {
+            line-height: 22px !important;
+        }
+
+        /*
          * 华为 CLS-AL00（Android 12 Cordova）：收入纳税明细顶栏 + 汇总区对齐官方稿
          * UA: CLS-AL00 Build/HUAWEICLS-AL00 … TaxPlatformCordovaApp
          */
@@ -1070,7 +1092,9 @@
         html.app-android-oneplus-ace2v body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .page-root,
-        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .page-root {
+        html.app-android-vivo-x300pro body.page-shuiming-result .page-root,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px;
             --safe-top: 40px;
         }
@@ -1094,7 +1118,9 @@
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header,
-        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+        html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
             height: calc(var(--header-height, 48px) + 40px) !important;
             min-height: calc(var(--header-height, 48px) + 40px) !important;
@@ -1138,9 +1164,13 @@
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
             top: 40px !important;
             height: var(--header-height, 48px) !important;
             display: flex !important;
@@ -1345,6 +1375,47 @@
             user-select: none;
             -webkit-user-select: none;
         }
+    
+        /* vivo X300 Pro：压过 cordova white-page-outer / vivo-family 清零顶距 */
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root {
+            --app-shell-statusbar-top: 40px !important;
+            --safe-top: 40px !important;
+            --android-status-inset: 40px !important;
+        }
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header {
+            top: 0 !important;
+            height: calc(var(--header-height, 48px) + 40px) !important;
+            min-height: calc(var(--header-height, 48px) + 40px) !important;
+            padding: 40px 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+        }
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right {
+            top: 40px !important;
+            height: var(--header-height, 48px) !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + 40px) !important;
+        }
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + 40px) !important;
+        }
+
     </style>
 </head>
 <body class="page-shuiming-result">

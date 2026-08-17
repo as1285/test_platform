@@ -213,8 +213,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260817-reno10-phw110', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'PHW110', 'app-android-oppo-reno10'],
-  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8pro'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260817-xiaomi15-line', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15'],
+  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8pro + mi15 line'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isXiaomi15Client', '24129PN74', 'app-android-xiaomi-15'],
+  'xiaomi 15 list line-height detect'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -251,6 +256,27 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
 } else {
   ok('iphone 16 pro without mine-only 2px');
 }
+
+(function testXiaomi15Ua() {
+  const reModel = /24129PN74/i;
+  const reName = /(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i;
+  const rePro = /2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 15; 24129PN74C Build/AQ3A) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 15) Xiaomi 15',
+    'Mozilla/5.0 (Linux; Android 15) 小米 15'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 15; 2410DPN6CC) Xiaomi 15 Pro',
+    'Mozilla/5.0 (Linux; Android 15) Mi 15 Pro',
+    'Mozilla/5.0 (Linux; Android 15; 25019PNF3C) Xiaomi 15 Ultra',
+    'Mozilla/5.0 (Linux; Android 14; 23116PN5BC) Xiaomi 14 Pro'
+  ];
+  const hitOk = hit.every((ua) => (reModel.test(ua) || reName.test(ua)) && !rePro.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && (rePro.test(ua) || !reName.test(ua)));
+  if (hitOk && missOk) ok('xiaomi 15 UA match');
+  else fail('xiaomi 15 UA match');
+})();
 
 (function testOnePlusAceProUa() {
   const reModel = /PGP110|CPH2413|CPH2415|CPH2417/i;
