@@ -33,7 +33,7 @@
         (function () {
             try {
                 var u = String(navigator.userAgent || '');
-                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                if (/Mate\s*60|Mate\s*70|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
@@ -41,7 +41,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260818-mate60-mine-v4"></script>
+    <script src="/js/auth.js?v=20260818-harmony-noclip"></script>
     <script src="/js/browser-install-prompt.js?v=20260724-app-shell" defer></script>
     <title>登录</title>
     <style>

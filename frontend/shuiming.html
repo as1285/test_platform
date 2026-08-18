@@ -53,7 +53,11 @@
                     document.documentElement.classList.add('app-android-iqoo-neo8');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
-                if (/V2502A|V2502DA|V2514|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
+                if (/Mate\s*60|Mate\s*70|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/V2502A|V2502DA|V2514\b|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
@@ -68,7 +72,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260818-mate60-mine-v4"></script>
+    <script src="/js/auth.js?v=20260818-harmony-noclip"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
