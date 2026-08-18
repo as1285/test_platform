@@ -147,33 +147,33 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260816-iphone16pro-nav'],
-  'login.html auth cache ace2v'
+  ['20260818-iqoo-neo8'],
+  'login.html auth cache neo8'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260817-reno10-phw110', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A', 'PGP110', 'PHW110', 'app-android-oppo-reno10'],
-  'mine.html mate60 + reno10 cache'
+  ['20260818-iqoo-neo8', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8'],
+  'mine.html mate60 + reno10 + neo8 cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260817-reno10-phw110'],
-  'fast-nav auth cache reno10'
+  ['20260818-iqoo-neo8'],
+  'fast-nav auth cache neo8'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine', 'isIqooNeo8ProClient', 'V2302A', 'clientUaBlob'],
-  'auth.js mate60 mine bleed + neo8pro v2302'
+  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob'],
+  'auth.js mate60 mine bleed + neo8 / neo8pro'
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260817-reno10-phw110', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
-  'shuiming acepro + reno10 + neo8pro inset'
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-iqoo-neo8', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
+  'shuiming acepro + reno10 + neo8 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'app-android-iqoo-neo8pro', '20260816-iphone16pro-nav'],
-  'message ace2v cache + neo8pro inset'
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-iqoo-neo8'],
+  'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
   ok('auth.js without post-0813 Mate70 chrome');
@@ -208,13 +208,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260817-reno10-phw110', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10'],
+  ['20260818-iqoo-neo8', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10'],
   'shouye ace 2v + reno10 inset'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260817-xiaomi15-line', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15'],
-  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8pro + mi15 line'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260818-iqoo-neo8', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8'],
+  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line'
 );
 mustInclude(
   'frontend/public/js/auth.js',

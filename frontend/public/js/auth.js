@@ -376,6 +376,19 @@
   }
 
   /**
+   * iQOO Neo8 标准版（国行 V2301A / PD2301）：OriginOS Cordova WebView 仍压在系统栏下，
+   * 勿按 vivo 族「外置黑条」清零顶距，否则纳税明细「返回」会与系统时间重叠。
+   * 勿匹配 Neo8 Pro（V2302A / V2307A）。
+   */
+  function isIqooNeo8Client() {
+    var ua = clientUaBlob();
+    if (/V2301A|V2301B|PD2301\b/i.test(ua)) {
+      return true;
+    }
+    return /iQOO\s*Neo\s*8(?!\s*Pro)/i.test(ua);
+  }
+
+  /**
    * iQOO Neo8 Pro（国行 V2302A / 另码 V2307A）：Cordova WebView 仍压在系统状态栏下，
    * 勿按 vivo 族「外置黑条」清零顶距，否则消息页「消息」、纳税明细「返回」会与系统时间重叠。
    */
@@ -400,9 +413,9 @@
     return /vivo[\s_-]*X300\s*Pro/i.test(ua);
   }
 
-  /** vivo 族沉浸压栏机（Neo8 Pro / X300 Pro）：白顶栏须留 40px */
+  /** vivo 族沉浸压栏机（Neo8 / Neo8 Pro / X300 Pro）：白顶栏须留 40px */
   function isVivoImmersiveTopClient() {
-    return isIqooNeo8ProClient() || isVivoX300ProLikeClient();
+    return isIqooNeo8Client() || isIqooNeo8ProClient() || isVivoX300ProLikeClient();
   }
 
   /**
@@ -535,7 +548,7 @@
     if (isXiaomiImmersiveTopClient()) {
       return false;
     }
-    /* iQOO Neo8 Pro / vivo X300 Pro：Cordova 沉浸，白顶栏须留顶距 */
+    /* iQOO Neo8 / Neo8 Pro / vivo X300 Pro：Cordova 沉浸，白顶栏须留顶距 */
     if (isVivoImmersiveTopClient()) {
       return false;
     }
@@ -1656,6 +1669,7 @@
           ' !important;z-index:40 !important;pointer-events:none !important;}' +
           'html.app-top-safe-shell .message-header-wrap{margin:0 !important;padding:0 !important;}' +
           'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;background:linear-gradient(180deg,#1e8fff 0%,#3d96ff 55%,#4da0ff 100%) !important;}' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell .message-header-toolbar,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell .message-header-toolbar,' +
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-message .message-header-toolbar{padding-top:calc(14px + 40px) !important;}';
         document.head.appendChild(st);
@@ -1808,6 +1822,7 @@
         root.classList.contains('app-android-oneplus-acepro') ||
         root.classList.contains('app-android-oneplus-ace2v') ||
         root.classList.contains('app-android-oppo-reno10') ||
+        root.classList.contains('app-android-iqoo-neo8') ||
         root.classList.contains('app-android-iqoo-neo8pro') ||
         root.classList.contains('app-android-vivo-x300pro') ||
         isHuaweiMate60Client() ||
@@ -1845,6 +1860,9 @@
           }
           if (isOppoReno10Client() || root.classList.contains('app-android-oppo-reno10')) {
             root.classList.add('app-android-oppo-reno10');
+          }
+          if (isIqooNeo8Client() || root.classList.contains('app-android-iqoo-neo8')) {
+            root.classList.add('app-android-iqoo-neo8');
           }
           if (isIqooNeo8ProClient() || root.classList.contains('app-android-iqoo-neo8pro')) {
             root.classList.add('app-android-iqoo-neo8pro');
@@ -2206,6 +2224,7 @@
       var oppoA58Client = androidClient && isOppoA58Client();
       var vivoOriginOsFamily = androidClient && isVivoOriginOsFamilyClient();
       var iqoo15Client = androidClient && isIqoo15Client();
+      var iqooNeo8Client = androidClient && isIqooNeo8Client();
       var iqooNeo8ProClient = androidClient && isIqooNeo8ProClient();
       var vivoX300ProClient = androidClient && isVivoX300ProLikeClient();
       var vivoImmersiveTop = androidClient && isVivoImmersiveTopClient();
@@ -2519,6 +2538,10 @@
       if (iqoo15Client) {
         document.documentElement.classList.add('app-android-iqoo-15');
       }
+      if (iqooNeo8Client) {
+        document.documentElement.classList.add('app-android-iqoo-neo8');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+      }
       if (iqooNeo8ProClient) {
         document.documentElement.classList.add('app-android-iqoo-neo8pro');
         document.documentElement.classList.add('app-android-immersive-white-top');
@@ -2662,7 +2685,7 @@
           'html.app-android-xiaomi-14pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-10.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-iqoo-neo8pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro),html.app-android-iqoo-15.app-top-safe-shell,html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
@@ -2672,6 +2695,7 @@
           'html.app-android-oneplus-ace2v.app-top-safe-shell,' +
           'html.app-android-oppo-reno10.app-top-safe-shell,' +
           'html.app-android-xiaomi-10.app-top-safe-shell,' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell,' +
           'html.app-android-redmi-k70-ultra.app-top-safe-shell,' +
           'html.app-android-redmi-12c.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
@@ -3013,10 +3037,14 @@
           'margin-top:calc(-1 * var(--android-status-inset,40px)) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-message .message-header-toolbar{' +
           'padding-top:calc(14px + var(--android-status-inset,40px)) !important;}' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell body.page-message,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-message,' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell body.page-daiban,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-daiban,' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell body.page-bancha,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-bancha{' +
           '--android-status-inset:40px !important;--app-shell-statusbar-top:40px !important;}' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell body.page-message .message-header-toolbar,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-message .message-header-toolbar{' +
           'padding-top:calc(14px + 40px) !important;}' +
           /* 白顶栏纳税页：外置状态栏 / overlays=false 后顶距清零 */

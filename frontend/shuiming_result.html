@@ -58,6 +58,10 @@
                     document.documentElement.classList.add('app-android-iqoo-neo8pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2301A|V2301B|PD2301/i.test(u) || (/iQOO\s*Neo\s*8(?!\s*Pro)/i.test(u))) {
+                    document.documentElement.classList.add('app-android-iqoo-neo8');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/V2502A|V2502DA|V2514\b|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -83,7 +87,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260817-xiaomi15-line"></script>
+    <script src="/js/auth.js?v=20260818-iqoo-neo8"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -1096,8 +1100,10 @@
         html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2v body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-iqoo-neo8 body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro body.page-shuiming-result .page-root,
+        html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px;
@@ -1122,8 +1128,10 @@
         html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header,
+        html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
@@ -1168,12 +1176,16 @@
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
             top: 40px !important;
