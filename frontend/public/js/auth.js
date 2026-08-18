@@ -1408,13 +1408,14 @@
           sb.overlaysWebView(false);
         }
         var darkIcons = opts.style === 'default' || opts.style === 'dark';
+        /* OriginOS：先铺底色再设深色图标，避免透明色落成黑底后把时间刷成白字 */
+        if (opts.color && typeof sb.backgroundColorByHexString === 'function') {
+          sb.backgroundColorByHexString(opts.color);
+        }
         if (darkIcons && typeof sb.styleDefault === 'function') {
           sb.styleDefault();
         } else if (typeof sb.styleLightContent === 'function') {
           sb.styleLightContent();
-        }
-        if (opts.color && typeof sb.backgroundColorByHexString === 'function') {
-          sb.backgroundColorByHexString(opts.color);
         }
         /* 即便能直接碰 StatusBar，也同步通知父壳改 html/body 底色，避免 iframe 外露白 */
       }
@@ -1880,13 +1881,25 @@
         upsertMeta('theme-color', '#ffffff');
         upsertMeta('msapplication-navbutton-color', '#ffffff');
         setStatusBarStyleMeta('default');
+        /* 白顶栏必须实底白 + 深色系统字。#00000000 在 OriginOS/iQOO 会变成黑条白字，压在标题上 */
         requestShellStatusBar({
           style: 'dark',
           overlays: true,
-          color: '#00000000',
+          color: '#ffffff',
           paint_shell: true,
-          shell_bg: '#f5f6fa'
+          shell_bg: '#ffffff'
         });
+        if (isVivoImmersiveTopClient()) {
+          setTimeout(function () {
+            requestShellStatusBar({
+              style: 'dark',
+              overlays: true,
+              color: '#ffffff',
+              paint_shell: true,
+              shell_bg: '#ffffff'
+            });
+          }, 80);
+        }
         return;
       }
       var cordovaShell = root.classList.contains('app-cordova-shell');
