@@ -29,7 +29,19 @@
     <link rel="apple-touch-startup-image" href="splash/startup-iphone-8-plus.png?v=20260731-webclip" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
     <link rel="apple-touch-startup-image" href="splash/startup-iphone-8.png?v=20260731-webclip" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
     <link rel="apple-touch-startup-image" href="splash_screen.png?v=20260731-webclip" media="(orientation: portrait)">
-    <script src="/js/auth.js?v=20260818-whitebar-darkicons"></script>
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260818-mate60-inset"></script>
     <script src="/js/browser-install-prompt.js?v=20260724-app-shell" defer></script>
     <title>登录</title>
     <style>
@@ -51,8 +63,8 @@
         .header {
             background: #fff;
             padding: 0 12px;
-            padding-top: env(safe-area-inset-top, 0px);
-            min-height: calc(44px + env(safe-area-inset-top, 0px));
+            padding-top: calc(15px + max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px)));
+            min-height: calc(44px + max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px)));
             display: flex;
             align-items: center;
             justify-content: center;

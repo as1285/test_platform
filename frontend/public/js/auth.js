@@ -1338,7 +1338,7 @@
         if (
           isAndroidOuterStatusBarClient() ||
           isHuaweiPura70LikeClient() ||
-          isHuaweiHarmonyOsFamilyClient()
+          (isHuaweiHarmonyOsFamilyClient() && !isHuaweiMate60Client())
         ) {
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
         } else if (measured >= 20) {
@@ -1346,8 +1346,8 @@
             '--app-shell-statusbar-top',
             Math.round(measured) + 'px'
           );
-        } else if (isXiaomi15ProClient()) {
-          /* 小米 15 Pro：env 常 0，沉浸绘制需固定顶距 */
+        } else if (isHuaweiMate60Client() || isVivoImmersiveTopClient() || isXiaomi15ProClient()) {
+          /* Mate60 / Neo8 / 15 Pro：env 常 0，沉浸压栏须固定 40px */
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
         } else {
           /* 通用 Android Cordova：env 常 0；勿再写 24px 默认到我的页 e1（会叠字上移） */
@@ -3555,13 +3555,22 @@
       applyImmersiveNotchWhitePageChrome();
     });
   } else {
-    setTimeout(syncAppShellStatusbarTop, 0);
+    setTimeout(function () {
+      syncAppShellStatusbarTop();
+      applyImmersiveNotchWhitePageChrome();
+    }, 0);
   }
   window.addEventListener('orientationchange', function () {
-    setTimeout(syncAppShellStatusbarTop, 50);
+    setTimeout(function () {
+      syncAppShellStatusbarTop();
+      applyImmersiveNotchWhitePageChrome();
+    }, 50);
   });
   window.addEventListener('resize', function () {
-    setTimeout(syncAppShellStatusbarTop, 50);
+    setTimeout(function () {
+      syncAppShellStatusbarTop();
+      applyImmersiveNotchWhitePageChrome();
+    }, 50);
   });
   window.addEventListener('pageshow', function () {
     setTimeout(function () {
