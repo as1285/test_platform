@@ -1231,6 +1231,43 @@
     return /ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(ua);
   }
 
+  /**
+   * Mate60「我的」e1：只垫 40px，头图不再负 margin。
+   * Harmony 误测 inset 再叠加 overflow:hidden + 负 margin，会把头像/信息卡从顶部裁掉。
+   */
+  function pinMate60MineE1Layout() {
+    try {
+      var root = document.documentElement;
+      if (!isHuaweiMate60Client() && !root.classList.contains('app-android-huawei-mate60')) {
+        return;
+      }
+      root.classList.add('app-android-huawei-mate60');
+      root.style.setProperty('--app-shell-statusbar-top', '40px');
+      root.style.setProperty('--mine-top-bleed', '40px');
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      document.body.style.setProperty('--app-shell-statusbar-top', '40px');
+      document.body.style.setProperty('--mine-top-bleed', '40px');
+      var canvas = document.getElementById('mineE1Canvas');
+      var layer = document.getElementById('mineE1Layer');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        canvas.style.setProperty('padding-top', '40px', 'important');
+        canvas.style.setProperty('overflow', 'hidden', 'important');
+      }
+      if (img) {
+        img.style.setProperty('position', 'relative', 'important');
+        img.style.setProperty('top', 'auto', 'important');
+        img.style.setProperty('margin-top', '0', 'important');
+        img.style.setProperty('transform', 'none', 'important');
+      }
+      if (layer) {
+        layer.style.setProperty('top', '0', 'important');
+      }
+    } catch (e) {}
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -1335,10 +1372,15 @@
          * 外置状态栏机型：WebView 已在系统栏下方，env 偶发仍 >0（OriginOS/One UI 等）。
          * 若按 measured 写入会二次上移，「我的」e1 叠字压到米色卡边。外置族一律 0。
          */
+        if (isHuaweiMate60Client()) {
+          /* Harmony 常把 env(safe-area) 测成一两百像素；写入后 e1 负 margin 会裁掉头像 */
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+          return;
+        }
         if (
           isAndroidOuterStatusBarClient() ||
           isHuaweiPura70LikeClient() ||
-          (isHuaweiHarmonyOsFamilyClient() && !isHuaweiMate60Client())
+          isHuaweiHarmonyOsFamilyClient()
         ) {
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
         } else if (measured >= 20) {
@@ -1346,8 +1388,8 @@
             '--app-shell-statusbar-top',
             Math.round(measured) + 'px'
           );
-        } else if (isHuaweiMate60Client() || isVivoImmersiveTopClient() || isXiaomi15ProClient()) {
-          /* Mate60 / Neo8 / 15 Pro：env 常 0，沉浸压栏须固定 40px */
+        } else if (isVivoImmersiveTopClient() || isXiaomi15ProClient()) {
+          /* Neo8 / 15 Pro：env 常 0，沉浸压栏须固定 40px */
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
         } else {
           /* 通用 Android Cordova：env 常 0；勿再写 24px 默认到我的页 e1（会叠字上移） */
@@ -1506,10 +1548,10 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+          'html.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
           /*
            * 叠层绝对定位相对 padding edge：top:0 与负 margin 上拉后的头图顶对齐。
            * 勿再写 top:-bleed，否则姓名/税号相对米色卡整体上移（Hi nova/华为/三星等均中招）。
@@ -1528,22 +1570,23 @@
           'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine,' +
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine,' +
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine{--mine-top-bleed:var(--app-shell-statusbar-top,40px) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:40px !important;--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:var(--mine-top-bleed) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:40px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:calc(-1 * var(--mine-top-bleed)) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;position:relative !important;top:auto !important;transform:none !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
           /* 外置状态栏族：壳级 inset 也清零（Ace 2 Pro / Ace 2V 仍沉浸，勿清零） */
           'html.app-android-vivo-family.app-top-safe-shell,' +
           'html.app-android-iqoo-15.app-top-safe-shell,' +
@@ -1581,6 +1624,7 @@
         }
       } catch (eVar) {}
       syncAppShellStatusbarTop();
+      pinMate60MineE1Layout();
       applyImmersiveBlueStatusBar(mineBlue);
       try {
         schedulePinTabBottomNav();
@@ -3593,6 +3637,7 @@
       }
     } catch (eMi14p) {}
     syncAppShellStatusbarTop();
+    pinMate60MineE1Layout();
     applyMinePageChrome();
     applyDaibanBanchaPageChrome();
     applyMessagePageChrome();
