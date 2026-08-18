@@ -147,17 +147,17 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260818-mate60-mine'],
+  ['20260818-whitebar-darkicons'],
   'login.html auth cache neo8'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260818-mate60-mine', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'margin-top: -40px'],
+  ['20260818-whitebar-darkicons', 'app-android-huawei-mate60', 'ALN-AL00', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'margin-top: -40px'],
   'mine.html mate60 + reno10 + neo8 cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260818-mate60-mine'],
+  ['20260818-whitebar-darkicons'],
   'fast-nav auth cache neo8'
 );
 mustInclude(
@@ -167,12 +167,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-mate60-mine', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-whitebar-darkicons', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
   'shuiming acepro + reno10 + neo8 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-mate60-mine'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-whitebar-darkicons'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -208,12 +208,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260818-mate60-mine', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10'],
+  ['20260818-whitebar-darkicons', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10'],
   'shouye ace 2v + reno10 inset'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260818-mate60-mine', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260818-whitebar-darkicons', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line'
 );
 mustInclude(
