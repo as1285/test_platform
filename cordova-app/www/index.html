@@ -340,13 +340,14 @@
                     } else {
                         StatusBar.overlaysWebView(false);
                     }
-                    if (d.style === 'default') {
+                    if (d.color) {
+                        StatusBar.backgroundColorByHexString(String(d.color));
+                    }
+                    /* 必须在 overlays/颜色之后设图标：OriginOS 改底色会把电量/信号刷成白字 */
+                    if (d.style === 'default' || d.style === 'dark') {
                         StatusBar.styleDefault();
                     } else {
                         StatusBar.styleLightContent();
-                    }
-                    if (d.color) {
-                        StatusBar.backgroundColorByHexString(String(d.color));
                     }
                     if (d.paint_shell !== false) {
                         var PAGE_BG = '#f5f6fa';

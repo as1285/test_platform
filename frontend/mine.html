@@ -20,7 +20,7 @@
             }
             try {
                 var u = String(navigator.userAgent || '');
-                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                if (/Mate\s*60|Mate60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-L29|ALN-N29|ALN-TL00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
                 }
                 if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
@@ -46,7 +46,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260818-neo8-darksb"></script>
+    <script src="/js/auth.js?v=20260818-mate60-mine"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -181,14 +181,22 @@
         html.app-android-oppo-reno10 body.page-mine,
         html.app-android-huawei-mate60 body.page-mine,
         html.app-android-xiaomi-mix-fold body.page-mine {
-            --mine-top-bleed: var(--app-shell-statusbar-top, 40px);
+            --mine-top-bleed: 40px;
+            --app-shell-statusbar-top: 40px;
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
         html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas,
         html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas,
         html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas,
         html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas {
+            padding-top: 40px !important;
+        }
+        html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
+        html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas,
+        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas,
+        html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas,
+        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed) !important;
         }
@@ -197,9 +205,11 @@
         html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas > img,
         html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas > img,
         html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas > img,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas > img {
             margin-top: calc(-1 * var(--mine-top-bleed)) !important;
+        }
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img {
+            margin-top: -40px !important;
         }
         html.app-android-vivo-family body.page-mine,
         html.app-android-iqoo-15 body.page-mine,
