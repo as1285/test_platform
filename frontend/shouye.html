@@ -7,28 +7,18 @@
             try {
                 var u = String(navigator.userAgent || '');
                 var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
-                var isKnownOuterHw = /HBN-|ADY-|HLY-|LNA-|MLA-|CLS-|TAS-|LIO-|Pura\s*70|Hi\s*nova|hinova|MIZ-|BON-AL00|NCO-AL00|GIA-AL00|NAM-AL00/i.test(u);
-                var isMate60 = !isMate70 && !isKnownOuterHw && /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|HUAWEIALN|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u);
+                var isMate60 = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|HUAWEIALN/i.test(u) && !isMate70;
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u) || isMate60) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
                 }
                 if (isMate60) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
-                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-                    document.documentElement.style.setProperty('--shouye-status-inset', '48px');
-                    var st = document.createElement('style');
-                    st.setAttribute('data-mate60-shouye-inset', '1');
-                    st.textContent =
-                        'html.app-android-huawei-mate60 body.page-shouye{--shouye-status-inset:48px!important;--app-shell-statusbar-top:40px!important;}' +
-                        'html.app-android-huawei-mate60 body.page-shouye .search-bar-wrapper{padding-top:48px!important;}' +
-                        'html.app-android-huawei-mate60 body.page-shouye::before{height:48px!important;}';
-                    document.head.appendChild(st);
                 }
             } catch (e0) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260819-mate60-detect"></script>
+    <script src="/js/auth.js?v=20260819-mate60-aug15"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -163,17 +153,6 @@
 
         html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 6px !important;
-        }
-
-        /* Mate 60 / Pro+（ALN-AL10）：沉浸压栏，搜索条 48px 躲开刘海岛；不依赖 app-android-client */
-        html.app-android-huawei-mate60 body.page-shouye {
-            --shouye-status-inset: 48px;
-        }
-        html.app-android-huawei-mate60 body.page-shouye .search-bar-wrapper {
-            padding-top: 48px !important;
-        }
-        html.app-android-huawei-mate60 body.page-shouye::before {
-            height: 48px;
         }
 
         .sy-apk-ahead {

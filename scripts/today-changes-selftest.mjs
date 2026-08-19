@@ -147,32 +147,32 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260819-mate60-detect'],
+  ['20260819-mate60-aug15'],
   'login.html auth cache neo8'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260819-mate60-detect', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'data-mate60-mine-inset', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'mine-e1-layer{top:48px', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'isKnownOuterHw'],
+  ['20260819-mate60-aug15', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8'],
   'mine.html mate60 + reno10 + neo8 cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260819-mate60-detect'],
+  ['20260819-mate60-aug15'],
   'fast-nav auth cache neo8'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:48px !important;}', 'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:48px !important;}', 'html.app-android-huawei-mate60 body.page-shouye .search-bar-wrapper{padding-top:48px !important;}', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'Harmony 常把 env(safe-area) 测成一两百像素', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1', '华为壳 UA 常无 ALN-AL10', 'getHighEntropyValues', 'mountHuaweiInsetProbe', 'tax-shell'],
+  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:var(--app-shell-statusbar-top,40px) !important;}', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'Harmony 常把 env(safe-area) 测成一两百像素', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1', 'UI 对齐 2026-08-15'],
   'auth.js mate60 mine bleed + neo8 / neo8pro + white-bar dark icons'
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-detect', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-aug15', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
   'shuiming acepro + reno10 + neo8 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-detect'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-aug15'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -208,12 +208,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260819-mate60-detect', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'data-mate60-shouye-inset', 'padding-top:48px', 'isKnownOuterHw'],
+  ['20260819-mate60-aug15', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10'],
   'shouye ace 2v + reno10 inset'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260819-mate60-detect', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260819-mate60-aug15', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line'
 );
 mustInclude(
@@ -233,7 +233,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260819-mate60-detect'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260819-mate60-aug15'],
   'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
