@@ -20,22 +20,39 @@
             }
             try {
                 var u = String(navigator.userAgent || '');
-                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore/i.test(u)) {
+                try {
+                    u += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+                } catch (eModel) {}
+                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                 }
-                if (/Mate\s*60|Mate\s*70|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|PLA-AL|PLR-AL|PLU-AL|HUAWEIALN|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
-                    document.documentElement.classList.add('app-huawei-mine-noclip');
-                    if (/Mate\s*60|Mate\s*70|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|PLA-AL|PLR-AL|PLU-AL|HUAWEIALN/i.test(u)) {
-                        document.documentElement.classList.add('app-android-huawei-mate60');
-                    }
-                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
+                /* 已知外置/特例：Mate 70、Pura 70、Hi nova、CLS/TAS/LIO。其余华为/鸿蒙（UA 常无 ALN-AL10）按 Mate 60 沉浸。 */
+                var isKnownOuterHw = /HBN-|ADY-|HLY-|LNA-|MLA-|CLS-|TAS-|LIO-|Pura\s*70|Hi\s*nova|hinova|MIZ-|BON-AL00|NCO-AL00|GIA-AL00|NAM-AL00/i.test(u);
+                var isMate60Mine = !isMate70Mine && !isKnownOuterHw && /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|HUAWEIALN|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u);
+                if (isMate60Mine) {
+                    /* 叠层 top 相对 padding 盒顶边；头图禁止负 margin，否则三张卡仍在状态栏里 */
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.remove('app-huawei-mine-noclip');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '48px');
                     var mate60Inset = document.createElement('style');
                     mate60Inset.setAttribute('data-mate60-mine-inset', '1');
                     mate60Inset.textContent =
-                        'html.app-huawei-mine-noclip body.page-mine .mine-e1-canvas,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:0!important;}' +
-                        'html.app-huawei-mine-noclip body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
-                        'html.app-huawei-mine-noclip body.page-mine .mine-e1-layer,html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:0!important;}';
+                        'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:48px!important;}' +
+                        'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:48px!important;}' +
+                        'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
+                        'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:48px!important;}';
                     document.head.appendChild(mate60Inset);
+                } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
+                    document.documentElement.classList.add('app-huawei-mine-noclip');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                    var huaweiNoclipInset = document.createElement('style');
+                    huaweiNoclipInset.setAttribute('data-huawei-mine-noclip-inset', '1');
+                    huaweiNoclipInset.textContent =
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0!important;}' +
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer{top:0!important;}';
+                    document.head.appendChild(huaweiNoclipInset);
                 }
                 if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-neo8pro');
@@ -60,7 +77,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260818-harmony-noclip"></script>
+    <script src="/js/auth.js?v=20260819-mate60-detect"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -172,9 +189,11 @@
         }
 
         /*
-         * Android「我的」e1：默认零 bleed，覆盖未识别 OEM（含 Hi nova MIZ-BD00、华为鸿蒙等）。
+         * Android「我的」e1：默认零 bleed，覆盖未识别 OEM（含 Hi nova、鸿蒙外置黑条）。
          * 避免通用 24px / 误测 inset 导致姓名税号压到米色卡。
-         * 一加 13 / MIX Fold 真沉浸机型再单独开 bleed。
+         * 一加 13 / MIX Fold 真沉浸：40px bleed（头图负 margin）。
+         * Mate 60 / Pro+（ALN-AL10）：勿负 margin。绝对层 top 相对 padding 盒顶边，
+         * 只有把叠层 top 写成 48px、头图不拉回，三张卡才会离开状态栏。
          */
         html.app-android-client body.page-mine {
             --mine-top-bleed: 0px;
@@ -196,8 +215,10 @@
         html.app-android-xiaomi-mix-fold body.page-mine {
             --mine-top-bleed: var(--app-shell-statusbar-top, 40px);
         }
-        html.app-android-huawei-mate60 body.page-mine,
-        html.app-huawei-mine-noclip body.page-mine {
+        html.app-android-huawei-mate60 body.page-mine {
+            --mine-top-bleed: 48px;
+        }
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine {
             --mine-top-bleed: 0px;
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
@@ -208,8 +229,10 @@
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed) !important;
         }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
-        html.app-huawei-mine-noclip body.page-mine .mine-e1-canvas {
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas {
+            padding-top: 48px !important;
+        }
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
             padding-top: 0 !important;
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas > img,
@@ -221,16 +244,20 @@
             margin-top: calc(-1 * var(--mine-top-bleed)) !important;
         }
         html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > #headerImg,
-        html.app-huawei-mine-noclip body.page-mine .mine-e1-canvas > img,
-        html.app-huawei-mine-noclip body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > #headerImg {
+            margin-top: 0 !important;
+        }
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
             margin-top: 0 !important;
             position: relative !important;
             top: auto !important;
             transform: none !important;
         }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-layer,
-        html.app-huawei-mine-noclip body.page-mine .mine-e1-layer {
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-layer {
+            top: 48px !important;
+        }
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
             top: 0 !important;
         }
         html.app-android-vivo-family body.page-mine,

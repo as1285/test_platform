@@ -147,32 +147,32 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260818-harmony-noclip'],
+  ['20260819-mate60-detect'],
   'login.html auth cache neo8'
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260818-harmony-noclip', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'data-mate60-mine-inset', 'OpenHarmony', 'ALN-AL00', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8'],
+  ['20260819-mate60-detect', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'data-mate60-mine-inset', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'mine-e1-layer{top:48px', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'isKnownOuterHw'],
   'mine.html mate60 + reno10 + neo8 cache'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260818-harmony-noclip'],
+  ['20260819-mate60-detect'],
   'fast-nav auth cache neo8'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'Harmony 常把 env(safe-area) 测成一两百像素', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'"],
+  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:48px !important;}', 'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:48px !important;}', 'html.app-android-huawei-mate60 body.page-shouye .search-bar-wrapper{padding-top:48px !important;}', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'Harmony 常把 env(safe-area) 测成一两百像素', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1', '华为壳 UA 常无 ALN-AL10', 'getHighEntropyValues', 'mountHuaweiInsetProbe', 'tax-shell'],
   'auth.js mate60 mine bleed + neo8 / neo8pro + white-bar dark icons'
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-harmony-noclip', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-detect', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
   'shuiming acepro + reno10 + neo8 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260818-harmony-noclip'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-detect'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -208,12 +208,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260818-harmony-noclip', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10'],
+  ['20260819-mate60-detect', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'data-mate60-shouye-inset', 'padding-top:48px', 'isKnownOuterHw'],
   'shouye ace 2v + reno10 inset'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260818-harmony-noclip', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260819-mate60-detect', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line'
 );
 mustInclude(
@@ -225,6 +225,16 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn'],
   'auth.js mi14pro inset + back-btn'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isXiaomi13ProClient', '2210132[CGEI]', 'app-android-xiaomi-13pro', 'isXiaomi13ProClient()'],
+  'auth.js xiaomi 13 pro immersive top'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260819-mate60-detect'],
+  'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -410,9 +420,39 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['19106014552', '全部注册用户'],
-  'admin hint 19106014552 full user list'
+  ['ccbFlowAmountMin', 'ccbFlowAmountMax', '工资下限', '工资上限', '起始月'],
+  'ccb flow salary and month range'
 );
+mustInclude(
+  'frontend/public/js/admin/modules/ccb-flow.js',
+  ['enumerateMonths', 'buildAmountsForMonths', 'ccbFlowAmountMin', 'MAX_FLOW_MONTHS'],
+  'ccb flow range generate'
+);
+mustInclude(
+  'backend/scripts/ccb_flow_render.py',
+  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS'],
+  'ccb render month/amount range'
+);
+
+(function testXiaomi13ProUa() {
+  const reModel = /2210132[CGEI]/i;
+  const reName = /(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 15; 2210132C Build/AQ3A) AppleWebKit/537.36',
+    'Mozilla/5.0 (Linux; Android 15; 2210132G) Xiaomi 13 Pro',
+    'Mozilla/5.0 (Linux; Android 15) 小米 13 Pro'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 14; 2211133C) Xiaomi 13',
+    'Mozilla/5.0 (Linux; Android 14; 22101316C) Redmi Note 12 Pro',
+    'Mozilla/5.0 (Linux; Android 14; 23116PN5BC) Xiaomi 14 Pro',
+    'Mozilla/5.0 (Linux; Android 14) Redmi Note 13 Pro'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('xiaomi 13 pro UA match');
+  else fail('xiaomi 13 pro UA match');
+})();
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);

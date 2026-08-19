@@ -180,6 +180,18 @@
                             lastGoodAppUrl = href;
                         }
                     } catch (eLoad) {}
+                    try {
+                        var hint = {
+                            source: 'tax-shell',
+                            type: 'device-hint',
+                            ua: String(navigator.userAgent || ''),
+                            model:
+                                window.device && window.device.model
+                                    ? String(window.device.model)
+                                    : ''
+                        };
+                        f.contentWindow.postMessage(hint, '*');
+                    } catch (eHint) {}
                 });
                 main.appendChild(f);
             }

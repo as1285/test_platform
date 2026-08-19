@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260816-android-year-2019"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260819-mate60-detect"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>纳税记录开具</title>
     <style>
         * {
@@ -22,17 +22,26 @@
 
         .header {
             background: #fff;
-            height: 48px;
+            min-height: 48px;
+            height: auto;
+            padding-top: max(var(--app-shell-statusbar-top, 0px), env(safe-area-inset-top, 0px));
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             border-bottom: 1px solid #e8e8e8;
+            box-sizing: border-box;
+        }
+        html.app-ios-client .header {
+            padding-top: max(var(--app-shell-statusbar-top, 59px), env(safe-area-inset-top, 0px));
         }
 
         .back-btn {
             position: absolute;
             left: 14px;
+            top: auto;
+            bottom: 0;
+            height: 48px;
             color: #1677ff;
             font-size: 15px;
             text-decoration: none;
@@ -55,6 +64,9 @@
             font-weight: 500;
             color: #333;
             letter-spacing: 0.5px;
+            height: 48px;
+            display: flex;
+            align-items: center;
         }
 
         .page-content {
@@ -511,8 +523,12 @@
         .header .application-action {
             position: absolute;
             right: 14px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: auto;
+            bottom: 0;
+            height: 48px;
+            transform: none;
+            display: flex;
+            align-items: center;
         }
 
         .header--detail .back-btn {
@@ -522,15 +538,19 @@
         .header-close-btn {
             position: absolute;
             right: 14px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: auto;
+            bottom: 0;
+            height: 48px;
+            transform: none;
+            display: flex;
+            align-items: center;
             border: none;
             background: transparent;
             color: #428bf7;
             font-size: 15px;
             text-decoration: none;
             cursor: pointer;
-            padding: 4px 0;
+            padding: 0;
             font-family: inherit;
             line-height: 1;
             -webkit-tap-highlight-color: transparent;
@@ -714,7 +734,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-najilu">
 
     <div class="header">
         <a href="javascript:history.back()" class="back-btn">
@@ -801,7 +821,7 @@
 
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260816-android-year-2019"></script>
+    <script src="/js/najilu.js?v=20260819-account-qr"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>

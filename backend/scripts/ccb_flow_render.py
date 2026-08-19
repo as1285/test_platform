@@ -6,6 +6,7 @@ from __future__ import print_function
 import json
 import math
 import os
+import random
 import re
 import sys
 from datetime import datetime, timedelta
@@ -16,8 +17,10 @@ from PIL import Image, ImageDraw, ImageFont
 W = 1240
 H = 1754
 N_ROWS = 12
+MAX_ROWS = 36
 DEFAULT_COUNTERPARTY_ACCOUNT = "140500616296"
 DEFAULT_CARD_NO = "6217002740035379323"
+_RANGE_RE = re.compile(r"^\s*([\d,，.]+)\s*[-~～—–到至]+\s*([\d,，.]+)\s*$")
 
 _FONT_CACHE = {}
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -83,15 +86,67 @@ def fmt_money(v):
     return ("-" + s) if neg else s
 
 
+def parse_range_pair(raw):
+    """解析工资区间：15000-18000 / 15000~18000 / 1.5万-1.8万 不支持，仅数字。"""
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)):
+        if len(raw) >= 2:
+            lo = parse_money(raw[0])
+            hi = parse_money(raw[1])
+            if lo is None or hi is None:
+                return None
+            if hi < lo:
+                lo, hi = hi, lo
+            return lo, hi
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    m = _RANGE_RE.match(s)
+    if not m:
+        return None
+    lo = parse_money(m.group(1))
+    hi = parse_money(m.group(2))
+    if lo is None or hi is None:
+        return None
+    if hi < lo:
+        lo, hi = hi, lo
+    return lo, hi
+
+
+def random_amounts(n, lo, hi, rng=None):
+    n = max(1, int(n or 1))
+    lo = float(lo)
+    hi = float(hi) if hi is not None else lo
+    if hi < lo:
+        lo, hi = hi, lo
+    rng = rng or random.Random()
+    if hi <= lo:
+        v = round(lo, 2)
+        return [v] * n
+    out = []
+    for _ in range(n):
+        out.append(round(lo + rng.random() * (hi - lo), 2))
+    return out
+
+
 def parse_amount_list(raw, n=N_ROWS):
     if raw is None:
         return None
     if isinstance(raw, (list, tuple)):
+        if len(raw) == 1:
+            pair = parse_range_pair(raw[0])
+            if pair:
+                return random_amounts(n, pair[0], pair[1])
         vals = [parse_money(x) for x in raw]
     else:
         s = str(raw).strip()
         if not s:
             return None
+        pair = parse_range_pair(s)
+        if pair:
+            return random_amounts(n, pair[0], pair[1])
         parts = re.split(r"[\n,;，；]+", s)
         vals = [parse_money(p) for p in parts if str(p).strip() != ""]
     vals = [v for v in vals if v is not None]
@@ -104,10 +159,36 @@ def parse_amount_list(raw, n=N_ROWS):
     return vals[:n]
 
 
+def resolve_amounts(cfg, n, rng=None):
+    """优先精确列表；否则工资下限/上限区间（上限空则每月固定）。"""
+    raw_list = cfg.get("amounts") if cfg.get("amounts") is not None else cfg.get("amount")
+    pair = parse_range_pair(raw_list) if not isinstance(raw_list, (list, tuple)) else None
+    if isinstance(raw_list, (list, tuple)) and len(raw_list) >= 2:
+        parsed = parse_amount_list(raw_list, n)
+        if parsed:
+            return parsed
+    elif raw_list not in (None, "") and not pair:
+        parsed = parse_amount_list(raw_list, n)
+        if parsed:
+            return parsed
+    lo = parse_money(cfg.get("amount_min") or cfg.get("salary_min"))
+    hi = parse_money(cfg.get("amount_max") or cfg.get("salary_max"))
+    if pair:
+        lo, hi = pair
+    if lo is None and hi is None:
+        return None
+    if lo is None:
+        lo = hi
+    if hi is None:
+        hi = lo
+    return random_amounts(n, lo, hi, rng=rng)
+
+
 def parse_balance_list(raw, amounts, opening):
-    explicit = parse_amount_list(raw, N_ROWS) if raw not in (None, "") else None
+    n = max(1, len(amounts) if amounts else N_ROWS)
+    explicit = parse_amount_list(raw, n) if raw not in (None, "") else None
     if explicit:
-        return explicit
+        return explicit[:n]
     open_bal = parse_money(opening, 7415.60)
     out = []
     run = open_bal
@@ -129,8 +210,8 @@ def parse_ym(raw):
     return y, mo
 
 
-def parse_months(raw, n=N_ROWS):
-    """月份列表：['2025-09', ...] 或逗号分隔；对齐 n 行。"""
+def parse_months(raw, n=None):
+    """月份列表：['2025-09', ...] 或逗号分隔。n 为空则按列表长度，不强制 12 行。"""
     if raw is None or raw == "":
         return None
     if isinstance(raw, (list, tuple)):
@@ -144,6 +225,9 @@ def parse_months(raw, n=N_ROWS):
             out.append(ym)
     if not out:
         return None
+    if n is None:
+        return out[:MAX_ROWS]
+    n = max(1, min(int(n), MAX_ROWS))
     if len(out) < n:
         y, m = out[-1]
         while len(out) < n:
@@ -155,8 +239,36 @@ def parse_months(raw, n=N_ROWS):
     return out[:n]
 
 
+def months_in_range(start_ym, end_ym, max_n=MAX_ROWS):
+    """含起止月的连续月份。"""
+    start = parse_ym(start_ym) if not isinstance(start_ym, tuple) else start_ym
+    end = parse_ym(end_ym) if not isinstance(end_ym, tuple) else end_ym
+    if not start or not end:
+        return None
+    sy, sm = start
+    ey, em = end
+    sidx = sy * 12 + sm
+    eidx = ey * 12 + em
+    if sidx > eidx:
+        sidx, eidx = eidx, sidx
+    if eidx - sidx + 1 > max_n:
+        sidx = eidx - max_n + 1
+    items = []
+    idx = sidx
+    while idx <= eidx:
+        y = idx // 12
+        m = idx - y * 12
+        if m == 0:
+            m = 12
+            y -= 1
+        items.append((y, m))
+        idx += 1
+    return items
+
+
 def default_months(n=N_ROWS, end_ym=None):
     """默认结束月往前共 n 个月（含结束月）。"""
+    n = max(1, min(int(n or N_ROWS), MAX_ROWS))
     if end_ym:
         y, m = end_ym
     else:
@@ -172,6 +284,19 @@ def default_months(n=N_ROWS, end_ym=None):
             cy -= 1
     items.reverse()
     return items
+
+
+def resolve_months(cfg):
+    months = parse_months(cfg.get("months") or cfg.get("trade_months"), n=None)
+    if months:
+        return months[:MAX_ROWS]
+    start = cfg.get("start_month") or cfg.get("tax_from")
+    end = cfg.get("end_month") or cfg.get("tax_to")
+    ranged = months_in_range(start, end)
+    if ranged:
+        return ranged
+    end_only = parse_ym(end)
+    return default_months(N_ROWS, end_only)
 
 
 def ym_to_trade_date(y, m, day=15):
@@ -289,18 +414,28 @@ def process(cfg):
     card_no = str(cfg.get("card_no") or cfg.get("account_no") or DEFAULT_CARD_NO).strip() or DEFAULT_CARD_NO
     card_no = re.sub(r"\s+", "", card_no)
 
-    amounts = parse_amount_list(cfg.get("amounts") if cfg.get("amounts") is not None else cfg.get("amount"))
+    amounts = None
+    months = resolve_months(cfg)
+    n_rows = max(1, min(len(months), MAX_ROWS))
+    months = months[:n_rows]
+    rng = None
+    seed = cfg.get("amount_seed")
+    if seed not in (None, ""):
+        try:
+            rng = random.Random(int(seed))
+        except Exception:
+            rng = random.Random(str(seed))
+    amounts = resolve_amounts(cfg, n_rows, rng=rng)
     if not amounts:
-        amounts = [15002.70] * N_ROWS
+        amounts = [15002.70] * n_rows
+    amounts = amounts[:n_rows]
+    if len(amounts) < n_rows:
+        amounts = amounts + [amounts[-1]] * (n_rows - len(amounts))
     balances = parse_balance_list(cfg.get("balances"), amounts, cfg.get("opening_balance"))
     total_income = parse_money(cfg.get("total_income"), None)
     if total_income is None:
         total_income = round(sum(amounts), 2)
 
-    months = parse_months(cfg.get("months") or cfg.get("trade_months"))
-    if not months:
-        end = parse_ym(cfg.get("end_month") or cfg.get("tax_to"))
-        months = default_months(N_ROWS, end)
     trade_dates = [ym_to_trade_date(y, m) for y, m in months]
     date_start = trade_dates[0]
     date_end = trade_dates[-1]
@@ -314,7 +449,12 @@ def process(cfg):
         gen_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # —— 画布 ——
-    im = Image.new("RGB", (W, H), (255, 255, 255))
+    table_top = 230
+    head_h = 42
+    row_h = 48
+    table_bottom = table_top + head_h + n_rows * row_h
+    canvas_h = max(H, table_bottom + 200)
+    im = Image.new("RGB", (W, canvas_h), (255, 255, 255))
     draw = ImageDraw.Draw(im)
 
     margin_x = 56
@@ -346,15 +486,11 @@ def process(cfg):
     draw_text(draw, (950, y + 32), income_s, font_income, fill=(15, 15, 15))
 
     # 表格
-    table_top = 230
     table_left = margin_x
     table_right = W - margin_x
     # 列：序号 / 摘要 / 交易日期 / 交易金额 / 账户余额 / 交易地点/附言 / 对方账号与户名
     col_xs = [table_left, 110, 230, 370, 530, 690, 860, table_right]
     headers = ["序号", "摘要", "交易日期", "交易金额", "账户余额", "交易地点/附言", "对方账号与户名"]
-    head_h = 42
-    row_h = 48
-    table_bottom = table_top + head_h + N_ROWS * row_h
 
     # 外框与网格
     line = (55, 55, 55)
@@ -363,7 +499,7 @@ def process(cfg):
     draw.line((table_left, table_top + head_h, table_right, table_top + head_h), fill=line, width=1)
     for x in col_xs[1:-1]:
         draw.line((x, table_top, x, table_bottom), fill=line, width=1)
-    for i in range(1, N_ROWS):
+    for i in range(1, n_rows):
         yy = table_top + head_h + i * row_h
         draw.line((table_left, yy, table_right, yy), fill=line, width=1)
 
@@ -377,7 +513,7 @@ def process(cfg):
     font_cell_sm = find_font(13)
     co_full = "{}/{}".format(counterparty_account, account_name)
 
-    for i in range(N_ROWS):
+    for i in range(n_rows):
         y0 = table_top + head_h + i * row_h
         yc = y0 + row_h / 2
         cells = [
@@ -415,7 +551,7 @@ def process(cfg):
     tip2 = "本文件为演示生成，非正式银行出具的电子回单。"
     draw_text(draw, (margin_x, fy + 34), tip1, find_font(13), fill=(90, 90, 90))
     draw_text(draw, (margin_x, fy + 58), tip2, find_font(13), fill=(140, 90, 90))
-    draw_text(draw, (W / 2, H - 48), "-第1页/共1页-", font_small, fill=(60, 60, 60), anchor="ct")
+    draw_text(draw, (W / 2, canvas_h - 48), "-第1页/共1页-", font_small, fill=(60, 60, 60), anchor="ct")
 
     im.save(out_path, format="PNG", optimize=True)
     meta = {
@@ -432,8 +568,8 @@ def process(cfg):
         "trade_dates": trade_dates,
         "period": period,
         "total_income": total_income,
-        "rows": N_ROWS,
-        "size": [W, H],
+        "rows": n_rows,
+        "size": [W, canvas_h],
     }
     print(json.dumps(meta, ensure_ascii=False))
 

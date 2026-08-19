@@ -6,6 +6,10 @@
         (function () {
             try {
                 var u = String(navigator.userAgent || '');
+                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -18,8 +22,13 @@
                     document.documentElement.classList.add('app-android-iqoo-neo8');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
-                if (/Mate\s*60|Mate\s*70|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/Mate\s*70|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate70');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (/V2502A|V2502DA|V2514|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
@@ -37,7 +46,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260818-harmony-noclip"></script>
+    <script src="/js/auth.js?v=20260819-mate60-detect"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-help-icon-lock" data-scope="body.page-xiangqing"></script>
@@ -77,6 +86,7 @@
         }
 
         html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing {
@@ -85,6 +95,7 @@
         }
 
         html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing > .header {

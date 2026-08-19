@@ -26,6 +26,109 @@ function normalizeUploadRel(rel) {
   return s.substring(0, 512);
 }
 
+async function ensureUserQrOverrideTable(connOrPool) {
+  if (!connOrPool) return;
+  await connOrPool.execute(`
+    CREATE TABLE IF NOT EXISTS user_najilu_qr_override (
+      user_id VARCHAR(255) NOT NULL COMMENT '账号 username' PRIMARY KEY,
+      query_code VARCHAR(32) NULL,
+      qr_image_url VARCHAR(512) NULL,
+      qr_block_image_url VARCHAR(512) NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+function packQrOverride(row) {
+  if (!row) return null;
+  var queryCode = normalizeQueryCode(row.query_code);
+  var qr = row.qr_image_url != null ? String(row.qr_image_url).trim() : '';
+  var block = row.qr_block_image_url != null ? String(row.qr_block_image_url).trim() : '';
+  if (!queryCode && !qr && !block) return null;
+  return {
+    query_code: queryCode,
+    qr_image_url: qr,
+    qr_block_image_url: block
+  };
+}
+
+async function getStoredUserQrOverride(connOrPool, userId) {
+  var uid = String(userId || '').trim();
+  if (!uid) return null;
+  try {
+    const [rows] = await connOrPool.execute(
+      `SELECT query_code, qr_image_url, qr_block_image_url
+       FROM user_najilu_qr_override WHERE user_id = ? LIMIT 1`,
+      [uid]
+    );
+    return packQrOverride(rows && rows[0]);
+  } catch (e) {
+    if (e && /doesn't exist|unknown table/i.test(String(e.message || e))) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+async function inferUserQrOverrideFromIssues(connOrPool, userId) {
+  var uid = String(userId || '').trim();
+  if (!uid) return null;
+  const [rows] = await connOrPool.execute(
+    `SELECT query_code, qr_image_url, qr_block_image_url
+     FROM tax_issue_applications
+     WHERE user_id = ?
+       AND (
+         (qr_block_image_url IS NOT NULL AND qr_block_image_url <> '')
+         OR (qr_image_url IS NOT NULL AND qr_image_url <> '')
+       )
+     ORDER BY updated_at DESC, created_at DESC
+     LIMIT 1`,
+    [uid]
+  );
+  return packQrOverride(rows && rows[0]);
+}
+
+/** 账号已替换过二维码则返回该码；优先账号表，否则取最近一条带替换图的开具记录 */
+async function resolveUserQrOverride(connOrPool, userId) {
+  var stored = await getStoredUserQrOverride(connOrPool, userId);
+  if (stored && (stored.qr_block_image_url || stored.qr_image_url)) {
+    return stored;
+  }
+  return inferUserQrOverrideFromIssues(connOrPool, userId);
+}
+
+async function upsertUserQrOverride(conn, userId, override) {
+  var uid = String(userId || '').trim();
+  if (!uid || !override) return;
+  await ensureUserQrOverrideTable(conn);
+  await conn.execute(
+    `INSERT INTO user_najilu_qr_override (user_id, query_code, qr_image_url, qr_block_image_url)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       query_code = VALUES(query_code),
+       qr_image_url = VALUES(qr_image_url),
+       qr_block_image_url = VALUES(qr_block_image_url)`,
+    [
+      uid,
+      override.query_code || null,
+      override.qr_image_url || null,
+      override.qr_block_image_url || null
+    ]
+  );
+}
+
+async function clearUserQrOverride(conn, userId) {
+  var uid = String(userId || '').trim();
+  if (!uid) return;
+  try {
+    await conn.execute('DELETE FROM user_najilu_qr_override WHERE user_id = ?', [uid]);
+  } catch (e) {
+    if (!e || !/doesn't exist|unknown table/i.test(String(e.message || e))) {
+      throw e;
+    }
+  }
+}
+
 async function ensureNajiluQrColumns(pool) {
   var cols = [
     [
@@ -54,6 +157,11 @@ async function ensureNajiluQrColumns(pool) {
         console.warn('[najilu-qr] ensure column', name, e && e.message ? e.message : e);
       }
     }
+  }
+  try {
+    await ensureUserQrOverrideTable(pool);
+  } catch (eTbl) {
+    console.warn('[najilu-qr] ensure override table', eTbl && eTbl.message ? eTbl.message : eTbl);
   }
 }
 
@@ -119,6 +227,31 @@ async function handleAdminNajiluQrSave(req, res) {
         [nextQuery, nextQr || null, nextBlock || null, issueId, username]
       );
 
+      if (mode === 'clear') {
+        await clearUserQrOverride(conn, username);
+        await conn.execute(
+          `UPDATE tax_issue_applications
+           SET qr_image_url = NULL, qr_block_image_url = NULL
+           WHERE user_id = ?`,
+          [username]
+        );
+        nextQr = '';
+        nextBlock = '';
+      } else if (nextQr || nextBlock) {
+        await upsertUserQrOverride(conn, username, {
+          query_code: nextQuery,
+          qr_image_url: nextQr,
+          qr_block_image_url: nextBlock
+        });
+        /* 该账号全部开具记录沿用同一张替换码，避免 App 再生成时画出新码 */
+        await conn.execute(
+          `UPDATE tax_issue_applications
+           SET query_code = COALESCE(?, query_code), qr_image_url = ?, qr_block_image_url = ?
+           WHERE user_id = ?`,
+          [nextQuery || null, nextQr || null, nextBlock || null, username]
+        );
+      }
+
       res.json({
         code: 200,
         msg: 'ok',
@@ -128,7 +261,8 @@ async function handleAdminNajiluQrSave(req, res) {
           query_code: nextQuery,
           qr_image_url: nextQr,
           qr_block_image_url: nextBlock,
-          mode: mode
+          mode: mode,
+          account_locked: mode !== 'clear'
         }
       });
     } finally {
@@ -162,23 +296,32 @@ async function handleAdminNajiluQrList(req, res) {
          LIMIT 30`,
         [username]
       );
-      var list = (rows || []).map(function (r) {
-        return {
-          id: r.id != null ? String(r.id) : '',
-          apply_time: r.apply_time != null ? String(r.apply_time) : '',
-          period_start: r.period_start != null ? String(r.period_start) : '',
-          period_end: r.period_end != null ? String(r.period_end) : '',
-          record_no: r.record_no != null ? String(r.record_no) : '',
-          scope: r.scope != null ? String(r.scope) : '全国',
-          status: r.status != null ? String(r.status) : '制作成功',
-          query_code: r.query_code != null ? String(r.query_code) : '',
-          qr_image_url: r.qr_image_url != null ? String(r.qr_image_url) : '',
-          qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : '',
-          created_at: r.created_at,
-          updated_at: r.updated_at
-        };
-      });
-      res.json({ code: 200, data: { applications: list } });
+        var list = (rows || []).map(function (r) {
+          return {
+            id: r.id != null ? String(r.id) : '',
+            apply_time: r.apply_time != null ? String(r.apply_time) : '',
+            period_start: r.period_start != null ? String(r.period_start) : '',
+            period_end: r.period_end != null ? String(r.period_end) : '',
+            record_no: r.record_no != null ? String(r.record_no) : '',
+            scope: r.scope != null ? String(r.scope) : '全国',
+            status: r.status != null ? String(r.status) : '制作成功',
+            query_code: r.query_code != null ? String(r.query_code) : '',
+            qr_image_url: r.qr_image_url != null ? String(r.qr_image_url) : '',
+            qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : '',
+            created_at: r.created_at,
+            updated_at: r.updated_at
+          };
+        });
+        var qrOverride = null;
+        try {
+          qrOverride = await resolveUserQrOverride(conn, username);
+        } catch (eOv) {
+          qrOverride = null;
+        }
+        res.json({
+          code: 200,
+          data: { applications: list, qr_override: qrOverride }
+        });
     } finally {
       conn.release();
     }
@@ -198,5 +341,9 @@ function getHandlers() {
 module.exports = {
   getHandlers: getHandlers,
   ensureNajiluQrColumns: ensureNajiluQrColumns,
+  ensureUserQrOverrideTable: ensureUserQrOverrideTable,
+  resolveUserQrOverride: resolveUserQrOverride,
+  upsertUserQrOverride: upsertUserQrOverride,
+  clearUserQrOverride: clearUserQrOverride,
   normalizeQueryCode: normalizeQueryCode
 };

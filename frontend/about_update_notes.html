@@ -2,20 +2,22 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260814-ace2pro"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260819-mate60-detect"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>更新说明</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
             background: #f2f2f7;
             min-height: 100vh;
             color: #333;
         }
         .header {
             background: #fff;
-            padding: 14px 16px;
+            min-height: 48px;
+            height: auto;
+            padding-top: max(var(--app-shell-statusbar-top, 0px), env(safe-area-inset-top, 0px));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -23,19 +25,75 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #eee;
+            box-sizing: border-box;
+        }
+        html.app-ios-client .header {
+            padding-top: max(var(--app-shell-statusbar-top, 59px), env(safe-area-inset-top, 0px));
         }
         .back-btn {
             position: absolute;
             left: 12px;
+            top: auto;
+            bottom: 0;
+            height: 48px;
             color: #1e6fff;
             font-size: 15px;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 2px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .header-title { font-size: 17px; font-weight: 500; }
-        .content {
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            display: block;
+        }
+        .header-title {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            font-size: 17px;
+            font-weight: 500;
+        }
+        .note-list {
+            margin-top: 0;
+            background: #fff;
+        }
+        .note-row {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            min-height: 52px;
+            border-bottom: 1px solid #f0f0f0;
+            text-decoration: none;
+            color: #333;
+            font-size: 16px;
+            background: #fff;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .note-row:last-child { border-bottom: none; }
+        .note-row:active { background: #f7f7f7; }
+        .note-row-title { flex: 1; min-width: 0; }
+        .note-badge {
+            flex-shrink: 0;
+            margin-left: 8px;
+            padding: 1px 7px;
+            border-radius: 4px;
+            background: #e8f1ff;
+            color: #1e6fff;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .note-arrow {
+            flex-shrink: 0;
+            margin-left: 8px;
+            color: #c7c7cc;
+            font-size: 16px;
+            line-height: 1;
+        }
+        .note-detail {
+            display: none;
             margin: 12px 0;
             background: #fff;
             padding: 16px;
@@ -43,36 +101,184 @@
             line-height: 1.7;
             color: #555;
         }
-        .content h2 { font-size: 16px; color: #333; margin-bottom: 10px; font-weight: 600; }
-        .content p { margin-bottom: 10px; }
-        .content p:last-child { margin-bottom: 0; }
+        .note-detail.is-open { display: block; }
+        .note-detail p { margin-bottom: 10px; }
+        .note-detail p:last-child { margin-bottom: 0; }
+        body.is-detail .note-list { display: none; }
     </style>
 </head>
-<body>
+<body class="page-about-notes">
     <div class="header">
-        <a href="about_update.html" class="back-btn">
-            <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
+        <a href="about_update.html" class="back-btn" id="notesBackBtn">
+            <img src="/jt.png" alt="">
             <span>返回</span>
         </a>
-        <span class="header-title">更新说明</span>
+        <span class="header-title" id="notesTitle">更新说明</span>
     </div>
-    <div class="content">
-        <h2>版本 2.3.3</h2>
-        <p>1. 优化办&amp;查、消息中心与收入纳税明细界面展示；</p>
-        <p>2. 提升页面切换与加载速度；</p>
-        <p>3. 修复部分机型顶栏与安全区显示问题；</p>
-        <p>4. 其他体验优化与稳定性改进。</p>
-        <h2 style="margin-top:20px;">版本 2.3.1</h2>
-        <p>1. 优化个人中心与任职受雇、消息管理界面；</p>
-        <p>2. 提升页面切换与加载速度；</p>
-        <p>3. 修复纳税记录保存后无法返回的问题；</p>
-        <p>4. 其他体验优化与稳定性改进。</p>
-        <h2 style="margin-top:20px;">版本 2.3.0</h2>
-        <p>1. 优化个人所得税申报与查询体验；</p>
-        <p>2. 完善专项附加扣除信息展示；</p>
-        <p>3. 修复部分机型界面显示问题；</p>
-        <p>4. 提升系统稳定性与安全性。</p>
-    </div>
+
+    <div class="note-list" id="noteList"></div>
+    <div class="note-detail" id="noteDetail"></div>
+
+    <script>
+    (function () {
+        var NOTES = [
+            {
+                ver: '2.3.3',
+                important: false,
+                lines: [
+                    '优化办&查、消息中心与收入纳税明细界面展示；',
+                    '提升页面切换与加载速度；',
+                    '修复部分机型顶栏与安全区显示问题；',
+                    '其他体验优化与稳定性改进。'
+                ]
+            },
+            {
+                ver: '2.3.2',
+                important: false,
+                lines: [
+                    '优化纳税记录开具与完税证明展示；',
+                    '完善部分机型底部安全区与按钮点击区域；',
+                    '提升列表滑动流畅度；',
+                    '其他问题修复。'
+                ]
+            },
+            {
+                ver: '2.3.1',
+                important: false,
+                lines: [
+                    '优化个人中心与任职受雇、消息管理界面；',
+                    '提升页面切换与加载速度；',
+                    '修复纳税记录保存后无法返回的问题；',
+                    '其他体验优化与稳定性改进。'
+                ]
+            },
+            {
+                ver: '2.3.0',
+                important: false,
+                lines: [
+                    '优化个人所得税申报与查询体验；',
+                    '完善专项附加扣除信息展示；',
+                    '修复部分机型界面显示问题；',
+                    '提升系统稳定性与安全性。'
+                ]
+            },
+            {
+                ver: '2.2.9',
+                important: false,
+                lines: [
+                    '优化首页与待办入口展示；',
+                    '修复部分机型状态栏遮挡标题的问题；',
+                    '提升登录与激活流程稳定性；',
+                    '其他体验优化。'
+                ]
+            },
+            {
+                ver: '2.2.8',
+                important: true,
+                lines: [
+                    '重要：完善账号开通与权益展示；',
+                    '优化完税证明、收入明细相关页面；',
+                    '修复已知闪退与加载失败问题；',
+                    '提升整体安全性。'
+                ]
+            },
+            {
+                ver: '2.2.7',
+                important: false,
+                lines: [
+                    '优化关于与更新、协议页面展示；',
+                    '修复部分文案与排版问题；',
+                    '提升页面加载速度；',
+                    '其他体验优化。'
+                ]
+            }
+        ];
+
+        var listEl = document.getElementById('noteList');
+        var detailEl = document.getElementById('noteDetail');
+        var titleEl = document.getElementById('notesTitle');
+        var backBtn = document.getElementById('notesBackBtn');
+
+        function findNote(ver) {
+            for (var i = 0; i < NOTES.length; i++) {
+                if (NOTES[i].ver === ver) return NOTES[i];
+            }
+            return null;
+        }
+
+        function renderList() {
+            var html = '';
+            NOTES.forEach(function (n) {
+                html +=
+                    '<a class="note-row" href="#v=' +
+                    encodeURIComponent(n.ver) +
+                    '">' +
+                    '<span class="note-row-title">' +
+                    n.ver +
+                    '版本更新介绍</span>' +
+                    (n.important ? '<span class="note-badge">重要更新</span>' : '') +
+                    '<span class="note-arrow">&gt;</span></a>';
+            });
+            listEl.innerHTML = html;
+        }
+
+        function showList() {
+            document.body.classList.remove('is-detail');
+            titleEl.textContent = '更新说明';
+            backBtn.setAttribute('href', 'about_update.html');
+            detailEl.classList.remove('is-open');
+            detailEl.innerHTML = '';
+            document.title = '更新说明';
+        }
+
+        function showDetail(ver) {
+            var n = findNote(ver);
+            if (!n) {
+                showList();
+                return;
+            }
+            document.body.classList.add('is-detail');
+            titleEl.textContent = n.ver + '版本更新介绍';
+            backBtn.setAttribute('href', 'about_update_notes.html');
+            var html = '';
+            n.lines.forEach(function (line, idx) {
+                html += '<p>' + (idx + 1) + '. ' + line + '</p>';
+            });
+            detailEl.innerHTML = html;
+            detailEl.classList.add('is-open');
+            document.title = n.ver + '版本更新介绍';
+        }
+
+        function applyHash() {
+            var hash = String(location.hash || '').replace(/^#/, '');
+            var ver = '';
+            if (hash.indexOf('v=') === 0) {
+                ver = decodeURIComponent(hash.slice(2));
+            }
+            if (ver && findNote(ver)) {
+                showDetail(ver);
+            } else {
+                showList();
+            }
+        }
+
+        backBtn.addEventListener('click', function (e) {
+            if (document.body.classList.contains('is-detail')) {
+                e.preventDefault();
+                if (history.replaceState) {
+                    history.replaceState(null, '', 'about_update_notes.html');
+                } else {
+                    location.hash = '';
+                }
+                showList();
+            }
+        });
+
+        renderList();
+        applyHash();
+        window.addEventListener('hashchange', applyHash);
+    })();
+    </script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>

@@ -74,11 +74,14 @@
     setField('ccbFlowAccountName', '杭州测试科技有限公司');
     setField('ccbFlowCardNo', '6217002740035379323');
     setField('ccbFlowCounterparty', '140500616296');
-    setField('ccbFlowAmount', '16888.00');
+    setField('ccbFlowAmountMin', '15000');
+    setField('ccbFlowAmountMax', '18000');
+    setField('ccbFlowAmount', '');
     setField('ccbFlowOpening', '8000');
     setField('ccbFlowMonths', '');
     lastMonths = [];
-    setStatus('已填入示例字段，点「生成流水图」按数据绘制', false);
+    ensureTaxRangeDefaults();
+    setStatus('已填入示例：工资 15000～18000，按起始～结束月逐月随机', false);
   }
 
   function pad2(n) {
@@ -183,8 +186,8 @@
     if (!months.length) {
       return { amounts: [], months: [], company: '', from: fromYm, to: toYm };
     }
-    if (months.length > 12) {
-      months = months.slice(months.length - 12);
+    if (months.length > 36) {
+      months = months.slice(months.length - 36);
     }
     var amounts = months.map(function (k) {
       return fmtMoney2(byMonth[k]);
@@ -260,6 +263,17 @@
           setField('ccbFlowAmount', taxPack.amounts.join(','));
           lastMonths = taxPack.months.slice();
           setField('ccbFlowMonths', lastMonths.join(','));
+          var amtNums = taxPack.amounts.map(function (x) {
+            return parseMoneyNum(x);
+          }).filter(function (n) {
+            return isFinite(n);
+          });
+          if (amtNums.length) {
+            var lo = Math.min.apply(null, amtNums);
+            var hi = Math.max.apply(null, amtNums);
+            setField('ccbFlowAmountMin', fmtMoney2(lo));
+            setField('ccbFlowAmountMax', hi > lo ? fmtMoney2(hi) : '');
+          }
           var tip =
             '已预填「' +
             username +
@@ -269,10 +283,7 @@
             taxPack.months[taxPack.months.length - 1] +
             ' 共 ' +
             taxPack.amounts.length +
-            ' 个月，可点「生成流水图」';
-          if (taxPack.amounts.length < 12) {
-            tip += '（不足 12 行将自动补齐）';
-          }
+            ' 个月（精确金额已填入，生成时优先使用）';
           setStatus(tip, false);
         } else {
           lastMonths = [];
@@ -293,26 +304,130 @@
       });
   }
 
+  var MAX_FLOW_MONTHS = 36;
+
+  function enumerateMonths(fromYm, toYm) {
+    var fromIdx = ymToIndex(fromYm);
+    var toIdx = ymToIndex(toYm);
+    if (!isFinite(fromIdx) || !isFinite(toIdx)) return [];
+    if (fromIdx > toIdx) {
+      var tmp = fromIdx;
+      fromIdx = toIdx;
+      toIdx = tmp;
+    }
+    if (toIdx - fromIdx + 1 > MAX_FLOW_MONTHS) {
+      fromIdx = toIdx - MAX_FLOW_MONTHS + 1;
+    }
+    var out = [];
+    var i;
+    for (i = fromIdx; i <= toIdx; i++) {
+      var mo = i % 12;
+      var ye = Math.floor(i / 12);
+      if (mo === 0) {
+        mo = 12;
+        ye -= 1;
+      }
+      out.push(formatYm(ye, mo));
+    }
+    return out;
+  }
+
+  function parseRangePair(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    var m = s.match(/^([\d.,，]+)\s*[-~～—–到至]+\s*([\d.,，]+)$/);
+    if (!m) return null;
+    var lo = parseMoneyNum(m[1]);
+    var hi = parseMoneyNum(m[2]);
+    if (!isFinite(lo) || !isFinite(hi)) return null;
+    if (hi < lo) {
+      var t = lo;
+      lo = hi;
+      hi = t;
+    }
+    return { min: lo, max: hi };
+  }
+
+  function parseAmountList(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return [];
+    if (parseRangePair(s)) return [];
+    return s
+      .split(/[\n,;，；]+/)
+      .map(function (p) {
+        return parseMoneyNum(p);
+      })
+      .filter(function (n) {
+        return isFinite(n);
+      });
+  }
+
+  function randomAmountInRange(lo, hi) {
+    var a = Number(lo);
+    var b = Number(hi);
+    if (!(b > a)) return Math.round(a * 100) / 100;
+    return Math.round((a + Math.random() * (b - a)) * 100) / 100;
+  }
+
+  function alignAmounts(vals, n) {
+    if (!vals || !vals.length) return [];
+    if (vals.length === 1) {
+      return Array.apply(null, new Array(n)).map(function () {
+        return vals[0];
+      });
+    }
+    var out = vals.slice();
+    while (out.length < n) out.push(out[out.length - 1]);
+    return out.slice(0, n);
+  }
+
   function resolveMonthsPayload() {
+    ensureTaxRangeDefaults();
+    var enumerated = enumerateMonths(val('ccbFlowTaxFrom'), val('ccbFlowTaxTo'));
+    if (enumerated.length) return enumerated;
     var raw = val('ccbFlowMonths');
     if (raw) {
-      return raw
+      var listed = raw
         .split(/[\n,;，；]+/)
         .map(function (s) {
           return String(s || '').trim();
         })
         .filter(Boolean);
+      if (listed.length) return listed;
     }
     if (lastMonths && lastMonths.length) return lastMonths.slice();
-    var toYm = val('ccbFlowTaxTo');
-    return toYm ? null : null;
+    return [];
+  }
+
+  function buildAmountsForMonths(n) {
+    var exactRaw = val('ccbFlowAmount');
+    var exact = parseAmountList(exactRaw);
+    if (exact.length >= 2) {
+      return alignAmounts(exact, n).map(fmtMoney2);
+    }
+    var range = parseRangePair(exactRaw);
+    var lo = parseMoneyNum(val('ccbFlowAmountMin'));
+    var hi = parseMoneyNum(val('ccbFlowAmountMax'));
+    if (range) {
+      lo = range.min;
+      hi = range.max;
+    } else if (exact.length === 1 && !isFinite(lo)) {
+      lo = exact[0];
+    }
+    if (!isFinite(lo) && isFinite(hi)) lo = hi;
+    if (!isFinite(lo)) return null;
+    if (!isFinite(hi) || hi <= lo) {
+      return alignAmounts([lo], n).map(fmtMoney2);
+    }
+    var i;
+    var out = [];
+    for (i = 0; i < n; i++) out.push(fmtMoney2(randomAmountInRange(lo, hi)));
+    return out;
   }
 
   function edit() {
     var name = val('ccbFlowName');
     var company = val('ccbFlowCompany');
     var accountName = val('ccbFlowAccountName') || company;
-    var amount = val('ccbFlowAmount');
     if (!name) {
       setStatus('请填写姓名', true);
       return;
@@ -321,8 +436,30 @@
       setStatus('请填写公司名或户名', true);
       return;
     }
-    if (!amount) {
-      setStatus('请填写交易金额', true);
+    ensureTaxRangeDefaults();
+    var fromYm = val('ccbFlowTaxFrom');
+    var toYm = val('ccbFlowTaxTo');
+    if (fromYm && toYm && ymToIndex(fromYm) > ymToIndex(toYm)) {
+      var swap = fromYm;
+      fromYm = toYm;
+      toYm = swap;
+      setField('ccbFlowTaxFrom', fromYm);
+      setField('ccbFlowTaxTo', toYm);
+    }
+    var months = resolveMonthsPayload();
+    if (!months || !months.length) {
+      months = enumerateMonths(fromYm, toYm);
+    }
+    if (!months.length) {
+      setStatus('请选择起始月和结束月', true);
+      return;
+    }
+    if (months.length > MAX_FLOW_MONTHS) {
+      months = months.slice(months.length - MAX_FLOW_MONTHS);
+    }
+    var amountList = buildAmountsForMonths(months.length);
+    if (!amountList || !amountList.length) {
+      setStatus('请填写工资下限，或工资区间（如 15000～18000）', true);
       return;
     }
     var fd = new FormData();
@@ -332,16 +469,16 @@
     fd.append('account_name', accountName);
     fd.append('card_no', val('ccbFlowCardNo') || '6217002740035379323');
     fd.append('counterparty_account', val('ccbFlowCounterparty') || '140500616296');
-    fd.append('amount', amount);
+    fd.append('amount_min', val('ccbFlowAmountMin') || amountList[0]);
+    fd.append('amount_max', val('ccbFlowAmountMax') || '');
+    fd.append('amounts', JSON.stringify(amountList));
     fd.append('opening_balance', val('ccbFlowOpening') || '7415.60');
-    var months = resolveMonthsPayload();
-    if (months && months.length) {
-      fd.append('months', JSON.stringify(months));
-    }
-    var taxTo = val('ccbFlowTaxTo');
-    if (taxTo) fd.append('tax_to', taxTo);
+    fd.append('months', JSON.stringify(months));
+    if (fromYm) fd.append('start_month', fromYm);
+    if (toYm) fd.append('tax_to', toYm);
+    if (toYm) fd.append('end_month', toYm);
     setBusy(true);
-    setStatus('正在按数据绘制流水图…', false);
+    setStatus('正在按 ' + months[0] + '～' + months[months.length - 1] + ' 共 ' + months.length + ' 个月绘制…', false);
     var token = '';
     try {
       token = localStorage.getItem('admin_token') || '';
@@ -408,6 +545,14 @@
     if (p) p.addEventListener('click', prefill);
     if (s) s.addEventListener('click', fillSample);
     if (d) d.addEventListener('click', download);
+    function onRangeChange() {
+      lastMonths = [];
+      setField('ccbFlowMonths', '');
+    }
+    var fromEl = document.getElementById('ccbFlowTaxFrom');
+    var toEl = document.getElementById('ccbFlowTaxTo');
+    if (fromEl) fromEl.addEventListener('change', onRangeChange);
+    if (toEl) toEl.addEventListener('change', onRangeChange);
   }
 
   function loadPage() {

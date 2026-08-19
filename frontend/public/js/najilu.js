@@ -315,6 +315,75 @@
     } catch (e) {}
   }
 
+  function qrOverrideStorageKey() {
+    return 'tax_issue_qr_override:' + getUserKey();
+  }
+
+  function packStickyQr(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var code = cleanText(raw.query_code).replace(/\s+/g, '').toUpperCase();
+    var qr = cleanText(raw.qr_image_url);
+    var block = cleanText(raw.qr_block_image_url);
+    if (!qr && !block) return null;
+    return {
+      query_code: /^[A-Z0-9]{16}$/.test(code) ? code : '',
+      qr_image_url: qr,
+      qr_block_image_url: block
+    };
+  }
+
+  function loadCachedQrOverride() {
+    try {
+      return packStickyQr(JSON.parse(localStorage.getItem(qrOverrideStorageKey()) || 'null'));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveCachedQrOverride(raw) {
+    try {
+      var packed = packStickyQr(raw);
+      if (!packed) {
+        localStorage.removeItem(qrOverrideStorageKey());
+        return;
+      }
+      localStorage.setItem(qrOverrideStorageKey(), JSON.stringify(packed));
+    } catch (e) {}
+  }
+
+  function stickyQrFromApps(apps) {
+    var list = Array.isArray(apps) ? apps : [];
+    for (var i = 0; i < list.length; i++) {
+      var packed = packStickyQr(list[i]);
+      if (packed) return packed;
+    }
+    return null;
+  }
+
+  function applyStickyQrToApp(app, sticky) {
+    if (!app || !sticky) return app;
+    if (sticky.query_code) app.query_code = sticky.query_code;
+    if (sticky.qr_image_url) app.qr_image_url = sticky.qr_image_url;
+    if (sticky.qr_block_image_url) app.qr_block_image_url = sticky.qr_block_image_url;
+    return app;
+  }
+
+  function persistLocalApplication(app) {
+    if (!app || !app.id) return;
+    var apps = loadApplications();
+    var sid = String(app.id);
+    var found = false;
+    for (var i = 0; i < apps.length; i++) {
+      if (apps[i] && String(apps[i].id) === sid) {
+        apps[i] = Object.assign({}, apps[i], app);
+        found = true;
+        break;
+      }
+    }
+    if (!found) apps.unshift(app);
+    saveApplications(apps);
+  }
+
   function pushIssueToServer(app) {
     if (typeof window.authFetch !== 'function' || !app) return Promise.resolve(null);
     var body = {
@@ -327,7 +396,9 @@
         record_no: String(app.record_no || '').substring(0, 32),
         scope: String(app.scope != null ? app.scope : '全国').substring(0, 64),
         status: String(app.status != null ? app.status : '制作成功').substring(0, 64),
-        query_code: String(app.query_code || '').substring(0, 32)
+        query_code: String(app.query_code || '').substring(0, 32),
+        qr_image_url: String(app.qr_image_url || '').substring(0, 512),
+        qr_block_image_url: String(app.qr_block_image_url || '').substring(0, 512)
       }
     };
     return window
@@ -338,6 +409,16 @@
       })
       .then(function (r) {
         return r.json();
+      })
+      .then(function (j) {
+        if (j && j.code === 200 && j.data) {
+          applyStickyQrToApp(app, j.data);
+          if (j.data.qr_locked || j.data.qr_block_image_url || j.data.qr_image_url) {
+            saveCachedQrOverride(j.data);
+          }
+          persistLocalApplication(app);
+        }
+        return j;
       })
       .catch(function () {
         return null;
@@ -353,6 +434,9 @@
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data && Array.isArray(j.data.applications)) {
+          if (j.data && Object.prototype.hasOwnProperty.call(j.data, 'qr_override')) {
+            saveCachedQrOverride(j.data.qr_override);
+          }
           return j.data.applications;
         }
         return [];
@@ -1040,7 +1124,7 @@
     list.addEventListener('mouseleave', clearApplicationLongPress);
   }
 
-  function generateRecord(start, end, user, records) {
+  function generateRecord(start, end, user, records, stickyQr) {
     var ymMin = minIssueYm();
     if (start && start < ymMin) start = ymMin;
     if (end && end < ymMin) end = ymMin;
@@ -1051,7 +1135,7 @@
     var now = new Date();
     var id = 'issue_' + now.getTime();
     var recordNo = String(Math.floor(10000000 + Math.random() * 90000000));
-    return {
+    var app = {
       id: id,
       apply_time: fmtDateTime(now),
       apply_date_compact: compactDate(now),
@@ -1067,6 +1151,8 @@
       records: filtered,
       query_code: queryCode({ id: id, record_no: recordNo, apply_date_compact: compactDate(now) })
     };
+    applyStickyQrToApp(app, stickyQr);
+    return app;
   }
 
   function initForm() {
@@ -1166,13 +1252,21 @@
           alert('生成超时，请检查网络后重试；若已开具成功请点「查看申请记录」');
         }
       }, 20000);
-      Promise.all([fetchUserInfo(), fetchTaxRecords()])
+      Promise.all([fetchUserInfo(), fetchTaxRecords(), fetchIssueApplicationsFromServer()])
         .then(function (ret) {
-          var app = generateRecord(rangeStartInput.value, rangeEndInput.value, ret[0], ret[1]);
+          var serverApps = ret[2] || [];
+          var merged = mergeServerApplications(loadApplications(), serverApps);
+          saveApplications(merged);
+          var sticky =
+            stickyQrFromApps(merged) ||
+            stickyQrFromApps(serverApps) ||
+            loadCachedQrOverride();
+          var app = generateRecord(rangeStartInput.value, rangeEndInput.value, ret[0], ret[1], sticky);
           var apps = loadApplications();
           apps.unshift(app);
           saveApplications(apps);
           return pushIssueToServer(app).then(function () {
+            persistLocalApplication(app);
             return app;
           });
         })

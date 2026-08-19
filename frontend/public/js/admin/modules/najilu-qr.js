@@ -652,7 +652,12 @@
           setStatus((j && j.msg) || '保存失败（HTTP ' + pack.http + '）', true);
           return;
         }
-        setStatus(clear ? '已清除自定义二维码' : '已保存到开具记录', false);
+        setStatus(
+          clear
+            ? '已清除该账号默认二维码，之后 App 生成将重新出码'
+            : '已保存为该账号默认二维码，之后 App 重新生成都用这张码',
+          false
+        );
         loadIssues();
       })
       .catch(function (e) {

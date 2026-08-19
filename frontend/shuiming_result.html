@@ -16,12 +16,22 @@
                 ) {
                     document.documentElement.classList.add('app-android-xiaomi-15');
                 }
+                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
-                if (/Mate\s*60|Mate\s*70|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
+                if (/Mate\s*70|PLA-AL\d{2}|PLR-AL\d{2}|PLU-AL\d{2}/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-huawei-mate70');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (
@@ -88,7 +98,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260818-harmony-noclip"></script>
+    <script src="/js/auth.js?v=20260819-mate60-detect"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -1082,7 +1092,9 @@
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        /* 小米 14 Pro / 15 Pro / 小米 10 / K70 至尊 / 红米 12C / Mate 60：沉浸状态栏，顶栏须留 40px */
+        /* 小米 13 Pro / 14 Pro / 15 Pro / 小米 10 / K70 至尊 / 红米 12C / Mate 60：沉浸状态栏，顶栏须留 40px */
+        html.app-android-xiaomi-13pro body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-xiaomi-14pro body.page-shuiming-result .page-root,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-xiaomi-15pro body.page-shuiming-result .page-root,
@@ -1094,7 +1106,9 @@
         html.app-android-immersive-white-top body.page-shuiming-result .page-root,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60 body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate70 body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate70.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-oneplus-acepro body.page-shuiming-result .page-root,
@@ -1111,6 +1125,8 @@
             --safe-top: 40px;
         }
 
+        html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .header,
@@ -1122,7 +1138,9 @@
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate70 body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate70.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header,
@@ -1143,6 +1161,10 @@
             background: #fff !important;
         }
 
+        html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1162,9 +1184,13 @@
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate70 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate70 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate70.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate70.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1195,6 +1221,8 @@
             align-items: center !important;
         }
 
+        html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-15pro body.page-shuiming-result .top-fixed .summary,
@@ -1205,7 +1233,9 @@
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .summary,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate70 body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate70.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .summary,
@@ -1215,6 +1245,8 @@
             top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
+        html.app-android-xiaomi-13pro body.page-shuiming-result .list,
+        html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-xiaomi-14pro body.page-shuiming-result .list,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-xiaomi-15pro body.page-shuiming-result .list,
@@ -1225,7 +1257,9 @@
         html.app-android-redmi-12c body.page-shuiming-result .list,
         html.app-android-immersive-white-top body.page-shuiming-result .list,
         html.app-android-huawei-mate60 body.page-shuiming-result .list,
+        html.app-android-huawei-mate70 body.page-shuiming-result .list,
         html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-huawei-mate70.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-oneplus-ace2pro body.page-shuiming-result .list,
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-oneplus-ace2v body.page-shuiming-result .list,

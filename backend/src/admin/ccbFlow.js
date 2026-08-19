@@ -158,14 +158,18 @@ async function handleAdminCcbFlowEdit(req, res) {
       counterparty_account: b.counterparty_account,
       card_no: b.card_no || b.account_no,
       amount: b.amount,
+      amount_min: b.amount_min || b.salary_min,
+      amount_max: b.amount_max || b.salary_max,
       amounts: parseMaybeJsonArray(b.amounts),
       balances: parseMaybeJsonArray(b.balances),
       months: parseMaybeJsonArray(b.months || b.trade_months),
       opening_balance: b.opening_balance,
       total_income: b.total_income,
+      start_month: b.start_month || b.tax_from,
       end_month: b.end_month || b.tax_to,
       period: b.period,
-      generated_at: b.generated_at
+      generated_at: b.generated_at,
+      amount_seed: b.amount_seed
     };
     if (!fields.amounts && fields.amount) {
       fields.amounts = fields.amount;

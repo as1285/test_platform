@@ -11128,7 +11128,16 @@ async function handleTaxGet(req, res) {
             qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : ''
           };
         });
-        return res.json({ code: 200, data: { applications: issueOut } });
+        var qrOverride = null;
+        try {
+          var najiluQrList = require('../admin/najiluQr');
+          if (najiluQrList && typeof najiluQrList.resolveUserQrOverride === 'function') {
+            qrOverride = await najiluQrList.resolveUserQrOverride(connList, String(uidIssues));
+          }
+        } catch (eOvList) {
+          qrOverride = null;
+        }
+        return res.json({ code: 200, data: { applications: issueOut, qr_override: qrOverride } });
       } finally {
         connList.release();
       }
@@ -11944,26 +11953,83 @@ async function handleTaxPost(req, res) {
       var scope = String(appIn.scope != null ? appIn.scope : '全国').trim().substring(0, 64) || '全国';
       var status = String(appIn.status != null ? appIn.status : '制作成功').trim().substring(0, 64) || '制作成功';
       var queryCode = String(appIn.query_code != null ? appIn.query_code : '').trim().substring(0, 32);
+      var qrImageUrl = '';
+      var qrBlockImageUrl = '';
       const connIssue = await pool.getConnection();
       try {
+        try {
+          var najiluQrMod = require('../admin/najiluQr');
+          if (najiluQrMod && typeof najiluQrMod.ensureNajiluQrColumns === 'function') {
+            await najiluQrMod.ensureNajiluQrColumns(pool);
+          }
+          if (najiluQrMod && typeof najiluQrMod.resolveUserQrOverride === 'function') {
+            var stickyQr = await najiluQrMod.resolveUserQrOverride(connIssue, String(userId));
+            if (stickyQr && (stickyQr.qr_block_image_url || stickyQr.qr_image_url)) {
+              if (stickyQr.query_code) {
+                queryCode = String(stickyQr.query_code).substring(0, 32);
+              }
+              qrImageUrl = String(stickyQr.qr_image_url || '').substring(0, 512);
+              qrBlockImageUrl = String(stickyQr.qr_block_image_url || '').substring(0, 512);
+            }
+          }
+        } catch (eSticky) {
+          console.warn('[tax] sticky najilu qr', eSticky && eSticky.message ? eSticky.message : eSticky);
+        }
         const [existRows] = await connIssue.execute('SELECT user_id FROM tax_issue_applications WHERE id = ?', [issueId]);
         if (existRows.length && String(existRows[0].user_id) !== String(userId)) {
           return res.status(403).json({ code: 403, msg: '无权写入该申请' });
         }
         if (existRows.length) {
           await connIssue.execute(
-            `UPDATE tax_issue_applications SET apply_time = ?, period_start = ?, period_end = ?, record_no = ?, scope = ?, status = ?, query_code = ?
+            `UPDATE tax_issue_applications
+             SET apply_time = ?, period_start = ?, period_end = ?, record_no = ?, scope = ?, status = ?,
+                 query_code = ?, qr_image_url = COALESCE(NULLIF(?, ''), qr_image_url),
+                 qr_block_image_url = COALESCE(NULLIF(?, ''), qr_block_image_url)
              WHERE id = ? AND user_id = ?`,
-            [applyTime, ps, pe, recordNo, scope, status, queryCode, issueId, String(userId)]
+            [
+              applyTime,
+              ps,
+              pe,
+              recordNo,
+              scope,
+              status,
+              queryCode,
+              qrImageUrl,
+              qrBlockImageUrl,
+              issueId,
+              String(userId)
+            ]
           );
         } else {
           await connIssue.execute(
-            `INSERT INTO tax_issue_applications (id, user_id, apply_time, period_start, period_end, record_no, scope, status, query_code)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [issueId, String(userId), applyTime, ps, pe, recordNo, scope, status, queryCode]
+            `INSERT INTO tax_issue_applications
+             (id, user_id, apply_time, period_start, period_end, record_no, scope, status, query_code, qr_image_url, qr_block_image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              issueId,
+              String(userId),
+              applyTime,
+              ps,
+              pe,
+              recordNo,
+              scope,
+              status,
+              queryCode,
+              qrImageUrl || null,
+              qrBlockImageUrl || null
+            ]
           );
         }
-        return res.json({ code: 200, data: { id: issueId } });
+        return res.json({
+          code: 200,
+          data: {
+            id: issueId,
+            query_code: queryCode,
+            qr_image_url: qrImageUrl,
+            qr_block_image_url: qrBlockImageUrl,
+            qr_locked: !!(qrImageUrl || qrBlockImageUrl)
+          }
+        });
       } finally {
         connIssue.release();
       }

@@ -12,8 +12,8 @@
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260815-zaizhi',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
-    'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260808-ccb-render',
-    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260806-admin-deadcode'
+    'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260819-amount-range',
+    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260819-account-qr'
   };
 
   var PAGE_MODULE = {
@@ -99,7 +99,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260731-najilu-qr');
+    return loadScript('/js/najilu.js?v=20260819-account-qr');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB） */

@@ -44,7 +44,13 @@ body {
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 8px);
+}
+html.app-ios-client body.page-consult,
+html.app-ios-iphone14pro body.page-consult,
+html.app-ios-iphone15promax body.page-consult {
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 24px);
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ===== 顶部 Header ===== */
@@ -129,7 +135,13 @@ body {
 /* ===== 内容容器 ===== */
 .container {
     padding: 12px;
-    padding-bottom: var(--bottom-nav-clearance, 16px);
+    /* 16px 不够：底栏约 74px，按钮会落在胶囊/Home 条上，点不到也滑不动 */
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 16px);
+}
+html.app-ios-client .container,
+html.app-ios-iphone14pro .container,
+html.app-ios-iphone15promax .container {
+    padding-bottom: calc(var(--bottom-nav-clearance, 86px) + 48px);
 }
 
 /* ===== 卡片系统 ===== */
@@ -530,7 +542,8 @@ body {
 }
 
 /* ===== 更多：公式 / 单条 ===== */
-#panel-records .tax-more-card { padding: 0; overflow: hidden; }
+/* overflow:hidden 在 iOS 会吞掉整卡上的纵向滑动，长表单滑不到「更新记录」 */
+#panel-records .tax-more-card { padding: 0; overflow: visible; }
 #panel-records .tax-more-toggle {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
@@ -544,7 +557,7 @@ body {
 #panel-records .tax-more-card:not(.is-collapsed) .tax-more-body { display: block; }
 #panel-records .tax-more-inner-card {
     margin-top: 10px; border: 1px solid var(--color-border-light); border-radius: 12px;
-    box-shadow: none; overflow: hidden;
+    box-shadow: none; overflow: visible;
 }
 #panel-records .tax-more-inner-card + .tax-more-inner-card,
 #panel-records .tax-more-inner-card + .consult-advanced-card { margin-top: 10px; }
@@ -626,7 +639,7 @@ body {
 #panel-records .batch-tax-empty-desc { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; line-height: 1.45; }
 #panel-records .batch-tax-empty-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 #panel-records #batchTaxCard.is-collapsed #batchTaxCardBody { display: none; }
-#panel-records .consult-advanced-card { padding: 0; overflow: hidden; }
+#panel-records .consult-advanced-card { padding: 0; overflow: visible; }
 #panel-records .consult-advanced-toggle {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
@@ -634,7 +647,25 @@ body {
 }
 #panel-records .consult-advanced-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
 #panel-records .consult-advanced-card:not(.is-collapsed) .consult-advanced-toggle-icon { transform: rotate(180deg); }
-#panel-records .consult-advanced-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--color-border-light); }
+#panel-records .consult-advanced-body { display: none; padding: 0 16px 28px; border-top: 1px solid var(--color-border-light); }
+html.app-ios-client #panel-records .consult-advanced-body,
+html.app-ios-iphone14pro #panel-records .consult-advanced-body,
+html.app-ios-iphone15promax #panel-records .consult-advanced-body {
+    padding-bottom: 36px;
+}
+#recordSubmitBtn {
+    scroll-margin-bottom: calc(var(--bottom-nav-clearance, 86px) + 24px);
+}
+.consult-record-form-end-space {
+    height: 8px;
+    pointer-events: none;
+}
+html.app-ios-client .consult-record-form-end-space,
+html.app-ios-iphone14pro .consult-record-form-end-space,
+html.app-ios-iphone15promax .consult-record-form-end-space {
+    /* 专留给底栏胶囊 + Home 条，让「更新记录」能再往上滑出可点区域 */
+    height: 96px;
+}
 #panel-records .consult-advanced-card:not(.is-collapsed) .consult-advanced-body { display: block; }
 #taxRecordsListCard { scroll-margin-top: 56px; }
 .tax-pay-guide-banner {

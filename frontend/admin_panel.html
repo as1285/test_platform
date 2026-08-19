@@ -1713,18 +1713,18 @@
                                 <input type="text" id="ccbFlowPrefillUser" maxlength="64" placeholder="注册用户名">
                             </div>
                             <div>
-                                <label for="ccbFlowTaxFrom">个税起始月</label>
-                                <input type="month" id="ccbFlowTaxFrom" title="默认近一年">
+                                <label for="ccbFlowTaxFrom">起始月</label>
+                                <input type="month" id="ccbFlowTaxFrom" title="流水与预填个税共用">
                             </div>
                             <div>
-                                <label for="ccbFlowTaxTo">个税结束月</label>
-                                <input type="month" id="ccbFlowTaxTo" title="默认近一年">
+                                <label for="ccbFlowTaxTo">结束月</label>
+                                <input type="month" id="ccbFlowTaxTo" title="流水与预填个税共用">
                             </div>
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="ccbFlowPrefillBtn">预填个税</button>
                             </div>
                         </div>
-                        <p class="hint mt-0" style="max-width:960px;">预填姓名、公司、月份与<strong>正常工资薪金</strong>月收入（默认近 12 个月；超过 12 个月取最近 12 个月）。生成时交易日期按各月 15 日写入。</p>
+                        <p class="hint mt-0" style="max-width:960px;">起始月～结束月可自行选择（最多 36 个月），生成流水按该区间逐月出账。预填时取时段内<strong>正常工资薪金</strong>月收入；交易日期按各月 15 日写入。</p>
                         <div class="form-row form-stack" style="max-width:960px;">
                             <div class="admin-tool-step">① 填写字段</div>
                             <div class="form-row flex-wrap gap-10">
@@ -1756,16 +1756,21 @@
                                 </div>
                             </div>
                             <div class="form-row flex-wrap gap-10">
-                                <div style="flex:1;min-width:280px;">
-                                    <label for="ccbFlowAmount">交易金额（12 行 / 可逗号分隔）</label>
-                                    <input type="text" id="ccbFlowAmount" maxlength="320" placeholder="15002.70 或 12 个逗号分隔金额" value="15002.70" inputmode="decimal">
+                                <div>
+                                    <label for="ccbFlowAmountMin">工资下限（元）</label>
+                                    <input type="text" id="ccbFlowAmountMin" maxlength="16" placeholder="如 15000" value="15000" inputmode="decimal">
+                                </div>
+                                <div>
+                                    <label for="ccbFlowAmountMax">工资上限（元）</label>
+                                    <input type="text" id="ccbFlowAmountMax" maxlength="16" placeholder="留空则每月固定下限" value="18000" inputmode="decimal">
                                 </div>
                                 <div style="flex:1;min-width:280px;">
-                                    <label for="ccbFlowMonths">对应月份（可选，逗号分隔）</label>
-                                    <input type="text" id="ccbFlowMonths" maxlength="220" placeholder="空则按结束月往前 12 个月，如 2025-09,2025-10…">
+                                    <label for="ccbFlowAmount">每月金额（可选，预填或手填）</label>
+                                    <input type="text" id="ccbFlowAmount" maxlength="640" placeholder="空则按下限～上限生成；也可逗号列出每月金额">
                                 </div>
                             </div>
-                            <p class="hint mt-0">余额按「入账前余额 + 累计交易金额」自动推算；总收入=各笔金额合计。不足 12 行用末月金额/月份顺延补齐。</p>
+                            <p class="hint mt-0">填了上限且大于下限时，每月在区间内随机（两位小数）；只填下限则每月固定。余额按「入账前余额 + 累计交易金额」自动推算；总收入=各笔合计。行数=起始月到结束月的月数。</p>
+                            <input type="hidden" id="ccbFlowMonths" value="">
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="ccbFlowSampleBtn">填入示例</button>
                                 <button type="button" class="btn-primary" id="ccbFlowEditBtn">生成流水图</button>
@@ -1784,7 +1789,7 @@
                 <div id="page-najilu-qr" class="page-panel" role="tabpanel">
                     <section>
                         <h2>完税证明 · 二维码替换</h2>
-                        <p class="hint hint-warn mt-0">先选择<strong>开具记录</strong>，再上传一张含目标二维码的<strong>完整完税证明图片</strong>；系统会按原始比例自动抠出右上角“二维码 + 16 位查询验证码”，替换到该记录生成图中，避免尺寸不一致和拉伸变形。</p>
+                        <p class="hint hint-warn mt-0">先选择<strong>开具记录</strong>，再上传一张含目标二维码的<strong>完整完税证明图片</strong>；系统会按原始比例自动抠出右上角“二维码 + 16 位查询验证码”。<strong>保存后该账号锁定此码</strong>：之后用户在 App 里重新生成的纳税记录截图都用这张二维码，不再生成新码。</p>
                         <div class="form-row form-stack" style="max-width:960px;">
                             <div class="form-row flex-wrap gap-10">
                                 <div>
@@ -1831,7 +1836,7 @@
                             <div class="form-row flex-wrap gap-10">
                                 <button type="button" class="btn-primary" id="najiluQrPreviewBtn">预览 / 生成结果图</button>
                                 <button type="button" class="btn-page" id="najiluQrDownloadBtn" style="display:none;">下载结果图</button>
-                                <button type="button" class="btn-primary" id="najiluQrSaveBtn">保存到开具记录</button>
+                                <button type="button" class="btn-primary" id="najiluQrSaveBtn">保存为该账号默认二维码</button>
                                 <button type="button" class="btn-page" id="najiluQrClearBtn">清除自定义图</button>
                             </div>
                             <p id="najiluQrStatus" class="hint" aria-live="polite"></p>
@@ -2604,7 +2609,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260813-sz"></script>
+    <script src="/js/admin/loader.js?v=20260819-amount-range"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260817-downline-admins"></script>
