@@ -23,6 +23,9 @@
                 try {
                     u += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
                 } catch (eModel) {}
+                try {
+                    u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+                } catch (eUa) {}
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                 }
@@ -37,7 +40,7 @@
                     var huaweiNoclipInset = document.createElement('style');
                     huaweiNoclipInset.setAttribute('data-huawei-mine-noclip-inset', '1');
                     huaweiNoclipInset.textContent =
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0!important;}' +
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0!important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
                         'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
                         'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer{top:0!important;}';
                     document.head.appendChild(huaweiNoclipInset);
@@ -70,7 +73,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260820-nova13-sm"></script>
+    <script src="/js/auth.js?v=20260820-nova13-mine"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -506,34 +509,33 @@
         }
 
         /*
-         * 华为 nova 13：ArkWeb 100vw 常宽于画布，叠字胶囊掉到菜单顶边；
-         * Harmony 字体行盒偏高，姓名/税号也挤。坐标改跟画布宽度，并锁胶囊高度。
+         * 华为 nova 13 / 鸿蒙 ArkWeb：勿用 --mine-rpx: calc(100% / 750)。
+         * 自定义属性里的 % 在 top 上按包含块高度解析，胶囊会掉到「我要咨询」。
+         * 1rpx 必须跟画布宽度走（cqw / JS 实测）。
          */
-        html.app-android-huawei-nova13 body.page-mine .mine-e1-canvas {
-            --mine-rpx: calc(100% / 750);
+        html.app-android-huawei-nova13 body.page-mine .mine-e1-canvas,
+        html.app-huawei-mine-noclip body.page-mine .mine-e1-canvas {
+            container-type: inline-size;
+            --mine-rpx: calc(100cqw / 750);
         }
         html.app-android-huawei-nova13 body.page-mine .mine-ov-name,
-        html.app-android-huawei-nova13 body.page-mine .mine-ov-tax {
+        html.app-android-huawei-nova13 body.page-mine .mine-ov-tax,
+        html.app-huawei-mine-noclip body.page-mine .mine-ov-name,
+        html.app-huawei-mine-noclip body.page-mine .mine-ov-tax {
             line-height: 1.4 !important;
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
-        html.app-android-huawei-nova13 body.page-mine .mine-ov-tax {
-            top: calc(452 * var(--mine-rpx)) !important;
-        }
-        html.app-android-huawei-nova13 body.page-mine .mine-e1-pill {
+        html.app-android-huawei-nova13 body.page-mine .mine-e1-pill,
+        html.app-huawei-mine-noclip body.page-mine .mine-e1-pill {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
-            top: calc(652 * var(--mine-rpx)) !important;
-            height: calc(34 * var(--mine-rpx)) !important;
-            max-height: calc(34 * var(--mine-rpx)) !important;
             line-height: 1 !important;
             padding-top: 0 !important;
             padding-bottom: 0 !important;
-            font-size: calc(20 * var(--mine-rpx)) !important;
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }

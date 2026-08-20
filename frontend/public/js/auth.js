@@ -1529,7 +1529,53 @@
       if (layer) {
         layer.style.setProperty('top', '0', 'important');
       }
+      pinNova13MineE1Layout();
     } catch (e) {}
+  }
+
+  function pinNova13MineE1Layout() {
+    try {
+      var root = document.documentElement;
+      if (isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60')) {
+        return;
+      }
+      var nova13 = isHuaweiNova13Client() || root.classList.contains('app-android-huawei-nova13');
+      var noclip =
+        root.classList.contains('app-huawei-mine-noclip') ||
+        isHuaweiMineNoClipClient() ||
+        /OpenHarmony|ArkWeb|HarmonyOS|HMSCore|Huawei|HUAWEI/i.test(clientUaBlob());
+      if (nova13) {
+        root.classList.add('app-android-huawei-nova13');
+        root.classList.add('app-android-client');
+      }
+      if (!nova13 && !noclip) {
+        return;
+      }
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      var canvas = document.getElementById('mineE1Canvas');
+      if (!canvas) {
+        return;
+      }
+      var img = document.getElementById('headerImg');
+      if (img && !img.getAttribute('data-nova13-rpx-bound')) {
+        img.setAttribute('data-nova13-rpx-bound', '1');
+        img.addEventListener('load', pinNova13MineE1Layout);
+      }
+      var w = canvas.getBoundingClientRect().width;
+      if (!(w > 0)) {
+        return;
+      }
+      var rpx = w / 750 + 'px';
+      root.style.setProperty('--mine-rpx', rpx);
+      document.body.style.setProperty('--mine-rpx', rpx);
+      canvas.style.setProperty('--mine-rpx', rpx);
+      var layer = document.getElementById('mineE1Layer');
+      if (layer) {
+        layer.style.setProperty('--mine-rpx', rpx);
+      }
+    } catch (eRpx) {}
   }
 
   function upsertMeta(name, content) {
@@ -1848,7 +1894,7 @@
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:var(--mine-top-bleed) !important;}' +
-          'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
+          'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0 !important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
@@ -1896,6 +1942,7 @@
       } catch (eVar) {}
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
+      pinNova13MineE1Layout();
       applyImmersiveBlueStatusBar(mineBlue);
       try {
         schedulePinTabBottomNav();
@@ -3944,6 +3991,7 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       syncAppShellStatusbarTop();
+      pinNova13MineE1Layout();
       applyMinePageChrome();
       applyDaibanBanchaPageChrome();
       applyMessagePageChrome();
@@ -3955,18 +4003,21 @@
   } else {
     setTimeout(function () {
       syncAppShellStatusbarTop();
+      pinNova13MineE1Layout();
       applyImmersiveNotchWhitePageChrome();
     }, 0);
   }
   window.addEventListener('orientationchange', function () {
     setTimeout(function () {
       syncAppShellStatusbarTop();
+      pinNova13MineE1Layout();
       applyImmersiveNotchWhitePageChrome();
     }, 50);
   });
   window.addEventListener('resize', function () {
     setTimeout(function () {
       syncAppShellStatusbarTop();
+      pinNova13MineE1Layout();
       applyImmersiveNotchWhitePageChrome();
     }, 50);
   });
@@ -4005,6 +4056,7 @@
     rememberCordovaDeviceModel();
     syncAppShellStatusbarTop();
     pinMate60MineE1Layout();
+    pinNova13MineE1Layout();
     applyMinePageChrome();
     applyDaibanBanchaPageChrome();
     applyMessagePageChrome();
