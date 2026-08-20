@@ -1250,13 +1250,71 @@
   }
 
   /**
+   * 荣耀 Magic5 Pro 物理屏 1312×2848。
+   * UA 精简后常无 PGT，用分辨率兜底（screen 可能是 CSS 像素或物理像素）。
+   */
+  function isHonorMagic5ProScreen() {
+    try {
+      var dpr = window.devicePixelRatio ? Number(window.devicePixelRatio) : 1;
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var short = Math.min(sw, sh);
+      var long = Math.max(sw, sh);
+      var pw = Math.round(short * dpr);
+      var ph = Math.round(long * dpr);
+      if (pw >= 1264 && pw <= 1360 && ph >= 2768 && ph <= 2928) {
+        return true;
+      }
+      return short >= 1264 && short <= 1360 && long >= 2768 && long <= 2928;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
    * 荣耀 Magic5 Pro（PGT-AN20 / Android 16 Cordova）。
-   * 首页顶栏 / 通知条单独适配； Cordova iframe UA 常无 PGT，须认 localStorage / device.model。
+   * 首页顶栏 / 通知条单独适配； Cordova iframe UA 常无 PGT，须认 localStorage / device.model / 屏。
    */
   function isHonorPgtAn20Client() {
     var ua = clientUaBlob();
     if (/Magic\s*5\s*Pro/i.test(ua)) return true;
-    return /PGT-AN20|HONORPGT-AN20/i.test(ua);
+    if (/PGT[\s_-]?AN20|HONORPGT-AN20/i.test(ua)) return true;
+    return /Android/i.test(ua) && isHonorMagic5ProScreen();
+  }
+
+  function pinHonorMagic5ProHomeCards() {
+    try {
+      var root = document.documentElement;
+      if (!isHonorPgtAn20Client() && !root.classList.contains('app-android-honor-pgt-an20')) {
+        return;
+      }
+      if (!document.body || !document.body.classList.contains('page-shouye')) {
+        return;
+      }
+      root.classList.add('app-android-client');
+      root.classList.add('app-android-honor-pgt-an20');
+      root.classList.add('app-android-honor-magic');
+      var scroller = document.getElementById('syHScroll');
+      if (!scroller) {
+        return;
+      }
+      var cs = window.getComputedStyle(scroller);
+      var pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      var content = scroller.clientWidth - pad;
+      var w = Math.min(92, Math.max(80, (content - 16) / 3.45));
+      var items = scroller.querySelectorAll('.sy-apk-hitem');
+      var i;
+      for (i = 0; i < items.length; i++) {
+        items[i].style.setProperty('flex-basis', w + 'px', 'important');
+        items[i].style.setProperty('width', w + 'px', 'important');
+        items[i].style.setProperty('max-width', '92px', 'important');
+        items[i].style.setProperty('flex-grow', '0', 'important');
+        items[i].style.setProperty('flex-shrink', '0', 'important');
+      }
+    } catch (ePin) {}
   }
 
   /** 荣耀 Magic7 等（PTP-AN00 / Android 16 Cordova）顶部安全区与首页通知条 */
@@ -2108,6 +2166,7 @@
         syncAppShellStatusbarTop();
       }
       applyImmersiveBlueStatusBar(APP_SHOUYE_BAR_BLUE);
+      pinHonorMagic5ProHomeCards();
     } catch (e) {}
   }
 
@@ -4027,6 +4086,7 @@
     document.addEventListener('DOMContentLoaded', function () {
       syncAppShellStatusbarTop();
       pinNova13MineE1Layout();
+      pinHonorMagic5ProHomeCards();
       applyMinePageChrome();
       applyDaibanBanchaPageChrome();
       applyMessagePageChrome();
@@ -4039,6 +4099,7 @@
     setTimeout(function () {
       syncAppShellStatusbarTop();
       pinNova13MineE1Layout();
+      pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
     }, 0);
   }
@@ -4046,6 +4107,7 @@
     setTimeout(function () {
       syncAppShellStatusbarTop();
       pinNova13MineE1Layout();
+      pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
     }, 50);
   });
@@ -4053,6 +4115,7 @@
     setTimeout(function () {
       syncAppShellStatusbarTop();
       pinNova13MineE1Layout();
+      pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
     }, 50);
   });

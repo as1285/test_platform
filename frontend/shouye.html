@@ -16,7 +16,21 @@
                 if (isMate60) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
                 }
-                if (/PGT-AN20|HONORPGT-AN20|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*5[\s_-]*Pro/i.test(u)) {
+                var magic5pro = /PGT[\s_-]?AN20|HONORPGT-AN20|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*5[\s_-]*Pro/i.test(u);
+                if (!magic5pro) {
+                    try {
+                        var dprM5 = window.devicePixelRatio || 1;
+                        var shortM5 = Math.min(screen.width, screen.height) * dprM5;
+                        var longM5 = Math.max(screen.width, screen.height) * dprM5;
+                        var rawShort = Math.min(screen.width, screen.height);
+                        var rawLong = Math.max(screen.width, screen.height);
+                        magic5pro = /Android/i.test(u) && (
+                            (Math.abs(shortM5 - 1312) <= 48 && Math.abs(longM5 - 2848) <= 80) ||
+                            (rawShort >= 1264 && rawShort <= 1360 && rawLong >= 2768 && rawLong <= 2928)
+                        );
+                    } catch (eM5) {}
+                }
+                if (magic5pro) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-honor-pgt-an20');
                     document.documentElement.classList.add('app-android-honor-magic');
@@ -28,7 +42,7 @@
             } catch (e0) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260820-magic5pro-btn"></script>
+    <script src="/js/auth.js?v=20260820-magic5pro-icon"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -673,11 +687,16 @@
         }
 
         /*
-         * 荣耀 Magic5 Pro（PGT-AN20）：官方首页「去申报 / 去查询」更紧凑。
-         * 勿套通用 Android 2.55 放大；Magic6 Pro 同款分栏一并保留。
+         * 荣耀 Magic5 Pro（PGT-AN20）：图标在 JPG 卡面上，必须把卡宽上限压住。
+         * 勿用 max(108px) 保底（显示放大时仍会很大）；勿套 Android 2.55。
          */
         html.app-android-honor-pgt-an20 .sy-apk-hitem,
-        html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem,
+        html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem {
+            flex: 0 0 min(92px, calc((100% - 16px) / 3.45)) !important;
+            width: min(92px, calc((100% - 16px) / 3.45)) !important;
+            max-width: 92px !important;
+        }
+
         html.app-android-honor-magic6pro .sy-apk-hitem,
         html.app-android-honor-magic6pro.app-android-client .sy-apk-hitem {
             flex: 0 0 max(108px, calc((100% - 16px) / 3.05)) !important;
@@ -717,7 +736,11 @@
                 width: calc((min(100%, 430px) - 16px) / 2.85);
             }
             html.app-android-honor-pgt-an20 .sy-apk-hitem,
-            html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem,
+            html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem {
+                flex: 0 0 min(92px, calc((100% - 16px) / 3.45)) !important;
+                width: min(92px, calc((100% - 16px) / 3.45)) !important;
+                max-width: 92px !important;
+            }
             html.app-android-honor-magic6pro .sy-apk-hitem,
             html.app-android-honor-magic6pro.app-android-client .sy-apk-hitem {
                 flex: 0 0 max(108px, calc((min(100%, 430px) - 16px) / 3.05)) !important;
