@@ -1304,13 +1304,13 @@
       var cs = window.getComputedStyle(scroller);
       var pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
       var content = scroller.clientWidth - pad;
-      var w = Math.min(92, Math.max(80, (content - 16) / 3.45));
+      var w = Math.min(104, Math.max(88, (content - 16) / 3.2));
       var items = scroller.querySelectorAll('.sy-apk-hitem');
       var i;
       for (i = 0; i < items.length; i++) {
         items[i].style.setProperty('flex-basis', w + 'px', 'important');
         items[i].style.setProperty('width', w + 'px', 'important');
-        items[i].style.setProperty('max-width', '92px', 'important');
+        items[i].style.setProperty('max-width', '104px', 'important');
         items[i].style.setProperty('flex-grow', '0', 'important');
         items[i].style.setProperty('flex-shrink', '0', 'important');
       }
