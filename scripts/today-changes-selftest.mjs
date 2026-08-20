@@ -152,13 +152,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260819-mate60-aug15', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8'],
-  'mine.html mate60 + reno10 + neo8 cache'
+  ['20260820-nova13-xq', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13'],
+  'mine.html mate60 + reno10 + neo8 + nova13 cache'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isHuaweiNova13Client', 'BLK-AL80', 'MIS-AL00', 'HUAWEIBLK', 'app-android-huawei-nova13', 'isHuaweiNova13Client()', 'isHuaweiWhitePageImmersiveClient', 'pinWhitePageImmersiveHeader'],
+  'huawei nova 13 mine overlay + white-top detect'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260819-mate60-aug15'],
-  'fast-nav auth cache neo8'
+  ['20260820-nova13-xq'],
+  'fast-nav auth cache nova13'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -167,8 +172,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-aug15', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10'],
-  'shuiming acepro + reno10 + neo8 inset'
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260820-nova13-xq', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1'],
+  'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
   'frontend/message.html',
@@ -213,8 +218,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260819-mate60-aug15', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000'],
-  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line'
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260820-nova13-xq', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13'],
+  'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -233,8 +238,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260819-mate60-aug15'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260820-nova13-xq'],
   'shuiming_result xiaomi 13 pro first-paint'
+);
+mustInclude(
+  'frontend/xiangqing.html',
+  ['BLK-AL80', 'app-android-huawei-nova13', '20260820-nova13-xq', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint'],
+  'xiangqing nova 13 statusbar inset'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -286,6 +296,25 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
   const missOk = miss.every((ua) => !reModel.test(ua) && (rePro.test(ua) || !reName.test(ua)));
   if (hitOk && missOk) ok('xiaomi 15 UA match');
   else fail('xiaomi 15 UA match');
+})();
+
+(function testHuaweiNova13Ua() {
+  const reModel = /HUAWEIBLK|BLK-AL\d{2}|BLK-LX9|BLK-L29|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9/i;
+  const reName = /(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13(?:[\s_-]*Pro)?/i;
+  const hit = [
+    'Mozilla/5.0 (Phone; OpenHarmony 4.2) Huawei BLK-AL80',
+    'Mozilla/5.0 (Linux; Android 12; BLK-AL00 Build/HUAWEIBLK-AL00)',
+    'Mozilla/5.0 (Linux; Android 12; MIS-AL00) HUAWEI nova 13 Pro'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 12; ALN-AL00) HUAWEI Mate 60',
+    'Mozilla/5.0 (Linux; Android 12; MIZ-BD00) Hi nova 11',
+    'Mozilla/5.0 (Linux; Android 12; PLA-AL10) HUAWEI Mate 70'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('huawei nova 13 UA match');
+  else fail('huawei nova 13 UA match');
 })();
 
 (function testOnePlusAceProUa() {

@@ -6,6 +6,8 @@
         (function () {
             try {
                 var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
                 if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
@@ -71,6 +73,18 @@
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-huawei-nova13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                } else if (/OpenHarmony|ArkWeb|HarmonyOS/i.test(u) && !/ALN-|PLA-AL|PLR-AL|PLU-AL|HBN-|ADY-|CLS-|TAS-|LIO-|MIZ-/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
                 if (
                     /iPhone|iPad|iPod/i.test(u) ||
                     (typeof navigator !== 'undefined' &&
@@ -82,7 +96,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260819-mate60-aug15"></script>
+    <script src="/js/auth.js?v=20260820-nova13-xq"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

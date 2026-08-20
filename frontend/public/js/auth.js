@@ -567,8 +567,8 @@
     if (isVivoImmersiveTopClient()) {
       return false;
     }
-    /* Mate 60 / Mate 70 系：Harmony 壳 overlays=false 常失效，须保留顶距 */
-    if (isHuaweiMate60Client()) {
+    /* Mate 60 / Mate 70 / nova 13：Harmony 壳 overlays=false 常失效，须保留顶距 */
+    if (isHuaweiMate60Client() || isHuaweiMate70Client() || isHuaweiNova13Client()) {
       return false;
     }
     return (
@@ -1351,6 +1351,90 @@
     return /ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(ua);
   }
 
+  /**
+   * 华为 nova 13 / 13 Pro（BLK-AL80 / MIS-AL00）。
+   * HarmonyOS ArkWeb 的 100vw 常宽于画布，e1 叠字「添加/暂无」会掉到菜单顶边；
+   * 白顶栏页 WebView 仍压在系统栏下，不能按鸿蒙族外置黑条清零顶距。
+   * Cordova iframe UA 常无 BLK，须同时认 localStorage / device-hint。
+   */
+  function isHuaweiNova13Client() {
+    var ua = clientUaBlob();
+    if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(ua)) return false;
+    if (/Mate\s*60|\bALN-/i.test(ua)) return false;
+    if (/Hi\s*nova|MIZ-BD00|MIZ-AL00/i.test(ua) && !/nova[\s_-]*13/i.test(ua)) return false;
+    if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29/i.test(ua)) return true;
+    if (/HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9/i.test(ua)) return true;
+    return /(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13(?:[\s_-]*Pro)?/i.test(ua);
+  }
+
+  /**
+   * 白顶栏页：iframe 无型号的鸿蒙仍沉浸压栏（nova 13 等同款）。
+   * 不把整族鸿蒙标成 Mate 60，也不给「我的」套 nova13 胶囊规则。
+   */
+  function isHuaweiWhitePageImmersiveClient() {
+    if (isHuaweiMate60Client() || isHuaweiMate70Client() || isHuaweiNova13Client()) {
+      return true;
+    }
+    if (isHiNovaFamilyClient() || isHuaweiPura70LikeClient()) {
+      return false;
+    }
+    if (isHuaweiLioAn00Client() || isHuaweiClsAl00Client() || isHuaweiTasAn00Client()) {
+      return false;
+    }
+    var ua = clientUaBlob();
+    if (
+      /\b(?:HBN|ADY|HLY|LNA|MLA|CLS|TAS|LIO|ANA|ELS|NOH|BRA|ALT|JAD|BAL|FIN|DCO|BON|NCO|GIA|NAM|MIZ)-(?:AL|AN|LX)/i.test(
+        ua
+      )
+    ) {
+      return false;
+    }
+    return /OpenHarmony|ArkWeb|HarmonyOS/i.test(ua);
+  }
+
+  function pinWhitePageImmersiveHeader() {
+    try {
+      var body = document.body;
+      if (!body) return;
+      if (body.classList.contains('page-xiangqing')) {
+        var hdr = body.querySelector('.header');
+        if (hdr) {
+          hdr.style.setProperty('padding-top', '50px', 'important');
+          hdr.style.setProperty('box-sizing', 'border-box', 'important');
+        }
+        body.style.setProperty('padding-top', '88px', 'important');
+      }
+      if (body.classList.contains('page-shuiming')) {
+        var smHdr = body.querySelector('.header');
+        if (smHdr) {
+          smHdr.style.setProperty('padding-top', '54px', 'important');
+          smHdr.style.setProperty('box-sizing', 'border-box', 'important');
+        }
+      }
+    } catch (ePin) {}
+  }
+
+  function ensureNova13WhitePageCss() {
+    try {
+      if (document.querySelector('style[data-nova13-white-page]')) return;
+      var st = document.createElement('style');
+      st.setAttribute('data-nova13-white-page', '1');
+      st.textContent =
+        'html.app-android-huawei-nova13 body.page-xiangqing > .header,' +
+        'html.app-android-immersive-white-top body.page-xiangqing > .header{' +
+        'padding-top:50px !important;box-sizing:border-box !important;}' +
+        'html.app-android-client.app-top-safe-shell.app-android-huawei-nova13 body.page-xiangqing,' +
+        'html.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-xiangqing,' +
+        'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-xiangqing,' +
+        'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-xiangqing{' +
+        'padding-top:88px !important;}' +
+        'html.app-android-huawei-nova13 body.page-shuiming > .header,' +
+        'html.app-android-immersive-white-top body.page-shuiming > .header{' +
+        'padding-top:54px !important;box-sizing:border-box !important;}';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (eCss) {}
+  }
+
   function isHuaweiMineNoClipClient() {
     var ua = clientUaBlob();
     /* Mate 60 / Pro / Pro+（ALN-AL10）沉浸压栏，不能走 noclip 清零 */
@@ -2024,6 +2108,9 @@
   function applyImmersiveNotchWhitePageChrome() {
     try {
       var root = document.documentElement;
+      if (isHuaweiNova13Client() || isHuaweiWhitePageImmersiveClient()) {
+        root.classList.add('app-android-client');
+      }
       if (!root.classList.contains('app-android-client')) {
         return;
       }
@@ -2036,12 +2123,14 @@
       if (!isWhitePage) {
         return;
       }
-      /* 小米 13 Pro / 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / Mate 70 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / X300 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
+      /* 小米 13 Pro / 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / X300 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
       var immersiveTopInsetClient =
         isXiaomiImmersiveTopClient() ||
         isOnePlusAce2ImmersiveTopClient() ||
         isVivoImmersiveTopClient() ||
         isHuaweiMate70Client() ||
+        isHuaweiNova13Client() ||
+        isHuaweiWhitePageImmersiveClient() ||
         root.classList.contains('app-android-immersive-white-top') ||
         root.classList.contains('app-android-xiaomi-13pro') ||
         root.classList.contains('app-android-xiaomi-14pro') ||
@@ -2055,6 +2144,7 @@
         root.classList.contains('app-android-iqoo-neo8pro') ||
         root.classList.contains('app-android-vivo-x300pro') ||
         root.classList.contains('app-android-huawei-mate70') ||
+        root.classList.contains('app-android-huawei-nova13') ||
         isHuaweiMate60Client() ||
         root.classList.contains('app-android-huawei-mate60');
       if (immersiveTopInsetClient) {
@@ -2086,6 +2176,12 @@
           if (isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60')) {
             root.classList.add('app-android-huawei-mate60');
           }
+          if (isHuaweiNova13Client() || root.classList.contains('app-android-huawei-nova13')) {
+            root.classList.add('app-android-huawei-nova13');
+            root.classList.add('app-android-client');
+          }
+          ensureNova13WhitePageCss();
+          pinWhitePageImmersiveHeader();
           if (isOnePlusAce2ProClient() || root.classList.contains('app-android-oneplus-ace2pro')) {
             root.classList.add('app-android-oneplus-ace2pro');
           }
@@ -2486,6 +2582,10 @@
       if (huaweiMate60Client) {
         androidClient = true;
       }
+      var huaweiNova13Client = isHuaweiNova13Client();
+      if (huaweiNova13Client) {
+        androidClient = true;
+      }
       var onePlusAce2ProClient = androidClient && isOnePlusAce2ProClient();
       var onePlusAceProClient = androidClient && isOnePlusAceProClient();
       var onePlusAce2VClient = androidClient && isOnePlusAce2VClient();
@@ -2504,6 +2604,7 @@
         !redmiK70UltraClient &&
         !redmi12CClient &&
         !huaweiMate60Client &&
+        !huaweiNova13Client &&
         !onePlusAce2Immersive;
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
@@ -2526,7 +2627,7 @@
       var samsungOneUiFamily = androidClient && isSamsungOneUiFamilyClient();
       var samsungS24UltraClient = androidClient && isSamsungS24UltraClient();
       var huaweiHarmonyFamily =
-        androidClient && isHuaweiHarmonyOsFamilyClient() && !huaweiMate60Client;
+        androidClient && isHuaweiHarmonyOsFamilyClient() && !huaweiMate60Client && !huaweiNova13Client;
       var hiNovaFamily = androidClient && isHiNovaFamilyClient();
       var tallAndroidStatusBar =
         androidClient &&
@@ -2886,6 +2987,11 @@
       if (huaweiMate60Client) {
         document.documentElement.classList.add('app-android-huawei-mate60');
       }
+      if (huaweiNova13Client) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-nova13');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+      }
       if (huaweiHarmonyFamily) {
         document.documentElement.classList.add('app-android-huawei-harmony');
       }
@@ -2951,13 +3057,15 @@
           'html.app-android-xiaomi-15pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-10.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro),html.app-android-iqoo-15.app-top-safe-shell,html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro),html.app-android-iqoo-15.app-top-safe-shell,html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
           'html.app-android-huawei-mate70.app-top-safe-shell,' +
           'html.app-android-huawei-harmony.app-android-huawei-mate70.app-top-safe-shell,' +
           'html.app-android-huawei-harmony.app-android-immersive-white-top.app-top-safe-shell,' +
+          'html.app-android-huawei-nova13.app-top-safe-shell,' +
+          'html.app-android-huawei-nova13.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell,' +
           'html.app-android-oneplus-acepro.app-top-safe-shell,' +
           'html.app-android-oneplus-ace2v.app-top-safe-shell,' +
@@ -3525,8 +3633,19 @@
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .content,' +
           'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content{' +
           'padding-top:calc(46px + var(--app-shell-statusbar-top,40px)) !important;}' +
-          'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-xiangqing{' +
+          'html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing,' +
+          'html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing,' +
+          'html.app-android-client.app-top-safe-shell.app-android-huawei-nova13 body.page-xiangqing,' +
+          'html.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-xiangqing,' +
+          'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-xiangqing,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-xiangqing,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-xiangqing{' +
           'padding-top:calc(48px + var(--app-shell-statusbar-top,40px)) !important;}' +
+          'html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing > .header,' +
+          'html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing > .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-xiangqing > .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-xiangqing > .header{' +
+          'padding-top:calc(10px + var(--app-shell-statusbar-top,40px)) !important;box-sizing:border-box !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
@@ -3854,6 +3973,12 @@
       }
       if (isOnePlusAce2VClient()) {
         document.documentElement.classList.add('app-android-oneplus-ace2v');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+      }
+      if (isHuaweiNova13Client()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-nova13');
         document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-android-white-page-outer');
       }

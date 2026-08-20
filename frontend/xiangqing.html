@@ -6,6 +6,8 @@
         (function () {
             try {
                 var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
                 if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-13pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -43,10 +45,33 @@
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-huawei-nova13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                } else if (/OpenHarmony|ArkWeb|HarmonyOS/i.test(u) && !/ALN-|PLA-AL|PLR-AL|PLU-AL|HBN-|ADY-|CLS-|TAS-|LIO-|MIZ-/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                if (document.documentElement.classList.contains('app-android-immersive-white-top') ||
+                    document.documentElement.classList.contains('app-android-huawei-nova13')) {
+                    var xqInset = document.createElement('style');
+                    xqInset.setAttribute('data-nova13-xq-firstpaint', '1');
+                    xqInset.textContent =
+                        'html.app-android-immersive-white-top body.page-xiangqing > .header,' +
+                        'html.app-android-huawei-nova13 body.page-xiangqing > .header{padding-top:50px !important;box-sizing:border-box !important;}' +
+                        'html.app-android-immersive-white-top body.page-xiangqing,' +
+                        'html.app-android-huawei-nova13 body.page-xiangqing{padding-top:88px !important;}';
+                    (document.head || document.documentElement).appendChild(xqInset);
+                }
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260819-mate60-aug15"></script>
+    <script src="/js/auth.js?v=20260820-nova13-xq"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-help-icon-lock" data-scope="body.page-xiangqing"></script>
@@ -85,7 +110,10 @@
             --xq-header-core: 48px;
         }
 
+        html.app-android-immersive-white-top body.page-xiangqing,
+        html.app-android-huawei-nova13 body.page-xiangqing,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing,
+        html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing,
@@ -94,7 +122,10 @@
             padding-top: calc(var(--xq-header-core) + 40px);
         }
 
+        html.app-android-immersive-white-top body.page-xiangqing > .header,
+        html.app-android-huawei-nova13 body.page-xiangqing > .header,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing > .header,
