@@ -2,7 +2,7 @@
  * 今日前端/后端改动静态自检（无外部依赖）
  * node scripts/today-changes-selftest.mjs
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -21,6 +21,10 @@ function fail(label, detail) {
 
 function read(rel) {
   return readFileSync(join(root, rel), 'utf8');
+}
+
+function exists(rel) {
+  return existsSync(join(root, rel));
 }
 
 function mustInclude(rel, needles, label) {
@@ -152,7 +156,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260820-nova13-mine', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750'],
+  ['20260820-no-bili-gate', 'app-android-huawei-mate60', 'app-huawei-mine-noclip', 'OpenHarmony', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done'],
   'mine.html mate60 + reno10 + neo8 + nova13 cache'
 );
 mustInclude(
@@ -162,7 +166,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260820-magic5pro-card2'],
+  ['20260820-mate60-pill'],
   'fast-nav auth cache magic5pro'
 );
 mustInclude(
@@ -182,7 +186,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260819-mate60-aug15'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260820-mate60-pill'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -218,7 +222,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260820-magic5pro-card2', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px'],
+  ['20260820-mi13-a6', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
   'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(
@@ -503,6 +507,87 @@ mustInclude(
   'backend/scripts/ccb_flow_render.py',
   ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS'],
   'ccb render month/amount range'
+);
+mustInclude(
+  'backend/scripts/sbdy_wh_render_pdf.py',
+  ['湖北省社会保险参保证明（个人专用）', 'wh_seal.png', '近12个月参保缴费情况', '缴费类型', 'MAX_SHOW = 12'],
+  'sbdy Wuhan PDF renderer'
+);
+if (!read('backend/scripts/sbdy_wh_render_pdf.py').includes('draw_watermark')) {
+  ok('sbdy Wuhan PDF no watermark');
+} else {
+  fail('sbdy Wuhan PDF no watermark');
+}
+mustInclude(
+  'backend/scripts/make_wh_seal.py',
+  ['湖北省城镇企业职工社会保险', '参保证明章'],
+  'sbdy Wuhan seal text'
+);
+if (read('backend/scripts/make_wh_seal.py').includes('社会保险局')) {
+  fail('sbdy Wuhan seal without 局', 'ring still has 局');
+} else {
+  ok('sbdy Wuhan seal without 局');
+}
+
+/* 一键生成前 B 站分享门槛已下线 */
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['一键生成前分享门槛已下线', 'function ensureBilibiliShareBeforeTaxGenerate()', 'function isMineShareDone()'],
+  'bili gate helper still exported'
+);
+{
+  const auth = read('frontend/public/js/auth.js');
+  const gateFn = auth.match(/function ensureBilibiliShareBeforeTaxGenerate\(\)\s*\{[\s\S]*?\n  \}/);
+  if (gateFn && /return true;/.test(gateFn[0]) && !/window\.confirm/.test(gateFn[0])) {
+    ok('bili generate gate always pass');
+  } else {
+    fail('bili generate gate always pass');
+  }
+  const shareDone = auth.match(/function isMineShareDone\(\)\s*\{[\s\S]*?\n  \}/);
+  if (shareDone && /return true;/.test(shareDone[0])) {
+    ok('mine share done always true');
+  } else {
+    fail('mine share done always true');
+  }
+}
+mustInclude(
+  'frontend/consult.html',
+  ['20260820-no-bili-gate', 'consult-batch-tax.js?v=20260820-no-bili-gate'],
+  'consult no-bili-gate cache'
+);
+if (!read('frontend/consult.html').includes('为什么生成前要分享到 B 站')) {
+  ok('consult FAQ without bili share gate');
+} else {
+  fail('consult FAQ without bili share gate');
+}
+if (!read('frontend/public/js/consult-batch-tax.js').includes('ensureBilibiliShareBeforeTaxGenerate')) {
+  ok('batch tax without bili gate call');
+} else {
+  fail('batch tax without bili gate call');
+}
+
+/* 收入纳税明细「其他类型」箭头：全机型同一张图 */
+mustInclude(
+  'frontend/shuiming.html',
+  ['/img/shuiming/type-caret.png', 'type-toggle-caret zhankai', 'scaleY(-1)'],
+  'shuiming type caret img'
+);
+if (exists('frontend/public/img/shuiming/type-caret.png')) {
+  ok('shuiming type caret asset');
+} else {
+  fail('shuiming type caret asset');
+}
+
+/* 小米 13 首页 a6 入口卡收小 */
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isXiaomi13Client', '2211133[CGI]', 'app-android-xiaomi-13'],
+  'xiaomi 13 home card detect'
+);
+mustInclude(
+  'frontend/shouye.html',
+  ['html.app-android-xiaomi-13 .sy-apk-hitem', 'calc((100% - 16px) / 3.1)', 'max-width: 118px'],
+  'xiaomi 13 home a6 card shrink'
 );
 
 (function testXiaomi13ProUa() {

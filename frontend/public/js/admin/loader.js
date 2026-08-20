@@ -8,7 +8,7 @@
   /* 空壳模块（仅 ready:true）已删除；PAGE_MODULE 仍映射以便按页拉 Chart/QR 等依赖 */
   var MODULE_SRC = {
     charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260813-sz',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260820-wh-12mo',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260815-zaizhi',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',

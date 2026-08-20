@@ -588,7 +588,7 @@
     if (isXiaomi13ProClient()) {
       return false;
     }
-    return /2211133[CGI]|Xiaomi\s*13\b/i.test(ua);
+    return /2211133[CGI]|(?:Xiaomi|Mi|小米)[\s_-]*13\b/i.test(ua);
   }
 
   var DEVICE_MODEL_STORE = 'tax_device_model_v1';
@@ -1410,6 +1410,8 @@
    * 华为 Mate 60 / Mate 60 Pro / Pro+（ALN-AL00 / ALN-AL10 / ALN-AL80 等）。
    * Harmony Cordova 常仍沉浸压栏，overlays=false 不可靠；不可按华为族「外置黑条」清零顶距，
    * 否则收入纳税明细「返回 / 标题 / 批量申诉」会顶进系统时间与电量栏。
+   * HarmonyOS 6 ArkWeb 的 100vw 仍宽于画布：「我的」e1 须用画布宽度写 rpx，
+   * 否则「添加 / 暂无」会掉到菜单顶边；勿因此改走 noclip（会丢 40px bleed）。
    * 不含 Mate 70 系（PLA-AL10 等）：套用本规则会把「我的」顶栏刷白并叠字。
    * UI 对齐 2026-08-15：仅按 Mate 60 / ALN 识别，勿把整族鸿蒙当成 Mate 60。
    */
@@ -1534,8 +1536,49 @@
   }
 
   /**
+   * HarmonyOS ArkWeb：100vw 常宽于画布，e1 叠字「添加/暂无」会掉到菜单顶边。
+   * 用画布实测宽度写 --mine-rpx（1rpx = width/750）。Mate 60 只借这条，不走 noclip。
+   */
+  function pinMineE1RpxFromCanvas() {
+    try {
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      var canvas = document.getElementById('mineE1Canvas');
+      if (!canvas) {
+        return;
+      }
+      var img = document.getElementById('headerImg');
+      if (img && !img.getAttribute('data-mine-e1-rpx-bound')) {
+        img.setAttribute('data-mine-e1-rpx-bound', '1');
+        img.addEventListener('load', pinMineE1RpxFromCanvas);
+      }
+      var w = canvas.getBoundingClientRect().width;
+      if (!(w > 0)) {
+        if (!canvas.getAttribute('data-mine-e1-rpx-retry')) {
+          canvas.setAttribute('data-mine-e1-rpx-retry', '1');
+          if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(pinMineE1RpxFromCanvas);
+          }
+        }
+        return;
+      }
+      var rpx = w / 750 + 'px';
+      var root = document.documentElement;
+      root.style.setProperty('--mine-rpx', rpx);
+      document.body.style.setProperty('--mine-rpx', rpx);
+      canvas.style.setProperty('--mine-rpx', rpx);
+      var layer = document.getElementById('mineE1Layer');
+      if (layer) {
+        layer.style.setProperty('--mine-rpx', rpx);
+      }
+    } catch (eRpx) {}
+  }
+
+  /**
    * 华为「我的」e1：
-   * - Mate 60 / Pro / Pro+（ALN）：对齐 2026-08-15，40px bleed + 头图负 margin，叠层 top:0。
+   * - Mate 60 / Pro / Pro+（ALN，含 HarmonyOS 6.1）：40px bleed + 头图负 margin，叠层 top:0。
+   *   ArkWeb 的 100vw 仍会把「添加/暂无」掉到菜单顶边，须另用画布实测 rpx（勿套 noclip）。
    * - 其余鸿蒙外置黑条：禁止 padding+负 margin，避免误测 inset 裁掉头像。
    * Mate 70 不得套 Mate 60 规则。
    */
@@ -1571,6 +1614,7 @@
         if (layer60) {
           layer60.style.setProperty('top', '0', 'important');
         }
+        pinMineE1RpxFromCanvas();
         return;
       }
       if (
@@ -1610,6 +1654,7 @@
     try {
       var root = document.documentElement;
       if (isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60')) {
+        pinMineE1RpxFromCanvas();
         return;
       }
       var nova13 = isHuaweiNova13Client() || root.classList.contains('app-android-huawei-nova13');
@@ -1627,27 +1672,7 @@
       if (!document.body || !document.body.classList.contains('page-mine')) {
         return;
       }
-      var canvas = document.getElementById('mineE1Canvas');
-      if (!canvas) {
-        return;
-      }
-      var img = document.getElementById('headerImg');
-      if (img && !img.getAttribute('data-nova13-rpx-bound')) {
-        img.setAttribute('data-nova13-rpx-bound', '1');
-        img.addEventListener('load', pinNova13MineE1Layout);
-      }
-      var w = canvas.getBoundingClientRect().width;
-      if (!(w > 0)) {
-        return;
-      }
-      var rpx = w / 750 + 'px';
-      root.style.setProperty('--mine-rpx', rpx);
-      document.body.style.setProperty('--mine-rpx', rpx);
-      canvas.style.setProperty('--mine-rpx', rpx);
-      var layer = document.getElementById('mineE1Layer');
-      if (layer) {
-        layer.style.setProperty('--mine-rpx', rpx);
-      }
+      pinMineE1RpxFromCanvas();
     } catch (eRpx) {}
   }
 
@@ -1927,10 +1952,10 @@
           'html{background-color:#f5f6fa !important;background-image:' +
           mineGrad +
           ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;' +
-          /* html 给百分比高度基准；body 必须用 vh/dvh 撑满视口，否则短文档上 fixed 底栏会悬空 */
-          'min-height:100% !important;height:100% !important;}' +
+          /* 用 100vh（大视口）。100dvh 在 16 Pro 会少一截刘海，fixed 底栏会整条抬高 */
+          'min-height:100vh !important;height:auto !important;}' +
           'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;' +
-          'min-height:100vh !important;min-height:100dvh !important;}' +
+          'min-height:100vh !important;}' +
           'html.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
@@ -1966,7 +1991,7 @@
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:var(--mine-top-bleed) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:var(--mine-top-bleed) !important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0 !important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
@@ -1990,18 +2015,23 @@
           'html.app-android-honor-flc.app-top-safe-shell,' +
           'html.app-android-honor-fcp.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
           'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,8px)!important;}' +
-          'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device{' +
+          'html body.page-shouye{--bottom-nav-bottom:var(--bottom-nav-gap,8px)!important;}' +
+          'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device,' +
+          'html body.page-shouye > .bottom-nav,html body.page-shouye > .bottom-nav.ios-device{' +
           'position:fixed!important;left:var(--bottom-nav-side,16px)!important;right:var(--bottom-nav-side,16px)!important;' +
           'bottom:var(--bottom-nav-bottom,8px)!important;top:auto!important;margin:0!important;z-index:10050!important;' +
+          'height:var(--bottom-nav-height,54px)!important;min-height:var(--bottom-nav-height,54px)!important;max-height:var(--bottom-nav-height,54px)!important;' +
+          'padding-top:8px!important;padding-bottom:8px!important;box-sizing:border-box!important;' +
           'transform:none!important;-webkit-transform:none!important;}' +
           /* iOS：禁止再抬 bottom / 叠 safe-area，与其它 TAB 同为 8px 浮起 */
-          'html.app-ios-client body.page-mine{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
-          'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
-          'bottom:8px!important;padding-top:10px!important;padding-bottom:10px!important;margin-bottom:0!important;}' +
-          'html.app-ios-iphone16pro body.page-daiban > .bottom-nav,html.app-ios-iphone16pro body.page-bancha > .bottom-nav,' +
+          'html.app-ios-client body.page-mine,html.app-ios-client body.page-shouye{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
+          'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device,' +
+          'html.app-ios-client body.page-shouye > .bottom-nav,html.app-ios-client body.page-shouye > .bottom-nav.ios-device{' +
+          'bottom:8px!important;height:var(--bottom-nav-height,54px)!important;padding-top:8px!important;padding-bottom:8px!important;margin-bottom:0!important;}' +
+          'html.app-ios-iphone16pro body.page-shouye > .bottom-nav,html.app-ios-iphone16pro body.page-daiban > .bottom-nav,html.app-ios-iphone16pro body.page-bancha > .bottom-nav,' +
           'html.app-ios-iphone16pro body.page-message > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav,' +
           'html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,' +
-          'html.app-ios-iphone16promax body.page-daiban > .bottom-nav,html.app-ios-iphone16promax body.page-bancha > .bottom-nav,' +
+          'html.app-ios-iphone16promax body.page-shouye > .bottom-nav,html.app-ios-iphone16promax body.page-daiban > .bottom-nav,html.app-ios-iphone16promax body.page-bancha > .bottom-nav,' +
           'html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,' +
           'html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}';
         document.head.appendChild(st);
@@ -2063,7 +2093,7 @@
           'html.app-ios-client body.page-daiban,html.app-ios-client body.page-bancha{padding-bottom:0 !important;--bottom-nav-bottom:8px !important;--bottom-nav-gap:8px !important;}' +
           'html.app-ios-client body.page-daiban > .bottom-nav,html.app-ios-client body.page-bancha > .bottom-nav,' +
           'html.app-ios-client body.page-daiban > .bottom-nav.ios-device,html.app-ios-client body.page-bancha > .bottom-nav.ios-device{' +
-          'bottom:8px !important;padding-top:10px !important;padding-bottom:10px !important;margin-bottom:0 !important;}' +
+          'bottom:8px !important;height:var(--bottom-nav-height,54px) !important;min-height:var(--bottom-nav-height,54px) !important;max-height:var(--bottom-nav-height,54px) !important;padding-top:8px !important;padding-bottom:8px !important;margin-bottom:0 !important;}' +
           'html body.page-daiban,html body.page-bancha{--bottom-nav-bottom:8px !important;--bottom-nav-gap:8px !important;--bottom-nav-clearance:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 16px) !important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
@@ -2143,6 +2173,13 @@
           syRoot.classList.add('app-android-honor-magic6pro');
           syRoot.classList.add('app-android-client');
         }
+        if (isXiaomi13ProClient() || syRoot.classList.contains('app-android-xiaomi-13pro')) {
+          syRoot.classList.add('app-android-xiaomi-13pro');
+          syRoot.classList.add('app-android-client');
+        } else if (isXiaomi13Client() || syRoot.classList.contains('app-android-xiaomi-13')) {
+          syRoot.classList.add('app-android-xiaomi-13');
+          syRoot.classList.add('app-android-client');
+        }
       } catch (eMate60Sy) {}
       if (isLikelyIOSViewportClient()) {
         try {
@@ -2151,10 +2188,12 @@
           var st = document.createElement('style');
           st.setAttribute('data-shouye-chrome', '1');
           st.textContent =
-            'html.app-ios-client{background-color:' +
-            APP_SHOUYE_BAR_BLUE +
-            ' !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
-            'html.app-ios-client body.page-shouye{background:#f6f7fb !important;}' +
+            'html.app-ios-client{background-color:#f6f7fb !important;background-image:linear-gradient(rgb(' +
+            APP_SHOUYE_BAR_RGB +
+            '),rgb(' +
+            APP_SHOUYE_BAR_RGB +
+            ')) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100dvh !important;height:auto !important;}' +
+            'html.app-ios-client body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;min-height:100dvh !important;}' +
             'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,' +
             APP_SHOUYE_BAR_RGB +
             ')) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
@@ -2434,14 +2473,17 @@
     /* iOS 规则必须写在通用 bottom 之后，否则会被 var(--bottom-nav-bottom) 盖掉 */
     var iosPad =
       'html.app-ios-client{--bottom-nav-bottom:8px !important;--bottom-nav-gap:8px !important;}' +
-      'html.app-ios-client body.page-mine{--bottom-nav-bottom:8px !important;--bottom-nav-gap:8px !important;}' +
+      'html.app-ios-client body.page-mine,html.app-ios-client body.page-shouye{--bottom-nav-bottom:8px !important;--bottom-nav-gap:8px !important;}' +
       'html.app-ios-client body > .bottom-nav,html.app-ios-client body > .bottom-nav.ios-device,' +
       'html.app-ios-client body.page-daiban > .bottom-nav,html.app-ios-client body.page-bancha > .bottom-nav,' +
       'html.app-ios-client body.page-shouye > .bottom-nav,html.app-ios-client body.page-message > .bottom-nav,' +
       'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
       'bottom:8px!important;' +
-      'padding-top:10px!important;' +
-      'padding-bottom:10px!important;' +
+      'height:var(--bottom-nav-height,54px)!important;' +
+      'min-height:var(--bottom-nav-height,54px)!important;' +
+      'max-height:var(--bottom-nav-height,54px)!important;' +
+      'padding-top:8px!important;' +
+      'padding-bottom:8px!important;' +
       'margin-bottom:0!important;' +
       '}';
     st.textContent =
@@ -2450,7 +2492,7 @@
       ' !important;--bottom-nav-gap:' +
       bottom +
       ' !important;}' +
-      'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,' +
+      'html body.page-mine,html body.page-shouye{--bottom-nav-bottom:var(--bottom-nav-gap,' +
       bottom +
       ')!important;}' +
       'html body .bottom-nav,html body > .bottom-nav,' +
@@ -2466,6 +2508,12 @@
       bottom +
       ')!important;' +
       'top:auto!important;' +
+      'height:var(--bottom-nav-height,54px)!important;' +
+      'min-height:var(--bottom-nav-height,54px)!important;' +
+      'max-height:var(--bottom-nav-height,54px)!important;' +
+      'padding-top:8px!important;' +
+      'padding-bottom:8px!important;' +
+      'box-sizing:border-box!important;' +
       'z-index:10050!important;margin:0!important;animation:none!important;' +
       'transform:none!important;-webkit-transform:none!important;translate:none!important;' +
       'view-transition-name:none!important;pointer-events:auto!important;}' +
@@ -2537,17 +2585,19 @@
       nav.style.setProperty('bottom', targetGap + 'px', 'important');
       nav.style.setProperty('margin', '0', 'important');
       nav.style.setProperty('margin-bottom', '0', 'important');
+      nav.style.setProperty('height', '54px', 'important');
+      nav.style.setProperty('min-height', '54px', 'important');
+      nav.style.setProperty('max-height', '54px', 'important');
+      nav.style.setProperty('padding-top', '8px', 'important');
+      nav.style.setProperty('padding-bottom', '8px', 'important');
+      nav.style.setProperty('box-sizing', 'border-box', 'important');
       if (iosClient) {
-        nav.style.setProperty('padding-top', '10px', 'important');
-        nav.style.setProperty('padding-bottom', '10px', 'important');
         /* WebKit：backdrop-filter / backface 易让 fixed 底栏相对错误容器抬高（我的页尤甚） */
         nav.style.setProperty('backdrop-filter', 'none', 'important');
         nav.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
         nav.style.setProperty('backface-visibility', 'visible', 'important');
         nav.style.setProperty('-webkit-backface-visibility', 'visible', 'important');
         nav.style.setProperty('background', 'rgba(255,255,255,0.98)', 'important');
-      } else {
-        nav.style.removeProperty('padding-bottom');
       }
       nav.style.setProperty('transform', 'none', 'important');
       nav.style.setProperty('-webkit-transform', 'none', 'important');
@@ -2558,7 +2608,7 @@
       document.documentElement.style.setProperty('--bottom-nav-gap', targetGap + 'px');
     } catch (eStyle) {}
 
-    /* 待办/我的若被 safe-area 或错误包含块抬高，按实测空隙下拉到与消息页相同 */
+    /* 再钉一次高度/底边；勿按视口实测改 bottom（12 / 16 Pro 切页会高低不一） */
     try {
       closeIosBottomNavExtraGap(nav, targetGap);
       requestAnimationFrame(function () {
@@ -2582,43 +2632,43 @@
   function closeIosBottomNavExtraGap(nav, wantGap) {
     if (!nav) return;
     wantGap = typeof wantGap === 'number' ? wantGap : 8;
-    var iphone16Pro = false;
+    /*
+     * 「我的」在 iPhone 12 / 16 Pro 上 layout viewport 比屏幕矮一截刘海（约 47~59px），
+     * bottom:8px 会钉在这块矮视口底，屏幕上就空出一大截灰。按视觉底边把 bottom 下拉。
+     * 只改 bottom，不改 height/padding，避免切 TAB 时胶囊变厚。
+     */
+    var pinH = window.innerHeight || 0;
+    var iosClient = false;
     try {
-      iphone16Pro =
-        document.documentElement.classList.contains('app-ios-iphone16pro') ||
-        document.documentElement.classList.contains('app-ios-iphone16promax');
-    } catch (e16) {}
-    /* 只用视口高度，勿用 body.clientHeight（我的页 e1 画布很高会误判空隙） */
-    var layoutH = 0;
+      iosClient = document.documentElement.classList.contains('app-ios-client');
+    } catch (eIos) {}
     try {
-      layoutH = Math.max(
-        window.innerHeight || 0,
-        document.documentElement ? document.documentElement.clientHeight || 0 : 0
-      );
       if (window.visualViewport) {
         var vvBottom = Math.round(
           (window.visualViewport.height || 0) + (window.visualViewport.offsetTop || 0)
         );
-        /* visualViewport 常更接近真实可见底边；取较大值避免低估 */
-        if (vvBottom > layoutH) layoutH = vvBottom;
+        if (vvBottom > pinH) pinH = vvBottom;
       }
-    } catch (eH) {
-      layoutH = window.innerHeight || 0;
-    }
-    if (!layoutH) return;
+      if (iosClient) {
+        var sh = Math.max(window.screen.width || 0, window.screen.height || 0);
+        if (sh > pinH && sh - pinH <= 96) pinH = sh;
+      }
+    } catch (eH) {}
+    if (!pinH) return;
     var rect = nav.getBoundingClientRect();
-    var gap = layoutH - rect.bottom;
-    /* 16 Pro 待办/我的空隙阈值收紧，避免比消息页多出一截灰底 */
-    var slop = iphone16Pro ? 2 : 6;
-    if (!(gap > wantGap + slop)) return;
+    var gap = pinH - rect.bottom;
+    if (!(gap > wantGap + 2)) return;
     var cs = window.getComputedStyle(nav);
     var curBottom = parseFloat(cs.bottom);
     if (isNaN(curBottom)) curBottom = wantGap;
     var nextBottom = curBottom - (gap - wantGap);
-    /* 允许较大负值：fixed 相对错误容器时需用负 bottom 才能贴视口底 */
-    if (nextBottom < -80) nextBottom = -80;
+    if (nextBottom < -96) nextBottom = -96;
     nav.style.setProperty('bottom', Math.round(nextBottom) + 'px', 'important');
-    nav.style.setProperty('padding-bottom', '10px', 'important');
+    nav.style.setProperty('height', '54px', 'important');
+    nav.style.setProperty('min-height', '54px', 'important');
+    nav.style.setProperty('max-height', '54px', 'important');
+    nav.style.setProperty('padding-top', '8px', 'important');
+    nav.style.setProperty('padding-bottom', '8px', 'important');
     nav.style.setProperty('margin-bottom', '0', 'important');
     nav.style.setProperty('transform', 'none', 'important');
     nav.style.setProperty('-webkit-transform', 'none', 'important');
@@ -3384,11 +3434,11 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:0 !important;padding-top:var(--app-shell-statusbar-top,0px) !important;overflow:hidden !important;background:#2286ee !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;position:relative !important;z-index:1 !important;display:block !important;width:100% !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px)) !important;}' +
-          'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,8px)!important;min-height:100vh!important;min-height:100dvh!important;}' +
-          'html body.page-mine > .bottom-nav{bottom:var(--bottom-nav-bottom,8px)!important;top:auto!important;margin:0!important;transform:none!important;-webkit-transform:none!important;}' +
-          'html.app-ios-client body.page-mine{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
-          'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{bottom:8px!important;padding-top:10px!important;padding-bottom:10px!important;margin-bottom:0!important;top:auto!important;transform:none!important;-webkit-transform:none!important;}' +
-          'html.app-ios-iphone16pro body.page-daiban > .bottom-nav,html.app-ios-iphone16pro body.page-bancha > .bottom-nav,html.app-ios-iphone16pro body.page-message > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,html.app-ios-iphone16promax body.page-daiban > .bottom-nav,html.app-ios-iphone16promax body.page-bancha > .bottom-nav,html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}' +
+          'html body.page-mine,html body.page-shouye{--bottom-nav-bottom:var(--bottom-nav-gap,8px)!important;min-height:100vh!important;}' +
+          'html body.page-mine > .bottom-nav,html body.page-shouye > .bottom-nav{bottom:var(--bottom-nav-bottom,8px)!important;top:auto!important;margin:0!important;height:var(--bottom-nav-height,54px)!important;min-height:var(--bottom-nav-height,54px)!important;max-height:var(--bottom-nav-height,54px)!important;padding-top:8px!important;padding-bottom:8px!important;box-sizing:border-box!important;transform:none!important;-webkit-transform:none!important;}' +
+          'html.app-ios-client body.page-mine,html.app-ios-client body.page-shouye{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
+          'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device,html.app-ios-client body.page-shouye > .bottom-nav,html.app-ios-client body.page-shouye > .bottom-nav.ios-device{bottom:8px!important;height:var(--bottom-nav-height,54px)!important;padding-top:8px!important;padding-bottom:8px!important;margin-bottom:0!important;top:auto!important;transform:none!important;-webkit-transform:none!important;}' +
+          'html.app-ios-iphone16pro body.page-shouye > .bottom-nav,html.app-ios-iphone16pro body.page-daiban > .bottom-nav,html.app-ios-iphone16pro body.page-bancha > .bottom-nav,html.app-ios-iphone16pro body.page-message > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav,html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,html.app-ios-iphone16promax body.page-shouye > .bottom-nav,html.app-ios-iphone16promax body.page-daiban > .bottom-nav,html.app-ios-iphone16promax body.page-bancha > .bottom-nav,html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#2b81f2 !important;z-index:40 !important;pointer-events:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-message::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#1e8fff !important;z-index:40 !important;pointer-events:none !important;}' +
           /* iPhone 12 Pro Max：待办/办查/消息/我的 用头图 bleed，取消固色垫带 */
@@ -3465,8 +3515,8 @@
           'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,env(safe-area-inset-top,48px))) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
-          'html.app-ios-client.app-top-safe-shell:has(body.page-shouye){background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;}' +
+          'html.app-ios-client.app-top-safe-shell:has(body.page-shouye){background-color:#f6f7fb !important;background-image:linear-gradient(rgb(var(--shouye-top-bar-rgb,79, 144, 243)),rgb(var(--shouye-top-bar-rgb,79, 144, 243))) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;min-height:100dvh !important;}' +
           /* iPhone 16 Pro：收入纳税明细筛选页顶栏铺满安全区，避免状态栏下露灰/色差 */
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
@@ -4099,6 +4149,7 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       syncAppShellStatusbarTop();
+      pinMate60MineE1Layout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
       applyMinePageChrome();
@@ -4112,6 +4163,7 @@
   } else {
     setTimeout(function () {
       syncAppShellStatusbarTop();
+      pinMate60MineE1Layout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
@@ -4120,6 +4172,7 @@
   window.addEventListener('orientationchange', function () {
     setTimeout(function () {
       syncAppShellStatusbarTop();
+      pinMate60MineE1Layout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
@@ -4128,6 +4181,7 @@
   window.addEventListener('resize', function () {
     setTimeout(function () {
       syncAppShellStatusbarTop();
+      pinMate60MineE1Layout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
@@ -4172,6 +4226,13 @@
       if (isHonorMagic6ProClient()) {
         document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-honor-magic6pro');
+      }
+      if (isXiaomi13ProClient()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-xiaomi-13pro');
+      } else if (isXiaomi13Client()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-xiaomi-13');
       }
     } catch (eMi14p) {}
     rememberCordovaDeviceModel();
@@ -4912,11 +4973,8 @@
   var BILIBILI_SHARE_URL = 'https://b23.tv/EiRdMqm';
 
   function isMineShareDone() {
-    try {
-      return localStorage.getItem(MINE_SHARE_DONE_KEY) === '1';
-    } catch (e) {
-      return false;
-    }
+    /* 生成前分享门槛已下线：始终视为已完成，隐藏「我的」页分享入口 */
+    return true;
   }
 
   function markMineSharePending() {
@@ -5147,36 +5205,9 @@
     return copyThenHint();
   }
 
-  /** 一键生成前：未分享且尚无个税记录则拦截 */
+  /** 一键生成前分享门槛已下线，直接放行 */
   function ensureBilibiliShareBeforeTaxGenerate() {
-    finalizeMineShareIfPending();
-    if (isMineShareDone()) return true;
-    try {
-      var n = Number(localStorage.getItem('tax_record_count') || '0');
-      if (n > 0) return true;
-    } catch (eN) {}
-    var goShare = false;
-    try {
-      goShare = window.confirm(
-        '一键生成个税记录前，请先分享到 B 站。\n\n点「确定」立即分享。'
-      );
-    } catch (eC) {
-      goShare = true;
-    }
-    if (goShare) {
-      shareToBilibili({
-        url: BILIBILI_SHARE_URL,
-        title: '个税记录演示',
-        text: '个税记录演示：打开即可体验收入明细与纳税记录',
-        track: 'track_share_bilibili_gate'
-      }).then(function (result) {
-        if (result && result.method && result.method !== 'abort') {
-          if (result.method === 'intent') return;
-          markMineShareCompleted();
-        }
-      });
-    }
-    return false;
+    return true;
   }
 
   /* 尽早挂到 window：后半段若因 Map 等环境差异中断，分享仍可用 */

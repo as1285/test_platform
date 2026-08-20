@@ -98,4 +98,76 @@ describe('sbdyDemo', () => {
     expect(html).toContain('人力宝科技有限公司深圳分公司');
     expect(html).not.toMatch(/table\.map|class="map"/);
   });
+
+  it('normalizePayload builds Wuhan month rows in reverse chrono split', () => {
+    const p = normalizePayload({
+      region: 'wh',
+      name: '张志龙',
+      id_number: '340826200006245634',
+      gender: '男',
+      company_name: '武汉天创建设集团有限公司',
+      unit_code: '100565022',
+      person_no: '10060631090',
+      insurance_type: '企业养老',
+      area: '武汉市',
+      period_start: '2024-07',
+      period_end: '2025-01',
+      base_amount: 6120
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('wh');
+    expect(p.layout).toBe('wh_official_v1');
+    expect(p.person_no).toBe('10060631090');
+    expect(p.unit_code).toBe('100565022');
+    expect(p.insurance_type).toBe('企业养老');
+    expect(p.area).toBe('武汉市');
+    expect(p.local_month_count).toBe(7);
+    expect(p.months.length).toBe(7);
+    expect(p.months[0].ym).toBe('202407');
+    expect(p.months[6].ym).toBe('202501');
+    expect(p.months[0].status).toBe('正常');
+    expect(p.watermark_id).toMatch(/^\d{12}-\d{10}$/);
+    const html = renderCertHtml(p, {}, { authCode: '2026 0819 1624 027Y 32L1' });
+    expect(html).toContain('湖北省社会保险参保证明（个人专用）');
+    expect(html).toContain('张志龙');
+    expect(html).toContain('10060631090');
+    expect(html).toContain('340826200006245634');
+    expect(html).toContain('近12个月参保缴费情况');
+    expect(html).toContain('缴费类型');
+    expect(html).toContain('正常');
+    expect(html).not.toContain('近36个月参保缴费情况');
+    expect(html).toContain('202501');
+    expect(html).toContain('202407');
+    expect(html).toContain('59.175.218.201:8005/template/dzsbzmyz.html');
+    expect(html).toContain('2026 0819 1624 027Y 32L1');
+    expect(html).toContain('sbdy_wh_seal.png');
+    expect(html).toContain('企业养老');
+    expect(html).not.toContain('本文件由全国社保卡服务平台');
+    expect(html).not.toContain('class="wm"');
+    expect(html.indexOf('202501')).toBeLessThan(html.indexOf('202407'));
+  });
+
+  it('Wuhan table shows last 12 months newest-first when period is longer', () => {
+    const p = normalizePayload({
+      region: 'wh',
+      name: '杨大富',
+      id_number: '420881196305166819',
+      gender: '男',
+      company_name: '武汉美艺印刷包装有限公司',
+      period_start: '2022-08',
+      period_end: '2024-09',
+      base_amount: 4224
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.local_month_count).toBe(26);
+    expect(p.months.length).toBe(26);
+    const html = renderCertHtml(p, {}, { authCode: '2025 0219 1005 417X TTIP' });
+    expect(html).toContain('近12个月参保缴费情况');
+    expect(html).toContain('202409');
+    expect(html).toContain('202310');
+    expect(html).not.toContain('202208');
+    expect(html).not.toContain('202209');
+    expect(html.indexOf('202409')).toBeLessThan(html.indexOf('202404'));
+    expect(html.indexOf('202403')).toBeLessThan(html.indexOf('202310'));
+  });
 });

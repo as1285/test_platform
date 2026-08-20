@@ -428,7 +428,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
@@ -440,17 +439,22 @@
         .type-toggle-text {
             flex: 0 0 auto;
         }
-        /* 官方为紧凑双箭头「︾ / ︽」，勿用拉开间距的 CSS 双 V */
+        /* 官方 IncomeTaxPayment .show-all-line img：15×15 位图，全机型同一张；展开 scaleY(-1) */
         .type-toggle-caret {
-            font-size: 12px;
-            line-height: 1;
-            margin-top: 1px;
-            color: inherit;
+            width: 15px;
+            height: 15px;
+            margin-left: 4px;
+            display: block;
             flex-shrink: 0;
-            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-            font-weight: 400;
-            letter-spacing: 0;
-            transform: scaleY(0.92);
+            border: 0;
+        }
+        .type-toggle-caret.zhankai {
+            -webkit-transform: scaleY(-1);
+            transform: scaleY(-1);
+        }
+        .type-toggle-caret.shousuo {
+            -webkit-transform: scaleY(1);
+            transform: scaleY(1);
         }
         
         /* 官方 .income-query-btn margin-top .85333333rem ≈ 32px */
@@ -702,7 +706,7 @@
 
         <div class="type-toggle" id="btnExpandTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">其他类型</span>
-            <span class="type-toggle-caret" aria-hidden="true">︾</span>
+            <img class="type-toggle-caret zhankai" src="/img/shuiming/type-caret.png?v=20260820-caret" width="15" height="15" alt="" aria-hidden="true">
         </div>
 
             <div id="incomeTypesExtra" class="income-types-extra" aria-hidden="true">
@@ -750,7 +754,7 @@
 
         <div class="type-toggle hidden" id="btnCollapseTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">收起</span>
-            <span class="type-toggle-caret" aria-hidden="true">︽</span>
+            <img class="type-toggle-caret shousuo" src="/img/shuiming/type-caret.png?v=20260820-caret" width="15" height="15" alt="" aria-hidden="true">
         </div>
             </div>
         </div>

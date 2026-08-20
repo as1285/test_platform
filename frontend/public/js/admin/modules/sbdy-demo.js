@@ -57,26 +57,51 @@
 
   function currentRegion() {
     var sz = document.getElementById('sbdyRegionSz');
-    return sz && sz.checked ? 'sz' : 'zj';
+    var wh = document.getElementById('sbdyRegionWh');
+    if (sz && sz.checked) return 'sz';
+    if (wh && wh.checked) return 'wh';
+    return 'zj';
   }
 
   function syncRegionUi() {
-    var sz = currentRegion() === 'sz';
+    var region = currentRegion();
     document.querySelectorAll('.sbdy-zj-only').forEach(function (el) {
-      el.hidden = sz;
+      el.hidden = region !== 'zj';
     });
     document.querySelectorAll('.sbdy-sz-only').forEach(function (el) {
-      el.hidden = !sz;
+      el.hidden = region !== 'sz';
+    });
+    document.querySelectorAll('.sbdy-wh-only').forEach(function (el) {
+      el.hidden = region !== 'wh';
+    });
+    document.querySelectorAll('.sbdy-sz-wh').forEach(function (el) {
+      el.hidden = region !== 'sz' && region !== 'wh';
+    });
+    document.querySelectorAll('.sbdy-zj-wh').forEach(function (el) {
+      el.hidden = region !== 'zj' && region !== 'wh';
     });
     var base = document.getElementById('sbdyBase');
-    if (sz && base && String(base.value) === '4986') {
-      base.value = '4492';
-    }
-    if (!sz && base && String(base.value) === '4492') {
-      base.value = '4986';
+    var area = document.getElementById('sbdyArea');
+    if (region === 'sz') {
+      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224')) {
+        base.value = '4492';
+      }
+      if (area && (area.value === '余杭区' || area.value === '武汉市')) area.value = '深圳市';
+    } else if (region === 'wh') {
+      if (base && (String(base.value) === '4986' || String(base.value) === '4492' || String(base.value) === '6120')) {
+        base.value = '4224';
+      }
+      if (area && (area.value === '余杭区' || area.value === '深圳市')) area.value = '武汉市';
+      var insure = document.getElementById('sbdyInsureType');
+      if (insure && !insure.value) insure.value = '企业养老';
+    } else {
+      if (base && (String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4224')) {
+        base.value = '4986';
+      }
+      if (area && (area.value === '深圳市' || area.value === '武汉市')) area.value = '余杭区';
     }
     var med = document.getElementById('sbdyMedicalBase');
-    if (sz && med && !med.value) med.value = base ? base.value : '4492';
+    if (region === 'sz' && med && !med.value) med.value = base ? base.value : '4492';
   }
 
   function setBusy(busy) {
@@ -301,19 +326,27 @@
 
     var unitCode = pickLabeled(text, ['单位编号', '社保单位编号']);
     var computerNo = pickLabeled(text, ['社保电脑号', '电脑号']);
+    var personNo = pickLabeled(text, ['个人编号', '社保个人编号']);
+    var insureType = pickLabeled(text, ['参保险种', '险种']);
+    var looksWh = !!(
+      personNo ||
+      /武汉|湖北|企业养老|湖北省社会保险|个人编号/.test(text)
+    );
     var looksSz = !!(
       unitCode ||
       computerNo ||
       /深圳市社会保险|深圳社保|社保电脑号/.test(text)
     );
+    if (looksWh && /深圳/.test(text) && !/武汉|湖北/.test(text)) looksWh = false;
+    var region = looksWh ? 'wh' : looksSz ? 'sz' : 'zj';
     var baseRaw = pickLabeled(text, ['医保基数', '医疗保险基数', '缴费基数', '基数']);
     var base = baseRaw ? Number(String(baseRaw).replace(/[^\d.]/g, '')) : NaN;
     if (!isFinite(base) || base <= 0) {
       var fromForm = Number(val('sbdyBase'));
-      base = isFinite(fromForm) && fromForm > 0 ? fromForm : looksSz ? 4492 : 4986;
+      base = isFinite(fromForm) && fromForm > 0 ? fromForm : region === 'sz' ? 4492 : region === 'wh' ? 4224 : 4986;
     }
     var pension = Math.round(base * 0.08 * 100) / 100;
-    var unemp = Math.round(base * (looksSz ? 0.002 : 0.005) * 100) / 100;
+    var unemp = Math.round(base * (region === 'sz' ? 0.002 : 0.005) * 100) / 100;
 
     var active = wantsActiveStatus(text);
     var status = active ? '正常参保' : '暂停缴费';
@@ -325,7 +358,7 @@
     }
 
     return {
-      region: looksSz ? 'sz' : 'zj',
+      region: region,
       name: name,
       id_number: idNumber,
       gender: gender || genderFromId(idNumber) || '女',
@@ -333,7 +366,9 @@
       credit_code: credit,
       unit_code: unitCode,
       computer_no: computerNo,
-      area: area || (looksSz ? '深圳市' : '余杭区'),
+      person_no: personNo,
+      insurance_type: insureType || (region === 'wh' ? '企业养老' : ''),
+      area: area || (region === 'sz' ? '深圳市' : region === 'wh' ? '武汉市' : '余杭区'),
       period_start: period.start,
       period_end: period.end,
       month_count: monthCountBetween(period.start, period.end),
@@ -350,6 +385,9 @@
     if (parsed.region === 'sz') {
       var szRadio = document.getElementById('sbdyRegionSz');
       if (szRadio) szRadio.checked = true;
+    } else if (parsed.region === 'wh') {
+      var whRadio = document.getElementById('sbdyRegionWh');
+      if (whRadio) whRadio.checked = true;
     } else if (parsed.region === 'zj') {
       var zjRadio = document.getElementById('sbdyRegionZj');
       if (zjRadio) zjRadio.checked = true;
@@ -360,9 +398,15 @@
     setField('sbdyGender', parsed.gender || '女');
     setField('sbdyCompany', parsed.company_name || '');
     setField('sbdyCredit', parsed.credit_code || '');
-    setField('sbdyArea', parsed.area || (parsed.region === 'sz' ? '深圳市' : '余杭区'));
+    setField(
+      'sbdyArea',
+      parsed.area ||
+        (parsed.region === 'sz' ? '深圳市' : parsed.region === 'wh' ? '武汉市' : '余杭区')
+    );
     setField('sbdyUnitCode', parsed.unit_code || '');
     setField('sbdyComputerNo', parsed.computer_no || '');
+    setField('sbdyPersonNo', parsed.person_no || '');
+    setField('sbdyInsureType', parsed.insurance_type || (parsed.region === 'wh' ? '企业养老' : ''));
     setField('sbdyPeriodStart', parsed.period_start);
     setField('sbdyPeriodEnd', parsed.period_end);
     setField('sbdyBase', parsed.base_amount);
@@ -504,7 +548,7 @@
     var html = '';
     list.forEach(function (row) {
       var links = row.links || {};
-      var region = row.region === 'sz' ? '深圳' : '浙江';
+      var region = row.region === 'sz' ? '深圳' : row.region === 'wh' ? '武汉' : '浙江';
       html +=
         '<tr>' +
         '<td>' +
@@ -564,7 +608,9 @@
     result.innerHTML =
       '<div class="admin-tool-result-head">' +
       '<strong>已生成演示样例</strong>' +
-      '<span class="hint">非正式证明 · 带水印</span>' +
+      '<span class="hint">' +
+      ((d.payload && d.payload.region === 'wh') ? '非正式证明' : '非正式证明 · 带水印') +
+      '</span>' +
       '</div>' +
       '<p class="stat mb-8">' +
       ((d.payload && d.payload.region === 'sz') ? '验真码：' : '授权码：') +
@@ -623,6 +669,8 @@
 
   function generate() {
     var region = currentRegion();
+    var defaultBase = region === 'sz' ? 4492 : region === 'wh' ? 4224 : 4986;
+    var defaultArea = region === 'sz' ? '深圳市' : region === 'wh' ? '武汉市' : '余杭区';
     var body = {
       region: region,
       name: val('sbdyName'),
@@ -630,12 +678,14 @@
       gender: val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女',
       company_name: val('sbdyCompany'),
       credit_code: val('sbdyCredit'),
-      area: val('sbdyArea') || (region === 'sz' ? '深圳市' : '余杭区'),
+      area: val('sbdyArea') || defaultArea,
       unit_code: val('sbdyUnitCode'),
       computer_no: val('sbdyComputerNo'),
+      person_no: val('sbdyPersonNo'),
+      insurance_type: val('sbdyInsureType') || (region === 'wh' ? '企业养老' : ''),
       period_start: normalizeYm(val('sbdyPeriodStart')),
       period_end: normalizeYm(val('sbdyPeriodEnd')),
-      base_amount: num('sbdyBase', region === 'sz' ? 4492 : 4986),
+      base_amount: num('sbdyBase', defaultBase),
       pension_base: num('sbdyBase', 4492),
       medical_base: num('sbdyMedicalBase', num('sbdyBase', 4492)),
       pension_pay: num('sbdyPensionPay', 398.88),
@@ -714,6 +764,22 @@
       '月' +
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
+    if (currentRegion() === 'wh') {
+      setField('sbdyName', '杨大富');
+      setField('sbdyIdNumber', '420881196305166819');
+      setField('sbdyGender', '男');
+      setField('sbdyCompany', '武汉美艺印刷包装有限公司');
+      setField('sbdyUnitCode', '100702889');
+      setField('sbdyPersonNo', '10055751664');
+      setField('sbdyInsureType', '企业工伤');
+      setField('sbdyArea', '武汉市');
+      setField('sbdyPeriodStart', '2022-08');
+      setField('sbdyPeriodEnd', '2024-09');
+      setField('sbdyBase', 4224);
+      setField('sbdyPrintDate', '2025年02月19日');
+      setStatus('已填充武汉示例：杨大富（可再点生成）', false);
+      return;
+    }
     if (currentRegion() === 'sz') {
       var szSamples = [
         {

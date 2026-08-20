@@ -14,6 +14,8 @@ const { PUBLIC_SITE_URL } = require('../shared/config');
 
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
 const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
+const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
+const WH_VERIFY_URL = 'http://59.175.218.201:8005/template/dzsbzmyz.html';
 
 /** qrUrl：二维码扫码目标（应为 PDF 样例页 show_url） */
 function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
@@ -47,8 +49,12 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
     }
     var py = process.env.SBDY_PYTHON || 'python3';
     var region = String((payload && payload.region) || '').toLowerCase();
-    var script =
-      region === 'sz' || region === 'shenzhen' ? SBDY_SZ_RENDER_SCRIPT : SBDY_RENDER_SCRIPT;
+    var script = SBDY_RENDER_SCRIPT;
+    if (region === 'wh' || region === 'wuhan' || region === 'hubei' || region === 'hb') {
+      script = SBDY_WH_RENDER_SCRIPT;
+    } else if (region === 'sz' || region === 'shenzhen') {
+      script = SBDY_SZ_RENDER_SCRIPT;
+    }
     var child = spawn(py, [script, inJson, outPdf], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -107,6 +113,47 @@ function randToken(n) {
   return crypto.randomBytes(Math.ceil(n / 2)).toString('hex').slice(0, n);
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function randAlnum(n) {
+  var chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  var out = '';
+  while (out.length < n) {
+    out += chars.charAt(crypto.randomInt(0, chars.length));
+  }
+  return out;
+}
+
+function bjStamp12() {
+  var now = new Date();
+  var bj = new Date(now.getTime() + 8 * 3600 * 1000);
+  return (
+    String(bj.getUTCFullYear()) +
+    pad2(bj.getUTCMonth() + 1) +
+    pad2(bj.getUTCDate()) +
+    pad2(bj.getUTCHours()) +
+    pad2(bj.getUTCMinutes())
+  );
+}
+
+function formatWhAuthCode(stamp) {
+  var s = String(stamp || bjStamp12()).replace(/\D/g, '');
+  if (s.length < 12) s = (s + bjStamp12()).slice(0, 12);
+  return (
+    s.slice(0, 4) +
+    ' ' +
+    s.slice(4, 8) +
+    ' ' +
+    s.slice(8, 12) +
+    ' ' +
+    randAlnum(4) +
+    ' ' +
+    randAlnum(4)
+  );
+}
+
 function parseYm(ym) {
   var m = String(ym || '').trim().match(/^(\d{4})[-/]?(\d{1,2})$/);
   if (!m) return null;
@@ -129,6 +176,17 @@ function round2(n) {
 function isSzRegion(body) {
   var r = String((body && (body.region || body.layout)) || '').toLowerCase();
   return r === 'sz' || r === 'shenzhen' || r === 'sz_official_v1';
+}
+
+function isWhRegion(body) {
+  var r = String((body && (body.region || body.layout)) || '').toLowerCase();
+  return (
+    r === 'wh' ||
+    r === 'wuhan' ||
+    r === 'hubei' ||
+    r === 'hb' ||
+    r === 'wh_official_v1'
+  );
 }
 
 function digitsFrom(s, n) {
@@ -309,7 +367,119 @@ function normalizeSzPayload(body) {
   };
 }
 
+function buildWhMonthRows(periodStart, periodEnd, opts) {
+  opts = opts || {};
+  var a = parseYm(periodStart);
+  var b = parseYm(periodEnd);
+  if (!a || !b) return [];
+  var unitName = opts.company_name || '';
+  var baseAmt = Number(opts.base_amount) || 0;
+  var status = String(opts.status || '正常');
+  var rows = [];
+  var y = a.y;
+  var m = a.m;
+  var guard = 0;
+  while (guard < 60) {
+    rows.push({
+      year: y,
+      month: String(m).padStart(2, '0'),
+      ym: String(y) + String(m).padStart(2, '0'),
+      unit_name: unitName,
+      base: baseAmt,
+      pension_base: baseAmt,
+      status: status
+    });
+    if (y === b.y && m === b.m) break;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    guard += 1;
+  }
+  if (rows.length > 60) rows = rows.slice(-60);
+  return rows;
+}
+
+function normalizeWhPayload(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var name = String(b.name || '').trim().substring(0, 64);
+  var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
+  var gender = String(b.gender || '').trim().substring(0, 8);
+  if (!gender) {
+    var id = String(idNumber);
+    if (id.length === 18 && /^\d{17}[\dXx]$/.test(id)) {
+      gender = Number(id.charAt(16)) % 2 === 0 ? '女' : '男';
+    } else if (id.length === 15 && /^\d{15}$/.test(id)) {
+      gender = Number(id.charAt(14)) % 2 === 0 ? '女' : '男';
+    } else {
+      gender = '男';
+    }
+  }
+  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
+  var area = String(b.area || '武汉市').trim().substring(0, 32) || '武汉市';
+  var unitCode = String(b.unit_code || b.unitCode || '').replace(/\D/g, '').substring(0, 12);
+  if (!unitCode) unitCode = digitsFrom(b.credit_code || b.creditCode || idNumber, 9);
+  var personNo = String(b.person_no || b.personNo || '').replace(/\D/g, '').substring(0, 12);
+  if (!personNo) personNo = ('1' + digitsFrom(idNumber, 10)).substring(0, 11);
+  var insure = String(b.insurance_type || b.insuranceType || '企业养老').trim().substring(0, 32) || '企业养老';
+  var periodStart = String(b.period_start || b.periodStart || '').trim();
+  var periodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
+  if (!isFinite(baseAmt) || baseAmt <= 0) baseAmt = 6120;
+  var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
+  if (!name || !idNumber) {
+    return { error: '姓名与证件号码必填' };
+  }
+  if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+    return { error: '缴费起止月份格式应为 YYYY-MM' };
+  }
+  var a0 = parseYm(periodStart);
+  var b0 = parseYm(periodEnd);
+  if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
+    var tmp = periodStart;
+    periodStart = periodEnd;
+    periodEnd = tmp;
+  }
+  var months = buildWhMonthRows(periodStart, periodEnd, {
+    company_name: company,
+    base_amount: baseAmt
+  });
+  if (!months.length) {
+    return { error: '缴费月份区间无效' };
+  }
+  var localCount = Number(b.local_month_count != null ? b.local_month_count : b.localMonthCount);
+  if (!isFinite(localCount) || localCount <= 0) localCount = months.length;
+  var stamp = bjStamp12();
+  return {
+    region: 'wh',
+    layout: 'wh_official_v1',
+    name: name,
+    id_number: idNumber,
+    gender: gender,
+    person_no: personNo,
+    company_name: company,
+    unit_code: unitCode,
+    area: area,
+    insurance_type: insure,
+    local_month_count: localCount,
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_label:
+      formatYmCn(parseYm(periodStart).y, parseYm(periodStart).m) +
+      '-' +
+      formatYmCn(parseYm(periodEnd).y, parseYm(periodEnd).m),
+    base_amount: baseAmt,
+    print_date: printDate,
+    watermark_id: stamp + '-' + randDigits(10),
+    months: months
+  };
+}
+
 function normalizePayload(body) {
+  if (isWhRegion(body)) {
+    return normalizeWhPayload(body);
+  }
   if (isSzRegion(body)) {
     return normalizeSzPayload(body);
   }
@@ -804,9 +974,143 @@ function renderSzCertHtml(payload, links, opts) {
   );
 }
 
+function renderWhCertHtml(payload, links, opts) {
+  opts = opts || {};
+  var p = payload || {};
+  var months = Array.isArray(p.months) ? p.months.slice() : [];
+  months.sort(function (a, b) {
+    var ka = Number((a && a.ym) || String((a && a.year) || '0') + String((a && a.month) || '00'));
+    var kb = Number((b && b.ym) || String((b && b.year) || '0') + String((b && b.month) || '00'));
+    return kb - ka;
+  });
+  if (months.length > 12) months = months.slice(0, 12);
+  var leftN = Math.ceil(months.length / 2);
+  var left = months.slice(0, leftN);
+  var right = months.slice(leftN);
+  var authCode = opts.authCode || '';
+  function cell(r) {
+    if (!r) {
+      return '<div></div><div></div><div></div>';
+    }
+    var ym = r.ym || String(r.year || '') + String(r.month || '').padStart(2, '0');
+    return (
+      '<div>' +
+      escHtml(ym) +
+      '</div><div>' +
+      escHtml(formatMoney(r.base != null ? r.base : r.pension_base)) +
+      '</div><div>' +
+      escHtml(r.status || '正常') +
+      '</div>'
+    );
+  }
+  var rowsHtml = '';
+  var i;
+  for (i = 0; i < 18; i++) {
+    rowsHtml += cell(left[i]) + cell(right[i]);
+  }
+  var localN =
+    p.local_month_count != null && p.local_month_count !== ''
+      ? p.local_month_count
+      : months.length;
+  return (
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>湖北省社会保险参保证明（个人专用）</title>' +
+    '<style>' +
+    '*{box-sizing:border-box}' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;' +
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
+    'padding:7.4pt 12.1mm 18mm;position:relative;overflow:hidden}' +
+    'h1{margin:0 0 1.2mm;text-align:center;font-size:21pt;font-weight:400;letter-spacing:1px;line-height:1.15}' +
+    '.g{display:grid;border-left:0.75pt solid #000;border-top:0.75pt solid #000;font-size:7.5pt}' +
+    '.g>div{border-right:0.75pt solid #000;border-bottom:0.75pt solid #000;display:flex;align-items:center;' +
+    'justify-content:center;text-align:center;padding:1px 2px;word-break:break-all;line-height:1.25}' +
+    '.info1{grid-template-columns:43.9pt 49.3pt 43.9pt 43.9pt 87.7pt 49.3pt 137.1pt 93.2pt}' +
+    '.info1>div{min-height:15pt}' +
+    '.info2{grid-template-columns:43.9pt 137.1pt 87.7pt 49.3pt 137.1pt 93.2pt}' +
+    '.info2>div{min-height:15pt}' +
+    '.unit{grid-template-columns:93.2pt 87.7pt 87.7pt 279.6pt}' +
+    '.unit>div{min-height:15pt}' +
+    '.dual{grid-template-columns:66.9pt 120pt 81.8pt 68.2pt 120pt 91.4pt}' +
+    '.dual>div{min-height:32.25pt}' +
+    '.dual.dhead>div{min-height:15pt}' +
+    '.sec{border:0.75pt solid #000;border-top:0;height:19.5pt;display:flex;align-items:center;justify-content:center;' +
+    'font-size:13.5pt;letter-spacing:2px}' +
+    '.notes{margin-top:2pt;font-size:7.5pt;line-height:8.25pt;position:relative;z-index:2}' +
+    '.notes .lab{display:inline-block;width:20pt}' +
+    '.print-date{text-align:center;font-size:7.5pt;margin-top:22pt}' +
+    '.page-no{text-align:center;font-size:7.5pt;margin-top:8pt}' +
+    '.seal{position:absolute;left:151.7mm;top:221.2mm;width:40mm;height:40.5mm;z-index:3;pointer-events:none}' +
+    '.body{position:relative;z-index:1}' +
+    '@media print{.page{padding:7.4pt 12mm 12mm}}' +
+    '</style></head><body>' +
+    '<div class="page">' +
+    '<div class="body">' +
+    '<h1>湖北省社会保险参保证明（个人专用）</h1>' +
+    '<div class="g info1">' +
+    '<div>姓名</div><div>' +
+    escHtml(p.name) +
+    '</div><div>性别</div><div>' +
+    escHtml(p.gender || '') +
+    '</div><div>个人编号</div><div>' +
+    escHtml(p.person_no || '') +
+    '</div><div>社会保障号</div><div>' +
+    escHtml(p.id_number || '') +
+    '</div></div>' +
+    '<div class="g info2">' +
+    '<div>参保缴费地</div><div>' +
+    escHtml(p.area || '武汉市') +
+    '</div><div>本地缴费月数</div><div>' +
+    escHtml(localN) +
+    '</div><div>参保险种</div><div>' +
+    escHtml(p.insurance_type || '企业养老') +
+    '</div></div>' +
+    '<div class="sec">缴费地最末所在单位</div>' +
+    '<div class="g unit">' +
+    '<div>单位编号</div><div>' +
+    escHtml(p.unit_code || '') +
+    '</div><div>单位名称</div><div>' +
+    escHtml(p.company_name || '') +
+    '</div></div>' +
+    '<div class="sec">近12个月参保缴费情况</div>' +
+    '<div class="g dual dhead">' +
+    '<div>记录月份</div><div>缴费基数(元)</div><div>缴费类型</div>' +
+    '<div>记录月份</div><div>缴费基数(元)</div><div>缴费类型</div>' +
+    '</div>' +
+    '<div class="g dual">' +
+    rowsHtml +
+    '</div>' +
+    '<div class="notes"><span class="lab">备注：</span><br>' +
+    '1、社会保障号:中国公民的“社会保障号”为身份证号;外国公民的“社会保障号”为护照号或居留证号。<br>' +
+    '2、本证明由参保人自行保管，因遗失或泄露造成的不良后果，由参保人负责。<br>' +
+    '3、本地缴费月数是指：参保缴费地实际缴费月数与转入缴费月数之和。<br>' +
+    '4、本参保证明出具后3个月内可在“湖北省社保证明验证平台”进行验证。<br>' +
+    '验证平台：<a href="' +
+    WH_VERIFY_URL +
+    '">' +
+    WH_VERIFY_URL +
+    '</a><br>' +
+    '授权码：' +
+    escHtml(authCode) +
+    '</div>' +
+    '<div class="print-date">打印时间： ' +
+    escHtml(p.print_date || defaultPrintDateCn()) +
+    '</div>' +
+    '<div class="page-no">第1页/共1页</div>' +
+    '</div>' +
+    '<img class="seal" src="/img/sbdy_wh_seal.png" alt="">' +
+    '</div></body></html>'
+  );
+}
+
 function renderCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
+  if (p.region === 'wh' || p.layout === 'wh_official_v1') {
+    return renderWhCertHtml(p, links, opts);
+  }
   if (p.region === 'sz' || p.layout === 'sz_official_v1') {
     return renderSzCertHtml(p, links, opts);
   }
@@ -1010,7 +1314,16 @@ async function handleAdminSbdyDemoGenerate(req, res) {
     if (normalized.error) {
       return res.status(400).json({ code: 400, msg: normalized.error });
     }
-    var authCode = normalized.region === 'sz' ? randToken(16) : randDigits(20);
+    var authCode;
+    if (normalized.region === 'sz') {
+      authCode = randToken(16);
+    } else if (normalized.region === 'wh') {
+      var stamp = bjStamp12();
+      authCode = formatWhAuthCode(stamp);
+      normalized.watermark_id = stamp + '-' + randDigits(10);
+    } else {
+      authCode = randDigits(20);
+    }
     var token = 'SBDY' + randToken(24);
     var pool = getPool();
     await pool.execute(
@@ -1060,7 +1373,12 @@ async function handleAdminSbdyDemoList(req, res) {
         name: payload && payload.name ? payload.name : '',
         id_number: payload && payload.id_number ? payload.id_number : '',
         company_name: payload && payload.company_name ? payload.company_name : '',
-        region: payload && payload.region === 'sz' ? 'sz' : 'zj',
+        region:
+          payload && payload.region === 'sz'
+            ? 'sz'
+            : payload && payload.region === 'wh'
+              ? 'wh'
+              : 'zj',
         created_by_admin: r.created_by_admin,
         created_at: r.created_at,
         links: links
@@ -1086,7 +1404,16 @@ async function loadCertByAuthOrToken(code, token) {
       'SELECT auth_code, token, payload_json, created_at FROM sbdy_demo_certs WHERE auth_code = ? LIMIT 1',
       [String(code)]
     );
-    return rows && rows[0] ? rows[0] : null;
+    if (rows && rows[0]) return rows[0];
+    var compact = String(code).replace(/\s+/g, '');
+    if (compact && compact !== String(code)) {
+      const [rows2] = await getPool().execute(
+        "SELECT auth_code, token, payload_json, created_at FROM sbdy_demo_certs WHERE REPLACE(auth_code, ' ', '') = ? LIMIT 1",
+        [compact]
+      );
+      return rows2 && rows2[0] ? rows2[0] : null;
+    }
+    return null;
   }
   return null;
 }
@@ -1150,7 +1477,13 @@ async function handlePublicSbdyDemoShow(req, res) {
     if (payload && !payload.company_display) {
       payload.company_display = companyDisplayOf(payload);
     }
-    if (payload && payload.region !== 'sz' && payload.layout !== 'sz_official_v1') {
+    if (
+      payload &&
+      payload.region !== 'sz' &&
+      payload.region !== 'wh' &&
+      payload.layout !== 'sz_official_v1' &&
+      payload.layout !== 'wh_official_v1'
+    ) {
       payload.months = migrateMonthsForShow(payload);
     }
     var links = buildLinks(req, row.auth_code, row.token);
