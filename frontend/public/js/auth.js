@@ -1389,7 +1389,7 @@
     ) {
       return false;
     }
-    return /OpenHarmony|ArkWeb|HarmonyOS/i.test(ua);
+    return /OpenHarmony|ArkWeb|HarmonyOS|HMSCore|Huawei|HUAWEI/i.test(ua);
   }
 
   function pinWhitePageImmersiveHeader() {
@@ -1410,6 +1410,10 @@
           smHdr.style.setProperty('padding-top', '54px', 'important');
           smHdr.style.setProperty('box-sizing', 'border-box', 'important');
         }
+        var smContent = body.querySelector('.content');
+        if (smContent) {
+          smContent.style.setProperty('padding-top', '86px', 'important');
+        }
       }
     } catch (ePin) {}
   }
@@ -1429,8 +1433,17 @@
         'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-xiangqing{' +
         'padding-top:88px !important;}' +
         'html.app-android-huawei-nova13 body.page-shuiming > .header,' +
-        'html.app-android-immersive-white-top body.page-shuiming > .header{' +
-        'padding-top:54px !important;box-sizing:border-box !important;}';
+        'html.app-android-immersive-white-top body.page-shuiming > .header,' +
+        'html.app-android-client.app-top-safe-shell.app-android-huawei-nova13 body.page-shuiming > .header,' +
+        'html.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-shuiming > .header,' +
+        'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-shuiming > .header,' +
+        'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-shuiming > .header{' +
+        'padding-top:54px !important;box-sizing:border-box !important;}' +
+        'html.app-android-huawei-nova13 body.page-shuiming > .content,' +
+        'html.app-android-immersive-white-top body.page-shuiming > .content,' +
+        'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-shuiming > .content,' +
+        'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-shuiming > .content{' +
+        'padding-top:86px !important;}';
       (document.head || document.documentElement).appendChild(st);
     } catch (eCss) {}
   }
@@ -3424,11 +3437,11 @@
           'html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-message .message-header-toolbar{' +
           'padding-top:calc(14px + 40px) !important;}' +
           /* 白顶栏纳税页：外置状态栏 / overlays=false 后顶距清零 */
-          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming > .header,' +
-          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header{' +
+          'html.app-android-white-page-outer.app-top-safe-shell:not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer:not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .header{' +
           'padding-top:14px !important;padding-bottom:15px !important;}' +
-          'html.app-android-white-page-outer.app-top-safe-shell body.page-shuiming > .content,' +
-          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content{' +
+          'html.app-android-white-page-outer.app-top-safe-shell:not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .content,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer:not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .content{' +
           'padding-top:46px !important;}' +
           'html.app-android-white-page-outer.app-top-safe-shell body.page-xiangqing,' +
           'html.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-xiangqing{' +
@@ -3628,10 +3641,16 @@
           'html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list{' +
           'margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px)) !important;}' +
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .header,' +
-          'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header{' +
+          'html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .header,' +
+          'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-shuiming > .header,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-shuiming > .header{' +
           'padding-top:calc(14px + var(--app-shell-statusbar-top,40px)) !important;padding-bottom:15px !important;}' +
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .content,' +
-          'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content{' +
+          'html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .content,' +
+          'html.app-android-immersive-white-top.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-shuiming > .content,' +
+          'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-shuiming > .content{' +
           'padding-top:calc(46px + var(--app-shell-statusbar-top,40px)) !important;}' +
           'html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing,' +
           'html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing,' +
