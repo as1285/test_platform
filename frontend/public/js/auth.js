@@ -1249,9 +1249,14 @@
     return /ANN-AN00/i.test(navigator.userAgent || '');
   }
 
-  /** 荣耀 Magic5 Pro（PGT-AN20 / Android 16 Cordova）首页顶栏与通知条单独适配 */
+  /**
+   * 荣耀 Magic5 Pro（PGT-AN20 / Android 16 Cordova）。
+   * 首页顶栏 / 通知条单独适配； Cordova iframe UA 常无 PGT，须认 localStorage / device.model。
+   */
   function isHonorPgtAn20Client() {
-    return /PGT-AN20/i.test(navigator.userAgent || '');
+    var ua = clientUaBlob();
+    if (/Magic\s*5\s*Pro/i.test(ua)) return true;
+    return /PGT-AN20|HONORPGT-AN20/i.test(ua);
   }
 
   /** 荣耀 Magic7 等（PTP-AN00 / Android 16 Cordova）顶部安全区与首页通知条 */
@@ -2071,6 +2076,15 @@
           syRoot.classList.add('app-android-client');
           syRoot.classList.add('app-top-safe-shell');
         }
+        if (isHonorPgtAn20Client() || syRoot.classList.contains('app-android-honor-pgt-an20')) {
+          syRoot.classList.add('app-android-honor-pgt-an20');
+          syRoot.classList.add('app-android-honor-magic');
+          syRoot.classList.add('app-android-client');
+        }
+        if (isHonorMagic6ProClient() || syRoot.classList.contains('app-android-honor-magic6pro')) {
+          syRoot.classList.add('app-android-honor-magic6pro');
+          syRoot.classList.add('app-android-client');
+        }
       } catch (eMate60Sy) {}
       if (isLikelyIOSViewportClient()) {
         try {
@@ -2604,7 +2618,10 @@
       var iosClient = isLikelyIOSViewportClient();
       var androidClient = isLikelyAndroidViewportClient();
       var annAn00Client = androidClient && isHonorAnnAn00Client();
-      var honorPgtAn20Client = androidClient && isHonorPgtAn20Client();
+      var honorPgtAn20Client = isHonorPgtAn20Client();
+      if (honorPgtAn20Client) {
+        androidClient = true;
+      }
       var honorPtpAn00Client = androidClient && isHonorPtpAn00Client();
       var honorMagicV3Client = androidClient && isHonorMagicV3Client();
       var honorMagicVs3Client = androidClient && isHonorMagicVs3Client();
@@ -4069,6 +4086,15 @@
         document.documentElement.classList.add('app-android-huawei-nova13');
         document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-android-white-page-outer');
+      }
+      if (isHonorPgtAn20Client()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-honor-pgt-an20');
+        document.documentElement.classList.add('app-android-honor-magic');
+      }
+      if (isHonorMagic6ProClient()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-honor-magic6pro');
       }
     } catch (eMi14p) {}
     rememberCordovaDeviceModel();

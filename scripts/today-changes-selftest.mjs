@@ -162,13 +162,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260820-magic6pro-btn'],
-  'fast-nav auth cache magic6pro'
+  ['20260820-magic5pro-btn'],
+  'fast-nav auth cache magic5pro'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isHonorMagic6ProClient', 'BVL-AN16', 'app-android-honor-magic6pro'],
-  'honor magic6 pro home card detect'
+  ['isHonorPgtAn20Client', 'PGT-AN20', 'HONORPGT-AN20', 'Magic\\s*5\\s*Pro', 'isHonorMagic6ProClient', 'BVL-AN16', 'app-android-honor-magic6pro'],
+  'honor magic5 pro + magic6 pro home card detect'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -218,8 +218,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260820-magic6pro-btn', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'BVL-AN16', 'app-android-honor-magic6pro', '/ 3.05'],
-  'shouye ace 2v + reno10 + magic6pro cards'
+  ['20260820-magic5pro-btn', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', '/ 3.05'],
+  'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(
   'frontend/shuiming_result.html',
@@ -320,6 +320,25 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
   const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
   if (hitOk && missOk) ok('huawei nova 13 UA match');
   else fail('huawei nova 13 UA match');
+})();
+
+(function testHonorMagic5ProUa() {
+  const reModel = /PGT-AN20|HONORPGT-AN20/i;
+  const reName = /Magic\s*5\s*Pro/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 16; PGT-AN20 Build/HONORPGT-AN20)',
+    'Mozilla/5.0 (Linux; Android 16) HONOR Magic 5 Pro',
+    'PGT-AN20'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 14; BVL-AN16) HONOR Magic 6 Pro',
+    'Mozilla/5.0 (Linux; Android 15; PTP-AN00) HONOR Magic7',
+    'Mozilla/5.0 (Linux; Android 13; PGT-AN00) HONOR Magic5'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('honor magic5 pro UA match');
+  else fail('honor magic5 pro UA match');
 })();
 
 (function testHonorMagic6ProUa() {
