@@ -1284,6 +1284,16 @@
   }
 
   /**
+   * 荣耀 Magic6 Pro（BVL-AN16）。
+   * 首页 Android 通用 2.55 分栏会把 a6「去申报 / 去查询」撑得比官方大。
+   */
+  function isHonorMagic6ProClient() {
+    var ua = clientUaBlob();
+    if (/Magic\s*6\s*Pro/i.test(ua)) return true;
+    return /BVL-AN16|BVL-AN20|BVL-N49|HONORBVL-AN16/i.test(ua);
+  }
+
+  /**
    * 华为 Pura 70 / P70 系列（如 HBN-AL00）：系统录屏画布常宽于 WebView，右侧易露黑边。
    * 仅按 UA 型号匹配，避免影响其它华为机型。
    */
@@ -2600,6 +2610,10 @@
       var honorMagicVs3Client = androidClient && isHonorMagicVs3Client();
       var honorFoldableOuterBarClient = androidClient && isHonorFoldableOuterBarClient();
       var honorMagicAndroidClient = androidClient && isHonorMagicAndroidClient();
+      var honorMagic6ProClient = isHonorMagic6ProClient();
+      if (honorMagic6ProClient) {
+        androidClient = true;
+      }
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
@@ -2889,6 +2903,10 @@
       }
       if (honorMagicAndroidClient) {
         document.documentElement.classList.add('app-android-honor-magic');
+      }
+      if (honorMagic6ProClient) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-honor-magic6pro');
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');

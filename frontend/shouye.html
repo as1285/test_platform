@@ -6,6 +6,7 @@
         (function () {
             try {
                 var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eM) {}
                 var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
                 var isMate60 = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-|HUAWEIALN/i.test(u) && !isMate70;
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u) || isMate60) {
@@ -15,10 +16,14 @@
                 if (isMate60) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
                 }
+                if (/BVL-AN16|BVL-AN20|BVL-N49|HONORBVL-AN16|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*6[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-honor-magic6pro');
+                }
             } catch (e0) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260819-mate60-aug15"></script>
+    <script src="/js/auth.js?v=20260820-magic6pro-btn"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -662,11 +667,47 @@
             width: max(124px, calc((100% - 16px) / 2.55));
         }
 
+        /*
+         * 荣耀 Magic6 Pro：官方首页「去申报 / 去查询」更紧凑。
+         * 勿套通用 Android 2.55 放大，约 3 分栏对齐第二张参考图。
+         */
+        html.app-android-honor-magic6pro .sy-apk-hitem,
+        html.app-android-honor-magic6pro.app-android-client .sy-apk-hitem {
+            flex: 0 0 max(108px, calc((100% - 16px) / 3.05)) !important;
+            width: max(108px, calc((100% - 16px) / 3.05)) !important;
+        }
+
+        html.app-android-honor-magic6pro .sy-zxk-empty-bar {
+            height: 18% !important;
+            max-height: 36px !important;
+            min-height: 32px !important;
+            padding: 0 10px 0 8px !important;
+        }
+        html.app-android-honor-magic6pro .sy-zxk-avatars img {
+            width: 22px !important;
+            height: 22px !important;
+        }
+        html.app-android-honor-magic6pro .sy-zxk-empty-cta {
+            font-size: 13px !important;
+        }
+        html.app-android-honor-magic6pro .sy-zxk-btns {
+            height: 18% !important;
+            max-height: 36px !important;
+        }
+        html.app-android-honor-magic6pro .sy-zxk-btn span {
+            font-size: 13px !important;
+        }
+
         @media (min-width: 520px) {
             .sy-apk-hitem,
             html.app-android-client .sy-apk-hitem {
                 flex: 0 0 calc((min(100%, 430px) - 16px) / 2.85);
                 width: calc((min(100%, 430px) - 16px) / 2.85);
+            }
+            html.app-android-honor-magic6pro .sy-apk-hitem,
+            html.app-android-honor-magic6pro.app-android-client .sy-apk-hitem {
+                flex: 0 0 max(108px, calc((min(100%, 430px) - 16px) / 3.05)) !important;
+                width: max(108px, calc((min(100%, 430px) - 16px) / 3.05)) !important;
             }
         }
 

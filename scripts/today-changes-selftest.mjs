@@ -162,8 +162,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260820-nova13-mine'],
-  'fast-nav auth cache nova13'
+  ['20260820-magic6pro-btn'],
+  'fast-nav auth cache magic6pro'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isHonorMagic6ProClient', 'BVL-AN16', 'app-android-honor-magic6pro'],
+  'honor magic6 pro home card detect'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -213,8 +218,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260819-mate60-aug15', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10'],
-  'shouye ace 2v + reno10 inset'
+  ['20260820-magic6pro-btn', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'BVL-AN16', 'app-android-honor-magic6pro', '/ 3.05'],
+  'shouye ace 2v + reno10 + magic6pro cards'
 );
 mustInclude(
   'frontend/shuiming_result.html',
@@ -315,6 +320,24 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
   const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
   if (hitOk && missOk) ok('huawei nova 13 UA match');
   else fail('huawei nova 13 UA match');
+})();
+
+(function testHonorMagic6ProUa() {
+  const reModel = /BVL-AN16|BVL-AN20|BVL-N49|HONORBVL-AN16/i;
+  const reName = /(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*6[\s_-]*Pro/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 14; BVL-AN16 Build/HONORBVL-AN16)',
+    'Mozilla/5.0 (Linux; Android 14) HONOR Magic 6 Pro'
+  ];
+  const miss = [
+    'Mozilla/5.0 (Linux; Android 16; PGT-AN20) HONOR Magic5 Pro',
+    'Mozilla/5.0 (Linux; Android 14; BVL-AN00) HONOR Magic 6',
+    'Mozilla/5.0 (Linux; Android 15; PTP-AN00) HONOR Magic7'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('honor magic6 pro UA match');
+  else fail('honor magic6 pro UA match');
 })();
 
 (function testOnePlusAceProUa() {
