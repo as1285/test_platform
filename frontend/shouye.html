@@ -42,7 +42,7 @@
             } catch (e0) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260820-magic5pro-icon"></script>
+    <script src="/js/auth.js?v=20260820-magic5pro-top"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -177,6 +177,22 @@
 
         html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 6px !important;
+        }
+
+        /*
+         * 荣耀 Magic5 Pro：系统状态栏已在 WebView 外，再套 Android 40px / honor-magic 8+36
+         * 会在搜索条上方空出一截蓝。首页只留 8px。
+         */
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 8px;
+            --app-shell-statusbar-top: 8px !important;
+        }
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye::before {
+            height: 8px !important;
+        }
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,
+        html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 8px !important;
         }
 
         .sy-apk-ahead {

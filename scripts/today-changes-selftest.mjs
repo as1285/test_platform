@@ -162,12 +162,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260820-magic5pro-icon'],
+  ['20260820-magic5pro-top'],
   'fast-nav auth cache magic5pro'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isHonorPgtAn20Client', 'PGT-AN20', 'HONORPGT-AN20', 'isHonorMagic5ProScreen', 'pinHonorMagic5ProHomeCards', 'isHonorMagic6ProClient', 'BVL-AN16', 'app-android-honor-magic6pro'],
+  ['isHonorPgtAn20Client', 'PGT-AN20', 'HONORPGT-AN20', 'isHonorMagic5ProScreen', 'pinHonorMagic5ProHomeCards', '--shouye-status-inset:8px', 'isHonorMagic6ProClient', 'BVL-AN16', 'app-android-honor-magic6pro'],
   'honor magic5 pro + magic6 pro home card detect'
 );
 mustInclude(
@@ -218,7 +218,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260820-magic5pro-icon', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(92px', '1312'],
+  ['20260820-magic5pro-top', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(92px', '1312', '--shouye-status-inset: 8px'],
   'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(

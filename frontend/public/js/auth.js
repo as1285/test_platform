@@ -3304,10 +3304,14 @@
           'html.app-android-xiaomi-14.app-top-safe-shell body:not(.page-shouye) .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(53px + var(--app-shell-statusbar-top,0px)) !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell:not(.app-android-honor-pgt-an20) .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-android-honor-pgt-an20.app-top-safe-shell{--app-shell-statusbar-top:36px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye{--shouye-status-inset:8px !important;--app-shell-statusbar-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye::before{height:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
           'html.app-android-honor-ptp-an00.app-top-safe-shell{--app-shell-statusbar-top:44px !important;}' +
           'html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(54px + var(--app-shell-statusbar-top,44px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
@@ -3547,6 +3551,16 @@
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-13):not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10) body.page-shouye .shouye-page,' +
           'html.app-android-oppo-a58.app-top-safe-shell body.page-shouye .shouye-page{' +
           'padding-top:var(--shouye-fixed-top-h,58px) !important;}' +
+          /*
+           * 荣耀 Magic5 Pro：系统栏已在 WebView 外，压过上方 Android 统一 40px，
+           * 否则搜索条上会空一截蓝。
+           */
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{' +
+          '--shouye-status-inset:8px !important;--app-shell-statusbar-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{height:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,' +
+          'html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
           /*
            * Android 待办/办&查/消息：与首页同理强制 40px，避免沉浸 WebView 顶进系统时间。
            * 收入纳税明细 / 详情白顶栏页改走 overlays=false 外置状态栏（见 applyImmersiveNotchWhitePageChrome），
