@@ -156,22 +156,22 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260821-mate60-jul23', 'mine_jul23_mate60.html', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
+  ['20260821-s50promini', 'mine_jul23_mate60.html', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
   'mine.html mate60 jul23 redirect + reno10 + neo8 + nova13 cache'
 );
 mustInclude(
   'frontend/mine_jul23_mate60.html',
-  ['20260821-mate60-jul23', 'app-mate60-jul23-ui', 'function-cards', 'header-bg', 'ALN-AL00', 'UI_BASELINE: 2026-07-23'],
+  ['20260821-s50promini', 'app-mate60-jul23-ui', 'function-cards', 'header-bg', 'ALN-AL00', 'UI_BASELINE: 2026-07-23'],
   'mate60 jul23 frozen card mine page'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isHuaweiNova13Client', 'BLK-AL80', 'MIS-AL00', 'HUAWEIBLK', 'app-android-huawei-nova13', 'isHuaweiNova13Client()', 'isHuaweiWhitePageImmersiveClient', 'pinWhitePageImmersiveHeader', 'pinNova13MineE1Layout', 'HMSCore|Huawei|HUAWEI', ':not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .header', 'resetMate60MineE1RpxToViewport', 'container-type:normal;--mine-rpx:calc(100vw / 750)'],
+  ['isVivoS50ProMiniClient', 'app-android-vivo-s50promini', 'S50 Pro mini', 'isHuaweiNova13Client', 'BLK-AL80', 'MIS-AL00', 'HUAWEIBLK', 'app-android-huawei-nova13', 'isHuaweiNova13Client()', 'isHuaweiWhitePageImmersiveClient', 'pinWhitePageImmersiveHeader', 'pinNova13MineE1Layout', 'HMSCore|Huawei|HUAWEI', ':not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .header', 'resetMate60MineE1RpxToViewport', 'container-type:normal;--mine-rpx:calc(100vw / 750)'],
   'huawei nova 13 mine overlay + white-top detect'
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260821-mate60-jul23'],
+  ['20260821-s50promini'],
   'fast-nav auth cache mate60 jul23'
 );
 mustInclude(
@@ -186,12 +186,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-mate60-jul23', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-s50promini', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-mate60-jul23'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-s50promini'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -227,12 +227,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260821-mate60-jul23', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
+  ['20260821-s50promini', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
   'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260821-mate60-jul23', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260821-s50promini', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
@@ -252,12 +252,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260821-mate60-jul23'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260821-s50promini'],
   'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
   'frontend/xiangqing.html',
-  ['BLK-AL80', 'app-android-huawei-nova13', '20260821-mate60-jul23', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint'],
+  ['BLK-AL80', 'app-android-huawei-nova13', '20260821-s50promini', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint'],
   'xiangqing nova 13 statusbar inset'
 );
 mustInclude(
@@ -310,6 +310,27 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
   const missOk = miss.every((ua) => !reModel.test(ua) && (rePro.test(ua) || !reName.test(ua)));
   if (hitOk && missOk) ok('xiaomi 15 UA match');
   else fail('xiaomi 15 UA match');
+})();
+
+(function testVivoS50ProMiniUa() {
+  const reModel = /V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b/i;
+  const reName = /(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i;
+  const hit = [
+    'Mozilla/5.0 (Linux; Android 16; V2527A Build/UP1A)',
+    'S50 Pro mini',
+    'vivo S50 Pro mini',
+    'PD2527A',
+    'V2527'
+  ];
+  const miss = [
+    'vivo S50 Pro',
+    'Mozilla/5.0 (Linux; Android 15; V2502A) vivo X300 Pro',
+    'Mozilla/5.0 (Linux; Android 14; V2301A) iQOO Neo8'
+  ];
+  const hitOk = hit.every((ua) => reModel.test(ua) || reName.test(ua));
+  const missOk = miss.every((ua) => !reModel.test(ua) && !reName.test(ua));
+  if (hitOk && missOk) ok('vivo s50 pro mini UA match');
+  else fail('vivo s50 pro mini UA match');
 })();
 
 (function testHuaweiNova13Ua() {
@@ -549,6 +570,17 @@ if (read('backend/scripts/make_wh_seal.py').includes('社会保险局')) {
   ok('sbdy Wuhan seal without 局');
 }
 
+
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isVivoS50ProMiniClient', 'app-android-vivo-s50promini', '(?:vivo[\\s_-]*)?S50', 'V2527A'],
+  'vivo S50 Pro mini detect + immersive'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['V2527A', 'app-android-vivo-s50promini', '20260821-s50promini', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  'shuiming S50 Pro mini first-paint'
+);
 /* 一键生成前 B 站分享门槛已下线 */
 mustInclude(
   'frontend/public/js/auth.js',

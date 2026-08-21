@@ -73,9 +73,11 @@
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
-                if (/V2527A|V2527DA|V2527B|PD2527|vivo[\s_-]*S50[\s_-]*Pro[\s_-]*mini|S50Promini/i.test(u)) {
+                if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
                 if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
@@ -111,7 +113,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-mate60-jul23"></script>
+    <script src="/js/auth.js?v=20260821-s50promini"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -212,7 +214,7 @@
             padding-top: calc(44px + var(--app-shell-statusbar-top, 0px)) !important;
         }
 
-        /* 沉浸压栏机（小米 15 Pro / 10 / K70 至尊 / 12C）：强制 40px 顶距 */
+        /* 沉浸压栏机（小米 15 Pro / 10 / K70 至尊 / 12C / S50 Pro mini）：强制 40px 顶距 */
         html.app-android-xiaomi-15pro body.page-shuiming > .header,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-xiaomi-10 body.page-shuiming > .header,
@@ -225,6 +227,8 @@
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-vivo-s50promini body.page-shuiming > .header,
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-vivo-s50promini.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-vivo-s50promini.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header,
         html.app-android-huawei-nova13 body.page-shuiming > .header,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-immersive-white-top body.page-shuiming > .header,
@@ -243,6 +247,8 @@
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-vivo-s50promini body.page-shuiming > .content,
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-vivo-s50promini.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-vivo-s50promini.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content,
         html.app-android-huawei-nova13 body.page-shuiming > .content,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-immersive-white-top body.page-shuiming > .content,
