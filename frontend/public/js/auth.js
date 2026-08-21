@@ -2261,8 +2261,8 @@
             APP_SHOUYE_BAR_RGB +
             '),rgb(' +
             APP_SHOUYE_BAR_RGB +
-            ')) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100dvh !important;height:auto !important;}' +
-            'html.app-ios-client body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;min-height:100dvh !important;}' +
+            ')) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100vh !important;height:auto !important;}' +
+            'html.app-ios-client body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;height:auto !important;}' +
             'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,' +
             APP_SHOUYE_BAR_RGB +
             ')) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
@@ -3425,7 +3425,7 @@
           'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed{height:0 !important;margin:0 !important;padding:0 !important;overflow:visible !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .search-bar-wrapper{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
-          'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
+          'html.app-top-safe-shell:not(.app-ios-client) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-header{margin-top:calc(-1 * var(--shouye-fixed-top-h,78px)) !important;padding-top:var(--shouye-fixed-top-h,78px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;left:auto !important;right:auto !important;margin:2px 12px 14px !important;}' +
           /*
@@ -3602,7 +3602,7 @@
           'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,env(safe-area-inset-top,48px))) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-ios-client.app-top-safe-shell:has(body.page-shouye){background-color:#f6f7fb !important;background-image:linear-gradient(rgb(var(--shouye-top-bar-rgb,79, 144, 243)),rgb(var(--shouye-top-bar-rgb,79, 144, 243))) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;min-height:100dvh !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;height:auto !important;}' +
           /* iPhone 16 Pro：收入纳税明细筛选页顶栏铺满安全区，避免状态栏下露灰/色差 */
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +

@@ -122,6 +122,32 @@ async function main() {
   if (!badgeText || badgeText === '0') fail(`badge unexpected: ${badgeText}`);
   log(`ok home message badge (${badgeText})`);
 
+  // iPhone 首页必须由内容撑开文档，不能被叠加的 100dvh 锁在首屏。
+  const homeScroll = await page.evaluate(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const pageRoot = document.querySelector('.shouye-page');
+    const before = window.scrollY;
+    const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0);
+    window.scrollTo(0, scrollHeight);
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        resolve({
+          before,
+          after: window.scrollY,
+          innerHeight: window.innerHeight,
+          scrollHeight,
+          bodyMinHeight: body ? getComputedStyle(body).minHeight : '',
+          pageMinHeight: pageRoot ? getComputedStyle(pageRoot).minHeight : ''
+        });
+      });
+    });
+  });
+  if (homeScroll.scrollHeight <= homeScroll.innerHeight + 100 || homeScroll.after <= homeScroll.before) {
+    fail(`iphone home cannot scroll: ${JSON.stringify(homeScroll)}`);
+  }
+  log(`ok iphone home scroll (${homeScroll.innerHeight} -> ${homeScroll.scrollHeight})`);
+
   // 2) 消息列表
   await page.goto(`${SITE_URL}/message.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.message-item', { timeout: 20000 });
