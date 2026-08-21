@@ -1621,6 +1621,71 @@
   }
 
   /**
+   * Mate60 Jul23 卡片「我的」：固定 40px 顶距，禁止头图负 margin 把信息卡顶出视口。
+   * 仅在 page-mine + app-mate60-jul23-ui（或无 e1 画布）时生效，避免污染其它 Tab。
+   */
+  function pinMate60Jul23CardMineChrome() {
+    try {
+      var root = document.documentElement;
+      if (!isHuaweiMate60Client() && !root.classList.contains('app-android-huawei-mate60')) {
+        return;
+      }
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      root.classList.add('app-android-huawei-mate60');
+      root.classList.add('app-android-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-mate60-jul23-ui');
+      root.style.setProperty('--app-shell-statusbar-top', '40px');
+      document.body.style.setProperty('--app-shell-statusbar-top', '40px');
+      var old = document.querySelector('style[data-mate60-jul23-chrome]');
+      if (old && old.parentNode) {
+        old.parentNode.removeChild(old);
+      }
+      var st = document.createElement('style');
+      st.setAttribute('data-mate60-jul23-chrome', '1');
+      st.textContent =
+        'html.app-mate60-jul23-ui.app-android-huawei-mate60.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
+        'html.app-mate60-jul23-ui.app-android-huawei-mate60 body.page-mine .header-bg{' +
+        'display:block !important;visibility:visible !important;overflow:visible !important;' +
+        'padding-top:40px !important;margin-top:0 !important;min-height:120px !important;background:#2286ee !important;}' +
+        'html.app-mate60-jul23-ui.app-android-huawei-mate60 body.page-mine .header-bg > img{' +
+        'display:block !important;visibility:visible !important;width:100% !important;height:auto !important;' +
+        'margin-top:0 !important;position:relative !important;z-index:1 !important;}' +
+        'html.app-mate60-jul23-ui.app-android-huawei-mate60 body.page-mine .content-wrapper{' +
+        'margin-top:-20px !important;overflow:visible !important;}' +
+        'html.app-mate60-jul23-ui.app-android-huawei-mate60 body.page-mine .user-card{' +
+        'display:block !important;visibility:visible !important;margin:-48px 16px 0 !important;position:relative !important;z-index:11 !important;}' +
+        'html.app-mate60-jul23-ui.app-android-huawei-mate60 body.page-mine > .bottom-nav{' +
+        'bottom:8px !important;}';
+      (document.head || document.documentElement).appendChild(st);
+      var headerBg = document.querySelector('body.page-mine .header-bg');
+      var img = document.getElementById('headerImg');
+      var userCard = document.getElementById('mineUserCardEditHit');
+      if (headerBg) {
+        headerBg.style.setProperty('overflow', 'visible', 'important');
+        headerBg.style.setProperty('padding-top', '40px', 'important');
+        headerBg.style.setProperty('margin-top', '0', 'important');
+      }
+      if (img) {
+        img.style.setProperty('margin-top', '0', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        if (!img.getAttribute('src') || img.getAttribute('src').indexOf('grdb') >= 0) {
+          var abs = img.getAttribute('src') || '';
+          if (abs && abs.charAt(0) !== '/' && abs.indexOf('http') !== 0) {
+            img.setAttribute('src', '/' + abs.replace(/^\.\//, ''));
+          }
+        }
+      }
+      if (userCard) {
+        userCard.style.setProperty('margin-top', '-48px', 'important');
+        userCard.style.setProperty('display', 'block', 'important');
+      }
+    } catch (eJul23) {}
+  }
+
+  /**
    * 华为「我的」：
    * - Mate 60 / Pro：2026-07-23 起改走卡片页（mine_jul23_mate60.html），无 e1 画布则不再钉 40px bleed。
    * - 其余鸿蒙外置黑条：禁止 padding+负 margin，避免误测 inset 裁掉头像。
@@ -1644,11 +1709,14 @@
             staleCqw.parentNode.removeChild(staleCqw);
           }
         } catch (eStale) {}
-        /* Jul23 卡片页：按通用 header-bg + 壳顶距，勿写 e1 负 margin */
+        /* Jul23 卡片页：只钉 40px 顶距与头图可见，勿写 e1 负 margin / bleed */
         if (
           root.classList.contains('app-mate60-jul23-ui') ||
           !document.getElementById('mineE1Canvas')
         ) {
+          if (document.body && document.body.classList.contains('page-mine')) {
+            pinMate60Jul23CardMineChrome();
+          }
           return;
         }
         if (!document.body || !document.body.classList.contains('page-mine')) {
@@ -1836,16 +1904,8 @@
          * 若按 measured 写入会二次上移，「我的」e1 叠字压到米色卡边。外置族一律 0。
          */
         if (isHuaweiMate60Client()) {
-          /*
-           * Mate60「我的」已回退 2026-07-23 卡片页：用当时通用 Android 顶距
-           * （Cordova 48px / 其它 24px），勿再写 e1 专用 40px。
-           */
-          var mate60Inset =
-            document.documentElement.classList.contains('app-cordova-shell') ||
-            !!(window.cordova || window.PhoneGap || window.phonegap)
-              ? '48px'
-              : '24px';
-          document.documentElement.style.setProperty('--app-shell-statusbar-top', mate60Inset);
+          /* Mate60 / Pro：HarmonyOS ArkWeb 仍沉浸压栏，全站统一 40px（含 Jul23 卡片「我的」） */
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
           return;
         }
         if (
@@ -2050,9 +2110,10 @@
            * Mate60「我的」已回退 Jul23 卡片页（无 e1）：顶距跟壳变量走。
            * 其它机型 e1 规则不变。
            */
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:var(--app-shell-statusbar-top,24px) !important;}' +
-          'html.app-android-huawei-mate60.app-mate60-jul23-ui.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,24px) !important;}' +
-          'html.app-android-huawei-mate60.app-mate60-jul23-ui.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,24px)) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:var(--app-shell-statusbar-top,40px) !important;}' +
+          'html.app-android-huawei-mate60.app-mate60-jul23-ui.app-top-safe-shell body.page-mine .header-bg{padding-top:40px !important;overflow:visible !important;min-height:120px !important;background:#2286ee !important;}' +
+          'html.app-android-huawei-mate60.app-mate60-jul23-ui.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;display:block !important;width:100% !important;}' +
+          'html.app-android-huawei-mate60.app-mate60-jul23-ui.app-top-safe-shell body.page-mine .user-card{margin-top:-48px !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine{--mine-top-bleed:0px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
@@ -3035,9 +3096,7 @@
         ? (xiaomiMixFoldClient
             ? '40px'
             : huaweiMate60Client
-            ? cordovaShell
-              ? '48px'
-              : '24px'
+            ? '40px'
             : xiaomiImmersiveTop ||
                 xiaomi13ProClient ||
                 xiaomi15ProClient ||
@@ -3153,10 +3212,9 @@
       if (redmi12CClient) {
         document.documentElement.classList.add('app-android-redmi-12c');
       }
-      if (xiaomiImmersiveTop || onePlusAce2Immersive) {
+      if (xiaomiImmersiveTop || onePlusAce2Immersive || huaweiMate60Client) {
         document.documentElement.classList.add('app-android-immersive-white-top');
       }
-      /* Mate60「我的」已回退 Jul23 卡片页：勿再标 immersive-white-top，避免把卡片顶栏当成 e1 40px */
       if (xiaomiHyperOsFamily && !xiaomi14Client) {
         document.documentElement.classList.add('app-android-mi-family');
       }
@@ -3712,6 +3770,16 @@
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header[data-header-mode="builtin"],' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header[data-header-mode="builtin"]{' +
           'padding-top:0 !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-daiban .daiban-header-builtin,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-bancha .bancha-header-builtin{' +
+          'padding-top:calc(10px + 40px) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-message .message-header-toolbar{' +
+          'padding-top:calc(14px + 40px) !important;}' +
+          'html.app-android-huawei-mate60 body.page-bancha .bancha-page,' +
+          'html.app-android-huawei-mate60 body.page-daiban .daiban-content,' +
+          'html.app-android-huawei-mate60 body.page-message{' +
+          '--bottom-nav-clearance:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 28px) !important;' +
+          'padding-bottom:var(--bottom-nav-clearance) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-daiban .daiban-header:not([data-header-mode="builtin"]) > img,' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-bancha .bancha-header:not([data-header-mode="builtin"]) > img{' +
           'margin-top:calc(-1 * var(--android-status-inset,40px)) !important;}' +

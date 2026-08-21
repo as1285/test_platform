@@ -20,14 +20,26 @@
                 document.documentElement.classList.add('app-android-huawei-mate60');
                 document.documentElement.classList.add('app-mate60-jul23-ui');
                 document.documentElement.classList.add('app-top-safe-shell');
+                document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                 try {
                     var tok = String(localStorage.getItem('token') || '').trim();
                     if (!tok) document.documentElement.classList.add('mine-guest');
                 } catch (e2) {}
+                if (!document.getElementById('mate60Jul23FirstPaint')) {
+                    var st = document.createElement('style');
+                    st.id = 'mate60Jul23FirstPaint';
+                    st.setAttribute('data-mate60-jul23-firstpaint', '1');
+                    st.textContent =
+                        'html.app-mate60-jul23-ui body.page-mine .header-bg{padding-top:40px!important;overflow:visible!important;margin-top:0!important;min-height:120px!important;background:#2286ee!important;}' +
+                        'html.app-mate60-jul23-ui body.page-mine .header-bg>img{margin-top:0!important;display:block!important;width:100%!important;}' +
+                        'html.app-mate60-jul23-ui body.page-mine .user-card{margin-top:-48px!important;}' +
+                        'html.app-mate60-jul23-ui body.page-mine>.bottom-nav{bottom:8px!important;}';
+                    document.documentElement.appendChild(st);
+                }
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-ios-home-scroll"></script>
+    <script src="/js/auth.js?v=20260821-mate60-40px"></script>
     <!-- UI_BASELINE: 2026-07-23 a616345 Mate60-only card mine; other OEMs use mine.html e1 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -38,7 +50,7 @@
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的 · 个人所得税</title>
-    <link rel="stylesheet" href="css/nav.css?v=20260821-ios-home-scroll">
+    <link rel="stylesheet" href="css/nav.css?v=20260821-mate60-40px">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -1114,7 +1126,7 @@
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="header-bg">
-        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
+        <img id="headerImg" src="/grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
         <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
     </div>
 
@@ -1302,9 +1314,9 @@
                 }
                 var n = Number(g);
                 if (Number(n) === 2) {
-                    hi.src = cfg.header_female || 'nx.jpg';
+                    hi.src = cfg.header_female || '/nx.jpg';
                 } else {
-                    hi.src = cfg.header_male || 'grdb.jpg';
+                    hi.src = cfg.header_male || '/grdb.jpg';
                 }
             }
 
