@@ -1427,7 +1427,8 @@
 
   /**
    * 华为 Mate 60 / Mate 60 Pro / Pro+（ALN-AL00 / ALN-AL10 / ALN-AL80 等）。
-   * 「我的」与其它机型同走 e1；沉浸顶距 40px（对齐 c93c3cc / 8-15）。
+   * 方案 B：UI 对齐 c93c3cc（2026-08-15）— 仅按 Mate60 / ALN 识别，40px 沉浸；
+   * 勿把整族鸿蒙当成 Mate60，也不走外置黑条 noclip。
    * 不含 Mate 70 系（PLA-AL10 等）。
    */
   function isHuaweiMate60Client() {
@@ -1621,7 +1622,7 @@
 
   /**
    * 华为「我的」：
-   * - Mate 60 / Pro：e1 + 40px bleed（方案 A，不再走 Jul23 卡片页）。
+   * - Mate 60 / Pro：方案 B = c93c3cc / 8-15 — e1 + 40px bleed + 头图负 margin，叠层 top:0。
    * - 其余鸿蒙外置黑条：禁止 padding+负 margin，避免误测 inset 裁掉头像。
    * Mate 70 不得套 Mate 60 规则。
    */
@@ -1632,15 +1633,14 @@
       if (mate60) {
         root.classList.add('app-android-huawei-mate60');
         root.classList.add('app-android-client');
+        root.classList.add('app-top-safe-shell');
+        root.classList.add('app-android-immersive-white-top');
         root.classList.remove('app-huawei-mine-noclip');
+        root.classList.remove('app-android-huawei-harmony');
         try {
           var stale48 = document.querySelector('style[data-mate60-mine-inset]');
           if (stale48 && stale48.parentNode) {
             stale48.parentNode.removeChild(stale48);
-          }
-          var staleCqw = document.querySelector('style[data-mate60-mine-rpx]');
-          if (staleCqw && staleCqw.parentNode) {
-            staleCqw.parentNode.removeChild(staleCqw);
           }
           var staleJul23 = document.querySelector('style[data-mate60-jul23-chrome]');
           if (staleJul23 && staleJul23.parentNode) {
@@ -1651,22 +1651,58 @@
             staleFp.parentNode.removeChild(staleFp);
           }
         } catch (eStale) {}
+        /* 高优先级锁：盖过后续壳 CSS / 鸿蒙清零，对齐 c93c3cc */
+        try {
+          var oldLock = document.querySelector('style[data-mate60-aug15-lock]');
+          if (oldLock && oldLock.parentNode) {
+            oldLock.parentNode.removeChild(oldLock);
+          }
+          var lock = document.createElement('style');
+          lock.setAttribute('data-mate60-aug15-lock', '1');
+          lock.textContent =
+            'html.app-android-huawei-mate60.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
+            'html.app-android-huawei-mate60 body.page-mine,' +
+            'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{' +
+            '--mine-top-bleed:40px !important;--app-shell-statusbar-top:40px !important;' +
+            '--mine-rpx:calc(100vw / 750) !important;}' +
+            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,' +
+            'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{' +
+            'padding-top:40px !important;container-type:normal !important;width:100% !important;' +
+            'max-width:none !important;--mine-rpx:calc(100vw / 750) !important;}' +
+            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,' +
+            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > #headerImg,' +
+            'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas > img{' +
+            'margin-top:-40px !important;display:block !important;width:100% !important;' +
+            'position:relative !important;top:auto !important;transform:none !important;}' +
+            'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer,' +
+            'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}';
+          (document.head || document.documentElement).appendChild(lock);
+        } catch (eLock) {}
+        root.style.setProperty('--app-shell-statusbar-top', '40px');
+        if (document.body) {
+          document.body.style.setProperty('--app-shell-statusbar-top', '40px');
+        }
         if (!document.body || !document.body.classList.contains('page-mine')) {
           return;
         }
         var bleed = '40px';
         root.style.setProperty('--mine-top-bleed', bleed);
         document.body.style.setProperty('--mine-top-bleed', bleed);
-        root.style.setProperty('--app-shell-statusbar-top', bleed);
-        document.body.style.setProperty('--app-shell-statusbar-top', bleed);
         var canvas60 = document.getElementById('mineE1Canvas');
         var layer60 = document.getElementById('mineE1Layer');
         var img60 = document.getElementById('headerImg');
         if (canvas60) {
           canvas60.style.setProperty('padding-top', bleed, 'important');
+          canvas60.style.setProperty('container-type', 'normal', 'important');
+          canvas60.style.setProperty('width', '100%', 'important');
         }
         if (img60) {
           img60.style.setProperty('margin-top', '-40px', 'important');
+          img60.style.setProperty('display', 'block', 'important');
+          img60.style.setProperty('width', '100%', 'important');
+          img60.style.setProperty('position', 'relative', 'important');
+          img60.style.setProperty('top', 'auto', 'important');
+          img60.style.setProperty('transform', 'none', 'important');
         }
         if (layer60) {
           layer60.style.setProperty('top', '0', 'important');
@@ -1838,7 +1874,7 @@
          * 若按 measured 写入会二次上移，「我的」e1 叠字压到米色卡边。外置族一律 0。
          */
         if (isHuaweiMate60Client()) {
-          /* Mate60 / Pro：HarmonyOS ArkWeb 仍沉浸压栏，全站统一 40px（含 Jul23 卡片「我的」） */
+          /* 方案 B / c93c3cc：Harmony 常把 env(safe-area) 测飞；写入后 e1 负 margin 会裁掉头像 → 固定 40px */
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
           return;
         }
@@ -3262,13 +3298,17 @@
       }
       if (huaweiMate60Client) {
         document.documentElement.classList.add('app-android-huawei-mate60');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.classList.remove('app-android-huawei-harmony');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
       }
       if (huaweiNova13Client) {
         document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-huawei-nova13');
         document.documentElement.classList.add('app-android-immersive-white-top');
       }
-      if (huaweiHarmonyFamily) {
+      if (huaweiHarmonyFamily && !huaweiMate60Client) {
         document.documentElement.classList.add('app-android-huawei-harmony');
       }
       if (hiNovaFamily) {

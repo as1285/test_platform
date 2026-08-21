@@ -34,12 +34,26 @@
                 var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
                 var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
                 if (isMate60Mine) {
-                    /* 方案 A：Mate60 与其它机型同走本页 e1，40px 沉浸顶距由 auth.js 钉住 */
+                    /* 方案 B：对齐 c93c3cc / 8-15 — e1 + 40px bleed，禁止走鸿蒙 noclip 清零 */
                     document.documentElement.classList.add('app-android-huawei-mate60');
-                    document.documentElement.classList.remove('app-huawei-mine-noclip');
+                    document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.remove('app-huawei-mine-noclip');
+                    document.documentElement.classList.remove('app-android-huawei-harmony');
                     document.documentElement.style.setProperty('--mine-top-bleed', '40px');
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    if (!document.getElementById('mate60Aug15FirstPaint')) {
+                        var mate60Fp = document.createElement('style');
+                        mate60Fp.id = 'mate60Aug15FirstPaint';
+                        mate60Fp.setAttribute('data-mate60-aug15-firstpaint', '1');
+                        mate60Fp.textContent =
+                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;--mine-rpx:calc(100vw / 750)!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:40px!important;container-type:normal!important;width:100%!important;--mine-rpx:calc(100vw / 750)!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>#headerImg{margin-top:-40px!important;display:block!important;width:100%!important;position:relative!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:0!important;}';
+                        document.head.appendChild(mate60Fp);
+                    }
                 } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-huawei-mine-noclip');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
@@ -83,7 +97,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-mate60-plana"></script>
+    <script src="/js/auth.js?v=20260821-mate60-planb"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
