@@ -34,10 +34,12 @@
                 var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
                 var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
                 if (isMate60Mine) {
-                    /* Mate 60 系列「我的」回退 2026-07-23 卡片 UI；其它机型仍用本页 e1 */
-                    var q = String(location.search || '') + String(location.hash || '');
-                    location.replace('mine_jul23_mate60.html' + q);
-                    return;
+                    /* 方案 A：Mate60 与其它机型同走本页 e1，40px 沉浸顶距由 auth.js 钉住 */
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.remove('app-huawei-mine-noclip');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '40px');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                 } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-huawei-mine-noclip');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
@@ -81,7 +83,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-mate60-header2"></script>
+    <script src="/js/auth.js?v=20260821-mate60-plana"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
