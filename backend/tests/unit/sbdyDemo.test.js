@@ -138,8 +138,10 @@ describe('sbdyDemo', () => {
     expect(html).not.toContain('近36个月参保缴费情况');
     expect(html).toContain('202501');
     expect(html).toContain('202407');
-    expect(html).toContain('59.175.218.201:8005/template/dzsbzmyz.html');
+    expect(html).toContain('https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html');
     expect(html).toContain('2026 0819 1624 027Y 32L1');
+    expect(html).toContain('社会保障号:中国公民的“社会保障号”为身份证号');
+    expect(html).toContain('本地缴费月数是指：参保缴费地实际缴费月数与转入缴费月数之和');
     expect(html).toContain('sbdy_wh_seal.png');
     expect(html).toContain('企业养老');
     expect(html).not.toContain('本文件由全国社保卡服务平台');

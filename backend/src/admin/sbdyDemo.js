@@ -15,7 +15,7 @@ const { PUBLIC_SITE_URL } = require('../shared/config');
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
 const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
 const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
-const WH_VERIFY_URL = 'http://59.175.218.201:8005/template/dzsbzmyz.html';
+const WH_VERIFY_URL = 'https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html';
 
 /** qrUrl：二维码扫码目标（应为 PDF 样例页 show_url） */
 function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
@@ -1022,29 +1022,30 @@ function renderWhCertHtml(payload, links, opts) {
     'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;' +
     '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
     '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
-    'padding:7.4pt 12.1mm 18mm;position:relative;overflow:hidden}' +
-    'h1{margin:0 0 1.2mm;text-align:center;font-size:21pt;font-weight:400;letter-spacing:1px;line-height:1.15}' +
+    'padding:10pt 12.1mm 14mm;position:relative;overflow:hidden}' +
+    'h1{margin:0 0 3.5mm;text-align:center;font-size:18.5pt;font-weight:400;letter-spacing:1px;line-height:1.15}' +
     '.g{display:grid;border-left:0.75pt solid #000;border-top:0.75pt solid #000;font-size:7.5pt}' +
     '.g>div{border-right:0.75pt solid #000;border-bottom:0.75pt solid #000;display:flex;align-items:center;' +
-    'justify-content:center;text-align:center;padding:1px 2px;word-break:break-all;line-height:1.25}' +
+    'justify-content:center;text-align:center;padding:1px 3px;word-break:break-all;line-height:1.2}' +
     '.info1{grid-template-columns:43.9pt 49.3pt 43.9pt 43.9pt 87.7pt 49.3pt 137.1pt 93.2pt}' +
     '.info1>div{min-height:15pt}' +
     '.info2{grid-template-columns:43.9pt 137.1pt 87.7pt 49.3pt 137.1pt 93.2pt}' +
     '.info2>div{min-height:15pt}' +
     '.unit{grid-template-columns:93.2pt 87.7pt 87.7pt 279.6pt}' +
     '.unit>div{min-height:15pt}' +
-    '.dual{grid-template-columns:66.9pt 120pt 81.8pt 68.2pt 120pt 91.4pt}' +
+    /* 双列等分：记录月份 | 缴费基数 | 缴费类型 ×2，中缝对齐 291.8pt */
+    '.dual{grid-template-columns:89.6pt 89.5pt 89.6pt 93.2pt 93.2pt 93.2pt}' +
     '.dual>div{min-height:32.25pt}' +
     '.dual.dhead>div{min-height:15pt}' +
-    '.sec{border:0.75pt solid #000;border-top:0;height:19.5pt;display:flex;align-items:center;justify-content:center;' +
-    'font-size:13.5pt;letter-spacing:2px}' +
-    '.notes{margin-top:2pt;font-size:7.5pt;line-height:8.25pt;position:relative;z-index:2}' +
+    '.sec{border:0.75pt solid #000;border-top:0;height:24pt;display:flex;align-items:center;justify-content:center;' +
+    'font-size:12pt;letter-spacing:2px;line-height:1.1;padding:0 4px;box-sizing:border-box}' +
+    '.notes{margin-top:4pt;font-size:7.5pt;line-height:8.25pt;position:relative;z-index:2}' +
     '.notes .lab{display:inline-block;width:20pt}' +
-    '.print-date{text-align:center;font-size:7.5pt;margin-top:22pt}' +
-    '.page-no{text-align:center;font-size:7.5pt;margin-top:8pt}' +
-    '.seal{position:absolute;left:151.7mm;top:221.2mm;width:40mm;height:40.5mm;z-index:3;pointer-events:none}' +
+    '.print-date{text-align:center;font-size:7.5pt;margin-top:14pt}' +
+    '.page-no{text-align:center;font-size:7.5pt;margin-top:6pt}' +
+    '.seal{position:absolute;left:151.7mm;top:226.5mm;width:40mm;height:40.5mm;z-index:3;pointer-events:none}' +
     '.body{position:relative;z-index:1}' +
-    '@media print{.page{padding:7.4pt 12mm 12mm}}' +
+    '@media print{.page{padding:9pt 12mm 10mm}}' +
     '</style></head><body>' +
     '<div class="page">' +
     '<div class="body">' +

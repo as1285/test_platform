@@ -35,43 +35,47 @@ INFO1_X = [23.1, 67.0, 116.3, 160.2, 204.1, 291.8, 341.1, 478.2, 571.4]
 INFO2_X = [23.1, 67.0, 204.1, 291.8, 341.1, 478.2, 571.4]
 # 单位行：单位编号 / 值 / 单位名称 / 值
 UNIT_X = [23.1, 116.3, 204.1, 291.8, 571.4]
-# 双列表：记录月份 缴费基数(元) 缴费类型 ×2
-DUAL_X = [23.1, 90.0, 210.0, 291.8, 360.0, 480.0, 571.4]
+# 双列表：记录月份 缴费基数(元) 缴费类型 ×2（以 291.8 为中缝，左右三列等分）
+DUAL_X = [23.1, 112.7, 202.2, 291.8, 385.0, 478.2, 571.4]
 
-Y_INFO1 = 29.6
-Y_INFO2 = 44.6
-Y_SEC_UNIT = 59.6
-Y_UNIT = 79.1
-Y_SEC_36 = 94.1
-Y_HEAD = 113.6
+# 整表相对扫描件略下移，给标题留出清晰空隙（避免压住首行顶线）
+Y_INFO1 = 36.0
+Y_INFO2 = 51.0
+Y_SEC_UNIT = 66.0
+Y_UNIT = 90.0  # 分区行加高，大字号不再贴上下边框
+Y_SEC_36 = 105.0
+Y_HEAD = 129.0
 Y_DATA = [
-    128.6,
-    160.9,
-    193.1,
-    225.4,
-    257.6,
-    289.9,
-    322.1,
-    354.4,
-    386.6,
-    418.9,
-    451.1,
-    483.4,
-    515.6,
-    547.9,
-    580.1,
-    612.4,
-    644.6,
-    676.9,
-    709.1,
+    144.0,
+    176.3,
+    208.5,
+    240.8,
+    273.0,
+    305.3,
+    337.5,
+    369.8,
+    402.0,
+    434.3,
+    466.5,
+    498.8,
+    531.0,
+    563.3,
+    595.5,
+    627.8,
+    660.0,
+    692.3,
+    724.5,
 ]
 N_ROWS = 18
 MAX_SHOW = 12
 FS = 7.5
-FS_TITLE = 21.0
-FS_SEC = 13.5
+FS_TITLE = 18.5
+FS_SEC = 12.0
+# Noto CJK 实测：字形约在 baseline-1.12s ~ baseline+0.28s
+CJK_ASCENT = 1.12
+CJK_DESCENT = 0.28
 
-VERIFY_URL = 'http://59.175.218.201:8005/template/dzsbzmyz.html'
+VERIFY_URL = 'https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html'
 TITLE = '湖北省社会保险参保证明（个人专用）'
 SEC_PAY = '近12个月参保缴费情况'
 
@@ -83,16 +87,31 @@ NOTES = [
 ]
 
 
-def cell_wh(page, font_path, fontname, text, x0, x1, y0, y1, size=FS, pad=1.2, min_size=5.5, y_shift=2.6):
-    """Noto 视觉偏上，相对 SimSun 下移 y_shift 以贴官方格心。"""
+def cell_wh(page, font_path, fontname, text, x0, x1, y0, y1, size=FS, pad=1.2, min_size=5.5, y_shift=0.0):
+    """格内水平+垂直居中；按 Noto CJK 实测 ascent/descent 算基线，并钳制在格内。"""
     text = norm_text(text)
     if not text:
         return
     max_w = max(1.0, (x1 - x0) - pad * 2)
     s = fit_fontsize(font_path, text, max_w, size, min_size=min_size)
+    pad_v = 1.0
+    # 字号过大时先缩小，保证上下各留 pad_v
+    max_s = max(min_size, (y1 - y0 - 2.0 * pad_v) / (CJK_ASCENT + CJK_DESCENT))
+    if s > max_s:
+        s = max_s
     tw = text_width(font_path, text, s)
     x = x0 + (x1 - x0 - tw) / 2.0
-    y = (y0 + y1) / 2.0 + s * 0.35 + y_shift
+    mid = (y0 + y1) / 2.0
+    y = mid + s * (CJK_ASCENT - CJK_DESCENT) / 2.0 + y_shift
+    max_baseline = y1 - pad_v - s * CJK_DESCENT
+    min_baseline = y0 + pad_v + s * CJK_ASCENT
+    if min_baseline <= max_baseline:
+        if y > max_baseline:
+            y = max_baseline
+        elif y < min_baseline:
+            y = min_baseline
+    else:
+        y = mid + s * 0.35
     page.insert_text((x, y), text, fontname=fontname, fontsize=s, color=(0, 0, 0))
 
 
@@ -216,9 +235,14 @@ def collect_blob(p, months, auth_code):
 
 
 def draw_title(page, font_path, fontname):
+    """标题完整落在首行表格之上，底边与顶线至少留 3.5pt。"""
     tw = text_width(font_path, TITLE, FS_TITLE)
+    # 实测 descent≈0.28s；基线 = 顶线 - 空隙 - descent*s
+    baseline = Y_INFO1 - 3.8 - FS_TITLE * CJK_DESCENT
+    if baseline < FS_TITLE * CJK_ASCENT + 4.0:
+        baseline = FS_TITLE * CJK_ASCENT + 4.0
     page.insert_text(
-        ((PAGE_W - tw) / 2.0, 31.6),
+        ((PAGE_W - tw) / 2.0, baseline),
         TITLE,
         fontname=fontname,
         fontsize=FS_TITLE,
@@ -260,7 +284,6 @@ def draw_info(page, font_path, fontname, p, months):
         size=FS_SEC,
         pad=1.2,
         min_size=9.0,
-        y_shift=4.6,
     )
     cell_wh(
         page,
@@ -274,7 +297,6 @@ def draw_info(page, font_path, fontname, p, months):
         size=FS_SEC,
         pad=1.2,
         min_size=9.0,
-        y_shift=4.6,
     )
 
 
@@ -322,8 +344,9 @@ def draw_dual_table(page, font_path, fontname, left, right):
 
 
 def draw_notes(page, font_path, fontname, p, auth_code):
-    page.insert_text((23.5, 718.4), '备注：', fontname=fontname, fontsize=FS, color=(0, 0, 0))
-    y = 726.7
+    # 表格下沿 Y_DATA[-1]=724.5，备注紧随其后
+    page.insert_text((23.5, 734.0), '备注：', fontname=fontname, fontsize=FS, color=(0, 0, 0))
+    y = 742.3
     for line in NOTES:
         page.insert_text((43.7, y), line, fontname=fontname, fontsize=FS, color=(0, 0, 0))
         y += 8.25
@@ -339,15 +362,16 @@ def draw_notes(page, font_path, fontname, p, auth_code):
     print_date = str(p.get('print_date') or '')
     pd = '打印时间： ' + print_date
     tw = text_width(font_path, pd, FS)
-    page.insert_text(((PAGE_W - tw) / 2.0, 798.7), pd, fontname=fontname, fontsize=FS, color=(0, 0, 0))
+    page.insert_text(((PAGE_W - tw) / 2.0, 812.0), pd, fontname=fontname, fontsize=FS, color=(0, 0, 0))
     pn = '第1页/共1页'
     tw = text_width(font_path, pn, FS)
-    page.insert_text(((PAGE_W - tw) / 2.0, 818.6), pn, fontname=fontname, fontsize=FS, color=(0, 0, 0))
+    page.insert_text(((PAGE_W - tw) / 2.0, 828.0), pn, fontname=fontname, fontsize=FS, color=(0, 0, 0))
 
 
 def draw_seal(page):
     if os.path.isfile(SEAL_PNG):
-        page.insert_image(fitz.Rect(430.0, 627.13, 543.25, 741.88), filename=SEAL_PNG, overlay=True)
+        # 随双列表下移，印章仍盖在右下缴费区
+        page.insert_image(fitz.Rect(430.0, 642.0, 543.25, 756.75), filename=SEAL_PNG, overlay=True)
 
 
 def render(payload, auth_code, qr_url, out_path):

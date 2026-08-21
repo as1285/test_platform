@@ -79,6 +79,10 @@
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2527A|V2527DA|V2527B|PD2527|vivo[\s_-]*S50[\s_-]*Pro[\s_-]*mini|S50Promini/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-s50promini');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
@@ -112,7 +116,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260820-nova13-mine"></script>
+    <script src="/js/auth.js?v=20260821-mate60-jul23"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -1132,9 +1136,11 @@
         html.app-android-iqoo-neo8 body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro body.page-shuiming-result .page-root,
+        html.app-android-vivo-s50promini body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .page-root,
-        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .page-root {
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px;
             --safe-top: 40px;
         }
@@ -1164,9 +1170,11 @@
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-s50promini body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
-        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
             height: calc(var(--header-height, 48px) + 40px) !important;
             min-height: calc(var(--header-height, 48px) + 40px) !important;
@@ -1220,15 +1228,19 @@
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-s50promini body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-s50promini body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
-        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+        html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
             top: 40px !important;
             height: var(--header-height, 48px) !important;
             display: flex !important;
@@ -1442,17 +1454,23 @@
             -webkit-user-select: none;
         }
     
-        /* vivo X300 Pro：压过 cordova white-page-outer / vivo-family 清零顶距 */
+        /* vivo X300 Pro / S50 Pro mini：压过 cordova white-page-outer / vivo-family 清零顶距 */
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
-        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root {
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-vivo-s50promini.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root {
             --app-shell-statusbar-top: 40px !important;
             --safe-top: 40px !important;
             --android-status-inset: 40px !important;
         }
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
-        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header {
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-s50promini.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header {
             top: 0 !important;
             height: calc(var(--header-height, 48px) + 40px) !important;
             min-height: calc(var(--header-height, 48px) + 40px) !important;
@@ -1465,7 +1483,13 @@
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right {
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-s50promini.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-s50promini.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right {
             top: 40px !important;
             height: var(--header-height, 48px) !important;
             display: flex !important;
@@ -1473,12 +1497,18 @@
         }
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,
-        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary {
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-vivo-s50promini.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 48px) + 40px) !important;
         }
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,
-        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list {
+        html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-vivo-s50promini.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,
+        html.app-android-vivo-s50promini.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
 

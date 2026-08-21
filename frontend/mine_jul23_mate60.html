@@ -3,86 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        /* 分享门槛已下线：首屏即隐藏分享入口，避免闪一下 */
+        /* Mate 60 / Pro 专用：冻结 2026-07-23「我的」卡片 UI；非该系列回主 mine.html */
         (function () {
             try {
-                document.documentElement.classList.add('mine-share-done');
-            } catch (e) {}
-            try {
-                var tok = String(localStorage.getItem('token') || '').trim();
-                if (!tok) {
-                    document.documentElement.classList.add('mine-guest');
-                }
-            } catch (e2) {
-                document.documentElement.classList.add('mine-guest');
-            }
-            try {
                 var u = String(navigator.userAgent || '');
-                try {
-                    u += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
-                } catch (eModel) {}
-                try {
-                    u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
-                } catch (eUa) {}
-                if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
-                    document.documentElement.classList.add('app-ios-client');
-                    document.documentElement.classList.add('app-top-safe-shell');
-                }
-                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
-                    document.documentElement.classList.add('app-android-client');
-                }
-                var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
-                var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
-                if (isMate60Mine) {
-                    /* Mate 60 系列「我的」回退 2026-07-23 卡片 UI；其它机型仍用本页 e1 */
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
+                var isMate60 = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70;
+                if (!isMate60) {
                     var q = String(location.search || '') + String(location.hash || '');
-                    location.replace('mine_jul23_mate60.html' + q);
+                    location.replace('mine.html' + q);
                     return;
-                } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
-                    document.documentElement.classList.add('app-huawei-mine-noclip');
-                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
-                    var huaweiNoclipInset = document.createElement('style');
-                    huaweiNoclipInset.setAttribute('data-huawei-mine-noclip-inset', '1');
-                    huaweiNoclipInset.textContent =
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0!important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer{top:0!important;}';
-                    document.head.appendChild(huaweiNoclipInset);
                 }
-                if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
-                    document.documentElement.classList.add('app-android-iqoo-neo8pro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/V2301A|V2301B|PD2301/i.test(u) || (/iQOO\s*Neo\s*8(?!\s*Pro)/i.test(u))) {
-                    document.documentElement.classList.add('app-android-iqoo-neo8');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/V2502A|V2502DA|V2514|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
-                    document.documentElement.classList.add('app-android-vivo-x300pro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/V2527A|V2527DA|V2527B|PD2527|vivo[\s_-]*S50[\s_-]*Pro[\s_-]*mini|S50Promini/i.test(u)) {
-                    document.documentElement.classList.add('app-android-vivo-s50promini');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
-                    document.documentElement.classList.add('app-android-oneplus-acepro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/PHW110|CPH2531|CPH2525/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
-                    document.documentElement.classList.add('app-android-oppo-reno10');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (
-                    /HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)
-                ) {
-                    document.documentElement.classList.add('app-android-huawei-nova13');
-                }
+                document.documentElement.classList.add('app-android-client');
+                document.documentElement.classList.add('app-android-huawei-mate60');
+                document.documentElement.classList.add('app-mate60-jul23-ui');
+                document.documentElement.classList.add('app-top-safe-shell');
+                try {
+                    var tok = String(localStorage.getItem('token') || '').trim();
+                    if (!tok) document.documentElement.classList.add('mine-guest');
+                } catch (e2) {}
             } catch (e3) {}
         })();
     </script>
     <script src="/js/auth.js?v=20260821-mate60-jul23"></script>
-    <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
+    <!-- UI_BASELINE: 2026-07-23 a616345 Mate60-only card mine; other OEMs use mine.html e1 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -91,22 +37,8 @@
     <!-- TAX_APP_SHELL_END -->
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#1677ff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>我的 · 个人所得税</title>
-    <meta name="description" content="模拟器APP个人中心，登录后管理资料与服务。">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="模拟器APP">
-    <meta property="og:description" content="模拟器APP个人中心，登录后管理资料与服务。">
-    <meta property="og:image" content="/grdb.jpg">
-    <meta property="og:url" content="/shouye.html?guest=1&from=share&landing_ab=c">
-    <meta name="twitter:card" content="summary">
-    <meta itemprop="name" content="模拟器APP">
-    <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
-    <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260820-nav-ios12b">
+    <link rel="stylesheet" href="css/nav.css?v=20260821-mate60-jul23">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -118,15 +50,10 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
             background-color: #f5f6fa;
-            /* 必须 vh/dvh 撑满视口；100% 在 html 无高度时会矮一截，iOS fixed 底栏悬空 */
             min-height: 100vh;
             max-width: 100vw;
             /* 勿在 body 上 overflow-x:hidden，iOS 会导致底栏 position:fixed 相对文档错位、看起来偏高 */
             -webkit-font-smoothing: antialiased;
-        }
-        html {
-            min-height: 100vh;
-            height: auto;
         }
 
         /* 底栏避让改到 .content-wrapper，避免与 app-shell 的 body padding 叠高 */
@@ -134,611 +61,106 @@
             padding-bottom: 0 !important;
         }
 
-        .mine-stack {
-            position: relative;
-            /* 勿加 transform/filter，否则会破坏底栏 position:fixed，看起来偏高 */
-        }
+        /* 底栏位置统一由 nav.css / auth 锁控制，勿在此写死 bottom（会与机型 inset 冲突导致切页跳动） */
 
-        /*
-         * 原版 APK（pages/index tab=4）：整页 e1_*.png + rpx 绝对叠字/热区。
-         * 1rpx = 100vw/750；姓名 top:380 left:90；税号 top:438 color:#c87930。
-         */
-        body.page-mine {
-            background: #f4f6f9 !important;
-            --mine-rpx: calc(100vw / 750);
-            /*
-             * 顶部安全区唯一来源：运行时测得的 --app-shell-statusbar-top，缺失时退回 env。
-             * 画布 padding、图片负 margin、叠层 top 必须同用此值，否则叠字与热区会整体偏移。
-             */
-            --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
-        }
-
-        .mine-e1-canvas {
-            position: relative;
-            width: 100%;
-            z-index: 1;
-            background: #1677ff;
-            /* 安全区：头图顶色顶入，避免刘海露白 */
-            padding-top: var(--mine-top-bleed);
-            overflow: hidden;
-        }
-
-        .mine-e1-canvas > .mine-e1-img,
-        .mine-e1-canvas > #headerImg {
-            display: block;
-            width: 100%;
-            height: auto;
-            margin: 0;
-            margin-top: calc(-1 * var(--mine-top-bleed));
-            vertical-align: top;
-            pointer-events: none;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-
-        .mine-e1-layer {
-            position: absolute;
-            left: 0;
-            right: 0;
-            /*
-             * 绝对定位相对画布 padding edge；头图用负 margin 拉到同一顶边。
-             * top 必须为 0。若写成 -bleed，叠字会相对米色卡整体上移。
-             */
-            top: 0;
-            width: 100%;
-            height: 0;
-            padding-bottom: calc(2127 / 1284 * 100%); /* e1 原始比例 1284×2127 */
-            z-index: 2;
-            pointer-events: none;
-        }
-
-        /*
-         * Android「我的」e1：默认零 bleed，覆盖未识别 OEM（含 Hi nova、鸿蒙外置黑条）。
-         * 避免通用 24px / 误测 inset 导致姓名税号压到米色卡。
-         * 一加 13 / MIX Fold / Mate 60 真沉浸：40px bleed（头图负 margin）。
-         */
-        html.app-android-client body.page-mine {
-            --mine-top-bleed: 0px;
-        }
-        html.app-android-client body.page-mine .mine-e1-canvas {
-            padding-top: 0 !important;
-        }
-        html.app-android-client body.page-mine .mine-e1-canvas > img {
-            margin-top: 0 !important;
-        }
-        html.app-android-client body.page-mine .mine-e1-layer {
-            top: 0 !important;
-        }
-        html.app-android-oneplus-13 body.page-mine,
-        html.app-android-oneplus-ace2pro body.page-mine,
-        html.app-android-oneplus-acepro body.page-mine,
-        html.app-android-oneplus-ace2v body.page-mine,
-        html.app-android-oppo-reno10 body.page-mine,
-        html.app-android-huawei-mate60 body.page-mine,
-        html.app-android-xiaomi-mix-fold body.page-mine {
-            --mine-top-bleed: var(--app-shell-statusbar-top, 40px);
-        }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine {
-            --mine-top-bleed: 0px;
-        }
-        html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
-        html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas,
-        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas,
-        html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas,
-        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
-        html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
-            padding-top: var(--mine-top-bleed) !important;
-        }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
-            padding-top: 0 !important;
-        }
-        html.app-android-oneplus-13 body.page-mine .mine-e1-canvas > img,
-        html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas > img,
-        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas > img,
-        html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas > img,
-        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas > img,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
-        html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas > img {
-            margin-top: calc(-1 * var(--mine-top-bleed)) !important;
-        }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
-            margin-top: 0 !important;
-            position: relative !important;
-            top: auto !important;
-            transform: none !important;
-        }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
-            top: 0 !important;
-        }
-        html.app-android-vivo-family body.page-mine,
-        html.app-android-iqoo-15 body.page-mine,
-        html.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10) body.page-mine,
-        html.app-android-mi-family body.page-mine,
-        html.app-android-redmi-k70 body.page-mine,
-        html.app-android-samsung body.page-mine,
-        html.app-android-samsung-s24u body.page-mine,
-        html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine,
-        html.app-android-hinova body.page-mine,
-        html.app-android-honor-flc body.page-mine,
-        html.app-android-honor-fcp body.page-mine {
-            --mine-top-bleed: 0px;
-            --app-shell-statusbar-top: 0px;
-        }
-
-        .mine-e1-layer > * {
-            pointer-events: auto;
-        }
-
-        .mine-ov-name {
-            position: absolute;
-            top: calc(380 * var(--mine-rpx));
-            left: calc(90 * var(--mine-rpx));
-            /* 仅随文字收缩，勿拉满到「个人信息」左侧，否则会显一条空白底 */
-            right: auto;
-            max-width: calc(420 * var(--mine-rpx));
-            width: max-content;
-            z-index: 100;
-            margin: 0;
-            padding: 0;
-            font-size: calc(30 * var(--mine-rpx));
-            font-weight: 500;
-            color: #333;
-            line-height: 1.25;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            background: transparent;
-            text-shadow: none !important;
-            -webkit-text-stroke: 0 !important;
-            letter-spacing: 0 !important;
-        }
-
-        .mine-ov-tax {
-            position: absolute;
-            top: calc(438 * var(--mine-rpx));
-            left: calc(90 * var(--mine-rpx));
-            /* 可铺到卡片右侧；眼睛跟在号码后，避免固定 415rpx 把号码截断 */
-            right: calc(36 * var(--mine-rpx));
-            width: auto;
-            max-width: none;
-            z-index: 100;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: calc(5 * var(--mine-rpx));
-            margin: 0;
-            padding: 0;
-            color: #c87930;
-            font-size: calc(24 * var(--mine-rpx));
-            font-weight: 500;
-            line-height: 1.25;
-            background: transparent;
-            text-shadow: none !important;
-            -webkit-text-stroke: 0 !important;
-            letter-spacing: 0 !important;
-        }
-
-        .mine-ov-tax .user-tax-label {
-            flex: 0 0 auto;
-            white-space: nowrap;
-            font-size: calc(24 * var(--mine-rpx));
-            font-weight: 500;
-            letter-spacing: 0 !important;
-            text-shadow: none !important;
-        }
-
-        .mine-ov-tax .user-tax-value {
-            flex: 0 1 auto;
-            min-width: 0;
-            white-space: nowrap;
-            overflow: visible;
-            text-overflow: clip;
-            font-size: calc(25 * var(--mine-rpx));
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0 !important;
-            text-shadow: none !important;
-        }
-
-        .mine-ov-eye {
-            position: relative;
-            top: auto;
-            left: auto;
-            flex: 0 0 auto;
-            /* 与税号字号（25rpx）对齐；开/关同盒，避免切换尺寸跳动 */
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-            margin-left: calc(24 * var(--mine-rpx));
-            z-index: 201;
-            border: none;
-            padding: 0;
-            background: transparent;
-            border-radius: 0;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-            box-shadow: none !important;
-            filter: none !important;
-        }
-
-        .mine-ov-eye img {
-            display: block;
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-            object-fit: contain;
-            object-position: center;
-            filter: none !important;
-            -webkit-filter: none !important;
-        }
-
-        .mine-ov-eye.reveal {
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-        }
-
-        .mine-ov-eye.reveal img {
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-        }
-
-        .mine-hit {
-            position: absolute;
-            z-index: 99;
-            display: block;
-            background: transparent;
-            -webkit-tap-highlight-color: transparent;
-            text-decoration: none;
-            border: none;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
-        }
-
-        .mine-hit-profile {
-            top: calc(390 * var(--mine-rpx));
-            left: calc(540 * var(--mine-rpx));
-            width: calc(160 * var(--mine-rpx));
-            height: calc(50 * var(--mine-rpx));
-            z-index: 100;
-        }
-
-        .mine-hit-family {
-            top: calc(520 * var(--mine-rpx));
-            left: calc(25 * var(--mine-rpx));
-            width: calc(220 * var(--mine-rpx));
-            height: calc(230 * var(--mine-rpx));
-        }
-
-        .mine-hit-employer {
-            top: calc(520 * var(--mine-rpx));
-            left: calc(265 * var(--mine-rpx));
-            width: calc(220 * var(--mine-rpx));
-            height: calc(230 * var(--mine-rpx));
-        }
-
-        .mine-hit-bank {
-            top: calc(520 * var(--mine-rpx));
-            left: calc(505 * var(--mine-rpx));
-            width: calc(220 * var(--mine-rpx));
-            height: calc(230 * var(--mine-rpx));
-        }
-
-        .mine-hit-care {
-            top: calc(810 * var(--mine-rpx));
-            left: 0;
-            width: 100%;
-            height: calc(70 * var(--mine-rpx));
-            z-index: 100;
-        }
-
-        .mine-hit-aqzx {
-            top: calc(880 * var(--mine-rpx));
-            left: 0;
-            width: 100%;
-            height: calc(70 * var(--mine-rpx));
-            z-index: 100;
-        }
-
-        .mine-hit-help {
-            top: calc(950 * var(--mine-rpx));
-            left: 0;
-            width: 100%;
-            height: calc(70 * var(--mine-rpx));
-            z-index: 100;
-        }
-
-        .mine-hit-consult {
-            top: calc(1020 * var(--mine-rpx));
-            left: 0;
-            width: 100%;
-            height: calc(70 * var(--mine-rpx));
-            z-index: 100;
-        }
-
-        .mine-hit-about {
-            top: calc(1090 * var(--mine-rpx));
-            left: 0;
-            width: 100%;
-            height: calc(70 * var(--mine-rpx));
-            z-index: 100;
-        }
-
-        /* 三宫格状态 pill：图内 pill 已擦除，此处单层绘制 */
-        .mine-e1-pill {
-            position: absolute;
-            z-index: 110;
-            top: calc(688 * var(--mine-rpx));
-            min-width: calc(72 * var(--mine-rpx));
-            height: calc(36 * var(--mine-rpx));
-            padding: 0 calc(14 * var(--mine-rpx));
-            border-radius: 999px;
-            font-size: calc(22 * var(--mine-rpx));
-            font-weight: 500;
-            line-height: calc(34 * var(--mine-rpx));
-            text-align: center;
-            text-decoration: none;
-            box-sizing: border-box;
-            white-space: nowrap;
-            pointer-events: none;
-            -webkit-tap-highlight-color: transparent;
-            text-shadow: none !important;
-            box-shadow: none !important;
-            -webkit-text-stroke: 0 !important;
-            letter-spacing: 0 !important;
-        }
-
-        .mine-e1-pill.is-empty {
-            background: #ffffff;
-            color: #3b82f6;
-            border: 1px solid #3b82f6;
-        }
-
-        .mine-e1-pill.is-filled {
-            background: #3b82f6;
-            color: #fff;
-            border: 1px solid #3b82f6;
-        }
-
-        /* 三列卡片中轴约 135 / 375 / 615 rpx，pill 居中 */
-        .mine-e1-pill-family {
-            left: calc(99 * var(--mine-rpx));
-        }
-
-        .mine-e1-pill-employer {
-            left: calc(339 * var(--mine-rpx));
-        }
-
-        .mine-e1-pill-bank {
-            left: calc(579 * var(--mine-rpx));
-        }
-
-        /*
-         * 华为 nova 13 / 鸿蒙 ArkWeb：勿用 --mine-rpx: calc(100% / 750)。
-         * 自定义属性里的 % 在 top 上按包含块高度解析，胶囊会掉到「我要咨询」。
-         * 1rpx 必须跟画布宽度走（cqw / JS 实测）。
-         */
-        html.app-android-huawei-nova13 body.page-mine .mine-e1-canvas,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
-            container-type: inline-size;
-            --mine-rpx: calc(100cqw / 750);
-        }
-        /*
-         * Mate 60 / Pro HarmonyOS 6 ArkWeb：container-type + 100cqw 会把画布收成左半屏。
-         * 回退一周前（2026-08-13）的 100vw，勿套 nova 13 的 cqw。
-         */
-        html.app-android-huawei-mate60 body.page-mine,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-layer {
-            --mine-rpx: calc(100vw / 750);
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas {
-            container-type: normal;
-            width: 100%;
-            max-width: none;
-        }
-        html.app-android-huawei-nova13 body.page-mine .mine-ov-name,
-        html.app-android-huawei-nova13 body.page-mine .mine-ov-tax,
-        html.app-huawei-mine-noclip body.page-mine .mine-ov-name,
-        html.app-huawei-mine-noclip body.page-mine .mine-ov-tax {
-            line-height: 1.4 !important;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-        html.app-android-huawei-nova13 body.page-mine .mine-e1-pill,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-pill {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            overflow: hidden !important;
-            box-sizing: border-box !important;
-            line-height: 1 !important;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-
-        /* 头像热区：对齐 e1 顶图卡通头像，供连续点击开关「数据编辑」 */
-        .mine-avatar-edit-hit,
-        .mine-e1-layer > .mine-avatar-edit-hit {
-            position: absolute;
-            left: 50%;
-            top: calc(108 * var(--mine-rpx));
-            width: calc(168 * var(--mine-rpx));
-            height: calc(168 * var(--mine-rpx));
-            margin-left: calc(-84 * var(--mine-rpx));
-            border: none;
-            padding: 0;
-            background: transparent;
-            z-index: 140;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-
-        .mine-e1-footer {
-            position: relative;
-            z-index: 5;
-            background: #f4f6f9;
-            padding: 8px 16px var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
-        }
-
-        /* 游客：叠字隐藏，登录钮落在信息卡中央 */
-        html.mine-guest body.page-mine .mine-ov-name,
-        html.mine-guest body.page-mine .mine-ov-tax,
-        html.mine-guest body.page-mine .mine-ov-eye,
-        html.mine-guest body.page-mine .mine-hit-profile,
-        html.mine-guest body.page-mine .mine-e1-pill,
-        html.mine-guest body.page-mine .mine-avatar-edit-hit,
-        html.mine-guest body.page-mine .mine-e1-footer .logout-section {
-            display: none !important;
-        }
-
-        html.mine-guest body.page-mine .mine-guest-login-btn {
-            display: inline-flex !important;
-            position: absolute;
-            top: calc(395 * var(--mine-rpx));
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 130;
-            min-width: calc(200 * var(--mine-rpx));
-            padding: calc(12 * var(--mine-rpx)) calc(40 * var(--mine-rpx));
-            border-radius: 999px;
-            background: #fff;
-            color: #d4923a;
-            font-size: calc(28 * var(--mine-rpx));
-            font-weight: 600;
-            text-decoration: none;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-        }
-
-        /*
-         * 「我的」底栏与其它 TAB 同用 bottom + gap；iOS 勿叠加 safe-area，避免整条上移。
-         */
-        body.page-mine {
-            --bottom-nav-bottom: var(--bottom-nav-gap, 8px);
-        }
-        html body.page-mine > .bottom-nav,
-        html body.page-mine > .bottom-nav.ios-device {
-            position: fixed !important;
-            left: var(--bottom-nav-side, 16px) !important;
-            right: var(--bottom-nav-side, 16px) !important;
-            bottom: var(--bottom-nav-bottom, 8px) !important;
-            top: auto !important;
-            z-index: 10050 !important;
-            margin: 0 !important;
-            transform: none !important;
-            -webkit-transform: none !important;
-            height: var(--bottom-nav-height, 54px) !important;
-            min-height: var(--bottom-nav-height, 54px) !important;
-            max-height: var(--bottom-nav-height, 54px) !important;
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
-            box-sizing: border-box !important;
-        }
-        html.app-ios-client body.page-mine > .bottom-nav,
-        html.app-ios-client body.page-mine > .bottom-nav.ios-device {
-            bottom: 8px !important;
-            height: var(--bottom-nav-height, 54px) !important;
-            min-height: var(--bottom-nav-height, 54px) !important;
-            max-height: var(--bottom-nav-height, 54px) !important;
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
-            margin-bottom: 0 !important;
-            -webkit-backdrop-filter: none !important;
-            backdrop-filter: none !important;
-            -webkit-backface-visibility: visible !important;
-            backface-visibility: visible !important;
-            background: rgba(255, 255, 255, 0.98) !important;
-        }
-        html.app-ios-iphone16pro body.page-mine > .bottom-nav,
-        html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
-        html.app-ios-iphone16promax body.page-mine > .bottom-nav,
-        html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
-            bottom: 8px !important;
-        }
-
-        /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
+        /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（与顶图取样色一致，避免浅/深蓝接缝） */
         .header-bg {
             position: relative;
-            z-index: 0;
             width: 100%;
             overflow: hidden;
             --mine-safe-top: env(safe-area-inset-top, 0px);
-            /* 与原版 APK statusbar.background / 头图顶行对齐 */
-            --mine-header-blue-top: #1677ff;
+            /* 激活按钮：相对顶栏下移，与头像中下缘齐平 */
+            --mine-activate-btn-top-offset: 66px;
+            --mine-header-blue-top: #2188f4;
             --mine-header-blue-mid: #1e81fb;
             --mine-header-blue-bot: #2c80f4;
-            /* grdb.jpg 第 0 行逐点采样：顶行是横向渐变，纯色垫带必然有接缝 */
-            --mine-header-grad: linear-gradient(90deg, #2d4cf2 0%, #094ee9 12%, #0b56ed 25%, #0972e8 38%, #0c8ef0 50%, #0e9fee 63%, #30b1f2 75%, #64c3f3 88%, #97caf5 100%);
-            background: var(--mine-header-grad);
+            background: linear-gradient(
+                180deg,
+                var(--mine-header-blue-top) 0%,
+                var(--mine-header-blue-mid) 45%,
+                var(--mine-header-blue-bot) 100%
+            );
         }
 
-        /* 安全区留白 + 头图上推进安全区，整段视觉连续 */
         html.app-top-safe-shell body.page-mine .header-bg {
-            padding-top: var(--mine-top-bleed, var(--mine-safe-top));
+            padding-top: var(--app-shell-statusbar-top, var(--mine-safe-top));
         }
 
         html.app-top-safe-shell body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--mine-top-bleed, var(--mine-safe-top)));
-            display: block;
-            width: 100%;
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)));
         }
 
+        /* iOS：顶图上移、状态栏区铺蓝（与 auth.js 一致，仅我的页） */
         html.app-ios-client.app-top-safe-shell {
-            --mine-ios-header-lift: 0px;
-            /* 原版 APK statusbar.background */
-            --mine-header-blue-top: #1677ff;
+            --mine-ios-header-lift: 12px;
         }
 
-        /*
-         * iOS：头图顶入安全区即可，不做额外拼接层（拼接会造成白条/圆弧重影）。
-         */
-        html.app-ios-client.app-top-safe-shell body.page-mine::before,
-        html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after {
-            content: none !important;
-            display: none !important;
+        html.app-ios-client.app-top-safe-shell body.page-mine::before {
+            content: "";
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
+            /* 与 grdb/nx 顶缘同色，iPhone 15 Pro Max 状态栏不再偏浅蓝 */
+            background: var(--mine-header-blue-top, #2188f4);
+            z-index: 8;
+            pointer-events: none;
         }
 
         html.app-ios-client.app-top-safe-shell body.page-mine .header-bg {
             position: relative;
-            z-index: 0;
-            padding-top: var(--mine-top-bleed, var(--mine-safe-top));
-            overflow: hidden;
-            background: var(--mine-header-grad, #2286ee);
+            z-index: 9;
+            padding-top: calc(var(--app-shell-statusbar-top, var(--mine-safe-top)) + var(--mine-ios-header-lift, 12px));
+            overflow: visible;
         }
 
         html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--mine-top-bleed, var(--mine-safe-top)));
-            display: block;
-            width: 100%;
-            position: relative;
-            z-index: 1;
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)) - var(--mine-ios-header-lift, 12px));
         }
 
-        /* 小米 14：同样头图顶入安全区，避免固色垫带色差 */
+        html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn {
+            top: calc(
+                var(--mine-activate-btn-top-offset, 66px) + var(--app-shell-statusbar-top, var(--mine-safe-top)) +
+                    var(--mine-ios-header-lift, 12px)
+            );
+        }
+
+        /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--mine-top-bleed, var(--mine-safe-top)));
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) + 8px);
+        }
+
+        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
+            margin: -70px 16px 0;
+        }
+
+        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
+            top: calc(var(--mine-activate-btn-top-offset, 66px) + var(--app-shell-statusbar-top, 0px));
         }
 
         /* Cordova 23127PN0CC：固定定位，避免被 header-bg overflow 或黑状态栏裁切 */
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
-            padding-top: var(--app-cordova-statusbar-chrome, 40px);
-            background: var(--mine-header-grad, #2286ee);
-            overflow: hidden;
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn {
+            position: fixed;
+            top: calc(var(--mine-activate-btn-top-offset, 66px) + var(--app-cordova-statusbar-chrome, 40px));
+            right: 18px;
+            z-index: 500;
         }
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-cordova-statusbar-chrome, 40px));
+
+        /* Cordova 小米14(23127PN0CC)：米色个人信息卡与参考稿一致，避免姓名/税号顶裁切 */
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
+            padding-top: 0;
+        }
+
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .content-wrapper {
+            margin-top: -6px;
+            padding-top: 14px;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
             margin: -38px 16px 0;
             border-radius: 12px 12px 0 0;
-            padding: 16px 0 14px 14px;
+            padding: 16px 14px 14px;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name {
@@ -746,9 +168,17 @@
             line-height: 1.25;
         }
 
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn {
+            top: 16px;
+        }
+
         /* Cordova 小米 10S（M2102J2SC）：个人信息卡字号略小，税号单行完整展示 */
         html.app-cordova-xiaomi-m2102 body.page-mine .user-card {
-            padding: 12px 0 12px 12px;
+            padding: 12px;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-card {
+            padding-right: 78px;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .user-info-text {
@@ -777,16 +207,15 @@
             letter-spacing: -0.02em;
         }
 
-        html.app-cordova-xiaomi-m2102 body.page-mine .mine-ov-eye.tax-eye-btn,
-        html.app-cordova-xiaomi-m2102 body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
-            width: calc(30 * var(--mine-rpx));
-            height: calc(20 * var(--mine-rpx));
+        html.app-cordova-xiaomi-m2102 body.page-mine .tax-eye-btn {
+            width: 15px;
+            height: 15px;
             flex-shrink: 0;
         }
 
-        html.app-cordova-xiaomi-m2102 body.page-mine .mine-ov-eye.tax-eye-btn img {
-            width: calc(30 * var(--mine-rpx));
-            height: calc(20 * var(--mine-rpx));
+        html.app-cordova-xiaomi-m2102 body.page-mine .tax-eye-btn svg {
+            width: 13px;
+            height: 13px;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn {
@@ -799,69 +228,16 @@
             font-size: 10.5px;
         }
 
-        /* 红米 Note 13 Pro：缩小「个人信息」与税号字号，避免挡住眼睛按钮 */
-        html.app-android-redmi-note13-pro body.page-mine .user-card {
-            padding: 12px 0 14px 14px;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .user-info-text {
-            padding-right: 0;
-            min-width: 0;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .user-name {
-            font-size: 13px;
-            margin-bottom: 4px;
-            line-height: 1.25;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .user-id {
-            font-size: 10.5px;
-            line-height: 1.25;
-            word-break: normal;
-            white-space: nowrap;
-            flex-wrap: nowrap;
-            gap: 3px;
-            max-width: 100%;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .user-tax-label,
-        html.app-android-redmi-note13-pro body.page-mine .user-tax-value {
-            font-size: 10.5px;
-            letter-spacing: -0.03em;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn,
-        html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
-            width: calc(30 * var(--mine-rpx));
-            height: calc(20 * var(--mine-rpx));
-            flex-shrink: 0;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .mine-ov-eye.tax-eye-btn img {
-            width: calc(30 * var(--mine-rpx));
-            height: calc(20 * var(--mine-rpx));
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .personal-info-btn {
-            font-size: 10px;
-            padding: 4px 8px 4px 10px;
-            border-radius: 16px 0 0 16px;
-        }
-
-        html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after {
-            font-size: 10px;
-        }
-
         /* 华为 TAS-AN00（Mate 30 等，Android 12 Cordova）：个人信息卡姓名小两号 */
         html.app-android-huawei-tas-an00 body.page-mine .user-name {
             font-size: 13px;
             line-height: 1.35;
         }
 
-        /* 小米 14：个人信息卡保持 16px 边距 */
+        /* 小米 14：主白区横向贴边，减少两侧灰条（Cordova 23127 用户卡保留 16px 边距见上） */
         html.app-android-xiaomi-14:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin: -70px 16px 0;
+            margin-left: 0;
+            margin-right: 0;
             border-radius: 12px 12px 0 0;
         }
 
@@ -877,12 +253,7 @@
         }
 
         /* 华为 Pura 70：录屏时减少两侧黑边观感，主内容横向贴边（与 auth.js 全局规则一致） */
-        html.app-huawei-pura70 body.page-mine .user-card {
-            margin-left: 0;
-            margin-right: 0;
-            border-radius: 12px 12px 0 0;
-        }
-
+        html.app-huawei-pura70 body.page-mine .user-card,
         html.app-huawei-pura70 body.page-mine .menu-list {
             margin-left: 0;
             margin-right: 0;
@@ -892,13 +263,37 @@
         html.app-huawei-pura70 body.page-mine .function-cards {
             margin-left: 8px;
             margin-right: 8px;
-            gap: 8px;
         }
 
         .header-bg > img {
             width: 100%;
             display: block;
             vertical-align: top;
+        }
+
+        .mine-activate-btn {
+            position: fixed;
+            right: 18px;
+            top: calc(var(--mine-activate-btn-top-offset, 66px) + var(--app-shell-statusbar-top, 0px));
+            min-width: 76px;
+            height: 38px;
+            border: none;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1658dc;
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            z-index: 500;
+            pointer-events: auto;
         }
 
         /* 弹框居中：Android WebView（如 OPPO K7x）下 flex 居中易贴底，改用 fixed + transform */
@@ -1031,6 +426,10 @@
             color: #fff;
         }
 
+        .activate-modal-btn.xianyu {
+            margin-right: auto;
+        }
+
         .activate-modal-actions-leading {
             display: flex;
             gap: 8px;
@@ -1038,10 +437,12 @@
             flex-wrap: wrap;
         }
 
-        /*
-         * 灰底圆角面板：与官方一致。信息卡在灰底外上移压住蓝头图，两侧露蓝而非灰。
-         * 勿加 overflow-x:clip/hidden：会连带裁切上移的 .user-card。
-         */
+        .activate-modal-actions-leading .activate-modal-btn.xianyu {
+            margin-right: 0;
+        }
+
+        /* 灰底圆角面板：与原版一致，白卡片浮在灰底上；底栏避让与其它 TAB 一致放在内容区。
+         * 勿加 overflow-x:clip/hidden：会连带裁切上移的 .user-card（margin-top 负值）。 */
         .content-wrapper {
             background: #f5f6fa;
             border-radius: 20px 20px 0 0;
@@ -1049,33 +450,39 @@
             position: relative;
             z-index: 10;
             padding-top: 10px;
-            padding-bottom: var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
+            padding-bottom: var(--bottom-nav-clearance, calc(98px + env(safe-area-inset-bottom, 0px)));
         }
 
-        /*
-         * 个人信息卡：对齐原版 uni APK（pages/home/my）
-         * 原版是整页大图 e1_*.png + 姓名/税号绝对叠字（left:90rpx / top:380·438rpx，色 #c87930），
-         * 「个人信息 >」画在图里。这里用真实 DOM 复刻同款比例与色值。
-         */
         .user-card {
-            background: linear-gradient(105deg, #fce5d0 0%, #f5d4b5 45%, #f0c9a4 100%);
+            background: linear-gradient(105deg, #f8ead8 0%, #f3e2cc 42%, #edd9bf 100%);
             margin: -70px 16px 0;
             border-radius: 12px 12px 0 0;
-            padding: 16px 0 16px 22px;
+            padding: 14px 86px 14px 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 11;
             overflow: visible;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        }
+
+        /* 头像热区：卡通头像在顶图内，信息卡上移后会挡住点击，单独留出触控区 */
+        .mine-avatar-edit-hit {
+            position: absolute;
+            left: 8px;
+            top: -62px;
+            width: 80px;
+            height: 80px;
+            border: none;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            z-index: 15;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .user-info {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            flex: 1;
+            display: block;
             min-width: 0;
         }
 
@@ -1097,12 +504,12 @@
         }
 
         .user-name.user-name--editable {
-            display: block;
+            display: inline-block;
             max-width: 100%;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            padding: 0;
+            padding: 0 2px;
             min-height: 0;
         }
 
@@ -1114,24 +521,21 @@
             font-size: 16px;
             color: #1a1a1a;
             font-weight: 600;
-            margin: 0 0 6px;
-            padding: 0;
+            margin-bottom: 4px;
             line-height: 1.25;
         }
 
         .user-id {
             display: flex;
             flex-direction: row;
-            align-items: baseline;
+            align-items: center;
             flex-wrap: nowrap;
-            gap: 5px;
+            gap: 4px;
             width: 100%;
             min-width: 0;
-            margin: 0;
-            padding: 0;
             font-size: 12px;
             font-weight: 500;
-            color: #c87930;
+            color: #c8863a;
             line-height: 1.25;
         }
 
@@ -1139,13 +543,12 @@
             flex: 0 0 auto;
             white-space: nowrap;
             font-size: 12px;
-            font-weight: 500;
         }
 
         .user-tax-value {
             flex: 0 0 auto;
             white-space: nowrap;
-            font-size: 12.5px;
+            font-size: 12px;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.02em;
         }
@@ -1155,100 +558,73 @@
         html[class*='app-ios'] body.page-mine .user-name {
             font-size: 16px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             line-height: 1.25;
         }
 
-        html.app-ios-client body.page-mine .mine-ov-tax.user-id,
-        html[class*='app-ios'] body.page-mine .mine-ov-tax.user-id {
-            font-size: calc(24 * var(--mine-rpx));
-            gap: calc(5 * var(--mine-rpx));
-            color: #c87930;
-            letter-spacing: 0 !important;
+        html.app-ios-client body.page-mine .user-id,
+        html[class*='app-ios'] body.page-mine .user-id {
+            font-size: 12px;
+            gap: 3px;
         }
 
-        html.app-ios-client body.page-mine .mine-ov-tax .user-tax-label,
-        html[class*='app-ios'] body.page-mine .mine-ov-tax .user-tax-label,
-        html.app-ios-client body.page-mine .mine-ov-tax .user-tax-value,
-        html[class*='app-ios'] body.page-mine .mine-ov-tax .user-tax-value {
-            font-size: calc(24 * var(--mine-rpx));
-            letter-spacing: 0 !important;
-            text-shadow: none !important;
+        html.app-ios-client body.page-mine .user-tax-label,
+        html[class*='app-ios'] body.page-mine .user-tax-label,
+        html.app-ios-client body.page-mine .user-tax-value,
+        html[class*='app-ios'] body.page-mine .user-tax-value {
+            font-size: 12px;
+            letter-spacing: -0.05em;
         }
 
-        html.app-ios-client body.page-mine .mine-ov-eye.tax-eye-btn,
-        html[class*='app-ios'] body.page-mine .mine-ov-eye.tax-eye-btn,
-        html.app-ios-client body.page-mine .mine-ov-eye.tax-eye-btn.reveal,
-        html[class*='app-ios'] body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-            color: #c87930;
+        html.app-ios-client body.page-mine .tax-eye-btn,
+        html[class*='app-ios'] body.page-mine .tax-eye-btn {
+            width: 16px;
+            height: 16px;
         }
 
-        html.app-ios-client body.page-mine .mine-ov-eye.tax-eye-btn img,
-        html[class*='app-ios'] body.page-mine .mine-ov-eye.tax-eye-btn img {
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
+        html.app-ios-client body.page-mine .tax-eye-btn svg,
+        html[class*='app-ios'] body.page-mine .tax-eye-btn svg {
+            width: 14px;
+            height: 14px;
         }
 
         html.app-ios-client body.page-mine .personal-info-btn,
         html[class*='app-ios'] body.page-mine .personal-info-btn {
-            font-size: 12px;
-            padding: 7px 12px 7px 14px;
-            background: #ebad72;
+            font-size: 11px;
+            padding: 5px 10px 5px 12px;
         }
 
-        /*
-         * iOS / Cordova：原版 APK statusbar.immersed + background #1677ff。
-         * 壳 iframe 的 env(safe-area-inset-top) 常为 0，必须用 --app-shell-statusbar-top 顶入，
-         * 并用横向渐变垫在 html 顶，避免刘海下露白。
-         */
-        html.app-ios-client.app-top-safe-shell body.page-mine .user-card,
-        html.app-ios-client body.page-mine .user-card {
-            margin: -70px 16px 0;
-            padding: 16px 0 16px 22px;
-        }
-
-        /* e1 叠字页：勿再压负字距，避免 iOS 税号重影 */
+        /* iPhone Safari 模拟/真机：未命中 app-ios-client 时税号仍 12px 单行 */
         @supports (-webkit-touch-callout: none) {
             @media (max-width: 428px) {
-                body.page-mine .mine-ov-tax,
-                body.page-mine .mine-ov-tax .user-tax-label,
-                body.page-mine .mine-ov-tax .user-tax-value {
-                    letter-spacing: 0 !important;
-                    text-shadow: none !important;
+                body.page-mine .user-id,
+                body.page-mine .user-tax-label,
+                body.page-mine .user-tax-value {
+                    font-size: 12px;
+                    line-height: 1.25;
+                    white-space: nowrap;
+                }
+
+                body.page-mine .user-tax-value {
+                    letter-spacing: -0.05em;
                 }
             }
         }
 
         .tax-eye-btn {
+            width: 18px;
+            height: 18px;
             border: none;
             background: transparent;
-            color: #c87930;
+            color: #c8863a;
             line-height: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            align-self: center;
             cursor: pointer;
             padding: 0;
             flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
-        }
-
-        /* 覆盖旧 18×18 方盒，与 .mine-ov-eye 统一（开/关同尺寸） */
-        body.page-mine .mine-ov-eye.tax-eye-btn,
-        body.page-mine .mine-ov-eye.tax-eye-btn.reveal {
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-        }
-
-        body.page-mine .mine-ov-eye.tax-eye-btn img,
-        body.page-mine .mine-ov-eye.tax-eye-btn.reveal img {
-            width: calc(32 * var(--mine-rpx));
-            height: calc(22 * var(--mine-rpx));
-            object-fit: contain;
-            object-position: center;
         }
 
         .tax-eye-btn svg {
@@ -1270,17 +646,18 @@
         }
 
         .tax-eye-btn.reveal {
-            opacity: 0.9;
+            opacity: 0.75;
         }
 
         .personal-info-btn {
-            position: static;
-            align-self: center;
-            margin-left: auto;
-            background: #ebad72;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #edaa66;
             border: none;
             border-radius: 20px 0 0 20px;
-            padding: 7px 12px 7px 14px;
+            padding: 6px 10px 6px 14px;
             font-size: 12px;
             font-weight: 500;
             color: #fff;
@@ -1291,7 +668,7 @@
             flex-shrink: 0;
             text-decoration: none;
             white-space: nowrap;
-            box-shadow: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             z-index: 2;
             -webkit-tap-highlight-color: transparent;
         }
@@ -1430,8 +807,9 @@
             opacity: 0.9;
         }
 
-        /* 已激活：隐藏截图模式条（税务入口保留，便于填写/分享） */
-        body.page-mine.mine-account-active #cgMineScreenshotBar {
+        /* 已激活：隐藏截图模式条、税务演示入口 */
+        body.page-mine.mine-account-active #cgMineScreenshotBar,
+        body.page-mine.mine-account-active #mineTaxEntryLink {
             display: none !important;
         }
 
@@ -1450,27 +828,26 @@
             opacity: 1;
         }
 
-        /* 功能入口：官方为三张独立白卡（非一整块白底） */
+        /* 功能入口：原版为一整块白底三列，非三张独立卡 */
         .function-cards {
             display: flex;
             justify-content: space-between;
             align-items: stretch;
-            gap: 8px;
-            margin: 2px 16px 0;
-            padding: 0;
-            background: transparent;
-            border-radius: 0;
-            box-shadow: none;
+            gap: 0;
+            margin: 6px 16px 0;
+            padding: 10px 6px 12px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
 
         .function-card {
             flex: 1;
-            min-width: 0;
-            background: #fff;
-            border-radius: 14px;
-            padding: 14px 6px 12px;
+            background: transparent;
+            border-radius: 0;
+            padding: 2px 6px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            box-shadow: none;
             text-decoration: none;
             color: inherit;
             -webkit-tap-highlight-color: transparent;
@@ -1567,7 +944,7 @@
         /* 菜单：原版无分割横线，行高更紧凑 */
         .menu-list {
             background: #fff;
-            margin: 14px 16px 0;
+            margin: 12px 16px 0;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -1629,7 +1006,7 @@
             display: none !important;
         }
 
-        /* 与官方一致：右箭头浅灰 */
+        /* 与参考图一致：右箭头纯黑 SVG，避免 iOS 上文字 > 发灰偏细 */
         .menu-arrow {
             display: inline-flex;
             align-items: center;
@@ -1638,7 +1015,7 @@
             height: 18px;
             flex-shrink: 0;
             margin-left: 2px;
-            color: #b0b0b0;
+            color: #000;
         }
 
         .menu-arrow svg {
@@ -1660,15 +1037,14 @@
             stroke-width: 2;
         }
 
-        /* 退出登录：官方为菜单下方独立白底圆角条 */
-
+        /* 退出登录：原版在菜单白底卡片内，非独立卡 */
         .logout-section {
-            background: #fff;
-            margin: 12px 16px 0;
-            border-radius: 12px;
-            padding: 14px 20px;
+            background: transparent;
+            margin: 0;
+            border-radius: 0;
+            padding: 10px 20px 14px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            box-shadow: none;
         }
 
         .logout-btn {
@@ -1681,155 +1057,7 @@
             font-family: inherit;
             line-height: 1.3;
             padding: 4px 8px;
-            width: 100%;
             -webkit-tap-highlight-color: transparent;
-        }
-
-        /* 我的页分享：放在「填写个税记录」卡片旁；分享成功后隐藏 */
-        .mine-tax-share-block {
-            margin: 10px 16px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .mine-tax-share-block .mine-tax-entry {
-            margin: 0;
-        }
-        .mine-share-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            width: 100%;
-            padding: 11px 14px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #fb7299 0%, #e84a7f 100%);
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: inherit;
-            white-space: nowrap;
-            box-shadow: 0 2px 10px rgba(232, 74, 127, 0.28);
-            -webkit-tap-highlight-color: transparent;
-            cursor: pointer;
-        }
-        .mine-share-btn[hidden] {
-            display: none !important;
-        }
-        html.mine-share-done .mine-share-btn {
-            display: none !important;
-        }
-        html.mine-share-done .mine-tax-entry-desc--need-share {
-            display: none !important;
-        }
-        .mine-tax-entry-desc--shared {
-            display: none;
-        }
-        html.mine-share-done .mine-tax-entry-desc--shared {
-            display: block;
-        }
-        .mine-share-btn:active {
-            opacity: 0.88;
-            transform: scale(0.98);
-        }
-        .mine-share-btn svg {
-            width: 16px;
-            height: 16px;
-            flex-shrink: 0;
-        }
-        .mine-share-modal-panel {
-            text-align: center;
-        }
-        .mine-share-qr-wrap {
-            margin: 4px auto 12px;
-            width: 100%;
-            max-width: 280px;
-            min-height: 320px;
-            border-radius: 14px;
-            background: #f4f7fb;
-            border: 1px solid #e6edf5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            padding: 0;
-        }
-        .mine-share-qr-wrap img {
-            width: 100%;
-            height: auto;
-            object-fit: contain;
-            display: block;
-        }
-        .mine-share-link-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin: 0 0 12px;
-        }
-        .mine-share-link-actions .activate-modal-btn {
-            width: 100%;
-            margin: 0;
-        }
-        .mine-share-poster-block[hidden] {
-            display: none !important;
-        }
-        .mine-share-tip {
-            margin: 0 0 12px;
-            font-size: 13px;
-            color: #666;
-            line-height: 1.5;
-            text-align: left;
-        }
-
-        /* 未登录：个人信息卡改为居中「注册/登录」 */
-        html.mine-guest body.page-mine .user-info,
-        html.mine-guest body.page-mine .personal-info-btn,
-        html.mine-guest body.page-mine .logout-section,
-        html.mine-guest body.page-mine .mine-tax-share-block,
-        html.mine-guest body.page-mine #mineAvatarEditHit,
-        body.page-mine.mine-guest .user-info,
-        body.page-mine.mine-guest .personal-info-btn,
-        body.page-mine.mine-guest .logout-section,
-        body.page-mine.mine-guest .mine-tax-share-block,
-        body.page-mine.mine-guest #mineAvatarEditHit {
-            display: none !important;
-        }
-
-        html.mine-guest body.page-mine .user-card,
-        body.page-mine.mine-guest .user-card {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px 16px;
-            min-height: 52px;
-        }
-
-        .mine-guest-login-btn {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            min-width: 132px;
-            padding: 9px 28px;
-            border-radius: 999px;
-            background: #fff;
-            color: #d4923a;
-            font-size: 15px;
-            font-weight: 600;
-            font-family: inherit;
-            text-decoration: none;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        html.mine-guest body.page-mine .mine-guest-login-btn,
-        body.page-mine.mine-guest .mine-guest-login-btn {
-            display: inline-flex;
-        }
-
-        .mine-guest-login-btn:active {
-            opacity: 0.88;
-            transform: scale(0.98);
         }
 
         /* 游客沙盒：底部下载引导条（压在底栏之上） */
@@ -1838,7 +1066,7 @@
             position: fixed;
             left: 0;
             right: 0;
-            bottom: calc(var(--bottom-nav-height, 56px) + var(--bottom-nav-bottom, 2px));
+            bottom: calc(var(--bottom-nav-height, 72px) + var(--bottom-nav-bottom, 2px));
             z-index: 50;
             align-items: center;
             gap: 10px;
@@ -1850,9 +1078,8 @@
         body.guest-download-bar-on .guest-download-bar {
             display: flex;
         }
-        body.guest-download-bar-on .mine-e1-footer,
         body.guest-download-bar-on .content-wrapper {
-            padding-bottom: calc(var(--bottom-nav-clearance, 78px) + 72px);
+            padding-bottom: calc(var(--bottom-nav-clearance, 98px) + 72px);
         }
         .guest-download-bar-text {
             flex: 1;
@@ -1880,97 +1107,82 @@
         #mineGuestDownloadModal .activate-modal-input {
             display: none;
         }
+        #mineGuestDownloadModal .activate-modal-actions .activate-modal-btn.xianyu {
+            display: none;
+        }
     </style>
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
-    <div class="mine-stack">
-        <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
-        <div class="mine-e1-canvas" id="mineE1Canvas">
-            <img
-                id="headerImg"
-                class="mine-e1-img"
-                src="/img/mine/e1_01.png?v=20260802-e1fix"
-                alt="个人中心"
-                width="1284"
-                height="2127"
-            >
-            <script>
-                (function () {
-                    var hi = document.getElementById('headerImg');
-                    if (!hi) return;
-                    var v = '?v=20260802-e1fix';
-                    try {
-                        if (!String(localStorage.getItem('token') || '').trim()) {
-                            hi.src = '/img/mine/e1_01.png' + v;
-                            return;
-                        }
-                        var g = Number(localStorage.getItem('gender'));
-                        var female = g === 2;
-                        hi.src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
-                    } catch (e) {}
-                })();
-            </script>
-            <div class="mine-e1-layer" id="mineE1Layer">
-                <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
+    <div class="header-bg">
+        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
+        <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
+    </div>
+
+    <div class="content-wrapper">
+        <div class="user-card" id="mineUserCardEditHit">
+            <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
+            <a href="personal_info.html" class="personal-info-btn">个人信息</a>
+            <div class="user-info user-info-text" id="mineProfileEditHit">
                 <div
-                    class="mine-ov-name user-name user-name--editable"
+                    class="user-name user-name--editable"
                     id="mineDisplayName"
                     role="button"
                     tabindex="0"
                     aria-label="修改姓名、纳税人识别号与性别"
                 >点击我修改名字</div>
-                <div class="mine-ov-tax user-id" id="userTaxId">
+                <div class="user-id" id="userTaxId">
                     <span class="user-tax-label">纳税人识别号</span>
                     <span class="user-tax-value" id="userTaxIdText">--</span>
-                    <button type="button" class="mine-ov-eye tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
-                        <img id="mineYanIcon" src="/img/mine/yan-b.png?v=20260802-e1fix" alt="">
-                    </button>
+                    <button type="button" class="tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
+                            <svg class="tax-eye-closed" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="currentColor"></path>
+                                <path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="currentColor"></path>
+                            </svg>
+                            <svg class="tax-eye-open" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M512 256c-209.768 0-390.024 120.056-480 294.248C121.976 724.44 302.232 844.496 512 844.496S902.024 724.44 992 550.248C902.024 376.056 721.768 256 512 256z m0 490.416c-108.272 0-196.168-87.896-196.168-196.168S403.728 354.08 512 354.08s196.168 87.896 196.168 196.168S620.272 746.416 512 746.416z" fill="#c8863a"></path>
+                                <path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#c8863a"></path>
+                            </svg>
+                        </button>
                 </div>
-                <div id="mineProfileEditHit" hidden aria-hidden="true"></div>
-                <div id="mineUserCardEditHit" hidden aria-hidden="true"></div>
-                <a href="personal_info.html" class="mine-hit mine-hit-profile" id="minePersonalInfoHit" aria-label="个人信息"></a>
-                <a href="login.html" class="mine-guest-login-btn" id="mineGuestLoginBtn">注册/登录</a>
-
-                <a href="jtcy.html" class="mine-hit mine-hit-family" aria-label="家庭成员"></a>
-                <a href="renzhi.html" class="mine-hit mine-hit-employer" aria-label="任职受雇"></a>
-                <a href="yhk.html" class="mine-hit mine-hit-bank" aria-label="银行卡"></a>
-
-                <a href="jtcy_add.html" class="mine-e1-pill mine-e1-pill-family is-empty" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount">添加</span></a>
-                <span class="mine-e1-pill mine-e1-pill-employer is-empty" id="employerCount">暂无</span>
-                <a href="yhk_add.html" class="mine-e1-pill mine-e1-pill-bank is-empty" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount">添加</span></a>
-
-                <a class="mine-hit mine-hit-care" href="care_version.html" id="mineCareVersionLink" aria-label="切换关怀版"></a>
-                <a class="mine-hit mine-hit-aqzx" href="aqzx.html" aria-label="安全中心"></a>
-                <a class="mine-hit mine-hit-help" href="help_center.html" id="mineHelpCenterLink" aria-label="帮助中心"></a>
-                <a class="mine-hit mine-hit-consult" href="consult.html?v=20260721d-bonus" id="consultModifyLink" aria-label="我要咨询"></a>
-                <a class="mine-hit mine-hit-about" href="about_update.html" aria-label="关于与更新"></a>
-
-                <!-- 兼容旧 JS 引用的隐藏图标节点 -->
-                <img id="mineIconFamily" src="jtcy.jpg" alt="" hidden>
-                <img id="mineIconEmployer" src="rzsp.jpg" alt="" hidden>
-                <img id="mineIconBank" src="yhk.jpg" alt="" hidden>
-                <span id="consultModifyMenuText" hidden>我要咨询</span>
             </div>
         </div>
 
-        <div class="mine-e1-footer">
+        <div class="function-cards">
+            <div class="function-card function-card--split">
+                <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
+                    <div class="function-icon">
+                        <img id="mineIconFamily" src="jtcy.jpg" alt="">
+                    </div>
+                    <div class="function-title">家庭成员</div>
+                </a>
+                <a href="jtcy_add.html" class="function-btn orange" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount" role="text">添加</span></a>
+            </div>
+            <a class="function-card" href="renzhi.html">
+                <div class="function-icon">
+                    <img id="mineIconEmployer" src="rzsp.jpg" alt="">
+                </div>
+                <div class="function-title">任职受雇</div>
+                <span class="function-btn orange" id="employerCount" role="text">暂无</span>
+            </a>
+            <div class="function-card function-card--split">
+                <a href="yhk.html" class="function-card-hit" aria-label="银行卡">
+                    <div class="function-icon">
+                        <img id="mineIconBank" src="yhk.jpg" alt="">
+                    </div>
+                    <div class="function-title">银行卡</div>
+                </a>
+                <a href="yhk_add.html" class="function-btn orange" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount" role="text">添加</span></a>
+            </div>
+        </div>
+
+        <div class="menu-list">
+            <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="consult.html?v=20260721d-bonus" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-consult-hint" id="consultModifyHint" hidden>我要咨询修改</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <div class="logout-section">
                 <button type="button" class="logout-btn" id="mineLogout">退出登录</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="mineShareModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineShareModalTitle">
-        <div class="activate-modal-mask" id="mineShareModalMask"></div>
-        <div class="activate-modal-panel mine-share-modal-panel">
-            <p class="activate-modal-title" id="mineShareModalTitle">分享到 B 站</p>
-            <p class="mine-share-tip" id="mineShareTip">将演示链接发到 B 站动态后，即可使用「一键生成税务记录」。返回本应用后自动解锁。</p>
-            <div class="mine-share-link-actions">
-                <button type="button" class="activate-modal-btn primary" id="btnMineShareBili">打开 B 站分享</button>
-                <button type="button" class="activate-modal-btn" id="btnMineShareCopy">复制链接</button>
-            </div>
-            <div class="activate-modal-actions">
-                <button type="button" class="activate-modal-btn" id="btnMineShareCancel">取消</button>
             </div>
         </div>
     </div>
@@ -1982,6 +1194,7 @@
             <p class="activate-modal-hint" id="mineActivateModalSubtitle" style="display:none;margin:0 0 12px;font-size:13px;color:#666;line-height:1.45;"></p>
             <input type="text" id="mineActivateCodeInput" class="activate-modal-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <div class="activate-modal-actions">
+                <button type="button" class="activate-modal-btn xianyu" id="btnMineActivateXianyu">闲鱼购买</button>
                 <button type="button" class="activate-modal-btn" id="btnMineActivateCancel">取消</button>
                 <button type="button" class="activate-modal-btn primary" id="btnMineActivateOk">确定</button>
             </div>
@@ -2048,23 +1261,23 @@
 
     <div class="bottom-nav" aria-label="主导航">
         <a class="nav-item" data-icon="sy" href="shouye.html">
-            <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
             <span class="nav-text">首页</span>
         </a>
         <a class="nav-item" data-icon="db" href="daiban.html">
-            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/db2.png" alt=""></span>
             <span class="nav-text">待办</span>
         </a>
         <a class="nav-item" data-icon="bc" href="bancha.html">
-            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/bc2.png" alt=""></span>
             <span class="nav-text">办&amp;查</span>
         </a>
         <a class="nav-item" data-icon="xx" href="message.html">
-            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/xx2.png" alt=""></span>
             <span class="nav-text">消息</span>
         </a>
-        <a class="nav-item active" data-icon="w" href="mine.html">
-            <div class="nav-icon"><img src="caidan/w1.png" width="19" height="19" alt=""></div>
+        <a class="nav-item active" data-icon="w" href="mine_jul23_mate60.html">
+            <span class="nav-icon"><img src="caidan/w1.png" alt=""></span>
             <span class="nav-text">我的</span>
         </a>
     </div>
@@ -2072,13 +1285,12 @@
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
+    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
         (function () {
-            /** 原版 updateEImage：gender × company_name_tow(0/1/2) × FamilyMember → e1_*.png */
-            var mineE1State = { family: 0, employer: 0 };
-
             function applyMineHeaderImage(gender) {
                 var hi = document.getElementById('headerImg');
+                var cfg = window.__MINE_UI_CONFIG || {};
                 if (!hi) return;
                 var g = gender;
                 if (g == null || g === '') {
@@ -2088,23 +1300,12 @@
                         g = null;
                     }
                 }
-                var female = Number(g) === 2;
-                var fam = mineE1State.family > 0 ? 1 : 0;
-                var ec = Number(mineE1State.employer) || 0;
-                var tow = ec <= 0 ? 0 : ec === 1 ? 1 : 2;
-                var base;
-                if (tow === 0) base = female ? 'e1_02' : 'e1_01';
-                else if (tow === 1) base = female ? 'e1_2' : 'e1_1';
-                else base = female ? 'e1_4' : 'e1_3';
-                if (fam) base += 'r';
-                hi.src = '/img/mine/' + base + '.png?v=20260802-e1fix';
-            }
-
-            function syncMineYanIcon() {
-                var img = document.getElementById('mineYanIcon');
-                if (!img) return;
-                var v = '?v=20260802-e1fix';
-                img.src = (mineTaxRevealState ? '/img/mine/yan-k.png' : '/img/mine/yan-b.png') + v;
+                var n = Number(g);
+                if (Number(n) === 2) {
+                    hi.src = cfg.header_female || 'nx.jpg';
+                } else {
+                    hi.src = cfg.header_male || 'grdb.jpg';
+                }
             }
 
             function applyMineAssets(cfg) {
@@ -2198,43 +1399,6 @@
                 } catch (e) {
                     return false;
                 }
-            }
-
-            function isMineLoggedIn() {
-                try {
-                    if (typeof window.authGetToken === 'function') {
-                        return !!String(window.authGetToken() || '').trim();
-                    }
-                    return !!String(localStorage.getItem('token') || '').trim();
-                } catch (e) {
-                    return false;
-                }
-            }
-
-            /** 未登录：展示「注册/登录」卡片，隐藏资料/退出等；头图切灰色剪影 */
-            function applyMineGuestShell() {
-                var loggedIn = isMineLoggedIn();
-                try {
-                    document.documentElement.classList.toggle('mine-guest', !loggedIn);
-                } catch (e0) {}
-                if (document.body) {
-                    document.body.classList.toggle('mine-guest', !loggedIn);
-                }
-                applyMineHeaderImage();
-                var btn = document.getElementById('mineGuestLoginBtn');
-                if (!btn) return;
-                if (loggedIn) {
-                    btn.setAttribute('hidden', '');
-                    return;
-                }
-                btn.removeAttribute('hidden');
-                var href = 'login.html';
-                try {
-                    if (typeof window.buildLoginPageUrl === 'function') {
-                        href = window.buildLoginPageUrl('mine.html');
-                    }
-                } catch (e1) {}
-                btn.setAttribute('href', href);
             }
 
             function isMineAppShell() {
@@ -2404,34 +1568,6 @@
                 unlockMineProfileEditScroll();
             }
 
-            /** 受保护接口：优先 authFetch；否则手动带 Bearer，禁止裸 fetch，且勿误弹「登录已失效」 */
-            function mineAuthedFetch(url, opts) {
-                opts = opts || {};
-                if (typeof window.authFetch === 'function') {
-                    return window.authFetch(url, opts);
-                }
-                var token = '';
-                try {
-                    token =
-                        (typeof window.authGetToken === 'function' && window.authGetToken()) ||
-                        localStorage.getItem('token') ||
-                        '';
-                } catch (eTok) {
-                    token = '';
-                }
-                if (!token) {
-                    return Promise.reject(new Error('unauthorized'));
-                }
-                var headers = Object.assign(
-                    { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                    opts.headers || {}
-                );
-                return fetch(
-                    url,
-                    Object.assign({}, opts, { headers: headers, credentials: 'same-origin' })
-                );
-            }
-
             function saveMineProfileEdit() {
                 if (!isMineDataEditEnabled()) {
                     closeMineProfileEditModal();
@@ -2464,7 +1600,12 @@
                     tax_id: taxId,
                     gender: gender
                 };
-                var fetchFn = mineAuthedFetch;
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
 
                 function applyLocalAndClose() {
                     setMineDisplayName(realName);
@@ -2578,7 +1719,12 @@
             }
 
             function startMineRenamePay() {
-                var fetchFn = mineAuthedFetch;
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
                 var qrWrap = document.getElementById('mineRenamePayQrWrap');
                 fetchFn('api/payments/alipay/create', {
                     method: 'POST',
@@ -2590,16 +1736,12 @@
                     })
                     .then(function (j) {
                         if (!j || j.code !== 200 || !j.data) {
-                            var failMsg = (j && j.msg) || '创建订单失败';
-                            setMineRenamePayStatus(failMsg);
+                            setMineRenamePayStatus((j && j.msg) || '创建订单失败');
                             if (qrWrap) {
                                 qrWrap.innerHTML =
                                     '<p style="color:#b91c1c;font-size:13px;">' +
-                                    failMsg +
+                                    ((j && j.msg) || '创建订单失败') +
                                     '</p>';
-                            }
-                            if (typeof showPaymentCreateFailDialog === 'function') {
-                                showPaymentCreateFailDialog({ message: failMsg, source: 'mine_rename' });
                             }
                             return;
                         }
@@ -2639,17 +1781,16 @@
                     })
                     .catch(function () {
                         setMineRenamePayStatus('网络错误');
-                        if (typeof showPaymentCreateFailDialog === 'function') {
-                            showPaymentCreateFailDialog({
-                                message: '创建支付订单失败，网络异常',
-                                source: 'mine_rename'
-                            });
-                        }
                     });
             }
 
             function pollMineRenamePay() {
-                var fetchFn = mineAuthedFetch;
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
                 fetchFn('api/payments/alipay/latest')
                     .then(function (r) {
                         return r.json();
@@ -2683,7 +1824,12 @@
                     return;
                 }
                 var payload = __mineRenamePayPayload;
-                var fetchFn = mineAuthedFetch;
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
                 fetchFn('api/user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2728,36 +1874,28 @@
                 var familyWrap = document.getElementById('familyCountWrap');
                 var bankBtn = document.getElementById('bankCardCount');
                 var bankWrap = document.getElementById('bankCardAddWrap');
-                var taxBadge = document.getElementById('mineTaxRecordBadge');
                 var ec = user && user.employer_count != null ? Number(user.employer_count) : NaN;
                 var fc = user && user.family_count != null ? Number(user.family_count) : NaN;
                 var bc = user && user.bank_card_count != null ? Number(user.bank_card_count) : NaN;
-                var tc =
-                    user && user.tax_record_count != null
-                        ? Number(user.tax_record_count)
-                        : Number(localStorage.getItem('tax_record_count') || '0');
-
-                mineE1State.employer = !isNaN(ec) && ec > 0 ? ec : 0;
-                mineE1State.family = !isNaN(fc) && fc > 0 ? fc : 0;
 
                 if (employerBtn) {
                     if (user && !isNaN(ec) && ec > 0) {
                         employerBtn.textContent = ec + '家';
-                        employerBtn.className = 'mine-e1-pill mine-e1-pill-employer is-filled';
+                        employerBtn.className = 'function-btn blue';
                     } else {
                         employerBtn.textContent = '暂无';
-                        employerBtn.className = 'mine-e1-pill mine-e1-pill-employer is-empty';
+                        employerBtn.className = 'function-btn orange';
                     }
                 }
                 if (familyBtn && familyWrap) {
                     if (user && !isNaN(fc) && fc > 0) {
                         familyBtn.textContent = fc + '人';
-                        familyWrap.className = 'mine-e1-pill mine-e1-pill-family is-filled';
+                        familyWrap.className = 'function-btn blue';
                         familyWrap.setAttribute('href', 'jtcy.html');
                         familyWrap.setAttribute('aria-label', '家庭成员');
                     } else {
                         familyBtn.textContent = '添加';
-                        familyWrap.className = 'mine-e1-pill mine-e1-pill-family is-empty';
+                        familyWrap.className = 'function-btn orange';
                         familyWrap.setAttribute('href', 'jtcy_add.html');
                         familyWrap.setAttribute('aria-label', '添加家庭成员');
                     }
@@ -2765,33 +1903,32 @@
                 if (bankBtn && bankWrap) {
                     if (user && !isNaN(bc) && bc > 0) {
                         bankBtn.textContent = bc + '张';
-                        bankWrap.className = 'mine-e1-pill mine-e1-pill-bank is-filled';
+                        bankWrap.className = 'function-btn blue';
                         bankWrap.setAttribute('href', 'yhk.html');
                         bankWrap.setAttribute('aria-label', '银行卡');
                     } else {
                         bankBtn.textContent = '添加';
-                        bankWrap.className = 'mine-e1-pill mine-e1-pill-bank is-empty';
+                        bankWrap.className = 'function-btn orange';
                         bankWrap.setAttribute('href', 'yhk_add.html');
                         bankWrap.setAttribute('aria-label', '添加银行卡');
                     }
                 }
-                if (taxBadge) {
-                    if (!isNaN(tc) && tc > 0) {
-                        taxBadge.textContent = tc + '条';
-                        taxBadge.className = 'mine-tax-entry-badge';
-                    } else {
-                        taxBadge.textContent = '去填写';
-                        taxBadge.className = 'mine-tax-entry-badge is-empty';
-                    }
-                }
-                applyMineHeaderImage();
                 syncConsultModifyHint();
             }
 
             function syncConsultModifyHint() {
-                /* 对齐官方：咨询行不展示「我要咨询修改」旁注 */
                 var hint = document.getElementById('consultModifyHint');
-                if (hint) hint.setAttribute('hidden', '');
+                if (!hint) return;
+                var loggedIn = !!localStorage.getItem('user_id');
+                var editOn =
+                    !window.ConversionGuide ||
+                    typeof window.ConversionGuide.isTaxEditModeOn !== 'function' ||
+                    window.ConversionGuide.isTaxEditModeOn();
+                if (loggedIn && editOn && !hasTaxRecords()) {
+                    hint.removeAttribute('hidden');
+                } else {
+                    hint.setAttribute('hidden', '');
+                }
             }
 
             function updateCountsFromStorage() {
@@ -2816,42 +1953,56 @@
                 return !isNaN(n) && n > 0;
             }
 
-            var __minePageshowReady = false;
             window.addEventListener('pageshow', function (ev) {
-                updateCountsFromStorage();
-                /* 首次进入由底部 loadUserInfo 负责；返回本页时强制刷新角标 */
-                if (!__minePageshowReady) {
-                    __minePageshowReady = true;
-                    return;
-                }
-                try {
-                    sessionStorage.removeItem('mine_summary_cache_v1');
-                } catch (ePs) {}
-                if (typeof loadUserInfo === 'function') {
-                    loadUserInfo({ force: true });
+                if (ev.persisted) {
+                    updateCountsFromStorage();
                 }
             });
 
             function goConsultPage() {
-                if (!isMineLoggedIn()) {
-                    window.location.href =
-                        typeof window.buildLoginPageUrl === 'function'
-                            ? window.buildLoginPageUrl('consult.html?tab=records')
-                            : 'login.html';
+                if (!localStorage.getItem('user_id')) {
+                    window.location.href = 'login.html';
                     return;
                 }
-                if (!hasTaxRecords()) {
-                    if (
-                        window.ConversionGuide &&
-                        typeof window.ConversionGuide.goFillTaxRecords === 'function'
-                    ) {
-                        window.ConversionGuide.goFillTaxRecords();
+                window.location.href = 'consult.html?v=20260721d-bonus';
+            }
+
+            function copyMineXianyuPurchase() {
+                var t = String(mineXianyuPurchaseUrl || '').trim();
+                function doCopy(txt) {
+                    if (!txt) {
+                        alert('暂未配置闲鱼购买文案');
                         return;
                     }
-                    window.location.href = 'consult.html?tab=records&onboarding=tax';
+                    if (typeof copyXianyuPurchaseText !== 'function') {
+                        alert('复制功能不可用');
+                        return;
+                    }
+                    copyXianyuPurchaseText(txt).catch(function () {
+                        alert('复制失败，请长按手动复制');
+                    });
+                }
+                if (t) {
+                    doCopy(t);
                     return;
                 }
-                window.location.href = 'consult.html?tab=records';
+                fetch(
+                    typeof getPublicInstallPackagesUrl === 'function'
+                        ? getPublicInstallPackagesUrl()
+                        : '/api/public/install-packages',
+                    { credentials: 'same-origin' }
+                )
+                    .then(function (r) { return r.json(); })
+                    .then(function (body) {
+                        if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
+                            t = String(body.data.xianyu_purchase_url).trim();
+                            mineXianyuPurchaseUrl = t;
+                        }
+                        doCopy(t);
+                    })
+                    .catch(function () {
+                        alert('获取购买文案失败，请稍后重试');
+                    });
             }
 
             function applyAvatarGender(gender) {
@@ -2859,6 +2010,7 @@
             }
 
             function updateMineActivateButton(user) {
+                var btn = document.getElementById('mineActivateBtn');
                 var active = false;
                 if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
                     active = true;
@@ -2866,6 +2018,16 @@
                     try {
                         active = localStorage.getItem('account_active') === '1';
                     } catch (e0) {}
+                }
+                if (btn) {
+                    if (active) {
+                        /* 已激活（含试用）不展示「剩X天」按钮 */
+                        btn.style.display = 'none';
+                        btn.textContent = '已激活';
+                    } else {
+                        btn.style.display = 'inline-flex';
+                        btn.textContent = isLandingGuestMode() ? '下载' : '激活';
+                    }
                 }
                 if (document.body) {
                     document.body.classList.toggle('mine-account-active', active);
@@ -2880,7 +2042,7 @@
                 }
                 fetch('api/auth', {
                     method: 'POST',
-                    headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
+                    headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'activate', code: code })
                 })
                     .then(function (r) {
@@ -2908,7 +2070,7 @@
                             } else {
                                 if (window.TaxApp && TaxApp.ui) TaxApp.ui.toast('激活成功', { ok: true });
                                 else alert('激活成功');
-                                window.location.href = 'activate_success.html';
+                                window.location.href = 'consult.html?tab=records&onboarding=tax';
                             }
                             return;
                         }
@@ -2917,6 +2079,56 @@
                     .catch(function () {
                         alert('网络错误');
                     });
+            }
+
+            var mineXianyuPurchaseUrl = '';
+
+            function fetchMineXianyuUrl() {
+                if (typeof window.getCachedPublicInstallPackages === 'function') {
+                    var cached = window.getCachedPublicInstallPackages();
+                    if (cached) {
+                        if (cached.xianyu_purchase_url) {
+                            mineXianyuPurchaseUrl = String(cached.xianyu_purchase_url).trim();
+                        }
+                        if (typeof applyXianyuPurchaseVisibility === 'function') {
+                            applyXianyuPurchaseVisibility(cached);
+                        }
+                        return;
+                    }
+                }
+                if (typeof window.refreshPublicInstallPackagesUi === 'function') {
+                    window
+                        .refreshPublicInstallPackagesUi()
+                        .then(function (data) {
+                            if (data && data.xianyu_purchase_url) {
+                                mineXianyuPurchaseUrl = String(data.xianyu_purchase_url).trim();
+                            }
+                        })
+                        .catch(function () {});
+                    return;
+                }
+                var req =
+                    typeof fetchPublicInstallPackages === 'function'
+                        ? fetchPublicInstallPackages()
+                        : fetch(
+                              typeof getPublicInstallPackagesUrl === 'function'
+                                  ? getPublicInstallPackagesUrl()
+                                  : '/api/public/install-packages',
+                              { credentials: 'same-origin' }
+                          );
+                req
+                    .then(function (r) { return r.json(); })
+                    .then(function (body) {
+                        if (body && body.code === 200 && body.data) {
+                            if (body.data.xianyu_purchase_url) {
+                                mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                            }
+                            if (typeof applyXianyuPurchaseVisibility === 'function') {
+                                applyXianyuPurchaseVisibility(body.data);
+                            }
+                        }
+                    })
+                    .catch(function () {});
             }
 
             function guestTaxRecordCountHint() {
@@ -2935,9 +2147,6 @@
                         source: source || 'cta',
                         tax_count: guestTaxRecordCountHint()
                     });
-                }
-                if (typeof window.trackShareDownloadClick === 'function') {
-                    window.trackShareDownloadClick(source || 'mine_download');
                 }
                 window.location.href = 'install_guide.html?download=1#download';
             }
@@ -2970,247 +2179,6 @@
                     });
                 }
                 root.classList.add('is-open');
-            }
-
-            function setupMineShareUi() {
-                var SHARE_DONE_KEY = 'mine_share_done_v1';
-                var SHARE_PENDING_KEY = 'mine_share_pending_v1';
-                var btn = document.getElementById('mineShareBtn');
-                var modal = document.getElementById('mineShareModal');
-                var btnCancel = document.getElementById('btnMineShareCancel');
-                var btnBili = document.getElementById('btnMineShareBili');
-                var btnCopy = document.getElementById('btnMineShareCopy');
-                var mask = document.getElementById('mineShareModalMask');
-                if (!btn || !modal) return;
-
-                function trackShare(action, extra) {
-                    var meta = Object.assign({ page: 'mine', target: 'bilibili' }, extra || {});
-                    try {
-                        if (typeof window.trackUserAction === 'function') {
-                            window.trackUserAction(action, meta);
-                            return;
-                        }
-                    } catch (e0) {}
-                    try {
-                        if (typeof window.trackPublicAction === 'function') {
-                            window.trackPublicAction(action, meta);
-                        }
-                    } catch (e1) {}
-                }
-
-                function isShareDone() {
-                    try {
-                        if (typeof window.isMineShareDone === 'function') {
-                            return window.isMineShareDone();
-                        }
-                        return localStorage.getItem(SHARE_DONE_KEY) === '1';
-                    } catch (e) {
-                        return false;
-                    }
-                }
-
-                function hideShareBtn() {
-                    try {
-                        document.documentElement.classList.add('mine-share-done');
-                    } catch (eCls) {}
-                    try {
-                        btn.hidden = true;
-                        btn.setAttribute('hidden', '');
-                    } catch (e) {
-                        btn.hidden = true;
-                    }
-                }
-
-                function showShareBtnIfNeeded() {
-                    if (isShareDone()) {
-                        hideShareBtn();
-                        return;
-                    }
-                    try {
-                        document.documentElement.classList.remove('mine-share-done');
-                    } catch (eCls2) {}
-                    try {
-                        btn.hidden = false;
-                        btn.removeAttribute('hidden');
-                    } catch (e) {
-                        btn.hidden = false;
-                    }
-                }
-
-                function markSharePending() {
-                    if (typeof window.markMineSharePending === 'function') {
-                        window.markMineSharePending();
-                        return;
-                    }
-                    try {
-                        localStorage.setItem(SHARE_PENDING_KEY, '1');
-                    } catch (e) {}
-                }
-
-                function markShareCompleted(extra) {
-                    if (typeof window.markMineShareCompleted === 'function') {
-                        window.markMineShareCompleted();
-                    } else {
-                        try {
-                            localStorage.setItem(SHARE_DONE_KEY, '1');
-                            localStorage.removeItem(SHARE_PENDING_KEY);
-                        } catch (e) {}
-                        try {
-                            document.documentElement.classList.add('mine-share-done');
-                        } catch (eCls) {}
-                    }
-                    closeShareModal();
-                    hideShareBtn();
-                    trackShare('track_mine_share_done', extra);
-                }
-
-                function finalizeShareIfPending() {
-                    try {
-                        if (localStorage.getItem(SHARE_PENDING_KEY) !== '1') return;
-                        localStorage.removeItem(SHARE_PENDING_KEY);
-                    } catch (e) {
-                        return;
-                    }
-                    markShareCompleted({ via: 'pending_return' });
-                }
-
-                function closeShareModal() {
-                    modal.classList.remove('is-open');
-                }
-
-                function openShareModal() {
-                    if (isShareDone()) {
-                        hideShareBtn();
-                        return;
-                    }
-                    modal.classList.add('is-open');
-                    trackShare('track_mine_share_open');
-                }
-
-                function afterShareResult(result) {
-                    if (!result || !result.method) return;
-                    if (result.method === 'abort') {
-                        try {
-                            localStorage.removeItem(SHARE_PENDING_KEY);
-                        } catch (eAbort) {}
-                        return;
-                    }
-                    if (result.method === 'intent') {
-                        markSharePending();
-                        return;
-                    }
-                    markShareCompleted({ method: result.method });
-                }
-
-                function shareOpts() {
-                    return {
-                        url:
-                            window.BILIBILI_SHARE_URL ||
-                            'https://b23.tv/EiRdMqm',
-                        title: '个税记录演示',
-                        text: '个税记录演示：打开即可体验收入明细与纳税记录',
-                        track: 'track_share_bilibili'
-                    };
-                }
-
-                function doShareBilibili() {
-                    markSharePending();
-                    var fn =
-                        typeof window.shareToBilibili === 'function'
-                            ? window.shareToBilibili
-                            : typeof window.sharePageLink === 'function'
-                              ? window.sharePageLink
-                              : null;
-                    if (!fn) {
-                        alert('暂时无法分享，请稍后重试');
-                        return;
-                    }
-                    var ret = fn(shareOpts());
-                    if (ret && typeof ret.then === 'function') {
-                        ret.then(afterShareResult).catch(function () {});
-                    }
-                }
-
-                function doCopyLink() {
-                    markSharePending();
-                    var opts = shareOpts();
-                    var url =
-                        typeof window.buildShareUrl === 'function'
-                            ? window.buildShareUrl(opts.page, opts.query)
-                            : '';
-                    var body = opts.text + (url ? '\n' + url : '');
-                    var copyFn =
-                        typeof window.copyTextToClipboard === 'function'
-                            ? window.copyTextToClipboard
-                            : null;
-                    function done(ok) {
-                        alert(
-                            ok
-                                ? '链接已复制。请打开 B 站发动态粘贴；返回本应用后即可一键生成。'
-                                : '复制失败，请手动复制：\n' + (url || body)
-                        );
-                        if (ok) markShareCompleted({ method: 'copy' });
-                    }
-                    if (copyFn) {
-                        copyFn(body).then(done);
-                        return;
-                    }
-                    try {
-                        var ta = document.createElement('textarea');
-                        ta.value = body;
-                        ta.setAttribute('readonly', '');
-                        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-                        document.body.appendChild(ta);
-                        ta.select();
-                        var ok = document.execCommand('copy');
-                        document.body.removeChild(ta);
-                        done(!!ok);
-                    } catch (eCopy) {
-                        done(false);
-                    }
-                }
-
-                showShareBtnIfNeeded();
-                finalizeShareIfPending();
-
-                btn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openShareModal();
-                });
-                if (btnBili) {
-                    btnBili.addEventListener('click', function () {
-                        doShareBilibili();
-                    });
-                }
-                if (btnCopy) {
-                    btnCopy.addEventListener('click', function () {
-                        doCopyLink();
-                    });
-                }
-                if (btnCancel) btnCancel.addEventListener('click', closeShareModal);
-                if (mask) mask.addEventListener('click', closeShareModal);
-
-                document.addEventListener('visibilitychange', function () {
-                    if (!document.hidden) finalizeShareIfPending();
-                });
-                window.addEventListener('pageshow', function () {
-                    showShareBtnIfNeeded();
-                    finalizeShareIfPending();
-                });
-                document.addEventListener(
-                    'resume',
-                    function () {
-                        finalizeShareIfPending();
-                    },
-                    false
-                );
-
-                try {
-                    if (location.hash === '#mineTaxShare' && !isShareDone()) {
-                        setTimeout(openShareModal, 300);
-                    }
-                } catch (eHash) {}
             }
 
             function setupGuestDownloadUi() {
@@ -3371,7 +2339,6 @@
                     if (taxToggleBtn) {
                         taxToggleBtn.classList.toggle('reveal', mineTaxRevealState);
                     }
-                    syncMineYanIcon();
                 }
                 mineRenderTaxIdFn = renderTaxId;
 
@@ -3418,36 +2385,18 @@
                     setCounts(u);
                 }
 
-                function currentMineUserScope() {
-                    try {
-                        return String(
-                            localStorage.getItem('user_id') ||
-                                localStorage.getItem('userName') ||
-                                localStorage.getItem('username') ||
-                                ''
-                        );
-                    } catch (e) {
-                        return '';
-                    }
-                }
-
                 function readMineSummarySessionCache() {
                     try {
                         var raw = sessionStorage.getItem('mine_summary_cache_v1');
                         if (!raw) return null;
                         var parsed = JSON.parse(raw);
-                        var scope = currentMineUserScope();
                         if (
                             parsed &&
                             parsed.t &&
                             Date.now() - Number(parsed.t) < MINE_SUMMARY_CLIENT_TTL_MS &&
-                            parsed.data &&
-                            String(parsed.userId || '') === scope
+                            parsed.data
                         ) {
                             return parsed.data;
-                        }
-                        if (parsed && String(parsed.userId || '') !== scope) {
-                            sessionStorage.removeItem('mine_summary_cache_v1');
                         }
                     } catch (e) {}
                     return null;
@@ -3457,11 +2406,7 @@
                     try {
                         sessionStorage.setItem(
                             'mine_summary_cache_v1',
-                            JSON.stringify({
-                                t: Date.now(),
-                                userId: currentMineUserScope(),
-                                data: data
-                            })
+                            JSON.stringify({ t: Date.now(), data: data })
                         );
                     } catch (e) {}
                 }
@@ -3493,7 +2438,12 @@
                     applySummaryToUi(sessionSummary);
                 }
 
-                var fetchFn = mineAuthedFetch;
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts2) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts2 || {}));
+                          };
 
                 function refreshSummaryInBackground() {
                     fetchFn('api/user?action=summary')
@@ -3513,16 +2463,15 @@
                         });
                 }
 
-                /* 有会话缓存也后台校验，避免换号后仍显示旧姓名；无缓存则立刻拉取 */
-                if (typeof requestIdleCallback === 'function') {
-                    requestIdleCallback(
-                        function () {
+                /* 45s 内有会话缓存则跳过网络；强制刷新或无缓存时后台拉取 */
+                if (!sessionSummary) {
+                    if (typeof requestIdleCallback === 'function') {
+                        requestIdleCallback(function () {
                             refreshSummaryInBackground();
-                        },
-                        { timeout: sessionSummary ? 2500 : 1200 }
-                    );
-                } else {
-                    setTimeout(refreshSummaryInBackground, sessionSummary ? 200 : 0);
+                        }, { timeout: 1200 });
+                    } else {
+                        setTimeout(refreshSummaryInBackground, 0);
+                    }
                 }
 
                 if (taxToggleBtn && !taxToggleBtn.__mineTaxToggleBound) {
@@ -3585,27 +2534,15 @@
                 syncMineProfileEditGate();
             });
 
-            applyMineGuestShell();
-            if (isMineLoggedIn()) {
-                loadUserInfo();
-            } else {
-                updateCountsFromStorage();
-            }
+            loadUserInfo();
             syncMineProfileEditGate();
+            fetchMineXianyuUrl();
             installLegacyActivatePromptShim();
 
             function handleConsultMenuClick(e) {
                 e.preventDefault();
-                if (!isMineLoggedIn()) {
-                    window.location.href =
-                        typeof window.buildLoginPageUrl === 'function'
-                            ? window.buildLoginPageUrl('consult.html?tab=records')
-                            : 'login.html';
-                    return;
-                }
-                /* 无个税时优先引导填写，即使编辑模式关闭也会由 ConversionGuide 临时打开 */
-                if (!hasTaxRecords()) {
-                    goConsultPage();
+                if (!localStorage.getItem('user_id')) {
+                    window.location.href = 'login.html';
                     return;
                 }
                 if (
@@ -3613,10 +2550,7 @@
                     typeof window.ConversionGuide.isTaxEditModeOn === 'function' &&
                     !window.ConversionGuide.isTaxEditModeOn()
                 ) {
-                    /* 关闭编辑：静默拦截，不弹提示；关掉链接点击触发的转圈 */
-                    if (typeof window.forceHidePageLoading === 'function') {
-                        window.forceHidePageLoading();
-                    }
+                    window.location.href = 'help_center.html';
                     return;
                 }
                 goConsultPage();
@@ -3626,8 +2560,20 @@
                 consultModifyLink.addEventListener('click', handleConsultMenuClick);
             }
 
+            var mineActivateBtn = document.getElementById('mineActivateBtn');
+            if (mineActivateBtn) {
+                mineActivateBtn.addEventListener('touchend', function (e) {
+                    e.stopPropagation();
+                });
+                mineActivateBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    openMineActivateModal();
+                });
+            }
+
             var mineOkBtn = document.getElementById('btnMineActivateOk');
             var mineCancelBtn = document.getElementById('btnMineActivateCancel');
+            var mineXyBtn = document.getElementById('btnMineActivateXianyu');
             var mineMask = document.getElementById('mineActivateModalMask');
             var mineInput = document.getElementById('mineActivateCodeInput');
             if (mineOkBtn) {
@@ -3663,31 +2609,33 @@
                     }
                 });
             }
+            if (mineXyBtn) {
+                mineXyBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_xianyu_purchase_click', {
+                            page: 'mine',
+                            source: 'activate_modal'
+                        });
+                    }
+                    copyMineXianyuPurchase();
+                });
+            }
 
             document.getElementById('mineLogout').addEventListener('click', function () {
                 try {
-                    if (typeof window.authClearSession === 'function') {
-                        window.authClearSession();
-                    } else {
-                        sessionStorage.clear();
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user_id');
-                        localStorage.removeItem('username');
-                        localStorage.removeItem('userName');
-                        localStorage.removeItem('real_name');
-                        localStorage.removeItem('tax_id');
-                        localStorage.removeItem('landing_guest_v1');
-                    }
+                    sessionStorage.clear();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user_id');
+                    localStorage.removeItem('username');
+                    localStorage.removeItem('real_name');
+                    localStorage.removeItem('tax_id');
+                    localStorage.removeItem('landing_guest_v1');
                 } catch (e) {}
-                window.location.href = 'mine.html';
+                window.location.href = 'login.html';
             });
 
-            applyMineGuestShell();
             if (isLandingGuestMode()) {
                 setupGuestDownloadUi();
-            }
-            if (isMineLoggedIn()) {
-                setupMineShareUi();
             }
             if (isLandingGuestMode() && typeof window.trackPublicAction === 'function') {
                 var guestVisitMeta = {

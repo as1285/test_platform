@@ -37,6 +37,10 @@
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2527A|V2527DA|V2527B|PD2527|vivo[\s_-]*S50[\s_-]*Pro[\s_-]*mini|S50Promini/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-s50promini');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-acepro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -71,7 +75,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260820-nova13-mine"></script>
+    <script src="/js/auth.js?v=20260821-mate60-jul23"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-help-icon-lock" data-scope="body.page-xiangqing"></script>

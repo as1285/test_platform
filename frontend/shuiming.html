@@ -73,6 +73,10 @@
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2527A|V2527DA|V2527B|PD2527|vivo[\s_-]*S50[\s_-]*Pro[\s_-]*mini|S50Promini/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-s50promini');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
@@ -107,7 +111,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260820-nova13-mine"></script>
+    <script src="/js/auth.js?v=20260821-mate60-jul23"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -219,6 +223,8 @@
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-iqoo-neo8pro body.page-shuiming > .header,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-vivo-s50promini body.page-shuiming > .header,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-huawei-nova13 body.page-shuiming > .header,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-immersive-white-top body.page-shuiming > .header,
@@ -235,6 +241,8 @@
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-iqoo-neo8pro body.page-shuiming > .content,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-vivo-s50promini body.page-shuiming > .content,
+        html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-huawei-nova13 body.page-shuiming > .content,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-immersive-white-top body.page-shuiming > .content,
