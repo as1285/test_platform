@@ -200,12 +200,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260821-mate60-40px', 'mine_jul23_mate60.html', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
+  ['20260821-mate60-header2', 'mine_jul23_mate60.html', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
   'mine.html mate60 jul23 redirect + reno10 + neo8 + nova13 cache'
 );
 mustInclude(
   'frontend/mine_jul23_mate60.html',
-  ['20260821-mate60-40px', 'app-mate60-jul23-ui', 'function-cards', 'header-bg', 'ALN-AL00', 'UI_BASELINE: 2026-07-23'],
+  ['20260821-mate60-header2', 'app-mate60-jul23-ui', 'function-cards', 'header-bg', 'ALN-AL00', 'UI_BASELINE: 2026-07-23'],
   'mate60 jul23 frozen card mine page'
 );
 mustInclude(
@@ -215,7 +215,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260821-mate60-40px'],
+  ['20260821-mate60-header2'],
   'fast-nav auth cache mate60 jul23'
 );
 mustInclude(
@@ -230,12 +230,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-mate60-40px', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-mate60-header2', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-mate60-40px'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-mate60-header2'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -271,12 +271,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260821-mate60-40px', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
+  ['20260821-mate60-header2', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
   'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260821-mate60-40px', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260821-mate60-header2', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
@@ -296,12 +296,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260821-mate60-40px'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260821-mate60-header2'],
   'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
   'frontend/xiangqing.html',
-  ['BLK-AL80', 'app-android-huawei-nova13', '20260821-mate60-40px', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint'],
+  ['BLK-AL80', 'app-android-huawei-nova13', '20260821-mate60-header2', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint'],
   'xiangqing nova 13 statusbar inset'
 );
 mustInclude(
@@ -565,18 +565,23 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['ccbFlowAmountMin', 'ccbFlowAmountMax', '工资下限', '工资上限', '起始月'],
-  'ccb flow salary and month range'
+  ['ccbFlowAmountMin', 'ccbFlowAmountMax', '工资下限', '工资上限', '起始月', 'ccbFlowExpenseList', '添加支出'],
+  'ccb flow salary and month range + expenses'
 );
 mustInclude(
   'frontend/public/js/admin/modules/ccb-flow.js',
-  ['enumerateMonths', 'buildAmountsForMonths', 'ccbFlowAmountMin', 'MAX_FLOW_MONTHS'],
-  'ccb flow range generate'
+  ['enumerateMonths', 'buildAmountsForMonths', 'ccbFlowAmountMin', 'MAX_FLOW_MONTHS', 'collectExpenses', 'addExpenseRow'],
+  'ccb flow range generate + expenses'
 );
 mustInclude(
   'backend/scripts/ccb_flow_render.py',
-  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS'],
-  'ccb render month/amount range'
+  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS', 'parse_expenses', 'total_expense', 'build_transactions'],
+  'ccb render month/amount range + expenses'
+);
+mustInclude(
+  'backend/src/admin/ccbFlow.js',
+  ['expenses', 'parseMaybeJsonArray'],
+  'ccb flow API expenses field'
 );
 mustInclude(
   'backend/scripts/sbdy_wh_render_pdf.py',
@@ -622,7 +627,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260821-mate60-40px', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260821-mate60-header2', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 一键生成前 B 站分享门槛已下线 */
