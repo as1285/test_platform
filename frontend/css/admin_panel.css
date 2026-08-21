@@ -530,6 +530,35 @@ body.admin-command-open {
     border-radius: 8px;
     background: #fff;
 }
+.ccb-expense-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ccb-expense-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    background: var(--admin-surface-muted);
+}
+.ccb-expense-row label {
+    display: block;
+    font-size: 12px;
+    color: var(--admin-text-muted);
+    margin-bottom: 2px;
+}
+.ccb-expense-row input {
+    min-width: 0;
+}
+.ccb-expense-row .ccb-exp-date { width: 148px; }
+.ccb-expense-row .ccb-exp-amount { width: 110px; }
+.ccb-expense-row .ccb-exp-summary { width: 120px; }
+.ccb-expense-row .ccb-exp-memo { width: 120px; }
+.ccb-expense-row .ccb-exp-party { flex: 1; min-width: 160px; }
 .admin-tool-result {
     margin-top: 8px;
     padding: 14px 16px;

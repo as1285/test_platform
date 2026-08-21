@@ -311,6 +311,148 @@ def ym_to_trade_date(y, m, day=15):
     return dt.strftime("%Y%m%d")
 
 
+def parse_trade_date(raw):
+    """解析 YYYY-MM-DD / YYYYMMDD / YYYY/MM/DD → YYYYMMDD。"""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    s = s.replace("/", "-").replace(".", "-")
+    m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", s)
+    if m:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            return datetime(y, mo, d).strftime("%Y%m%d")
+        except ValueError:
+            return None
+    m2 = re.match(r"^(\d{8})$", s)
+    if m2:
+        try:
+            return datetime.strptime(s, "%Y%m%d").strftime("%Y%m%d")
+        except ValueError:
+            return None
+    return None
+
+
+def parse_expenses(raw, fallback_months=None):
+    """支出项列表：[{date, amount, summary, memo, counterparty}, ...]"""
+    if raw is None or raw == "":
+        return []
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return []
+        try:
+            raw = json.loads(s)
+        except Exception:
+            return []
+    if not isinstance(raw, (list, tuple)):
+        return []
+    out = []
+    fb = list(fallback_months or [])
+    for i, item in enumerate(raw):
+        if item is None:
+            continue
+        if isinstance(item, (int, float)):
+            amt = float(item)
+            date_s = None
+            summary = "转账支出"
+            memo = "消费"
+            party = ""
+        elif isinstance(item, dict):
+            amt = parse_money(item.get("amount") or item.get("money") or item.get("value"))
+            date_s = parse_trade_date(
+                item.get("date") or item.get("trade_date") or item.get("交易日期")
+            )
+            summary = str(item.get("summary") or item.get("摘要") or "转账支出").strip() or "转账支出"
+            memo = str(
+                item.get("memo")
+                or item.get("note")
+                or item.get("postscript")
+                or item.get("附言")
+                or "消费"
+            ).strip() or "消费"
+            party = str(
+                item.get("counterparty")
+                or item.get("counterparty_name")
+                or item.get("对方")
+                or ""
+            ).strip()
+        else:
+            continue
+        if amt is None or amt <= 0:
+            continue
+        amt = round(float(amt), 2)
+        if not date_s:
+            if i < len(fb):
+                y, m = fb[i]
+                date_s = ym_to_trade_date(y, m, day=20)
+            elif fb:
+                y, m = fb[-1]
+                date_s = ym_to_trade_date(y, m, day=20)
+            else:
+                date_s = datetime.now().strftime("%Y%m%d")
+        out.append(
+            {
+                "date": date_s,
+                "amount": amt,
+                "summary": summary,
+                "memo": memo,
+                "counterparty": party,
+            }
+        )
+    return out[:MAX_ROWS]
+
+
+def build_transactions(months, amounts, expenses, counterparty_account, account_name):
+    """合并工资收入与支出，按日期排序；余额在外层计算。"""
+    rows = []
+    co_income = "{}/{}".format(counterparty_account, account_name)
+    n = min(len(months), len(amounts))
+    for i in range(n):
+        y, m = months[i]
+        rows.append(
+            {
+                "kind": "income",
+                "date": ym_to_trade_date(y, m),
+                "amount": round(float(amounts[i]), 2),
+                "summary": "银联入账",
+                "memo": "工资",
+                "counterparty": co_income,
+            }
+        )
+    for exp in expenses or []:
+        party = str(exp.get("counterparty") or "").strip()
+        rows.append(
+            {
+                "kind": "expense",
+                "date": exp["date"],
+                "amount": round(float(exp["amount"]), 2),
+                "summary": exp.get("summary") or "转账支出",
+                "memo": exp.get("memo") or "消费",
+                "counterparty": party,
+            }
+        )
+    rows.sort(key=lambda r: (r["date"], 0 if r["kind"] == "income" else 1, r["amount"]))
+    if len(rows) > MAX_ROWS:
+        rows = rows[:MAX_ROWS]
+    return rows
+
+
+def apply_balances(rows, opening):
+    open_bal = parse_money(opening, 7415.60)
+    run = open_bal
+    balances = []
+    for r in rows:
+        if r["kind"] == "expense":
+            run = round(run - float(r["amount"]), 2)
+        else:
+            run = round(run + float(r["amount"]), 2)
+        balances.append(run)
+    return balances
+
+
 def text_size(draw, text, font):
     try:
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -431,12 +573,32 @@ def process(cfg):
     amounts = amounts[:n_rows]
     if len(amounts) < n_rows:
         amounts = amounts + [amounts[-1]] * (n_rows - len(amounts))
-    balances = parse_balance_list(cfg.get("balances"), amounts, cfg.get("opening_balance"))
+
+    expenses = parse_expenses(cfg.get("expenses") or cfg.get("expense_items"), fallback_months=months)
+    txns = build_transactions(months, amounts, expenses, counterparty_account, account_name)
+    n_rows = max(1, min(len(txns), MAX_ROWS))
+    txns = txns[:n_rows]
+
+    balances = None
+    if cfg.get("balances") not in (None, ""):
+        # 显式余额仅在无支出且行数匹配时使用；否则重算
+        if not expenses:
+            balances = parse_balance_list(cfg.get("balances"), amounts, cfg.get("opening_balance"))
+            if balances and len(balances) == n_rows:
+                pass
+            else:
+                balances = None
+    if balances is None:
+        balances = apply_balances(txns, cfg.get("opening_balance"))
+
     total_income = parse_money(cfg.get("total_income"), None)
     if total_income is None:
-        total_income = round(sum(amounts), 2)
+        total_income = round(sum(r["amount"] for r in txns if r["kind"] == "income"), 2)
+    total_expense = parse_money(cfg.get("total_expense") or cfg.get("total_expenditure"), None)
+    if total_expense is None:
+        total_expense = round(sum(r["amount"] for r in txns if r["kind"] == "expense"), 2)
 
-    trade_dates = [ym_to_trade_date(y, m) for y, m in months]
+    trade_dates = [r["date"] for r in txns]
     date_start = trade_dates[0]
     date_end = trade_dates[-1]
     # 起止日期展示用区间（可被外部覆盖）
@@ -479,7 +641,8 @@ def process(cfg):
     draw_text(draw, (margin_x, y), "起止日期：", font_label, fill=(40, 40, 40))
     draw_text(draw, (margin_x + 110, y), period, font_val)
     draw_text(draw, (520, y), "当前时间段收支金额合计：人民币元", font_small, fill=(40, 40, 40))
-    draw_text(draw, (margin_x, y + 32), "总支出：0.00", font_val)
+    expense_s = fmt_money(total_expense)
+    draw_text(draw, (margin_x, y + 32), "总支出：" + expense_s, font_val)
     draw_text(draw, (860, y + 32), "总收入：", font_label, fill=(40, 40, 40))
     income_s = fmt_money(total_income)
     font_income = fit_text(draw, income_s, 20, 220, min_size=14, bold=True)
@@ -511,19 +674,21 @@ def process(cfg):
 
     font_cell = find_font(15)
     font_cell_sm = find_font(13)
-    co_full = "{}/{}".format(counterparty_account, account_name)
 
     for i in range(n_rows):
         y0 = table_top + head_h + i * row_h
         yc = y0 + row_h / 2
+        txn = txns[i]
+        # 支出金额显示为负数，便于区分方向
+        amt_disp = -txn["amount"] if txn["kind"] == "expense" else txn["amount"]
         cells = [
             str(i + 1),
-            "银联入账",
-            trade_dates[i],
-            fmt_money(amounts[i]),
+            txn["summary"],
+            txn["date"],
+            fmt_money(amt_disp),
             fmt_money(balances[i]),
-            "工资",
-            co_full,
+            txn["memo"],
+            txn["counterparty"],
         ]
         aligns = ["cm", "cm", "cm", "rm", "rm", "cm", "lm"]
         for ci, txt in enumerate(cells):
@@ -566,8 +731,10 @@ def process(cfg):
         "balances": balances,
         "months": ["{}-{:02d}".format(y, m) for y, m in months],
         "trade_dates": trade_dates,
+        "expenses": expenses,
         "period": period,
         "total_income": total_income,
+        "total_expense": total_expense,
         "rows": n_rows,
         "size": [W, canvas_h],
     }
