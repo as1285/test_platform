@@ -34,17 +34,6 @@
                 var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
                 var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
                 if (isMate60Mine) {
-                    /* Mate60：跳到 mine_v2，避开 WebView 对旧 mine/jul23 的强缓存 */
-                    try {
-                        var u60 = new URL('mine_v2.html', location.href);
-                        var s60 = new URL(location.href);
-                        s60.searchParams.forEach(function (v, k) { u60.searchParams.set(k, v); });
-                        u60.searchParams.set('_v', '20260821-e1v2');
-                        if (!/mine_v2\.html/i.test(location.pathname)) {
-                            location.replace(u60.pathname + u60.search + u60.hash);
-                            return;
-                        }
-                    } catch (eJump) {}
                     /* 方案 B：对齐 c93c3cc / 8-15 — e1 + 40px bleed，禁止走鸿蒙 noclip 清零 */
                     document.documentElement.classList.add('app-android-huawei-mate60');
                     document.documentElement.classList.add('app-android-client');
@@ -1909,6 +1898,10 @@
         }
     </style>
 </head>
+
+    <div id="mate60BuildMark" hidden style="position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:e1-v2</div>
+    <script>(function(){try{var u=String(navigator.userAgent||'');try{u+=' '+String(localStorage.getItem('tax_device_model_v1')||'')}catch(e){}var m=/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)&&!/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);var el=document.getElementById('mate60BuildMark');if(m&&el)el.hidden=false;}catch(e){}})();</script>
+
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="mine-stack">
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
