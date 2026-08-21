@@ -4005,7 +4005,44 @@
           'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-xiangqing > .header{' +
           'padding-top:calc(10px + var(--app-shell-statusbar-top,40px)) !important;box-sizing:border-box !important;}' +
           topFixedHeaderRule;
-        document.head.appendChild(shellExtra);
+        /*
+         * 底栏主 Tab（尤其首页）：延后挂载 ~90KB shell CSS，让首屏先画。
+         * 机型 class / --app-shell-statusbar-top 已在上方同步写好；
+         * 首页本身还有 shouye.html 内联 40px 顶距，Mate60/S50 不受影响。
+         */
+        var appendShellExtra = function () {
+          if (document.querySelector('style[data-app-top-safe-shell]')) return;
+          document.head.appendChild(shellExtra);
+        };
+        var pageNow = '';
+        try {
+          pageNow = String((location.pathname || '').split('/').pop() || '');
+        } catch (ePage) {}
+        var deferShellPages = {
+          'shouye.html': true,
+          'daiban.html': true,
+          'bancha.html': true,
+          'message.html': true,
+          'mine.html': true
+        };
+        if (androidClient && deferShellPages[pageNow]) {
+          var ranShell = false;
+          var runShellOnce = function () {
+            if (ranShell) return;
+            ranShell = true;
+            appendShellExtra();
+          };
+          if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(function () {
+              requestAnimationFrame(runShellOnce);
+            });
+          } else {
+            setTimeout(runShellOnce, 0);
+          }
+          setTimeout(runShellOnce, 120);
+        } else {
+          appendShellExtra();
+        }
       }
     } catch (e) {}
     applyIPhone16ProPageChrome();
@@ -6792,12 +6829,27 @@
     if (skipCg[currentPageName()]) return;
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
-    var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260816-year-from-2019';
-    s.setAttribute('data-conversion-guide', '1');
-    s.async = true;
-    s.defer = true;
-    document.head.appendChild(s);
+    function appendCg() {
+      if (document.querySelector('script[data-conversion-guide]')) return;
+      var s = document.createElement('script');
+      s.src = '/js/conversion-guide.js?v=20260816-year-from-2019';
+      s.setAttribute('data-conversion-guide', '1');
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
+    }
+    /* 首页：空闲后再拉 ~90KB 引导脚本，避免与首屏大图抢主线程 */
+    if (currentPageName() === 'shouye.html') {
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(function () {
+          appendCg();
+        }, { timeout: 2800 });
+      } else {
+        setTimeout(appendCg, 1600);
+      }
+      return;
+    }
+    appendCg();
   })();
 
   (function injectPageLoadingAssets() {
@@ -6808,6 +6860,14 @@
     if (page === 'admin_panel.html') {
       return;
     }
+    var primaryTabPages = {
+      'shouye.html': true,
+      'daiban.html': true,
+      'bancha.html': true,
+      'message.html': true,
+      'mine.html': true
+    };
+    var isPrimaryTab = !!primaryTabPages[page];
     window.__pageLoadingQueue = window.__pageLoadingQueue || [];
     if (typeof window.showPageLoading !== 'function') {
       window.showPageLoading = function () {
@@ -6820,12 +6880,16 @@
         window.__pageLoadingQueue.push(['force']);
       };
     }
-    window.__pageLoadingQueue.push(['show']);
+    /* 底栏主 Tab（含首页）不预入队 show，避免 Android 全页重载先白转圈再等 theme */
+    if (!isPrimaryTab) {
+      window.__pageLoadingQueue.push(['show']);
+    }
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260811-bfcache-hide';
+      s.src = '/js/page-loading.js?v=20260821-home-perf2';
       s.setAttribute('data-app-page-loading-js', '1');
-      s.async = false;
+      /* 异步加载：不阻塞后续 HTML/图片解析，转圈由业务页主动触发 */
+      s.async = true;
       document.head.appendChild(s);
     }
   })();

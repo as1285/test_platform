@@ -31,7 +31,11 @@
     if (!cfg) {
       return;
     }
-    [
+    var page = '';
+    try {
+      page = String((location.pathname || '').split('/').pop() || '');
+    } catch (e0) {}
+    var list = [
       cfg.nav_sy_1, cfg.nav_sy_2,
       cfg.nav_db_1, cfg.nav_db_2,
       cfg.nav_bc_1, cfg.nav_bc_2,
@@ -39,9 +43,13 @@
       cfg.nav_w_1, cfg.nav_w_2,
       cfg.header_male, cfg.header_female,
       cfg.icon_family, cfg.icon_employer, cfg.icon_bank,
-      cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb, cfg.shouye_zdb,
       cfg.daiban_header, cfg.bancha_header, cfg.message_header
-    ].forEach(preloadAsset);
+    ];
+    /* 当前 APK 首页用 /img/home/*，勿再预拉旧 banner/zdfwdb 与首屏抢带宽 */
+    if (page !== 'shouye.html') {
+      list.push(cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb, cfg.shouye_zdb);
+    }
+    list.forEach(preloadAsset);
   }
 
   function applyBottomNavFromConfig(cfg) {

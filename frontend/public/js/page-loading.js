@@ -290,9 +290,14 @@
           if (el.target === '_blank' || el.hasAttribute('download')) {
             return;
           }
-          /* 底栏：主 Tab 互切不盖转圈；从咨询编辑等深层页切走则立刻遮罩 */
+          /* 底栏：主 Tab 互切不盖转圈；跳向主 Tab 也不白底遮罩（安卓咨询→首页体感卡顿主因） */
           if (el.closest('.bottom-nav')) {
             if (isPrimaryTabPage()) {
+              return;
+            }
+            var navHref = String(el.getAttribute('href') || '').split('#')[0].split('?')[0];
+            var navPage = navHref.split('/').pop() || '';
+            if (isPrimaryTabPage(navPage)) {
               return;
             }
             try {
@@ -357,6 +362,18 @@
     document.documentElement.setAttribute('data-app-page-loading-lifecycle', '1');
 
     bindNavigationClicks();
+
+    /*
+     * 底栏五页（含首页）：进页不盖转圈、也不等 theme-loader。
+     * Android WebView 全页重载时 theme 接口/缓存常拖到 1～2.5s，体感「点到首页 load 很久」。
+     * 主题仍可后台刷；深层业务页保持原等待逻辑。
+     */
+    if (isPrimaryTabPage()) {
+      forceHidePageLoading();
+      window.notifyPageLoadingDone = function () {};
+      return;
+    }
+
     showPageLoading();
 
     var startedAt = Date.now();
