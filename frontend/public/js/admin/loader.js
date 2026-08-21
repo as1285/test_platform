@@ -99,7 +99,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260819-account-qr');
+    return loadScript('/js/najilu.js?v=20260821-qr-smooth');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB） */

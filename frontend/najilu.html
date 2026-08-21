@@ -590,8 +590,8 @@
             background: #fff;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
             vertical-align: top;
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
+            /* 勿用 crisp-edges：2x 完税图缩到手机宽时最近邻会把右上角二维码撕成横条 */
+            image-rendering: auto;
         }
 
         .preview-pager {
@@ -821,7 +821,7 @@
 
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260819-account-qr"></script>
+    <script src="/js/najilu.js?v=20260821-qr-smooth"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>

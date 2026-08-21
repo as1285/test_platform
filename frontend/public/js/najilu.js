@@ -1448,16 +1448,24 @@
     ctx.restore();
   }
 
-  /** 右上角二维码：清晰绘制，保证手机可扫 */
+  /** 右上角二维码：按整数像素对齐绘制，保证手机可扫 */
   function drawSharpQr(ctx, x, y, size, qrImg, seed) {
+    var ix = Math.round(x);
+    var iy = Math.round(y);
+    var isz = Math.max(1, Math.round(size));
     ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.fillRect(x, y, size, size);
-    ctx.imageSmoothingEnabled = false;
+    ctx.fillRect(ix, iy, isz, isz);
     if (qrImg && qrImg.complete && qrImg.naturalWidth) {
-      ctx.drawImage(qrImg, x, y, size, size);
+      /* 1:1 或等比缩放到整数边长；开平滑避免模块边缘出现白缝 */
+      ctx.imageSmoothingEnabled = true;
+      if (typeof ctx.imageSmoothingQuality === 'string') {
+        ctx.imageSmoothingQuality = 'high';
+      }
+      ctx.drawImage(qrImg, ix, iy, isz, isz);
     } else {
-      drawQr(ctx, x, y, size, seed);
+      ctx.imageSmoothingEnabled = false;
+      drawQr(ctx, ix, iy, isz, seed);
     }
     ctx.restore();
   }
