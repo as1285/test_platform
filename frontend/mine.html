@@ -39,7 +39,7 @@
                         var u60 = new URL('mine_v2.html', location.href);
                         var s60 = new URL(location.href);
                         s60.searchParams.forEach(function (v, k) { u60.searchParams.set(k, v); });
-                        u60.searchParams.set('_v', '20260822-e1v5');
+                        u60.searchParams.set('_v', '20260823-e1v6');
                         if (!/mine_v2\.html/i.test(location.pathname)) {
                             location.replace(u60.pathname + u60.search + u60.hash);
                             return;
@@ -59,8 +59,9 @@
                         mate60Fp.id = 'mate60Aug15FirstPaint';
                         mate60Fp.setAttribute('data-mate60-aug15-firstpaint', '1');
                         mate60Fp.textContent =
-                            'html.app-android-huawei-mate60,html.app-android-huawei-mate60 body.page-mine{background:#1677ff!important;}' +
-                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:52px!important;--mine-rpx:calc(100vw / 750)!important;padding-top:52px!important;box-sizing:border-box!important;}' +
+                            'html.app-android-huawei-mate60,html.app-android-huawei-mate60 body.page-mine{background:#f5f6fa!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:52px!important;--mine-rpx:calc(100vw / 750)!important;padding-top:0!important;background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px)!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-stack{transform:translateY(52px)!important;-webkit-transform:translateY(52px)!important;margin-top:0!important;}' +
                             'html.app-android-huawei-mate60 #mate60MineStatusSpacer{display:none!important;height:0!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;container-type:normal!important;width:100%!important;--mine-rpx:calc(100vw / 750)!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;position:relative!important;}' +
@@ -110,7 +111,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260822-e1v5"></script>
+    <script src="/js/auth.js?v=20260823-e1v6"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">

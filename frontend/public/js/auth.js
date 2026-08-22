@@ -1631,20 +1631,22 @@
    */
   function mate60MineE1LockCss() {
     return (
-      'html.app-android-huawei-mate60.app-top-safe-shell{--app-shell-statusbar-top:52px !important;background:#1677ff !important;}' +
+      'html.app-android-huawei-mate60.app-top-safe-shell{--app-shell-statusbar-top:52px !important;background:#f5f6fa !important;}' +
       'html.app-android-huawei-mate60.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine,' +
       'html.app-android-huawei-mate60 body.page-mine,' +
       'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{' +
       '--mine-top-bleed:0px !important;--app-shell-statusbar-top:52px !important;' +
       '--mine-rpx:calc(100vw / 750) !important;' +
-      'padding-top:52px !important;background:#1677ff !important;background-image:none !important;' +
-      'box-sizing:border-box !important;}' +
+      'padding-top:0 !important;background-color:#f5f6fa !important;' +
+      'background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px) !important;}' +
       'html.app-android-huawei-mate60 #mate60MineStatusSpacer,' +
       'html.app-android-huawei-mate60 body.page-mine #mate60MineStatusSpacer{' +
       'display:none !important;height:0 !important;min-height:0 !important;}' +
       'html.app-android-huawei-mate60.app-android-client.app-top-safe-shell body.page-mine .mine-stack,' +
       'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-stack,' +
-      'html.app-android-huawei-mate60 body.page-mine .mine-stack{margin-top:0 !important;}' +
+      'html.app-android-huawei-mate60 body.page-mine .mine-stack{' +
+      'margin-top:0 !important;transform:translateY(52px) !important;' +
+      '-webkit-transform:translateY(52px) !important;padding-bottom:52px !important;}' +
       'html.app-android-huawei-mate60.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
       'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
       'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{' +
@@ -1661,21 +1663,28 @@
       'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}'
     );
   }
-  function pinMate60MineBodyInset() {
+  function pinMate60MineShift() {
     if (!document.body || !document.body.classList.contains('page-mine')) {
       return;
     }
-    document.body.style.setProperty('padding-top', '52px', 'important');
-    document.body.style.setProperty('background', '#1677ff', 'important');
-    document.body.style.setProperty('background-image', 'none', 'important');
-    document.body.style.setProperty('box-sizing', 'border-box', 'important');
-    document.documentElement.style.setProperty('background', '#1677ff', 'important');
+    document.body.style.setProperty('padding-top', '0', 'important');
+    document.body.style.setProperty('background-color', '#f5f6fa', 'important');
+    document.body.style.setProperty(
+      'background-image',
+      'linear-gradient(#1677ff 0px, #1677ff 52px, #f5f6fa 52px)',
+      'important'
+    );
+    document.documentElement.style.setProperty('background', '#f5f6fa', 'important');
+    var stack = document.querySelector('.mine-stack');
+    if (stack) {
+      stack.style.setProperty('transform', 'translateY(52px)', 'important');
+      stack.style.setProperty('-webkit-transform', 'translateY(52px)', 'important');
+      stack.style.setProperty('margin-top', '0', 'important');
+      stack.style.setProperty('padding-bottom', '52px', 'important');
+    }
     var sp = document.getElementById('mate60MineStatusSpacer');
     if (sp) {
-      try {
-        sp.removeAttribute('hidden');
-      } catch (eHid) {}
-      sp.style.cssText = 'display:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;';
+      sp.style.cssText = 'display:none!important;height:0!important;';
     }
   }
   function pinMate60MineE1Layout() {
@@ -1723,7 +1732,7 @@
         }
         root.style.setProperty('--mine-top-bleed', '0px');
         document.body.style.setProperty('--mine-top-bleed', '0px');
-        pinMate60MineBodyInset();
+        pinMate60MineShift();
         var stack60 = document.querySelector('.mine-stack');
         if (stack60) {
           stack60.style.setProperty('margin-top', '0', 'important');
@@ -2130,7 +2139,8 @@
           /*
            * Mate60「我的」：e1 + 40px bleed（方案 A，已停用 Jul23 卡片页）。
            */
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;padding-top:52px !important;background:#1677ff !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;padding-top:0 !important;background-color:#f5f6fa !important;background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-stack{transform:translateY(52px) !important;-webkit-transform:translateY(52px) !important;margin-top:0 !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine{--mine-top-bleed:0px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
