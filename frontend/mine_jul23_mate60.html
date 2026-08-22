@@ -11,14 +11,14 @@
                 var u = new URL('mine_v2.html', location.href);
                 var src = new URL(location.href);
                 src.searchParams.forEach(function (v, k) { u.searchParams.set(k, v); });
-                u.searchParams.set('_v', '20260822-e1v3');
+                u.searchParams.set('_v', '20260822-e1v4');
                 location.replace(u.pathname + u.search + u.hash);
             } catch (e) {
-                location.replace('mine_v2.html?_v=20260822-e1v3');
+                location.replace('mine_v2.html?_v=20260822-e1v4');
             }
         })();
     </script>
-    <meta http-equiv="refresh" content="0;url=mine_v2.html?_v=20260822-e1v3">
+    <meta http-equiv="refresh" content="0;url=mine_v2.html?_v=20260822-e1v4">
 </head>
 <body></body>
 </html>
