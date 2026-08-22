@@ -42,14 +42,15 @@
                     document.documentElement.classList.remove('app-huawei-mine-noclip');
                     document.documentElement.classList.remove('app-android-huawei-harmony');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
-                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '48px');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '52px');
                     if (!document.getElementById('mate60Aug15FirstPaint')) {
                         var mate60Fp = document.createElement('style');
                         mate60Fp.id = 'mate60Aug15FirstPaint';
                         mate60Fp.setAttribute('data-mate60-aug15-firstpaint', '1');
                         mate60Fp.textContent =
-                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:48px!important;--mine-rpx:calc(100vw / 750)!important;}' +
-                            'html.app-android-huawei-mate60 #mate60MineStatusSpacer{display:block!important;height:48px!important;background:#1677ff!important;width:100%!important;}' +
+                            'html.app-android-huawei-mate60,html.app-android-huawei-mate60 body.page-mine{background:#1677ff!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:52px!important;--mine-rpx:calc(100vw / 750)!important;padding-top:52px!important;box-sizing:border-box!important;}' +
+                            'html.app-android-huawei-mate60 #mate60MineStatusSpacer{display:none!important;height:0!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;container-type:normal!important;width:100%!important;--mine-rpx:calc(100vw / 750)!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;position:relative!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:0!important;}';
@@ -98,7 +99,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260822-e1v4"></script>
+    <script src="/js/auth.js?v=20260822-e1v5"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -566,14 +567,14 @@
         html.app-android-huawei-mate60 body.page-mine .mine-e1-layer {
             top: 0 !important;
         }
-        html.app-android-huawei-mate60 #mate60MineStatusSpacer {
-            display: block !important;
-            height: 48px !important;
-            min-height: 48px !important;
-            width: 100% !important;
+        html.app-android-huawei-mate60 body.page-mine {
+            padding-top: 52px !important;
             background: #1677ff !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            box-sizing: border-box !important;
+        }
+        html.app-android-huawei-mate60 #mate60MineStatusSpacer {
+            display: none !important;
+            height: 0 !important;
         }
         html.app-android-huawei-nova13 body.page-mine .mine-ov-name,
         html.app-android-huawei-nova13 body.page-mine .mine-ov-tax,
@@ -1918,23 +1919,11 @@
     </style>
 </head>
 
-    <div id="mate60BuildMark" hidden style="position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:e1-v4</div>
+    <div id="mate60BuildMark" hidden style="position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:e1-v5</div>
     <script>(function(){try{var u=String(navigator.userAgent||'');try{u+=' '+String(localStorage.getItem('tax_device_model_v1')||'')}catch(e){}var m=/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)&&!/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);var el=document.getElementById('mate60BuildMark');if(m&&el)el.hidden=false;}catch(e){}})();</script>
 
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="mine-stack">
-        <div id="mate60MineStatusSpacer" hidden aria-hidden="true"></div>
-        <script>
-            (function () {
-                try {
-                    if (!document.documentElement.classList.contains('app-android-huawei-mate60')) return;
-                    var s = document.getElementById('mate60MineStatusSpacer');
-                    if (!s) return;
-                    s.removeAttribute('hidden');
-                    s.style.cssText = 'display:block;height:48px;min-height:48px;width:100%;background:#1677ff;margin:0;padding:0;';
-                } catch (eSp) {}
-            })();
-        </script>
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
         <div class="mine-e1-canvas" id="mineE1Canvas">
             <img
