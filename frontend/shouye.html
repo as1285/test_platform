@@ -743,6 +743,16 @@
         }
 
         /*
+         * iOS：默认 2.75 分栏会把中间「去申报 / 去查询 / 去开具」图标撑得比正版大一圈。
+         * 全苹果机统一 3.1 分栏（首屏约 3 张 + 第四张露出），不对单机型单独放。
+         */
+        html.app-ios-client .sy-apk-hitem {
+            flex: 0 0 max(108px, calc((100% - 16px) / 3.1)) !important;
+            width: max(108px, calc((100% - 16px) / 3.1)) !important;
+            max-width: 118px !important;
+        }
+
+        /*
          * 荣耀 Magic5 Pro（PGT-AN20）：图标在 JPG 卡面上，必须把卡宽上限压住。
          * 勿用 max(108px) 保底（显示放大时仍会很大）；勿套 Android 2.55。
          */
@@ -818,7 +828,8 @@
             html.app-android-xiaomi-13 .sy-apk-hitem,
             html.app-android-xiaomi-13.app-android-client .sy-apk-hitem,
             html.app-android-xiaomi-13pro .sy-apk-hitem,
-            html.app-android-xiaomi-13pro.app-android-client .sy-apk-hitem {
+            html.app-android-xiaomi-13pro.app-android-client .sy-apk-hitem,
+            html.app-ios-client .sy-apk-hitem {
                 flex: 0 0 max(108px, calc((min(100%, 430px) - 16px) / 3.1)) !important;
                 width: max(108px, calc((min(100%, 430px) - 16px) / 3.1)) !important;
                 max-width: 118px !important;
