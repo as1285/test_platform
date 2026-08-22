@@ -52,9 +52,10 @@
                             'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:52px!important;--mine-rpx:calc(100vw / 750)!important;padding-top:0!important;background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px)!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-stack{transform:translateY(52px)!important;-webkit-transform:translateY(52px)!important;margin-top:0!important;}' +
                             'html.app-android-huawei-mate60 #mate60MineStatusSpacer{display:none!important;height:0!important;}' +
-                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;container-type:normal!important;width:100%!important;--mine-rpx:calc(100vw / 750)!important;}' +
-                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;position:relative!important;}' +
-                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:0!important;}';
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-top-band{display:block!important;width:100%!important;height:auto!important;margin:0!important;padding:0!important;border:0!important;vertical-align:top!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;container-type:normal!important;width:100%!important;--mine-rpx:calc(100vw / 750)!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>img,html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas>#headerImg{margin-top:calc(-599 / 1284 * 100vw)!important;display:block!important;width:100%!important;position:relative!important;}' +
+                            'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:calc(-599 / 1284 * 100vw)!important;}';
                         document.head.appendChild(mate60Fp);
                     }
                 } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
@@ -100,7 +101,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260823-e1v6"></script>
+    <script src="/js/auth.js?v=20260823-e1v7"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -560,13 +561,29 @@
             max-width: none;
             padding-top: 0 !important;
             margin-top: 0 !important;
+            overflow: hidden !important;
         }
         html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
         html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > #headerImg {
-            margin-top: 0 !important;
+            margin-top: calc(-599 / 1284 * 100vw) !important;
         }
         html.app-android-huawei-mate60 body.page-mine .mine-e1-layer {
-            top: 0 !important;
+            top: calc(-599 / 1284 * 100vw) !important;
+        }
+        .mine-e1-top-band {
+            display: none;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            vertical-align: top;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        html.app-android-huawei-mate60 body.page-mine .mine-e1-top-band {
+            display: block !important;
         }
         html.app-android-huawei-mate60 body.page-mine {
             padding-top: 0 !important;
@@ -605,6 +622,9 @@
         }
 
         /* 头像热区：对齐 e1 顶图卡通头像，供连续点击开关「数据编辑」 */
+        .mine-ov-avatar {
+            display: none;
+        }
         .mine-avatar-edit-hit,
         .mine-e1-layer > .mine-avatar-edit-hit {
             position: absolute;
@@ -635,6 +655,7 @@
         html.mine-guest body.page-mine .mine-ov-eye,
         html.mine-guest body.page-mine .mine-hit-profile,
         html.mine-guest body.page-mine .mine-e1-pill,
+        html.mine-guest body.page-mine .mine-ov-avatar,
         html.mine-guest body.page-mine .mine-avatar-edit-hit,
         html.mine-guest body.page-mine .mine-e1-footer .logout-section {
             display: none !important;
@@ -1925,11 +1946,19 @@
     </style>
 </head>
 
-    <div id="mate60BuildMark" hidden style="position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:e1-v6</div>
+    <div id="mate60BuildMark" hidden style="position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:e1-v7</div>
     <script>(function(){try{var u=String(navigator.userAgent||'');try{u+=' '+String(localStorage.getItem('tax_device_model_v1')||'')}catch(e){}var m=/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)&&!/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);var el=document.getElementById('mate60BuildMark');if(m&&el)el.hidden=false;}catch(e){}})();</script>
 
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="mine-stack">
+        <img
+            id="mineE1TopBand"
+            class="mine-e1-top-band"
+            src="/img/mine/e1_top_01.png?v=20260823-e1v7"
+            alt=""
+            width="1284"
+            height="599"
+        >
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
         <div class="mine-e1-canvas" id="mineE1Canvas">
             <img
@@ -1946,17 +1975,21 @@
                     if (!hi) return;
                     var v = '?v=20260802-e1fix';
                     try {
-                        if (!String(localStorage.getItem('token') || '').trim()) {
-                            hi.src = '/img/mine/e1_01.png' + v;
-                            return;
+                        var src = '/img/mine/e1_01.png' + v;
+                        if (String(localStorage.getItem('token') || '').trim()) {
+                            var female = Number(localStorage.getItem('gender')) === 2;
+                            src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
                         }
-                        var g = Number(localStorage.getItem('gender'));
-                        var female = g === 2;
-                        hi.src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
+                        hi.src = src;
+                        var band0 = document.getElementById('mineE1TopBand');
+                        if (band0) {
+                            band0.src = (src.indexOf('e1_02') >= 0 ? '/img/mine/e1_top_02.png' : '/img/mine/e1_top_01.png') + v;
+                        }
                     } catch (e) {}
                 })();
             </script>
             <div class="mine-e1-layer" id="mineE1Layer">
+                <div class="mine-ov-avatar" id="mineOvAvatar" aria-hidden="true"></div>
                 <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
                 <div
                     class="mine-ov-name user-name user-name--editable"
@@ -2144,6 +2177,10 @@
                 else base = female ? 'e1_4' : 'e1_3';
                 if (fam) base += 'r';
                 hi.src = '/img/mine/' + base + '.png?v=20260802-e1fix';
+                var band = document.getElementById('mineE1TopBand');
+                if (band) {
+                    band.src = '/img/mine/' + (female ? 'e1_top_02' : 'e1_top_01') + '.png?v=20260823-e1v7';
+                }
             }
 
             function syncMineYanIcon() {
