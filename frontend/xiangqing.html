@@ -11,6 +11,12 @@
                 if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-13pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /2211133[CGI]/i.test(u) ||
+                    (/(?:Xiaomi|Mi|小米)[\s_-]*13\b(?![\s_-]*(?:Pro|Ultra|Lite))/i.test(u) && !/2210132/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
@@ -77,7 +83,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-home-perf2"></script>
+    <script src="/js/auth.js?v=20260822-mi13-inset"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-help-icon-lock" data-scope="body.page-xiangqing"></script>
@@ -120,6 +126,7 @@
         html.app-android-huawei-nova13 body.page-xiangqing,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing,
+        html.app-android-xiaomi-13.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing,
@@ -132,6 +139,7 @@
         html.app-android-huawei-nova13 body.page-xiangqing > .header,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-xiaomi-13.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing > .header,
