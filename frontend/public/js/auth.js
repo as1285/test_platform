@@ -1092,25 +1092,31 @@
     if (!isLikelyIOSViewportClient()) {
       return false;
     }
-    if (isIPhone17ProMaxClient()) {
+    if (isIPhone17ProMaxClient() || isIPhone16ProMaxClient()) {
       return false;
     }
-    var ua = navigator.userAgent || '';
+    var ua = clientUaBlob();
     if (/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(ua)) {
       return true;
     }
-    try {
-      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
-      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
-      if (!sw || !sh) {
-        return false;
-      }
-      var shortSide = Math.min(sw, sh);
-      var longSide = Math.max(sw, sh);
-      return shortSide >= 428 && shortSide <= 432 && longSide >= 928 && longSide <= 936;
-    } catch (e) {
+    var sides = getIOSLogicalScreenSides();
+    if (!sides) {
       return false;
     }
+    return sides.shortSide >= 428 && sides.shortSide <= 432 && sides.longSide >= 928 && sides.longSide <= 936;
+  }
+
+  /**
+   * iPhone 15 Pro Max / 15 Plus：悬浮胶囊底下会透出页面，须铺满底边盖住 Home Indicator。
+   * 其它 iPhone 仍保持 8px 胶囊，勿套用此档。
+   */
+  function isIPhone15ProMaxDockNavClient() {
+    try {
+      if (document.documentElement.classList.contains('app-ios-iphone15promax')) {
+        return true;
+      }
+    } catch (eCls) {}
+    return isIPhone15PlusProMaxLikeClient();
   }
 
   /**
@@ -2667,6 +2673,18 @@
       'padding-top:8px!important;' +
       'padding-bottom:8px!important;' +
       'margin-bottom:0!important;' +
+      '}' +
+      'html.app-ios-client.app-ios-iphone15promax{--bottom-nav-side:0px!important;--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;--bottom-nav-radius:0px!important;--bottom-nav-clearance:calc(62px + env(safe-area-inset-bottom, 34px))!important;}' +
+      'html.app-ios-client.app-ios-iphone15promax body.page-shouye,html.app-ios-client.app-ios-iphone15promax body.page-daiban,html.app-ios-client.app-ios-iphone15promax body.page-bancha,html.app-ios-client.app-ios-iphone15promax body.page-message,html.app-ios-client.app-ios-iphone15promax body.page-mine{--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;}' +
+      'html.app-ios-client.app-ios-iphone15promax body > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device{' +
+      'left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;' +
+      'border-radius:0!important;height:auto!important;min-height:54px!important;max-height:none!important;' +
+      'padding-top:8px!important;padding-bottom:max(8px,env(safe-area-inset-bottom,34px))!important;' +
+      'background:#fff!important;box-shadow:0 -1px 0 rgba(0,0,0,0.06)!important;' +
+      '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;' +
       '}';
     st.textContent =
       'html{--bottom-nav-bottom:' +
@@ -2728,6 +2746,53 @@
         nav.classList.add('ios-device');
       }
     } catch (eIos) {}
+
+    var dock15Max = false;
+    try {
+      dock15Max = isIPhone15ProMaxDockNavClient();
+    } catch (eDock) {}
+    if (dock15Max) {
+      try {
+        document.documentElement.classList.add('app-ios-iphone15promax');
+        nav.style.setProperty('position', 'fixed', 'important');
+        nav.style.setProperty('left', '0', 'important');
+        nav.style.setProperty('right', '0', 'important');
+        nav.style.setProperty('top', 'auto', 'important');
+        nav.style.setProperty('bottom', '0', 'important');
+        nav.style.setProperty('width', '100%', 'important');
+        nav.style.setProperty('max-width', 'none', 'important');
+        nav.style.setProperty('margin', '0', 'important');
+        nav.style.setProperty('margin-bottom', '0', 'important');
+        nav.style.setProperty('height', 'auto', 'important');
+        nav.style.setProperty('min-height', '54px', 'important');
+        nav.style.setProperty('max-height', 'none', 'important');
+        nav.style.setProperty('padding-top', '8px', 'important');
+        nav.style.setProperty('padding-bottom', 'max(8px, env(safe-area-inset-bottom, 34px))', 'important');
+        nav.style.setProperty('padding-left', '0', 'important');
+        nav.style.setProperty('padding-right', '0', 'important');
+        nav.style.setProperty('border-radius', '0', 'important');
+        nav.style.setProperty('box-shadow', '0 -1px 0 rgba(0,0,0,0.06)', 'important');
+        nav.style.setProperty('background', '#fff', 'important');
+        nav.style.setProperty('backdrop-filter', 'none', 'important');
+        nav.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        nav.style.setProperty('backface-visibility', 'visible', 'important');
+        nav.style.setProperty('-webkit-backface-visibility', 'visible', 'important');
+        nav.style.setProperty('transform', 'none', 'important');
+        nav.style.setProperty('-webkit-transform', 'none', 'important');
+        nav.style.setProperty('translate', 'none', 'important');
+        nav.style.setProperty('z-index', '10050', 'important');
+        nav.style.setProperty('pointer-events', 'auto', 'important');
+        document.documentElement.style.setProperty('--bottom-nav-side', '0px');
+        document.documentElement.style.setProperty('--bottom-nav-bottom', '0px');
+        document.documentElement.style.setProperty('--bottom-nav-gap', '0px');
+        document.documentElement.style.setProperty('--bottom-nav-radius', '0px');
+        document.documentElement.style.setProperty(
+          '--bottom-nav-clearance',
+          'calc(62px + env(safe-area-inset-bottom, 34px))'
+        );
+      } catch (eDockStyle) {}
+      return;
+    }
 
     var targetGap = 8;
     var iosClient = false;
@@ -2813,6 +2878,11 @@
 
   function closeIosBottomNavExtraGap(nav, wantGap) {
     if (!nav) return;
+    try {
+      if (isIPhone15ProMaxDockNavClient()) {
+        return;
+      }
+    } catch (eDock) {}
     wantGap = typeof wantGap === 'number' ? wantGap : 8;
     /*
      * 「我的」在 iPhone 12 / 16 Pro 上 layout viewport 比屏幕矮一截刘海（约 47~59px），

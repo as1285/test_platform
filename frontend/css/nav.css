@@ -164,6 +164,56 @@ html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
     bottom: 8px !important;
 }
 
+/*
+ * iPhone 15 Pro Max / 15 Plus：悬浮胶囊与 Home Indicator 之间会透出页面内容。
+ * 铺满底边成原生 Tab 条，盖住指示条；勿套到 12 / 16 等其它 iPhone。
+ */
+html.app-ios-client.app-ios-iphone15promax {
+    --bottom-nav-side: 0px;
+    --bottom-nav-bottom: 0px;
+    --bottom-nav-gap: 0px;
+    --bottom-nav-radius: 0px;
+    --bottom-nav-clearance: calc(62px + env(safe-area-inset-bottom, 34px));
+}
+
+html.app-ios-client.app-ios-iphone15promax body.page-shouye,
+html.app-ios-client.app-ios-iphone15promax body.page-daiban,
+html.app-ios-client.app-ios-iphone15promax body.page-bancha,
+html.app-ios-client.app-ios-iphone15promax body.page-message,
+html.app-ios-client.app-ios-iphone15promax body.page-mine {
+    --bottom-nav-bottom: 0px !important;
+    --bottom-nav-gap: 0px !important;
+}
+
+html.app-ios-client.app-ios-iphone15promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    height: auto !important;
+    min-height: 54px !important;
+    max-height: none !important;
+    padding-top: 8px !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 34px)) !important;
+    background: #fff !important;
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
 .bottom-nav {
     display: flex;
     align-items: center;

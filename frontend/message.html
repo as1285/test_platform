@@ -32,10 +32,28 @@
                     document.documentElement.classList.add('app-top-safe-shell');
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                 }
+                var ip15pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                if (!ip15pm && /iPhone|iPad|iPod/i.test(u)) {
+                    try {
+                        var sw15 = Math.min(screen.width || 0, screen.height || 0);
+                        var sh15 = Math.max(screen.width || 0, screen.height || 0);
+                        var dpr15 = window.devicePixelRatio || 1;
+                        if (dpr15 >= 2 && sw15 >= 700) {
+                            sw15 = Math.round(sw15 / dpr15);
+                            sh15 = Math.round(sh15 / dpr15);
+                        }
+                        ip15pm = sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936;
+                    } catch (e15) {}
+                }
+                if (ip15pm) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-ios-iphone15promax');
+                }
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-home-perf2"></script>
+    <script src="/js/auth.js?v=20260823-iphone15pm"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e8fff">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -367,7 +385,7 @@
         }
         
         </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260820-nav-ios12b">
+    <link rel="stylesheet" href="css/nav.css?v=20260823-iphone15pm">
     <script src="/js/theme-loader.js?v=20260810-message-align" defer></script>
 </head>
 <body class="page-message">

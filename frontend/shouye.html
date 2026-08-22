@@ -19,6 +19,22 @@
                 if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
                     document.documentElement.classList.add('app-ios-client');
                     document.documentElement.classList.add('app-top-safe-shell');
+                    var ip15pm = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                    if (!ip15pm) {
+                        try {
+                            var sw15 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh15 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr15 = window.devicePixelRatio || 1;
+                            if (dpr15 >= 2 && sw15 >= 700) {
+                                sw15 = Math.round(sw15 / dpr15);
+                                sh15 = Math.round(sh15 / dpr15);
+                            }
+                            ip15pm = sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936;
+                        } catch (e15) {}
+                    }
+                    if (ip15pm) {
+                        document.documentElement.classList.add('app-ios-iphone15promax');
+                    }
                 }
                 var magic5pro = /PGT[\s_-]?AN20|HONORPGT-AN20|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*5[\s_-]*Pro/i.test(u);
                 if (!magic5pro) {
@@ -54,7 +70,7 @@
             } catch (e0) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260821-home-perf2"></script>
+    <script src="/js/auth.js?v=20260823-iphone15pm"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -961,7 +977,7 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260820-nav-ios12b">
+    <link rel="stylesheet" href="css/nav.css?v=20260823-iphone15pm">
     <script src="/js/theme-loader.js?v=20260821-home-perf2" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
