@@ -56,28 +56,30 @@ mustInclude(
     'html.app-android-huawei-mate60.app-top-safe-shell body.page-daiban .daiban-header-builtin',
     'padding-top:calc(10px + 40px) !important',
     'pinMate60MineE1Layout',
+    'mate60MineE1LockCss',
+    'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:40px !important;}',
     'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:var(--app-shell-statusbar-top,40px) !important;}'
   ],
   'mate60 40px inset + e1 mine + daiban header'
 );
 mustInclude(
   'frontend/mine_jul23_mate60.html',
-  ['mine_v2.html', '20260821-e1v2'],
+  ['mine_v2.html', '20260822-e1v3'],
   'mate60 jul23 stub redirects to mine_v2 cache-bust path'
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['mineE1Canvas', '20260821-home-perf2', 'mate60BuildMark', 'UI:e1-v2'],
+  ['mineE1Canvas', '20260822-e1v3', 'mate60BuildMark', 'UI:e1-v3', 'margin-top:0!important', 'mine-e1-layer{top:40px!important;}'],
   'mine_v2 e1 page with build mark'
 );
 mustInclude(
   'frontend/mine.html',
-  ['mine_v2.html', '20260821-e1v2', 'app-android-huawei-mate60'],
+  ['mine_v2.html', '20260822-e1v3', 'app-android-huawei-mate60'],
   'mine.html Mate60 jumps to mine_v2'
 );
 mustInclude(
   'cordova-app/www/index.html',
-  ['mine_v2.html?in_app=1&_v=20260821-e1v2'],
+  ['mine_v2.html?in_app=1&_v=20260822-e1v3'],
   'cordova shell starts on mine_v2'
 );
 mustExclude(
@@ -216,7 +218,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260821-home-perf2', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
+  ['20260822-e1v3', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
   'mine.html mate60 e1 (plan B / c93c3cc) + reno10 + neo8 + nova13 cache'
 );
 mustExclude(
