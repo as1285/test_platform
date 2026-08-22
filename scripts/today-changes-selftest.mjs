@@ -66,22 +66,22 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine_jul23_mate60.html',
-  ['mine_v2.html', '20260823-e1v7'],
+  ['mine_v2.html', '20260823-e1v8'],
   'mate60 jul23 stub redirects to mine_v2 cache-bust path'
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['mineE1Canvas', '20260823-e1v7', 'mate60BuildMark', 'UI:e1-v7', 'translateY(52px)', 'mineE1TopBand', 'e1_top_01.png', 'mine-e1-top-band'],
+  ['mineE1Canvas', '20260823-e1v8', 'mate60BuildMark', 'UI:e1-v8', 'translateY(52px)', 'mate60AvatarFixed', 'object-fit:cover', 'mountMate60Avatar'],
   'mine_v2 e1 page with build mark'
 );
 mustInclude(
   'frontend/mine.html',
-  ['mine_v2.html', '20260823-e1v7', 'app-android-huawei-mate60'],
+  ['mine_v2.html', '20260823-e1v8', 'app-android-huawei-mate60'],
   'mine.html Mate60 jumps to mine_v2'
 );
 mustInclude(
   'cordova-app/www/index.html',
-  ['mine_v2.html?in_app=1&_v=20260823-e1v7'],
+  ['mine_v2.html?in_app=1&_v=20260823-e1v8'],
   'cordova shell starts on mine_v2'
 );
 mustExclude(
@@ -220,7 +220,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260823-e1v7', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
+  ['20260823-e1v8', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
   'mine.html mate60 e1 (plan B / c93c3cc) + reno10 + neo8 + nova13 cache'
 );
 mustExclude(
@@ -260,7 +260,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260821-home-perf2'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260823-iphone15pm'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {

@@ -27,6 +27,22 @@
                 if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
                     document.documentElement.classList.add('app-ios-client');
                     document.documentElement.classList.add('app-top-safe-shell');
+                    var ip15pm = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                    if (!ip15pm) {
+                        try {
+                            var sw15 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh15 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr15 = window.devicePixelRatio || 1;
+                            if (dpr15 >= 2 && sw15 >= 700) {
+                                sw15 = Math.round(sw15 / dpr15);
+                                sh15 = Math.round(sh15 / dpr15);
+                            }
+                            ip15pm = sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936;
+                        } catch (e15) {}
+                    }
+                    if (ip15pm) {
+                        document.documentElement.classList.add('app-ios-iphone15promax');
+                    }
                 }
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
@@ -111,7 +127,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260823-e1v7"></script>
+    <script src="/js/auth.js?v=20260823-iphone15pm"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -136,7 +152,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260820-nav-ios12b">
+    <link rel="stylesheet" href="css/nav.css?v=20260823-iphone15pm">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -698,6 +714,22 @@
         html.app-ios-iphone16promax body.page-mine > .bottom-nav,
         html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
             bottom: 8px !important;
+        }
+        html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device {
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            border-radius: 0 !important;
+            height: auto !important;
+            min-height: 54px !important;
+            max-height: none !important;
+            padding-top: 8px !important;
+            padding-bottom: max(8px, env(safe-area-inset-bottom, 34px)) !important;
+            background: #fff !important;
+            box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06) !important;
         }
 
         /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
