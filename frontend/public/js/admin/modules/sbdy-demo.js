@@ -417,6 +417,7 @@
 
   function applyParsedToForm(parsed) {
     prefillMonthUnits = {};
+    clearSegments();
     if (parsed.region === 'sz') {
       var szRadio = document.getElementById('sbdyRegionSz');
       if (szRadio) szRadio.checked = true;
@@ -750,9 +751,14 @@
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate')
     };
-    /* 多段任职：逐月单位编号（浙江版按月填各自单位）。仅在有预填映射时上送 */
-    if (region === 'zj' && prefillMonthUnits && Object.keys(prefillMonthUnits).length) {
-      body.month_units = prefillMonthUnits;
+    /* 浙江版多段任职：有分段则以分段为准（逐月单位/参保地/基数）；否则用逐月单位映射 */
+    if (region === 'zj') {
+      var segs = readSegments();
+      if (segs.length) {
+        body.segments = segs;
+      } else if (prefillMonthUnits && Object.keys(prefillMonthUnits).length) {
+        body.month_units = prefillMonthUnits;
+      }
     }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
       body.snapshot_ym = '202604';
@@ -811,6 +817,7 @@
 
   function fillSample() {
     prefillMonthUnits = {};
+    clearSegments();
     var now = new Date();
     var bj = new Date(now.getTime() + 8 * 3600 * 1000);
     var endY = bj.getUTCFullYear();
@@ -976,15 +983,18 @@
     var records = Array.isArray(d.tax_records) ? d.tax_records : [];
     var employers = Array.isArray(d.employers) ? d.employers : [];
     var creditByCompany = {};
+    var companyByCredit = {};
     employers.forEach(function (e) {
       var cn = e && e.company_name ? String(e.company_name).trim() : '';
       var cc = e && e.credit_code ? String(e.credit_code).trim() : '';
       if (cn && cc && !creditByCompany[cn]) creditByCompany[cn] = cc;
+      if (cc && cn && !companyByCredit[cc]) companyByCredit[cc] = cn;
     });
     records.forEach(function (r) {
       var cn = r && r.company_name ? String(r.company_name).trim() : '';
       var cc = r && r.company_tax_id ? String(r.company_tax_id).trim() : '';
       if (cn && cc && !creditByCompany[cn]) creditByCompany[cn] = cc;
+      if (cc && cn && !companyByCredit[cc]) companyByCredit[cc] = cn;
     });
     var startN = rangeStart ? ymToNum(rangeStart) : null;
     var endN = rangeEnd ? ymToNum(rangeEnd) : null;
@@ -1005,7 +1015,8 @@
     });
     var companies = [];
     var seen = {};
-    var monthUnits = {};
+    /* 逐月单位编号：同月多条（含过渡月两家单位）按记录数取多数；平票取较近单位 */
+    var ymStat = {};
     var minN = null;
     var maxN = null;
     recs.forEach(function (r) {
@@ -1017,7 +1028,40 @@
         seen[r.company] = 1;
         companies.push(r.company);
       }
-      if (r.credit && !monthUnits[r.ym]) monthUnits[r.ym] = r.credit;
+      if (r.credit) {
+        var s = ymStat[r.ym] || (ymStat[r.ym] = { counts: {}, first: r.credit });
+        s.counts[r.credit] = (s.counts[r.credit] || 0) + 1;
+      }
+    });
+    var monthUnits = {};
+    Object.keys(ymStat).forEach(function (ym) {
+      var s = ymStat[ym];
+      var best = s.first;
+      var bestN = -1;
+      Object.keys(s.counts).forEach(function (cc) {
+        if (s.counts[cc] > bestN) {
+          bestN = s.counts[cc];
+          best = cc;
+        }
+      });
+      monthUnits[ym] = best;
+    });
+    /* 分段任职：按月单位编号连续相同者合并为一段 */
+    var segYmKeys = Object.keys(monthUnits).sort();
+    var segments = [];
+    segYmKeys.forEach(function (ym) {
+      var cc = monthUnits[ym];
+      var last = segments[segments.length - 1];
+      if (last && last.credit_code === cc) {
+        last.period_end = ym;
+      } else {
+        segments.push({
+          company_name: companyByCredit[cc] || '',
+          credit_code: cc,
+          period_start: ym,
+          period_end: ym
+        });
+      }
     });
     if (!companies.length) {
       employers.forEach(function (e) {
@@ -1057,9 +1101,85 @@
       companies: companies,
       credits: credits,
       monthUnits: monthUnits,
+      segments: segments,
       minYm: minN != null ? numToYm(minN) : '',
       maxYm: maxN != null ? numToYm(maxN) : ''
     };
+  }
+
+  /* —— 分段任职编辑器（浙江版：多单位 / 多参保地） —— */
+  function segmentRowHtml(seg) {
+    seg = seg || {};
+    return (
+      '<div class="sbdy-seg-row form-row flex-wrap gap-10" style="align-items:flex-end;border-top:1px dashed #e5e7eb;padding-top:8px;margin-top:8px;">' +
+      '<div style="flex:2;min-width:180px;"><label>单位名称</label>' +
+      '<input type="text" class="seg-company" maxlength="128" value="' +
+      esc(seg.company_name || '') +
+      '" placeholder="单位名称"></div>' +
+      '<div style="flex:2;min-width:160px;"><label>统一社会信用代码</label>' +
+      '<input type="text" class="seg-credit" maxlength="40" value="' +
+      esc(seg.credit_code || '') +
+      '" placeholder="9133…"></div>' +
+      '<div><label>参保地</label>' +
+      '<input type="text" class="seg-area" maxlength="32" value="' +
+      esc(seg.area || '') +
+      '" placeholder="如 余杭区"></div>' +
+      '<div><label>缴费基数</label>' +
+      '<input type="number" class="seg-base" step="0.01" value="' +
+      esc(seg.base_amount != null ? seg.base_amount : '') +
+      '" placeholder="基数"></div>' +
+      '<div><label>起月</label>' +
+      '<input type="month" class="seg-start" value="' +
+      esc(seg.period_start || '') +
+      '"></div>' +
+      '<div><label>止月</label>' +
+      '<input type="month" class="seg-end" value="' +
+      esc(seg.period_end || '') +
+      '"></div>' +
+      '<div><button type="button" class="btn-page seg-del">删除</button></div>' +
+      '</div>'
+    );
+  }
+
+  function renderSegments(list) {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return;
+    wrap.innerHTML = (Array.isArray(list) ? list : []).map(segmentRowHtml).join('');
+  }
+
+  function addSegment(seg) {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return;
+    wrap.insertAdjacentHTML('beforeend', segmentRowHtml(seg || {}));
+  }
+
+  function clearSegments() {
+    renderSegments([]);
+  }
+
+  function readSegments() {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return [];
+    var out = [];
+    Array.prototype.forEach.call(wrap.querySelectorAll('.sbdy-seg-row'), function (row) {
+      function q(cls) {
+        var el = row.querySelector('.' + cls);
+        return el ? String(el.value || '').trim() : '';
+      }
+      var company = q('seg-company');
+      var credit = q('seg-credit');
+      if (!company && !credit) return;
+      var baseRaw = q('seg-base');
+      out.push({
+        company_name: company,
+        credit_code: credit,
+        area: q('seg-area'),
+        base_amount: baseRaw !== '' ? Number(baseRaw) : undefined,
+        period_start: normalizeYm(q('seg-start')),
+        period_end: normalizeYm(q('seg-end'))
+      });
+    });
+    return out;
   }
 
   function prefill() {
@@ -1103,13 +1223,36 @@
         prefillMonthUnits = info.monthUnits || {};
         if (info.companies.length) setField('sbdyCompany', info.companies.join('、'));
         if (info.credits.length) setField('sbdyCredit', info.credits.join('、'));
+        /* 多单位：自动分段（每段可再单独改参保地/基数）；单单位则清空分段 */
+        var segList = (info.segments || []).filter(function (s) {
+          return s.credit_code || s.company_name;
+        });
+        if (segList.length >= 2) {
+          var defArea = val('sbdyArea') || '余杭区';
+          var defBase = val('sbdyBase') || '4986';
+          renderSegments(
+            segList.map(function (s) {
+              return {
+                company_name: s.company_name,
+                credit_code: s.credit_code,
+                area: defArea,
+                base_amount: defBase,
+                period_start: s.period_start,
+                period_end: s.period_end
+              };
+            })
+          );
+        } else {
+          clearSegments();
+        }
         var ps = rangeStart || info.minYm;
         var pe = rangeEnd || info.maxYm;
         if (ps) setField('sbdyPeriodStart', ps);
         if (pe) setField('sbdyPeriodEnd', pe);
         var parts = ['已预填「' + username + '」'];
         if (info.companies.length) parts.push(info.companies.length + ' 家单位');
-        if (ps && pe) parts.push('区间 ' + ps + '～' + pe);
+        if (segList.length >= 2) parts.push('已自动分段' + segList.length + '段（可改参保地/基数）');
+        else if (ps && pe) parts.push('区间 ' + ps + '～' + pe);
         setStatus(parts.join(' · ') + '（请核对）', false);
       })
       .catch(function (e) {
@@ -1157,6 +1300,23 @@
     if (pasteGen) pasteGen.onclick = pasteAndGenerate;
     var pasteClear = document.getElementById('btnSbdyPasteClear');
     if (pasteClear) pasteClear.onclick = clearPasteTemplate;
+    var addSeg = document.getElementById('btnSbdyAddSegment');
+    if (addSeg) {
+      addSeg.onclick = function () {
+        addSegment({ area: val('sbdyArea'), base_amount: val('sbdyBase') });
+      };
+    }
+    var segWrap = document.getElementById('sbdySegments');
+    if (segWrap && !segWrap.__segBound) {
+      segWrap.__segBound = true;
+      segWrap.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && t.classList && t.classList.contains('seg-del')) {
+          var row = t.closest ? t.closest('.sbdy-seg-row') : null;
+          if (row && row.parentNode) row.parentNode.removeChild(row);
+        }
+      });
+    }
   }
 
   function loadPage() {

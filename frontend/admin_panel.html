@@ -1409,6 +1409,12 @@
                                     <input type="text" id="sbdyInsureType" maxlength="32" value="企业养老" placeholder="企业养老">
                                 </div>
                             </div>
+                            <div class="sbdy-zj-only" id="sbdySegmentsWrap">
+                                <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，按每段分别填「单位 / 信用代码 / 参保地 / 基数 / 起止月」。<strong>填了分段则以分段为准</strong>，缴费明细按月分段显示各自的单位编号与参保地；预填 2 家及以上会自动分段。</p>
+                                <div id="sbdySegments"></div>
+                                <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
+                            </div>
                             <div class="admin-tool-step">② 缴费区间与金额</div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
@@ -2789,7 +2795,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260824-month-units"></script>
+    <script src="/js/admin/loader.js?v=20260824-segments"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260824-gjj-demo"></script>

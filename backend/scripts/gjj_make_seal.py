@@ -23,7 +23,7 @@ FONT_FALLBACKS = [
     '/usr/share/fonts/truetype/arphic/uming.ttc',
 ]
 
-SIZE = 520
+SIZE = 1000
 CENTER = (SIZE / 2.0, SIZE / 2.0)
 RED = (198, 22, 22, 255)
 
@@ -83,8 +83,8 @@ def render(out_path):
     cx, cy = CENTER
 
     # 外圈红环
-    ring_r = SIZE / 2.0 - 14
-    ring_w = 15
+    ring_r = SIZE / 2.0 - 26
+    ring_w = 26
     draw.ellipse(
         [cx - ring_r, cy - ring_r, cx + ring_r, cy + ring_r],
         outline=RED,
@@ -92,19 +92,19 @@ def render(out_path):
     )
 
     # 中心五角星
-    draw_star(draw, cx, cy, r_out=66, color=RED)
+    draw_star(draw, cx, cy, r_out=120, color=RED)
 
-    # 上弧机构名
-    arc_font = load_font(58)
-    draw_arc_text(img, ARC_TEXT, cx, cy, radius=ring_r - 46, font=arc_font,
-                  color=RED, a_start=204.0, a_end=336.0)
+    # 上弧机构名（半径加大、字号收窄、弧度拉开，避免相邻字重叠）
+    arc_font = load_font(74)
+    draw_arc_text(img, ARC_TEXT, cx, cy, radius=ring_r - 90, font=arc_font,
+                  color=RED, a_start=196.0, a_end=344.0)
 
     # 下方「电子专用章」
-    bot_font = load_font(46)
+    bot_font = load_font(70)
     tb = draw.textbbox((0, 0), BOTTOM_TEXT, font=bot_font)
     tw = tb[2] - tb[0]
     th = tb[3] - tb[1]
-    draw.text((cx - tw / 2.0 - tb[0], cy + 96 - tb[1]), BOTTOM_TEXT, font=bot_font, fill=RED)
+    draw.text((cx - tw / 2.0 - tb[0], cy + 182 - tb[1]), BOTTOM_TEXT, font=bot_font, fill=RED)
 
     img.save(out_path)
     print('saved', out_path, img.size)

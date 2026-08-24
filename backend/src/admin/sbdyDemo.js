@@ -854,6 +854,98 @@ function normalizeWhPayload(body) {
   };
 }
 
+function ymNumOf(ym) {
+  var p = parseYm(ym);
+  return p ? p.y * 12 + p.m : null;
+}
+
+/** 归一化分段任职：每段含 单位/信用代码/参保地/基数/起止月（YYYY-MM），按起月升序 */
+function normalizeSegments(raw, defaults) {
+  defaults = defaults || {};
+  if (!Array.isArray(raw)) return [];
+  var out = [];
+  raw.forEach(function (s) {
+    if (!s || typeof s !== 'object') return;
+    var pa = parseYm(s.period_start || s.periodStart);
+    var pb = parseYm(s.period_end || s.periodEnd);
+    if (!pa || !pb) return;
+    var ps = pa.y + '-' + pad2(pa.m);
+    var pe = pb.y + '-' + pad2(pb.m);
+    if (ymNumOf(ps) > ymNumOf(pe)) {
+      var t = ps;
+      ps = pe;
+      pe = t;
+    }
+    var company = String(s.company_name || s.company || '').trim().substring(0, 128);
+    var creditCode = String(s.credit_code || s.creditCode || '').trim().substring(0, 40);
+    if (!company && !creditCode) return;
+    var area =
+      String(s.area || defaults.area || '').trim().substring(0, 32) || String(defaults.area || '');
+    var base = Number(s.base_amount != null ? s.base_amount : s.baseAmount);
+    if (!isFinite(base) || base <= 0) base = Number(defaults.base) || 0;
+    out.push({
+      company_name: company,
+      credit_code: creditCode,
+      area: area,
+      base_amount: base,
+      period_start: ps,
+      period_end: pe
+    });
+  });
+  out.sort(function (a, b) {
+    return ymNumOf(a.period_start) - ymNumOf(b.period_start);
+  });
+  return out;
+}
+
+/** 按分段逐月构建：每月取覆盖它的分段的 单位编号/参保地/基数（重叠时较晚起的段覆盖） */
+function buildMonthRowsFromSegments(segments) {
+  if (!segments || !segments.length) return [];
+  var startN = null;
+  var endN = null;
+  segments.forEach(function (s) {
+    var a = ymNumOf(s.period_start);
+    var bb = ymNumOf(s.period_end);
+    if (a != null && (startN == null || a < startN)) startN = a;
+    if (bb != null && (endN == null || bb > endN)) endN = bb;
+  });
+  if (startN == null || endN == null) return [];
+  var rows = [];
+  var n = startN;
+  var guard = 0;
+  while (n <= endN && guard < 240) {
+    var y = Math.floor((n - 1) / 12);
+    var m = ((n - 1) % 12) + 1;
+    var seg = null;
+    segments.forEach(function (s) {
+      var a = ymNumOf(s.period_start);
+      var bb = ymNumOf(s.period_end);
+      if (a != null && bb != null && n >= a && n <= bb) seg = s;
+    });
+    if (seg) {
+      var base = Number(seg.base_amount) || 0;
+      rows.push({
+        year: y,
+        month: pad2(m),
+        unit_code: seg.credit_code || '',
+        area: seg.area || '',
+        pension_base: base,
+        pension_pay: round2(base * 0.08),
+        pension_status: '已到账',
+        unemp_area: seg.area || '',
+        unemp_base: base,
+        unemp_pay: round2(base * 0.005),
+        unemp_status: '已到账',
+        remark: ''
+      });
+    }
+    n += 1;
+    guard += 1;
+  }
+  if (rows.length > 48) rows = rows.slice(-48);
+  return rows;
+}
+
 function normalizePayload(body) {
   if (isHnRegion(body)) {
     return normalizeHnPayload(body);
@@ -911,6 +1003,60 @@ function normalizePayload(body) {
   var statusUnemp = String(b.status_unemployment || '正常参保').trim().substring(0, 32);
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
+  }
+  /* 分段任职（多单位 / 多参保地）：提供 segments 时按段逐月构建单位编号/参保地/基数 */
+  var segments = normalizeSegments(b.segments, { area: area, base: baseAmt });
+  if (segments.length) {
+    var segMonths = buildMonthRowsFromSegments(segments);
+    if (!segMonths.length) {
+      return { error: '分段任职的起止月无效' };
+    }
+    var segPs = segMonths[0].year + '-' + segMonths[0].month;
+    var segPe =
+      segMonths[segMonths.length - 1].year + '-' + segMonths[segMonths.length - 1].month;
+    /* 参保单位只显示「当前/最新」的一段：取覆盖末月、起月最晚的分段（与逐月构建口径一致）；
+       多段完整历史仍保留在 months 明细表与 segments 中 */
+    var endMonthN = ymNumOf(segPe);
+    var currentSeg = null;
+    segments.forEach(function (s) {
+      var a = ymNumOf(s.period_start);
+      var bb = ymNumOf(s.period_end);
+      if (a != null && bb != null && endMonthN >= a && endMonthN <= bb) currentSeg = s;
+    });
+    if (!currentSeg) currentSeg = segments[segments.length - 1];
+    var currentDisplay = currentSeg.company_name
+      ? currentSeg.credit_code
+        ? currentSeg.company_name + '（' + currentSeg.credit_code + '）'
+        : currentSeg.company_name
+      : currentSeg.credit_code || '';
+    return {
+      name: name,
+      id_number: idNumber,
+      gender: gender,
+      id_type: '居民身份证',
+      company_name: currentSeg.company_name || '',
+      company_display: currentDisplay || currentSeg.company_name || '',
+      credit_code: currentSeg.credit_code || '',
+      area: currentSeg.area || area,
+      segments: segments,
+      period_start: segPs,
+      period_end: segPe,
+      period_label:
+        formatYmCn(parseYm(segPs).y, parseYm(segPs).m) +
+        '-' +
+        formatYmCn(parseYm(segPe).y, parseYm(segPe).m),
+      base_amount: baseAmt,
+      pension_pay: pensionPay,
+      unemployment_pay: unempPay,
+      print_date: printDate,
+      status_pension: statusPension,
+      status_injury: statusInjury,
+      status_medical: statusMedical,
+      status_unemployment: statusUnemp,
+      months: segMonths,
+      region: 'zj',
+      layout: 'zj_official_v2'
+    };
   }
   if (!parseYm(periodStart) || !parseYm(periodEnd)) {
     return { error: '缴费起止月份格式应为 YYYY-MM' };

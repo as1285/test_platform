@@ -59,6 +59,47 @@ describe('sbdyDemo', () => {
     expect(p.months[1].unit_code).toBe('91330109MAETP27PX2');
   });
 
+  it('builds per-segment months with own unit/area/base (multi-district)', () => {
+    const p = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      segments: [
+        {
+          company_name: '杭州华鲜高新技术有限公司',
+          credit_code: '91330110MADG8JH092',
+          area: '滨江区',
+          base_amount: 5000,
+          period_start: '2025-04',
+          period_end: '2026-06'
+        },
+        {
+          company_name: '杭州圆趣企业运营管理有限公司',
+          credit_code: '91330109MAETP27PX2',
+          area: '余杭区',
+          base_amount: 6000,
+          period_start: '2026-07',
+          period_end: '2026-08'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.months.length).toBe(17);
+    expect(p.months[0].unit_code).toBe('91330110MADG8JH092');
+    expect(p.months[0].area).toBe('滨江区');
+    expect(p.months[0].pension_base).toBe(5000);
+    expect(p.months[0].pension_pay).toBe(400);
+    const aug = p.months[p.months.length - 1];
+    expect(aug.unit_code).toBe('91330109MAETP27PX2');
+    expect(aug.area).toBe('余杭区');
+    expect(aug.pension_base).toBe(6000);
+    expect(p.area).toBe('滨江区、余杭区');
+    expect(p.credit_code).toBe('91330110MADG8JH092、91330109MAETP27PX2');
+    expect(p.company_display).toContain('（91330110MADG8JH092）');
+    expect(p.company_display).toContain('（91330109MAETP27PX2）');
+    expect(p.period_start).toBe('2025-04');
+    expect(p.period_end).toBe('2026-08');
+  });
+
   it('renderCertHtml escapes name in table cell', () => {
     const p = normalizePayload({
       name: '<script>',
