@@ -3,10 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        /* 分享门槛已下线：首屏即隐藏分享入口，避免闪一下 */
+        /* Mate 60 / Pro 专用：冻结 2026-08-12（c2df2f2）「我的」页；非该系列回主 mine.html */
         (function () {
             try {
-                document.documentElement.classList.add('mine-share-done');
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
+                var isMate60 = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70;
+                if (!isMate60) {
+                    location.replace('mine.html' + (location.search || '') + (location.hash || ''));
+                }
+            } catch (eGuard) {}
+        })();
+    </script>
+    <script>
+        /* 分享完成后首屏前隐藏；未登录提前标记游客态，避免闪出已登录卡片 */
+        (function () {
+            try {
+                if (localStorage.getItem('mine_share_done_v1') === '1') {
+                    document.documentElement.classList.add('mine-share-done');
+                }
             } catch (e) {}
             try {
                 var tok = String(localStorage.getItem('token') || '').trim();
@@ -16,78 +33,9 @@
             } catch (e2) {
                 document.documentElement.classList.add('mine-guest');
             }
-            try {
-                var u = String(navigator.userAgent || '');
-                try {
-                    u += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
-                } catch (eModel) {}
-                try {
-                    u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
-                } catch (eUa) {}
-                if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
-                    document.documentElement.classList.add('app-ios-client');
-                    document.documentElement.classList.add('app-top-safe-shell');
-                }
-                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
-                    document.documentElement.classList.add('app-android-client');
-                }
-                var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
-                var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
-                if (isMate60Mine) {
-                    /* Mate60：跳冻结的 2026-08-12 版「我的」页（其它机型留在本页） */
-                    try {
-                        var u60 = new URL('mine_mate60_aug12.html', location.href);
-                        var s60 = new URL(location.href);
-                        s60.searchParams.forEach(function (v, k) { u60.searchParams.set(k, v); });
-                        u60.searchParams.set('_v', '20260824-aug12r6');
-                        location.replace(u60.pathname + u60.search + u60.hash);
-                    } catch (eJump60) {
-                        location.replace('mine_mate60_aug12.html?_v=20260824-aug12r6');
-                    }
-                } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
-                    document.documentElement.classList.add('app-huawei-mine-noclip');
-                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
-                    var huaweiNoclipInset = document.createElement('style');
-                    huaweiNoclipInset.setAttribute('data-huawei-mine-noclip-inset', '1');
-                    huaweiNoclipInset.textContent =
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0!important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer{top:0!important;}';
-                    document.head.appendChild(huaweiNoclipInset);
-                }
-                if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
-                    document.documentElement.classList.add('app-android-iqoo-neo8pro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/V2301A|V2301B|PD2301/i.test(u) || (/iQOO\s*Neo\s*8(?!\s*Pro)/i.test(u))) {
-                    document.documentElement.classList.add('app-android-iqoo-neo8');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/V2502A|V2502DA|V2514|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
-                    document.documentElement.classList.add('app-android-vivo-x300pro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
-                    document.documentElement.classList.add('app-android-vivo-s50promini');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
-                    document.documentElement.classList.add('app-android-oneplus-acepro');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (/PHW110|CPH2531|CPH2525/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
-                    document.documentElement.classList.add('app-android-oppo-reno10');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
-                }
-                if (
-                    /HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)
-                ) {
-                    document.documentElement.classList.add('app-android-huawei-nova13');
-                }
-            } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260824-mate60ark"></script>
+    <script src="/js/auth-mate60-aug12.js?v=20260824-aug12r6"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -112,8 +60,8 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260820-nav-ios12b">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <link rel="stylesheet" href="css/nav-mate60-aug12.css?v=20260824-aug12r6">
+    <script src="/js/theme-loader-mate60-aug12.js?v=20260824-aug12r6" defer></script>
     <style>
         * {
             margin: 0;
@@ -126,13 +74,13 @@
             background-color: #f5f6fa;
             /* 必须 vh/dvh 撑满视口；100% 在 html 无高度时会矮一截，iOS fixed 底栏悬空 */
             min-height: 100vh;
+            min-height: 100dvh;
             max-width: 100vw;
             /* 勿在 body 上 overflow-x:hidden，iOS 会导致底栏 position:fixed 相对文档错位、看起来偏高 */
             -webkit-font-smoothing: antialiased;
         }
         html {
-            min-height: 100vh;
-            height: auto;
+            height: 100%;
         }
 
         /* 底栏避让改到 .content-wrapper，避免与 app-shell 的 body padding 叠高 */
@@ -199,9 +147,9 @@
         }
 
         /*
-         * Android「我的」e1：默认零 bleed，覆盖未识别 OEM（含 Hi nova、鸿蒙外置黑条）。
+         * Android「我的」e1：默认零 bleed，覆盖未识别 OEM（含 Hi nova MIZ-BD00、华为鸿蒙等）。
          * 避免通用 24px / 误测 inset 导致姓名税号压到米色卡。
-         * 一加 13 / MIX Fold / Mate 60 真沉浸：40px bleed（头图负 margin）。
+         * 一加 13 / MIX Fold 真沉浸机型再单独开 bleed。
          */
         html.app-android-client body.page-mine {
             --mine-top-bleed: 0px;
@@ -216,56 +164,25 @@
             top: 0 !important;
         }
         html.app-android-oneplus-13 body.page-mine,
-        html.app-android-oneplus-ace2pro body.page-mine,
-        html.app-android-oneplus-acepro body.page-mine,
-        html.app-android-oneplus-ace2v body.page-mine,
-        html.app-android-oppo-reno10 body.page-mine,
         html.app-android-xiaomi-mix-fold body.page-mine {
             --mine-top-bleed: var(--app-shell-statusbar-top, 40px);
         }
-        html.app-android-huawei-mate60 body.page-mine {
-            --mine-top-bleed: 0px;
-        }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine {
-            --mine-top-bleed: 0px;
-        }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
-        html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas,
-        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas,
-        html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas,
-        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed) !important;
         }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
-            padding-top: 0 !important;
-        }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas > img,
-        html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas > img,
-        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas > img,
-        html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas > img,
-        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas > img,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas > img {
             margin-top: calc(-1 * var(--mine-top-bleed)) !important;
         }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
-            margin-top: 0 !important;
-            position: relative !important;
-            top: auto !important;
-            transform: none !important;
-        }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
-            top: 0 !important;
-        }
         html.app-android-vivo-family body.page-mine,
         html.app-android-iqoo-15 body.page-mine,
-        html.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10) body.page-mine,
+        html.app-android-oppo-family body.page-mine,
         html.app-android-mi-family body.page-mine,
         html.app-android-redmi-k70 body.page-mine,
         html.app-android-samsung body.page-mine,
         html.app-android-samsung-s24u body.page-mine,
-        html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine,
+        html.app-android-huawei-harmony body.page-mine,
         html.app-android-hinova body.page-mine,
         html.app-android-honor-flc body.page-mine,
         html.app-android-honor-fcp body.page-mine {
@@ -522,74 +439,7 @@
             left: calc(579 * var(--mine-rpx));
         }
 
-        /*
-         * 华为 nova 13 / 鸿蒙 ArkWeb：勿用 --mine-rpx: calc(100% / 750)。
-         * 自定义属性里的 % 在 top 上按包含块高度解析，胶囊会掉到「我要咨询」。
-         * 1rpx 必须跟画布宽度走（cqw / JS 实测）。
-         */
-        html.app-android-huawei-nova13 body.page-mine .mine-e1-canvas,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
-            container-type: inline-size;
-            --mine-rpx: calc(100cqw / 750);
-        }
-        /*
-         * Mate 60 / Pro：0 bleed 完整显示 e1 头像区；rpx 由 JS 实测，勿 100vw/cqw。
-         */
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas {
-            container-type: normal;
-            width: 100%;
-            max-width: none;
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-            overflow: hidden !important;
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > #headerImg {
-            margin-top: 0 !important;
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-e1-layer {
-            top: 0 !important;
-        }
-        html.app-android-huawei-mate60 #mate60HeadPlate,
-        html.app-android-huawei-mate60 #mate60AvatarFixed {
-            display: none !important;
-        }
-        html.app-android-huawei-mate60 body.page-mine .mine-stack {
-            transform: none !important;
-            -webkit-transform: none !important;
-            margin-top: 0 !important;
-            padding-top: 0 !important;
-        }
-        html.app-android-huawei-mate60 #mate60MineStatusSpacer {
-            display: none !important;
-            height: 0 !important;
-        }
-        html.app-android-huawei-nova13 body.page-mine .mine-ov-name,
-        html.app-android-huawei-nova13 body.page-mine .mine-ov-tax,
-        html.app-huawei-mine-noclip body.page-mine .mine-ov-name,
-        html.app-huawei-mine-noclip body.page-mine .mine-ov-tax {
-            line-height: 1.4 !important;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-        html.app-android-huawei-nova13 body.page-mine .mine-e1-pill,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-pill {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            overflow: hidden !important;
-            box-sizing: border-box !important;
-            line-height: 1 !important;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-
         /* 头像热区：对齐 e1 顶图卡通头像，供连续点击开关「数据编辑」 */
-        .mine-ov-avatar {
-            display: none;
-        }
         .mine-avatar-edit-hit,
         .mine-e1-layer > .mine-avatar-edit-hit {
             position: absolute;
@@ -620,7 +470,6 @@
         html.mine-guest body.page-mine .mine-ov-eye,
         html.mine-guest body.page-mine .mine-hit-profile,
         html.mine-guest body.page-mine .mine-e1-pill,
-        html.mine-guest body.page-mine .mine-ov-avatar,
         html.mine-guest body.page-mine .mine-avatar-edit-hit,
         html.mine-guest body.page-mine .mine-e1-footer .logout-section {
             display: none !important;
@@ -653,29 +502,20 @@
         html body.page-mine > .bottom-nav,
         html body.page-mine > .bottom-nav.ios-device {
             position: fixed !important;
-            left: var(--bottom-nav-side, 16px) !important;
-            right: var(--bottom-nav-side, 16px) !important;
+            left: var(--bottom-nav-side, 14px) !important;
+            right: var(--bottom-nav-side, 14px) !important;
             bottom: var(--bottom-nav-bottom, 8px) !important;
             top: auto !important;
-            z-index: 10050 !important;
+            z-index: 200 !important;
             margin: 0 !important;
             transform: none !important;
             -webkit-transform: none !important;
-            height: var(--bottom-nav-height, 54px) !important;
-            min-height: var(--bottom-nav-height, 54px) !important;
-            max-height: var(--bottom-nav-height, 54px) !important;
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
-            box-sizing: border-box !important;
         }
         html.app-ios-client body.page-mine > .bottom-nav,
         html.app-ios-client body.page-mine > .bottom-nav.ios-device {
             bottom: 8px !important;
-            height: var(--bottom-nav-height, 54px) !important;
-            min-height: var(--bottom-nav-height, 54px) !important;
-            max-height: var(--bottom-nav-height, 54px) !important;
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
             margin-bottom: 0 !important;
             -webkit-backdrop-filter: none !important;
             backdrop-filter: none !important;
@@ -687,7 +527,7 @@
         html.app-ios-iphone16pro body.page-mine > .bottom-nav.ios-device,
         html.app-ios-iphone16promax body.page-mine > .bottom-nav,
         html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
-            bottom: 8px !important;
+            bottom: 2px !important;
         }
 
         /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
@@ -1910,11 +1750,8 @@
         }
     </style>
 </head>
-
-    <div id="mate60BuildMark" hidden style="position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:e1-v12</div>
-    <script>(function(){try{var u=String(navigator.userAgent||'');try{u+=' '+String(localStorage.getItem('tax_device_model_v1')||'')}catch(e){}var m=/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)&&!/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);var el=document.getElementById('mate60BuildMark');if(m&&el)el.hidden=false;var plate=document.getElementById('mate60HeadPlate');if(plate&&plate.parentNode)plate.parentNode.removeChild(plate);var av=document.getElementById('mate60AvatarFixed');if(av&&av.parentNode)av.parentNode.removeChild(av);}catch(e){}})();</script>
-
 <body class="page-mine tax-app-shell has-bottom-nav">
+    <div id="mate60BuildMark" hidden style="display:none;position:fixed;left:8px;bottom:72px;z-index:100000;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.2;pointer-events:none;">UI:aug12-r6</div>
     <div class="mine-stack">
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
         <div class="mine-e1-canvas" id="mineE1Canvas">
@@ -1932,55 +1769,17 @@
                     if (!hi) return;
                     var v = '?v=20260802-e1fix';
                     try {
-                        var src = '/img/mine/e1_01.png' + v;
-                        if (String(localStorage.getItem('token') || '').trim()) {
-                            var female = Number(localStorage.getItem('gender')) === 2;
-                            src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
+                        if (!String(localStorage.getItem('token') || '').trim()) {
+                            hi.src = '/img/mine/e1_01.png' + v;
+                            return;
                         }
-                        hi.src = src;
-                        var av0 = document.getElementById('mate60AvatarFixed');
-                        if (av0) av0.src = src;
+                        var g = Number(localStorage.getItem('gender'));
+                        var female = g === 2;
+                        hi.src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
                     } catch (e) {}
                 })();
             </script>
-            <script>
-                (function () {
-                    function pinMate60RpxEarly() {
-                        try {
-                            var canvas = document.getElementById('mineE1Canvas');
-                            if (!canvas) return;
-                            var w = canvas.getBoundingClientRect().width;
-                            if (!(w > 0)) return;
-                            var rpx = w / 750 + 'px';
-                            document.documentElement.style.setProperty('--mine-rpx', rpx, 'important');
-                            document.body.style.setProperty('--mine-rpx', rpx, 'important');
-                            canvas.style.setProperty('--mine-rpx', rpx, 'important');
-                            var layer = document.getElementById('mineE1Layer');
-                            if (layer) layer.style.setProperty('--mine-rpx', rpx, 'important');
-                        } catch (e) {}
-                    }
-                    var u = String(navigator.userAgent || '');
-                    try {
-                        u += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
-                    } catch (eU) {}
-                    if (
-                        /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) &&
-                        !/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u)
-                    ) {
-                        pinMate60RpxEarly();
-                        if (typeof requestAnimationFrame === 'function') {
-                            requestAnimationFrame(pinMate60RpxEarly);
-                        }
-                        var hi = document.getElementById('headerImg');
-                        if (hi) hi.addEventListener('load', pinMate60RpxEarly);
-                        [80, 240, 600].forEach(function (ms) {
-                            setTimeout(pinMate60RpxEarly, ms);
-                        });
-                    }
-                })();
-            </script>
             <div class="mine-e1-layer" id="mineE1Layer">
-                <div class="mine-ov-avatar" id="mineOvAvatar" aria-hidden="true"></div>
                 <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
                 <div
                     class="mine-ov-name user-name user-name--editable"
@@ -2118,23 +1917,23 @@
 
     <div class="bottom-nav" aria-label="主导航">
         <a class="nav-item" data-icon="sy" href="shouye.html">
-            <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
             <span class="nav-text">首页</span>
         </a>
         <a class="nav-item" data-icon="db" href="daiban.html">
-            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/db2.png" alt=""></span>
             <span class="nav-text">待办</span>
         </a>
         <a class="nav-item" data-icon="bc" href="bancha.html">
-            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/bc2.png" alt=""></span>
             <span class="nav-text">办&amp;查</span>
         </a>
         <a class="nav-item" data-icon="xx" href="message.html">
-            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/xx2.png" alt=""></span>
             <span class="nav-text">消息</span>
         </a>
         <a class="nav-item active" data-icon="w" href="mine.html">
-            <div class="nav-icon"><img src="caidan/w1.png" width="19" height="19" alt=""></div>
+            <span class="nav-icon"><img src="caidan/w1.png" alt=""></span>
             <span class="nav-text">我的</span>
         </a>
     </div>
@@ -2168,10 +1967,6 @@
                 else base = female ? 'e1_4' : 'e1_3';
                 if (fam) base += 'r';
                 hi.src = '/img/mine/' + base + '.png?v=20260802-e1fix';
-                var avFix = document.getElementById('mate60AvatarFixed');
-                if (avFix) {
-                    avFix.src = '/img/mine/' + (female ? 'e1_02' : 'e1_01') + '.png?v=20260802-e1fix';
-                }
             }
 
             function syncMineYanIcon() {
@@ -3847,6 +3642,142 @@
                     bottomNav.classList.add('ios-device');
                 }
             }
+        })();
+    </script>
+    <script>
+        /*
+         * 2026-08-24 r3：
+         * 1) rpx 校准：ArkWeb/滚动条下 100vw 可能宽于画布，按画布实测宽度钉 --mine-rpx。
+         * 2) 顶部防御：禁用滚动恢复、开页强制回顶、归零 html/body/stack 的意外偏移。
+         * 3) 诊断浮层：把 scroll/画布位置/偏移量直接画在页面上，截图即遥测。
+         */
+        (function () {
+            try { history.scrollRestoration = 'manual'; } catch (e0) {}
+            function pinAug12Rpx() {
+                try {
+                    var c = document.getElementById('mineE1Canvas');
+                    if (!c) return;
+                    var w = c.getBoundingClientRect().width;
+                    if (!(w > 0)) return;
+                    var r = w / 750 + 'px';
+                    document.documentElement.style.setProperty('--mine-rpx', r, 'important');
+                    if (document.body) document.body.style.setProperty('--mine-rpx', r, 'important');
+                    c.style.setProperty('--mine-rpx', r, 'important');
+                    var l = document.getElementById('mineE1Layer');
+                    if (l) l.style.setProperty('--mine-rpx', r, 'important');
+                } catch (e) {}
+            }
+            /*
+             * ArkWeb 协同窗口实测：sY=0 时内容栈仍被布局到视口上方（cT=sT=-261），
+             * 画布还比视口窄。来源在引擎层，页面按实测值反向补偿：
+             * - 宽度：画布明显窄于视口 → 钉 100vw
+             * - 顶部：栈顶 < -50px 且未滚动 → 用正 margin-top 拉回 0（可滚动，不裁底部）
+             */
+            function fixArkDrift() {
+                try {
+                    var stack = document.querySelector('.mine-stack');
+                    var c = document.getElementById('mineE1Canvas');
+                    if (c) {
+                        var cw = c.getBoundingClientRect().width;
+                        if (cw > 0 && window.innerWidth - cw > 8) {
+                            [stack, c].forEach(function (el) {
+                                if (!el) return;
+                                el.style.setProperty('width', '100vw', 'important');
+                                el.style.setProperty('max-width', '100vw', 'important');
+                                el.style.setProperty('margin-left', '0', 'important');
+                                el.style.setProperty('margin-right', '0', 'important');
+                            });
+                        }
+                    }
+                    if (!stack) return;
+                    var sy = window.scrollY || (document.documentElement && document.documentElement.scrollTop) || 0;
+                    var sx = window.scrollX || (document.documentElement && document.documentElement.scrollLeft) || 0;
+                    var r = stack.getBoundingClientRect();
+                    var cur = parseFloat(stack.getAttribute('data-drift-fix') || '0') || 0;
+                    if (sy <= 2 && r.top < -8 && cur - r.top < 1200) {
+                        var want = cur - r.top;
+                        stack.style.setProperty('margin-top', want + 'px', 'important');
+                        stack.setAttribute('data-drift-fix', String(want));
+                    }
+                    var curL = parseFloat(stack.getAttribute('data-drift-fix-x') || '0') || 0;
+                    if (sx <= 2 && Math.abs(r.left) > 2 && Math.abs(curL - r.left) < 300) {
+                        var wantL = curL - r.left;
+                        stack.style.setProperty('margin-left', wantL + 'px', 'important');
+                        stack.setAttribute('data-drift-fix-x', String(wantL));
+                    }
+                } catch (e) {}
+            }
+            function zeroTopDrift() {
+                try {
+                    [document.documentElement, document.body].forEach(function (el) {
+                        if (!el) return;
+                        el.style.setProperty('transform', 'none', 'important');
+                        el.style.setProperty('-webkit-transform', 'none', 'important');
+                        el.style.setProperty('margin-top', '0', 'important');
+                        el.style.setProperty('top', 'auto', 'important');
+                    });
+                    var stack = document.querySelector('.mine-stack');
+                    if (stack) {
+                        stack.style.setProperty('transform', 'none', 'important');
+                        stack.style.setProperty('-webkit-transform', 'none', 'important');
+                        if (!stack.getAttribute('data-drift-fix')) {
+                            stack.style.setProperty('margin-top', '0', 'important');
+                        }
+                        if (!stack.getAttribute('data-drift-fix-x')) {
+                            stack.style.setProperty('margin-left', '0', 'important');
+                        }
+                        stack.style.setProperty('top', 'auto', 'important');
+                    }
+                    if (window.scrollY > 2 || (document.documentElement && document.documentElement.scrollTop > 2)) {
+                        window.scrollTo(0, 0);
+                    }
+                } catch (e) {}
+            }
+            function fmt(n) { return Math.round(Number(n) || 0); }
+            /* 诊断浮层已撤（2026-08-24 r6 定版）；修复逻辑保留。排障时把 DEBUG_HUD 置 true 重新显示。 */
+            var DEBUG_HUD = false;
+            function hud() {
+                if (!DEBUG_HUD) return;
+                try {
+                    var el = document.getElementById('mate60DebugHud');
+                    if (!el) {
+                        el = document.createElement('div');
+                        el.id = 'mate60DebugHud';
+                        el.style.cssText = 'position:fixed;left:8px;bottom:100px;z-index:100001;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.62);color:#9f9;font-size:10px;line-height:1.5;pointer-events:none;font-family:monospace;white-space:pre;';
+                        (document.body || document.documentElement).appendChild(el);
+                    }
+                    var c = document.getElementById('mineE1Canvas');
+                    var img = document.getElementById('headerImg');
+                    var stack = document.querySelector('.mine-stack');
+                    var cr = c ? c.getBoundingClientRect() : { top: -1, width: -1, height: -1 };
+                    var sr = stack ? stack.getBoundingClientRect() : { top: -1 };
+                    var hr = document.documentElement.getBoundingClientRect();
+                    var br = document.body ? document.body.getBoundingClientRect() : { top: -1 };
+                    var csC = c ? getComputedStyle(c) : {};
+                    var csS = stack ? getComputedStyle(stack) : {};
+                    var vv = window.visualViewport;
+                    el.textContent =
+                        'sY=' + fmt(window.scrollY) + ' hT=' + fmt(hr.top) + ' bT=' + fmt(br.top) +
+                        ' in=' + fmt(window.innerWidth) + 'x' + fmt(window.innerHeight) +
+                        (vv ? ' vs=' + (Math.round(vv.scale * 100) / 100) : '') + '\n' +
+                        'cT=' + fmt(cr.top) + ' cL=' + fmt(cr.left) + ' cW=' + fmt(cr.width) + ' sT=' + fmt(sr.top) +
+                        ' fix=' + (stack ? fmt(stack.getAttribute('data-drift-fix') || 0) + '/' + fmt(stack.getAttribute('data-drift-fix-x') || 0) : '?') + '\n' +
+                        'cmT=' + (csC.marginTop || '?') + ' smT=' + (csS.marginTop || '?') +
+                        ' pT=' + (csC.paddingTop || '?') + '\n' +
+                        'img=' + (img && img.complete ? (img.naturalWidth > 0 ? 'ok' : 'ERR') : 'load…') +
+                        ' rpx=' + (getComputedStyle(document.documentElement).getPropertyValue('--mine-rpx') || '?') +
+                        ' ua=' + (/ArkWeb/i.test(navigator.userAgent) ? 'ark' : 'std') + (location.search.indexOf('in_app=1') >= 0 ? '/app' : '/web');
+                } catch (e) {}
+            }
+            function tick() { zeroTopDrift(); fixArkDrift(); pinAug12Rpx(); hud(); }
+            tick();
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(tick);
+            var hi = document.getElementById('headerImg');
+            if (hi) hi.addEventListener('load', tick);
+            window.addEventListener('resize', tick);
+            window.addEventListener('pageshow', tick);
+            window.addEventListener('scroll', function () { hud(); }, { passive: true });
+            [120, 360, 900, 2000, 4000].forEach(function (ms) { setTimeout(tick, ms); });
         })();
     </script>
 </body>

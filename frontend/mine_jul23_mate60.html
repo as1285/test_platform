@@ -5,20 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>我的</title>
     <script>
-        /* 旧缓存若仍进 Jul23：强制跳到从未缓存过的 mine_v2（e1） */
+        /* 旧缓存若仍进 Jul23：Mate60 跳冻结的 2026-08-12 版；其它机型回 mine.html */
         (function () {
             try {
-                var u = new URL('mine_v2.html', location.href);
+                var ua = String(navigator.userAgent || '');
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(ua);
+                var isMate60 = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(ua) && !isMate70;
+                var target = isMate60 ? 'mine_mate60_aug12.html' : 'mine.html';
+                var u = new URL(target, location.href);
                 var src = new URL(location.href);
                 src.searchParams.forEach(function (v, k) { u.searchParams.set(k, v); });
-                u.searchParams.set('_v', '20260824-e1v12');
+                u.searchParams.set('_v', '20260824-aug12r6');
                 location.replace(u.pathname + u.search + u.hash);
             } catch (e) {
-                location.replace('mine_v2.html?_v=20260824-e1v12');
+                location.replace('mine_mate60_aug12.html?_v=20260824-aug12r6');
             }
         })();
     </script>
-    <meta http-equiv="refresh" content="0;url=mine_v2.html?_v=20260824-e1v12">
+    <meta http-equiv="refresh" content="0;url=mine_mate60_aug12.html?_v=20260824-aug12r6">
 </head>
 <body></body>
 </html>

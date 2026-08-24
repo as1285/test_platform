@@ -50,13 +50,13 @@
                 var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
                 var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
                 if (isMate60Mine) {
-                    /* Mate60：跳到 mine_v2，避开 WebView 对旧 mine/jul23 的强缓存 */
+                    /* Mate60：冻结 2026-08-12 版「我的」；新路径避开 WebView 旧缓存 */
                     try {
-                        var u60 = new URL('mine_v2.html', location.href);
+                        var u60 = new URL('mine_mate60_aug12.html', location.href);
                         var s60 = new URL(location.href);
                         s60.searchParams.forEach(function (v, k) { u60.searchParams.set(k, v); });
-                        u60.searchParams.set('_v', '20260824-e1v12');
-                        if (!/mine_v2\.html/i.test(location.pathname)) {
+                        u60.searchParams.set('_v', '20260824-aug12r6');
+                        if (!/mine_mate60_aug12\.html/i.test(location.pathname)) {
                             location.replace(u60.pathname + u60.search + u60.hash);
                             return;
                         }
@@ -127,7 +127,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260823-iphone15pm"></script>
+    <script src="/js/auth.js?v=20260824-mate60ark"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
