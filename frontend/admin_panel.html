@@ -1313,13 +1313,14 @@
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>或<strong>武汉（湖北）个人参保证明</strong>（版式分别对齐浙里办 / 深圳市社保基金管理局清单 / 湖北省社保证明）。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>或<strong>湖南个人参保信息（实缴明细）</strong>（版式分别对齐浙里办 / 深圳清单 / 湖北证明 / 湖南参保证明样张）。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionZj" value="zj" checked> 浙江</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz"> 深圳</label>
-                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
+                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
                             </div>
                         </div>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
@@ -1344,7 +1345,7 @@
 公司名称：杭州千雨千寻文化科技有限公司
 税号：91330102MA7E2YNM2R
 写参保缴费 不要停保"></textarea>
-                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>。默认<strong>正常参保</strong>并自动生成缴费记录。</p>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>。默认<strong>正常参保</strong>并自动生成缴费记录。</p>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>
@@ -1374,7 +1375,7 @@
                                     <label for="sbdyCompany">参保单位</label>
                                     <input type="text" id="sbdyCompany" maxlength="128" placeholder="单位名称">
                                 </div>
-                                <div class="sbdy-zj-only">
+                                <div class="sbdy-zj-hn">
                                     <label for="sbdyCredit">统一社会信用代码</label>
                                     <input type="text" id="sbdyCredit" maxlength="32" placeholder="9131…">
                                 </div>
@@ -1382,17 +1383,17 @@
                                     <label for="sbdyArea">参保地</label>
                                     <input type="text" id="sbdyArea" maxlength="32" value="余杭区">
                                 </div>
-                                <div class="sbdy-sz-wh" hidden>
+                                <div class="sbdy-sz-wh-hn" hidden>
                                     <label for="sbdyUnitCode">单位编号</label>
-                                    <input type="text" id="sbdyUnitCode" maxlength="12" placeholder="如 31572310">
+                                    <input type="text" id="sbdyUnitCode" maxlength="20" placeholder="如 43110000000000083822">
                                 </div>
                                 <div class="sbdy-sz-only" hidden>
                                     <label for="sbdyComputerNo">社保电脑号</label>
                                     <input type="text" id="sbdyComputerNo" maxlength="12" placeholder="可留空自动生成">
                                 </div>
-                                <div class="sbdy-wh-only" hidden>
+                                <div class="sbdy-wh-hn" hidden>
                                     <label for="sbdyPersonNo">个人编号</label>
-                                    <input type="text" id="sbdyPersonNo" maxlength="12" placeholder="可留空自动生成">
+                                    <input type="text" id="sbdyPersonNo" maxlength="20" placeholder="可留空自动生成">
                                 </div>
                                 <div class="sbdy-wh-only" hidden>
                                     <label for="sbdyInsureType">参保险种</label>

@@ -15,6 +15,7 @@ const { PUBLIC_SITE_URL } = require('../shared/config');
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
 const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
 const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
+const SBDY_HN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_hn_render_pdf.py');
 const WH_VERIFY_URL = 'https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html';
 
 /** qrUrl：二维码扫码目标（应为 PDF 样例页 show_url） */
@@ -50,7 +51,9 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
     var py = process.env.SBDY_PYTHON || 'python3';
     var region = String((payload && payload.region) || '').toLowerCase();
     var script = SBDY_RENDER_SCRIPT;
-    if (region === 'wh' || region === 'wuhan' || region === 'hubei' || region === 'hb') {
+    if (region === 'hn' || region === 'hunan' || region === 'hn_official_v1') {
+      script = SBDY_HN_RENDER_SCRIPT;
+    } else if (region === 'wh' || region === 'wuhan' || region === 'hubei' || region === 'hb') {
       script = SBDY_WH_RENDER_SCRIPT;
     } else if (region === 'sz' || region === 'shenzhen') {
       script = SBDY_SZ_RENDER_SCRIPT;
@@ -187,6 +190,285 @@ function isWhRegion(body) {
     r === 'hb' ||
     r === 'wh_official_v1'
   );
+}
+
+function isHnRegion(body) {
+  var r = String((body && (body.region || body.layout)) || '').toLowerCase();
+  return r === 'hn' || r === 'hunan' || r === 'hn_official_v1';
+}
+
+function ymCompact(ym) {
+  var p = parseYm(ym);
+  if (!p) return '';
+  return String(p.y) + pad2(p.m);
+}
+
+function ymRangeLabel(startYm, endYm) {
+  var a = ymCompact(startYm);
+  var b = ymCompact(endYm);
+  if (!a || !b) return '';
+  return a + '-' + b;
+}
+
+function hnAccountDateFromPeriod(periodYm) {
+  var p = parseYm(periodYm);
+  if (!p) return bjStamp12().slice(0, 8);
+  var day = 21 + (p.m % 7);
+  if (day > 28) day = 28;
+  return String(p.y) + pad2(p.m) + pad2(day);
+}
+
+function hnAgencyName(area) {
+  var a = String(area || '').trim();
+  if (!a) return '常德市鼎城区社会保险经办机构';
+  if (/经办机构/.test(a)) return a.substring(0, 32);
+  if (/区|县|市/.test(a)) return (a + '社会保险经办机构').substring(0, 32);
+  return (a + '社会保险经办机构').substring(0, 32);
+}
+
+function hnAgencyShort(area) {
+  var full = hnAgencyName(area);
+  if (full.length <= 6) return full;
+  return full.replace(/社会保险经办机构$/, '').substring(0, 6);
+}
+
+function buildHnRelations(periodStart, periodEnd, credit, company, opts) {
+  opts = opts || {};
+  var snapshotYm = String(opts.snapshot_ym || opts.snapshotYm || '')
+    .replace(/\D/g, '')
+    .substring(0, 6);
+  var fullRange = ymRangeLabel(periodStart, periodEnd);
+  var items = [];
+  if (snapshotYm) {
+    var snapRange = snapshotYm + '-' + snapshotYm;
+    ['企业职工基本养老保险', '工伤保险', '失业保险'].forEach(function (typ) {
+      items.push({ type: typ, range: snapRange });
+    });
+  }
+  if (fullRange) {
+    ['企业职工基本养老保险', '工伤保险', '失业保险'].forEach(function (typ) {
+      items.push({ type: typ, range: fullRange });
+    });
+  }
+  var out = [
+    {
+      credit_code: credit,
+      company_name: company,
+      items: items
+    }
+  ];
+  var extras = opts.extra_employers || opts.extraEmployers || [];
+  if (!Array.isArray(extras)) extras = [];
+  extras.forEach(function (ex) {
+    if (!ex) return;
+    var exCredit = String(ex.credit_code || ex.creditCode || '').trim();
+    var exCompany = String(ex.company_name || ex.companyName || ex.company || '').trim();
+    if (!exCredit || !exCompany) return;
+    var exItems = [];
+    if (fullRange) {
+      ['企业职工基本养老保险', '工伤保险', '失业保险'].forEach(function (typ) {
+        exItems.push({ type: typ, range: fullRange });
+      });
+    }
+    out.push({
+      credit_code: exCredit,
+      company_name: exCompany,
+      items: exItems
+    });
+  });
+  return out;
+}
+
+function pushHnMonthRows(rows, y, m, baseAmt, agencyShort) {
+  var period = String(y) + pad2(m);
+  var periodYm = y + '-' + pad2(m);
+  var accountDate = hnAccountDateFromPeriod(periodYm);
+  var types = [
+    ['工伤保险', 0.014, 0],
+    ['失业保险', 0.007, 0.003],
+    ['企业职工基本养老保险', 0.16, 0.08]
+  ];
+  types.forEach(function (t) {
+    rows.push({
+      period: period,
+      type: t[0],
+      base: baseAmt,
+      unit_pay: round2(baseAmt * t[1]),
+      person_pay: round2(baseAmt * t[2]),
+      flag: '正常',
+      account_date: accountDate,
+      pay_type: '正常应缴',
+      agency: agencyShort
+    });
+  });
+}
+
+function buildHnDetailRows(periodStart, periodEnd, opts) {
+  opts = opts || {};
+  var a = parseYm(periodStart);
+  var b = parseYm(periodEnd);
+  if (!a || !b) return [];
+  var agencyShort = hnAgencyShort(opts.area);
+  var rangeBase = Number(opts.range_base != null ? opts.range_base : opts.base_amount) || 4053;
+  var snapshotYm = String(opts.snapshot_ym || opts.snapshotYm || '')
+    .replace(/\D/g, '')
+    .substring(0, 6);
+  var snapshotBase = Number(opts.snapshot_base != null ? opts.snapshot_base : opts.snapshotBase);
+  if (!isFinite(snapshotBase) || snapshotBase <= 0) snapshotBase = rangeBase;
+  var rows = [];
+  if (snapshotYm && snapshotYm.length === 6) {
+    pushHnMonthRows(
+      rows,
+      Number(snapshotYm.substring(0, 4)),
+      Number(snapshotYm.substring(4, 6)),
+      snapshotBase,
+      agencyShort
+    );
+  }
+  var monthList = [];
+  var y = b.y;
+  var m = b.m;
+  var guard = 0;
+  while (guard < 60) {
+    monthList.push({ y: y, m: m });
+    if (y === a.y && m === a.m) break;
+    m -= 1;
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    }
+    guard += 1;
+  }
+  monthList.forEach(function (mo) {
+    var compact = String(mo.y) + pad2(mo.m);
+    if (snapshotYm && compact === snapshotYm) return;
+    pushHnMonthRows(rows, mo.y, mo.m, rangeBase, agencyShort);
+  });
+  return rows;
+}
+
+function normalizeHnPayload(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var name = String(b.name || '').trim().substring(0, 64);
+  var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
+  var gender = String(b.gender || '').trim().substring(0, 8);
+  if (!gender) {
+    var id = String(idNumber);
+    if (id.length === 18 && /^\d{17}[\dXx]$/.test(id)) {
+      gender = Number(id.charAt(16)) % 2 === 0 ? '女' : '男';
+    } else if (id.length === 15 && /^\d{15}$/.test(id)) {
+      gender = Number(id.charAt(14)) % 2 === 0 ? '女' : '男';
+    } else {
+      gender = '男';
+    }
+  }
+  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
+  var credit = String(b.credit_code || b.creditCode || '').trim().substring(0, 32);
+  var area = String(b.area || '常德市鼎城区').trim().substring(0, 32) || '常德市鼎城区';
+  var unitCode = String(b.unit_code || b.unitCode || '').replace(/\D/g, '');
+  if (!unitCode || unitCode.length < 12) {
+    unitCode = ('431100000000000' + digitsFrom(credit || idNumber, 5)).slice(0, 20);
+  }
+  unitCode = unitCode.substring(0, 20);
+  var personNo = String(b.person_no || b.personNo || '').replace(/\D/g, '');
+  if (!personNo || personNo.length < 12) {
+    personNo = ('43120000000' + digitsFrom(idNumber, 8)).slice(0, 17);
+  }
+  personNo = personNo.substring(0, 20);
+  var periodStart = String(b.period_start || b.periodStart || '').trim();
+  var periodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
+  if (!isFinite(baseAmt) || baseAmt <= 0) baseAmt = 4053;
+  var snapshotYm = String(b.snapshot_ym || b.snapshotYm || '')
+    .replace(/\D/g, '')
+    .substring(0, 6);
+  var snapshotBase = Number(b.snapshot_base != null ? b.snapshot_base : b.snapshotBase);
+  if (!isFinite(snapshotBase) || snapshotBase <= 0) snapshotBase = 4308;
+  var extraEmployers = b.relation_extra || b.relationExtra || b.extra_employers || b.extraEmployers;
+  if (!Array.isArray(extraEmployers)) extraEmployers = [];
+  if (!name || !idNumber) {
+    return { error: '姓名与证件号码必填' };
+  }
+  if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+    return { error: '缴费起止月份格式应为 YYYY-MM' };
+  }
+  var a0 = parseYm(periodStart);
+  var b0 = parseYm(periodEnd);
+  if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
+    var tmp = periodStart;
+    periodStart = periodEnd;
+    periodEnd = tmp;
+  }
+  var accountTime = String(b.account_time || b.accountTime || '').replace(/\D/g, '');
+  if (!accountTime || accountTime.length < 6) {
+    var birthYm = '';
+    if (idNumber.length === 18) {
+      birthYm = idNumber.substring(6, 12);
+    }
+    if (birthYm) {
+      var by = Number(birthYm.substring(0, 4));
+      accountTime = String(by + 18) + birthYm.substring(4, 6);
+    } else {
+      accountTime = '201702';
+    }
+  }
+  accountTime = accountTime.substring(0, 6);
+  var now = new Date(Date.now() + 8 * 3600 * 1000);
+  var valid = new Date(now.getTime() + 90 * 86400 * 1000);
+  var validUntil =
+    String(b.valid_until || b.validUntil || '').trim() ||
+    valid.getUTCFullYear() +
+      '-' +
+      pad2(valid.getUTCMonth() + 1) +
+      '-' +
+      pad2(valid.getUTCDate()) +
+      ' ' +
+      pad2(now.getUTCHours()) +
+      ':' +
+      pad2(now.getUTCMinutes());
+  var detailRows = buildHnDetailRows(periodStart, periodEnd, {
+    base_amount: baseAmt,
+    range_base: baseAmt,
+    snapshot_ym: snapshotYm,
+    snapshot_base: snapshotBase,
+    area: area
+  });
+  if (!detailRows.length) {
+    return { error: '缴费月份区间无效' };
+  }
+  var relations = buildHnRelations(periodStart, periodEnd, credit, company, {
+    snapshot_ym: snapshotYm,
+    extra_employers: extraEmployers
+  });
+  return {
+    region: 'hn',
+    layout: 'hn_official_v1',
+    name: name,
+    id_number: idNumber,
+    gender: gender,
+    company_name: company,
+    credit_code: credit,
+    unit_code: unitCode,
+    person_no: personNo,
+    account_time: accountTime,
+    agency_name: hnAgencyName(area),
+    agency_short: hnAgencyShort(area),
+    area: area,
+    valid_until: validUntil,
+    purpose: String(b.purpose || '本人查询').trim().substring(0, 16) || '本人查询',
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_label:
+      formatYmCn(parseYm(periodStart).y, parseYm(periodStart).m) +
+      '-' +
+      formatYmCn(parseYm(periodEnd).y, parseYm(periodEnd).m),
+    base_amount: baseAmt,
+    snapshot_ym: snapshotYm,
+    snapshot_base: snapshotBase,
+    relations: relations,
+    detail_rows: detailRows,
+    months: detailRows
+  };
 }
 
 function digitsFrom(s, n) {
@@ -477,6 +759,9 @@ function normalizeWhPayload(body) {
 }
 
 function normalizePayload(body) {
+  if (isHnRegion(body)) {
+    return normalizeHnPayload(body);
+  }
   if (isWhRegion(body)) {
     return normalizeWhPayload(body);
   }
@@ -1322,6 +1607,8 @@ async function handleAdminSbdyDemoGenerate(req, res) {
       var stamp = bjStamp12();
       authCode = formatWhAuthCode(stamp);
       normalized.watermark_id = stamp + '-' + randDigits(10);
+    } else if (normalized.region === 'hn') {
+      authCode = randToken(16);
     } else {
       authCode = randDigits(20);
     }
@@ -1379,7 +1666,9 @@ async function handleAdminSbdyDemoList(req, res) {
             ? 'sz'
             : payload && payload.region === 'wh'
               ? 'wh'
-              : 'zj',
+              : payload && payload.region === 'hn'
+                ? 'hn'
+                : 'zj',
         created_by_admin: r.created_by_admin,
         created_at: r.created_at,
         links: links
@@ -1482,8 +1771,10 @@ async function handlePublicSbdyDemoShow(req, res) {
       payload &&
       payload.region !== 'sz' &&
       payload.region !== 'wh' &&
+      payload.region !== 'hn' &&
       payload.layout !== 'sz_official_v1' &&
-      payload.layout !== 'wh_official_v1'
+      payload.layout !== 'wh_official_v1' &&
+      payload.layout !== 'hn_official_v1'
     ) {
       payload.months = migrateMonthsForShow(payload);
     }

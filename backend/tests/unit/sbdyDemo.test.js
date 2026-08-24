@@ -172,4 +172,62 @@ describe('sbdyDemo', () => {
     expect(html.indexOf('202409')).toBeLessThan(html.indexOf('202404'));
     expect(html.indexOf('202403')).toBeLessThan(html.indexOf('202310'));
   });
+
+  it('normalizePayload builds Hunan detail rows and relations', () => {
+    const p = normalizePayload({
+      region: 'hn',
+      name: '杨坤斌',
+      id_number: '430522199711297813',
+      gender: '男',
+      company_name: '湖南旭昱新能源科技有限公司',
+      credit_code: '91430703MA4PYMX53L',
+      unit_code: '43110000000000083822',
+      person_no: '43120000000103664059',
+      area: '常德市鼎城区',
+      period_start: '2024-05',
+      period_end: '2025-04',
+      base_amount: 4053
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('hn');
+    expect(p.layout).toBe('hn_official_v1');
+    expect(p.person_no).toBe('43120000000103664059');
+    expect(p.unit_code).toBe('43110000000000083822');
+    expect(p.agency_name).toContain('常德市鼎城区');
+    expect(p.relations.length).toBe(1);
+    expect(p.relations[0].items.length).toBe(3);
+    expect(p.detail_rows.length).toBe(36);
+    expect(p.detail_rows[0].type).toBe('工伤保险');
+    expect(p.detail_rows[0].unit_pay).toBeCloseTo(56.74, 2);
+    expect(p.detail_rows[2].type).toBe('企业职工基本养老保险');
+    expect(p.detail_rows[2].person_pay).toBeCloseTo(324.24, 2);
+  });
+
+  it('normalizePayload builds Hunan snapshot rows and extra employer', () => {
+    const p = normalizePayload({
+      region: 'hn',
+      name: '杨坤斌',
+      id_number: '430522199711297813',
+      company_name: '湖南旭昱新能源科技有限公司',
+      credit_code: '91430703MA4PYMX53L',
+      area: '常德市鼎城区',
+      period_start: '2024-05',
+      period_end: '2025-12',
+      base_amount: 4053,
+      snapshot_ym: '202604',
+      snapshot_base: 4308,
+      relation_extra: [
+        {
+          credit_code: '91430700MAD948AM6K',
+          company_name: '湖南鑫鼎晟机械制造有限公司'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.relations.length).toBe(2);
+    expect(p.relations[0].items.length).toBe(6);
+    expect(p.detail_rows[0].period).toBe('202604');
+    expect(p.detail_rows[0].base).toBe(4308);
+    expect(p.detail_rows[3].base).toBe(4053);
+  });
 });
