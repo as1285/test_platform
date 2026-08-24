@@ -16,6 +16,7 @@ const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.p
 const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
 const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
 const SBDY_HN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_hn_render_pdf.py');
+const SBDY_WATERMARK_SCRIPT = path.join(__dirname, '../../scripts/sbdy_watermark.py');
 const WH_VERIFY_URL = 'https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html';
 
 /** qrUrl：二维码扫码目标（应为 PDF 样例页 show_url） */
@@ -94,6 +95,92 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
       }
     });
   });
+}
+
+/**
+ * 未付费演示：给已渲染 PDF 每页盖「演示样例」水印。
+ * 失败时返回原始 PDF（宁可少水印也不阻断查看/下载）。
+ */
+function applySbdyDemoWatermark(pdfBuffer) {
+  return new Promise(function (resolve) {
+    if (!Buffer.isBuffer(pdfBuffer) || !pdfBuffer.length) {
+      return resolve(pdfBuffer);
+    }
+    var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sbdywm-'));
+    var inPdf = path.join(tmpDir, 'in.pdf');
+    var outPdf = path.join(tmpDir, 'out.pdf');
+    function cleanup() {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch (e) {}
+    }
+    try {
+      fs.writeFileSync(inPdf, pdfBuffer);
+    } catch (e) {
+      cleanup();
+      return resolve(pdfBuffer);
+    }
+    var py = process.env.SBDY_PYTHON || 'python3';
+    var child = spawn(py, [SBDY_WATERMARK_SCRIPT, inPdf, outPdf], {
+      stdio: ['ignore', 'ignore', 'pipe']
+    });
+    var err = '';
+    var settled = false;
+    child.stderr.on('data', function (d) {
+      err += String(d || '');
+    });
+    var timer = setTimeout(function () {
+      try {
+        child.kill('SIGKILL');
+      } catch (e) {}
+    }, 30000);
+    function finish(buf) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(buf);
+    }
+    child.on('error', function () {
+      finish(pdfBuffer);
+    });
+    child.on('close', function (code) {
+      try {
+        if (code === 0 && fs.existsSync(outPdf)) {
+          var out = fs.readFileSync(outPdf);
+          if (out && out.length) return finish(out);
+        }
+      } catch (e) {}
+      if (err) console.error('[sbdy-demo] watermark', err.trim());
+      finish(pdfBuffer);
+    });
+  });
+}
+
+/** 未付费演示：HTML 预览注入「演示样例」平铺水印（不改 renderCertHtml，避免影响单测/正式版式） */
+function injectHtmlDemoWatermark(html) {
+  var spans = '';
+  var row = 0;
+  var y;
+  var x;
+  for (y = 0; y < 2400; y += 165) {
+    for (x = -80 + (row % 2 ? 120 : 0); x < 2400; x += 240) {
+      spans += '<span style="left:' + x + 'px;top:' + y + 'px">演示样例</span>';
+    }
+    row += 1;
+  }
+  var overlay =
+    '<style>.sbdy-demo-wm{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden}' +
+    '.sbdy-demo-wm span{position:absolute;color:rgba(219,41,41,.13);font-size:34px;font-weight:700;' +
+    'transform:rotate(-28deg);transform-origin:left top;white-space:nowrap;' +
+    "font-family:'Noto Serif CJK SC',SimSun,serif}</style>" +
+    '<div class="sbdy-demo-wm" aria-hidden="true">' +
+    spans +
+    '</div>';
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, overlay + '</body>');
+  }
+  return html + overlay;
 }
 
 function escHtml(s) {
@@ -509,15 +596,24 @@ function buildMonthRows(periodStart, periodEnd, opts) {
   var m = a.m;
   var guard = 0;
   var unitCode = opts.credit_code || '';
+  /* 多段任职：逐月单位编号映射（YYYY-MM → 信用代码），缺失月回退主单位 */
+  var monthUnits =
+    opts.month_units && typeof opts.month_units === 'object' ? opts.month_units : null;
   var area = opts.area || '';
   var baseAmt = Number(opts.base_amount) || 0;
   var pensionPay = Number(opts.pension_pay) || 0;
   var unempPay = Number(opts.unemployment_pay) || 0;
   while (guard < 48) {
+    var ym = String(y) + '-' + String(m).padStart(2, '0');
+    var rowUnit = unitCode;
+    if (monthUnits) {
+      var mu = monthUnits[ym];
+      if (mu != null && String(mu).trim()) rowUnit = String(mu).trim();
+    }
     rows.push({
       year: y,
       month: String(m).padStart(2, '0'),
-      unit_code: unitCode,
+      unit_code: rowUnit,
       area: area,
       pension_base: baseAmt,
       pension_pay: pensionPay,
@@ -772,9 +868,30 @@ function normalizePayload(body) {
   var name = String(b.name || '').trim().substring(0, 64);
   var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
   var gender = String(b.gender || '').trim().substring(0, 8) || '女';
-  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
-  var credit = String(b.credit_code || b.creditCode || '').trim().substring(0, 32);
+  var company = String(b.company_name || b.company || '').trim().substring(0, 200);
+  var credit = String(b.credit_code || b.creditCode || '').trim().substring(0, 200);
   var area = String(b.area || '余杭区').trim().substring(0, 32);
+  /* 多段公司：信用代码可为「码A、码B」拼接；主单位取第一个作为缺失月回退 */
+  var creditList = credit
+    ? credit
+        .split(/[、,，;；/|]+/)
+        .map(function (s) {
+          return s.trim();
+        })
+        .filter(Boolean)
+    : [];
+  var primaryCredit = creditList.length ? creditList[0] : credit;
+  /* 逐月单位编号映射（预填按税务记录带出）：{ 'YYYY-MM': '信用代码' } */
+  var monthUnits = null;
+  if (b.month_units && typeof b.month_units === 'object' && !Array.isArray(b.month_units)) {
+    var mu0 = {};
+    Object.keys(b.month_units).forEach(function (k) {
+      var key = String(k).trim();
+      var v = b.month_units[k] == null ? '' : String(b.month_units[k]).trim().substring(0, 40);
+      if (/^\d{4}-\d{2}$/.test(key) && v) mu0[key] = v;
+    });
+    if (Object.keys(mu0).length) monthUnits = mu0;
+  }
   var periodStart = String(b.period_start || b.periodStart || '').trim();
   var periodEnd = String(b.period_end || b.periodEnd || '').trim();
   var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
@@ -810,7 +927,8 @@ function normalizePayload(body) {
     displayUnit = company ? company + '（' + credit + '）' : credit;
   }
   var months = buildMonthRows(periodStart, periodEnd, {
-    credit_code: credit,
+    credit_code: primaryCredit,
+    month_units: monthUnits,
     area: area,
     base_amount: baseAmt,
     pension_pay: pensionPay,
@@ -1594,44 +1712,79 @@ function renderCertHtml(payload, links, opts) {
   );
 }
 
+/** 生成核心（admin 与 C 端共用）：归一化→授权码/令牌→入库→链接 */
+async function createSbdyDemoCert(req, body, creator) {
+  var normalized = normalizePayload(body);
+  if (normalized.error) {
+    return { error: normalized.error };
+  }
+  /* 未付费演示：入库标记 demo，公开 show 渲染时按此加「演示样例」水印 */
+  if (
+    body &&
+    (body.demo === true ||
+      body.demo === 1 ||
+      body.demo === '1' ||
+      String(body.demo).toLowerCase() === 'true')
+  ) {
+    normalized.demo = true;
+  }
+  var authCode;
+  if (normalized.region === 'sz') {
+    authCode = randToken(16);
+  } else if (normalized.region === 'wh') {
+    var stamp = bjStamp12();
+    authCode = formatWhAuthCode(stamp);
+    normalized.watermark_id = stamp + '-' + randDigits(10);
+  } else if (normalized.region === 'hn') {
+    authCode = randToken(16);
+  } else {
+    authCode = randDigits(20);
+  }
+  var token = 'SBDY' + randToken(24);
+  var pool = getPool();
+  var byAdmin = creator && creator.admin ? String(creator.admin).slice(0, 64) : null;
+  var byUser = creator && creator.user ? String(creator.user).slice(0, 64) : null;
+  try {
+    await pool.execute(
+      `INSERT INTO sbdy_demo_certs (auth_code, token, payload_json, created_by_admin, created_by_user)
+       VALUES (?, ?, ?, ?, ?)`,
+      [authCode, token, JSON.stringify(normalized), byAdmin, byUser]
+    );
+  } catch (eIns) {
+    /* 迁移未执行时兜底旧列集 */
+    if (/Unknown column 'created_by_user'/i.test(String(eIns && eIns.message))) {
+      await pool.execute(
+        `INSERT INTO sbdy_demo_certs (auth_code, token, payload_json, created_by_admin)
+         VALUES (?, ?, ?, ?)`,
+        [authCode, token, JSON.stringify(normalized), byAdmin || (byUser ? 'c:' + byUser : null)]
+      );
+    } else {
+      throw eIns;
+    }
+  }
+  return {
+    auth_code: authCode,
+    token: token,
+    links: buildLinks(req, authCode, token),
+    payload: normalized
+  };
+}
+
 async function handleAdminSbdyDemoGenerate(req, res) {
   try {
-    var normalized = normalizePayload(req.body);
-    if (normalized.error) {
-      return res.status(400).json({ code: 400, msg: normalized.error });
+    var made = await createSbdyDemoCert(req, req.body, {
+      admin: req.admin && req.admin.username ? String(req.admin.username) : null
+    });
+    if (made.error) {
+      return res.status(400).json({ code: 400, msg: made.error });
     }
-    var authCode;
-    if (normalized.region === 'sz') {
-      authCode = randToken(16);
-    } else if (normalized.region === 'wh') {
-      var stamp = bjStamp12();
-      authCode = formatWhAuthCode(stamp);
-      normalized.watermark_id = stamp + '-' + randDigits(10);
-    } else if (normalized.region === 'hn') {
-      authCode = randToken(16);
-    } else {
-      authCode = randDigits(20);
-    }
-    var token = 'SBDY' + randToken(24);
-    var pool = getPool();
-    await pool.execute(
-      `INSERT INTO sbdy_demo_certs (auth_code, token, payload_json, created_by_admin)
-       VALUES (?, ?, ?, ?)`,
-      [
-        authCode,
-        token,
-        JSON.stringify(normalized),
-        req.admin && req.admin.username ? String(req.admin.username) : null
-      ]
-    );
-    var links = buildLinks(req, authCode, token);
     return res.json({
       code: 200,
       data: {
-        auth_code: authCode,
-        token: token,
-        links: links,
-        payload: normalized,
+        auth_code: made.auth_code,
+        token: made.token,
+        links: made.links,
+        payload: made.payload,
         demo_notice: '演示样例 · 非正式证明'
       }
     });
@@ -1784,11 +1937,17 @@ async function handlePublicSbdyDemoShow(req, res) {
       String(req.query.view || '').toLowerCase() === 'html';
     if (wantHtml) {
       var html = renderCertHtml(payload, links, { authCode: row.auth_code });
+      if (payload && payload.demo) {
+        html = injectHtmlDemoWatermark(html);
+      }
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       return res.status(200).send(html);
     }
     var pdfBuf = await renderSbdyPdfBuffer(payload, row.auth_code, links.show_url);
+    if (payload && payload.demo) {
+      pdfBuf = await applySbdyDemoWatermark(pdfBuf);
+    }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="show.pdf"');
     res.setHeader('Cache-Control', 'private, max-age=60');
@@ -1813,5 +1972,6 @@ function getHandlers() {
 module.exports = {
   getHandlers: getHandlers,
   renderCertHtml: renderCertHtml,
-  normalizePayload: normalizePayload
+  normalizePayload: normalizePayload,
+  createSbdyDemoCert: createSbdyDemoCert
 };

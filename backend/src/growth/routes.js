@@ -28,6 +28,8 @@ function registerGrowthRoutes(app, deps) {
   app.post('/api/public/guest-session', h.handlePublicGuestSession);
   app.get('/api/public/sbdy-demo/verify', h.handlePublicSbdyDemoVerify);
   app.get('/api/public/sbdy-demo/show/:token', h.handlePublicSbdyDemoShow);
+  app.get('/api/public/gjj-demo/verify', h.handlePublicGjjDemoVerify);
+  app.get('/api/public/gjj-demo/show/:token', h.handlePublicGjjDemoShow);
 }
 
 module.exports = { registerGrowthRoutes };

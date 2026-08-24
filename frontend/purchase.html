@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260824-mate60ark"></script>
+    <script src="/js/auth.js?v=20260824-mate60ark6"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -979,7 +979,7 @@
         <details class="purchase-fold" id="foldMoreServices">
             <summary>
                 <span>其它服务</span>
-                <span class="purchase-fold-hint">下载 / 离职证明 / 在职证明 / 社保</span>
+                <span class="purchase-fold-hint">下载 / 离职证明 / 在职证明 / 社保演示</span>
             </summary>
             <div class="purchase-fold-body">
                 <div class="card download-box" id="cardDownloadApp" hidden>
@@ -1004,6 +1004,15 @@
                     </div>
                     <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
                     <a class="btn btn-primary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
+                </div>
+
+                <div class="card" id="cardSbdyDemo">
+                    <div class="card-head">
+                        <div class="card-title">社保参保证明（演示样例）</div>
+                        <span class="badge-auto">¥199 去水印</span>
+                    </div>
+                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥199 后终身无限次生成无水印版本。带二维码核验，支持浙江 / 深圳 / 武汉 / 湖南四种版式。</p>
+                    <a class="btn btn-primary" id="btnSbdyDemoEntry" href="sbdy_demo.html?from=purchase">去生成</a>
                 </div>
 
                 <div class="card" id="cardShebaoPhoto">
@@ -1208,6 +1217,7 @@
                     if (
                         path.indexOf('lizhi_cert') >= 0 ||
                         path.indexOf('zaizhi_cert') >= 0 ||
+                        path.indexOf('sbdy_demo') >= 0 ||
                         path.indexOf('purchase') >= 0 ||
                         path.indexOf('login') >= 0 ||
                         path.indexOf('register') >= 0

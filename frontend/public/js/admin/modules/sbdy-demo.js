@@ -2,6 +2,9 @@
  * UX：预填 → 分步表单 → 生成结果可预览/复制（参考 QR 平台与参保证明字段口径）
  */
 (function (global) {
+  /* 预填按税务记录带出的逐月单位编号映射（YYYY-MM → 信用代码），生成时随 month_units 上送 */
+  var prefillMonthUnits = {};
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -413,6 +416,7 @@
   }
 
   function applyParsedToForm(parsed) {
+    prefillMonthUnits = {};
     if (parsed.region === 'sz') {
       var szRadio = document.getElementById('sbdyRegionSz');
       if (szRadio) szRadio.checked = true;
@@ -746,6 +750,10 @@
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate')
     };
+    /* 多段任职：逐月单位编号（浙江版按月填各自单位）。仅在有预填映射时上送 */
+    if (region === 'zj' && prefillMonthUnits && Object.keys(prefillMonthUnits).length) {
+      body.month_units = prefillMonthUnits;
+    }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
       body.snapshot_ym = '202604';
       body.snapshot_base = 4308;
@@ -802,6 +810,7 @@
   }
 
   function fillSample() {
+    prefillMonthUnits = {};
     var now = new Date();
     var bj = new Date(now.getTime() + 8 * 3600 * 1000);
     var endY = bj.getUTCFullYear();
@@ -956,11 +965,119 @@
     setStatus('已填充示例：' + sample.name + '（可再点生成）', false);
   }
 
+  /**
+   * 从预填详情汇总单位与税号：
+   * - 依据税务记录（含年月+公司+税号）按时间倒序去重，得到多家单位
+   * - 传入年月区间则只取区间内单位；并返回记录的最早/最晚月用于回填缴费区间
+   * - 单位→税号映射同时取自 employers.credit_code 与 tax_records.company_tax_id
+   */
+  function collectEmployerInfo(d, rangeStart, rangeEnd) {
+    d = d || {};
+    var records = Array.isArray(d.tax_records) ? d.tax_records : [];
+    var employers = Array.isArray(d.employers) ? d.employers : [];
+    var creditByCompany = {};
+    employers.forEach(function (e) {
+      var cn = e && e.company_name ? String(e.company_name).trim() : '';
+      var cc = e && e.credit_code ? String(e.credit_code).trim() : '';
+      if (cn && cc && !creditByCompany[cn]) creditByCompany[cn] = cc;
+    });
+    records.forEach(function (r) {
+      var cn = r && r.company_name ? String(r.company_name).trim() : '';
+      var cc = r && r.company_tax_id ? String(r.company_tax_id).trim() : '';
+      if (cn && cc && !creditByCompany[cn]) creditByCompany[cn] = cc;
+    });
+    var startN = rangeStart ? ymToNum(rangeStart) : null;
+    var endN = rangeEnd ? ymToNum(rangeEnd) : null;
+    var recs = [];
+    records.forEach(function (r) {
+      var y = Number(r.year);
+      var m = Number(r.month);
+      if (!y || !m) return;
+      recs.push({
+        n: y * 12 + m,
+        ym: y + '-' + pad2(m),
+        company: r.company_name ? String(r.company_name).trim() : '',
+        credit: r.company_tax_id ? String(r.company_tax_id).trim() : ''
+      });
+    });
+    recs.sort(function (a, b) {
+      return b.n - a.n;
+    });
+    var companies = [];
+    var seen = {};
+    var monthUnits = {};
+    var minN = null;
+    var maxN = null;
+    recs.forEach(function (r) {
+      if (startN != null && r.n < startN) return;
+      if (endN != null && r.n > endN) return;
+      if (minN == null || r.n < minN) minN = r.n;
+      if (maxN == null || r.n > maxN) maxN = r.n;
+      if (r.company && !seen[r.company]) {
+        seen[r.company] = 1;
+        companies.push(r.company);
+      }
+      if (r.credit && !monthUnits[r.ym]) monthUnits[r.ym] = r.credit;
+    });
+    if (!companies.length) {
+      employers.forEach(function (e) {
+        var cn = e && e.company_name ? String(e.company_name).trim() : '';
+        if (cn && !seen[cn]) {
+          seen[cn] = 1;
+          companies.push(cn);
+        }
+      });
+      (Array.isArray(d.companies) ? d.companies : []).forEach(function (c) {
+        var cn = String(c || '').trim();
+        if (cn && !seen[cn]) {
+          seen[cn] = 1;
+          companies.push(cn);
+        }
+      });
+    }
+    var credits = [];
+    var creditSeen = {};
+    companies.forEach(function (cn) {
+      var cc = creditByCompany[cn];
+      if (cc && !creditSeen[cc]) {
+        creditSeen[cc] = 1;
+        credits.push(cc);
+      }
+    });
+    if (!credits.length && Array.isArray(d.company_tax_ids)) {
+      d.company_tax_ids.forEach(function (c) {
+        var cc = String(c || '').trim();
+        if (cc && !creditSeen[cc]) {
+          creditSeen[cc] = 1;
+          credits.push(cc);
+        }
+      });
+    }
+    return {
+      companies: companies,
+      credits: credits,
+      monthUnits: monthUnits,
+      minYm: minN != null ? numToYm(minN) : '',
+      maxYm: maxN != null ? numToYm(maxN) : ''
+    };
+  }
+
   function prefill() {
     var username = val('sbdyPrefillUser');
     if (!username) {
       setStatus('请输入用户名', true);
       return;
+    }
+    var rangeStart = normalizeYm(val('sbdyPrefillStart'));
+    var rangeEnd = normalizeYm(val('sbdyPrefillEnd'));
+    if (rangeStart && rangeEnd) {
+      var ra = ymToNum(rangeStart);
+      var rb = ymToNum(rangeEnd);
+      if (ra != null && rb != null && ra > rb) {
+        var tmp = rangeStart;
+        rangeStart = rangeEnd;
+        rangeEnd = tmp;
+      }
     }
     setStatus('加载用户数据…', false);
     fetchAdmin('/api/admin/sbdy-demo/prefill?username=' + encodeURIComponent(username))
@@ -982,13 +1099,18 @@
         setField('sbdyIdNumber', id);
         var g = genderFromId(id);
         if (g) setField('sbdyGender', g);
-        var employers = d.employers || [];
-        var companies = d.companies || [];
-        var company = '';
-        if (employers.length) company = employers[0].company_name || '';
-        if (!company && companies.length) company = companies[0];
-        if (company) setField('sbdyCompany', company);
-        setStatus('已预填「' + username + '」（请核对单位与缴费月份）', false);
+        var info = collectEmployerInfo(d, rangeStart, rangeEnd);
+        prefillMonthUnits = info.monthUnits || {};
+        if (info.companies.length) setField('sbdyCompany', info.companies.join('、'));
+        if (info.credits.length) setField('sbdyCredit', info.credits.join('、'));
+        var ps = rangeStart || info.minYm;
+        var pe = rangeEnd || info.maxYm;
+        if (ps) setField('sbdyPeriodStart', ps);
+        if (pe) setField('sbdyPeriodEnd', pe);
+        var parts = ['已预填「' + username + '」'];
+        if (info.companies.length) parts.push(info.companies.length + ' 家单位');
+        if (ps && pe) parts.push('区间 ' + ps + '～' + pe);
+        setStatus(parts.join(' · ') + '（请核对）', false);
       })
       .catch(function (e) {
         var msg = e && e.message ? e.message : '网络错误';

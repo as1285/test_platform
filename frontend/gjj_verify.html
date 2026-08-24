@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>住房公积金对账单演示样例核验</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f6f8; color: #1f2937; }
+    .wrap { max-width: 480px; margin: 0 auto; padding: 24px 16px 48px; }
+    .banner { background: #b45309; color: #fff; border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .hint { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
+    label { display: block; font-size: 13px; margin-bottom: 6px; }
+    input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; }
+    button { margin-top: 12px; width: 100%; padding: 12px; border: 0; border-radius: 8px; background: #1e6fff; color: #fff; font-size: 15px; font-weight: 600; }
+    .card { margin-top: 16px; background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .row:last-child { border-bottom: 0; }
+    .k { color: #6b7280; }
+    .ok { color: #047857; font-weight: 600; }
+    .err { color: #b91c1c; }
+    a { color: #1e6fff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="banner">本页仅核验「演示样例」。非正式住房公积金对账单，不能用于贷款、购房、提取等正式用途。</div>
+    <h1>演示样例核验</h1>
+    <p class="hint">输入生成时的授权码进行核验（20 位数字）。</p>
+    <label for="code">授权码</label>
+    <input id="code" autocomplete="off" placeholder="授权码">
+    <button type="button" id="btn">核验</button>
+    <div id="out" class="card" hidden></div>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search || '');
+      var codeEl = document.getElementById('code');
+      var out = document.getElementById('out');
+      var initial = (params.get('code') || '').trim();
+      if (initial) codeEl.value = initial;
+
+      function render(data) {
+        out.hidden = false;
+        if (!data || !data.found) {
+          out.innerHTML = '<div class="err">未找到该授权码对应的演示样例</div>';
+          return;
+        }
+        out.innerHTML =
+          '<div class="ok">' + (data.notice || '演示样例核验通过') + '</div>' +
+          '<div class="row"><span class="k">姓名</span><span>' + (data.name || '—') + '</span></div>' +
+          '<div class="row"><span class="k">证件号</span><span>' + (data.id_number_mask || '—') + '</span></div>' +
+          '<div class="row"><span class="k">缴存单位</span><span>' + (data.deposit_unit || '—') + '</span></div>' +
+          '<div class="row"><span class="k">对账区间</span><span>' + (data.statement_label || '—') + '</span></div>' +
+          '<div class="row"><span class="k">账户余额</span><span>' + (data.balance || '—') + '</span></div>' +
+          '<div class="row"><span class="k">打印日期</span><span>' + (data.print_date || '—') + '</span></div>' +
+          (data.show_url
+            ? '<div class="row"><span class="k">样例页</span><span><a href="' + data.show_url + '" target="_blank" rel="noopener">打开</a></span></div>'
+            : '');
+      }
+
+      function verify() {
+        var code = (codeEl.value || '').trim();
+        if (!code) {
+          out.hidden = false;
+          out.innerHTML = '<div class="err">请输入授权码</div>';
+          return;
+        }
+        out.hidden = false;
+        out.innerHTML = '核验中…';
+        fetch('/api/public/gjj-demo/verify?code=' + encodeURIComponent(code))
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.code === 200) render(j.data);
+            else {
+              out.innerHTML = '<div class="err">' + ((j && j.msg) || '核验失败') + '</div>';
+            }
+          })
+          .catch(function () {
+            out.innerHTML = '<div class="err">网络错误</div>';
+          });
+      }
+
+      document.getElementById('btn').addEventListener('click', verify);
+      if (initial) verify();
+    })();
+  </script>
+</body>
+</html>

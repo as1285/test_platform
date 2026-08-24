@@ -1141,6 +1141,7 @@
                 'user-login-log': 1,
                 'server-monitor': 1,
                 'sbdy-demo': 1,
+                'gjj-demo': 1,
                 'lizhi-cert': 1,
                 'zaizhi-cert': 1,
                 'ylbx-ps': 1,
@@ -1260,6 +1261,13 @@
                     loadSbdyDemoPage();
                 } else {
                     callAdminModuleLoadPage('sbdy-demo');
+                }
+            }
+            if (pageKey === 'gjj-demo') {
+                if (typeof loadGjjDemoPage === 'function') {
+                    loadGjjDemoPage();
+                } else {
+                    callAdminModuleLoadPage('gjj-demo');
                 }
             }
             if (pageKey === 'lizhi-cert') {
@@ -6558,6 +6566,7 @@
             'downline-admins': '下线管理员',
             'server-monitor': '监控',
             'sbdy-demo': '社保演示',
+            'gjj-demo': '公积金演示',
             'lizhi-cert': '离职证明',
             'zaizhi-cert': '在职证明',
             'ylbx-ps': '社保图片PS',

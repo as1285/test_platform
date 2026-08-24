@@ -1328,9 +1328,18 @@
                                 <label for="sbdyPrefillUser">按用户名预填</label>
                                 <input type="text" id="sbdyPrefillUser" maxlength="64" placeholder="注册用户名">
                             </div>
+                            <div>
+                                <label for="sbdyPrefillStart">预填起月（可选）</label>
+                                <input type="month" id="sbdyPrefillStart">
+                            </div>
+                            <div>
+                                <label for="sbdyPrefillEnd">预填止月（可选）</label>
+                                <input type="month" id="sbdyPrefillEnd">
+                            </div>
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
                             </div>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>多家单位自动按「、」拼接</strong>，浙江版<strong>缴费明细按月填各自单位编号</strong>。填了预填起止月则只取该区间内单位并同步设为缴费起止月；不填则取全部记录的最早～最晚月。</p>
                         </div>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
@@ -1477,6 +1486,161 @@
                                     </tr>
                                 </thead>
                                 <tbody id="sbdyDemoListTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-gjj-demo" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">生成带核验码的住房公积金个人年度对账单演示 PDF（非正式）</p></div>
+                    <section>
+                        <h2>公积金演示生成</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">生成<strong>杭州住房公积金管理中心「一般住房公积金个人年度对账单（自助打印）」</strong>演示样例（版式对齐自助打印样张）。按<strong>汇缴月份区间</strong>与<strong>月缴存额</strong>自动生成「期初 → 逐月汇缴 → 可选跨机构转移」明细并累计余额。演示样例带核验码，非正式对账单。</p></details>
+                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                            <div>
+                                <label for="gjjPrefillUser">按用户名预填</label>
+                                <input type="text" id="gjjPrefillUser" maxlength="64" placeholder="注册用户名">
+                            </div>
+                            <div>
+                                <label for="gjjPrefillStart">预填起月（可选）</label>
+                                <input type="month" id="gjjPrefillStart">
+                            </div>
+                            <div>
+                                <label for="gjjPrefillEnd">预填止月（可选）</label>
+                                <input type="month" id="gjjPrefillEnd">
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="button" class="btn-page" id="gjjPrefillBtn">预填</button>
+                            </div>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号与缴存单位；<strong>多家单位自动按「、」拼接</strong>。填了预填起止月则只取该区间内单位并同步设为汇缴起止月；不填则取全部记录的最早～最晚月。</p>
+                        </div>
+                        <div class="form-row form-stack" style="max-width:880px;">
+                            <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
+                            <div>
+                                <label for="gjjPasteTemplate">粘贴客户信息（姓名/身份证/单位/月缴存额/汇缴时间等）</label>
+                                <textarea id="gjjPasteTemplate" rows="7" maxlength="4000" placeholder="姓名:王梓涵
+身份证号371323199701195223
+单位：杭州云启信息技术有限公司
+月缴存额:638
+汇缴时间:2025.9-2026.7
+转移金额:2015.65"></textarea>
+                                <p class="hint mt-4 mb-0">支持「2025.9-2026.7」「25年9月到26年7月」等写法；可写<strong>个人客户号 / 资金账号 / 期初余额 / 转移金额</strong>。默认<strong>正常</strong>缴存并自动生成汇缴明细。</p>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="btnGjjPasteFill">解析填入</button>
+                                <button type="button" class="btn-primary" id="btnGjjPasteGenerate">解析并生成</button>
+                                <button type="button" class="btn-page" id="btnGjjPasteClear">清空模版</button>
+                            </div>
+                            <div class="admin-tool-step">① 身份与账户</div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="gjjName">姓名</label>
+                                    <input type="text" id="gjjName" maxlength="64" placeholder="如：王梓涵">
+                                </div>
+                                <div>
+                                    <label for="gjjIdNumber">身份证号码</label>
+                                    <input type="text" id="gjjIdNumber" maxlength="32" placeholder="身份证号">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="gjjCustomerNo">个人客户号</label>
+                                    <input type="text" id="gjjCustomerNo" maxlength="20" placeholder="可留空自动生成">
+                                </div>
+                                <div>
+                                    <label for="gjjFundAccount">资金账号</label>
+                                    <input type="text" id="gjjFundAccount" maxlength="24" placeholder="可留空自动生成">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div style="flex:1;min-width:240px;">
+                                    <label for="gjjDepositUnit">当前缴存单位</label>
+                                    <input type="text" id="gjjDepositUnit" maxlength="128" placeholder="单位名称">
+                                </div>
+                                <div>
+                                    <label for="gjjDepositStatus">当前缴存状态</label>
+                                    <input type="text" id="gjjDepositStatus" maxlength="16" value="正常">
+                                </div>
+                            </div>
+                            <div class="admin-tool-step">② 汇缴区间与金额</div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="gjjPeriodStart">汇缴起月</label>
+                                    <input type="month" id="gjjPeriodStart">
+                                </div>
+                                <div>
+                                    <label for="gjjPeriodEnd">汇缴止月</label>
+                                    <input type="month" id="gjjPeriodEnd">
+                                </div>
+                                <div>
+                                    <label for="gjjMonthlyDeposit">月缴存额（元）</label>
+                                    <input type="number" id="gjjMonthlyDeposit" value="638" step="0.01">
+                                </div>
+                                <div>
+                                    <label for="gjjOpeningBalance">期初余额（元）</label>
+                                    <input type="number" id="gjjOpeningBalance" value="0" step="0.01">
+                                </div>
+                            </div>
+                            <details class="page-hint-details admin-tool-advanced">
+                                <summary>跨机构转移 / 对账日期 / 打印日期（可选）</summary>
+                                <div class="form-row flex-wrap gap-10 mt-8">
+                                    <div>
+                                        <label for="gjjTransferAmount">转移金额（元，留空则不含）</label>
+                                        <input type="number" id="gjjTransferAmount" step="0.01" placeholder="如 2015.65">
+                                    </div>
+                                    <div>
+                                        <label for="gjjTransferDate">转移记账日期</label>
+                                        <input type="date" id="gjjTransferDate">
+                                    </div>
+                                    <div style="min-width:220px;">
+                                        <label for="gjjTransferSummary">转移摘要</label>
+                                        <input type="text" id="gjjTransferSummary" maxlength="40" value="跨机构个人账户余额转移">
+                                    </div>
+                                    <div>
+                                        <label for="gjjDepositDay">汇缴记账日</label>
+                                        <input type="number" id="gjjDepositDay" value="23" min="1" max="28" step="1">
+                                    </div>
+                                </div>
+                                <div class="form-row flex-wrap gap-10 mt-8">
+                                    <div>
+                                        <label for="gjjStatementStart">对账开始日期</label>
+                                        <input type="date" id="gjjStatementStart">
+                                    </div>
+                                    <div>
+                                        <label for="gjjStatementEnd">对账结束日期</label>
+                                        <input type="date" id="gjjStatementEnd">
+                                    </div>
+                                    <div>
+                                        <label for="gjjPrintDate">打印日期</label>
+                                        <input type="date" id="gjjPrintDate">
+                                    </div>
+                                </div>
+                            </details>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="btnGjjDemoFillSample">填充示例</button>
+                                <button type="button" class="btn-primary" id="btnGjjDemoGenerate">生成演示样例</button>
+                                <button type="button" class="btn-page" id="btnGjjDemoRefresh">刷新列表</button>
+                                <span class="hint" id="gjjDemoStatus" aria-live="polite"></span>
+                            </div>
+                            <div id="gjjDemoResult" class="admin-tool-result" hidden></div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>最近生成</h2>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>姓名</th>
+                                        <th>证件号</th>
+                                        <th>缴存单位</th>
+                                        <th>账户余额</th>
+                                        <th>授权码</th>
+                                        <th>链接</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gjjDemoListTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -2625,9 +2789,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260820-wh-12mo"></script>
+    <script src="/js/admin/loader.js?v=20260824-month-units"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260817-downline-admins"></script>
+    <script src="/js/admin_panel.js?v=20260824-gjj-demo"></script>
 </body>
 </html>

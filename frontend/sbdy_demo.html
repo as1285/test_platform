@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260824-mate60ark6"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>社保参保证明（演示样例）</title>
+    <style>
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --accent-soft: #eff6ff;
+            --warn: #b45309;
+            --warn-soft: #fff7e8;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
+        }
+        .header {
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn {
+            color: var(--accent);
+            font-size: 15px;
+            text-decoration: none;
+            padding: 4px 2px;
+        }
+        .header-title { font-size: 16px; font-weight: 600; }
+        .page { max-width: var(--wrap); margin: 0 auto; padding: 8px 20px 0; }
+        .hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
+        }
+        .hero h1 { font-size: 20px; margin: 0 0 6px; }
+        .hero p { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.88); margin: 0; }
+        .card {
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+        }
+        .card[hidden] { display: none !important; }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+        .field-label {
+            display: block;
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin: 0 0 6px;
+        }
+        .field {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .field:focus {
+            outline: none;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
+        }
+        .region-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .region-row label {
+            flex: 1 1 calc(25% - 8px);
+            min-width: 72px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 14px;
+            color: var(--ink-soft);
+            cursor: pointer;
+        }
+        .region-row input { display: none; }
+        .region-row label:has(input:checked) {
+            border-color: var(--accent);
+            color: var(--accent-deep);
+            background: var(--accent-soft);
+            font-weight: 600;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            background: var(--accent);
+        }
+        .btn + .btn { margin-top: 8px; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-secondary {
+            background: #fff;
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--accent-deep);
+            text-align: center;
+            word-break: break-all;
+        }
+        .status.err { color: #c2410c; }
+        .qr-wrap { margin-top: 12px; text-align: center; }
+        .qr-wrap img { width: 180px; height: 180px; border-radius: 10px; border: 1px solid var(--line); }
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            border-radius: 999px;
+            padding: 3px 10px;
+            background: var(--warn-soft);
+            color: var(--warn);
+            margin-bottom: 8px;
+        }
+        .result-code {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 15px;
+            letter-spacing: 1px;
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            margin-bottom: 12px;
+            word-break: break-all;
+            user-select: all;
+        }
+        .note {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" id="sbdyBack" href="purchase.html?from=mine">‹ 返回</a>
+        <div class="header-title">社保参保证明（演示样例）</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>参保证明演示样例</h1>
+            <p>填写姓名、身份证号与参保时间段，一键生成带二维码核验的参保缴费明细 PDF。未付费可直接生成（带「演示样例」水印），付 ¥199 后生成无水印版本。支持浙江 / 深圳 / 武汉 / 湖南四种版式。</p>
+        </div>
+
+        <div class="card" id="cardSbdyPay" hidden>
+            <div class="card-title">去水印开通（可选）</div>
+            <p class="card-hint">未开通也能生成，PDF 会带「演示样例」水印。付 ¥<span id="sbdyFee">199.00</span> 一次，终身无限次生成<strong>无水印</strong>版本；四种地区版式全部可用。</p>
+            <button type="button" class="btn" id="btnSbdyPay">支付宝付款开通 ¥199.00</button>
+            <div class="qr-wrap" id="sbdyQrWrap" hidden></div>
+            <p class="status" id="sbdyPayStatus"></p>
+        </div>
+
+        <div class="card" id="cardSbdyForm" hidden>
+            <div class="card-title">填写参保信息 <span class="badge" id="sbdyUnlockBadge">读取中…</span></div>
+            <label class="field-label">版式地区</label>
+            <div class="region-row" id="sbdyRegionRow">
+                <label><input type="radio" name="sbdyRegion" value="zj" checked>浙江</label>
+                <label><input type="radio" name="sbdyRegion" value="sz">深圳</label>
+                <label><input type="radio" name="sbdyRegion" value="wh">武汉</label>
+                <label><input type="radio" name="sbdyRegion" value="hn">湖南</label>
+            </div>
+            <label class="field-label" for="sbName">姓名 *</label>
+            <input class="field" type="text" id="sbName" maxlength="64" placeholder="如：李晓晴">
+            <label class="field-label" for="sbId">身份证号 *</label>
+            <input class="field" type="text" id="sbId" maxlength="32" placeholder="18 位身份证号">
+            <label class="field-label" for="sbCompany">单位名称</label>
+            <input class="field" type="text" id="sbCompany" maxlength="128" placeholder="参保单位全称（可留空自动生成）">
+            <div class="grid-2">
+                <div>
+                    <label class="field-label" for="sbStart">参保起始月 *</label>
+                    <input class="field" type="month" id="sbStart">
+                </div>
+                <div>
+                    <label class="field-label" for="sbEnd">参保结束月 *</label>
+                    <input class="field" type="month" id="sbEnd">
+                </div>
+            </div>
+            <label class="field-label" for="sbBase">月缴费基数（元，可留空用默认）</label>
+            <input class="field" type="number" id="sbBase" min="0" step="0.01" placeholder="如 4986">
+            <button type="button" class="btn btn-secondary" id="btnSbdyPrefill">按我的资料预填</button>
+            <button type="button" class="btn" id="btnSbdyGenerate">生成参保证明 PDF</button>
+            <p class="status" id="sbdyGenStatus"></p>
+        </div>
+
+        <div class="card" id="cardSbdyResult" hidden>
+            <div class="card-title">生成成功</div>
+            <p class="card-hint">PDF 已生成；二维码核验授权码：</p>
+            <div class="result-code" id="sbdyAuthCode"></div>
+            <a class="btn" id="btnSbdyOpenPdf" href="#" target="_blank" rel="noopener">查看 / 下载 PDF</a>
+            <button type="button" class="btn btn-secondary" id="btnSbdyCopyPdf">复制 PDF 链接</button>
+            <a class="btn btn-secondary" id="btnSbdyVerify" href="#" target="_blank" rel="noopener">打开核验页</a>
+            <p class="status" id="sbdySaveStatus"></p>
+            <p class="note">App 内如无法直接预览，请点「复制 PDF 链接」后到系统浏览器打开下载。演示样例仅供功能展示，非任何机构出具的正式证明。</p>
+        </div>
+    </div>
+    <script>
+(function () {
+    function token() {
+        try { return String(localStorage.getItem('token') || '').trim(); } catch (e) { return ''; }
+    }
+    function setStatus(el, text, isErr) {
+        if (!el) return;
+        el.textContent = text || '';
+        el.classList.toggle('err', !!isErr);
+    }
+    var cardPay = document.getElementById('cardSbdyPay');
+    var cardForm = document.getElementById('cardSbdyForm');
+    var cardResult = document.getElementById('cardSbdyResult');
+    var payStatus = document.getElementById('sbdyPayStatus');
+    var genStatus = document.getElementById('sbdyGenStatus');
+    var saveStatus = document.getElementById('sbdySaveStatus');
+    var qrWrap = document.getElementById('sbdyQrWrap');
+    var feeAmount = '199.00';
+    var pollTimer = null;
+    var pendingOtn = '';
+    var lastPdfUrl = '';
+
+    try {
+        var ref = document.referrer || '';
+        var back = document.getElementById('sbdyBack');
+        var fromQ = '';
+        try {
+            fromQ = String(new URLSearchParams(location.search || '').get('from') || '').toLowerCase();
+        } catch (eFrom) {}
+        if (back) {
+            if (fromQ === 'consult' || /consult\.html/i.test(ref)) {
+                back.setAttribute('href', 'consult.html?tab=products');
+            } else if (fromQ === 'purchase' || /purchase\.html/i.test(ref)) {
+                back.setAttribute('href', 'purchase.html?from=mine');
+            } else if (/mine\.html|mine_v2\.html|mine_mate60/i.test(ref)) {
+                back.setAttribute('href', 'mine.html');
+            }
+        }
+    } catch (e0) {}
+
+    if (!token()) {
+        window.location.replace('login.html?redirect=' + encodeURIComponent('sbdy_demo.html' + (location.search || '')));
+        return;
+    }
+
+    function applyUnlocked(unlocked) {
+        cardPay.hidden = !!unlocked;
+        cardForm.hidden = false;
+        var badge = document.getElementById('sbdyUnlockBadge');
+        if (badge) {
+            badge.textContent = unlocked ? '已开通 · 无水印无限次' : '未开通 · 生成带演示水印';
+        }
+        if (unlocked && pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function defaultMonths() {
+        var now = new Date();
+        var endYm = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
+        var s = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        var startYm = s.getFullYear() + '-' + pad2(s.getMonth() + 1);
+        var st = document.getElementById('sbStart');
+        var en = document.getElementById('sbEnd');
+        if (st && !st.value) st.value = startYm;
+        if (en && !en.value) en.value = endYm;
+    }
+
+    function fillForm(d) {
+        if (!d) return;
+        if (d.name != null && !document.getElementById('sbName').value) {
+            document.getElementById('sbName').value = d.name;
+        }
+        if (d.id_number != null && !document.getElementById('sbId').value) {
+            document.getElementById('sbId').value = d.id_number;
+        }
+        if (d.company_name != null && !document.getElementById('sbCompany').value) {
+            document.getElementById('sbCompany').value = d.company_name;
+        }
+    }
+
+    function loadStatus() {
+        return authFetch('/api/sbdy-demo/status')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
+                feeAmount = j.data.fee_amount || feeAmount;
+                document.getElementById('sbdyFee').textContent = feeAmount;
+                document.getElementById('btnSbdyPay').textContent = '支付宝付款开通 ¥' + feeAmount;
+                applyUnlocked(!!j.data.unlocked);
+                return loadPrefill();
+            })
+            .catch(function (e) {
+                cardPay.hidden = false;
+                cardForm.hidden = false;
+                setStatus(payStatus, (e && e.message) || '读取权益失败', true);
+            });
+    }
+
+    function loadPrefill() {
+        return authFetch('/api/sbdy-demo/prefill')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (j && j.code === 200 && j.data) fillForm(j.data);
+            })
+            .catch(function () {});
+    }
+
+    function startPay() {
+        setStatus(payStatus, '正在创建订单…');
+        qrWrap.hidden = false;
+        qrWrap.innerHTML = '<p style="color:#888;font-size:13px;">生成付款码…</p>';
+        authFetch('/api/payments/alipay/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product: 'sbdy_demo', sku_id: 'sku_sbdy_demo_199' })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j || j.code !== 200 || !j.data) {
+                    var failMsg = (j && j.msg) || '创建订单失败';
+                    setStatus(payStatus, failMsg, true);
+                    qrWrap.innerHTML = '';
+                    if (typeof showPaymentCreateFailDialog === 'function') {
+                        showPaymentCreateFailDialog({ message: failMsg, source: 'sbdy_demo' });
+                    }
+                    return;
+                }
+                var qr = j.data.qr_code || j.data.payment_url || '';
+                pendingOtn = j.data.order && j.data.order.out_trade_no ? String(j.data.order.out_trade_no) : '';
+                if (typeof QRCode !== 'undefined' && QRCode.toDataURL && qr) {
+                    QRCode.toDataURL(qr, { width: 180, margin: 2, errorCorrectionLevel: 'M' }, function (err, dataUrl) {
+                        if (err || !dataUrl) {
+                            qrWrap.innerHTML = '<p style="font-size:12px;word-break:break-all;">请在支付宝打开：<br>' + qr + '</p>';
+                            return;
+                        }
+                        qrWrap.innerHTML = '<img src="' + dataUrl + '" alt="付款码">';
+                    });
+                } else if (qr) {
+                    qrWrap.innerHTML = '<p style="font-size:12px;word-break:break-all;">请复制到支付宝打开：<br>' + qr + '</p>';
+                }
+                setStatus(payStatus, '请使用支付宝扫码支付 ¥' + feeAmount);
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(pollPay, 2500);
+            })
+            .catch(function () {
+                setStatus(payStatus, '网络错误', true);
+                if (typeof showPaymentCreateFailDialog === 'function') {
+                    showPaymentCreateFailDialog({ message: '创建支付订单失败，网络异常', source: 'sbdy_demo' });
+                }
+            });
+    }
+
+    function pollPay() {
+        authFetch('/api/payments/alipay/latest')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                var ord = j && j.code === 200 && j.data ? j.data.order : null;
+                if (!ord) return;
+                var st = String(ord.status || '');
+                var sku = String(ord.sku_id || '');
+                var otn = String(ord.out_trade_no || '');
+                if (st === 'paid' && (sku === 'sku_sbdy_demo_199' || sku === 'sku_sbdy_demo_50' || !pendingOtn || otn === pendingOtn)) {
+                    setStatus(payStatus, '支付成功，正在解锁…');
+                    if (pollTimer) {
+                        clearInterval(pollTimer);
+                        pollTimer = null;
+                    }
+                    loadStatus();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function selectedRegion() {
+        var r = document.querySelector('input[name="sbdyRegion"]:checked');
+        return r ? String(r.value) : 'zj';
+    }
+
+    function generate() {
+        var payload = {
+            region: selectedRegion(),
+            name: document.getElementById('sbName').value.trim(),
+            id_number: document.getElementById('sbId').value.trim(),
+            company_name: document.getElementById('sbCompany').value.trim(),
+            period_start: document.getElementById('sbStart').value.trim(),
+            period_end: document.getElementById('sbEnd').value.trim()
+        };
+        var base = document.getElementById('sbBase').value.trim();
+        if (base) payload.base_amount = Number(base);
+        if (!payload.name || !payload.id_number) {
+            setStatus(genStatus, '请填写姓名与身份证号', true);
+            return;
+        }
+        if (!/^\d{4}-\d{2}$/.test(payload.period_start) || !/^\d{4}-\d{2}$/.test(payload.period_end)) {
+            setStatus(genStatus, '请选择参保起止月份', true);
+            return;
+        }
+        var btn = document.getElementById('btnSbdyGenerate');
+        btn.disabled = true;
+        setStatus(genStatus, '正在生成…');
+        authFetch('/api/sbdy-demo/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, code: r.status, j: j }; }); })
+            .then(function (res) {
+                var j = res.j;
+                if (res.code === 402 || (j && j.code === 402)) {
+                    setStatus(genStatus, (j && j.msg) || '请先开通社保演示生成', true);
+                    cardPay.hidden = false;
+                    try {
+                        cardPay.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } catch (eScroll) {}
+                    return;
+                }
+                if (!j || j.code !== 200 || !j.data || !j.data.links) {
+                    setStatus(genStatus, (j && j.msg) || '生成失败', true);
+                    return;
+                }
+                setStatus(genStatus, '生成成功');
+                showResult(j.data);
+            })
+            .catch(function () {
+                setStatus(genStatus, '网络错误', true);
+            })
+            .finally(function () {
+                btn.disabled = false;
+            });
+    }
+
+    function showResult(d) {
+        lastPdfUrl = (d.links && (d.links.show_url || d.links.show_api_url)) || '';
+        var verifyUrl = (d.links && d.links.verify_url) || '';
+        document.getElementById('sbdyAuthCode').textContent = d.auth_code || '';
+        var openBtn = document.getElementById('btnSbdyOpenPdf');
+        if (lastPdfUrl) openBtn.setAttribute('href', lastPdfUrl);
+        var verifyBtn = document.getElementById('btnSbdyVerify');
+        if (verifyUrl) verifyBtn.setAttribute('href', verifyUrl);
+        setStatus(
+            saveStatus,
+            d.demo
+                ? '未付费版本：PDF 带「演示样例」水印。付 ¥' + feeAmount + ' 开通后重新生成即为无水印版本。'
+                : '已开通：已生成无水印版本。'
+        );
+        cardResult.hidden = false;
+        try {
+            cardResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (eScroll) {}
+    }
+
+    function copyPdfLink() {
+        if (!lastPdfUrl) {
+            setStatus(saveStatus, '请先生成', true);
+            return;
+        }
+        function done() { setStatus(saveStatus, '已复制，可到系统浏览器粘贴打开'); }
+        function fail() { setStatus(saveStatus, '复制失败，请长按上方按钮的链接手动复制', true); }
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(lastPdfUrl).then(done, fail);
+                return;
+            }
+        } catch (eClip) {}
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = lastPdfUrl;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            done();
+        } catch (eTa) {
+            fail();
+        }
+    }
+
+    document.getElementById('btnSbdyPay').addEventListener('click', startPay);
+    document.getElementById('btnSbdyGenerate').addEventListener('click', generate);
+    document.getElementById('btnSbdyPrefill').addEventListener('click', function () {
+        loadPrefill().then(function () {
+            setStatus(genStatus, '已重新预填');
+        });
+    });
+    document.getElementById('btnSbdyCopyPdf').addEventListener('click', copyPdfLink);
+    defaultMonths();
+    loadStatus();
+})();
+    </script>
+</body>
+</html>

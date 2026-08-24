@@ -120,6 +120,12 @@ app.get(
   h.handleAdminUserDataDetail
 );
 app.get(
+  '/api/admin/gjj-demo/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['gjj-demo', 'user-data']),
+  h.handleAdminUserDataDetail
+);
+app.get(
   '/api/admin/analytics/pricing-ab',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
@@ -381,6 +387,18 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminMenu('sbdy-demo'),
   h.handleAdminSbdyDemoList
+);
+app.post(
+  '/api/admin/gjj-demo/generate',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('gjj-demo'),
+  h.handleAdminGjjDemoGenerate
+);
+app.get(
+  '/api/admin/gjj-demo/list',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('gjj-demo'),
+  h.handleAdminGjjDemoList
 );
 app.post(
   '/api/admin/lizhi-cert/generate',

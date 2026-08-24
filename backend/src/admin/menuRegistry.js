@@ -129,6 +129,14 @@ const ADMIN_PAGE_DEFS = [
     order: 10
   },
   {
+    page: 'gjj-demo',
+    menu_key: 'gjj-demo',
+    label: '公积金演示',
+    group: 'cert-tools',
+    module: 'gjj-demo',
+    order: 15
+  },
+  {
     page: 'lizhi-cert',
     menu_key: 'lizhi-cert',
     label: '离职证明',

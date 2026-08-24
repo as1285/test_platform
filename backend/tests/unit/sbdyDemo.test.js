@@ -21,6 +21,44 @@ describe('sbdyDemo', () => {
     expect(p.name).toBe('测试');
   });
 
+  it('assigns per-month unit codes for multi-employer via month_units', () => {
+    const p = normalizePayload({
+      name: '张三',
+      id_number: '371323199701195223',
+      company_name: '杭州甲公司、杭州乙公司',
+      credit_code: '91330109MAETP27PX2、91330110MADG8XY7Q',
+      period_start: '2025-04',
+      period_end: '2025-07',
+      base_amount: 4986,
+      month_units: {
+        '2025-04': '91330109MAETP27PX2',
+        '2025-05': '91330109MAETP27PX2',
+        '2025-06': '91330110MADG8XY7Q',
+        '2025-07': '91330110MADG8XY7Q'
+      }
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.months.length).toBe(4);
+    expect(p.months[0].unit_code).toBe('91330109MAETP27PX2');
+    expect(p.months[1].unit_code).toBe('91330109MAETP27PX2');
+    expect(p.months[2].unit_code).toBe('91330110MADG8XY7Q');
+    expect(p.months[3].unit_code).toBe('91330110MADG8XY7Q');
+    // 摘要仍保留完整多码（不再被 32 字截断）
+    expect(p.credit_code).toBe('91330109MAETP27PX2、91330110MADG8XY7Q');
+  });
+
+  it('falls back to primary (first) credit code when no month_units', () => {
+    const p = normalizePayload({
+      name: '张三',
+      id_number: '371323199701195223',
+      credit_code: '91330109MAETP27PX2、91330110MADG8XY7Q',
+      period_start: '2025-04',
+      period_end: '2025-05'
+    });
+    expect(p.months[0].unit_code).toBe('91330109MAETP27PX2');
+    expect(p.months[1].unit_code).toBe('91330109MAETP27PX2');
+  });
+
   it('renderCertHtml escapes name in table cell', () => {
     const p = normalizePayload({
       name: '<script>',

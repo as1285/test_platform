@@ -72,7 +72,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['mineE1Canvas', '20260824-mate60ark', 'mate60BuildMark', 'UI:e1-v12', 'padding-top:0!important', 'pinMate60RpxEarly', 'mine_mate60_aug12.html', '20260824-aug12r6'],
+  ['mineE1Canvas', '20260824-mate60ark6', 'mate60BuildMark', 'UI:e1-v12', 'padding-top:0!important', 'pinMate60RpxEarly', 'mine_mate60_aug12.html', '20260824-aug12r6'],
   'mine_v2 e1 page forwards Mate60 to frozen aug12'
 );
 mustInclude(
@@ -92,13 +92,43 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/app/core.js',
-  ['data-ark-fix-t', 'data-ark-fix-x', 'eagerizeLazyImages', 'HUAWEIALN', 'page-mine'],
+  ['data-ark-fix-t', 'eagerizeLazyImages', 'HUAWEIALN', 'page-mine'],
   'core.js mate60 all-pages ark drift fix'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['__mate60ArkFix', 'data-ark-fix-t', 'data-ark-fix-x', 'eagerizeLazyImages'],
+  ['__mate60ArkFix', 'data-ark-fix-t', 'eagerizeLazyImages'],
   'auth.js mate60 all-pages ark drift fix'
+);
+mustInclude(
+  'frontend/sbdy_demo.html',
+  ['/api/sbdy-demo/status', '/api/sbdy-demo/generate', 'sku_sbdy_demo_199', 'sbdyRegion', 'period_start', 'btnSbdyOpenPdf'],
+  'sbdy demo C-side page'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['cardSbdyDemo', 'sbdy_demo.html?from=purchase', '¥199'],
+  'purchase page sbdy demo entry'
+);
+mustInclude(
+  'backend/src/user/sbdyDemoUser.js',
+  ['sku_sbdy_demo_199', 'handleSbdyDemoGenerate', 'createSbdyDemoCert', 'sbdy_demo_unlocked'],
+  'backend sbdy demo user module'
+);
+mustInclude(
+  'backend/src/user/routes.js',
+  ['/api/sbdy-demo/status', '/api/sbdy-demo/prefill', '/api/sbdy-demo/generate'],
+  'backend sbdy demo routes'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['SBDY_DEMO_SKU_ID', "grantKind === 'sbdy_demo'", 'sbdy_demo_unlocked'],
+  'monolith sbdy demo payment wiring'
+);
+mustInclude(
+  'backend/migrations/032_sbdy_demo_user.sql',
+  ['sbdy_demo_unlocked', 'created_by_user'],
+  'sbdy demo migration'
 );
 mustInclude(
   'frontend/nginx.conf',
@@ -161,7 +191,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['20260817-downline-admins', 'adminAccountsPageHint', '上级'],
+  ['adminAccountsPageHint', '上级'],
   'admin downline accounts page'
 );
 mustInclude(
@@ -241,7 +271,7 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260824-mate60ark'],
+  ['20260824-mate60ark6'],
   'login.html auth cache neo8'
 );
 mustInclude(
@@ -281,7 +311,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260824-mate60ark', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260824-mate60ark6', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -327,7 +357,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260824-mate60ark', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260824-mate60ark6', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
@@ -347,12 +377,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260824-mate60ark', '2211133', 'app-android-xiaomi-13'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260824-mate60ark6', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
   'frontend/xiangqing.html',
-  ['BLK-AL80', 'app-android-huawei-nova13', '20260824-mate60ark', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint', '2211133', 'app-android-xiaomi-13'],
+  ['BLK-AL80', 'app-android-huawei-nova13', '20260824-mate60ark6', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint', '2211133', 'app-android-xiaomi-13'],
   'xiangqing nova 13 statusbar inset'
 );
 mustInclude(
@@ -707,7 +737,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260824-mate60ark', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260824-mate60ark6', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 一键生成前 B 站分享门槛已下线 */
@@ -775,7 +805,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260824-mate60ark'],
+  ['auth.js?v=20260824-mate60ark6'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(

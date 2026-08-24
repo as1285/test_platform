@@ -2519,6 +2519,21 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS gjj_demo_certs (
+      id BIGINT NOT NULL AUTO_INCREMENT,
+      auth_code VARCHAR(32) NOT NULL COMMENT '演示核验授权码',
+      token VARCHAR(64) NOT NULL COMMENT '展示页路径令牌',
+      payload_json MEDIUMTEXT NOT NULL,
+      created_by_admin VARCHAR(64) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_gjj_auth (auth_code),
+      UNIQUE KEY uk_gjj_token (token),
+      INDEX idx_gjj_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS user_rename_credits (
       id BIGINT NOT NULL AUTO_INCREMENT,
       username VARCHAR(255) NOT NULL,
@@ -5244,20 +5259,28 @@ var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
 var ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
 var ZAIZHI_CERT_AMOUNT = '50.00';
 var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
+var SBDY_DEMO_SKU_ID = 'sku_sbdy_demo_199';
+var SBDY_DEMO_AMOUNT = '199.00';
+var SBDY_DEMO_SUBJECT = '社保演示生成（终身）';
 function isLizhiCertSkuId(skuId) {
   return String(skuId || '') === LIZHI_CERT_SKU_ID;
 }
 function isZaizhiCertSkuId(skuId) {
   return String(skuId || '') === ZAIZHI_CERT_SKU_ID;
 }
+function isSbdyDemoSkuId(skuId) {
+  return String(skuId || '') === SBDY_DEMO_SKU_ID;
+}
 function isNonActivationSkuId(skuId, grantKind) {
   return (
     isRenameFeeSkuId(skuId) ||
     isLizhiCertSkuId(skuId) ||
     isZaizhiCertSkuId(skuId) ||
+    isSbdyDemoSkuId(skuId) ||
     String(grantKind || '') === 'rename_credit' ||
     String(grantKind || '') === 'lizhi_cert' ||
-    String(grantKind || '') === 'zaizhi_cert'
+    String(grantKind || '') === 'zaizhi_cert' ||
+    String(grantKind || '') === 'sbdy_demo'
   );
 }
 
@@ -5925,6 +5948,119 @@ async function handleAlipayCreateOrder(req, res) {
     } finally {
       try {
         connZaizhi.release();
+      } catch (eRel2) {}
+    }
+  }
+
+  var isSbdyDemo =
+    product === 'sbdy_demo' || isSbdyDemoSkuId(skuIdReq) || skuIdReq === 'sbdy_demo';
+
+  /* —— 社保演示终身权益（不走开通激活逻辑） —— */
+  if (isSbdyDemo) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    var sbdyUnlockedRow = null;
+    try {
+      const [sbdyUsers] = await pool.execute(
+        'SELECT sbdy_demo_unlocked FROM users WHERE username = ? LIMIT 1',
+        [req.authUserId]
+      );
+      sbdyUnlockedRow = sbdyUsers.length ? sbdyUsers[0] : null;
+    } catch (eSbdyCol) {
+      sbdyUnlockedRow = null;
+    }
+    if (
+      sbdyUnlockedRow &&
+      (sbdyUnlockedRow.sbdy_demo_unlocked === true ||
+        Number(sbdyUnlockedRow.sbdy_demo_unlocked) === 1)
+    ) {
+      return res.status(409).json({ code: 409, msg: '社保演示生成权益已开通，无需重复购买' });
+    }
+    var sbdyAmount = alipay.normalizeAmount(SBDY_DEMO_AMOUNT);
+    if (!sbdyAmount) {
+      return res.status(503).json({ code: 503, msg: '社保演示费用配置无效' });
+    }
+    const connSbdy = await pool.getConnection();
+    var sbdyOrder = null;
+    try {
+      await connSbdy.beginTransaction();
+      const [existingSbdy] = await connSbdy.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, SBDY_DEMO_SKU_ID]
+      );
+      if (existingSbdy.length) {
+        sbdyOrder = existingSbdy[0];
+      } else {
+        sbdyOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: SBDY_DEMO_SUBJECT,
+          amount: sbdyAmount,
+          status: 'pending',
+          pricing_variant: 'sbdy_demo',
+          sku_id: SBDY_DEMO_SKU_ID,
+          grant_kind: 'sbdy_demo',
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connSbdy.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            sbdyOrder.out_trade_no,
+            req.authUserId,
+            sbdyOrder.subject,
+            sbdyOrder.amount,
+            sbdyOrder.pricing_variant,
+            sbdyOrder.sku_id,
+            sbdyOrder.grant_kind,
+            sbdyOrder.grant_days,
+            sbdyOrder.grant_hours,
+            sbdyOrder.grant_minutes
+          ]
+        );
+      }
+      await connSbdy.commit();
+    } catch (eSbdyDb) {
+      try {
+        await connSbdy.rollback();
+      } catch (eRb) {}
+      console.error('create sbdy demo order db', eSbdyDb);
+      try {
+        connSbdy.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建社保演示订单失败' });
+    }
+    try {
+      var sbdyPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(sbdyOrder.out_trade_no),
+        subject: String(sbdyOrder.subject),
+        amount: alipay.normalizeAmount(sbdyOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(sbdyOrder),
+          qr_code: sbdyPre.qrCode,
+          payment_url: sbdyPre.qrCode,
+          pricing_variant: 'sbdy_demo',
+          sku_id: SBDY_DEMO_SKU_ID,
+          product: 'sbdy_demo'
+        }
+      });
+    } catch (eSbdyPay) {
+      console.error('create sbdy demo precreate', eSbdyPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝社保演示订单失败' });
+    } finally {
+      try {
+        connSbdy.release();
       } catch (eRel2) {}
     }
   }
@@ -6599,6 +6735,24 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       try {
         invalidateUserInfoApiCache(locked.username);
       } catch (eInv3) {}
+      return true;
+    }
+
+    /* 社保演示：标记终身权益，不开通账号 */
+    if (isSbdyDemoSkuId(meta.sku_id) || grantKind === 'sbdy_demo') {
+      await conn.execute('UPDATE users SET sbdy_demo_unlocked = 1 WHERE username = ?', [
+        locked.username
+      ]);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInvSbdy) {}
       return true;
     }
 

@@ -3,10 +3,12 @@
  */
 const { createApp, startServer, getHandlers, getMiddleware } = require('./legacy/monolith');
 const sbdyDemo = require('./admin/sbdyDemo');
+const gjjDemo = require('./admin/gjjDemo');
 const lizhiCert = require('./admin/lizhiCert');
 const lizhiCertUser = require('./user/lizhiCertUser');
 const zaizhiCert = require('./admin/zaizhiCert');
 const zaizhiCertUser = require('./user/zaizhiCertUser');
+const sbdyDemoUser = require('./user/sbdyDemoUser');
 const shebaoPhoto = require('./user/shebaoPhoto');
 const ylbxPs = require('./admin/ylbxPs');
 const ccbFlow = require('./admin/ccbFlow');
@@ -30,10 +32,12 @@ function buildApp() {
       {},
       getHandlers(),
       sbdyDemo.getHandlers(),
+      gjjDemo.getHandlers(),
       lizhiCert.getHandlers(),
       lizhiCertUser.getHandlers(),
       zaizhiCert.getHandlers(),
       zaizhiCertUser.getHandlers(),
+      sbdyDemoUser.getHandlers(),
       shebaoPhoto.getHandlers(),
       ylbxPs.getHandlers(),
       ccbFlow.getHandlers(),

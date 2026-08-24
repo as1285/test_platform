@@ -7369,13 +7369,115 @@
       } catch (e) {}
     }
 
+    /* 蓝顶沉浸页有专属头图处理，白顶自动顶距不适用 */
+    var ARK_BLUE_TOP_PAGES = ['page-shouye', 'page-daiban', 'page-bancha', 'page-message', 'page-mine'];
+    var ARK_TOP_INSET = 52;
+    function isArkBlueTopPage() {
+      var b = document.body;
+      if (!b) return false;
+      for (var i = 0; i < ARK_BLUE_TOP_PAGES.length; i++) {
+        if (b.classList.contains(ARK_BLUE_TOP_PAGES[i])) return true;
+      }
+      return false;
+    }
+
+    /*
+     * 白顶页统一顶距：Mate60 沉浸压栏且 env(safe-area-inset-top) 常为 0，
+     * consult/purchase/资料类二级页的头部会顶进系统状态栏。
+     * 1) 钉 --safe-t / --app-shell-statusbar-top = 52px（吃变量的页面自动修复）
+     * 2) fixed 头：padding-top += 52 并垫 body；sticky 头：吸附位下移到 52
+     * 3) 头部实际贴到视口顶且自身没留顶距时，body 垫 52
+     */
+    function pinArkWhiteTopInset() {
+      try {
+        if (isArkBlueTopPage()) return;
+        var b = document.body;
+        if (!b) return;
+        var root = document.documentElement;
+        var insetPx = ARK_TOP_INSET + 'px';
+        root.style.setProperty('--app-shell-statusbar-top', insetPx, 'important');
+        root.style.setProperty('--safe-t', insetPx, 'important');
+        b.style.setProperty('--app-shell-statusbar-top', insetPx, 'important');
+        b.style.setProperty('--safe-t', insetPx, 'important');
+        /* 全站浅色设计：防鸿蒙深色模式把页面/遮挡条算法反转成深灰 */
+        try {
+          root.style.colorScheme = 'light';
+          b.style.colorScheme = 'light';
+          if (!document.querySelector('meta[name="color-scheme"]')) {
+            var csMeta = document.createElement('meta');
+            csMeta.setAttribute('name', 'color-scheme');
+            csMeta.setAttribute('content', 'light');
+            (document.head || root).appendChild(csMeta);
+          }
+        } catch (eScheme) {}
+        /* 状态栏遮挡条：吸附头下移后 0-52px 会透出滚动内容；底色写死站内浅灰，勿取计算色（深色模式会反转） */
+        if (!document.getElementById('arkWhiteTopShield')) {
+          var shield = document.createElement('div');
+          shield.id = 'arkWhiteTopShield';
+          /* 预打标记 + border-box：防止被下一轮 fixed 扫描当页面头再垫 52px */
+          shield.setAttribute('data-ark-top-pad', '1');
+          shield.style.cssText =
+            'position:fixed;left:0;right:0;top:0;height:' +
+            ARK_TOP_INSET +
+            'px;box-sizing:border-box;padding:0;background:#f5f6fa;color-scheme:light;z-index:3000;pointer-events:none;';
+          b.appendChild(shield);
+        }
+        var needBodyPad = false;
+        var firstFlowChecked = false;
+        var kids = b.children;
+        for (var i = 0; i < kids.length; i++) {
+          var el = kids[i];
+          if (/^(SCRIPT|STYLE|LINK|TEMPLATE)$/i.test(el.tagName)) continue;
+          if (el.id === 'arkWhiteTopShield' || el.id === 'mate60DebugHud') continue;
+          var cs;
+          try { cs = getComputedStyle(el); } catch (eCs) { continue; }
+          if (!cs || cs.display === 'none' || cs.visibility === 'hidden') continue;
+          var r = el.getBoundingClientRect();
+          if (r.width < window.innerWidth * 0.6) continue;
+          if (cs.position === 'fixed') {
+            /* 全屏遮罩/弹窗不动 */
+            if (r.height > window.innerHeight * 0.6) continue;
+            if (r.top <= 2 && !el.getAttribute('data-ark-top-pad')) {
+              var fPad = parseFloat(cs.paddingTop) || 0;
+              if (fPad < 40) {
+                el.style.setProperty('padding-top', fPad + ARK_TOP_INSET + 'px', 'important');
+              }
+              el.setAttribute('data-ark-top-pad', '1');
+              needBodyPad = true;
+            }
+            continue;
+          }
+          if (cs.position === 'sticky') {
+            if (r.height > 260) continue;
+            if (!el.getAttribute('data-ark-sticky-top')) {
+              var sTop = parseFloat(cs.top) || 0;
+              el.style.setProperty('top', sTop + ARK_TOP_INSET + 'px', 'important');
+              el.setAttribute('data-ark-sticky-top', '1');
+            }
+          }
+          if (!firstFlowChecked && cs.position !== 'absolute') {
+            firstFlowChecked = true;
+            var sy = window.scrollY || 0;
+            var selfPad = parseFloat(cs.paddingTop) || 0;
+            if (sy <= 2 && r.top <= 2 && selfPad < 40) {
+              needBodyPad = true;
+            }
+          }
+        }
+        if (needBodyPad && !b.getAttribute('data-ark-body-pad')) {
+          var bPad = parseFloat(getComputedStyle(b).paddingTop) || 0;
+          b.style.setProperty('padding-top', bPad + ARK_TOP_INSET + 'px', 'important');
+          b.setAttribute('data-ark-body-pad', '1');
+        }
+      } catch (e) {}
+    }
+
     function fixDrift() {
       try {
         if (document.body && document.body.classList.contains('page-mine')) return;
         var el = probeEl();
         if (!el) return;
         var sy = window.scrollY || (document.documentElement && document.documentElement.scrollTop) || 0;
-        var sx = window.scrollX || 0;
         var r = el.getBoundingClientRect();
         var curT = parseFloat(el.getAttribute('data-ark-fix-t') || '0') || 0;
         if (sy <= 2) {
@@ -7389,21 +7491,18 @@
           }
         }
         var br = document.body.getBoundingClientRect();
-        if (window.innerWidth - br.width > 8) {
-          document.body.style.setProperty('width', '100vw', 'important');
-          document.body.style.setProperty('max-width', '100vw', 'important');
-        }
-        var curL = parseFloat(document.body.getAttribute('data-ark-fix-x') || '0') || 0;
-        if (sx <= 2 && Math.abs(br.left) > 2 && Math.abs(curL - br.left) < 300) {
-          var wantL = curL - br.left;
-          document.body.style.setProperty('margin-left', wantL + 'px', 'important');
-          document.body.setAttribute('data-ark-fix-x', String(wantL));
+        /* 引擎级收窄才干预：>24px 排除桌面/协同窗口滚动条(~16px)；用 100% 而非 100vw 防横向溢出。
+         * 勿再做 margin-left 水平补偿：滚动条环境会把 body 推出 -16px（右侧被裁）。 */
+        if (window.innerWidth - br.width > 24) {
+          document.body.style.setProperty('width', '100%', 'important');
+          document.body.style.setProperty('max-width', '100%', 'important');
         }
       } catch (e) {}
     }
 
     function arkTick() {
       fixDrift();
+      pinArkWhiteTopInset();
       eagerizeLazyImages();
     }
     function arkBoot() {

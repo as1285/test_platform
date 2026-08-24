@@ -133,26 +133,21 @@ def draw_title_center(page, font_path, fontname, text, y, size=FS_TITLE):
     page.insert_text(((PAGE_W - tw) / 2.0, yb), text, fontname=fontname, fontsize=size, color=(0, 0, 0))
 
 
+WM_PNG = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'sbdy', 'sbdy_hn_watermark.png')
+
+
 def draw_watermark(page):
-    """浅蓝「SI + 湖南社保」水印，对齐样张。"""
-    blue = (0.72, 0.84, 0.95)
-    for cx, cy, scale in [(148, 220, 1.0), (448, 220, 1.0), (148, 520, 1.0), (448, 520, 1.0), (298, 370, 1.35)]:
-        r = 26 * scale
-        page.draw_circle(fitz.Point(cx, cy - 8 * scale), r, color=blue, width=1.2)
-        page.insert_text(
-            (cx - 11 * scale, cy - 2 * scale),
-            'SI',
-            fontname='helv',
-            fontsize=14 * scale,
-            color=blue,
-        )
-        page.insert_text(
-            (cx - 28 * scale, cy + 18 * scale),
-            '湖南社保',
-            fontname='helv',
-            fontsize=11 * scale,
-            color=blue,
-        )
+    """平铺原版「湖南社保」印章图（从真实参保证明中提取，带透明通道）。
+    图案与书法字均为原件真图，避免矢量临摹带来的差异。"""
+    if not os.path.isfile(WM_PNG):
+        return
+    w, h = 86.0, 62.0  # 保持真图 111:80 比例
+    xs = [128.0, 466.0]         # 左右两列
+    ys = [300.0, 560.0, 820.0]  # 三行，稀疏（对齐原件）
+    for cy in ys:
+        for cx in xs:
+            rect = fitz.Rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+            page.insert_image(rect, filename=WM_PNG, keep_proportion=True, overlay=True)
 
 
 def draw_info_table(page, font_path, fontname, p):
@@ -433,37 +428,39 @@ def ensure_detail_rows(p):
     return out
 
 
-def paginate_detail_rows(rows):
-    """对齐样张：第1页1行、第2页空白、第3-5页分批、末页盖章。"""
+def paginate_detail_rows(rows, first_cap, cont_cap):
+    """健壮紧凑分页：首页按上方表格剩余空间放行，续页按整页容量。
+    末页需容纳「盖章处：」；不插空白页，页数随数据量自动增减。"""
     rows = list(rows or [])
     if not rows:
         return [[]]
-    pages = [rows[0:1], []]
-    rest = rows[1:]
-    idx = 0
-    for cap in (18, 12, 13):
-        chunk = rest[idx : idx + cap]
-        idx += len(chunk)
-        pages.append(chunk)
-    if idx < len(rest):
-        pages.append(rest[idx:])
+    first_cap = max(1, int(first_cap))
+    cont_cap = max(1, int(cont_cap))
+    pages = [rows[:first_cap]]
+    rest = rows[first_cap:]
+    while rest:
+        pages.append(rest[:cont_cap])
+        rest = rest[cont_cap:]
+    if len(pages[-1]) >= cont_cap:  # 末页排满则另起一页放盖章
+        pages.append([])
     return pages
 
 
-NUMBERED_PAGES = 5
-
-
 def estimate_first_detail_end(relations):
-    """根据参保关系行数估算首页明细区起点，避免与上方表格重叠。"""
+    """与首页实际绘制路径一致地推算明细区起点（首行 y）。"""
     rels = relations or []
     rel_rows = 0
     for rel in rels:
         items = rel.get('items') or []
         rel_rows += max(1, len(items))
-    y_after_rel = Y_PURPOSE[1] + 17.0 + 15.0 + rel_rows * DETAIL_ROW_H + 12.0
-    y_after_dispatch = y_after_rel + 17.0 + 15.0 + 12.0
-    detail_title = y_after_dispatch
-    detail_body = detail_title + 16.0 + 30.0
+    if rel_rows <= 0:
+        rel_rows = 1
+    y = Y_PURPOSE[1] + 8.0
+    y = y + 17.0 + 15.0 + rel_rows * DETAIL_ROW_H  # draw_relations 返回值
+    y = y + 8.0
+    y = y + 17.0 + 15.0  # draw_dispatch_table 返回值
+    y = y + 8.0
+    detail_body = y + 16.0 + 30.0  # draw_detail_header 返回值
     return detail_body, detail_body + DETAIL_ROW_H
 
 
@@ -480,7 +477,7 @@ STATIC_TEXT = (
     '正常应缴缴费基数调整退收缴费基数调整补缴正常'
     '盖章处：'
     '说明:本信息由参保地社保经办机构负责解释:参保人如有疑问，请与参保地社保经办机构联系'
-    '个人姓名：第页,共页个人编号：社会保险经办机构男女'
+    '个人姓名：第页,共页个人编号：社会保险经办机构男女湖南社保'
 )
 
 
@@ -509,7 +506,11 @@ def collect_blob(p, rows, auth_code):
 def render(payload, auth_code, qr_url, out_path):
     p = payload or {}
     rows = ensure_detail_rows(p)
-    chunks = paginate_detail_rows(rows)
+    detail_body_first = estimate_first_detail_end(p.get('relations') or [])[0]
+    first_cap = int((Y_FOOTER_NOTE - 6.0 - detail_body_first) / DETAIL_ROW_H)
+    cont_cap = int((CONT_BOTTOM - CONT_TOP) / DETAIL_ROW_H)
+    chunks = paginate_detail_rows(rows, first_cap, cont_cap)
+    total_pages = len(chunks)
     blob = collect_blob(p, rows, auth_code)
     full_body = ensure_full_cjk_font()
     subset = make_subset_font(full_body, blob, prefix='sbdy_hn_body_')
@@ -528,8 +529,7 @@ def render(payload, auth_code, qr_url, out_path):
             page = doc.new_page(width=PAGE_W, height=PAGE_H)
             body_name, _ = register_fonts(page, subset, subset)
             draw_watermark(page)
-            is_last = pi == len(chunks) - 1
-            is_blank = pi == 1 and not chunk
+            is_last = pi == total_pages - 1
             if pi == 0:
                 draw_title_center(page, subset, body_name, '个人参保信息（实缴明细）', 39.0)
                 draw_info_table(page, subset, body_name, p)
@@ -538,30 +538,18 @@ def render(payload, auth_code, qr_url, out_path):
                 y = Y_PURPOSE[1] + 8.0
                 y = draw_relations(page, subset, body_name, p.get('relations') or [], y) + 8.0
                 y = draw_dispatch_table(page, subset, body_name, y) + 8.0
-                detail_body = draw_detail_header(page, subset, body_name, y)
-                y = detail_body
-                last_period = None
-                for row in chunk:
-                    show_period = row.get('period') != last_period
-                    draw_detail_row(page, subset, body_name, row, y, show_period=show_period)
-                    last_period = row.get('period')
-                    y += DETAIL_ROW_H
-            elif is_blank:
-                pass
+                y = draw_detail_header(page, subset, body_name, y)
             else:
                 y = CONT_TOP
-                last_period = None
-                for row in chunk:
-                    show_period = row.get('period') != last_period
-                    draw_detail_row(page, subset, body_name, row, y, show_period=show_period)
-                    last_period = row.get('period')
-                    y += DETAIL_ROW_H
-                if is_last:
-                    draw_text_in_box(page, subset, body_name, '盖章处：', X0 + 4, X0 + 80, y, y + 16, size=FS, anchor='lm')
+            last_period = None
+            for row in chunk:
+                show_period = row.get('period') != last_period
+                draw_detail_row(page, subset, body_name, row, y, show_period=show_period)
+                last_period = row.get('period')
+                y += DETAIL_ROW_H
             if is_last:
-                draw_footer(page, subset, body_name, p, pi + 1, NUMBERED_PAGES, show_note=True, numbered=False)
-            else:
-                draw_footer(page, subset, body_name, p, pi + 1, NUMBERED_PAGES, show_note=is_blank, numbered=True)
+                draw_text_in_box(page, subset, body_name, '盖章处：', X0 + 4, X0 + 80, y, y + 16, size=FS, anchor='lm')
+            draw_footer(page, subset, body_name, p, pi + 1, total_pages, show_note=True, numbered=True)
         doc.save(out_path, deflate=True, garbage=4)
         doc.close()
         doc = None
