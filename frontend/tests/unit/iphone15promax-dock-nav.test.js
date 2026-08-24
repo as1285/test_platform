@@ -10,8 +10,9 @@ const DOCK_SAFE = 'env(safe-area-inset-bottom';
 
 const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8');
 const navCss = readFileSync(resolve(__dirname, '../../css/nav.css'), 'utf8');
+// 592ae5b 起首页(shouye)撤销 iPhone15ProMax 特判，故首页不再首绘该标记；
+// 其余底部 Tab 页仍首绘以避免 15 Pro Max 上的胶囊闪动。
 const pages = {
-  shouye: readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8'),
   daiban: readFileSync(resolve(__dirname, '../../daiban.html'), 'utf8'),
   bancha: readFileSync(resolve(__dirname, '../../bancha.html'), 'utf8'),
   message: readFileSync(resolve(__dirname, '../../message.html'), 'utf8'),
@@ -38,7 +39,7 @@ describe('iPhone 15 Pro Max docked bottom nav', () => {
     expect(navCss).toContain('html.app-ios-client.app-ios-iphone15promax');
   });
 
-  it('first-paints all tab pages so the capsule does not flash', () => {
+  it('first-paints the docked tab pages (首页除外) so the capsule does not flash', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html, name).toContain('app-ios-iphone15promax');
       expect(html, name).toContain('20260823-iphone15pm');
