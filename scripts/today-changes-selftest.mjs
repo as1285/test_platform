@@ -57,31 +57,32 @@ mustInclude(
     'padding-top:calc(10px + 40px) !important',
     'pinMate60MineE1Layout',
     'mate60MineE1LockCss',
-    'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:calc(-599 / 1284 * 100vw) !important;}',
-    'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;padding-top:0 !important;background-color:#f5f6fa !important;background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px) !important;}',
+    'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:0 !important;}',
+    'margin-top:-40px !important',
+    'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:40px !important;}',
     'pinMate60MineShift',
-    'translateY(52px)'
+    'transform:none !important'
   ],
-  'mate60 translateY shift + e1 mine + daiban header'
+  'mate60 40px e1 + daiban header'
 );
 mustInclude(
   'frontend/mine_jul23_mate60.html',
-  ['mine_v2.html', '20260823-e1v8'],
+  ['mine_v2.html', '20260824-e1v9'],
   'mate60 jul23 stub redirects to mine_v2 cache-bust path'
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['mineE1Canvas', '20260823-e1v8', 'mate60BuildMark', 'UI:e1-v8', 'translateY(52px)', 'mate60AvatarFixed', 'object-fit:cover', 'mountMate60Avatar'],
+  ['mineE1Canvas', '20260824-e1v9', 'mate60BuildMark', 'UI:e1-v9', 'margin-top:-40px', 'padding-top:40px'],
   'mine_v2 e1 page with build mark'
 );
 mustInclude(
   'frontend/mine.html',
-  ['mine_v2.html', '20260823-e1v8', 'app-android-huawei-mate60'],
+  ['mine_v2.html', '20260824-e1v9', 'app-android-huawei-mate60'],
   'mine.html Mate60 jumps to mine_v2'
 );
 mustInclude(
   'cordova-app/www/index.html',
-  ['mine_v2.html?in_app=1&_v=20260823-e1v8'],
+  ['mine_v2.html?in_app=1&_v=20260824-e1v9'],
   'cordova shell starts on mine_v2'
 );
 mustExclude(
@@ -220,7 +221,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260823-e1v8', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
+  ['20260824-e1v9', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'calc(100vw / 750)', 'mine-share-done'],
   'mine.html mate60 e1 (plan B / c93c3cc) + reno10 + neo8 + nova13 cache'
 );
 mustExclude(
@@ -245,8 +246,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;padding-top:0 !important;background-color:#f5f6fa !important;background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px) !important;}', 'pinMate60MineShift', 'data-mate60-aug15-lock', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1'],
-  'auth.js mate60 plan B e1 + neo8 / neo8pro + white-bar dark icons'
+  ['html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:40px !important;}', 'pinMate60MineShift', 'data-mate60-aug15-lock', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1'],
+  'auth.js mate60 e1-v9 + neo8 / neo8pro + white-bar dark icons'
 );
 mustExclude(
   'frontend/public/js/auth.js',
@@ -780,3 +781,14 @@ mustInclude(
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
+
+mustExclude(
+  'frontend/mine_v2.html',
+  ['mountMate60Avatar', 'transform:none !important', 'calc(-599 / 1284 * 100vw)'],
+  'mine_v2 without Mate60 crop/avatar hacks'
+);
+mustExclude(
+  'frontend/public/js/auth.js',
+  ['calc(-599 / 1284 * 100vw)', 'transform:none !important'],
+  'auth.js Mate60 without crop/translate hacks'
+);
