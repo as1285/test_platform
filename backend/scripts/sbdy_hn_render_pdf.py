@@ -467,16 +467,42 @@ def estimate_first_detail_end(relations):
     return detail_body, detail_body + DETAIL_ROW_H
 
 
+# 版面上全部静态文案（标题/标签/表头/说明/险种/缴费类型/页脚）。
+# 必须并入子集字体，否则 MuPDF 缺字会把这些字渲染成 □ 方块。
+STATIC_TEXT = (
+    '个人参保信息（实缴明细）'
+    '当前单位名称当前单位编号姓名建账时间身份证号码性别经办机构名称有效期至'
+    '用途本人查询'
+    '参保关系统一社会信用代码单位名称险种起止时间'
+    '劳务派遣关系用工形式实际用工单位'
+    '缴费明细费款所属期险种类型缴费基数单位应缴个人应缴缴费标志到账日期缴费类型经办机构'
+    '企业职工基本养老保险工伤保险失业保险'
+    '正常应缴缴费基数调整退收缴费基数调整补缴正常'
+    '盖章处：'
+    '说明:本信息由参保地社保经办机构负责解释:参保人如有疑问，请与参保地社保经办机构联系'
+    '个人姓名：第页,共页个人编号：社会保险经办机构男女'
+)
+
+
 def collect_blob(p, rows, auth_code):
-    parts = [
-        '个人参保信息（实缴明细）',
-        str(p.get('name') or ''),
-        str(p.get('id_number') or ''),
-        str(p.get('company_name') or ''),
-        str(auth_code or ''),
-    ]
+    parts = [STATIC_TEXT, ''.join(NOTES)]
+    for _key, typ in INS_TYPES:
+        parts.append(typ)
+    for key in (
+        'name', 'id_number', 'company_name', 'unit_code', 'person_no',
+        'account_time', 'agency_name', 'agency_short', 'area',
+        'valid_until', 'purpose', 'gender',
+    ):
+        parts.append(str(p.get(key) or ''))
+    for rel in (p.get('relations') or []):
+        parts.append(str(rel.get('credit_code') or ''))
+        parts.append(str(rel.get('company_name') or ''))
+        for item in (rel.get('items') or []):
+            parts.append(str(item.get('type') or ''))
+            parts.append(str(item.get('range') or ''))
     for r in rows:
         parts.extend([str(v) for v in r.values()])
+    parts.append(str(auth_code or ''))
     return ''.join(norm_text(x) for x in parts)
 
 
