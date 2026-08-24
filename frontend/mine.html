@@ -55,7 +55,7 @@
                         var u60 = new URL('mine_v2.html', location.href);
                         var s60 = new URL(location.href);
                         s60.searchParams.forEach(function (v, k) { u60.searchParams.set(k, v); });
-                        u60.searchParams.set('_v', '20260824-e1v10');
+                        u60.searchParams.set('_v', '20260824-e1v12');
                         if (!/mine_v2\.html/i.test(location.pathname)) {
                             location.replace(u60.pathname + u60.search + u60.hash);
                             return;

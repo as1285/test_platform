@@ -1618,15 +1618,15 @@
    * Mate 70 不得套 Mate 60 规则。
    */
   /**
-   * Mate60「我的」e1：与其它沉浸机相同公式（对齐 c93c3cc）。
-   * 禁止再用 -599/1284 大负裁切 + 固定头像补洞（会丢掉姓名/税号/胶囊）。
+   * Mate60「我的」e1：Harmony 壳 WebView 常在系统栏下方，勿再 padding+负 margin 裁头图
+   *（40/52px 会把头像裁掉，只剩米色卡顶到状态栏）。rpx 仍用画布实测。
    */
   function mate60MineE1LockCss() {
     return (
-      'html.app-android-huawei-mate60.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
+      'html.app-android-huawei-mate60.app-top-safe-shell{background-color:#1677ff !important;}' +
       'html.app-android-huawei-mate60 body.page-mine,' +
       'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{' +
-      '--mine-top-bleed:40px !important;--app-shell-statusbar-top:40px !important;}' +
+      '--mine-top-bleed:0px !important;background-color:#f5f6fa !important;}' +
       'html.app-android-huawei-mate60 #mate60HeadPlate,' +
       'html.app-android-huawei-mate60 #mate60AvatarFixed,' +
       'html.app-android-huawei-mate60 #mate60MineStatusSpacer{' +
@@ -1635,11 +1635,11 @@
       'transform:none !important;-webkit-transform:none !important;' +
       'margin-top:0 !important;padding-top:0 !important;}' +
       'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{' +
-      'padding-top:40px !important;margin-top:0 !important;overflow:hidden !important;' +
+      'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
       'container-type:normal !important;width:100% !important;max-width:none !important;}' +
       'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,' +
       'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > #headerImg{' +
-      'margin-top:-40px !important;display:block !important;width:100% !important;' +
+      'margin-top:0 !important;display:block !important;width:100% !important;' +
       'position:relative !important;top:auto !important;transform:none !important;}' +
       'html.app-android-huawei-mate60 body.page-mine .mine-e1-layer{top:0 !important;}'
     );
@@ -1698,29 +1698,24 @@
           lock.textContent = mate60MineE1LockCss();
           (document.head || document.documentElement).appendChild(lock);
         } catch (eLock) {}
-        root.style.setProperty('--app-shell-statusbar-top', '40px');
-        if (document.body) {
-          document.body.style.setProperty('--app-shell-statusbar-top', '40px');
-        }
         if (!document.body || !document.body.classList.contains('page-mine')) {
           return;
         }
-        var bleed = '40px';
-        root.style.setProperty('--mine-top-bleed', bleed);
-        document.body.style.setProperty('--mine-top-bleed', bleed);
+        root.style.setProperty('--mine-top-bleed', '0px');
+        document.body.style.setProperty('--mine-top-bleed', '0px');
         pinMate60MineShift();
         var canvas60 = document.getElementById('mineE1Canvas');
         var layer60 = document.getElementById('mineE1Layer');
         var img60 = document.getElementById('headerImg');
         if (canvas60) {
-          canvas60.style.setProperty('padding-top', bleed, 'important');
+          canvas60.style.setProperty('padding-top', '0', 'important');
           canvas60.style.setProperty('margin-top', '0', 'important');
           canvas60.style.setProperty('overflow', 'hidden', 'important');
           canvas60.style.setProperty('container-type', 'normal', 'important');
           canvas60.style.setProperty('width', '100%', 'important');
         }
         if (img60) {
-          img60.style.setProperty('margin-top', '-40px', 'important');
+          img60.style.setProperty('margin-top', '0', 'important');
           img60.style.setProperty('display', 'block', 'important');
           img60.style.setProperty('width', '100%', 'important');
           img60.style.setProperty('position', 'relative', 'important');
@@ -2120,9 +2115,10 @@
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine,' +
           /*
-           * Mate60「我的」：标准 e1 沉浸公式（40px），禁止大负裁切。
+           * Mate60「我的」：WebView 在系统栏下时勿再 bleed 裁头图；壳层蓝底消除白缝。
            */
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:40px !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell{background-color:#1677ff !important;background-image:none !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;background-color:#f5f6fa !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-stack{transform:none !important;-webkit-transform:none !important;margin-top:0 !important;padding-top:0 !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine{--mine-top-bleed:0px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
@@ -2131,7 +2127,7 @@
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:var(--mine-top-bleed) !important;container-type:normal;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;container-type:normal;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine #mate60MineStatusSpacer,' +
           'html.app-android-huawei-mate60.app-top-safe-shell #mate60HeadPlate,' +
           'html.app-android-huawei-mate60.app-top-safe-shell #mate60AvatarFixed{display:none !important;height:0 !important;}' +
@@ -2142,7 +2138,7 @@
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
-          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:calc(-1 * var(--mine-top-bleed)) !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img{margin-top:0 !important;position:relative !important;top:auto !important;transform:none !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer{top:0 !important;}' +
@@ -2190,7 +2186,12 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinNova13MineE1Layout();
-      applyImmersiveBlueStatusBar(mineBlue);
+      var mineShellBg =
+        isHuaweiMate60Client() ||
+        document.documentElement.classList.contains('app-android-huawei-mate60')
+          ? '#1677ff'
+          : undefined;
+      applyImmersiveBlueStatusBar(mineBlue, mineShellBg);
       try {
         schedulePinTabBottomNav();
       } catch (ePin) {}
