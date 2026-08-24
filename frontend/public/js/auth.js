@@ -7033,6 +7033,19 @@
     if (page === 'admin_panel.html') {
       return;
     }
+    /* 安装引导/登录注册等跳过页：即使同域有 token 也不注入转圈（否则会永久卡住） */
+    var skipLoadingPages = {
+      'index.html': true,
+      'login.html': true,
+      'register.html': true,
+      'install_guide.html': true,
+      'install-ios.html': true,
+      'admin_login.html': true,
+      'admin_panel.html': true
+    };
+    if (skipLoadingPages[page]) {
+      return;
+    }
     var primaryTabPages = {
       'shouye.html': true,
       'daiban.html': true,
@@ -7059,7 +7072,7 @@
     }
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260821-home-perf2';
+      s.src = '/js/page-loading.js?v=20260824-skip-hide';
       s.setAttribute('data-app-page-loading-js', '1');
       /* 异步加载：不阻塞后续 HTML/图片解析，转圈由业务页主动触发 */
       s.async = true;

@@ -235,7 +235,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260821-home-perf2'],
+  ['20260824-skip-hide'],
   'fast-nav auth cache mate60 plan B'
 );
 mustInclude(
@@ -700,13 +700,28 @@ mustInclude(
     'forceHidePageLoading()',
     '底栏五页（含首页）：进页不盖转圈',
     '跳向主 Tab 也不白底遮罩',
+    '跳过页也可能被 auth 预入队 show',
   ],
   'primary tab skip page-loading HUD'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isPrimaryTab', '20260821-home-perf2', 's.async = true', 'appendShellExtra', 'requestIdleCallback', 'deferShellPages'],
+  [
+    'isPrimaryTab',
+    '20260824-skip-hide',
+    's.async = true',
+    'appendShellExtra',
+    'requestIdleCallback',
+    'deferShellPages',
+    'skipLoadingPages',
+    'install_guide.html',
+  ],
   'auth inject page-loading skip primary tab show'
+);
+mustInclude(
+  'frontend/install_guide.html',
+  ['auth.js?v=20260824-skip-hide'],
+  'install_guide auth cache for skip-hide'
 );
 mustInclude(
   'frontend/shouye.html',

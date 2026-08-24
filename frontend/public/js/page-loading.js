@@ -354,6 +354,11 @@
 
   function startPageLifecycle() {
     if (isSkipPageLoading()) {
+      /* 跳过页也可能被 auth 预入队 show（同域有 token 时），必须清掉，否则会永久转圈 */
+      forceHidePageLoading();
+      try {
+        window.__pageLoadingQueue = [];
+      } catch (eQ) {}
       return;
     }
     if (document.documentElement.getAttribute('data-app-page-loading-lifecycle') === '1') {
