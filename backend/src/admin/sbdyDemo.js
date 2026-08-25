@@ -813,7 +813,8 @@ function normalizeWhPayload(body) {
   var periodEnd = String(b.period_end || b.periodEnd || '').trim();
   var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
   if (!isFinite(baseAmt) || baseAmt <= 0) baseAmt = 6120;
-  var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
+  /* 武汉版打印时间固定为生成当天，避免表单残留示例旧日期 */
+  var printDate = defaultPrintDateCn();
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
   }
@@ -2057,7 +2058,7 @@ function renderWhCertHtml(payload, links, opts) {
     '</div>' +
     '<div class="page-no">第1页/共1页</div>' +
     '</div>' +
-    '<img class="seal" src="/img/sbdy_wh_seal.png?v=20260825-reference-align" alt="">' +
+    '<img class="seal" src="/img/sbdy_wh_seal.png?v=20260825-clean-top" alt="">' +
     '</div></body></html>'
   );
 }

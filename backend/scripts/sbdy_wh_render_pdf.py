@@ -369,9 +369,29 @@ def draw_notes(page, font_path, fontname, p, auth_code):
 
 
 def draw_seal(page):
-    if os.path.isfile(SEAL_PNG):
-        # 参考图：印章位于表格下方备注区右侧，不压住缴费表格。
-        page.insert_image(fitz.Rect(425.0, 628.0, 543.0, 747.0), filename=SEAL_PNG, overlay=True)
+    if not os.path.isfile(SEAL_PNG):
+        return
+    # 参考图：印章位于表格下方备注区右侧，不压住缴费表格。
+    # 先按目标尺寸最近邻缩放并二值化 alpha，避免 MuPDF 过滤缩放在章顶留下浅灰脏边。
+    import io
+
+    from PIL import Image
+
+    rect = fitz.Rect(425.0, 628.0, 543.0, 747.0)
+    tw = max(1, int(round(rect.width)))
+    th = max(1, int(round(rect.height)))
+    im = Image.open(SEAL_PNG).convert('RGBA').resize((tw, th), Image.Resampling.NEAREST)
+    px = im.load()
+    for y in range(th):
+        for x in range(tw):
+            r, g, b, a = px[x, y]
+            if a < 96 or not (r > 118 and r > g + 28 and r > b + 28):
+                px[x, y] = (0, 0, 0, 0)
+            else:
+                px[x, y] = (r, g, b, 255)
+    buf = io.BytesIO()
+    im.save(buf, format='PNG')
+    page.insert_image(rect, stream=buf.getvalue(), overlay=True)
 
 
 def render(payload, auth_code, qr_url, out_path):

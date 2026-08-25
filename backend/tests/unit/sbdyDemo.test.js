@@ -317,6 +317,27 @@ describe('sbdyDemo', () => {
     expect(p.months[6].ym).toBe('202501');
     expect(p.months[0].status).toBe('正常');
     expect(p.watermark_id).toMatch(/^\d{12}-\d{10}$/);
+    /* 打印时间固定为北京时间当天，忽略入参旧日期 */
+    const bj = new Date(Date.now() + 8 * 3600 * 1000);
+    const todayCn =
+      bj.getUTCFullYear() +
+      '年' +
+      String(bj.getUTCMonth() + 1).padStart(2, '0') +
+      '月' +
+      String(bj.getUTCDate()).padStart(2, '0') +
+      '日';
+    const pDate = normalizePayload({
+      region: 'wh',
+      name: '张志龙',
+      id_number: '340826200006245634',
+      company_name: '武汉天创建设集团有限公司',
+      period_start: '2024-07',
+      period_end: '2025-01',
+      print_date: '2025年02月19日'
+    });
+    expect(pDate.error).toBeFalsy();
+    expect(pDate.print_date).toBe(todayCn);
+    expect(pDate.print_date).not.toBe('2025年02月19日');
     const html = renderCertHtml(p, {}, { authCode: '2026 0819 1624 027Y 32L1' });
     expect(html).toContain('湖北省社会保险参保证明（个人专用）');
     expect(html).toContain('张志龙');

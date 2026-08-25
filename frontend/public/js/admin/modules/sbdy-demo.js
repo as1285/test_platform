@@ -975,6 +975,12 @@
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate')
     };
+    /* 武汉版：打印时间始终用当天，覆盖表单里可能残留的示例日期 */
+    if (region === 'wh') {
+      var todayCn = defaultPrintDateCn();
+      body.print_date = todayCn;
+      setField('sbdyPrintDate', todayCn);
+    }
     /* 江苏版：参保状态单值；分段（多参保地）以分段为准 */
     if (region === 'js') {
       body.status = val('sbdyStatus') || '正常缴费';
@@ -1168,7 +1174,7 @@
       setField('sbdyPeriodStart', '2022-08');
       setField('sbdyPeriodEnd', '2024-09');
       setField('sbdyBase', 4224);
-      setField('sbdyPrintDate', '2025年02月19日');
+      setField('sbdyPrintDate', printDate);
       setStatus('已填充武汉示例：杨大富（可再点生成）', false);
       return;
     }
