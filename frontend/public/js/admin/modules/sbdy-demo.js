@@ -65,7 +65,8 @@
   }
 
   /**
-   * 多家单位写入下方分段，清空上方单框（不要拼在一个空格里）。
+   * 多家单位写入下方分段；浙江清空上方单框，江苏可保留最近单位作为「现参保单位」。
+   * 查询区间含外地月份时可强制保留单个本地分段，避免把空档月补成缴费月。
    * @returns {boolean} 是否已按多段处理
    */
   function fillMultiAsSegments(opts) {
@@ -78,7 +79,7 @@
     var ps = opts.period_start || '';
     var pe = opts.period_end || '';
     var list = [];
-    if (segsIn.length >= 2) {
+    if (segsIn.length >= 2 || (opts.force_single && segsIn.length === 1)) {
       list = segsIn.map(function (s) {
         return {
           company_name: cleanCompanyName(s.company_name || ''),
@@ -106,9 +107,9 @@
         });
       }
     }
-    if (list.length < 2) return false;
-    setField('sbdyCompany', '');
-    setField('sbdyCredit', '');
+    if (list.length < 2 && !opts.force_single) return false;
+    setField('sbdyCompany', cleanCompanyName(opts.summary_company || ''));
+    setField('sbdyCredit', String(opts.summary_credit || '').trim());
     renderSegments(list);
     return true;
   }
@@ -1084,6 +1085,10 @@
       setField('sbdyIdNumber', '342501199307088233');
       setField('sbdyGender', '男');
       setField('sbdyStatus', '暂停缴费（中断）');
+      setField('sbdyStatusPension', '暂停缴费（中断）');
+      setField('sbdyStatusMedical', '暂停缴费（中断）');
+      setField('sbdyStatusInjury', '暂停缴费（中断）');
+      setField('sbdyStatusUnemp', '暂停缴费（中断）');
       setField('sbdyCompany', '南京市溧水区暂时中止单位');
       setField('sbdyArea', '溧水区');
       setField('sbdyBase', 4879);
@@ -1092,7 +1097,7 @@
       setField('sbdyPrintDate', printDate);
       /* 逐月明细按段展开，单位/基数各段不同；2026-02 断缴（不填该月）*/
       renderSegments([
-        { company_name: '南京市胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
+        { company_name: '南京胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
         { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
         { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
         { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
@@ -1237,11 +1242,54 @@
    * - 依据税务记录（含年月+公司+税号）按时间倒序去重，得到多家单位
    * - 传入年月区间则只取区间内单位；并返回记录的最早/最晚月用于回填缴费区间
    * - 单位→税号映射同时取自 employers.credit_code 与 tax_records.company_tax_id
+   * - 浙江版只采用浙江税务机关记录，外省记录不能计入浙江社保月份
    */
-  function collectEmployerInfo(d, rangeStart, rangeEnd) {
+  function taxAuthorityMatchesRegion(authority, region) {
+    if (region !== 'zj') return true;
+    return /(浙江|杭州|宁波|温州|嘉兴|湖州|绍兴|金华|衢州|舟山|台州|丽水|义乌)/.test(
+      String(authority || '')
+    );
+  }
+
+  function areaFromTaxAuthority(authority) {
+    var core = String(authority || '')
+      .replace(/^.*?税务总局/, '')
+      .replace(/税务局.*$/, '');
+    var parts = core.match(/[^省市区县]+[省市区县]/g);
+    return parts && parts.length ? parts[parts.length - 1] : '';
+  }
+
+  function collectEmployerInfo(d, rangeStart, rangeEnd, region) {
     d = d || {};
-    var records = Array.isArray(d.tax_records) ? d.tax_records : [];
+    var allRecords = Array.isArray(d.tax_records) ? d.tax_records : [];
+    var regionScoped = region === 'zj';
+    var records = regionScoped
+      ? allRecords.filter(function (r) {
+          return taxAuthorityMatchesRegion(r && r.tax_authority, region);
+        })
+      : allRecords;
     var employers = Array.isArray(d.employers) ? d.employers : [];
+    var startN = rangeStart ? ymToNum(rangeStart) : null;
+    var endN = rangeEnd ? ymToNum(rangeEnd) : null;
+    var allRangeMonths = {};
+    var matchedRangeMonths = {};
+    function rememberMonth(target, r) {
+      var y = Number(r && r.year);
+      var m = Number(r && r.month);
+      if (!y || !m) return;
+      var n = y * 12 + m;
+      if (startN != null && n < startN) return;
+      if (endN != null && n > endN) return;
+      target[y + '-' + pad2(m)] = 1;
+    }
+    if (regionScoped) {
+      allRecords.forEach(function (r) {
+        rememberMonth(allRangeMonths, r);
+      });
+      records.forEach(function (r) {
+        rememberMonth(matchedRangeMonths, r);
+      });
+    }
     var creditByCompany = {};
     var companyByCredit = {};
     employers.forEach(function (e) {
@@ -1256,8 +1304,6 @@
       if (cn && cc && !creditByCompany[cn]) creditByCompany[cn] = cc;
       if (cc && cn && !companyByCredit[cc]) companyByCredit[cc] = cn;
     });
-    var startN = rangeStart ? ymToNum(rangeStart) : null;
-    var endN = rangeEnd ? ymToNum(rangeEnd) : null;
     var recs = [];
     records.forEach(function (r) {
       var y = Number(r.year);
@@ -1267,7 +1313,8 @@
         n: y * 12 + m,
         ym: y + '-' + pad2(m),
         company: r.company_name ? String(r.company_name).trim() : '',
-        credit: r.company_tax_id ? String(r.company_tax_id).trim() : ''
+        credit: r.company_tax_id ? String(r.company_tax_id).trim() : '',
+        area: areaFromTaxAuthority(r.tax_authority)
       });
     });
     recs.sort(function (a, b) {
@@ -1275,7 +1322,11 @@
     });
     var companies = [];
     var seen = {};
-    /* 逐月单位编号：同月多条（含过渡月两家单位）按记录数取多数；平票取较近单位 */
+    /*
+     * 逐月任职单位：同月多条（含过渡月两家单位）按记录数取多数；平票取较近记录。
+     * 分段身份必须同时包含公司名，不能只按信用代码分组：历史数据可能给两家公司
+     * 保存了同一个代码，仍应按各自税务记录自动推导起止月。
+     */
     var ymStat = {};
     var minN = null;
     var maxN = null;
@@ -1288,42 +1339,72 @@
         seen[r.company] = 1;
         companies.push(r.company);
       }
-      if (r.credit) {
-        var s = ymStat[r.ym] || (ymStat[r.ym] = { counts: {}, first: r.credit });
-        s.counts[r.credit] = (s.counts[r.credit] || 0) + 1;
+      if (r.company || r.credit) {
+        var unitKey = r.company + '\u0001' + r.credit + '\u0001' + r.area;
+        var s =
+          ymStat[r.ym] ||
+          (ymStat[r.ym] = {
+            counts: Object.create(null),
+            units: Object.create(null),
+            first: unitKey
+          });
+        s.units[unitKey] = { company: r.company, credit: r.credit, area: r.area };
+        s.counts[unitKey] = (s.counts[unitKey] || 0) + 1;
       }
     });
     var monthUnits = {};
+    var monthEmployers = {};
     Object.keys(ymStat).forEach(function (ym) {
       var s = ymStat[ym];
       var best = s.first;
       var bestN = -1;
-      Object.keys(s.counts).forEach(function (cc) {
-        if (s.counts[cc] > bestN) {
-          bestN = s.counts[cc];
-          best = cc;
+      Object.keys(s.counts).forEach(function (key) {
+        if (s.counts[key] > bestN) {
+          bestN = s.counts[key];
+          best = key;
         }
       });
-      monthUnits[ym] = best;
+      var picked = s.units[best] || {};
+      var pickedCompany = picked.company || '';
+      var pickedCredit =
+        picked.credit || (pickedCompany && creditByCompany[pickedCompany]) || '';
+      monthEmployers[ym] = {
+        company_name:
+          pickedCompany || (pickedCredit && companyByCredit[pickedCredit]) || '',
+        credit_code: pickedCredit,
+        area: picked.area || ''
+      };
+      if (pickedCredit) monthUnits[ym] = pickedCredit;
     });
-    /* 分段任职：按月单位编号连续相同者合并为一段 */
-    var segYmKeys = Object.keys(monthUnits).sort();
+    /* 分段任职：同一公司+信用代码且月份连续时合并；断月后重新起段 */
+    var segYmKeys = Object.keys(monthEmployers).sort();
     var segments = [];
     segYmKeys.forEach(function (ym) {
-      var cc = monthUnits[ym];
+      var picked = monthEmployers[ym] || {};
       var last = segments[segments.length - 1];
-      if (last && last.credit_code === cc) {
+      var ymN = ymToNum(ym);
+      var lastEndN = last ? ymToNum(last.period_end) : null;
+      if (
+        last &&
+        last.company_name === picked.company_name &&
+        last.credit_code === picked.credit_code &&
+        last.area === picked.area &&
+        ymN != null &&
+        lastEndN != null &&
+        ymN === lastEndN + 1
+      ) {
         last.period_end = ym;
       } else {
         segments.push({
-          company_name: companyByCredit[cc] || '',
-          credit_code: cc,
+          company_name: picked.company_name || '',
+          credit_code: picked.credit_code || '',
+          area: picked.area || '',
           period_start: ym,
           period_end: ym
         });
       }
     });
-    if (!companies.length) {
+    if (!companies.length && !regionScoped) {
       employers.forEach(function (e) {
         var cn = e && e.company_name ? String(e.company_name).trim() : '';
         if (cn && !seen[cn]) {
@@ -1348,7 +1429,7 @@
         credits.push(cc);
       }
     });
-    if (!credits.length && Array.isArray(d.company_tax_ids)) {
+    if (!credits.length && !regionScoped && Array.isArray(d.company_tax_ids)) {
       d.company_tax_ids.forEach(function (c) {
         var cc = String(c || '').trim();
         if (cc && !creditSeen[cc]) {
@@ -1359,11 +1440,17 @@
     }
     var latestCredit = '';
     var latestCompany = '';
+    var latestArea = '';
     if (maxN != null) {
       var maxYmStr = numToYm(maxN);
-      latestCredit = monthUnits[maxYmStr] || '';
+      var latestEmployer = monthEmployers[maxYmStr] || {};
+      latestCredit = latestEmployer.credit_code || monthUnits[maxYmStr] || '';
       latestCompany =
-        (latestCredit && companyByCredit[latestCredit]) || companies[0] || '';
+        latestEmployer.company_name ||
+        (latestCredit && companyByCredit[latestCredit]) ||
+        companies[0] ||
+        '';
+      latestArea = latestEmployer.area || '';
     } else if (companies.length) {
       latestCompany = companies[0];
       latestCredit = creditByCompany[latestCompany] || credits[0] || '';
@@ -1373,8 +1460,16 @@
       credits: credits,
       latestCompany: latestCompany,
       latestCredit: latestCredit,
+      latestArea: latestArea,
       monthUnits: monthUnits,
       segments: segments,
+      regionScoped: regionScoped,
+      monthCount: Object.keys(monthEmployers).length,
+      excludedMonthCount: regionScoped
+        ? Object.keys(allRangeMonths).filter(function (ym) {
+            return !matchedRangeMonths[ym];
+          }).length
+        : 0,
       minYm: minN != null ? numToYm(minN) : '',
       maxYm: maxN != null ? numToYm(maxN) : ''
     };
@@ -1495,14 +1590,29 @@
         setField('sbdyIdNumber', id);
         var g = genderFromId(id);
         if (g) setField('sbdyGender', g);
-        var info = collectEmployerInfo(d, rangeStart, rangeEnd);
+        var info = collectEmployerInfo(d, rangeStart, rangeEnd, currentRegion());
         prefillMonthUnits = info.monthUnits || {};
+        if (info.regionScoped && !info.monthCount) {
+          clearSegments();
+          setField('sbdyCompany', '');
+          setField('sbdyCredit', '');
+          setField('sbdyPeriodStart', '');
+          setField('sbdyPeriodEnd', '');
+          setStatus('所选区间没有浙江税务机关记录，外地记录未计入浙江社保', true);
+          return;
+        }
         var segList = (info.segments || []).filter(function (s) {
           return s.credit_code || s.company_name;
         });
         var defArea = val('sbdyArea') || '余杭区';
         var defBase = val('sbdyBase') || '4986';
-        /* 多段：只写入下方「分段任职」，上方参保单位留空；单家才填上方单框 */
+        var keepSelectedWindow = !!(rangeStart && rangeEnd);
+        var forceSingleLocalSegment =
+          keepSelectedWindow &&
+          info.regionScoped &&
+          segList.length === 1 &&
+          (rangeStart !== info.minYm || rangeEnd !== info.maxYm);
+        /* 多段写入下方；江苏上方保留最近单位，供「现参保单位全称」使用 */
         if (
           fillMultiAsSegments({
             segments: segList,
@@ -1510,11 +1620,14 @@
             codes: info.credits,
             area: defArea,
             base: defBase,
-            period_start: rangeStart || info.minYm,
-            period_end: rangeEnd || info.maxYm
+            period_start: info.minYm || rangeStart,
+            period_end: info.maxYm || rangeEnd,
+            force_single: forceSingleLocalSegment,
+            summary_company: currentRegion() === 'js' ? info.latestCompany : '',
+            summary_credit: currentRegion() === 'js' ? info.latestCredit : ''
           })
         ) {
-          /* 已分段 */
+          if (currentRegion() === 'js' && info.latestArea) setField('sbdyArea', info.latestArea);
         } else {
           clearSegments();
           var oneCo =
@@ -1524,6 +1637,7 @@
           var oneCr = info.latestCredit || info.credits[0] || '';
           setField('sbdyCompany', oneCo);
           setField('sbdyCredit', oneCr);
+          if (info.latestArea) setField('sbdyArea', info.latestArea);
         }
         var ps = rangeStart || info.minYm;
         var pe = rangeEnd || info.maxYm;
@@ -1531,8 +1645,14 @@
         if (pe) setField('sbdyPeriodEnd', pe);
         var parts = ['已预填「' + username + '」'];
         if (info.companies.length) parts.push(info.companies.length + ' 家单位');
+        if (info.regionScoped) {
+          parts.push('浙江记录 ' + info.monthCount + ' 个月');
+          if (info.excludedMonthCount) {
+            parts.push('已排除外地 ' + info.excludedMonthCount + ' 个月');
+          }
+        }
         var filledSegs = readSegments().length;
-        if (filledSegs >= 2) {
+        if (filledSegs >= 1) {
           parts.push('已填入下方分段' + filledSegs + '段（可改参保地/基数）');
         } else if (ps && pe) parts.push('区间 ' + ps + '～' + pe);
         setStatus(parts.join(' · ') + '（请核对）', false);

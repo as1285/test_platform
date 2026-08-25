@@ -1115,11 +1115,31 @@ function normalizeJsPayload(body) {
   var area = String(b.area || '溧水区').trim().substring(0, 32) || '溧水区';
   var status =
     String(b.status || b.status_pension || '正常参保').trim().substring(0, 24) || '正常参保';
-  var statusInjury = String(b.status_injury || status).trim().substring(0, 24) || status;
-  var statusUnemp = String(b.status_unemployment || status).trim().substring(0, 24) || status;
+  /* 江苏表单只有一个「参保状态」，三险必须保持一致；忽略通用表单隐藏字段中的旧值 */
+  var statusInjury = status;
+  var statusUnemp = status;
   var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
   if (!isFinite(baseAmt) || baseAmt <= 0) baseAmt = 4494;
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
+  /*
+   * 总缴费区间用于标题中的「前 N 个月（YYYYMM-YYYYMM）」。
+   * 分段只决定哪些月份有缴费明细；断缴月可以没有行，但不能因此缩短标题区间。
+   */
+  var requestedPeriodStart = String(b.period_start || b.periodStart || '').trim();
+  var requestedPeriodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var requestedStartParsed = parseYm(requestedPeriodStart);
+  var requestedEndParsed = parseYm(requestedPeriodEnd);
+  if (
+    requestedStartParsed &&
+    requestedEndParsed &&
+    ymNumOf(requestedPeriodStart) > ymNumOf(requestedPeriodEnd)
+  ) {
+    var requestedTmp = requestedPeriodStart;
+    requestedPeriodStart = requestedPeriodEnd;
+    requestedPeriodEnd = requestedTmp;
+    requestedStartParsed = parseYm(requestedPeriodStart);
+    requestedEndParsed = parseYm(requestedPeriodEnd);
+  }
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
   }
@@ -1131,25 +1151,33 @@ function normalizeJsPayload(body) {
   if (segments.length) {
     months = buildJsMonthRows(segments, { base_amount: baseAmt, company_name: company });
   } else {
-    var periodStart = String(b.period_start || b.periodStart || '').trim();
-    var periodEnd = String(b.period_end || b.periodEnd || '').trim();
-    if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+    if (!requestedStartParsed || !requestedEndParsed) {
       return { error: '缴费起止月份格式应为 YYYY-MM' };
     }
-    var a0 = parseYm(periodStart);
-    var b0 = parseYm(periodEnd);
-    if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
-      var tmp = periodStart;
-      periodStart = periodEnd;
-      periodEnd = tmp;
-    }
     months = buildJsMonthRows(
-      [{ company_name: company, base_amount: baseAmt, period_start: periodStart, period_end: periodEnd }],
+      [
+        {
+          company_name: company,
+          base_amount: baseAmt,
+          period_start: requestedPeriodStart,
+          period_end: requestedPeriodEnd
+        }
+      ],
       { base_amount: baseAmt, company_name: company }
     );
   }
   if (!months.length) {
     return { error: '缴费月份区间无效' };
+  }
+  /* 多公司预填会把单位写入分段；汇总单位为空时，现参保单位取最后一个缴费月的单位。 */
+  if (!company) {
+    for (var companyIdx = months.length - 1; companyIdx >= 0; companyIdx -= 1) {
+      var monthCompany = String((months[companyIdx] && months[companyIdx].unit_name) || '').trim();
+      if (monthCompany) {
+        company = monthCompany.substring(0, 128);
+        break;
+      }
+    }
   }
   var startNum = null;
   var endNum = null;
@@ -1158,11 +1186,17 @@ function normalizeJsPayload(body) {
     if (startNum == null || n < startNum) startNum = n;
     if (endNum == null || n > endNum) endNum = n;
   });
-  var startY = Math.floor((startNum - 1) / 12);
-  var startM = ((startNum - 1) % 12) + 1;
-  var endY = Math.floor((endNum - 1) / 12);
-  var endM = ((endNum - 1) % 12) + 1;
-  var spanMonths = endNum - startNum + 1;
+  var displayStartNum = startNum;
+  var displayEndNum = endNum;
+  if (requestedStartParsed && requestedEndParsed) {
+    displayStartNum = Math.min(displayStartNum, ymNumOf(requestedPeriodStart));
+    displayEndNum = Math.max(displayEndNum, ymNumOf(requestedPeriodEnd));
+  }
+  var startY = Math.floor((displayStartNum - 1) / 12);
+  var startM = ((displayStartNum - 1) % 12) + 1;
+  var endY = Math.floor((displayEndNum - 1) / 12);
+  var endM = ((displayEndNum - 1) % 12) + 1;
+  var spanMonths = displayEndNum - displayStartNum + 1;
   var periodCompact =
     String(startY) + pad2(startM) + '-' + String(endY) + pad2(endM);
   return {
@@ -1189,6 +1223,14 @@ function normalizeJsPayload(body) {
     detail_rows: months,
     months: months
   };
+}
+
+function normalizeZjStatusLabel(value, fallback) {
+  var status = String(value || fallback || '').trim();
+  if (status === '暂停缴费（中断）' || status === '中断缴费') {
+    return '暂停缴费';
+  }
+  return status;
 }
 
 function normalizePayload(body) {
@@ -1241,14 +1283,19 @@ function normalizePayload(body) {
   if (!isFinite(pensionPay)) pensionPay = Math.round(baseAmt * 0.08 * 100) / 100;
   if (!isFinite(unempPay)) unempPay = Math.round(baseAmt * 0.005 * 100) / 100;
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
-  var statusPension = String(b.status_pension || '正常参保').trim().substring(0, 32);
-  var statusMedical = String(
-    b.status_medical || b.status_injury || '正常参保'
-  ).trim().substring(0, 32);
-  var statusInjury = String(
-    b.status_injury || b.status_medical || '正常参保'
-  ).trim().substring(0, 32);
-  var statusUnemp = String(b.status_unemployment || '正常参保').trim().substring(0, 32);
+  var statusPension = normalizeZjStatusLabel(b.status_pension, '正常参保').substring(0, 32);
+  var statusMedical = normalizeZjStatusLabel(
+    b.status_medical || b.status_injury,
+    '正常参保'
+  ).substring(0, 32);
+  var statusInjury = normalizeZjStatusLabel(
+    b.status_injury || b.status_medical,
+    '正常参保'
+  ).substring(0, 32);
+  var statusUnemp = normalizeZjStatusLabel(
+    b.status_unemployment,
+    '正常参保'
+  ).substring(0, 32);
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
   }
@@ -1304,6 +1351,32 @@ function normalizePayload(body) {
     var segPs = segMonths[0].year + '-' + segMonths[0].month;
     var segPe =
       segMonths[segMonths.length - 1].year + '-' + segMonths[segMonths.length - 1].month;
+    /*
+     * 分段决定实际缴费月份；用户指定的更大查询区间只用于证明标题。
+     * 例如查询 2024-08～2026-07、浙江实际缴费 2025-04～2026-07：
+     * 明细保留 16 行，标题显示“前16个月（2024年08月-2026年07月）”。
+     */
+    var displayPs = segPs;
+    var displayPe = segPe;
+    var selectedStart = parseYm(periodStart);
+    var selectedEnd = parseYm(periodEnd);
+    if (selectedStart && selectedEnd) {
+      if (
+        selectedStart.y > selectedEnd.y ||
+        (selectedStart.y === selectedEnd.y && selectedStart.m > selectedEnd.m)
+      ) {
+        var selectedTmp = periodStart;
+        periodStart = periodEnd;
+        periodEnd = selectedTmp;
+      }
+      if (
+        ymNumOf(periodStart) <= ymNumOf(segPs) &&
+        ymNumOf(periodEnd) >= ymNumOf(segPe)
+      ) {
+        displayPs = periodStart;
+        displayPe = periodEnd;
+      }
+    }
     /* 参保单位只显示「当前/最新」一家：按明细末月单位编号对齐；多段历史仍在 months/segments */
     var latestEmp = pickLatestZjEmployer({
       company: company,
@@ -1331,12 +1404,14 @@ function normalizePayload(body) {
       credit_code: latestEmp.credit_code || currentSeg.credit_code || '',
       area: currentSeg.area || area,
       segments: segments,
-      period_start: segPs,
-      period_end: segPe,
+      period_start: displayPs,
+      period_end: displayPe,
+      contribution_period_start: segPs,
+      contribution_period_end: segPe,
       period_label:
-        formatYmCn(parseYm(segPs).y, parseYm(segPs).m) +
+        formatYmCn(parseYm(displayPs).y, parseYm(displayPs).m) +
         '-' +
-        formatYmCn(parseYm(segPe).y, parseYm(segPe).m),
+        formatYmCn(parseYm(displayPe).y, parseYm(displayPe).m),
       base_amount: baseAmt,
       pension_pay: pensionPay,
       unemployment_pay: unempPay,
@@ -1526,12 +1601,25 @@ function paymentTableHeadHtml() {
 function colgroupHtml() {
   return (
     '<colgroup>' +
-    '<col style="width:4.2%"><col style="width:3.8%"><col style="width:14.5%">' +
-    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
-    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
-    '<col style="width:5.5%">' +
+    '<col style="width:5.3%"><col style="width:3.2%"><col style="width:19.3%">' +
+    '<col style="width:10.2%"><col style="width:7.6%"><col style="width:8.2%"><col style="width:8.3%">' +
+    '<col style="width:10.2%"><col style="width:7.5%"><col style="width:7.4%"><col style="width:8.3%">' +
+    '<col style="width:4.5%">' +
     '</colgroup>'
   );
+}
+
+function zjPeriodSpanMonths(payload, fallback) {
+  var p = payload || {};
+  var start = ymNumOf(p.period_start);
+  var end = ymNumOf(p.period_end);
+  var count =
+    start != null && end != null
+      ? Math.abs(end - start) + 1
+      : Number(fallback) || 12;
+  if (count < 1) count = 1;
+  if (count > 48) count = 48;
+  return count;
 }
 
 function renderRedSealImg() {
@@ -2011,7 +2099,7 @@ function renderJsCertHtml(payload, links, opts) {
   var stU = escHtml(p.status_unemployment || p.status || '');
   var sec =
     '出具证明前' +
-    escHtml(p.span_months || rows.length || 1) +
+    escHtml(p.span_months || p.month_count || rows.length || 1) +
     '个月缴费情况（' +
     escHtml(p.period_compact || '') +
     '）';
@@ -2104,7 +2192,7 @@ function renderJsCertHtml(payload, links, opts) {
     '</div>' +
     '<div class="foot">' +
     '<div class="print-date">打印时间：' + escHtml(sealDate) + '</div>' +
-    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png" alt=""></div>' +
+    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260825-seal-color" alt=""></div>' +
     '</div>' +
     '</div>' +
     '<script src="/js/vendor/qrcode.min.js"><\/script>' +
@@ -2139,9 +2227,10 @@ function renderCertHtml(payload, links, opts) {
   var authCode = opts.authCode || '';
   var companyDisp = companyDisplayOf(p);
   var periodLabel = p.period_label || '';
-  var monthCount = Array.isArray(months) ? months.length : 0;
-  if (monthCount < 1) monthCount = 12;
-  if (monthCount > 48) monthCount = 48;
+  var monthCount = zjPeriodSpanMonths(
+    p,
+    Array.isArray(months) ? months.length : 12
+  );
   var paySecTitle =
     '出具证明前' + monthCount + '个月缴费情况（' + escHtml(periodLabel) + '）';
   var officialValidateHint =
@@ -2574,6 +2663,35 @@ async function handlePublicSbdyDemoShow(req, res) {
     if (payload && !payload.status_injury && payload.status_medical) {
       payload.status_injury = payload.status_medical;
     }
+    /* 兼容已生成的江苏历史证书：旧前端曾把隐藏的浙江状态带进工伤/失业列 */
+    if (payload && isJsRegion(payload)) {
+      var jsShowStatus = String(
+        payload.status || payload.status_pension || payload.status_injury || payload.status_unemployment || '正常参保'
+      ).trim();
+      payload.status = jsShowStatus;
+      payload.status_pension = jsShowStatus;
+      payload.status_injury = jsShowStatus;
+      payload.status_unemployment = jsShowStatus;
+      if (!String(payload.company_display || payload.company_name || '').trim()) {
+        var jsShowRows = Array.isArray(payload.detail_rows)
+          ? payload.detail_rows
+          : Array.isArray(payload.months)
+            ? payload.months
+            : [];
+        for (var jsRowIdx = jsShowRows.length - 1; jsRowIdx >= 0; jsRowIdx -= 1) {
+          var jsRowCompany = String(
+            (jsShowRows[jsRowIdx] &&
+              (jsShowRows[jsRowIdx].unit_name || jsShowRows[jsRowIdx].company_name)) ||
+              ''
+          ).trim();
+          if (jsRowCompany) {
+            payload.company_name = jsRowCompany;
+            payload.company_display = jsRowCompany;
+            break;
+          }
+        }
+      }
+    }
     /* 浙江版历史 payload 若头部拼了多家单位，展示/出证时只保留最近一家 */
     if (
       payload &&
@@ -2586,6 +2704,9 @@ async function handlePublicSbdyDemoShow(req, res) {
       payload.layout !== 'hn_official_v1' &&
       payload.layout !== 'js_official_v1'
     ) {
+      ['status_pension', 'status_medical', 'status_injury', 'status_unemployment'].forEach(function (key) {
+        if (payload[key]) payload[key] = normalizeZjStatusLabel(payload[key]);
+      });
       var fixedDisp = companyDisplayOf(payload);
       if (fixedDisp) {
         payload.company_display = fixedDisp;

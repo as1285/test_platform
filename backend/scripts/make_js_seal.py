@@ -15,11 +15,12 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 FRONTEND_IMG = os.path.join(HERE, '..', '..', 'frontend', 'public', 'img')
+TEXT_REFERENCE_PNG = os.path.join(ASSETS, 'js_seal_text_reference.png')
 FONT_CANDIDATES = [
     os.path.join(ASSETS, 'NotoSerifCJKsc-Regular.otf'),
-    '/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc',
     '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',
     '/usr/share/fonts/truetype/noto/NotoSerifCJK-Regular.ttc',
+    '/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc',
 ]
 
 
@@ -49,57 +50,95 @@ def _star_pts(cx, cy, r, rot=-math.pi / 2):
 def make_js_seal(out_path, size=1024):
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    red = (214, 22, 22, 255)
+    # 左侧原版样张为较亮的朱红色；避免使用偏暗的酒红色。
+    red = (217, 81, 79, 255)
     cx = cy = size / 2.0
     r = size * 0.462
-    ring_w = max(10, int(size * 0.024))
+    ring_w = max(10, int(size * 0.026))
     draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline=red, width=ring_w)
 
-    # 中心五角星（上移，给中部打印日期留出空白）
-    star_r = size * 0.140
-    draw.polygon(_star_pts(cx, cy - size * 0.082, star_r), fill=red)
+    # 原章五角星接近圆心；打印日期由 PDF 层横向压过章面。
+    star_r = size * 0.154
+    draw.polygon(_star_pts(cx, cy - size * 0.004, star_r), fill=red)
 
-    # 顶部弧字：江苏省社会保险局
-    ring = '江苏省社会保险局'
-    font_ring = _load_font(int(size * 0.108))
-    n = len(ring)
-    start = -math.pi * 0.60
-    end = math.pi * 0.60
-    radius_text = r - size * 0.104
-    for i, ch in enumerate(ring):
-        t = i / float(max(1, n - 1))
-        ang = start + (end - start) * t
-        rx = cx + radius_text * math.sin(ang)
-        ry = cy - radius_text * math.cos(ang)
-        ch_img = Image.new('RGBA', (int(size * 0.17), int(size * 0.17)), (0, 0, 0, 0))
-        cd = ImageDraw.Draw(ch_img)
-        cb = cd.textbbox((0, 0), ch, font=font_ring)
-        cd.text((6 - cb[0], 4 - cb[1]), ch, font=font_ring, fill=red)
-        rot = -math.degrees(ang)
-        ch_rot = ch_img.rotate(rot, expand=True, resample=Image.BICUBIC)
-        img.alpha_composite(
-            ch_rot,
-            (int(rx - ch_rot.width / 2.0), int(ry - ch_rot.height / 2.0)),
-        )
+    # 原章中的弧字并非系统字体实时排版，而是印章图形的一部分。优先使用从
+    # 用户提供原图中提取的透明文字蒙版，以保持字形、弧度和字距一致。
+    used_reference = False
+    if os.path.isfile(TEXT_REFERENCE_PNG):
+        try:
+            ref = Image.open(TEXT_REFERENCE_PNG).convert('RGBA')
+            diameter = int(round(r * 2.0)) + 1
+            # 参考蒙版本身就是目标显示尺寸附近的栅格字形；最近邻放大后再由
+            # PDF 缩放一次，可避免两次 Lanczos 导致笔画发虚。
+            alpha = ref.getchannel('A').resize((diameter, diameter), Image.NEAREST)
+            text_layer = Image.new('RGBA', (diameter, diameter), red)
+            text_layer.putalpha(alpha)
+            img.alpha_composite(
+                text_layer,
+                (int(round(cx - r)), int(round(cy - r))),
+            )
+            used_reference = True
+        except Exception:
+            used_reference = False
 
-    # 底部：电子专用章（红色，横排在下部）
-    bot = '电子专用章'
-    font_bot = _load_font(int(size * 0.104))
-    spacing = size * 0.006
-    widths = []
-    total_w = 0.0
-    for ch in bot:
-        b = draw.textbbox((0, 0), ch, font=font_bot)
-        w = b[2] - b[0]
-        widths.append((ch, w, b))
-        total_w += w + spacing
-    total_w -= spacing
-    x = cx - total_w / 2.0
-    y_bot = cy + size * 0.224
-    for ch, w, b in widths:
-        h = b[3] - b[1]
-        draw.text((x - b[0], y_bot - h / 2.0 - b[1]), ch, font=font_bot, fill=red)
-        x += w + spacing
+    if not used_reference:
+        # 无参考蒙版时的可重建兜底。
+        ring = '江苏省社会保险局'
+        font_ring = _load_font(int(size * 0.115))
+        n = len(ring)
+        start = math.radians(-160.0)
+        end = math.radians(-20.0)
+        radius_text = size * 0.365
+        for i, ch in enumerate(ring):
+            t = i / float(max(1, n - 1))
+            theta = start + (end - start) * t
+            rx = cx + radius_text * math.cos(theta)
+            ry = cy + radius_text * math.sin(theta)
+            side = int(size * 0.24)
+            ch_img = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+            cd = ImageDraw.Draw(ch_img)
+            cb = cd.textbbox((0, 0), ch, font=font_ring)
+            tw = cb[2] - cb[0]
+            th = cb[3] - cb[1]
+            cd.text(
+                ((side - tw) / 2.0 - cb[0], (side - th) / 2.0 - cb[1]),
+                ch,
+                font=font_ring,
+                fill=red,
+                stroke_width=4,
+                stroke_fill=red,
+            )
+            rot = -(math.degrees(theta) + 90.0)
+            ch_rot = ch_img.rotate(rot, expand=True, resample=Image.BICUBIC)
+            img.alpha_composite(
+                ch_rot,
+                (int(rx - ch_rot.width / 2.0), int(ry - ch_rot.height / 2.0)),
+            )
+
+        bot = '电子专用章'
+        font_bot = _load_font(int(size * 0.135))
+        spacing = size * 0.015
+        widths = []
+        total_w = 0.0
+        for ch in bot:
+            b = draw.textbbox((0, 0), ch, font=font_bot)
+            w = b[2] - b[0]
+            widths.append((ch, w, b))
+            total_w += w + spacing
+        total_w -= spacing
+        x = cx - total_w / 2.0
+        y_bot = cy + size * 0.226
+        for ch, w, b in widths:
+            h = b[3] - b[1]
+            draw.text(
+                (x - b[0], y_bot - h / 2.0 - b[1]),
+                ch,
+                font=font_bot,
+                fill=red,
+                stroke_width=3,
+                stroke_fill=red,
+            )
+            x += w + spacing
 
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     img.save(out_path, 'PNG')

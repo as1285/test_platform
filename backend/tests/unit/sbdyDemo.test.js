@@ -104,6 +104,58 @@ describe('sbdyDemo', () => {
     expect(p.period_end).toBe('2026-08');
   });
 
+  it('keeps the selected window and labels its full Zhejiang month span', () => {
+    const p = normalizePayload({
+      region: 'zj',
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      period_start: '2024-08',
+      period_end: '2026-07',
+      segments: [
+        {
+          company_name: '杭州华鲜高新技术有限公司',
+          credit_code: '91330110MADG8JH092',
+          area: '余杭区',
+          base_amount: 5000,
+          period_start: '2025-04',
+          period_end: '2026-07'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.months).toHaveLength(16);
+    expect(p.period_start).toBe('2024-08');
+    expect(p.period_end).toBe('2026-07');
+    expect(p.contribution_period_start).toBe('2025-04');
+    expect(p.contribution_period_end).toBe('2026-07');
+    const html = renderCertHtml(p, { show_url: 'https://example.test/show.pdf' });
+    expect(html).toContain('出具证明前24个月缴费情况（2024年08月-2026年07月）');
+    expect(html).not.toContain('出具证明前16个月缴费情况');
+  });
+
+  it('normalizes Zhejiang paused statuses without the Jiangsu interrupted suffix', () => {
+    const p = normalizePayload({
+      region: 'zj',
+      name: '李晓晴',
+      id_number: '371323199904156523',
+      company_name: '杭州百伦思宠物用品有限公司',
+      credit_code: '91310113630842640E',
+      period_start: '2025-06',
+      period_end: '2025-06',
+      status_pension: '暂停缴费（中断）',
+      status_medical: '暂停缴费（中断）',
+      status_injury: '暂停缴费（中断）',
+      status_unemployment: '暂停缴费（中断）'
+    });
+    expect(p.status_pension).toBe('暂停缴费');
+    expect(p.status_medical).toBe('暂停缴费');
+    expect(p.status_injury).toBe('暂停缴费');
+    expect(p.status_unemployment).toBe('暂停缴费');
+    const html = renderCertHtml(p, {});
+    expect(html).toContain('暂停缴费');
+    expect(html).not.toContain('暂停缴费（中断）');
+  });
+
   it('rejects segments that have unit but no valid period (no silent empty cert)', () => {
     const p = normalizePayload({
       name: '王龙雪',
@@ -348,6 +400,9 @@ describe('sbdyDemo', () => {
       id_number: '342501199307088233',
       gender: '男',
       status: '暂停缴费（中断）',
+      // 管理端通用隐藏字段可能残留浙江默认值，江苏应统一采用 status
+      status_injury: '正常参保',
+      status_unemployment: '正常参保',
       company_name: '南京越诚信息技术有限公司',
       area: '溧水区',
       period_start: '2024-01',
@@ -385,7 +440,7 @@ describe('sbdyDemo', () => {
       company_name: '南京市溧水区暂时中止单位',
       area: '溧水区',
       segments: [
-        { company_name: '南京市胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
+        { company_name: '南京胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
         { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
         { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
         { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
@@ -395,11 +450,12 @@ describe('sbdyDemo', () => {
     /* 2026-02 断缴：12 条明细，但跨度 202508-202608 = 13 个月 */
     expect(p.detail_rows.length).toBe(12);
     expect(p.span_months).toBe(13);
+    expect(p.month_count).toBe(12);
     expect(p.period_compact).toBe('202508-202608');
     expect(p.company_display).toBe('南京市溧水区暂时中止单位');
     expect(p.detail_rows[0].year).toBe(2025);
     expect(p.detail_rows[0].month).toBe('08');
-    expect(p.detail_rows[0].unit_name).toBe('南京市胜德金属装备有限公司');
+    expect(p.detail_rows[0].unit_name).toBe('南京胜德金属装备有限公司');
     expect(p.detail_rows[0].pension_pay).toBeCloseTo(390.32, 2);
     expect(p.detail_rows[0].unemp_pay).toBeCloseTo(24.4, 2);
     expect(p.detail_rows[1].unit_name).toBe('南京埃希玛科技有限公司');
@@ -420,6 +476,34 @@ describe('sbdyDemo', () => {
     expect(html).toContain('威尔特茵轮（南京）有限公司');
     expect(html).toContain('暂停缴费（中断）');
     expect(html).not.toContain('社会保险经办机构');
+  });
+
+  it('Jiangsu heading keeps selected total period when paid segments cover only part', () => {
+    const p = normalizePayload({
+      region: 'js',
+      name: '樊宜',
+      id_number: '342501199307088233',
+      status: '暂停缴费（中断）',
+      company_name: '',
+      area: '溧水区',
+      period_start: '2025-08',
+      period_end: '2026-08',
+      segments: [
+        { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
+        { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.detail_rows).toHaveLength(6);
+    expect(p.month_count).toBe(6);
+    expect(p.span_months).toBe(13);
+    expect(p.period_start).toBe('2025-08');
+    expect(p.period_end).toBe('2026-08');
+    expect(p.period_compact).toBe('202508-202608');
+    expect(p.company_name).toBe('威尔特茵轮（南京）有限公司');
+    expect(p.company_display).toBe('威尔特茵轮（南京）有限公司');
+    const html = renderCertHtml(p);
+    expect(html).toContain('出具证明前13个月缴费情况（202508-202608）');
   });
 
   it('renderCertHtml escapes name for Jiangsu layout', () => {

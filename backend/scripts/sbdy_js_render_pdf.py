@@ -38,21 +38,23 @@ ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 SEAL_PNG = os.path.join(ASSETS, 'js_seal.png')
 
 PAGE_W, PAGE_H = 595.0, 842.0
-X0, X1 = 34.0, 561.0
+# 原版 723×1024 样张实测：正文框约 x=53.5..540pt，不是通栏 A4。
+X0, X1 = 53.5, 540.0
 LW = 0.6
+TITLE_CENTER_X = 266.0
 
 TITLE1 = '江苏省社会保险权益记录单'
 TITLE2 = '（参保人员）'
 QR_CAP = '请使用官方江苏智慧人社APP扫描验证'
 
 # 信息表列线：姓名 | 值 | 公民身份号码（社会保障号）| 值 | 性别 | 值
-INFO_X = [34.0, 78.0, 168.0, 300.0, 470.0, 512.0, 561.0]
+INFO_X = [53.5, 83.0, 155.0, 268.5, 430.5, 490.0, 540.0]
 # 参保基本情况：险种/参保状态行的列线（标签 | 养老 | 工伤 | 失业）
-BS_X = [34.0, 130.0, 250.0, 355.0, 561.0]
+BS_X = [53.5, 155.0, 268.5, 379.5, 540.0]
 # 现参保单位全称行的列线（标签 | 单位值 | 现参保地 | 值）
-BS3_X = [34.0, 130.0, 430.0, 490.0, 561.0]
+BS3_X = [53.5, 155.0, 379.5, 430.5, 540.0]
 # 明细表列线：年|月|单位全称|养老基数|养老个人|失业基数|失业个人|工伤基数|备注
-COL_X = [34.0, 66.0, 92.0, 228.0, 290.0, 350.0, 412.0, 472.0, 534.0, 561.0]
+COL_X = [53.5, 83.0, 102.0, 212.5, 268.5, 322.5, 379.5, 430.5, 490.0, 540.0]
 
 NOTES = [
     '1.本权益单信息为打印时参保情况，供参考，由参保人员自行保管。',
@@ -86,6 +88,36 @@ def cell_two(page, fp, fn, l1, l2, x0, x1, y0, y1, size):
     mid = (y0 + y1) / 2.0
     cell_box(page, fp, fn, l1, x0, x1, y0, mid + 1.0, size=size, align='center', min_size=6.0)
     cell_box(page, fp, fn, l2, x0, x1, mid - 1.0, y1, size=size, align='center', min_size=6.0)
+
+
+def wrap_cell_text(fp, text, max_w, size):
+    """按字符折为最多两行；用于原版单位全称窄列。"""
+    src = norm_text(text)
+    if not src:
+        return ['']
+    lines = []
+    line = ''
+    for ch in src:
+        if line and text_width(fp, line + ch, size) > max_w:
+            lines.append(line)
+            line = ch
+        else:
+            line += ch
+    if line:
+        lines.append(line)
+    if len(lines) <= 2:
+        return lines
+    return [lines[0], ''.join(lines[1:])]
+
+
+def cell_lines(page, fp, fn, lines, x0, x1, y0, y1, size):
+    lines = [norm_text(x) for x in (lines or []) if norm_text(x)]
+    if len(lines) <= 1:
+        cell_box(page, fp, fn, lines[0] if lines else '', x0, x1, y0, y1, size=size, pad=1.2)
+        return
+    mid = (y0 + y1) / 2.0
+    cell_box(page, fp, fn, lines[0], x0, x1, y0, mid + 0.3, size=size, pad=1.2)
+    cell_box(page, fp, fn, lines[1], x0, x1, mid - 0.3, y1, size=size, pad=1.2)
 
 
 def seal_date(s):
@@ -158,38 +190,40 @@ def collect_blob(p, rows, auth_code):
 
 
 def draw_title(page, fp_t, fn_t, qr_path):
-    tw = text_width(fp_t, TITLE1, 20.0)
-    page.insert_text(((PAGE_W - tw) / 2.0, 74.0), TITLE1, fontname=fn_t, fontsize=20.0, color=(0, 0, 0))
-    tw2 = text_width(fp_t, TITLE2, 16.0)
-    page.insert_text(((PAGE_W - tw2) / 2.0, 98.0), TITLE2, fontname=fn_t, fontsize=16.0, color=(0, 0, 0))
+    title_size = 18.6
+    tw = text_width(fp_t, TITLE1, title_size)
+    page.insert_text((TITLE_CENTER_X - tw / 2.0, 70.0), TITLE1, fontname=fn_t, fontsize=title_size, color=(0, 0, 0))
+    sub_size = 15.5
+    tw2 = text_width(fp_t, TITLE2, sub_size)
+    page.insert_text((TITLE_CENTER_X - tw2 / 2.0, 98.0), TITLE2, fontname=fn_t, fontsize=sub_size, color=(0, 0, 0))
     if qr_path and os.path.isfile(qr_path):
-        page.insert_image(fitz.Rect(487.0, 38.0, 561.0, 112.0), filename=qr_path)
+        page.insert_image(fitz.Rect(404.0, 37.0, 485.0, 118.0), filename=qr_path)
 
 
 def draw_qr_caption(page, fp, fn):
-    s = fit_fontsize(fp, QR_CAP, X1 - 300.0, 8.6, min_size=6.5)
+    s = fit_fontsize(fp, QR_CAP, 165.0, 9.2, min_size=7.0)
     tw = text_width(fp, QR_CAP, s)
-    page.insert_text((X1 - tw, 126.0), QR_CAP, fontname=fn, fontsize=s, color=(0, 0, 0))
+    page.insert_text((X1 - tw, 148.0), QR_CAP, fontname=fn, fontsize=s, color=(0, 0, 0))
 
 
 def draw_info_table(page, fp_b, fn_b, fp_t, fn_t, p, y0):
     """姓名/公民身份号码（社会保障号）/性别；返回底 y。"""
-    h = 32.0
+    h = 24.0
     y1 = y0 + h
     rect(page, X0, y0, X1, y1)
     for x in INFO_X[1:-1]:
         vline(page, x, y0, y1)
-    cell_box(page, fp_t, fn_t, '姓名', INFO_X[0], INFO_X[1], y0, y1, size=9.6, align='center')
-    cell_box(page, fp_b, fn_b, p.get('name') or '', INFO_X[1], INFO_X[2], y0, y1, size=9.6, align='center')
-    cell_two(page, fp_t, fn_t, '公民身份号码', '（社会保障号）', INFO_X[2], INFO_X[3], y0, y1, 9.2)
-    cell_box(page, fp_b, fn_b, p.get('id_number') or '', INFO_X[3], INFO_X[4], y0, y1, size=9.6, align='center')
-    cell_box(page, fp_t, fn_t, '性别', INFO_X[4], INFO_X[5], y0, y1, size=9.6, align='center')
-    cell_box(page, fp_b, fn_b, p.get('gender') or '', INFO_X[5], INFO_X[6], y0, y1, size=9.6, align='center')
+    cell_box(page, fp_t, fn_t, '姓名', INFO_X[0], INFO_X[1], y0, y1, size=8.8, align='center')
+    cell_box(page, fp_b, fn_b, p.get('name') or '', INFO_X[1], INFO_X[2], y0, y1, size=8.4, align='center')
+    cell_two(page, fp_t, fn_t, '公民身份号码', '（社会保障号）', INFO_X[2], INFO_X[3], y0, y1, 8.5)
+    cell_box(page, fp_b, fn_b, p.get('id_number') or '', INFO_X[3], INFO_X[4], y0, y1, size=8.4, align='center')
+    cell_box(page, fp_t, fn_t, '性别', INFO_X[4], INFO_X[5], y0, y1, size=8.8, align='center')
+    cell_box(page, fp_b, fn_b, p.get('gender') or '', INFO_X[5], INFO_X[6], y0, y1, size=8.4, align='center')
     return y1
 
 
 def draw_basic_situation(page, fp_b, fn_b, fp_t, fn_t, p, y0):
-    rh = 20.0
+    rh = 22.5
     y_sec = y0 + rh
     y_r1 = y_sec + rh
     y_r2 = y_r1 + rh
@@ -198,13 +232,13 @@ def draw_basic_situation(page, fp_b, fn_b, fp_t, fn_t, p, y0):
     hline(page, y_sec)
     hline(page, y_r1)
     hline(page, y_r2)
-    cell_box(page, fp_t, fn_t, '参加社会保险基本情况', X0, X1, y0, y_sec, size=10.5, align='center')
+    cell_box(page, fp_t, fn_t, '参加社会保险基本情况', X0, X1, y0, y_sec, size=10.0, align='center')
     # 险种行 / 参保状态行
     for x in BS_X[1:-1]:
         vline(page, x, y_sec, y_r2)
     xian = ['险种', '养老保险', '工伤保险', '失业保险']
     for i, t in enumerate(xian):
-        cell_box(page, fp_t, fn_t, t, BS_X[i], BS_X[i + 1], y_sec, y_r1, size=9.6, align='center')
+        cell_box(page, fp_t, fn_t, t, BS_X[i], BS_X[i + 1], y_sec, y_r1, size=9.0, align='center')
     st_p = str(p.get('status_pension') or p.get('status') or '')
     st_i = str(p.get('status_injury') or p.get('status') or '')
     st_u = str(p.get('status_unemployment') or p.get('status') or '')
@@ -220,24 +254,24 @@ def draw_basic_situation(page, fp_b, fn_b, fp_t, fn_t, p, y0):
             BS_X[i + 1],
             y_r1,
             y_r2,
-            size=9.4,
+            size=8.5,
             align='center',
         )
     # 现参保单位全称行（独立列线）
     for x in BS3_X[1:-1]:
         vline(page, x, y_r2, y_r3)
-    cell_box(page, fp_t, fn_t, '现参保单位全称', BS3_X[0], BS3_X[1], y_r2, y_r3, size=9.2, align='center')
+    cell_box(page, fp_t, fn_t, '现参保单位全称', BS3_X[0], BS3_X[1], y_r2, y_r3, size=8.7, align='center')
     cell_box(
         page, fp_b, fn_b, p.get('company_display') or p.get('company_name') or '',
-        BS3_X[1], BS3_X[2], y_r2, y_r3, size=9.2, align='center', min_size=6.5,
+        BS3_X[1], BS3_X[2], y_r2, y_r3, size=8.4, align='center', min_size=6.5,
     )
-    cell_box(page, fp_t, fn_t, '现参保地', BS3_X[2], BS3_X[3], y_r2, y_r3, size=9.2, align='center')
-    cell_box(page, fp_b, fn_b, p.get('area') or '', BS3_X[3], BS3_X[4], y_r2, y_r3, size=9.2, align='center')
+    cell_box(page, fp_t, fn_t, '现参保地', BS3_X[2], BS3_X[3], y_r2, y_r3, size=8.7, align='center')
+    cell_box(page, fp_b, fn_b, p.get('area') or '', BS3_X[3], BS3_X[4], y_r2, y_r3, size=8.4, align='center')
     return y_r3
 
 
 def draw_section_title(page, fp_t, fn_t, text, y0):
-    h = 20.0
+    h = 22.0
     y1 = y0 + h
     rect(page, X0, y0, X1, y1)
     cell_box(page, fp_t, fn_t, text, X0, X1, y0, y1, size=10.5, align='center')
@@ -245,29 +279,34 @@ def draw_section_title(page, fp_t, fn_t, text, y0):
 
 
 def draw_table(page, fp_b, fn_b, fp_t, fn_t, rows, y0):
-    head1_h = 15.0
-    head2_h = 24.0
+    head1_h = 15.5
+    head2_h = 26.5
     y_h1 = y0 + head1_h
     y_h2 = y_h1 + head2_h
-    n = max(1, len(rows))
-    row_h = max(13.0, min(20.0, 300.0 / n))
-    y_end = y_h2 + row_h * len(rows)
+    unit_size = 8.4
+    unit_max_w = (COL_X[3] - COL_X[2]) - 3.6
+    unit_lines = [wrap_cell_text(fp_b, r.get('unit_name') or '', unit_max_w, unit_size) for r in rows]
+    row_heights = [22.5 if len(lines) > 1 else 14.2 for lines in unit_lines]
+    y_end = y_h2 + sum(row_heights)
     rect(page, X0, y0, X1, y_end)
     hline(page, y_h2)
-    # 表头分组竖线
-    for x in COL_X[1:-1]:
-        vline(page, x, y0, y_end)
-    # 养老/失业/工伤 分组横线（组内子列仅在第二行以下有竖线，上部合并）
+    # 年/月/单位/险种分组/备注边界贯穿整表；养老与失业的组内分隔线
+    # 只从第二层表头开始，不能穿过上方「养老保险 / 失业保险」合并标题。
+    for ci in (1, 2, 3, 5, 7, 8):
+        vline(page, COL_X[ci], y0, y_end)
+    for ci in (4, 6):
+        vline(page, COL_X[ci], y_h1, y_end)
+    # 养老/失业/工伤分组横线
     hline(page, y_h1, x0=COL_X[3], x1=COL_X[8])
     # 年/月/单位全称/备注 跨两行
-    cell_box(page, fp_t, fn_t, '年', COL_X[0], COL_X[1], y0, y_h2, size=9.0, align='center')
-    cell_box(page, fp_t, fn_t, '月', COL_X[1], COL_X[2], y0, y_h2, size=9.0, align='center')
-    cell_box(page, fp_t, fn_t, '单位全称', COL_X[2], COL_X[3], y0, y_h2, size=9.0, align='center')
-    cell_box(page, fp_t, fn_t, '备注', COL_X[8], COL_X[9], y0, y_h2, size=9.0, align='center')
+    cell_box(page, fp_t, fn_t, '年', COL_X[0], COL_X[1], y0, y_h2, size=8.4, align='center')
+    cell_box(page, fp_t, fn_t, '月', COL_X[1], COL_X[2], y0, y_h2, size=8.4, align='center')
+    cell_box(page, fp_t, fn_t, '单位全称', COL_X[2], COL_X[3], y0, y_h2, size=8.4, align='center')
+    cell_box(page, fp_t, fn_t, '备注', COL_X[8], COL_X[9], y0, y_h2, size=8.4, align='center')
     # 组标题
-    cell_box(page, fp_t, fn_t, '养老保险', COL_X[3], COL_X[5], y0, y_h1, size=9.0, align='center')
-    cell_box(page, fp_t, fn_t, '失业保险', COL_X[5], COL_X[7], y0, y_h1, size=9.0, align='center')
-    cell_box(page, fp_t, fn_t, '工伤保险', COL_X[7], COL_X[8], y0, y_h1, size=9.0, align='center')
+    cell_box(page, fp_t, fn_t, '养老保险', COL_X[3], COL_X[5], y0, y_h1, size=8.4, align='center')
+    cell_box(page, fp_t, fn_t, '失业保险', COL_X[5], COL_X[7], y0, y_h1, size=8.4, align='center')
+    cell_box(page, fp_t, fn_t, '工伤保险', COL_X[7], COL_X[8], y0, y_h1, size=8.4, align='center')
     # 子表头（两行）
     subs = [
         (3, '缴费基数（', '元）'),
@@ -277,11 +316,11 @@ def draw_table(page, fp_b, fn_b, fp_t, fn_t, rows, y0):
         (7, '缴费基数（', '元）'),
     ]
     for ci, a, b in subs:
-        cell_two(page, fp_t, fn_t, a, b, COL_X[ci], COL_X[ci + 1], y_h1, y_h2, 7.6)
+        cell_two(page, fp_t, fn_t, a, b, COL_X[ci], COL_X[ci + 1], y_h1, y_h2, 7.2)
     # 数据行
+    yy0 = y_h2
     for i, r in enumerate(rows):
-        yy0 = y_h2 + row_h * i
-        yy1 = yy0 + row_h
+        yy1 = yy0 + row_heights[i]
         if i > 0:
             hline(page, yy0)
         vals = [
@@ -296,18 +335,21 @@ def draw_table(page, fp_b, fn_b, fp_t, fn_t, rows, y0):
             r.get('remark') or '',
         ]
         for ci, v in enumerate(vals):
-            align = 'center'
-            cell_box(
-                page, fp_b, fn_b, v, COL_X[ci], COL_X[ci + 1], yy0, yy1,
-                size=8.6 if ci != 2 else 8.8, align=align, min_size=6.0,
-            )
+            if ci == 2:
+                cell_lines(page, fp_b, fn_b, unit_lines[i], COL_X[ci], COL_X[ci + 1], yy0, yy1, unit_size)
+            else:
+                cell_box(
+                    page, fp_b, fn_b, v, COL_X[ci], COL_X[ci + 1], yy0, yy1,
+                    size=7.4, align='center', min_size=6.0,
+                )
+        yy0 = yy1
     return y_end
 
 
 def draw_notes(page, fp, fn, y0):
     x_lab = X0
-    size = 9.0
-    line_h = 15.0
+    size = 8.85
+    line_h = 11.5
     page.insert_text((x_lab, y0 + size * 0.35), '说明：', fontname=fn, fontsize=size, color=(0, 0, 0))
     y = y0 + line_h
     x_body = X0 + 4.0
@@ -338,17 +380,15 @@ def draw_wrapped(page, fp, fn, text, x0, x1, y, size, line_h):
 
 
 def draw_seal(page, fp, fn, print_date):
-    box = fitz.Rect(410.0, 648.0, 566.0, 804.0)
+    box = fitz.Rect(401.2, 587.0, 517.7, 703.5)
     if os.path.isfile(SEAL_PNG):
         page.insert_image(box, filename=SEAL_PNG, keep_proportion=True, overlay=True)
     date = seal_date(print_date)
     if date:
-        s = 9.4
+        s = 8.6
         label = '打印时间：' + date
-        cy = (box.y0 + box.y1) / 2.0
         # 打印时间落在印章左侧并略压入章内（对齐样张）
-        x = box.x0 - 66.0
-        page.insert_text((x, cy + s * 0.35), label, fontname=fn, fontsize=s, color=(0.1, 0.1, 0.1))
+        page.insert_text((385.0, 659.0), label, fontname=fn, fontsize=s, color=(0.1, 0.1, 0.1))
 
 
 def render(payload, auth_code, qr_url, out_path):
@@ -378,22 +418,22 @@ def render(payload, auth_code, qr_url, out_path):
         draw_title(page, subset_title, title_name, qr_path)
         draw_qr_caption(page, subset_body, body_name)
 
-        y = 140.0
+        y = 150.0
         y = draw_info_table(page, subset_body, body_name, subset_title, title_name, p, y)
         # 共X页 第X页
         page_no = '共%d页，第%d页' % (int(p.get('total_pages') or 1), int(p.get('page_idx') or 1))
-        pw = text_width(subset_body, page_no, 9.4)
-        page.insert_text((X1 - pw, y + 13.0), page_no, fontname=body_name, fontsize=9.4, color=(0, 0, 0))
+        page_no_size = 9.0
+        pw = text_width(subset_body, page_no, page_no_size)
+        page.insert_text((X1 - pw, y + 13.0), page_no, fontname=body_name, fontsize=page_no_size, color=(0, 0, 0))
         y = y + 18.0
         y = draw_basic_situation(page, subset_body, body_name, subset_title, title_name, p, y)
-        y = y + 6.0
         sec = '出具证明前%d个月缴费情况（%s）' % (
-            int(p.get('span_months') or len(rows) or 1),
+            int(p.get('span_months') or p.get('month_count') or len(rows) or 1),
             str(p.get('period_compact') or ''),
         )
         y = draw_section_title(page, subset_title, title_name, sec, y)
         y = draw_table(page, subset_body, body_name, subset_title, title_name, rows, y)
-        draw_notes(page, subset_body, body_name, y + 14.0)
+        draw_notes(page, subset_body, body_name, y + 6.0)
         draw_seal(page, subset_body, body_name, p.get('print_date') or '')
 
         doc.save(out_path, deflate=True, garbage=4)

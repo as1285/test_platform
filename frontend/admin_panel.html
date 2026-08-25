@@ -1340,7 +1340,7 @@
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
                             </div>
-                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>多段公司写入下方「分段任职」，上方只留空</strong>，浙江版<strong>缴费明细按月填各自单位编号</strong>。填了预填起止月则只取该区间内单位并同步设为缴费起止月；不填则取全部记录的最早～最晚月。</p>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江版只采用浙江税务机关记录，外省记录不计入缴费月；若指定查询起止月，证明括号内保留该查询区间，但“前 N 个月”按浙江实际缴费月数显示。</p>
                         </div>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
@@ -1416,7 +1416,7 @@
                             </div>
                             <div class="sbdy-zj-js" id="sbdySegmentsWrap">
                                 <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
-                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>；浙江版缴费明细按月显示各自单位编号与参保地，江苏版按月展开各段单位全称（养老/失业/工伤三险明细），段与段之间留空的月份视为断缴。预填 2 家及以上会自动填入下方分段。</p>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>；浙江版缴费明细按月显示各自单位编号与参保地；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴。预填 2 家及以上会自动填入下方分段。</p>
                                 <div id="sbdySegments"></div>
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
                             </div>
@@ -2801,7 +2801,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260825-admin-op"></script>
+    <script src="/js/admin/loader.js?v=20260825-zj-pause-plain-current-company"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260824-gjj-demo"></script>
