@@ -268,11 +268,30 @@
             if (r.height > 260) continue;
             if (!el.getAttribute('data-ark-sticky-top')) {
               var sTop = parseFloat(cs.top) || 0;
-              el.style.setProperty('top', sTop + ARK_TOP_INSET + 'px', 'important');
+              /* 页级已预置 top:52 时勿再叠加 */
+              if (sTop < 40) {
+                el.style.setProperty('top', sTop + ARK_TOP_INSET + 'px', 'important');
+              }
               el.setAttribute('data-ark-sticky-top', '1');
             }
+            /*
+             * sticky 的 top 只影响吸附态，不会把文档流起点下移。
+             * 遮挡条盖住 0-52px；必须垫高 sticky 头本身，否则「个人信息」等顶栏会整段藏住。
+             */
+            if (!el.getAttribute('data-ark-sticky-pad')) {
+              var stickyPad = 0;
+              try {
+                stickyPad = parseFloat(getComputedStyle(el).paddingTop) || 0;
+              } catch (eStickyPad) {
+                stickyPad = parseFloat(cs.paddingTop) || 0;
+              }
+              if (stickyPad < 40) {
+                el.style.setProperty('padding-top', stickyPad + ARK_TOP_INSET + 'px', 'important');
+              }
+              el.setAttribute('data-ark-sticky-pad', '1');
+            }
           }
-          if (!firstFlowChecked && cs.position !== 'absolute') {
+          if (!firstFlowChecked && cs.position !== 'absolute' && cs.position !== 'sticky') {
             firstFlowChecked = true;
             var sy = window.scrollY || 0;
             var selfPad = parseFloat(cs.paddingTop) || 0;

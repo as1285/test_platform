@@ -2,7 +2,33 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260824-mate60ark6"></script>
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u)) return;
+                if (!/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) return;
+                document.documentElement.classList.add('app-android-huawei-mate60');
+                document.documentElement.classList.add('app-android-immersive-white-top');
+                document.documentElement.style.setProperty('--app-shell-statusbar-top', '52px');
+                document.documentElement.style.setProperty('--safe-t', '52px');
+                if (!document.querySelector('style[data-mate60-personal-info-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-mate60-personal-info-firstpaint', '1');
+                    st.textContent =
+                        'html.app-android-huawei-mate60 body > .header{' +
+                        'position:sticky !important;top:52px !important;' +
+                        'padding-top:calc(14px + 52px) !important;padding-bottom:14px !important;' +
+                        'box-sizing:border-box !important;background:#fff !important;z-index:100 !important;}' +
+                        'html.app-android-huawei-mate60{color-scheme:light;}';
+                    (document.head || document.documentElement).appendChild(st);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260825-mate60ark7"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -38,6 +64,13 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Mate 60：沉浸压栏，sticky 顶栏须自带 52px 顶距（与 auth.js ark 模块一致） */
+        html.app-android-huawei-mate60 body > .header {
+            top: 52px;
+            padding-top: calc(14px + 52px);
+            box-sizing: border-box;
         }
 
         .back-btn {

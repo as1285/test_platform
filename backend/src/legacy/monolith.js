@@ -5261,7 +5261,7 @@ var ZAIZHI_CERT_AMOUNT = '50.00';
 var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
 var SBDY_DEMO_SKU_ID = 'sku_sbdy_demo_199';
 var SBDY_DEMO_AMOUNT = '199.00';
-var SBDY_DEMO_SUBJECT = '社保演示生成（终身）';
+var SBDY_DEMO_SUBJECT = '社保演示去水印（终身）';
 function isLizhiCertSkuId(skuId) {
   return String(skuId || '') === LIZHI_CERT_SKU_ID;
 }
@@ -5975,7 +5975,7 @@ async function handleAlipayCreateOrder(req, res) {
       (sbdyUnlockedRow.sbdy_demo_unlocked === true ||
         Number(sbdyUnlockedRow.sbdy_demo_unlocked) === 1)
     ) {
-      return res.status(409).json({ code: 409, msg: '社保演示生成权益已开通，无需重复购买' });
+      return res.status(409).json({ code: 409, msg: '社保演示去水印权益已开通，无需重复购买' });
     }
     var sbdyAmount = alipay.normalizeAmount(SBDY_DEMO_AMOUNT);
     if (!sbdyAmount) {

@@ -30,7 +30,7 @@ function registerUserRoutes(app, deps) {
   app.post('/api/zaizhi-cert/generate', mw.requireAuth, h.handleZaizhiCertGenerate);
   app.get('/api/zaizhi-cert/temp-share/:token', h.handleZaizhiCertTempShareGet);
 
-  /* 社保演示（参保证明演示样例）：仅需登录，¥50 终身解锁后无限次生成 */
+  /* 社保演示（参保证明演示样例）：仅需登录即可生成；未付费带水印，付 ¥199 去水印 */
   app.get('/api/sbdy-demo/status', mw.requireAuth, h.handleSbdyDemoStatus);
   app.get('/api/sbdy-demo/prefill', mw.requireAuth, h.handleSbdyDemoPrefill);
   app.post('/api/sbdy-demo/generate', mw.requireAuth, h.handleSbdyDemoGenerate);

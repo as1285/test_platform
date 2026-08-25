@@ -2489,6 +2489,12 @@
           }
           if (isXiaomi14ProClient() || root.classList.contains('app-android-xiaomi-14pro')) {
             root.classList.add('app-android-xiaomi-14pro');
+            root.classList.add('app-android-immersive-white-top');
+            root.classList.remove('app-android-white-page-outer');
+            try {
+              root.style.setProperty('--app-shell-statusbar-top', '40px');
+              root.style.setProperty('--android-status-inset', '40px');
+            } catch (e14) {}
           }
           if (isXiaomi15ProClient() || root.classList.contains('app-android-xiaomi-15pro')) {
             root.classList.add('app-android-xiaomi-15pro');
@@ -3805,13 +3811,13 @@
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位 */
-          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位（小米 14 Pro 仍沉浸压栏，排除） */
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
           /* 收入纳税明细筛选页：顶栏统一贴顶；浏览器仅用真实 safe-area（覆盖各机型 48px 兜底） */
           'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;padding-bottom:15px !important;padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;min-height:0 !important;height:auto !important;}' +
           'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming > .content{padding-top:calc(46px + env(safe-area-inset-top,0px)) !important;}' +
@@ -3969,6 +3975,44 @@
           'top:0 !important;height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px)) !important;' +
           'min-height:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px)) !important;' +
           'padding:var(--app-shell-statusbar-top,40px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
+          /* 小米 14 Pro：补齐 back/右键/摘要/列表（此前仅 15 Pro 有），硬编码 40px 压过 env(0) */
+          'html.app-android-xiaomi-14pro body.page-shuiming-result .page-root,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .page-root,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .page-root,' +
+          'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .page-root{' +
+          '--safe-top:40px !important;--android-status-inset:40px !important;--app-shell-statusbar-top:40px !important;}' +
+          'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,' +
+          'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header{' +
+          'top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;' +
+          'min-height:calc(var(--header-height,48px) + 40px) !important;' +
+          'padding:40px 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
+          'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{' +
+          'top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{' +
+          'top:calc(var(--header-height,48px) + 40px) !important;}' +
+          'html.app-android-xiaomi-14pro body.page-shuiming-result .list,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .list,' +
+          'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list,' +
+          'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .list,' +
+          'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .list{' +
+          'margin-top:calc(var(--header-height,48px) + 40px) !important;}' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-huawei-mate60,.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,' +
@@ -7451,11 +7495,31 @@
             if (r.height > 260) continue;
             if (!el.getAttribute('data-ark-sticky-top')) {
               var sTop = parseFloat(cs.top) || 0;
-              el.style.setProperty('top', sTop + ARK_TOP_INSET + 'px', 'important');
+              /* 页级已预置 top:52 时勿再叠加 */
+              if (sTop < 40) {
+                el.style.setProperty('top', sTop + ARK_TOP_INSET + 'px', 'important');
+              }
               el.setAttribute('data-ark-sticky-top', '1');
             }
+            /*
+             * sticky 的 top 只影响吸附态，不会把文档流起点下移。
+             * 遮挡条 z-index:3000 盖住 0-52px；若不垫高 sticky 头本身，
+             * 「个人信息」等白顶栏会整段藏在遮挡条下（基本信息也被盖住）。
+             */
+            if (!el.getAttribute('data-ark-sticky-pad')) {
+              var stickyPad = 0;
+              try {
+                stickyPad = parseFloat(getComputedStyle(el).paddingTop) || 0;
+              } catch (eStickyPad) {
+                stickyPad = parseFloat(cs.paddingTop) || 0;
+              }
+              if (stickyPad < 40) {
+                el.style.setProperty('padding-top', stickyPad + ARK_TOP_INSET + 'px', 'important');
+              }
+              el.setAttribute('data-ark-sticky-pad', '1');
+            }
           }
-          if (!firstFlowChecked && cs.position !== 'absolute') {
+          if (!firstFlowChecked && cs.position !== 'absolute' && cs.position !== 'sticky') {
             firstFlowChecked = true;
             var sy = window.scrollY || 0;
             var selfPad = parseFloat(cs.paddingTop) || 0;

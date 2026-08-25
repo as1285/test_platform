@@ -1,5 +1,6 @@
 /**
- * C 端 · 社保参保证明演示样例（¥50 终身解锁后无限次生成）
+ * C 端 · 社保参保证明演示样例
+ * 登录即可生成；未付费 PDF 带「演示样例」水印，付 ¥199 去水印后可无限次生成无水印版。
  * 生成走 admin/sbdyDemo 的同一核心：入库 sbdy_demo_certs，PDF 由公开 show 接口现场渲染。
  */
 const { getPool } = require('../shared/db');
@@ -7,7 +8,7 @@ const { createSbdyDemoCert } = require('../admin/sbdyDemo');
 
 var SBDY_DEMO_SKU_ID = 'sku_sbdy_demo_199';
 var SBDY_DEMO_AMOUNT = '199.00';
-var SBDY_DEMO_SUBJECT = '社保演示生成（终身）';
+var SBDY_DEMO_SUBJECT = '社保演示去水印（终身）';
 
 function clean(s) {
   return String(s == null ? '' : s).trim();

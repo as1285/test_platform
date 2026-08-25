@@ -31,6 +31,20 @@
                 if (/23116PN5|23116PN|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-xiaomi14pro-result-firstpaint]')) {
+                        var mi14St = document.createElement('style');
+                        mi14St.setAttribute('data-xiaomi14pro-result-firstpaint', '1');
+                        mi14St.textContent =
+                            'html.app-android-xiaomi-14pro body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;}' +
+                            'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;}' +
+                            'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;}' +
+                            'html.app-android-xiaomi-14pro body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(mi14St);
+                    }
                 }
                 if (/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
@@ -124,7 +138,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260824-mate60ark6"></script>
+    <script src="/js/auth.js?v=20260825-mi14pro-safe"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
