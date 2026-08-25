@@ -383,10 +383,14 @@
     return /V2505A|I2501|V2405A|V2405DA|V2413\b|V2419A|V2309A|V2241A|V2227A/i.test(ua);
   }
 
-  /** iQOO 15（V2505A / I2501） */
+  /**
+   * iQOO 15（国行 V2505A / 国际 I2501 / PD2505）：OriginOS 6 Cordova WebView
+   * 仍压在系统状态栏下，勿按 vivo 族「外置黑条」清零顶距，
+   * 否则纳税明细「返回/批量申诉」会与系统时间重叠。
+   */
   function isIqoo15Client() {
-    var ua = navigator.userAgent || '';
-    return /V2505A|I2501|iQOO\s*15(?![a-zA-Z0-9])/i.test(ua);
+    var ua = clientUaBlob();
+    return /V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(ua);
   }
 
   /**
@@ -441,13 +445,14 @@
     return /(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(ua);
   }
 
-  /** vivo 族沉浸压栏机（Neo8 / Neo8 Pro / X300 Pro / S50 Pro mini）：白顶栏须留 40px */
+  /** vivo 族沉浸压栏机（Neo8 / Neo8 Pro / X300 Pro / S50 Pro mini / iQOO 15）：白顶栏须留 40px */
   function isVivoImmersiveTopClient() {
     return (
       isIqooNeo8Client() ||
       isIqooNeo8ProClient() ||
       isVivoX300ProLikeClient() ||
-      isVivoS50ProMiniClient()
+      isVivoS50ProMiniClient() ||
+      isIqoo15Client()
     );
   }
 
@@ -583,7 +588,7 @@
     if (isXiaomiImmersiveTopClient()) {
       return false;
     }
-    /* iQOO Neo8 / Neo8 Pro / vivo X300 Pro / S50 Pro mini：Cordova 沉浸，白顶栏须留顶距 */
+    /* iQOO Neo8 / Neo8 Pro / iQOO 15 / vivo X300 Pro / S50 Pro mini：Cordova 沉浸，白顶栏须留顶距 */
     if (isVivoImmersiveTopClient()) {
       return false;
     }
@@ -2450,7 +2455,7 @@
       if (!isWhitePage) {
         return;
       }
-      /* 小米 13 / 13 Pro / 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / X300 Pro / S50 Pro mini：WebView 仍叠在系统栏下，保留 40px 顶距 */
+      /* 小米 13 / 13 Pro / 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / iQOO 15 / X300 Pro / S50 Pro mini：WebView 仍叠在系统栏下，保留 40px 顶距 */
       var immersiveTopInsetClient =
         isXiaomiImmersiveTopClient() ||
         isOnePlusAce2ImmersiveTopClient() ||
@@ -2470,6 +2475,7 @@
         root.classList.contains('app-android-oppo-reno10') ||
         root.classList.contains('app-android-iqoo-neo8') ||
         root.classList.contains('app-android-iqoo-neo8pro') ||
+        root.classList.contains('app-android-iqoo-15') ||
         root.classList.contains('app-android-vivo-x300pro') ||
         root.classList.contains('app-android-vivo-s50promini') ||
         root.classList.contains('app-android-huawei-mate70') ||
@@ -2545,6 +2551,10 @@
           }
           if (isVivoS50ProMiniClient() || root.classList.contains('app-android-vivo-s50promini')) {
             root.classList.add('app-android-vivo-s50promini');
+            root.classList.remove('app-android-vivo-family');
+          }
+          if (isIqoo15Client() || root.classList.contains('app-android-iqoo-15')) {
+            root.classList.add('app-android-iqoo-15');
             root.classList.remove('app-android-vivo-family');
           }
           root.style.setProperty('--app-shell-statusbar-top', '40px');
@@ -3341,6 +3351,7 @@
       }
       if (iqoo15Client) {
         document.documentElement.classList.add('app-android-iqoo-15');
+        document.documentElement.classList.add('app-android-immersive-white-top');
       }
       if (iqooNeo8Client) {
         document.documentElement.classList.add('app-android-iqoo-neo8');
@@ -3504,8 +3515,8 @@
           'html.app-android-xiaomi-14pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-10.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell,html.app-android-vivo-x300pro.app-top-safe-shell,html.app-android-vivo-s50promini.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini),html.app-android-iqoo-15.app-top-safe-shell,html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell,html.app-android-iqoo-15.app-top-safe-shell,html.app-android-vivo-x300pro.app-top-safe-shell,html.app-android-vivo-s50promini.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-iqoo-15),html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
@@ -3521,6 +3532,7 @@
           'html.app-android-xiaomi-10.app-top-safe-shell,' +
           'html.app-android-iqoo-neo8.app-top-safe-shell,' +
           'html.app-android-iqoo-neo8pro.app-top-safe-shell,' +
+          'html.app-android-iqoo-15.app-top-safe-shell,' +
           'html.app-android-vivo-x300pro.app-top-safe-shell,' +
           'html.app-android-vivo-s50promini.app-top-safe-shell,' +
           'html.app-android-redmi-k70-ultra.app-top-safe-shell,' +
@@ -3811,13 +3823,13 @@
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位（小米 14 Pro 仍沉浸压栏，排除） */
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位（小米 14 Pro / iQOO 15 仍沉浸压栏，排除） */
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
           /* 收入纳税明细筛选页：顶栏统一贴顶；浏览器仅用真实 safe-area（覆盖各机型 48px 兜底） */
           'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;padding-bottom:15px !important;padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;min-height:0 !important;height:auto !important;}' +
           'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming > .content{padding-top:calc(46px + env(safe-area-inset-top,0px)) !important;}' +
@@ -4012,6 +4024,44 @@
           'html.app-android-xiaomi-14pro.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list,' +
           'html.app-android-client.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .list,' +
           'html.app-cordova-shell.app-android-xiaomi-14pro.app-top-safe-shell body.page-shuiming-result .list{' +
+          'margin-top:calc(var(--header-height,48px) + 40px) !important;}' +
+          /* iQOO 15（V2505A / I2501）：OriginOS 6 沉浸压栏，同 14 Pro 硬编码 40px 压过 env(0) / vivo 族清零 */
+          'html.app-android-iqoo-15 body.page-shuiming-result .page-root,' +
+          'html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .page-root,' +
+          'html.app-android-iqoo-15.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .page-root,' +
+          'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .page-root,' +
+          'html.app-cordova-shell.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .page-root{' +
+          '--safe-top:40px !important;--android-status-inset:40px !important;--app-shell-statusbar-top:40px !important;}' +
+          'html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-iqoo-15.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header,' +
+          'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,' +
+          'html.app-cordova-shell.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header{' +
+          'top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;' +
+          'min-height:calc(var(--header-height,48px) + 40px) !important;' +
+          'padding:40px 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
+          'html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-iqoo-15.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-iqoo-15.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,' +
+          'html.app-cordova-shell.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
+          'html.app-cordova-shell.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{' +
+          'top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-iqoo-15.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,' +
+          'html.app-cordova-shell.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{' +
+          'top:calc(var(--header-height,48px) + 40px) !important;}' +
+          'html.app-android-iqoo-15 body.page-shuiming-result .list,' +
+          'html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .list,' +
+          'html.app-android-iqoo-15.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list,' +
+          'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .list,' +
+          'html.app-cordova-shell.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .list{' +
           'margin-top:calc(var(--header-height,48px) + 40px) !important;}' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
           'html.app-android-huawei-mate60,.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,' +
@@ -4577,6 +4627,12 @@
       }
       if (isVivoS50ProMiniClient()) {
         document.documentElement.classList.add('app-android-vivo-s50promini');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-android-white-page-outer');
+        document.documentElement.classList.remove('app-android-vivo-family');
+      }
+      if (isIqoo15Client()) {
+        document.documentElement.classList.add('app-android-iqoo-15');
         document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-android-white-page-outer');
         document.documentElement.classList.remove('app-android-vivo-family');
