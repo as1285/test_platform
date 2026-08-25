@@ -2014,7 +2014,7 @@
                             <div>
                                 <label for="najiluQrFullFile">上传含新二维码的完整图片（PNG/JPG）</label>
                                 <input type="file" id="najiluQrFullFile" accept="image/png,image/jpeg,image/jpg,image/webp">
-                                <p class="hint">系统自动识别二维码位置并原比例提取「二维码 + 16 位验证码」；识别不准时可在下方源图上拖动框选。</p>
+                                <p class="hint">系统自动识别二维码位置，并在四周留白后原比例提取「二维码 + 16 位验证码」，避免末尾字母被裁切；识别不准时可在下方源图上拖动框选。</p>
                                 <div id="najiluQrCropWrap" style="display:none;position:relative;max-width:520px;margin-top:8px;border:1px solid #ddd;background:#fff;">
                                     <img id="najiluQrCropImg" alt="源图" style="display:block;width:100%;cursor:crosshair;user-select:none;">
                                     <div id="najiluQrCropBox" style="display:none;position:absolute;border:2px solid #e11d48;background:rgba(225,29,72,0.12);pointer-events:none;"></div>
@@ -2801,7 +2801,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260825-zj-pause-plain-current-company"></script>
+    <script src="/js/admin/loader.js?v=20260825-zj-pause-current-company-qr-pad"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260824-gjj-demo"></script>

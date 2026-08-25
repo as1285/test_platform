@@ -753,6 +753,22 @@ mustInclude(
   ['V2527A', 'app-android-vivo-s50promini', '20260825-iqoo15', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
+/* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
+mustInclude(
+  'backend/scripts/gjj_make_seal.py',
+  ['a_start=145.0, a_end=385.0', 'r_out=222', '(211, 56, 62, 255)'],
+  'gjj seal artwork matches sample'
+);
+mustInclude(
+  'backend/scripts/gjj_hz_render_pdf.py',
+  ['fitz.Rect(376.0, 28.0, 500.0, 152.0)'],
+  'gjj pdf seal on title line'
+);
+mustInclude(
+  'backend/src/admin/gjjDemo.js',
+  ['right:43mm;top:13mm;width:165px', 'gjj_hz_seal.png?v=20260825-real-seal'],
+  'gjj html seal on title line'
+);
 /* iQOO 15（V2505A / I2501）：OriginOS 6 沉浸压栏，明细/筛选/详情页顶栏须留 40px */
 mustInclude(
   'frontend/public/js/auth.js',

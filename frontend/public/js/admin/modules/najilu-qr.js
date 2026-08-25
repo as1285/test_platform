@@ -20,6 +20,10 @@
   var BLOCK_W = 185;
   var BLOCK_H = 310;
   var QR_ONLY_H = 185;
+  /* 整块提取需覆盖比二维码更宽的 16 位验证码，且给末行字母留足下边距。 */
+  var BLOCK_SIDE_PAD_RATIO = 0.12;
+  var BLOCK_TOP_PAD_RATIO = 0.05;
+  var BLOCK_BOTTOM_PAD_RATIO = 0.18;
 
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
@@ -80,8 +84,19 @@
     var sy = Math.round(BLOCK_Y * scale);
     var sw = Math.round(BLOCK_W * scale);
     var sh = Math.round(h * scale);
-    sw = Math.min(sw, imgW - sx);
-    sh = Math.min(sh, imgH - sy);
+    if (mode !== 'qr') {
+      var sidePad = Math.round(BLOCK_W * BLOCK_SIDE_PAD_RATIO * scale);
+      var topPad = Math.round(BLOCK_W * BLOCK_TOP_PAD_RATIO * scale);
+      var bottomPad = Math.round(BLOCK_W * BLOCK_BOTTOM_PAD_RATIO * scale);
+      sx -= sidePad;
+      sy -= topPad;
+      sw += sidePad * 2;
+      sh += topPad + bottomPad;
+    }
+    sw = Math.min(sw, imgW);
+    sh = Math.min(sh, imgH);
+    sx = Math.max(0, Math.min(sx, imgW - sw));
+    sy = Math.max(0, Math.min(sy, imgH - sh));
     if (scale <= 0 || sw < 40 || sh < 40) {
       throw new Error('原始图尺寸不足，无法定位二维码区域');
     }
@@ -243,10 +258,18 @@
   /** 二维码外框 → 提取区域；整块模式按模板比例向下包含 16 位查询验证码 */
   function regionFromQrBox(box, mode, imgW, imgH) {
     var qrSize = Math.max(box.width, box.height);
-    var sw = Math.round(qrSize);
-    var sh = mode === 'qr' ? sw : Math.round((sw * BLOCK_H) / BLOCK_W);
+    var sidePad = mode === 'qr' ? 0 : qrSize * BLOCK_SIDE_PAD_RATIO;
+    var topPad = mode === 'qr' ? 0 : qrSize * BLOCK_TOP_PAD_RATIO;
+    var bottomPad = mode === 'qr' ? 0 : qrSize * BLOCK_BOTTOM_PAD_RATIO;
+    var sw = Math.round(qrSize + sidePad * 2);
+    var sh =
+      mode === 'qr'
+        ? sw
+        : Math.round((qrSize * BLOCK_H) / BLOCK_W + topPad + bottomPad);
     var sx = Math.round(box.x + box.width / 2 - sw / 2);
-    var sy = Math.round(box.y + box.height / 2 - qrSize / 2);
+    var sy = Math.round(box.y + box.height / 2 - qrSize / 2 - topPad);
+    sw = Math.min(sw, imgW);
+    sh = Math.min(sh, imgH);
     sx = Math.max(0, Math.min(sx, imgW - sw));
     sy = Math.max(0, Math.min(sy, imgH - sh));
     return {
@@ -810,6 +833,8 @@
     ready: true,
     loadPage: loadPage,
     loadIssues: loadIssues,
-    previewCert: previewCert
+    previewCert: previewCert,
+    _regionFromQrBox: regionFromQrBox,
+    _regionForMode: regionForMode
   };
 })(window);

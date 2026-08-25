@@ -355,9 +355,10 @@ def render(payload, auth_code, qr_url, out_path):
         label_value(page, font_body, body_name, font_title, title_name,
                     '当前月缴存额：', money(p.get('monthly_deposit')), rx, fy2, size=foot_size)
 
-        # —— 电子章（右上，压标题右端"对账单(自助打印)"；对齐样张：直径约108，右侧留白）——
+        # —— 电子章：对齐样张实测——星心压在标题行上（中心 y≈标题行中心 90，
+        # 中心 x≈438 即「账单(自」处），直径≈124；勿再下坠到对账日期行压花标题 ——
         if os.path.isfile(SEAL_PNG):
-            page.insert_image(fitz.Rect(372.0, 66.0, 480.0, 174.0), filename=SEAL_PNG,
+            page.insert_image(fitz.Rect(376.0, 28.0, 500.0, 152.0), filename=SEAL_PNG,
                               keep_proportion=True, overlay=True)
 
         doc.save(out_path, deflate=True, garbage=4)

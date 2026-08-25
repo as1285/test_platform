@@ -403,7 +403,7 @@ function renderCertHtml(payload, links, opts) {
     'padding:12mm 14mm;position:relative}' +
     '.qr{position:absolute;left:16mm;top:9mm;width:74px;text-align:center}' +
     '.qr canvas,.qr img{width:70px;height:70px;display:block}' +
-    '.seal{position:absolute;right:14mm;top:11mm;width:132px;height:132px;z-index:3;pointer-events:none;opacity:.94}' +
+    '.seal{position:absolute;right:43mm;top:13mm;width:165px;height:165px;z-index:3;pointer-events:none}' +
     'h1{margin:20mm 0 0;text-align:center;font-size:17px;font-weight:700;line-height:1.4}' +
     '.sub{text-align:center;font-size:12px;margin:4px 0 0}' +
     '.info{margin:16px 2mm 0;font-size:12.5px;line-height:2.0;position:relative;z-index:1}' +
@@ -421,10 +421,10 @@ function renderCertHtml(payload, links, opts) {
     '.foot .col-r{display:inline-block;width:50%;vertical-align:top}' +
     '.demo-tag{position:absolute;left:0;bottom:6mm;width:100%;text-align:center;color:#b91c1c;font-size:11px}' +
     '@media (max-width:720px){.page{padding:8px;min-height:0}h1{margin-top:64px;font-size:14px}' +
-    '.seal{width:104px;height:104px;right:6px;top:40px}.qr{left:6px;top:6px}}' +
+    '.seal{width:120px;height:120px;right:14px;top:22px}.qr{left:6px;top:6px}}' +
     '</style></head><body><div class="page">' +
     '<div class="qr"><div id="qrPh"></div><canvas id="qrCanvas" width="70" height="70" style="display:none"></canvas></div>' +
-    '<img class="seal" src="/img/gjj_hz_seal.png" alt="">' +
+    '<img class="seal" src="/img/gjj_hz_seal.png?v=20260825-real-seal" alt="">' +
     '<h1>杭州住房公积金管理中心一般住房公积金个人年度对账单(自助打印)</h1>' +
     '<div class="sub">对账日期：' +
     escHtml(p.statement_start || '') +

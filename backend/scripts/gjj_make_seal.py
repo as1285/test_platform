@@ -25,7 +25,8 @@ FONT_FALLBACKS = [
 
 SIZE = 1000
 CENTER = (SIZE / 2.0, SIZE / 2.0)
-RED = (198, 22, 22, 255)
+# 对齐真实样张：亮红（实测核心色 ≈ RGB 216,60,72），勿用暗深红
+RED = (211, 56, 62, 255)
 
 ARC_TEXT = '杭州住房公积金管理中心'
 BOTTOM_TEXT = '电子专用章'
@@ -78,33 +79,42 @@ def draw_arc_text(base, text, cx, cy, radius, font, color, a_start, a_end):
 
 
 def render(out_path):
+    """尺寸比例均按真实样张实测（外径归一化）：
+    环厚≈4.3%D，星外径≈0.45R，弧字从左下 145° 经顶到右下 385°，
+    「电子专用章」中心位于圆心下方 0.59R。
+    """
     img = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     cx, cy = CENTER
 
-    # 外圈红环
-    ring_r = SIZE / 2.0 - 26
-    ring_w = 26
+    # 外圈红环（PIL outline 由外缘向内加厚）
+    ring_r = SIZE / 2.0 - 8
+    ring_w = 42
     draw.ellipse(
         [cx - ring_r, cy - ring_r, cx + ring_r, cy + ring_r],
         outline=RED,
         width=ring_w,
     )
 
-    # 中心五角星
-    draw_star(draw, cx, cy, r_out=120, color=RED)
+    # 中心五角星（真实样张星较大，约 0.45R）
+    draw_star(draw, cx, cy, r_out=222, color=RED)
 
-    # 上弧机构名（半径加大、字号收窄、弧度拉开，避免相邻字重叠）
-    arc_font = load_font(74)
-    draw_arc_text(img, ARC_TEXT, cx, cy, radius=ring_r - 90, font=arc_font,
-                  color=RED, a_start=196.0, a_end=344.0)
+    # 弧形机构名：左下绕过顶部到右下（实测 145°-385°），字贴环内缘
+    arc_font = load_font(132)
+    draw_arc_text(img, ARC_TEXT, cx, cy, radius=ring_r - ring_w - 78, font=arc_font,
+                  color=RED, a_start=145.0, a_end=385.0)
 
-    # 下方「电子专用章」
-    bot_font = load_font(70)
+    # 下方「电子专用章」：中心位于圆心下方 0.59R
+    bot_font = load_font(118)
     tb = draw.textbbox((0, 0), BOTTOM_TEXT, font=bot_font)
     tw = tb[2] - tb[0]
     th = tb[3] - tb[1]
-    draw.text((cx - tw / 2.0 - tb[0], cy + 182 - tb[1]), BOTTOM_TEXT, font=bot_font, fill=RED)
+    draw.text(
+        (cx - tw / 2.0 - tb[0], cy + 0.59 * ring_r - th / 2.0 - tb[1]),
+        BOTTOM_TEXT,
+        font=bot_font,
+        fill=RED,
+    )
 
     img.save(out_path)
     print('saved', out_path, img.size)
