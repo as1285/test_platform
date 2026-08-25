@@ -162,6 +162,19 @@ mustInclude('backend/src/growth/purchasePriceSurvey.js', ['SKIP_SENTIMENT', "'sk
 mustInclude('frontend/public/js/consult-batch-tax.js', ['batchMsModalDraft', 'renderBatchMsModalPage'], 'batch-ms pagination');
 mustInclude('frontend/public/js/conversion-guide.js', ['openPayGateModal', 'bindPayFeatureGates'], 'conversion pay gate');
 mustInclude('frontend/public/js/consult-records.js', ['expandSingleTaxRecordCard', 'taxMoreCard', 'syncTaxPayGuideBanner'], 'editRecord + pay guide');
+/* 回收站弹窗绑定必须在 consult-records.js（closeTaxRecycleBin 定义处）执行；
+ * 放在先加载的 consult-batch-tax.js 会被 typeof 守卫静默跳过，×/关闭/全部恢复/筛选全部失效 */
+mustInclude(
+  'frontend/public/js/consult-records.js',
+  ['bindTaxRecycleBinModal', "primaryBtn.addEventListener('click', handleTaxRecycleBinPrimaryAction)", "companySel.addEventListener('change'"],
+  'recycle bin modal bound in consult-records'
+);
+mustExclude(
+  'frontend/public/js/consult-batch-tax.js',
+  ['bindTaxRecycleBinModal'],
+  'recycle bin bind removed from consult-batch-tax'
+);
+mustInclude('frontend/consult.html', ['consult-records.js?v=20260825-recycle-bind'], 'consult recycle-bind cache');
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',

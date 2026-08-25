@@ -3579,33 +3579,8 @@ function applyProfilePasteImport() {
     }
 })();
 
-(function bindTaxRecycleBinModal() {
-    if (typeof closeTaxRecycleBin !== 'function') {
-        return;
-    }
-    var mask = document.getElementById('taxRecycleBinModalMask');
-    var closeX = document.getElementById('taxRecycleBinModalCloseX');
-    var closeBtn = document.getElementById('taxRecycleBinClose');
-    var primaryBtn = document.getElementById('taxRecycleBinPrimaryAction');
-    var companySel = document.getElementById('taxRecycleBinCompanySelect');
-    if (mask) {
-        mask.addEventListener('click', closeTaxRecycleBin);
-    }
-    if (closeX) {
-        closeX.addEventListener('click', closeTaxRecycleBin);
-    }
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeTaxRecycleBin);
-    }
-    if (primaryBtn && typeof handleTaxRecycleBinPrimaryAction === 'function') {
-        primaryBtn.addEventListener('click', handleTaxRecycleBinPrimaryAction);
-    }
-    if (companySel) {
-        companySel.addEventListener('change', function () {
-            renderTaxRecycleBinList(taxRecycleBinCache || []);
-        });
-    }
-})();
+/* 回收站弹窗绑定已移至 consult-records.js：closeTaxRecycleBin 等定义在其后加载的
+ * consult-records.js 里，在本文件执行时尚不存在，此前的 typeof 守卫会静默跳过导致按钮全部失效。 */
 
 /** monthEntries: [{ year, month, salary }, …] 已在时段内按时间顺序；按自然年度分段累计预扣 */
 

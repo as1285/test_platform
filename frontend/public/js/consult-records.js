@@ -758,6 +758,33 @@ function tryEditFromUrl() {
     if (eid) editRecord(eid);
 }
 
+/* 回收站弹窗静态按钮绑定：必须在本文件（closeTaxRecycleBin 等定义处）执行，
+ * 若放在先加载的 consult-batch-tax.js 里，函数尚未定义会被 typeof 守卫静默跳过。 */
+(function bindTaxRecycleBinModal() {
+    var mask = document.getElementById('taxRecycleBinModalMask');
+    var closeX = document.getElementById('taxRecycleBinModalCloseX');
+    var closeBtn = document.getElementById('taxRecycleBinClose');
+    var primaryBtn = document.getElementById('taxRecycleBinPrimaryAction');
+    var companySel = document.getElementById('taxRecycleBinCompanySelect');
+    if (mask) {
+        mask.addEventListener('click', closeTaxRecycleBin);
+    }
+    if (closeX) {
+        closeX.addEventListener('click', closeTaxRecycleBin);
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeTaxRecycleBin);
+    }
+    if (primaryBtn) {
+        primaryBtn.addEventListener('click', handleTaxRecycleBinPrimaryAction);
+    }
+    if (companySel) {
+        companySel.addEventListener('change', function () {
+            renderTaxRecycleBinList(taxRecycleBinCache || []);
+        });
+    }
+})();
+
 /* boot 必须在 core + batch-tax + records 全部加载后再执行 */
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
