@@ -43,8 +43,10 @@ describe('sbdyDemo', () => {
     expect(p.months[1].unit_code).toBe('91330109MAETP27PX2');
     expect(p.months[2].unit_code).toBe('91330110MADG8XY7Q');
     expect(p.months[3].unit_code).toBe('91330110MADG8XY7Q');
-    // 摘要仍保留完整多码（不再被 32 字截断）
-    expect(p.credit_code).toBe('91330109MAETP27PX2、91330110MADG8XY7Q');
+    /* 头部只保留最近一家（对齐末月单位编号）；明细仍按月各自单位 */
+    expect(p.credit_code).toBe('91330110MADG8XY7Q');
+    expect(p.company_name).toBe('杭州乙公司');
+    expect(p.company_display).toBe('杭州乙公司（91330110MADG8XY7Q）');
   });
 
   it('falls back to primary (first) credit code when no month_units', () => {
@@ -92,12 +94,69 @@ describe('sbdyDemo', () => {
     expect(aug.unit_code).toBe('91330109MAETP27PX2');
     expect(aug.area).toBe('余杭区');
     expect(aug.pension_base).toBe(6000);
-    expect(p.area).toBe('滨江区、余杭区');
-    expect(p.credit_code).toBe('91330110MADG8JH092、91330109MAETP27PX2');
-    expect(p.company_display).toContain('（91330110MADG8JH092）');
-    expect(p.company_display).toContain('（91330109MAETP27PX2）');
+    /* 头部参保单位/信用代码/参保地只保留最近一段；明细仍含多段 */
+    expect(p.area).toBe('余杭区');
+    expect(p.credit_code).toBe('91330109MAETP27PX2');
+    expect(p.company_name).toBe('杭州圆趣企业运营管理有限公司');
+    expect(p.company_display).toBe('杭州圆趣企业运营管理有限公司（91330109MAETP27PX2）');
+    expect(p.company_display).not.toContain('华鲜');
     expect(p.period_start).toBe('2025-04');
     expect(p.period_end).toBe('2026-08');
+  });
+
+  it('rejects segments that have unit but no valid period (no silent empty cert)', () => {
+    const p = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      period_start: '2024-08',
+      period_end: '2026-07',
+      segments: [
+        { company_name: '杭州华鲜高新技术有限公司', credit_code: '91330110MADG8JH092' }
+      ]
+    });
+    expect(p.error).toMatch(/起止月/);
+  });
+
+  it('rejects segments missing credit code or with duplicate start month', () => {
+    const noCredit = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      segments: [
+        { company_name: '杭州华鲜高新技术有限公司', credit_code: '91330110MADG8JH092', period_start: '2024-08', period_end: '2025-06' },
+        { company_name: '青岛智腾微电子科技有限公司', credit_code: '', period_start: '2025-07', period_end: '2026-07' }
+      ]
+    });
+    expect(noCredit.error).toMatch(/信用代码/);
+    const dupStart = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      segments: [
+        { company_name: '杭州华鲜高新技术有限公司', credit_code: '91330110MADG8JH092', period_start: '2024-08', period_end: '2026-07' },
+        { company_name: '杭州圆趣企业运营管理有限公司', credit_code: '91330109MAETP27PX2', period_start: '2024-08', period_end: '2026-07' }
+      ]
+    });
+    expect(dupStart.error).toMatch(/起月相同/);
+  });
+
+  it('joined multi-company header keeps only latest by month unit', () => {
+    const p = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      company_name: '杭州华鲜高新技术有限公司、青岛智腾微电子科技有限公司',
+      credit_code: '91330110MADG8JH092',
+      period_start: '2025-01',
+      period_end: '2025-03',
+      month_units: {
+        '2025-01': 'OLDCODE11111111111',
+        '2025-02': '91330110MADG8JH092',
+        '2025-03': '91330110MADG8JH092'
+      }
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.company_name).toBe('青岛智腾微电子科技有限公司');
+    expect(p.credit_code).toBe('91330110MADG8JH092');
+    expect(p.company_display).toBe('青岛智腾微电子科技有限公司（91330110MADG8JH092）');
+    expect(p.company_display).not.toContain('华鲜');
   });
 
   it('renderCertHtml escapes name in table cell', () => {
@@ -280,6 +339,100 @@ describe('sbdyDemo', () => {
     expect(p.detail_rows[0].unit_pay).toBeCloseTo(56.74, 2);
     expect(p.detail_rows[2].type).toBe('企业职工基本养老保险');
     expect(p.detail_rows[2].person_pay).toBeCloseTo(324.24, 2);
+  });
+
+  it('normalizePayload builds Jiangsu per-month rows (single period)', () => {
+    const p = normalizePayload({
+      region: 'js',
+      name: '樊宜',
+      id_number: '342501199307088233',
+      gender: '男',
+      status: '暂停缴费（中断）',
+      company_name: '南京越诚信息技术有限公司',
+      area: '溧水区',
+      period_start: '2024-01',
+      period_end: '2024-03',
+      base_amount: 5000
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('js');
+    expect(p.layout).toBe('js_official_v1');
+    expect(p.status).toBe('暂停缴费（中断）');
+    expect(p.status_pension).toBe('暂停缴费（中断）');
+    expect(p.status_injury).toBe('暂停缴费（中断）');
+    expect(p.status_unemployment).toBe('暂停缴费（中断）');
+    expect(p.company_display).toBe('南京越诚信息技术有限公司');
+    expect(p.area).toBe('溧水区');
+    expect(p.span_months).toBe(3);
+    expect(p.period_compact).toBe('202401-202403');
+    expect(p.detail_rows.length).toBe(3);
+    expect(p.detail_rows[0].year).toBe(2024);
+    expect(p.detail_rows[0].month).toBe('01');
+    expect(p.detail_rows[0].unit_name).toBe('南京越诚信息技术有限公司');
+    expect(p.detail_rows[0].pension_base).toBe(5000);
+    expect(p.detail_rows[0].pension_pay).toBeCloseTo(400, 2);
+    expect(p.detail_rows[0].unemp_pay).toBeCloseTo(25, 2);
+    expect(p.detail_rows[0].injury_base).toBe(5000);
+  });
+
+  it('normalizePayload builds Jiangsu multi-company monthly rows with gap span', () => {
+    const p = normalizePayload({
+      region: 'js',
+      name: '樊宜',
+      id_number: '342501199307088233',
+      gender: '男',
+      status: '暂停缴费（中断）',
+      company_name: '南京市溧水区暂时中止单位',
+      area: '溧水区',
+      segments: [
+        { company_name: '南京市胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
+        { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
+        { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
+        { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    /* 2026-02 断缴：12 条明细，但跨度 202508-202608 = 13 个月 */
+    expect(p.detail_rows.length).toBe(12);
+    expect(p.span_months).toBe(13);
+    expect(p.period_compact).toBe('202508-202608');
+    expect(p.company_display).toBe('南京市溧水区暂时中止单位');
+    expect(p.detail_rows[0].year).toBe(2025);
+    expect(p.detail_rows[0].month).toBe('08');
+    expect(p.detail_rows[0].unit_name).toBe('南京市胜德金属装备有限公司');
+    expect(p.detail_rows[0].pension_pay).toBeCloseTo(390.32, 2);
+    expect(p.detail_rows[0].unemp_pay).toBeCloseTo(24.4, 2);
+    expect(p.detail_rows[1].unit_name).toBe('南京埃希玛科技有限公司');
+    expect(p.detail_rows[1].pension_pay).toBeCloseTo(396.16, 2);
+    /* 第 7 条（index 6）为断缴后的 2026-03 */
+    expect(p.detail_rows[6].year).toBe(2026);
+    expect(p.detail_rows[6].month).toBe('03');
+    expect(p.detail_rows[6].unit_name).toBe('南京贝奇尔机械有限公司');
+    expect(p.detail_rows[6].pension_pay).toBeCloseTo(560, 2);
+    const html = renderCertHtml(p, { show_url: 'https://example.test/show.pdf' }, { authCode: 'jsauth01' });
+    expect(html).toContain('江苏省社会保险权益记录单');
+    expect(html).toContain('（参保人员）');
+    expect(html).toContain('参加社会保险基本情况');
+    expect(html).toContain('出具证明前13个月缴费情况（202508-202608）');
+    expect(html).toContain('工伤保险');
+    expect(html).toContain('请使用官方江苏智慧人社APP扫描验证');
+    expect(html).toContain('/img/sbdy_js_seal.png');
+    expect(html).toContain('威尔特茵轮（南京）有限公司');
+    expect(html).toContain('暂停缴费（中断）');
+    expect(html).not.toContain('社会保险经办机构');
+  });
+
+  it('renderCertHtml escapes name for Jiangsu layout', () => {
+    const p = normalizePayload({
+      region: 'js',
+      name: '<script>',
+      id_number: '342501199307088233',
+      period_start: '2025-01',
+      period_end: '2025-02'
+    });
+    const html = renderCertHtml(p);
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).not.toMatch(/<td[^>]*>\s*<script>/i);
   });
 
   it('normalizePayload builds Hunan snapshot rows and extra employer', () => {

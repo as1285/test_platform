@@ -37,6 +37,107 @@
     el.value = value == null ? '' : String(value);
   }
 
+  /** 去掉尾部顿号/逗号，避免「某某公司、」残留在单框 */
+  function cleanCompanyName(s) {
+    return String(s || '')
+      .replace(/（[^）]*）/g, '')
+      .replace(/\([^)]*\)/g, '')
+      .replace(/[、,，;；\s]+$/g, '')
+      .trim();
+  }
+
+  function splitCompanyNames(s) {
+    return String(s || '')
+      .split(/[、,，]/)
+      .map(function (x) {
+        return cleanCompanyName(x);
+      })
+      .filter(Boolean);
+  }
+
+  function splitCreditCodes(s) {
+    return String(s || '')
+      .split(/[、,，;；/|]+/)
+      .map(function (x) {
+        return String(x || '').trim();
+      })
+      .filter(Boolean);
+  }
+
+  /**
+   * 多家单位写入下方分段，清空上方单框（不要拼在一个空格里）。
+   * @returns {boolean} 是否已按多段处理
+   */
+  function fillMultiAsSegments(opts) {
+    opts = opts || {};
+    var names = Array.isArray(opts.names) ? opts.names.filter(Boolean) : [];
+    var codes = Array.isArray(opts.codes) ? opts.codes.filter(Boolean) : [];
+    var segsIn = Array.isArray(opts.segments) ? opts.segments : [];
+    var defArea = opts.area || val('sbdyArea') || '余杭区';
+    var defBase = opts.base != null ? opts.base : val('sbdyBase') || '4986';
+    var ps = opts.period_start || '';
+    var pe = opts.period_end || '';
+    var list = [];
+    if (segsIn.length >= 2) {
+      list = segsIn.map(function (s) {
+        return {
+          company_name: cleanCompanyName(s.company_name || ''),
+          credit_code: String(s.credit_code || '').trim(),
+          area: s.area || defArea,
+          base_amount: s.base_amount != null ? s.base_amount : defBase,
+          period_start: s.period_start || ps,
+          period_end: s.period_end || pe
+        };
+      });
+    } else {
+      var n = Math.max(names.length, codes.length);
+      if (n < 2) return false;
+      /* 拆分公司名时不知道各段真实起止月，留空让运营填写（生成前会校验），
+         避免多段同起止月导致整表单位错乱 */
+      var i;
+      for (i = 0; i < n; i++) {
+        list.push({
+          company_name: names[i] || '',
+          credit_code: codes[i] || '',
+          area: defArea,
+          base_amount: defBase,
+          period_start: '',
+          period_end: ''
+        });
+      }
+    }
+    if (list.length < 2) return false;
+    setField('sbdyCompany', '');
+    setField('sbdyCredit', '');
+    renderSegments(list);
+    return true;
+  }
+
+  /** 若上方单框误填了「A、B」，自动拆到下方分段 */
+  function promoteJoinedCompanyField() {
+    if (currentRegion() !== 'zj') return false;
+    var names = splitCompanyNames(val('sbdyCompany'));
+    var codes = splitCreditCodes(val('sbdyCredit'));
+    if (names.length < 2 && codes.length < 2) {
+      /* 单家也去掉尾部顿号 */
+      if (val('sbdyCompany')) setField('sbdyCompany', cleanCompanyName(val('sbdyCompany')));
+      return false;
+    }
+    if (readSegments().length >= 2) {
+      setField('sbdyCompany', '');
+      setField('sbdyCredit', '');
+      return true;
+    }
+    return fillMultiAsSegments({
+      names: names,
+      codes: codes,
+      area: val('sbdyArea') || '余杭区',
+      base: val('sbdyBase') || '4986',
+      period_start: normalizeYm(val('sbdyPeriodStart')),
+      period_end: normalizeYm(val('sbdyPeriodEnd'))
+    });
+  }
+
   /** 兼容 type=month 与手填「2026年01月」 */
   function normalizeYm(raw) {
     var s = String(raw || '').trim();
@@ -62,6 +163,8 @@
     var hn = document.getElementById('sbdyRegionHn');
     var sz = document.getElementById('sbdyRegionSz');
     var wh = document.getElementById('sbdyRegionWh');
+    var js = document.getElementById('sbdyRegionJs');
+    if (js && js.checked) return 'js';
     if (hn && hn.checked) return 'hn';
     if (sz && sz.checked) return 'sz';
     if (wh && wh.checked) return 'wh';
@@ -94,30 +197,44 @@
     document.querySelectorAll('.sbdy-zj-wh').forEach(function (el) {
       el.hidden = region !== 'zj' && region !== 'wh';
     });
+    document.querySelectorAll('.sbdy-zj-wh-js').forEach(function (el) {
+      el.hidden = region !== 'zj' && region !== 'wh' && region !== 'js';
+    });
+    document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
+      el.hidden = region !== 'js';
+    });
+    document.querySelectorAll('.sbdy-zj-js').forEach(function (el) {
+      el.hidden = region !== 'zj' && region !== 'js';
+    });
     var base = document.getElementById('sbdyBase');
     var area = document.getElementById('sbdyArea');
     if (region === 'sz') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308')) {
+      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4053')) {
         base.value = '4492';
       }
-      if (area && (area.value === '余杭区' || area.value === '武汉市' || area.value === '常德市鼎城区')) area.value = '深圳市';
+      if (area && (area.value === '余杭区' || area.value === '武汉市' || area.value === '常德市鼎城区' || area.value === '溧水区')) area.value = '深圳市';
     } else if (region === 'wh') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4308')) {
+      if (base && (String(base.value) === '4986' || String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4053')) {
         base.value = '4224';
       }
-      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '常德市鼎城区')) area.value = '武汉市';
+      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '常德市鼎城区' || area.value === '溧水区')) area.value = '武汉市';
       var insure = document.getElementById('sbdyInsureType');
       if (insure && !insure.value) insure.value = '企业养老';
     } else if (region === 'hn') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308')) {
+      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4492')) {
         base.value = '4053';
       }
-      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '武汉市')) area.value = '常德市鼎城区';
+      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '武汉市' || area.value === '溧水区')) area.value = '常德市鼎城区';
+    } else if (region === 'js') {
+      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4492' || String(base.value) === '4053')) {
+        base.value = '4494';
+      }
+      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '武汉市' || area.value === '常德市鼎城区')) area.value = '溧水区';
     } else {
-      if (base && (String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308')) {
+      if (base && (String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4053')) {
         base.value = '4986';
       }
-      if (area && (area.value === '深圳市' || area.value === '武汉市' || area.value === '常德市鼎城区')) area.value = '余杭区';
+      if (area && (area.value === '深圳市' || area.value === '武汉市' || area.value === '常德市鼎城区' || area.value === '溧水区')) area.value = '余杭区';
     }
     var med = document.getElementById('sbdyMedicalBase');
     if (region === 'sz' && med && !med.value) med.value = base ? base.value : '4492';
@@ -363,7 +480,19 @@
     );
     if (looksWh && /深圳/.test(text) && !/武汉|湖北/.test(text)) looksWh = false;
     if (looksHn && /武汉|湖北/.test(text) && !/湖南|常德/.test(text)) looksHn = false;
-    var region = looksHn ? 'hn' : looksWh ? 'wh' : looksSz ? 'sz' : 'zj';
+    var looksJs = !!(
+      /江苏|权益记录单|南京|苏州|无锡|常州|徐州|南通|扬州|盐城|泰州|镇江|淮安|连云港|宿迁/.test(text)
+    );
+    if (looksJs && /浙江|杭州|余杭|深圳|武汉|湖北|湖南|常德/.test(text)) looksJs = false;
+    var region = looksHn
+      ? 'hn'
+      : looksWh
+        ? 'wh'
+        : looksJs
+          ? 'js'
+          : looksSz
+            ? 'sz'
+            : 'zj';
     var baseRaw = pickLabeled(text, ['医保基数', '医疗保险基数', '缴费基数', '基数']);
     var base = baseRaw ? Number(String(baseRaw).replace(/[^\d.]/g, '')) : NaN;
     if (!isFinite(base) || base <= 0) {
@@ -377,7 +506,9 @@
               ? 4224
               : region === 'hn'
                 ? 4053
-                : 4986;
+                : region === 'js'
+                  ? 4494
+                  : 4986;
     }
     var pension = Math.round(base * 0.08 * 100) / 100;
     var unemp = Math.round(base * (region === 'sz' ? 0.002 : 0.005) * 100) / 100;
@@ -402,7 +533,17 @@
       computer_no: computerNo,
       person_no: personNo,
       insurance_type: insureType || (region === 'wh' ? '企业养老' : ''),
-      area: area || (region === 'sz' ? '深圳市' : region === 'wh' ? '武汉市' : region === 'hn' ? '常德市鼎城区' : '余杭区'),
+      area:
+        area ||
+        (region === 'sz'
+          ? '深圳市'
+          : region === 'wh'
+            ? '武汉市'
+            : region === 'hn'
+              ? '常德市鼎城区'
+              : region === 'js'
+                ? '南京市'
+                : '余杭区'),
       period_start: period.start,
       period_end: period.end,
       month_count: monthCountBetween(period.start, period.end),
@@ -427,6 +568,9 @@
     } else if (parsed.region === 'hn') {
       var hnRadio = document.getElementById('sbdyRegionHn');
       if (hnRadio) hnRadio.checked = true;
+    } else if (parsed.region === 'js') {
+      var jsRadio = document.getElementById('sbdyRegionJs');
+      if (jsRadio) jsRadio.checked = true;
     } else if (parsed.region === 'zj') {
       var zjRadio = document.getElementById('sbdyRegionZj');
       if (zjRadio) zjRadio.checked = true;
@@ -435,8 +579,6 @@
     setField('sbdyName', parsed.name);
     setField('sbdyIdNumber', parsed.id_number);
     setField('sbdyGender', parsed.gender || '女');
-    setField('sbdyCompany', parsed.company_name || '');
-    setField('sbdyCredit', parsed.credit_code || '');
     setField(
       'sbdyArea',
       parsed.area ||
@@ -446,7 +588,9 @@
             ? '武汉市'
             : parsed.region === 'hn'
               ? '常德市鼎城区'
-              : '余杭区')
+              : parsed.region === 'js'
+                ? '南京市'
+                : '余杭区')
     );
     setField('sbdyUnitCode', parsed.unit_code || '');
     setField('sbdyComputerNo', parsed.computer_no || '');
@@ -462,7 +606,27 @@
     setField('sbdyStatusMedical', parsed.status);
     setField('sbdyStatusInjury', parsed.status);
     setField('sbdyStatusUnemp', parsed.status);
+    setField('sbdyStatus', parsed.status || '正常参保');
     setField('sbdyPrintDate', parsed.print_date || '');
+    /* 浙江多家：拆到下方分段，不写进上方单框 */
+    var pasteNames = splitCompanyNames(parsed.company_name);
+    var pasteCodes = splitCreditCodes(parsed.credit_code);
+    if (
+      parsed.region === 'zj' &&
+      fillMultiAsSegments({
+        names: pasteNames,
+        codes: pasteCodes,
+        area: val('sbdyArea') || '余杭区',
+        base: parsed.base_amount,
+        period_start: parsed.period_start,
+        period_end: parsed.period_end
+      })
+    ) {
+      /* 已写入分段 */
+    } else {
+      setField('sbdyCompany', pasteNames[0] || cleanCompanyName(parsed.company_name) || '');
+      setField('sbdyCredit', pasteCodes[0] || String(parsed.credit_code || '').trim());
+    }
   }
 
   function pasteFillOnly() {
@@ -583,17 +747,37 @@
     }
   }
 
+  function operatorLabel(row) {
+    var admin = row && row.created_by_admin ? String(row.created_by_admin).trim() : '';
+    if (admin) {
+      if (/^c:/i.test(admin)) return '用户·' + admin.slice(2);
+      return admin;
+    }
+    var user = row && row.created_by_user ? String(row.created_by_user).trim() : '';
+    if (user) return '用户·' + user;
+    return '—';
+  }
+
   function renderList(list) {
     var tbody = document.getElementById('sbdyDemoListTbody');
     if (!tbody) return;
     if (!list || !list.length) {
-      tbody.innerHTML = '<tr><td colspan="7">暂无记录</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8">暂无记录</td></tr>';
       return;
     }
     var html = '';
     list.forEach(function (row) {
       var links = row.links || {};
-      var region = row.region === 'sz' ? '深圳' : row.region === 'wh' ? '武汉' : row.region === 'hn' ? '湖南' : '浙江';
+      var region =
+        row.region === 'sz'
+          ? '深圳'
+          : row.region === 'wh'
+            ? '武汉'
+            : row.region === 'hn'
+              ? '湖南'
+              : row.region === 'js'
+                ? '江苏'
+                : '浙江';
       html +=
         '<tr>' +
         '<td>' +
@@ -608,6 +792,9 @@
         '<td class="cell-break"><code>' +
         esc(row.id_number || '—') +
         '</code></td>' +
+        '<td class="cell-break">' +
+        esc(operatorLabel(row)) +
+        '</td>' +
         '<td class="cell-break">' +
         esc(row.company_name || '—') +
         '</td>' +
@@ -751,11 +938,63 @@
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate')
     };
-    /* 浙江版多段任职：有分段则以分段为准（逐月单位/参保地/基数）；否则用逐月单位映射 */
+    /* 江苏版：参保状态单值；分段（多参保地）以分段为准 */
+    if (region === 'js') {
+      body.status = val('sbdyStatus') || '正常缴费';
+      var jsSegs = readSegments();
+      if (jsSegs.length) {
+        body.segments = jsSegs;
+        body.company_name = cleanCompanyName(body.company_name);
+      } else {
+        body.company_name = cleanCompanyName(body.company_name);
+      }
+    }
+    /* 浙江版：多家误写在单框时先拆到分段；有分段则以分段为准 */
     if (region === 'zj') {
+      promoteJoinedCompanyField();
+      body.company_name = cleanCompanyName(val('sbdyCompany'));
+      body.credit_code = val('sbdyCredit');
       var segs = readSegments();
       if (segs.length) {
+        var badSeg = null;
+        var badMsg = '';
+        var seenStart = {};
+        segs.forEach(function (s) {
+          if (badSeg) return;
+          var label = s.company_name || s.credit_code || '未命名';
+          if (!s.period_start || !s.period_end) {
+            badSeg = s;
+            badMsg = '分段「' + label + '」缺起止月，请补全后再生成';
+            return;
+          }
+          if (!s.credit_code) {
+            badSeg = s;
+            badMsg = '分段「' + label + '」缺统一社会信用代码（单位编号列会空白）';
+            return;
+          }
+          if (seenStart[s.period_start]) {
+            badSeg = s;
+            badMsg =
+              '分段「' + seenStart[s.period_start] + '」与「' + label +
+              '」起月相同，请按实际任职时间错开';
+            return;
+          }
+          seenStart[s.period_start] = label;
+        });
+        if (badSeg) {
+          setStatus(badMsg, true);
+          var segWrapEl = document.getElementById('sbdySegments');
+          if (segWrapEl && segWrapEl.scrollIntoView) {
+            segWrapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return;
+        }
         body.segments = segs;
+      } else if (!body.company_name && !body.credit_code) {
+        setStatus('请填写「参保单位」（多家请用下方分段任职）', true);
+        var coEl = document.getElementById('sbdyCompany');
+        if (coEl && coEl.scrollIntoView) coEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
       } else if (prefillMonthUnits && Object.keys(prefillMonthUnits).length) {
         body.month_units = prefillMonthUnits;
       }
@@ -840,6 +1079,27 @@
       '月' +
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
+    if (currentRegion() === 'js') {
+      setField('sbdyName', '樊宜');
+      setField('sbdyIdNumber', '342501199307088233');
+      setField('sbdyGender', '男');
+      setField('sbdyStatus', '暂停缴费（中断）');
+      setField('sbdyCompany', '南京市溧水区暂时中止单位');
+      setField('sbdyArea', '溧水区');
+      setField('sbdyBase', 4879);
+      setField('sbdyPeriodStart', '2025-08');
+      setField('sbdyPeriodEnd', '2026-08');
+      setField('sbdyPrintDate', printDate);
+      /* 逐月明细按段展开，单位/基数各段不同；2026-02 断缴（不填该月）*/
+      renderSegments([
+        { company_name: '南京市胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
+        { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
+        { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
+        { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
+      ]);
+      setStatus('已填充江苏示例：樊宜（4 家单位逐月，含断缴月，可再点生成）', false);
+      return;
+    }
     if (currentRegion() === 'hn') {
       setField('sbdyName', '杨坤斌');
       setField('sbdyIdNumber', '430522199711297813');
@@ -1097,9 +1357,22 @@
         }
       });
     }
+    var latestCredit = '';
+    var latestCompany = '';
+    if (maxN != null) {
+      var maxYmStr = numToYm(maxN);
+      latestCredit = monthUnits[maxYmStr] || '';
+      latestCompany =
+        (latestCredit && companyByCredit[latestCredit]) || companies[0] || '';
+    } else if (companies.length) {
+      latestCompany = companies[0];
+      latestCredit = creditByCompany[latestCompany] || credits[0] || '';
+    }
     return {
       companies: companies,
       credits: credits,
+      latestCompany: latestCompany,
+      latestCredit: latestCredit,
       monthUnits: monthUnits,
       segments: segments,
       minYm: minN != null ? numToYm(minN) : '',
@@ -1168,15 +1441,18 @@
       }
       var company = q('seg-company');
       var credit = q('seg-credit');
-      if (!company && !credit) return;
+      var start = normalizeYm(q('seg-start'));
+      var end = normalizeYm(q('seg-end'));
+      /* 江苏版分段可只填参保地+起止月（单位继承主单位），故有起止月即保留 */
+      if (!company && !credit && !(start && end)) return;
       var baseRaw = q('seg-base');
       out.push({
         company_name: company,
         credit_code: credit,
         area: q('seg-area'),
         base_amount: baseRaw !== '' ? Number(baseRaw) : undefined,
-        period_start: normalizeYm(q('seg-start')),
-        period_end: normalizeYm(q('seg-end'))
+        period_start: start,
+        period_end: end
       });
     });
     return out;
@@ -1221,29 +1497,33 @@
         if (g) setField('sbdyGender', g);
         var info = collectEmployerInfo(d, rangeStart, rangeEnd);
         prefillMonthUnits = info.monthUnits || {};
-        if (info.companies.length) setField('sbdyCompany', info.companies.join('、'));
-        if (info.credits.length) setField('sbdyCredit', info.credits.join('、'));
-        /* 多单位：自动分段（每段可再单独改参保地/基数）；单单位则清空分段 */
         var segList = (info.segments || []).filter(function (s) {
           return s.credit_code || s.company_name;
         });
-        if (segList.length >= 2) {
-          var defArea = val('sbdyArea') || '余杭区';
-          var defBase = val('sbdyBase') || '4986';
-          renderSegments(
-            segList.map(function (s) {
-              return {
-                company_name: s.company_name,
-                credit_code: s.credit_code,
-                area: defArea,
-                base_amount: defBase,
-                period_start: s.period_start,
-                period_end: s.period_end
-              };
-            })
-          );
+        var defArea = val('sbdyArea') || '余杭区';
+        var defBase = val('sbdyBase') || '4986';
+        /* 多段：只写入下方「分段任职」，上方参保单位留空；单家才填上方单框 */
+        if (
+          fillMultiAsSegments({
+            segments: segList,
+            names: info.companies,
+            codes: info.credits,
+            area: defArea,
+            base: defBase,
+            period_start: rangeStart || info.minYm,
+            period_end: rangeEnd || info.maxYm
+          })
+        ) {
+          /* 已分段 */
         } else {
           clearSegments();
+          var oneCo =
+            cleanCompanyName(info.latestCompany) ||
+            cleanCompanyName(info.companies[0]) ||
+            '';
+          var oneCr = info.latestCredit || info.credits[0] || '';
+          setField('sbdyCompany', oneCo);
+          setField('sbdyCredit', oneCr);
         }
         var ps = rangeStart || info.minYm;
         var pe = rangeEnd || info.maxYm;
@@ -1251,8 +1531,10 @@
         if (pe) setField('sbdyPeriodEnd', pe);
         var parts = ['已预填「' + username + '」'];
         if (info.companies.length) parts.push(info.companies.length + ' 家单位');
-        if (segList.length >= 2) parts.push('已自动分段' + segList.length + '段（可改参保地/基数）');
-        else if (ps && pe) parts.push('区间 ' + ps + '～' + pe);
+        var filledSegs = readSegments().length;
+        if (filledSegs >= 2) {
+          parts.push('已填入下方分段' + filledSegs + '段（可改参保地/基数）');
+        } else if (ps && pe) parts.push('区间 ' + ps + '～' + pe);
         setStatus(parts.join(' · ') + '（请核对）', false);
       })
       .catch(function (e) {
@@ -1274,9 +1556,23 @@
     });
   }
 
+  function bindMultiCompanyPromote() {
+    ;['sbdyCompany', 'sbdyCredit'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.__sbdyMultiBound) return;
+      el.__sbdyMultiBound = true;
+      el.addEventListener('blur', function () {
+        if (promoteJoinedCompanyField()) {
+          setStatus('已将多家单位拆到下方「分段任职」，请补全每段的信用代码与起止月', false);
+        }
+      });
+    });
+  }
+
   function bind() {
     fillDefaults();
     bindGenderAuto();
+    bindMultiCompanyPromote();
     document.querySelectorAll('input[name="sbdyRegion"]').forEach(function (el) {
       el.addEventListener('change', syncRegionUi);
     });

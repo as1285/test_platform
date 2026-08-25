@@ -1313,14 +1313,15 @@
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>或<strong>湖南个人参保信息（实缴明细）</strong>（版式分别对齐浙里办 / 深圳清单 / 湖北证明 / 湖南参保证明样张）。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>或<strong>江苏社会保险权益记录单</strong>（版式分别对齐浙里办 / 深圳清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社样张）。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionZj" value="zj" checked> 浙江</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz"> 深圳</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
-                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
+                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js"> 江苏</label>
                             </div>
                         </div>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
@@ -1339,7 +1340,7 @@
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
                             </div>
-                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>多家单位自动按「、」拼接</strong>，浙江版<strong>缴费明细按月填各自单位编号</strong>。填了预填起止月则只取该区间内单位并同步设为缴费起止月；不填则取全部记录的最早～最晚月。</p>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>多段公司写入下方「分段任职」，上方只留空</strong>，浙江版<strong>缴费明细按月填各自单位编号</strong>。填了预填起止月则只取该区间内单位并同步设为缴费起止月；不填则取全部记录的最早～最晚月。</p>
                         </div>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
@@ -1382,15 +1383,19 @@
                             <div class="form-row flex-wrap gap-10">
                                 <div style="flex:1;min-width:220px;">
                                     <label for="sbdyCompany">参保单位</label>
-                                    <input type="text" id="sbdyCompany" maxlength="128" placeholder="单位名称">
+                                    <input type="text" id="sbdyCompany" maxlength="128" placeholder="仅填一家；多家请点下方「添加一段」">
                                 </div>
                                 <div class="sbdy-zj-hn">
                                     <label for="sbdyCredit">统一社会信用代码</label>
                                     <input type="text" id="sbdyCredit" maxlength="32" placeholder="9131…">
                                 </div>
-                                <div class="sbdy-zj-wh">
+                                <div class="sbdy-zj-wh-js">
                                     <label for="sbdyArea">参保地</label>
                                     <input type="text" id="sbdyArea" maxlength="32" value="余杭区">
+                                </div>
+                                <div class="sbdy-js-only" hidden>
+                                    <label for="sbdyStatus">参保状态</label>
+                                    <input type="text" id="sbdyStatus" maxlength="24" value="正常缴费" placeholder="如：正常缴费 / 暂停缴费（中断）">
                                 </div>
                                 <div class="sbdy-sz-wh-hn" hidden>
                                     <label for="sbdyUnitCode">单位编号</label>
@@ -1409,9 +1414,9 @@
                                     <input type="text" id="sbdyInsureType" maxlength="32" value="企业养老" placeholder="企业养老">
                                 </div>
                             </div>
-                            <div class="sbdy-zj-only" id="sbdySegmentsWrap">
+                            <div class="sbdy-zj-js" id="sbdySegmentsWrap">
                                 <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
-                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，按每段分别填「单位 / 信用代码 / 参保地 / 基数 / 起止月」。<strong>填了分段则以分段为准</strong>，缴费明细按月分段显示各自的单位编号与参保地；预填 2 家及以上会自动分段。</p>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>；浙江版缴费明细按月显示各自单位编号与参保地，江苏版按月展开各段单位全称（养老/失业/工伤三险明细），段与段之间留空的月份视为断缴。预填 2 家及以上会自动填入下方分段。</p>
                                 <div id="sbdySegments"></div>
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
                             </div>
@@ -1486,12 +1491,13 @@
                                         <th>地区</th>
                                         <th>姓名</th>
                                         <th>证件号</th>
+                                        <th>操作账号</th>
                                         <th>单位</th>
                                         <th>授权码</th>
                                         <th>链接</th>
                                     </tr>
                                 </thead>
-                                <tbody id="sbdyDemoListTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
+                                <tbody id="sbdyDemoListTbody"><tr><td colspan="8">加载中…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -2795,7 +2801,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260824-segments"></script>
+    <script src="/js/admin/loader.js?v=20260825-admin-op"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260824-gjj-demo"></script>
