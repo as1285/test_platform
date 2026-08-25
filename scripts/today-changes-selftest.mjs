@@ -324,7 +324,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260825-iqoo15', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260825-meizu20pro', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -370,7 +370,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260825-iqoo15', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260825-meizu20pro', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
@@ -390,12 +390,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260825-iqoo15', '2211133', 'app-android-xiaomi-13'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260825-meizu20pro', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
   'frontend/xiangqing.html',
-  ['BLK-AL80', 'app-android-huawei-nova13', '20260825-iqoo15', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint', '2211133', 'app-android-xiaomi-13'],
+  ['BLK-AL80', 'app-android-huawei-nova13', '20260825-meizu20pro', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint', '2211133', 'app-android-xiaomi-13'],
   'xiangqing nova 13 statusbar inset'
 );
 mustInclude(
@@ -704,13 +704,45 @@ if (!read('backend/scripts/sbdy_wh_render_pdf.py').includes('draw_watermark')) {
 }
 mustInclude(
   'backend/scripts/make_wh_seal.py',
-  ['湖北省城镇企业职工社会保险', '参保证明章'],
+  ['湖北省城镇企业职工社会保险', '参保证明章', 'wh_seal_source.png'],
   'sbdy Wuhan seal text'
 );
 if (read('backend/scripts/make_wh_seal.py').includes('社会保险局')) {
   fail('sbdy Wuhan seal without 局', 'ring still has 局');
 } else {
   ok('sbdy Wuhan seal without 局');
+}
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  ['武汉版打印时间固定为生成当天', 'defaultPrintDateCn()', 'sbdy_wh_seal.png?v=20260825-clean-top'],
+  'sbdy Wuhan print date forced today + seal cache'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['武汉版：打印时间始终用当天', 'defaultPrintDateCn()'],
+  'sbdy Wuhan admin force today print date'
+);
+/* loader cache must point at the Wuhan print/seal fix bundle */
+mustInclude(
+  'frontend/public/js/admin/loader.js',
+  ['20260825-wh-print-today-seal-ref'],
+  'sbdy-demo loader cache for Wuhan print/seal'
+);
+if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
+  fail('sbdy Wuhan seal assets present', 'missing wh_seal.png');
+} else {
+  ok('sbdy Wuhan seal assets present');
+}
+if (!exists('backend/assets/sbdy/wh_seal_source.png')) {
+  fail('sbdy Wuhan seal source present', 'missing wh_seal_source.png');
+} else {
+  ok('sbdy Wuhan seal source present');
+}
+/* 回归：示例填充不再写死 2025年02月19日 */
+if (read('frontend/public/js/admin/modules/sbdy-demo.js').includes('2025年02月19日')) {
+  fail('sbdy Wuhan sample print date not hardcoded', 'still has 2025年02月19日');
+} else {
+  ok('sbdy Wuhan sample print date not hardcoded');
 }
 
 mustInclude(
@@ -750,7 +782,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260825-iqoo15', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260825-meizu20pro', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -777,7 +809,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2505A', 'app-android-iqoo-15', 'data-iqoo15-result-firstpaint', '20260825-iqoo15'],
+  ['V2505A', 'app-android-iqoo-15', 'data-iqoo15-result-firstpaint', '20260825-meizu20pro'],
   'shuiming_result iqoo 15 first-paint'
 );
 mustInclude(
@@ -789,6 +821,27 @@ mustInclude(
   'frontend/xiangqing.html',
   ['V2505A', 'app-android-iqoo-15'],
   'xiangqing iqoo 15 first-paint'
+);
+/* 魅族 20 Pro（M391Q / MZ-MEIZU 20 Pro）：Flyme 沉浸压栏，明细/筛选/详情页顶栏须留 40px */
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isMeizu20ProClient', 'app-android-meizu-20pro', 'M391Q|M2392\\b', 'html.app-android-client.app-android-meizu-20pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn'],
+  'meizu 20 pro detect + immersive white top'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['M391Q', 'app-android-meizu-20pro', 'data-meizu20pro-result-firstpaint', '20260825-meizu20pro'],
+  'shuiming_result meizu 20 pro first-paint'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['M391Q', 'app-android-meizu-20pro'],
+  'shuiming meizu 20 pro first-paint'
+);
+mustInclude(
+  'frontend/xiangqing.html',
+  ['M391Q', 'app-android-meizu-20pro'],
+  'xiangqing meizu 20 pro first-paint'
 );
 /* 一键生成前 B 站分享门槛已下线 */
 mustInclude(

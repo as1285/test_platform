@@ -91,6 +91,12 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/M391Q|M2392\b|(?:MZ-)?MEIZU[\s_-]*20[\s_-]*Pro|魅族[\s_-]*20[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-meizu-20pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
@@ -125,7 +131,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260825-iqoo15"></script>
+    <script src="/js/auth.js?v=20260825-meizu20pro"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

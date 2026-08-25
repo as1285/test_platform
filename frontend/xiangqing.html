@@ -55,6 +55,12 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/M391Q|M2392\b|(?:MZ-)?MEIZU[\s_-]*20[\s_-]*Pro|魅族[\s_-]*20[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-meizu-20pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-acepro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -89,7 +95,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260825-iqoo15"></script>
+    <script src="/js/auth.js?v=20260825-meizu20pro"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-help-icon-lock" data-scope="body.page-xiangqing"></script>
