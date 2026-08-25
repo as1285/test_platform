@@ -182,4 +182,29 @@ describe('社保演示预填分段', () => {
       '南京贝奇尔机械有限公司'
     );
   });
+
+  it('粘贴模版缺少身份证号时按地区和性别生成合法默认值', () => {
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    const parsed = window.AdminModules['sbdy-demo'].parsePasteTemplate(`
+姓名：潘心茹
+性别：女
+时间：2025.7-2026.6
+深圳社保
+公司名称：深圳市前海寻文化科技有限公司
+`);
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.id_number_defaulted).toBe(true);
+    expect(parsed.id_number).toMatch(/^440305\d{11}[\dX]$/);
+    expect(Number(parsed.id_number.charAt(16)) % 2).toBe(0);
+
+    const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    const checks = '10X98765432';
+    const sum = weights.reduce(
+      (total, weight, index) => total + Number(parsed.id_number.charAt(index)) * weight,
+      0
+    );
+    expect(parsed.id_number.charAt(17)).toBe(checks.charAt(sum % 11));
+  });
 });

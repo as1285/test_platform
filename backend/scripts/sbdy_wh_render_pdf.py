@@ -30,47 +30,47 @@ X0, X1 = 23.1, 571.4
 LW = 0.75
 
 # 信息行 1：姓名 / 值 / 性别 / 值 / 个人编号 / 值 / 社会保障号 / 值
-INFO1_X = [23.1, 67.0, 116.3, 160.2, 204.1, 291.8, 341.1, 478.2, 571.4]
+INFO1_X = [23.1, 78.2, 121.9, 154.8, 193.5, 297.2, 363.1, 478.3, 571.4]
 # 信息行 2：参保缴费地 / 值 / 本地缴费月数 / 值 / 参保险种 / 值
-INFO2_X = [23.1, 67.0, 204.1, 291.8, 341.1, 478.2, 571.4]
+INFO2_X = [23.1, 78.2, 193.5, 297.2, 363.1, 478.3, 571.4]
 # 单位行：单位编号 / 值 / 单位名称 / 值
-UNIT_X = [23.1, 116.3, 204.1, 291.8, 571.4]
-# 双列表：记录月份 缴费基数(元) 缴费类型 ×2（以 291.8 为中缝，左右三列等分）
-DUAL_X = [23.1, 112.7, 202.2, 291.8, 385.0, 478.2, 571.4]
+UNIT_X = [23.1, 121.9, 193.5, 297.2, 571.4]
+# 双列表：记录月份 缴费基数(元) 缴费类型 ×2（以 297.2 为中缝）
+DUAL_X = [23.1, 121.9, 193.5, 297.2, 363.1, 478.3, 571.4]
 
-# 整表相对扫描件略下移，给标题留出清晰空隙（避免压住首行顶线）
-Y_INFO1 = 36.0
-Y_INFO2 = 51.0
-Y_SEC_UNIT = 66.0
-Y_UNIT = 90.0  # 分区行加高，大字号不再贴上下边框
-Y_SEC_36 = 105.0
-Y_HEAD = 129.0
+# 依据 723×1024 参考扫描件换算到 A4 点坐标。
+Y_INFO1 = 51.0
+Y_INFO2 = 73.2
+Y_SEC_UNIT = 95.4
+Y_UNIT = 126.6
+Y_SEC_36 = 148.8
+Y_HEAD = 179.2
 Y_DATA = [
-    144.0,
-    176.3,
-    208.5,
-    240.8,
-    273.0,
-    305.3,
-    337.5,
-    369.8,
-    402.0,
-    434.3,
-    466.5,
-    498.8,
-    531.0,
-    563.3,
-    595.5,
-    627.8,
-    660.0,
-    692.3,
-    724.5,
+    202.3,
+    224.5,
+    246.7,
+    269.7,
+    291.9,
+    314.9,
+    337.1,
+    359.3,
+    382.3,
+    404.5,
+    426.7,
+    449.7,
+    471.9,
+    494.1,
+    517.1,
+    539.3,
+    562.3,
+    584.5,
+    606.7,
 ]
 N_ROWS = 18
 MAX_SHOW = 12
 FS = 7.5
-FS_TITLE = 18.5
-FS_SEC = 12.0
+FS_TITLE = 21.1
+FS_SEC = 13.3
 # Noto CJK 实测：字形约在 baseline-1.12s ~ baseline+0.28s
 CJK_ASCENT = 1.12
 CJK_DESCENT = 0.28
@@ -237,8 +237,8 @@ def collect_blob(p, months, auth_code):
 def draw_title(page, font_path, fontname):
     """标题完整落在首行表格之上，底边与顶线至少留 3.5pt。"""
     tw = text_width(font_path, TITLE, FS_TITLE)
-    # 实测 descent≈0.28s；基线 = 顶线 - 空隙 - descent*s
-    baseline = Y_INFO1 - 3.8 - FS_TITLE * CJK_DESCENT
+    # 参考图标题比首行顶线高约 9.5pt。
+    baseline = Y_INFO1 - 9.5 - FS_TITLE * CJK_DESCENT
     if baseline < FS_TITLE * CJK_ASCENT + 4.0:
         baseline = FS_TITLE * CJK_ASCENT + 4.0
     page.insert_text(
@@ -344,14 +344,14 @@ def draw_dual_table(page, font_path, fontname, left, right):
 
 
 def draw_notes(page, font_path, fontname, p, auth_code):
-    # 表格下沿 Y_DATA[-1]=724.5，备注紧随其后
-    page.insert_text((23.5, 734.0), '备注：', fontname=fontname, fontsize=FS, color=(0, 0, 0))
-    y = 742.3
+    # 表格下沿 Y_DATA[-1]=606.7；备注与参考扫描件保持约 20pt 行距。
+    page.insert_text((23.5, 620.0), '备注：', fontname=fontname, fontsize=FS, color=(0, 0, 0))
+    y = 640.0
     for line in NOTES:
         page.insert_text((43.7, y), line, fontname=fontname, fontsize=FS, color=(0, 0, 0))
-        y += 8.25
+        y += 18.5
     page.insert_text((43.7, y), '验证平台：' + VERIFY_URL, fontname=fontname, fontsize=FS, color=(0, 0, 0))
-    y += 8.25
+    y += 18.5
     page.insert_text(
         (43.7, y),
         '授权码：' + str(auth_code or ''),
@@ -362,16 +362,16 @@ def draw_notes(page, font_path, fontname, p, auth_code):
     print_date = str(p.get('print_date') or '')
     pd = '打印时间： ' + print_date
     tw = text_width(font_path, pd, FS)
-    page.insert_text(((PAGE_W - tw) / 2.0, 812.0), pd, fontname=fontname, fontsize=FS, color=(0, 0, 0))
+    page.insert_text(((PAGE_W - tw) / 2.0, 776.0), pd, fontname=fontname, fontsize=FS, color=(0, 0, 0))
     pn = '第1页/共1页'
     tw = text_width(font_path, pn, FS)
-    page.insert_text(((PAGE_W - tw) / 2.0, 828.0), pn, fontname=fontname, fontsize=FS, color=(0, 0, 0))
+    page.insert_text(((PAGE_W - tw) / 2.0, 809.0), pn, fontname=fontname, fontsize=FS, color=(0, 0, 0))
 
 
 def draw_seal(page):
     if os.path.isfile(SEAL_PNG):
-        # 随双列表下移，印章仍盖在右下缴费区
-        page.insert_image(fitz.Rect(430.0, 642.0, 543.25, 756.75), filename=SEAL_PNG, overlay=True)
+        # 参考图：印章位于表格下方备注区右侧，不压住缴费表格。
+        page.insert_image(fitz.Rect(425.0, 628.0, 543.0, 747.0), filename=SEAL_PNG, overlay=True)
 
 
 def render(payload, auth_code, qr_url, out_path):

@@ -686,9 +686,9 @@ mustInclude(
     '缴费类型',
     'MAX_SHOW = 12',
     'https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html',
-    'Y_INFO1 = 36.0',
+    'Y_INFO1 = 51.0',
     'CJK_ASCENT = 1.12',
-    'FS_SEC = 12.0',
+    'FS_SEC = 13.3',
   ],
   'sbdy Wuhan PDF renderer'
 );

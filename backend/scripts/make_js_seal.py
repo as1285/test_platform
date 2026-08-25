@@ -16,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 FRONTEND_IMG = os.path.join(HERE, '..', '..', 'frontend', 'public', 'img')
 TEXT_REFERENCE_PNG = os.path.join(ASSETS, 'js_seal_text_reference.png')
+ZJ_STYLE_SEAL_PNG = os.path.join(ASSETS, 'seal.png')
 FONT_CANDIDATES = [
     os.path.join(ASSETS, 'NotoSerifCJKsc-Regular.otf'),
     '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',
@@ -47,7 +48,49 @@ def _star_pts(cx, cy, r, rot=-math.pi / 2):
     return pts
 
 
+def _make_zj_style_seal(out_path, size):
+    """复用浙江章的外圈、五角星、底字与颜色，只替换顶部省份弧字。"""
+    zj = Image.open(ZJ_STYLE_SEAL_PNG).convert('RGBA')
+    w, h = zj.size
+    cx = w / 2.0
+    cy = h / 2.0
+    src = zj.load()
+    styled = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    dst = styled.load()
+
+    # 浙江章是已栅格化的原章：保留外圈、中心星和「电子专用章」原始像素。
+    for y in range(h):
+        for x in range(w):
+            dist = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            keep_ring = dist > min(w, h) * 0.447
+            keep_star = w * 0.329 < x < w * 0.659 and h * 0.337 < y < h * 0.652
+            keep_bottom = w * 0.16 < x < w * 0.84 and h * 0.71 < y < h * 0.93
+            if keep_ring or keep_star or keep_bottom:
+                dst[x, y] = src[x, y]
+
+    if os.path.isfile(TEXT_REFERENCE_PNG):
+        ref = Image.open(TEXT_REFERENCE_PNG).convert('RGBA')
+        ring_box = zj.getchannel('A').getbbox() or (0, 0, w, h)
+        rw = ring_box[2] - ring_box[0]
+        rh = ring_box[3] - ring_box[1]
+        alpha = ref.getchannel('A').resize((rw, rh), Image.LANCZOS)
+        # 浙江 PDF 章使用纯朱红色。
+        text_layer = Image.new('RGBA', (rw, rh), (255, 0, 0, 255))
+        text_layer.putalpha(alpha)
+        styled.alpha_composite(text_layer, (ring_box[0], ring_box[1]))
+
+    target_size = max(64, int(size or w))
+    if styled.size != (target_size, target_size):
+        styled = styled.resize((target_size, target_size), Image.LANCZOS)
+    os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
+    styled.save(out_path, 'PNG')
+    return out_path
+
+
 def make_js_seal(out_path, size=1024):
+    if os.path.isfile(ZJ_STYLE_SEAL_PNG):
+        return _make_zj_style_seal(out_path, size)
+
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     # 左侧原版样张为较亮的朱红色；避免使用偏暗的酒红色。

@@ -2057,7 +2057,7 @@ function renderWhCertHtml(payload, links, opts) {
     '</div>' +
     '<div class="page-no">第1页/共1页</div>' +
     '</div>' +
-    '<img class="seal" src="/img/sbdy_wh_seal.png" alt="">' +
+    '<img class="seal" src="/img/sbdy_wh_seal.png?v=20260825-reference-align" alt="">' +
     '</div></body></html>'
   );
 }
@@ -2192,7 +2192,7 @@ function renderJsCertHtml(payload, links, opts) {
     '</div>' +
     '<div class="foot">' +
     '<div class="print-date">打印时间：' + escHtml(sealDate) + '</div>' +
-    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260825-seal-color" alt=""></div>' +
+    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260825-zj-seal-style" alt=""></div>' +
     '</div>' +
     '</div>' +
     '<script src="/js/vendor/qrcode.min.js"><\/script>' +

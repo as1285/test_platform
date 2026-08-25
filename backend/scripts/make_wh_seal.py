@@ -6,11 +6,13 @@ from __future__ import print_function
 import math
 import os
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 FONT_CANDIDATES = [
+    '/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc',
+    '/usr/share/fonts/truetype/noto/NotoSerifCJK-Bold.ttc',
     os.path.join(ASSETS, 'NotoSerifCJKsc-Regular.otf'),
     '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',
     '/usr/share/fonts/truetype/noto/NotoSerifCJK-Regular.ttc',
@@ -41,46 +43,54 @@ def _star_pts(cx, cy, r, rot=-math.pi / 2):
 
 
 def make_wh_seal(out_path, size=1024):
+    out_size = int(size)
+    size = out_size * 2
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    red = (214, 22, 22, 255)
+    red = (190, 22, 30, 255)
     cx = cy = size / 2.0
-    r = size * 0.458
-    ring_w = max(10, int(size * 0.022))
-    inner_w = max(3, int(size * 0.007))
+    r = size * 0.455
+    ring_w = max(10, int(size * 0.025))
     draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline=red, width=ring_w)
-    ri = r - ring_w - max(4, int(size * 0.008))
-    draw.ellipse((cx - ri, cy - ri, cx + ri, cy + ri), outline=red, width=inner_w)
 
-    star_r = size * 0.168
-    draw.polygon(_star_pts(cx, cy - size * 0.008, star_r), fill=red)
+    star_r = size * 0.145
+    draw.polygon(_star_pts(cx, cy - size * 0.002, star_r), fill=red)
 
-    font_bot = _load_font(int(size * 0.082))
+    font_bot = _load_font(int(size * 0.14))
     bot = '参保证明章'
     bbox = draw.textbbox((0, 0), bot, font=font_bot)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     draw.text(
-        (cx - tw / 2.0 - bbox[0], cy + size * 0.205 - th / 2.0 - bbox[1]),
+        (cx - tw / 2.0 - bbox[0], cy + size * 0.27 - th / 2.0 - bbox[1]),
         bot,
         font=font_bot,
         fill=red,
+        stroke_width=max(1, int(size * 0.004)),
+        stroke_fill=red,
     )
 
     ring = '湖北省城镇企业职工社会保险'
-    font_ring = _load_font(int(size * 0.074))
+    font_ring = _load_font(int(size * 0.105))
     n = len(ring)
-    start = -math.pi * 0.62
-    end = math.pi * 0.62
-    radius_text = r - size * 0.086
+    start = -math.pi * 0.57
+    end = math.pi * 0.57
+    radius_text = r - size * 0.09
     for i, ch in enumerate(ring):
         t = i / float(max(1, n - 1))
         ang = start + (end - start) * t
         rx = cx + radius_text * math.sin(ang)
         ry = cy - radius_text * math.cos(ang)
-        ch_img = Image.new('RGBA', (int(size * 0.13), int(size * 0.13)), (0, 0, 0, 0))
+        ch_img = Image.new('RGBA', (int(size * 0.16), int(size * 0.16)), (0, 0, 0, 0))
         cd = ImageDraw.Draw(ch_img)
         cb = cd.textbbox((0, 0), ch, font=font_ring)
-        cd.text((4 - cb[0], 2 - cb[1]), ch, font=font_ring, fill=red)
+        cd.text(
+            (size * 0.008 - cb[0], size * 0.005 - cb[1]),
+            ch,
+            font=font_ring,
+            fill=red,
+            stroke_width=max(1, int(size * 0.005)),
+            stroke_fill=red,
+        )
         rot = -math.degrees(ang)
         ch_rot = ch_img.rotate(rot, expand=True, resample=Image.BICUBIC)
         img.alpha_composite(
@@ -88,6 +98,8 @@ def make_wh_seal(out_path, size=1024):
             (int(rx - ch_rot.width / 2.0), int(ry - ch_rot.height / 2.0)),
         )
 
+    img = img.resize((out_size, out_size), Image.Resampling.LANCZOS)
+    img = img.filter(ImageFilter.GaussianBlur(radius=0.25))
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     img.save(out_path, 'PNG')
     return out_path

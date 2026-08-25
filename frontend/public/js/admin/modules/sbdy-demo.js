@@ -262,6 +262,28 @@
     return '';
   }
 
+  function defaultDemoIdNumber(region, gender) {
+    var areaCodes = {
+      zj: '330106',
+      sz: '440305',
+      wh: '420106',
+      hn: '430703',
+      js: '320102'
+    };
+    var prefix =
+      (areaCodes[region] || areaCodes.zj) +
+      '19900101' +
+      (gender === '男' ? '001' : '002');
+    var weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    var checks = '10X98765432';
+    var sum = 0;
+    var i;
+    for (i = 0; i < 17; i++) {
+      sum += Number(prefix.charAt(i)) * weights[i];
+    }
+    return prefix + checks.charAt(sum % 11);
+  }
+
   function pad2(n) {
     return String(n).padStart(2, '0');
   }
@@ -494,6 +516,12 @@
           : looksSz
             ? 'sz'
             : 'zj';
+    var idNumberDefaulted = false;
+    if (!idNumber) {
+      idNumber = defaultDemoIdNumber(region, gender || '女');
+      idNumberDefaulted = true;
+    }
+    if (!gender) gender = genderFromId(idNumber) || '女';
     var baseRaw = pickLabeled(text, ['医保基数', '医疗保险基数', '缴费基数', '基数']);
     var base = baseRaw ? Number(String(baseRaw).replace(/[^\d.]/g, '')) : NaN;
     if (!isFinite(base) || base <= 0) {
@@ -518,7 +546,6 @@
     var status = active ? '正常参保' : '暂停缴费';
 
     if (!name) return { error: '模版中未识别到姓名' };
-    if (!idNumber) return { error: '模版中未识别到身份证号' };
     if (!period || !period.start || !period.end) {
       return { error: '模版中未识别到缴费时间（如 2025.7-2026.6）' };
     }
@@ -527,6 +554,7 @@
       region: region,
       name: name,
       id_number: idNumber,
+      id_number_defaulted: idNumberDefaulted,
       gender: gender || genderFromId(idNumber) || '女',
       company_name: company,
       credit_code: credit,
@@ -648,7 +676,8 @@
         '（' +
         parsed.month_count +
         '个月）· ' +
-        parsed.status,
+        parsed.status +
+        (parsed.id_number_defaulted ? ' · 身份证号已自动补默认值' : ''),
       false
     );
     return parsed;
@@ -914,11 +943,18 @@
           : region === 'hn'
             ? '常德市鼎城区'
             : '余杭区';
+    var formGender =
+      val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女';
+    var formIdNumber = val('sbdyIdNumber');
+    if (!formIdNumber) {
+      formIdNumber = defaultDemoIdNumber(region, formGender);
+      setField('sbdyIdNumber', formIdNumber);
+    }
     var body = {
       region: region,
       name: val('sbdyName'),
-      id_number: val('sbdyIdNumber'),
-      gender: val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女',
+      id_number: formIdNumber,
+      gender: formGender,
       company_name: val('sbdyCompany'),
       credit_code: val('sbdyCredit'),
       area: val('sbdyArea') || defaultArea,
@@ -1010,8 +1046,8 @@
         }
       ];
     }
-    if (!body.name || !body.id_number) {
-      setStatus('请填写上方「姓名」与「证件号码」', true);
+    if (!body.name) {
+      setStatus('请填写上方「姓名」', true);
       var nameEl = document.getElementById('sbdyName');
       if (nameEl && nameEl.scrollIntoView) nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -1586,9 +1622,10 @@
         var d = j.data;
         var u = d.user || {};
         var id = u.user_tax_id || u.id_card || u.tax_id || '';
+        var g = genderFromId(id) || val('sbdyGender') || '女';
+        if (!id) id = defaultDemoIdNumber(currentRegion(), g);
         setField('sbdyName', u.real_name || '');
         setField('sbdyIdNumber', id);
-        var g = genderFromId(id);
         if (g) setField('sbdyGender', g);
         var info = collectEmployerInfo(d, rangeStart, rangeEnd, currentRegion());
         prefillMonthUnits = info.monthUnits || {};
