@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * 现售四档：日卡 249 / 周卡 300 / 月卡 398 / 永久 999（A/B 分流仍保留，两边 SKU 相同）。
+ * 现售五档：小时卡 99 / 日卡 249 / 周卡 300 / 月卡 398 / 永久 999（A/B 分流仍保留，两边 SKU 相同）。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,6 +8,18 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_SKU_PRICES = 'sku_catalog_prices_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
+
+/** 现售小时卡：99 */
+var SKU_99_HOUR = {
+  id: 'sku_99_1h',
+  amount: '99.00',
+  label: '小时卡',
+  subject: '激活码·小时卡',
+  grant_kind: 'trial',
+  grant_hours: 1,
+  grant_days: 0,
+  grant_minutes: 0
+};
 
 /** 现售日卡：249 */
 var SKU_249_DAY = {
@@ -202,7 +214,7 @@ var LEGACY_CATALOG_SKUS = [
   SKU_398_PERM_LEGACY
 ];
 
-var LIVE_CATALOG_SKUS = [SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM];
+var LIVE_CATALOG_SKUS = [SKU_99_HOUR, SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM];
 var LIVE_SKU_IDS = LIVE_CATALOG_SKUS.map(function (s) {
   return s.id;
 });
@@ -281,7 +293,7 @@ function defaultSkuById(id) {
   var all = []
     .concat(DEFAULT_PRICING_AB.control_skus || [])
     .concat(DEFAULT_PRICING_AB.treatment_skus || [])
-    .concat([SKU_199_HOUR, SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM])
+    .concat([SKU_99_HOUR, SKU_199_HOUR, SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM])
     .concat(LEGACY_CATALOG_SKUS || []);
   for (var i = 0; i < all.length; i++) {
     if (all[i].id === id) return cloneSku(all[i]);
@@ -445,7 +457,7 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
+    [SKU_99_HOUR, SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
       LEGACY_CATALOG_SKUS
     )
   ];

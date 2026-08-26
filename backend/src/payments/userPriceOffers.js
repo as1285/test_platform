@@ -5,6 +5,16 @@
 
 var LIVE_OFFERABLE_SKUS = [
   {
+    id: 'sku_99_1h',
+    amount: '99.00',
+    label: '小时卡',
+    subject: '激活码·小时卡',
+    grant_kind: 'trial',
+    grant_hours: 1,
+    grant_days: 0,
+    grant_minutes: 0
+  },
+  {
     id: 'sku_249_1d',
     amount: '249.00',
     label: '日卡',

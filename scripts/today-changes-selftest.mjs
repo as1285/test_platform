@@ -245,13 +245,13 @@ mustInclude(
 mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banner');
 mustInclude(
   'backend/src/legacy/pricingAb.js',
-  ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', "amount: '249.00'", "amount: '999.00'"],
-  'pricing live catalog 249/300/398/999'
+  ['sku_99_1h', 'sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', "amount: '99.00'", "amount: '999.00'"],
+  'pricing live catalog 99/249/300/398/999'
 );
 mustInclude(
   'frontend/purchase.html',
-  ['sku_249_1d', 'sku_999_perm', '日卡 1 天、周卡 7 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
-  'purchase four-sku copy + hide bili share'
+  ['sku_99_1h', 'sku_249_1d', 'sku_999_perm', '小时卡 1 小时、日卡 1 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
+  'purchase five-sku copy + hide bili share'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -260,8 +260,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', 'btnSaveSkuCatalogPrices', '支付套餐价格'],
-  'admin offer four-sku + catalog prices'
+  ['sku_99_1h', 'sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', 'btnSaveSkuCatalogPrices', '支付套餐价格', 'skuPriceHour'],
+  'admin offer five-sku + catalog prices'
 );
 mustInclude(
   'backend/src/legacy/pricingAb.js',
@@ -1062,6 +1062,52 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['20260826-post-activate-edit'],
   'auth conversion-guide cache bust post-activate edit'
+);
+
+mustInclude(
+  'backend/src/admin/uiCompatCatalog.js',
+  ['MODELS', 'listCatalogModels', 'catalogStats'],
+  'ui compat catalog module'
+);
+mustInclude(
+  'backend/src/admin/deviceStats.js',
+  ['buildDeviceCompatReport', 'page_compare'],
+  'device stats report module'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ['/api/admin/analytics/devices', 'analytics-devices'],
+  'devices analytics route'
+);
+mustInclude(
+  'backend/src/admin/menuRegistry.js',
+  ["page: 'analytics-devices'", '机型'],
+  'analytics-devices menu'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/devices.js',
+  ['btnRefreshDeviceCompat', 'device-compat-row'],
+  'admin devices module'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['page-analytics-devices', 'deviceCompatSummary'],
+  'admin devices page panel'
+);
+mustExclude(
+  'frontend/admin_panel.html',
+  ['batchIssueWrap', 'btnIssueBatch', 'batchIssueChannel', 'id="batchIssueCount"'],
+  'admin codes page no batch issue UI'
+);
+mustExclude(
+  'frontend/public/js/admin_panel.js',
+  ['btnIssueBatch', 'downloadActivationCodesTxt', 'batchIssueChannel'],
+  'admin_panel.js no batch issue handlers'
+);
+mustExclude(
+  'backend/src/admin/routes.js',
+  ['issue-code-batch', 'handleAdminIssueCodeBatch'],
+  'admin routes no batch issue API'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

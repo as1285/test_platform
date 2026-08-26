@@ -50,7 +50,7 @@
                     <section>
                         <h2>支付页 A/B</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A / B</strong>：支付宝四档（日卡 / 周卡 / 月卡 / 永久，价格见下方）+ 激活码。
+                            <strong>A / B</strong>：支付宝五档（小时卡 / 日卡 / 周卡 / 月卡 / 永久，价格见下方）+ 激活码。
                             A+B 必须为 100%。
                         </p></details>
                         <div class="form-row form-stack">
@@ -76,6 +76,10 @@
                         </div>
                         <div class="form-row form-stack admin-panel-inset">
                             <p class="hint mt-0"><strong>支付套餐价格</strong>：全站购买页、支付宝下单按这里的金额。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="skuPriceHour">小时卡（元）</label>
+                                <input type="number" id="skuPriceHour" data-sku-id="sku_99_1h" min="0.01" max="99999.99" step="0.01" value="99">
+                            </div>
                             <div class="form-field form-field-narrow">
                                 <label for="skuPriceDay">日卡（元）</label>
                                 <input type="number" id="skuPriceDay" data-sku-id="sku_249_1d" min="0.01" max="99999.99" step="0.01" value="249">
@@ -106,8 +110,8 @@
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignVariant">方案</label>
                                 <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 249日/300周/398月/999永久</option>
-                                    <option value="b">B · 249日/300周/398月/999永久</option>
+                                    <option value="a">A · 99时/249日/300周/398月/999永久</option>
+                                    <option value="b">B · 99时/249日/300周/398月/999永久</option>
                                 </select>
                             </div>
                             <div class="form-actions">
@@ -124,6 +128,7 @@
                             <div class="form-field form-field-narrow">
                                 <label for="priceOfferSku">套餐</label>
                                 <select id="priceOfferSku">
+                                    <option value="sku_99_1h">小时卡（原价 ¥99）</option>
                                     <option value="sku_249_1d">日卡（原价 ¥249）</option>
                                     <option value="sku_300_7d">周卡（原价 ¥300）</option>
                                     <option value="sku_398_30d">月卡（原价 ¥398）</option>
@@ -544,22 +549,6 @@
                             <button type="button" class="btn-primary mb-1" id="btnIssue">生成 1 个</button>
                         </div>
                         <p class="hint" style="margin-top:0;">天/时/分都填 0（或不填）时生成<strong>永久</strong>激活码；任一项大于 0 则为时效码（可叠加，最低可只填 <strong>1 分钟</strong>）。</p>
-                        <div class="form-row flex-wrap gap-10 admin-soft-box is-hidden" id="batchIssueWrap">
-                            <div>
-                                <label for="batchIssueChannel">批量渠道</label>
-                                <select class="filter-select input-w-140 mt-6" id="batchIssueChannel">
-                                    <option value="闲鱼">闲鱼</option>
-                                    <option value="酷发卡">酷发卡</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="batchIssueCount">批量数量</label>
-                                <input class="filter-select input-w-100 mt-6" type="number" id="batchIssueCount" min="1" max="5000" value="100" inputmode="numeric">
-                            </div>
-                            <button type="button" class="btn-page mb-1" id="btnAddBatchChannel" title="添加自定义渠道">添加渠道</button>
-                            <button type="button" class="btn-page mb-1" id="btnRemoveBatchChannel" title="删除当前选中的自定义渠道">删除渠道</button>
-                            <button type="button" class="btn-primary mb-1" id="btnIssueBatch">批量生成</button>
-                        </div>
                         <div class="code-result" id="issueOut"></div>
                         <p class="hint" id="codesPageHint" style="display:none;">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。</p>
                         <div class="form-row mb-12 flex-wrap">
@@ -2088,7 +2077,7 @@
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
                     <section>
                         <h2>支付页 A/B</h2>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售四档：249 日卡 / 300 周卡 / 398 月卡 / 999 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售五档：99 小时卡 / 249 日卡 / 300 周卡 / 398 月卡 / 999 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
@@ -2932,6 +2921,6 @@
     <script src="/js/admin/loader.js?v=20260826-device-compat"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260826-sku-prices"></script>
+    <script src="/js/admin_panel.js?v=20260826-deploy"></script>
 </body>
 </html>

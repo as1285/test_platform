@@ -113,16 +113,16 @@ describe('pricingAb SKU mojibake repair via load', () => {
     });
     const cfg = await api.loadPricingAbParsed(true);
     expect((cfg.treatment_skus || []).map((s) => s.id).join('|')).toBe(
-      'sku_249_1d|sku_300_7d|sku_398_30d|sku_999_perm'
+      'sku_99_1h|sku_249_1d|sku_300_7d|sku_398_30d|sku_999_perm'
     );
     expect((cfg.control_skus || []).map((s) => s.amount).join('|')).toBe(
-      '249.00|300.00|398.00|999.00'
+      '99.00|249.00|300.00|398.00|999.00'
     );
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toBe(
-      '日卡|周卡|月卡|永久'
+      '小时卡|日卡|周卡|月卡|永久'
     );
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
-      '249.00|300.00|398.00|999.00'
+      '99.00|249.00|300.00|398.00|999.00'
     );
   });
 });
@@ -136,11 +136,13 @@ describe('sku catalog amounts', () => {
 
   it('overrides live sku prices and ignores junk', () => {
     const next = normalizeCatalogAmounts({
+      sku_99_1h: '88',
       sku_249_1d: '199',
       sku_300_7d: '0',
       sku_999_perm: '888.5',
       sku_fake: '12'
     });
+    expect(next['sku_99_1h']).toBe('88.00');
     expect(next['sku_249_1d']).toBe('199.00');
     expect(next['sku_300_7d']).toBe('300.00');
     expect(next['sku_398_30d']).toBe('398.00');

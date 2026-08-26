@@ -223,19 +223,7 @@ app.post(
   h.handleAdminUserTaxRecordsWrite
 );
 app.post('/api/admin/issue-code', mw.requireAdminAuth, mw.requireAdminMenu('codes'), h.handleAdminIssueCode);
-app.post(
-  '/api/admin/issue-code-batch',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('codes'),
-  h.handleAdminIssueCodeBatch
-);
 app.get(
-  '/api/admin/activation-batch-channels',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('codes'),
-  h.handleAdminActivationBatchChannels
-);
-app.post(
   '/api/admin/activation-batch-channels',
   mw.requireAdminAuth,
   mw.requireAdminMenu('codes'),

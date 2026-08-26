@@ -939,7 +939,7 @@
                 </details>
                 <details class="purchase-faq-item" data-faq-id="sku_diff">
                     <summary>各套餐有什么区别？</summary>
-                    <p>权益相同，主要差别是可用时长。日卡 1 天、周卡 7 天、月卡 30 天，永久长期开通。默认已选日卡。</p>
+                    <p>权益相同，主要差别是可用时长。小时卡 1 小时、日卡 1 天、周卡 7 天、月卡 30 天，永久长期开通。默认已选最低价档。</p>
                 </details>
                 <details class="purchase-faq-item" data-faq-id="bilibili_off" hidden>
                     <summary>B 站分享怎么减 50 元？</summary>
@@ -2343,6 +2343,16 @@
                     var skus = Array.isArray(data.skus) ? data.skus : [];
                     if (!skus.length && data.amount) {
                         skus = [
+                            {
+                                id: 'sku_99_1h',
+                                amount: '99.00',
+                                label: '小时卡',
+                                subject: '激活码·小时卡',
+                                grant_kind: 'trial',
+                                grant_days: 0,
+                                grant_hours: 1,
+                                grant_minutes: 0
+                            },
                             {
                                 id: 'sku_249_1d',
                                 amount: '249.00',
