@@ -47,7 +47,6 @@
     'analytics-tracking': 'analytics',
     'analytics-devices': 'devices',
     'install-guide-stats': 'analytics',
-    'share-stats': 'analytics',
     'channel-analysis': 'analytics'
   };
 

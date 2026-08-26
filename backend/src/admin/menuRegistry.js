@@ -89,14 +89,6 @@ const ADMIN_PAGE_DEFS = [
     module: 'analytics',
     order: 60
   },
-  {
-    page: 'share-stats',
-    menu_key: 'share-stats',
-    label: '分享统计',
-    group: 'insights',
-    module: 'analytics',
-    order: 70
-  },
 
   /* —— 用户 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },

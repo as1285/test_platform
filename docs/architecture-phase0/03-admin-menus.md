@@ -42,7 +42,6 @@
 | `analytics-purchase` | 支付分析 | 购买漏斗 |
 | `channel-analysis` | 渠道分析 | 渠道漏斗 |
 | `install-guide-stats` | 安装统计 | install-guide-stats |
-| `share-stats` | 分享统计 | share funnel |
 | `admin-accounts` | 账号权限 | 子账号（`super_only`） |
 | `login-log` | 管理登录 | 管理端登录流水 |
 | `server-monitor` | 监控 | `monitor/overview` |

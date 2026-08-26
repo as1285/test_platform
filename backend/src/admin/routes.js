@@ -174,12 +174,6 @@ app.get(
   h.handleAdminInstallGuideStats
 );
 app.get(
-  '/api/admin/analytics/share-stats',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('share-stats'),
-  h.handleAdminShareStats
-);
-app.get(
   '/api/admin/analytics/install-track-stats',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),

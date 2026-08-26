@@ -1022,7 +1022,6 @@
                 'channel-analysis',
                 'install-guide',
                 'install-guide-stats',
-                'share-stats',
                 'users',
                 'rename-tax-daily',
                 'users-deleted',
@@ -1138,7 +1137,6 @@
                                 'analytics-purchase': 1,
                 'analytics-tracking': 1,
                 'install-guide-stats': 1,
-                'share-stats': 1,
                 'channel-analysis': 1,
                 'login-log': 1,
                 'user-login-log': 1,
@@ -1252,9 +1250,6 @@
             }
             if (pageKey === 'install-guide-stats') {
                 loadInstallGuideStats();
-            }
-            if (pageKey === 'share-stats') {
-                loadShareStats();
             }
             if (pageKey === 'tax-records-edit') {
                 initTaxRecordsEditPage();
@@ -4068,227 +4063,6 @@
             }
         }
 
-        function renderShareStats(data) {
-            var el = document.getElementById('shareStatsMount');
-            if (!el) return;
-            if (!data || !data.summary) {
-                el.innerHTML = '<div class="share-stats-empty">暂无分享统计数据</div>';
-                return;
-            }
-            var s = data.summary;
-            var shareOut = s.share_out != null ? s.share_out : 0;
-            var landPv = s.land_pv || 0;
-            var landUv = s.land_uv || 0;
-            var registerUsers = s.register_users || 0;
-            var loginTimes = s.login_times || 0;
-            var downloadClicks = s.download_clicks || 0;
-            var todayYmd = cnDateTodayYmd();
-
-            var html = analyticsPeriodHintHtml(data);
-            if (data.note) {
-                html +=
-                    '<p class="hint share-stats-note">' +
-                    esc(String(data.note)) +
-                    '</p>';
-            }
-
-            html += '<div class="share-funnel" aria-label="分享转化漏斗">';
-            html +=
-                '<div class="share-funnel-step"><span class="share-funnel-label">发出</span><span class="share-funnel-val">' +
-                esc(String(shareOut)) +
-                '</span></div>';
-            html += '<div class="share-funnel-arrow" aria-hidden="true">→</div>';
-            html +=
-                '<div class="share-funnel-step"><span class="share-funnel-label">打开 UV</span><span class="share-funnel-val">' +
-                esc(String(landUv)) +
-                '</span><span class="share-funnel-sub">打开率 ' +
-                esc(s.open_rate_pct || '—') +
-                '</span></div>';
-            html += '<div class="share-funnel-arrow" aria-hidden="true">→</div>';
-            html +=
-                '<div class="share-funnel-step is-convert"><span class="share-funnel-label">注册</span><span class="share-funnel-val">' +
-                esc(String(registerUsers)) +
-                '</span><span class="share-funnel-sub">' +
-                esc(s.register_rate_pct || '—') +
-                '</span></div>';
-            html +=
-                '<div class="share-funnel-step"><span class="share-funnel-label">登录</span><span class="share-funnel-val">' +
-                esc(String(loginTimes)) +
-                '</span><span class="share-funnel-sub">' +
-                esc(s.login_rate_pct || '—') +
-                '</span></div>';
-            html +=
-                '<div class="share-funnel-step"><span class="share-funnel-label">下载</span><span class="share-funnel-val">' +
-                esc(String(downloadClicks)) +
-                '</span></div>';
-            html += '</div>';
-
-            html += '<div class="share-kpi-section-label">发出（from=share 主站链）</div>';
-            html += '<div class="share-kpi-grid">';
-            html +=
-                '<div class="share-kpi-card is-emit"><div class="ud-label">分享发出</div><div class="ud-val">' +
-                esc(String(shareOut)) +
-                '</div><div class="share-kpi-sub">首页 ' +
-                esc(String(s.share_home || 0)) +
-                ' · 我的 ' +
-                esc(String(s.share_mine || 0)) +
-                ' · 系统 ' +
-                esc(String(s.share_native || 0)) +
-                ' · 复制 ' +
-                esc(String(s.share_copy || 0)) +
-                ' · 税模拟 ' +
-                esc(String((s.share_tax || 0) + (s.share_tax_native || 0))) +
-                '</div></div>';
-            html +=
-                '<div class="share-kpi-card is-emit"><div class="ud-label">面板打开</div><div class="ud-val">' +
-                esc(String(s.share_panel_open || 0)) +
-                '</div><div class="share-kpi-sub">完成 ' +
-                esc(String(s.share_done || 0)) +
-                ' · 海报 ' +
-                esc(String(s.share_poster_save || 0)) +
-                '</div></div>';
-            html += '</div>';
-
-            html += '<div class="share-kpi-section-label">B 站分享（外链，不进上方漏斗）</div>';
-            html += '<div class="share-kpi-grid">';
-            html +=
-                '<div class="share-kpi-card is-emit"><div class="ud-label">B 站分享次数</div><div class="ud-val">' +
-                esc(String(s.bili_out || 0)) +
-                '</div><div class="share-kpi-sub">入口 ' +
-                esc(String(s.bili_gate || 0)) +
-                ' · 分享 ' +
-                esc(String(s.bili_share || 0)) +
-                ' · 复制 ' +
-                esc(String(s.bili_copy || 0)) +
-                ' · Intent ' +
-                esc(String(s.bili_intent || 0)) +
-                ' · 打开 ' +
-                esc(String(s.bili_open || 0)) +
-                '</div></div>';
-            html += '</div>';
-
-            html += '<div class="share-kpi-section-label">触达</div>';
-            html += '<div class="share-kpi-grid">';
-            html +=
-                '<div class="share-kpi-card is-reach"><div class="ud-label">打开 PV</div><div class="ud-val">' +
-                esc(String(landPv)) +
-                '</div><div class="share-kpi-sub">from=share 落地</div></div>';
-            html +=
-                '<div class="share-kpi-card is-reach"><div class="ud-label">打开 UV</div><div class="ud-val">' +
-                esc(String(landUv)) +
-                '</div><div class="share-kpi-sub">发出→打开 ' +
-                esc(s.open_rate_pct || '—') +
-                '</div></div>';
-            html += '</div>';
-
-            var landPages = Array.isArray(data.land_by_page) ? data.land_by_page : [];
-            if (landPages.length) {
-                html += '<div class="share-land-pages">';
-                html += '<p class="share-daily-title">打开落地页拆分</p>';
-                html += '<div class="scroll-x"><table><thead><tr>';
-                html +=
-                    '<th>落地页</th><th class="num">PV</th><th class="num">UV</th></tr></thead><tbody>';
-                landPages.forEach(function (row) {
-                    html +=
-                        '<tr><td>' +
-                        esc(String(row.page || '—')) +
-                        '</td><td class="num">' +
-                        esc(String(row.pv || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.uv || 0)) +
-                        '</td></tr>';
-                });
-                html += '</tbody></table></div></div>';
-            }
-
-            html += '<div class="share-kpi-section-label">转化</div>';
-            html += '<div class="share-kpi-grid">';
-            html +=
-                '<div class="share-kpi-card is-convert"><div class="ud-label">分享→注册</div><div class="ud-val">' +
-                esc(String(registerUsers)) +
-                '</div><div class="share-kpi-sub">用户数 · 事件 ' +
-                esc(String(s.register_times || 0)) +
-                ' · 占打开 UV ' +
-                esc(s.register_rate_pct || '—') +
-                '</div></div>';
-            html +=
-                '<div class="share-kpi-card is-convert"><div class="ud-label">分享→登录</div><div class="ud-val">' +
-                esc(String(loginTimes)) +
-                '</div><div class="share-kpi-sub">占打开 UV ' +
-                esc(s.login_rate_pct || '—') +
-                '</div></div>';
-            html +=
-                '<div class="share-kpi-card is-convert"><div class="ud-label">分享→下载</div><div class="ud-val">' +
-                esc(String(downloadClicks)) +
-                '</div></div>';
-            html += '</div>';
-
-            var daily = Array.isArray(data.daily) ? data.daily.slice().reverse() : [];
-            html += '<div class="share-daily">';
-            html +=
-                '<p class="share-daily-title">分日明细（北京时间；「发出」含税模拟；「B站」为外链；「注册」为事件次数）</p>';
-            html += '<div class="scroll-x"><table><thead><tr>';
-            html +=
-                '<th>日期</th><th class="num">发出</th><th class="num">B站</th><th class="num">打开 PV</th><th class="num">打开 UV</th><th class="num">注册</th><th class="num">登录</th><th class="num">下载</th></tr></thead><tbody>';
-            if (!daily.length) {
-                html +=
-                    '<tr><td colspan="8" class="share-daily-empty">暂无分日数据；产生分享/打开后开始累计</td></tr>';
-            } else {
-                daily.forEach(function (row) {
-                    var day = row.day || '—';
-                    var isToday = todayYmd && String(day).slice(0, 10) === todayYmd;
-                    html +=
-                        '<tr' +
-                        (isToday ? ' class="is-today"' : '') +
-                        '><td>' +
-                        esc(day) +
-                        (isToday ? ' <span class="share-today-tag">今日</span>' : '') +
-                        '</td><td class="num">' +
-                        esc(String(row.share_out || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.bili_out || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.land_pv || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.land_uv || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.register || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.login || 0)) +
-                        '</td><td class="num">' +
-                        esc(String(row.download || 0)) +
-                        '</td></tr>';
-                });
-            }
-            html += '</tbody></table></div></div>';
-            el.innerHTML = html;
-        }
-
-        function loadShareStats() {
-            var el = document.getElementById('shareStatsMount');
-            if (!el) return;
-            var daysEl = document.getElementById('shareStatsDays');
-            var days = analyticsPeriodVal(daysEl);
-            el.innerHTML = '<div class="share-stats-loading">加载中…</div>';
-            adminFetch('api/admin/analytics/share-stats?days=' + encodeURIComponent(days))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        el.innerHTML =
-                            '<div class="share-stats-error">' +
-                            esc(j.msg || '加载失败') +
-                            '</div>';
-                        return;
-                    }
-                    renderShareStats(j.data);
-                })
-                .catch(function () {
-                    el.innerHTML = '<div class="share-stats-error">加载失败</div>';
-                });
-        }
-
         /* ========== 个税记录维护 ========== */
         var _taxEditCurrentUser = '';
         var _taxEditRecords = [];
@@ -6702,7 +6476,6 @@
             'analytics-devices': '机型',
             'analytics-tracking': '埋点分析',
             'install-guide-stats': '安装统计',
-            'share-stats': '分享统计',
             'channel-analysis': '渠道分析',
             'admin-accounts': '账号权限',
             'downline-admins': '下线管理员',
@@ -8672,18 +8445,6 @@
         if (installGuideStatsDays) {
             installGuideStatsDays.addEventListener('change', function () {
                 loadInstallGuideStats();
-            });
-        }
-        var btnRefreshShareStats = document.getElementById('btnRefreshShareStats');
-        if (btnRefreshShareStats) {
-            btnRefreshShareStats.onclick = function () {
-                loadShareStats();
-            };
-        }
-        var shareStatsDays = document.getElementById('shareStatsDays');
-        if (shareStatsDays) {
-            shareStatsDays.addEventListener('change', function () {
-                loadShareStats();
             });
         }
         var btnRefreshPurchaseEvents = document.getElementById('btnRefreshPurchaseEvents');

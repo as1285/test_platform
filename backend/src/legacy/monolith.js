@@ -3408,7 +3408,7 @@ async function createTables() {
   /* 清理已下线的数据分析 / 用户反馈 / 在线客服菜单权限 */
   await conn.execute(
     `DELETE FROM admin_account_menus WHERE menu_key IN (
-      'user-behavior', 'analytics-activity', 'analytics-devices', 'api-analytics', 'feedback', 'chat'
+      'user-behavior', 'analytics-activity', 'analytics-devices', 'api-analytics', 'feedback', 'chat', 'share-stats'
     )`
   );
 
@@ -3420,12 +3420,6 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'install-guide-stats' FROM admin_account_menus WHERE menu_key = 'analytics'`
-  );
-
-  await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'share-stats' FROM admin_account_menus
-     WHERE menu_key IN ('install-guide-stats', 'analytics-tracking', 'analytics')`
   );
 
   await conn.execute(
@@ -13992,199 +13986,6 @@ async function handleAdminActivationChannelFunnel(req, res) {
 }
 
 /** 安装引导统计 */
-/** 管理端：分享漏斗统计（发出 / 打开 / 注册 / 登录 / 下载；主站流量，不含代理 ch） */
-async function handleAdminShareStats(req, res) {
-  try {
-    var period = parseAnalyticsPeriod(req.query.days, 90);
-    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
-    var pf = analyticsPeriodCnDateFilter(cnDay, period);
-    var cnSince = pf.sql;
-    var sinceParams = pf.params.slice();
-    /* from=share 漏斗发出（含税模拟分享）；面板/海报；B 站分享（外链，不进 from=share 漏斗） */
-    var shareOutKeys = [
-      'track_share_home',
-      'track_share_mine',
-      'track_share_native',
-      'track_share_copy',
-      'track_share_tax_created',
-      'track_share_tax_created_native'
-    ];
-    var sharePanelKeys = [
-      'track_mine_share_open',
-      'track_mine_share_done',
-      'track_mine_share_save'
-    ];
-    var shareBiliKeys = [
-      'track_share_bilibili_gate',
-      'track_share_bilibili',
-      'track_share_bilibili_copy',
-      'track_share_bilibili_intent',
-      'track_share_bilibili_open'
-    ];
-    var shareConvKeys = [
-      'track_share_land',
-      'track_share_register_success',
-      'track_share_login_success',
-      'track_share_download_click'
-    ];
-    var shareAllKeys = shareOutKeys.concat(sharePanelKeys, shareBiliKeys, shareConvKeys);
-    var inList = shareAllKeys.map(function () {
-      return '?';
-    }).join(',');
-    var shareOutInSql = shareOutKeys.map(function () {
-      return '?';
-    }).join(',');
-    const conn = await pool.getConnection();
-    try {
-      const [actionRows] = await conn.query(
-        `SELECT event_key, COUNT(*) AS total
-         FROM install_guide_track_events
-         WHERE event_key IN (${inList}) AND ${cnSince}
-         GROUP BY event_key`,
-        shareAllKeys.concat(sinceParams)
-      );
-      var byKey = {};
-      (actionRows || []).forEach(function (r) {
-        byKey[String(r.event_key || '')] = Number(r.total) || 0;
-      });
-      const [landUvRows] = await conn.query(
-        `SELECT COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
-         FROM install_guide_track_events
-         WHERE event_key = 'track_share_land' AND ${cnSince}`,
-        sinceParams
-      );
-      const [landPageRows] = await conn.query(
-        `SELECT COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.page')), ''), '(unknown)') AS page,
-                COUNT(*) AS pv,
-                COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
-         FROM install_guide_track_events
-         WHERE event_key = 'track_share_land' AND ${cnSince}
-         GROUP BY page
-         ORDER BY uv DESC
-         LIMIT 20`,
-        sinceParams
-      );
-      var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
-      var userPf = analyticsPeriodCnDateFilter(cnUserDay, period);
-      const [regUserRows] = await conn.query(
-        `SELECT COUNT(*) AS n
-         FROM users
-         WHERE registered_from_share = 1
-           AND (user_type IS NULL OR user_type <> ?)
-           AND ${userPf.sql}`,
-        [USER_TYPE_GUEST].concat(userPf.params)
-      );
-      const [dailyRows] = await conn.query(
-        `SELECT ${cnDay} AS d,
-                SUM(CASE WHEN event_key IN (${shareOutInSql}) THEN 1 ELSE 0 END) AS share_out,
-                SUM(CASE WHEN event_key IN ('track_share_bilibili_gate','track_share_bilibili','track_share_bilibili_copy','track_share_bilibili_intent','track_share_bilibili_open') THEN 1 ELSE 0 END) AS bili_out,
-                SUM(CASE WHEN event_key = 'track_share_land' THEN 1 ELSE 0 END) AS land_pv,
-                COUNT(DISTINCT CASE
-                  WHEN event_key = 'track_share_land'
-                  THEN COALESCE(NULLIF(client_id, ''), device_fp)
-                END) AS land_uv,
-                SUM(CASE WHEN event_key = 'track_share_register_success' THEN 1 ELSE 0 END) AS register_times,
-                SUM(CASE WHEN event_key = 'track_share_login_success' THEN 1 ELSE 0 END) AS login_times,
-                SUM(CASE WHEN event_key = 'track_share_download_click' THEN 1 ELSE 0 END) AS download_clicks
-         FROM install_guide_track_events
-         WHERE event_key IN (${inList}) AND ${cnSince}
-         GROUP BY ${cnDay}
-         ORDER BY d ASC`,
-        shareOutKeys.concat(shareAllKeys, sinceParams)
-      );
-      var shareHome = byKey.track_share_home || 0;
-      var shareMine = byKey.track_share_mine || 0;
-      var shareNative = byKey.track_share_native || 0;
-      var shareCopy = byKey.track_share_copy || 0;
-      var shareTax = byKey.track_share_tax_created || 0;
-      var shareTaxNative = byKey.track_share_tax_created_native || 0;
-      var landPv = byKey.track_share_land || 0;
-      var landUv = landUvRows && landUvRows[0] ? Number(landUvRows[0].uv) || 0 : 0;
-      var registerTimes = byKey.track_share_register_success || 0;
-      var loginTimes = byKey.track_share_login_success || 0;
-      var downloadClicks = byKey.track_share_download_click || 0;
-      var registerUsers = regUserRows && regUserRows[0] ? Number(regUserRows[0].n) || 0 : 0;
-      var shareOut =
-        shareHome + shareMine + shareNative + shareCopy + shareTax + shareTaxNative;
-      var biliGate = byKey.track_share_bilibili_gate || 0;
-      var biliShare = byKey.track_share_bilibili || 0;
-      var biliCopy = byKey.track_share_bilibili_copy || 0;
-      var biliIntent = byKey.track_share_bilibili_intent || 0;
-      var biliOpen = byKey.track_share_bilibili_open || 0;
-      var biliOut = biliGate + biliShare + biliCopy + biliIntent + biliOpen;
-      function pctLabel(num, den) {
-        if (!den || den <= 0) return '—';
-        return ((Number(num) / Number(den)) * 100).toFixed(1) + '%';
-      }
-      var openRate = pctLabel(landUv, shareOut);
-      var registerRate = pctLabel(registerUsers, landUv);
-      var loginRate = pctLabel(loginTimes, landUv);
-      return res.json({
-        code: 200,
-        data: Object.assign(
-          {
-            period: period,
-            summary: {
-              share_out: shareOut,
-              share_home: shareHome,
-              share_mine: shareMine,
-              share_native: shareNative,
-              share_copy: shareCopy,
-              share_tax: shareTax,
-              share_tax_native: shareTaxNative,
-              share_panel_open: byKey.track_mine_share_open || 0,
-              share_done: byKey.track_mine_share_done || 0,
-              share_poster_save: byKey.track_mine_share_save || 0,
-              bili_out: biliOut,
-              bili_gate: biliGate,
-              bili_share: biliShare,
-              bili_copy: biliCopy,
-              bili_intent: biliIntent,
-              bili_open: biliOpen,
-              land_pv: landPv,
-              land_uv: landUv,
-              register_times: registerTimes,
-              register_users: registerUsers,
-              register_rate_pct: registerRate,
-              open_rate_pct: openRate,
-              login_rate_pct: loginRate,
-              login_times: loginTimes,
-              download_clicks: downloadClicks
-            },
-            land_by_page: (landPageRows || []).map(function (r) {
-              return {
-                page: r.page != null ? String(r.page) : '(unknown)',
-                pv: Number(r.pv) || 0,
-                uv: Number(r.uv) || 0
-              };
-            }),
-            daily: (dailyRows || []).map(function (r) {
-              return {
-                day: r.d ? String(r.d).substring(0, 10) : '',
-                share_out: Number(r.share_out) || 0,
-                bili_out: Number(r.bili_out) || 0,
-                land_pv: Number(r.land_pv) || 0,
-                land_uv: Number(r.land_uv) || 0,
-                register: Number(r.register_times) || 0,
-                login: Number(r.login_times) || 0,
-                download: Number(r.download_clicks) || 0
-              };
-            }),
-            note:
-              '漏斗「发出→打开→注册」仅统计 from=share 主站链（含税模拟分享）。「我的」页当前多为 B 站外链，计入下方 B 站分享，不进打开/注册漏斗。注册= users.registered_from_share；分日注册为事件次数。'
-          },
-          conversionAnalyticsPeriodMeta(period)
-        )
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error('handleAdminShareStats', e);
-    return res.status(500).json({ code: 500, msg: e.message || String(e) });
-  }
-}
-
 async function handleAdminInstallGuideStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -22137,7 +21938,6 @@ function getHandlers() {
     handleAdminActivationChannelFunnel,
     handleAdminAnalyticsPurchaseEvents,
     handleAdminAnalyticsPurchaseEventUsers,
-    handleAdminShareStats,
     handleAdminInstallGuideStats,
     handleAdminInstallTrackStats,
     handleAdminAnalyticsOverview,
