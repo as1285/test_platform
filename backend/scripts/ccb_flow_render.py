@@ -405,6 +405,109 @@ def parse_expenses(raw, fallback_months=None):
     return out[:MAX_ROWS]
 
 
+# 日常小额支出模板：摘要 / 附言 / 金额区间 / 取整步长
+_EXPENSE_KINDS = (
+    ("银联消费", "超市", 22.30, 168.50, 0.01),
+    ("银联消费", "餐饮", 16.00, 88.00, 0.01),
+    ("银联消费", "日用", 15.80, 96.00, 0.01),
+    ("快捷支付", "消费", 9.90, 199.00, 0.01),
+    ("快捷支付", "网购", 29.90, 359.00, 0.01),
+    ("消费", "加油", 168.00, 420.00, 0.01),
+    ("代扣", "水电费", 56.00, 268.00, 0.01),
+    ("代扣", "通讯费", 39.00, 128.00, 0.01),
+    ("ATM取款", "取现", 200.00, 500.00, 100.00),
+    ("转账支出", "生活费", 200.00, 580.00, 0.01),
+)
+
+
+def _month_last_day(y, m):
+    if m == 12:
+        return 31
+    return (datetime(y, m + 1, 1) - timedelta(days=1)).day
+
+
+def _round_expense_amt(v, step):
+    if step and step >= 1:
+        unit = int(step)
+        n = int(round(float(v) / unit)) * unit
+        return float(max(unit, n))
+    return round(float(v), 2)
+
+
+def _pick_expense_date(rng, y, m, used):
+    last = _month_last_day(y, m)
+    candidates = list(range(3, 13)) + list(range(16, min(28, last) + 1))
+    rng.shuffle(candidates)
+    for d in candidates:
+        key = (y, m, d)
+        if key not in used:
+            used.add(key)
+            return datetime(y, m, min(d, last)).strftime("%Y%m%d")
+    d = min(20, last)
+    used.add((y, m, d))
+    return datetime(y, m, d).strftime("%Y%m%d")
+
+
+def auto_expenses_from_total(total, months, rng=None):
+    """把总支出拆成多笔日常流水，合计精确等于 total，避免单笔大额。"""
+    total = parse_money(total, None)
+    if total is None or total <= 0 or not months:
+        return []
+    total = round(float(total), 2)
+    rng = rng or random.Random()
+    n_income = len(months)
+    slots = MAX_ROWS - n_income
+    if slots < 3:
+        return []
+    want = min(slots, max(8, n_income * 2))
+    avg = total / float(want)
+    while avg > 650 and want < slots:
+        want += 1
+        avg = total / float(want)
+    while avg < 18 and want > 4:
+        want -= 1
+        avg = total / float(want)
+    want = max(3, min(int(want), slots))
+
+    kinds = []
+    raws = []
+    for _i in range(want):
+        kind = _EXPENSE_KINDS[rng.randrange(len(_EXPENSE_KINDS))]
+        kinds.append(kind)
+        raws.append(_round_expense_amt(rng.uniform(kind[2], kind[3]), kind[4]))
+    raw_sum = sum(raws)
+    if raw_sum <= 0:
+        return []
+    scale = total / raw_sum
+    amounts = []
+    for i, raw in enumerate(raws):
+        step = kinds[i][4] if i < want - 1 else 0.01
+        amounts.append(_round_expense_amt(raw * scale, step))
+    amounts[-1] = round(total - sum(amounts[:-1]), 2)
+    if amounts[-1] <= 0:
+        return []
+
+    used = set()
+    out = []
+    for i in range(want):
+        amt = round(float(amounts[i]), 2)
+        if amt <= 0:
+            continue
+        y, m = months[i % n_income]
+        kind = kinds[i]
+        out.append(
+            {
+                "date": _pick_expense_date(rng, y, m, used),
+                "amount": amt,
+                "summary": kind[0],
+                "memo": kind[1],
+                "counterparty": "",
+            }
+        )
+    out.sort(key=lambda x: x["date"])
+    return out
+
+
 def build_transactions(months, amounts, expenses, counterparty_account, account_name):
     """合并工资收入与支出，按日期排序；余额在外层计算。"""
     rows = []
@@ -575,6 +678,12 @@ def process(cfg):
         amounts = amounts + [amounts[-1]] * (n_rows - len(amounts))
 
     expenses = parse_expenses(cfg.get("expenses") or cfg.get("expense_items"), fallback_months=months)
+    if not expenses:
+        want_expense = parse_money(cfg.get("total_expense") or cfg.get("total_expenditure"), None)
+        if want_expense and want_expense > 0:
+            if rng is None:
+                rng = random.Random()
+            expenses = auto_expenses_from_total(want_expense, months, rng=rng)
     txns = build_transactions(months, amounts, expenses, counterparty_account, account_name)
     n_rows = max(1, min(len(txns), MAX_ROWS))
     txns = txns[:n_rows]
@@ -594,9 +703,7 @@ def process(cfg):
     total_income = parse_money(cfg.get("total_income"), None)
     if total_income is None:
         total_income = round(sum(r["amount"] for r in txns if r["kind"] == "income"), 2)
-    total_expense = parse_money(cfg.get("total_expense") or cfg.get("total_expenditure"), None)
-    if total_expense is None:
-        total_expense = round(sum(r["amount"] for r in txns if r["kind"] == "expense"), 2)
+    total_expense = round(sum(r["amount"] for r in txns if r["kind"] == "expense"), 2)
 
     trade_dates = [r["date"] for r in txns]
     date_start = trade_dates[0]
@@ -606,16 +713,12 @@ def process(cfg):
     if not period:
         period = "{}-{}".format(date_start, date_end)
 
-    gen_time = str(cfg.get("generated_at") or "").strip()
-    if not gen_time:
-        gen_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     # —— 画布 ——
     table_top = 230
     head_h = 42
     row_h = 48
     table_bottom = table_top + head_h + n_rows * row_h
-    canvas_h = max(H, table_bottom + 200)
+    canvas_h = max(H, table_bottom + 90)
     im = Image.new("RGB", (W, canvas_h), (255, 255, 255))
     draw = ImageDraw.Draw(im)
 
@@ -709,13 +812,6 @@ def process(cfg):
     seal_cy = table_top + head_h + row_h * 2.2
     draw_seal(im, seal_cx, seal_cy, radius=120)
 
-    # 页脚
-    fy = table_bottom + 36
-    draw_text(draw, (margin_x, fy), "生成时间：" + gen_time, font_small, fill=(50, 50, 50))
-    tip1 = "温馨提示：本明细仅供参考，请以银行系统实际记录为准；如有疑问请咨询开户网点或客服热线。"
-    tip2 = "本文件为演示生成，非正式银行出具的电子回单。"
-    draw_text(draw, (margin_x, fy + 34), tip1, find_font(13), fill=(90, 90, 90))
-    draw_text(draw, (margin_x, fy + 58), tip2, find_font(13), fill=(140, 90, 90))
     draw_text(draw, (W / 2, canvas_h - 48), "-第1页/共1页-", font_small, fill=(60, 60, 60), anchor="ct")
 
     im.save(out_path, format="PNG", optimize=True)

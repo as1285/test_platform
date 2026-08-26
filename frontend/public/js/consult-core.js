@@ -158,7 +158,8 @@ function switchTab(tab, pushHistory) {
         refreshMessageList().catch(function () {});
     }
     if (tab === 'products') {
-        if (typeof loadConsultShebaoPhotos === 'function') {
+        var shebaoCard = document.getElementById('cardShebaoPhoto');
+        if (shebaoCard && !shebaoCard.hidden && typeof loadConsultShebaoPhotos === 'function') {
             loadConsultShebaoPhotos().catch(function () {});
         }
     }
@@ -2596,7 +2597,8 @@ function boot() {
     }
 
     function loadConsultShebaoPhotos() {
-        if (!document.getElementById('shebaoPhotoInput')) {
+        var card = document.getElementById('cardShebaoPhoto');
+        if (!card || card.hidden || !document.getElementById('shebaoPhotoInput')) {
             return Promise.resolve();
         }
         if (!consultShebaoToken()) {
@@ -2703,9 +2705,10 @@ function boot() {
             });
     }
 
+    var shebaoCard = document.getElementById('cardShebaoPhoto');
     var shebaoPickBtn = document.getElementById('btnShebaoPick');
     var shebaoInput = document.getElementById('shebaoPhotoInput');
-    if (!shebaoPickBtn || !shebaoInput) return;
+    if (!shebaoCard || shebaoCard.hidden || !shebaoPickBtn || !shebaoInput) return;
 
     try {
         shebaoInput.removeAttribute('capture');

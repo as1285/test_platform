@@ -4,6 +4,8 @@
 (function (global) {
   /* 预填按税务记录带出的逐月单位编号映射（YYYY-MM → 信用代码），生成时随 month_units 上送 */
   var prefillMonthUnits = {};
+  var APP_CFG = global.SBDY_DEMO_APP || null;
+  var isApp = !!(APP_CFG && APP_CFG.mode === 'app');
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -14,6 +16,24 @@
   }
 
   function fetchAdmin(url, opts) {
+    if (isApp && typeof global.authFetch === 'function') {
+      var u = String(url || '');
+      if (u.indexOf('prefill') >= 0) {
+        return global.authFetch('/api/sbdy-demo/prefill', opts);
+      }
+      if (u.indexOf('generate') >= 0) {
+        return global.authFetch('/api/sbdy-demo/generate', opts);
+      }
+      if (u.indexOf('/list') >= 0) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: function () {
+            return Promise.resolve({ code: 200, data: { list: [] } });
+          }
+        });
+      }
+    }
     var fn = global.adminFetch;
     if (typeof fn !== 'function') {
       return Promise.reject(new Error('adminFetch unavailable'));
@@ -153,10 +173,11 @@
   }
 
   function setStatus(msg, isErr) {
-    var status = document.getElementById('sbdyDemoStatus');
+    var status = document.getElementById(isApp ? 'sbdyGenStatus' : 'sbdyDemoStatus');
     if (status) {
       status.textContent = msg || '';
-      status.style.color = isErr ? '#b91c1c' : '';
+      status.classList.toggle('err', !!isErr);
+      if (!isApp) status.style.color = isErr ? '#b91c1c' : '';
     }
   }
 
@@ -242,10 +263,14 @@
   }
 
   function setBusy(busy) {
-    var btn = document.getElementById('btnSbdyDemoGenerate');
+    var btn = document.getElementById(isApp ? 'btnSbdyGenerate' : 'btnSbdyDemoGenerate');
     if (btn) {
       btn.disabled = !!busy;
-      btn.textContent = busy ? '生成中…' : '生成演示样例';
+      btn.textContent = busy
+        ? '生成中…'
+        : isApp
+          ? '生成参保证明 PDF'
+          : '生成演示样例';
     }
     var pasteGen = document.getElementById('btnSbdyPasteGenerate');
     if (pasteGen) pasteGen.disabled = !!busy;
@@ -863,6 +888,10 @@
   }
 
   function renderResult(d) {
+    if (isApp && typeof APP_CFG.showResult === 'function') {
+      APP_CFG.showResult(d);
+      return;
+    }
     var result = document.getElementById('sbdyDemoResult');
     if (!result) return;
     var links = d.links || {};
@@ -1081,13 +1110,22 @@
       })
       .then(function (pack) {
         var j = pack.j;
+        if (isApp && (pack.http === 402 || (j && j.code === 402))) {
+          setStatus((j && j.msg) || '当前环境仍要求开通去水印', true);
+          var payCard = document.getElementById('cardSbdyPay');
+          if (payCard) {
+            payCard.hidden = false;
+            try { payCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (eScroll) {}
+          }
+          return;
+        }
         if (!j || j.code !== 200 || !j.data) {
           setStatus((j && j.msg) || '生成失败（HTTP ' + pack.http + '）', true);
           return;
         }
-        setStatus('已生成演示样例（非正式证明）', false);
+        setStatus(isApp ? '生成成功' : '已生成演示样例（非正式证明）', false);
         renderResult(j.data);
-        loadList();
+        if (!isApp) loadList();
       })
       .catch(function (e) {
         setStatus('生成失败：' + (e && e.message ? e.message : '网络错误'), true);
@@ -1520,6 +1558,41 @@
   /* —— 分段任职编辑器（浙江版：多单位 / 多参保地） —— */
   function segmentRowHtml(seg) {
     seg = seg || {};
+    if (isApp) {
+      return (
+        '<div class="sbdy-seg-row seg-card">' +
+        '<label class="field-label">单位名称</label>' +
+        '<input type="text" class="field seg-company" maxlength="128" value="' +
+        esc(seg.company_name || '') +
+        '" placeholder="单位名称">' +
+        '<label class="field-label">统一社会信用代码</label>' +
+        '<input type="text" class="field seg-credit" maxlength="40" value="' +
+        esc(seg.credit_code || '') +
+        '" placeholder="9133…">' +
+        '<div class="grid-2">' +
+        '<div><label class="field-label">参保地</label>' +
+        '<input type="text" class="field seg-area" maxlength="32" value="' +
+        esc(seg.area || '') +
+        '" placeholder="如 余杭区"></div>' +
+        '<div><label class="field-label">缴费基数</label>' +
+        '<input type="number" class="field seg-base" step="0.01" value="' +
+        esc(seg.base_amount != null ? seg.base_amount : '') +
+        '" placeholder="基数"></div>' +
+        '</div>' +
+        '<div class="grid-2">' +
+        '<div><label class="field-label">起月</label>' +
+        '<input type="month" class="field seg-start" value="' +
+        esc(seg.period_start || '') +
+        '"></div>' +
+        '<div><label class="field-label">止月</label>' +
+        '<input type="month" class="field seg-end" value="' +
+        esc(seg.period_end || '') +
+        '"></div>' +
+        '</div>' +
+        '<button type="button" class="btn btn-secondary seg-del" style="margin-top:8px;">删除本段</button>' +
+        '</div>'
+      );
+    }
     return (
       '<div class="sbdy-seg-row form-row flex-wrap gap-10" style="align-items:flex-end;border-top:1px dashed #e5e7eb;padding-top:8px;margin-top:8px;">' +
       '<div style="flex:2;min-width:180px;"><label>单位名称</label>' +
@@ -1596,8 +1669,8 @@
   }
 
   function prefill() {
-    var username = val('sbdyPrefillUser');
-    if (!username) {
+    var username = isApp ? '' : val('sbdyPrefillUser');
+    if (!isApp && !username) {
       setStatus('请输入用户名', true);
       return;
     }
@@ -1613,7 +1686,10 @@
       }
     }
     setStatus('加载用户数据…', false);
-    fetchAdmin('/api/admin/sbdy-demo/prefill?username=' + encodeURIComponent(username))
+    var prefillUrl = isApp
+      ? '/api/sbdy-demo/prefill'
+      : '/api/admin/sbdy-demo/prefill?username=' + encodeURIComponent(username);
+    fetchAdmin(prefillUrl)
       .then(function (r) {
         return r.json().then(function (j) {
           return { http: r.status, j: j };
@@ -1686,7 +1762,7 @@
         var pe = rangeEnd || info.maxYm;
         if (ps) setField('sbdyPeriodStart', ps);
         if (pe) setField('sbdyPeriodEnd', pe);
-        var parts = ['已预填「' + username + '」'];
+        var parts = [isApp ? '已按我的资料预填' : '已预填「' + username + '」'];
         if (info.companies.length) parts.push(info.companies.length + ' 家单位');
         if (info.regionScoped) {
           parts.push('浙江记录 ' + info.monthCount + ' 个月');
@@ -1742,7 +1818,7 @@
     syncRegionUi();
     var fillBtn = document.getElementById('btnSbdyDemoFillSample');
     if (fillBtn) fillBtn.onclick = fillSample;
-    var btn = document.getElementById('btnSbdyDemoGenerate');
+    var btn = document.getElementById(isApp ? 'btnSbdyGenerate' : 'btnSbdyDemoGenerate');
     if (btn) btn.onclick = generate;
     var refresh = document.getElementById('btnSbdyDemoRefresh');
     if (refresh) {
@@ -1780,7 +1856,10 @@
 
   function loadPage() {
     bind();
-    loadList();
+    if (!isApp) loadList();
+    if (isApp && APP_CFG && APP_CFG.autoPrefill) {
+      prefill();
+    }
   }
 
   global.AdminModules = global.AdminModules || {};

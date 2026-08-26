@@ -412,7 +412,7 @@
     }
 
     function buildSelectorList(role) {
-        var scope = '[data-ufs-target]';
+        var scope = 'html.user-font-custom [data-ufs-target]';
         if (role.id === 'all' || !role.selectors) {
             return [];
         }
@@ -436,8 +436,37 @@
         }
         if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
         if (t.spacing) decl.push('letter-spacing:' + t.spacing + ' !important');
-        if (t.color) decl.push('color:' + t.color + ' !important');
+        if (t.color) {
+            decl.push('color:' + t.color + ' !important');
+            /* iOS：机型页用 -webkit-text-fill-color 锁灰，只改 color 不会变色 */
+            decl.push('-webkit-text-fill-color:' + t.color + ' !important');
+        }
         return decl;
+    }
+
+    function syncListBodyColorVar(cfg) {
+        var color = '';
+        if (cfg && !configIsEmpty(cfg)) {
+            var regional = getTargetState(cfg, 'listBody');
+            var global = getTargetState(cfg, 'all');
+            color = (regional && regional.color) || (global && global.color) || '';
+        }
+        var html = document.documentElement;
+        if (html) {
+            if (color) html.style.setProperty('--ufs-list-body-color', color);
+            else html.style.removeProperty('--ufs-list-body-color');
+        }
+        var scope = document.querySelector('[data-ufs-target]');
+        if (scope) {
+            if (color) scope.style.setProperty('--ufs-list-body-color', color);
+            else scope.style.removeProperty('--ufs-list-body-color');
+        }
+    }
+
+    function placeStyleEl(styleEl) {
+        var parent = document.body || document.head;
+        if (!parent) return;
+        parent.appendChild(styleEl);
     }
 
     function applyConfig(cfg) {
@@ -447,12 +476,13 @@
         if (!styleEl) {
             styleEl = document.createElement('style');
             styleEl.id = STYLE_ID;
-            document.head.appendChild(styleEl);
         }
+        placeStyleEl(styleEl);
 
         if (configIsEmpty(cfg)) {
             html.classList.remove('user-font-custom');
             styleEl.textContent = '';
+            syncListBodyColorVar(null);
             return;
         }
 
@@ -485,6 +515,7 @@
         });
 
         styleEl.textContent = css.join('\n\n');
+        syncListBodyColorVar(cfg);
     }
 
     function bindLongPress(el, ms, onFire) {

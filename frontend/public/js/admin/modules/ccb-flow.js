@@ -2,7 +2,6 @@
 (function (global) {
   var lastResult = null;
   var lastMonths = [];
-  var expenseSeq = 0;
 
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
@@ -69,82 +68,33 @@
     else btn.setAttribute('hidden', '');
   }
 
-  function expenseListEl() {
-    return document.getElementById('ccbFlowExpenseList');
+  function expenseOnEl() {
+    return document.getElementById('ccbFlowExpenseOn');
   }
 
-  function clearExpenseRows() {
-    var list = expenseListEl();
-    if (list) list.innerHTML = '';
+  function isExpenseOn() {
+    var el = expenseOnEl();
+    return !!(el && el.checked);
   }
 
-  function escapeAttr(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;');
+  function setExpenseOn(on) {
+    var el = expenseOnEl();
+    if (el) el.checked = !!on;
+    syncExpenseFields();
   }
 
-  function addExpenseRow(preset) {
-    var list = expenseListEl();
-    if (!list) return null;
-    expenseSeq += 1;
-    var id = 'ccbExp' + expenseSeq;
-    var row = document.createElement('div');
-    row.className = 'ccb-expense-row';
-    row.setAttribute('data-expense-id', id);
-    var p = preset || {};
-    row.innerHTML =
-      '<div><label>交易日期</label><input type="date" class="ccb-exp-date" value="' +
-      escapeAttr(p.date || '') +
-      '"></div>' +
-      '<div><label>金额（元）</label><input type="text" class="ccb-exp-amount" maxlength="16" inputmode="decimal" placeholder="如 2000" value="' +
-      escapeAttr(p.amount || '') +
-      '"></div>' +
-      '<div><label>摘要</label><input type="text" class="ccb-exp-summary" maxlength="32" placeholder="转账支出" value="' +
-      escapeAttr(p.summary || '转账支出') +
-      '"></div>' +
-      '<div><label>附言</label><input type="text" class="ccb-exp-memo" maxlength="32" placeholder="消费" value="' +
-      escapeAttr(p.memo || '消费') +
-      '"></div>' +
-      '<div class="ccb-exp-party"><label>对方账号/户名（可选）</label><input type="text" class="ccb-exp-party-input" maxlength="64" placeholder="空则留空" value="' +
-      escapeAttr(p.counterparty || '') +
-      '"></div>' +
-      '<div style="align-self:flex-end;"><button type="button" class="btn-page ccb-exp-remove" title="删除">删除</button></div>';
-    list.appendChild(row);
-    var rm = row.querySelector('.ccb-exp-remove');
-    if (rm) {
-      rm.addEventListener('click', function () {
-        if (row.parentNode) row.parentNode.removeChild(row);
-      });
-    }
-    return row;
+  function syncExpenseFields() {
+    var box = document.getElementById('ccbFlowExpenseFields');
+    if (!box) return;
+    if (isExpenseOn()) box.removeAttribute('hidden');
+    else box.setAttribute('hidden', '');
   }
 
-  function collectExpenses() {
-    var list = expenseListEl();
-    if (!list) return [];
-    var rows = list.querySelectorAll('.ccb-expense-row');
-    var out = [];
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      var amountRaw = row.querySelector('.ccb-exp-amount');
-      var amount = parseMoneyNum(amountRaw ? amountRaw.value : '');
-      if (!(amount > 0)) continue;
-      var dateEl = row.querySelector('.ccb-exp-date');
-      var summaryEl = row.querySelector('.ccb-exp-summary');
-      var memoEl = row.querySelector('.ccb-exp-memo');
-      var partyEl = row.querySelector('.ccb-exp-party-input');
-      var dateVal = dateEl ? String(dateEl.value || '').trim() : '';
-      out.push({
-        date: dateVal,
-        amount: fmtMoney2(amount),
-        summary: (summaryEl && String(summaryEl.value || '').trim()) || '转账支出',
-        memo: (memoEl && String(memoEl.value || '').trim()) || '消费',
-        counterparty: partyEl ? String(partyEl.value || '').trim() : ''
-      });
-    }
-    return out;
+  function collectExpenseTotal() {
+    if (!isExpenseOn()) return '';
+    var n = parseMoneyNum(val('ccbFlowExpenseTotal'));
+    if (!(n > 0)) return '';
+    return fmtMoney2(n);
   }
 
   function fillSample() {
@@ -160,21 +110,9 @@
     setField('ccbFlowMonths', '');
     lastMonths = [];
     ensureTaxRangeDefaults();
-    clearExpenseRows();
-    var fromYm = val('ccbFlowTaxFrom') || defaultTaxRange().from;
-    var sampleDate = '';
-    var ym = String(fromYm || '').match(/^(\d{4})-(\d{1,2})$/);
-    if (ym) {
-      sampleDate = ym[1] + '-' + pad2(parseInt(ym[2], 10)) + '-20';
-    }
-    addExpenseRow({
-      date: sampleDate,
-      amount: '2580.00',
-      summary: '转账支出',
-      memo: '生活费',
-      counterparty: ''
-    });
-    setStatus('已填入示例：工资 15000～18000 + 1 笔支出', false);
+    setExpenseOn(false);
+    setField('ccbFlowExpenseTotal', '');
+    setStatus('已填入示例：工资 15000～18000（支出关闭）', false);
   }
 
   function pad2(n) {
@@ -567,8 +505,8 @@
     fd.append('amounts', JSON.stringify(amountList));
     fd.append('opening_balance', val('ccbFlowOpening') || '7415.60');
     fd.append('months', JSON.stringify(months));
-    var expenses = collectExpenses();
-    if (expenses.length) fd.append('expenses', JSON.stringify(expenses));
+    var expenseTotal = collectExpenseTotal();
+    if (expenseTotal) fd.append('total_expense', expenseTotal);
     if (fromYm) fd.append('start_month', fromYm);
     if (toYm) fd.append('tax_to', toYm);
     if (toYm) fd.append('end_month', toYm);
@@ -581,7 +519,7 @@
       ' 共 ' +
       months.length +
       ' 个月工资';
-    if (expenses.length) tipDraw += ' + ' + expenses.length + ' 笔支出';
+    if (expenseTotal) tipDraw += ' + 总支出 ' + expenseTotal + '（自动拆多笔）';
     tipDraw += ' 绘制…';
     setStatus(tipDraw, false);
     var token = '';
@@ -647,16 +585,12 @@
     var p = document.getElementById('ccbFlowPrefillBtn');
     var s = document.getElementById('ccbFlowSampleBtn');
     var d = document.getElementById('ccbFlowDownloadBtn');
-    var addExp = document.getElementById('ccbFlowExpenseAddBtn');
+    var expOn = expenseOnEl();
     if (e) e.addEventListener('click', edit);
     if (p) p.addEventListener('click', prefill);
     if (s) s.addEventListener('click', fillSample);
     if (d) d.addEventListener('click', download);
-    if (addExp) {
-      addExp.addEventListener('click', function () {
-        addExpenseRow({});
-      });
-    }
+    if (expOn) expOn.addEventListener('change', syncExpenseFields);
     function onRangeChange() {
       lastMonths = [];
       setField('ccbFlowMonths', '');
@@ -670,6 +604,7 @@
   function loadPage() {
     bind();
     ensureTaxRangeDefaults();
+    syncExpenseFields();
     setStatus('填写字段或预填个税后，点「生成流水图」', false);
   }
 

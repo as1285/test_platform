@@ -177,7 +177,7 @@
     <script src="/js/auth.js?v=20260825-meizu20pro"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
+    <script src="/js/user-font-settings.js?v=20260826-iphone14-aug-ui" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -727,7 +727,7 @@
 
         .list-label {
             font-size: 15px;
-            color: #999;
+            color: var(--ufs-list-body-color, #999);
             line-height: 1.3;
             display: block;
             max-width: 100%;
@@ -758,7 +758,7 @@
         .list-company {
             font-size: 15px;
             font-weight: 400;
-            color: #999;
+            color: var(--ufs-list-body-color, #999);
             line-height: 1.3;
             white-space: nowrap;
             display: block;
@@ -922,9 +922,8 @@
             line-height: 21px !important;
         }
 
-        /* iPhone 13：扣缴义务人显示全称，允许换行，不要省略号 */
-        html.app-ios-iphone13 body.page-shuiming-result .list-company,
-        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-company {
+        /* iPhone 13：扣缴义务人显示全称，允许换行，不要省略号。iPhone 14 不套用，保持 8 月初省略号一行。 */
+        html.app-ios-iphone13 body.page-shuiming-result .list-company {
             white-space: normal !important;
             overflow: visible !important;
             text-overflow: clip !important;
@@ -933,23 +932,19 @@
         }
 
         /*
-         * iPhone 13：PingFang 把 #999 渲得过浅，明细四行（小类/扣缴义务人/收入/税额）对不上官方灰。
-         * 锁 #666 + text-fill，避免 <a> 访问后把字色漂成更浅的灰。
+         * iPhone 13：PingFang 把 #999 渲得过浅，明细四行对不上官方灰。
+         * 默认 #666 + text-fill；颜色走 --ufs-list-body-color，避免「字」面板改色被锁死。
+         * iPhone 14 不套用，回到 8 月初 #999 / 常规行距。
          */
         html.app-ios-iphone13 body.page-shuiming-result a.list-item,
-        html.app-ios-iphone13 body.page-shuiming-result a.list-item:visited,
-        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result a.list-item,
-        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result a.list-item:visited {
+        html.app-ios-iphone13 body.page-shuiming-result a.list-item:visited {
             color: inherit;
         }
-        html.app-ios-iphone13 body.page-shuiming-result .list-label,
-        html.app-ios-iphone13 body.page-shuiming-result .list-company,
-        html.app-ios-iphone13 body.page-shuiming-result .list-amount,
-        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-label,
-        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-company,
-        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-amount {
-            color: #666 !important;
-            -webkit-text-fill-color: #666 !important;
+        html.app-ios-iphone13 body.page-shuiming-result #recordList .list-label,
+        html.app-ios-iphone13 body.page-shuiming-result #recordList .list-company,
+        html.app-ios-iphone13 body.page-shuiming-result #recordList .list-amount {
+            color: var(--ufs-list-body-color, #666) !important;
+            -webkit-text-fill-color: var(--ufs-list-body-color, #666) !important;
             opacity: 1 !important;
         }
 
@@ -1904,20 +1899,24 @@
         function isIPhone13FullCompanyClient() {
             try {
                 var root = document.documentElement;
-                if (root.classList.contains('app-ios-iphone13')) {
-                    return true;
-                }
-                /* Safari 无型号码：iPhone 13 会落入 390×844 档（app-ios-iphone14），不含 14 Pro */
+                /* iPhone 14 与 13 同 390×844，但 UI 回退 8 月初：不要把 14 当成 13 */
                 if (
                     root.classList.contains('app-ios-iphone14') &&
-                    !root.classList.contains('app-ios-iphone14pro')
+                    !root.classList.contains('app-ios-iphone14pro') &&
+                    !root.classList.contains('app-ios-iphone13')
                 ) {
+                    return false;
+                }
+                if (root.classList.contains('app-ios-iphone13')) {
                     return true;
                 }
                 var blob = navigator.userAgent || '';
                 try {
                     if (window.device && window.device.model) blob += ' ' + String(window.device.model);
                 } catch (e0) {}
+                if (/iPhone\s*14\b|iPhone14,7\b/i.test(blob) && !/iPhone\s*14\s*Pro|iPhone14,[235]\b/i.test(blob)) {
+                    return false;
+                }
                 if (/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,[234]\b/i.test(blob)) {
                     return false;
                 }

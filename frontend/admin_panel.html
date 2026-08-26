@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260814-ace2pro"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260826-deadcode">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260826-auto-expense">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -1981,12 +1981,20 @@
                                     <input type="text" id="ccbFlowAmount" maxlength="640" placeholder="空则按下限～上限生成；也可逗号列出每月金额">
                                 </div>
                             </div>
-                            <p class="hint mt-0">填了上限且大于下限时，每月在区间内随机（两位小数）；只填下限则每月固定。余额按「入账前余额 + 工资收入 − 支出」自动推算；总收入=工资合计，总支出=下方支出项合计。行数=工资月数 + 支出笔数（最多 36 行）。</p>
-                            <div class="admin-tool-step" style="margin-top:14px;">② 支出项（可选，自由添加）</div>
-                            <p class="hint mt-0">可添加多笔支出；生成后写入明细并计入「总支出」。日期留空则按对应工资月 20 日；摘要/附言/对方可改。</p>
-                            <div id="ccbFlowExpenseList" class="ccb-expense-list" style="max-width:960px;"></div>
-                            <div class="form-actions" style="margin-top:8px;">
-                                <button type="button" class="btn-page" id="ccbFlowExpenseAddBtn">+ 添加支出</button>
+                            <p class="hint mt-0">填了上限且大于下限时，每月在区间内随机（两位小数）；只填下限则每月固定。余额按「入账前余额 + 工资收入 − 支出」自动推算；总收入=工资合计。行数最多 36 行（工资月数 + 自动支出笔数）。</p>
+                            <div class="admin-tool-step" style="margin-top:14px;">② 支出（默认关闭）</div>
+                            <p class="hint mt-0">不勾选则总支出为 0、明细只有工资入账。勾选并填写总支出后，按起止月自动拆成多笔日常消费/代扣/取现，合计等于总数，避免单笔大额。</p>
+                            <div id="ccbFlowExpenseList" class="ccb-expense-list" style="max-width:960px;">
+                                <label class="ccb-expense-toggle" for="ccbFlowExpenseOn">
+                                    <input type="checkbox" id="ccbFlowExpenseOn">
+                                    生成支出
+                                </label>
+                                <div id="ccbFlowExpenseFields" class="form-row flex-wrap gap-10" hidden>
+                                    <div>
+                                        <label for="ccbFlowExpenseTotal">总支出（元）</label>
+                                        <input type="text" id="ccbFlowExpenseTotal" maxlength="16" placeholder="如 18600" inputmode="decimal">
+                                    </div>
+                                </div>
                             </div>
                             <input type="hidden" id="ccbFlowMonths" value="">
                             <div class="form-actions">

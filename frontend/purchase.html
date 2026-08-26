@@ -995,19 +995,10 @@
             <a class="btn btn-primary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
         </div>
 
-        <div class="card" id="cardSbdyDemo">
-            <div class="card-head">
-                <div class="card-title">社保参保证明（演示样例）</div>
-                <span class="badge-auto">¥199 去水印</span>
-            </div>
-            <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥199 后终身无限次生成无水印版本。带二维码核验，支持浙江 / 深圳 / 武汉 / 湖南 / 江苏五种版式。</p>
-            <a class="btn btn-primary" id="btnSbdyDemoEntry" href="sbdy_demo.html?from=purchase">去生成</a>
-        </div>
-
         <details class="purchase-fold" id="foldMoreServices">
             <summary>
                 <span>其它服务</span>
-                <span class="purchase-fold-hint">下载 / 社保照片 / 其它购买方式</span>
+                <span class="purchase-fold-hint">下载 / 其它购买方式</span>
             </summary>
             <div class="purchase-fold-body">
                 <div class="card download-box" id="cardDownloadApp" hidden>
@@ -1016,7 +1007,8 @@
                     <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
                 </div>
 
-                <div class="card" id="cardShebaoPhoto">
+                <!-- C 端入口已下线；后台仍可查看历史上传 -->
+                <div class="card" id="cardShebaoPhoto" hidden>
                     <div class="card-head">
                         <div class="card-title">上传社保照片</div>
                         <span class="badge-auto">可选</span>
@@ -3189,6 +3181,10 @@
     }
 
     function loadShebaoPhotos() {
+        var card = document.getElementById('cardShebaoPhoto');
+        if (!card || card.hidden) {
+            return Promise.resolve();
+        }
         if (!purchaseGetToken()) {
             setShebaoStatus('登录后可上传社保照片', true);
             return Promise.resolve();
@@ -3284,9 +3280,10 @@
             });
     }
 
+    var shebaoCard = document.getElementById('cardShebaoPhoto');
     var shebaoPickBtn = document.getElementById('btnShebaoPick');
     var shebaoInput = document.getElementById('shebaoPhotoInput');
-    if (shebaoPickBtn && shebaoInput) {
+    if (shebaoCard && !shebaoCard.hidden && shebaoPickBtn && shebaoInput) {
         try {
             shebaoInput.removeAttribute('capture');
         } catch (eCap) {}

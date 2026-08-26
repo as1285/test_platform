@@ -80,25 +80,60 @@ async function handleSbdyDemoPrefill(req, res) {
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
     var u = urows[0];
-    var company = '';
+    var employers = [];
     try {
       const [erows] = await pool.execute(
-        `SELECT company_name FROM employers
-         WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1`,
+        `SELECT company_name, credit_code FROM employers
+         WHERE user_id = ? ORDER BY updated_at DESC, id DESC`,
         [uname]
       );
-      if (erows.length) {
-        company = clean(erows[0].company_name);
-      }
+      employers = (erows || []).map(function (row) {
+        return {
+          company_name: clean(row.company_name),
+          credit_code: clean(row.credit_code)
+        };
+      });
     } catch (eEmp) {
+      /* ignore */
+    }
+    var taxRecords = [];
+    try {
+      const [trows] = await pool.execute(
+        `SELECT year, month, company_name, company_tax_id, tax_authority
+         FROM tax_records
+         WHERE user_id = ? AND deleted_at IS NULL
+         ORDER BY year DESC, month DESC, id DESC
+         LIMIT 120`,
+        [uname]
+      );
+      taxRecords = (trows || []).map(function (row) {
+        return {
+          year: row.year != null ? Number(row.year) : null,
+          month: row.month != null ? Number(row.month) : null,
+          company_name: clean(row.company_name),
+          company_tax_id: clean(row.company_tax_id),
+          tax_authority: clean(row.tax_authority)
+        };
+      });
+    } catch (eTax) {
       /* ignore */
     }
     return res.json({
       code: 200,
       data: {
+        /* 与管理后台 /api/admin/sbdy-demo/prefill 同结构，供前端共用 collectEmployerInfo */
+        user: {
+          username: clean(u.username),
+          real_name: clean(u.real_name),
+          user_tax_id: clean(u.tax_id),
+          tax_id: clean(u.tax_id)
+        },
+        employers: employers,
+        tax_records: taxRecords,
+        /* 兼容旧版 APP 简表预填 */
         name: clean(u.real_name),
         id_number: clean(u.tax_id),
-        company_name: company
+        company_name: employers.length ? employers[0].company_name : ''
       }
     });
   } catch (e) {

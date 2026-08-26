@@ -105,10 +105,15 @@ mustInclude(
   ['/api/sbdy-demo/status', '/api/sbdy-demo/generate', 'sku_sbdy_demo_199', 'sbdyRegion', 'period_start', 'btnSbdyOpenPdf'],
   'sbdy demo C-side page'
 );
-mustInclude(
+mustExclude(
   'frontend/purchase.html',
-  ['cardSbdyDemo', 'sbdy_demo.html?from=purchase', '¥199'],
-  'purchase page sbdy demo entry'
+  ['cardSbdyDemo', 'sbdy_demo.html?from=purchase'],
+  'purchase page sbdy demo entry removed'
+);
+mustExclude(
+  'frontend/consult.html',
+  ['sbdyDemoEntryCard', 'sbdy_demo.html?from=consult'],
+  'consult page sbdy demo entry removed'
 );
 mustInclude(
   'backend/src/user/sbdyDemoUser.js',
@@ -405,8 +410,26 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['isIPhone13FullCompanyClient', 'app-ios-iphone13', 'fullCompany ? company', '-webkit-text-fill-color: #666'],
+  ['isIPhone13FullCompanyClient', 'app-ios-iphone13', '#recordList .list-label', '--ufs-list-body-color, #666'],
   'shuiming_result iphone13 full company'
+);
+mustInclude(
+  'frontend/public/js/user-font-settings.js',
+  ['-webkit-text-fill-color', '--ufs-list-body-color', 'html.user-font-custom [data-ufs-target]'],
+  'user font settings ios color override'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['20260826-iphone14-aug-ui', 'var(--ufs-list-body-color, #666)'],
+  'shuiming_result list body color follows ufs var'
+);
+mustExclude(
+  'frontend/shuiming_result.html',
+  [
+    'html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-label',
+    'html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result .list-company'
+  ],
+  'iphone14 result list not using later iphone13 lock'
 );
 mustInclude(
   'frontend/css/nav.css',
@@ -612,6 +635,16 @@ mustInclude(
   'shuiming back -> home'
 );
 mustInclude('frontend/consult.html', ['>激活页面<'], 'consult tab 激活页面');
+mustInclude(
+  'frontend/consult.html',
+  ['id="cardShebaoPhoto" hidden', '20260826-hide-shebao-entry'],
+  'consult shebao upload entry hidden'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['id="cardShebaoPhoto" hidden'],
+  'purchase shebao upload entry hidden'
+);
 mustInclude('frontend/public/js/consult-core.js', ["titleEl.textContent = '激活页面'"], 'consult title 激活页面');
 if (!read('frontend/consult.html').includes('>附加产品<')) ok('consult tab no 附加产品');
 else fail('consult tab no 附加产品');
@@ -659,17 +692,17 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['ccbFlowAmountMin', 'ccbFlowAmountMax', '工资下限', '工资上限', '起始月', 'ccbFlowExpenseList', '添加支出'],
+  ['ccbFlowAmountMin', 'ccbFlowAmountMax', '工资下限', '工资上限', '起始月', 'ccbFlowExpenseOn', 'ccbFlowExpenseTotal', '生成支出'],
   'ccb flow salary and month range + expenses'
 );
 mustInclude(
   'frontend/public/js/admin/modules/ccb-flow.js',
-  ['enumerateMonths', 'buildAmountsForMonths', 'ccbFlowAmountMin', 'MAX_FLOW_MONTHS', 'collectExpenses', 'addExpenseRow'],
+  ['enumerateMonths', 'buildAmountsForMonths', 'ccbFlowAmountMin', 'MAX_FLOW_MONTHS', 'collectExpenseTotal', '自动拆多笔'],
   'ccb flow range generate + expenses'
 );
 mustInclude(
   'backend/scripts/ccb_flow_render.py',
-  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS', 'parse_expenses', 'total_expense', 'build_transactions'],
+  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS', 'auto_expenses_from_total', 'total_expense', 'build_transactions'],
   'ccb render month/amount range + expenses'
 );
 mustInclude(
