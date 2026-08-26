@@ -5,6 +5,9 @@
 (function () {
   var ONBOARD_ACTIVATE = 'activate';
   var ONBOARD_TAX = 'tax';
+  var ONBOARD_EDIT = 'edit';
+  var POST_ACTIVATE_PENDING_KEY = 'cg_post_activate_pending';
+  var TAX_EDIT_GUIDE_DISMISS_KEY = 'cg_tax_edit_guide_dismiss_v1';
   var SMART_GUIDE_KEY = 'cg_smart_guide_dismissed';
   var INCOME_VISIT_KEY = 'cg_income_visit_count';
   var DETAIL_EMPTY_VISIT_KEY = 'cg_detail_empty_visits';
@@ -290,6 +293,42 @@
     window.location.href = 'consult.html?tab=records';
   }
 
+  function goEditTaxRecords() {
+    if (!ensureTaxEditForFill()) {
+      window.location.href = 'mine.html';
+      return;
+    }
+    window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_EDIT;
+  }
+
+  function isPostActivatePending() {
+    try {
+      return sessionStorage.getItem(POST_ACTIVATE_PENDING_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clearPostActivatePending() {
+    try {
+      sessionStorage.removeItem(POST_ACTIVATE_PENDING_KEY);
+    } catch (e) {}
+  }
+
+  function isTaxEditGuideDismissedToday() {
+    try {
+      return localStorage.getItem(TAX_EDIT_GUIDE_DISMISS_KEY) === beijingDayKey();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markTaxEditGuideDismissedToday() {
+    try {
+      localStorage.setItem(TAX_EDIT_GUIDE_DISMISS_KEY, beijingDayKey());
+    } catch (e) {}
+  }
+
   function goIncomeDetail(year) {
     var y = normalizeTaxYearLocal(year);
     try {
@@ -445,6 +484,21 @@
       '.cg-consult-tax-banner{margin:0 0 12px;padding:12px 14px;background:linear-gradient(135deg,#fff4e5,#fffaf2);border:2px solid #ff9500;border-radius:10px}' +
       '.cg-consult-tax-banner strong{display:block;font-size:15px;color:#c2410c;margin:0 0 4px}' +
       '.cg-consult-tax-banner span{font-size:13px;color:#9a3412;line-height:1.45}' +
+      '.cg-post-activate-edit-banner{margin:0 0 10px;padding:14px 14px 12px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:2px solid #34d399;border-radius:12px;box-shadow:0 4px 16px rgba(52,211,153,.14);position:relative;z-index:30}' +
+      '.cg-post-activate-edit-banner h4{margin:0 0 6px;font-size:16px;font-weight:700;color:#047857}' +
+      '.cg-post-activate-edit-banner p{margin:0 0 12px;font-size:13px;color:#065f46;line-height:1.5}' +
+      '.cg-post-activate-edit-banner .cg-btn-primary{display:block;width:100%;padding:12px 14px;border:none;border-radius:10px;background:#059669;color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}' +
+      '.cg-post-activate-edit-banner .cg-dismiss{position:absolute;top:8px;right:10px;border:none;background:transparent;color:#047857;font-size:12px;padding:4px 6px;cursor:pointer;font-family:inherit;opacity:.75}' +
+      '.cg-consult-edit-banner{margin:0 0 12px;padding:12px 14px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:2px solid #6ee7b7;border-radius:10px;position:relative}' +
+      '.cg-consult-edit-banner strong{display:block;font-size:15px;color:#047857;margin:0 0 4px}' +
+      '.cg-consult-edit-banner span{font-size:13px;color:#065f46;line-height:1.45}' +
+      '.cg-consult-edit-banner .cg-dismiss{position:absolute;top:6px;right:8px;border:none;background:transparent;color:#047857;font-size:16px;line-height:1;padding:4px 6px;cursor:pointer;font-family:inherit;opacity:.7}' +
+      '.cg-edit-coach-mark{position:fixed;z-index:' +
+      (CG_OVERLAY_Z + 2) +
+      ';max-width:280px;padding:12px 14px;background:#047857;color:#fff;border-radius:12px;font-size:13px;line-height:1.5;box-shadow:0 8px 24px rgba(4,120,87,.35);pointer-events:none}' +
+      '.cg-edit-coach-mark::after{content:"";position:absolute;width:10px;height:10px;background:#047857;transform:rotate(45deg)}' +
+      '.cg-edit-coach-mark.is-below::after{top:-5px;left:24px}' +
+      '.cg-edit-coach-mark.is-above::after{bottom:-5px;left:24px}' +
       '.cg-value-bar{position:fixed;left:0;right:0;bottom:0;z-index:850;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid #e8e8e8;box-shadow:0 -2px 12px rgba(0,0,0,.06)}' +
       '.cg-value-bar .cg-disclaimer{margin:0 0 8px;font-size:11px;color:#999;line-height:1.45}' +
       '.cg-value-bar .cg-edit-hint{margin:0 0 10px;font-size:12px;color:#666;line-height:1.45}' +
@@ -1186,7 +1240,12 @@
   function runConsultOnboarding() {
     if (currentPage() !== 'consult.html') return;
     injectConsultRecordsGate();
-    if (urlParam('onboarding') !== ONBOARD_TAX) return;
+    var mode = urlParam('onboarding');
+    if (mode === ONBOARD_EDIT) {
+      runPostActivateEditOnboarding();
+      return;
+    }
+    if (mode !== ONBOARD_TAX) return;
     if (typeof switchTab === 'function') {
       try {
         switchTab('records', false);
@@ -1203,6 +1262,163 @@
         } catch (e2) {}
       }
     }, 500);
+  }
+
+  function runPostActivateEditOnboarding() {
+    if (typeof switchTab === 'function') {
+      try {
+        switchTab('records', false);
+      } catch (e) {}
+    }
+    track('track_post_activate_edit_guide_show', {
+      page: 'consult',
+      source: 'onboarding_edit',
+      tax_count: taxRecordCount()
+    });
+    setTimeout(function () {
+      var panel = document.getElementById('panel-records');
+      if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      renderConsultPostActivateEditBanner(true);
+    }, 650);
+  }
+
+  function showPostActivateEditCoachMark() {
+    if (document.getElementById('cg-edit-coach-mark')) return;
+    ensureGateStyles();
+    var firstEditBtn = document.querySelector('#recordListMount .list-item-actions .btn-primary');
+    if (!firstEditBtn) {
+      showCaptureToast('已开通！在下方记录卡片点「编辑」即可修改个税数据', { duration: 4500 });
+      return;
+    }
+    var rect = firstEditBtn.getBoundingClientRect();
+    var mark = document.createElement('div');
+    mark.id = 'cg-edit-coach-mark';
+    mark.className = 'cg-edit-coach-mark';
+    mark.setAttribute('role', 'status');
+    mark.textContent = '点这里「编辑」可修改该条个税记录';
+    document.body.appendChild(mark);
+    var markRect = mark.getBoundingClientRect();
+    var top = rect.top - markRect.height - 14;
+    var placeBelow = top < 12;
+    if (placeBelow) {
+      mark.classList.add('is-below');
+      top = rect.bottom + 14;
+    } else {
+      mark.classList.add('is-above');
+    }
+    var left = Math.max(12, Math.min(rect.left, window.innerWidth - markRect.width - 12));
+    mark.style.top = top + 'px';
+    mark.style.left = left + 'px';
+    firstEditBtn.style.boxShadow = '0 0 0 3px rgba(5,150,105,.45)';
+    firstEditBtn.style.position = 'relative';
+    firstEditBtn.style.zIndex = '2';
+    setTimeout(function () {
+      if (mark.parentNode) mark.parentNode.removeChild(mark);
+      firstEditBtn.style.boxShadow = '';
+      firstEditBtn.style.position = '';
+      firstEditBtn.style.zIndex = '';
+    }, 5200);
+  }
+
+  function removePostActivateMineEditBanner() {
+    var el = document.getElementById('cg-post-activate-edit-banner');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function removeConsultPostActivateEditBanner() {
+    var el = document.getElementById('cg-consult-edit-banner');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function renderPostActivateMineEditBanner() {
+    removePostActivateMineEditBanner();
+    if (currentPage() !== 'mine.html') return;
+    if (!isAccountActive() || !hasTaxRecords()) return;
+    if (!isPostActivatePending()) return;
+    ensureGateStyles();
+    var banner = document.createElement('div');
+    banner.id = 'cg-post-activate-edit-banner';
+    banner.className = 'cg-post-activate-edit-banner cg-demo-only';
+    banner.innerHTML =
+      '<button type="button" class="cg-dismiss" id="cgPostActivateEditDismiss" aria-label="知道了">知道了</button>' +
+      '<h4>已开通 · 现在可以编辑个税了</h4>' +
+      '<p>入口在下方「我要咨询」。进入后切换到「税务记录」，点每条记录右侧的「编辑」即可修改。</p>' +
+      '<button type="button" class="cg-btn-primary" id="cgPostActivateEditGo">去编辑个税记录</button>';
+    var stack = document.querySelector('.mine-stack');
+    var canvas = document.getElementById('mineE1Canvas');
+    if (stack && canvas && canvas.parentNode === stack) {
+      stack.insertBefore(banner, canvas);
+    } else if (stack) {
+      stack.insertBefore(banner, stack.firstChild);
+    } else {
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+    track('track_post_activate_edit_guide_show', {
+      page: 'mine',
+      source: 'mine_banner',
+      tax_count: taxRecordCount()
+    });
+    var goBtn = document.getElementById('cgPostActivateEditGo');
+    if (goBtn) {
+      goBtn.onclick = function () {
+        track('track_post_activate_edit_guide_ok', { page: 'mine', source: 'mine_banner' });
+        clearPostActivatePending();
+        goEditTaxRecords();
+      };
+    }
+    var dismiss = document.getElementById('cgPostActivateEditDismiss');
+    if (dismiss) {
+      dismiss.onclick = function () {
+        markTaxEditGuideDismissedToday();
+        clearPostActivatePending();
+        track('track_post_activate_edit_guide_dismiss', { page: 'mine', source: 'mine_banner' });
+        removePostActivateMineEditBanner();
+      };
+    }
+  }
+
+  function renderConsultPostActivateEditBanner(force) {
+    if (currentPage() !== 'consult.html') return;
+    if (!isAccountActive() || !hasTaxRecords()) return;
+    if (!force && !isPostActivatePending() && isTaxEditGuideDismissedToday()) return;
+    if (!force && !isPostActivatePending()) return;
+    removeConsultPostActivateEditBanner();
+    ensureGateStyles();
+    var host = document.getElementById('taxPayGuideBanner') || document.getElementById('recordListMount');
+    if (!host || !host.parentNode) return;
+    var banner = document.createElement('div');
+    banner.id = 'cg-consult-edit-banner';
+    banner.className = 'cg-consult-edit-banner cg-demo-only';
+    banner.innerHTML =
+      '<button type="button" class="cg-dismiss" id="cgConsultEditDismiss" aria-label="知道了">×</button>' +
+      '<strong>已开通 · 在这里编辑个税</strong>' +
+      '<span>点击下方每条记录右侧的「编辑」可修改；批量调整可用上方「回填修改」。</span>';
+    host.parentNode.insertBefore(banner, host);
+    if (force) {
+      track('track_post_activate_edit_guide_show', {
+        page: 'consult',
+        source: 'consult_banner',
+        tax_count: taxRecordCount()
+      });
+    }
+    var dismiss = document.getElementById('cgConsultEditDismiss');
+    if (dismiss) {
+      dismiss.onclick = function () {
+        markTaxEditGuideDismissedToday();
+        clearPostActivatePending();
+        track('track_post_activate_edit_guide_dismiss', { page: 'consult', source: 'consult_banner' });
+        removeConsultPostActivateEditBanner();
+      };
+    }
+  }
+
+  function syncConsultEditGuideAfterRecordsLoad() {
+    renderConsultPostActivateEditBanner(false);
+    if (urlParam('onboarding') === ONBOARD_EDIT) {
+      setTimeout(showPostActivateEditCoachMark, 100);
+    }
   }
 
   function buildShuimingEmptyFillCtaHtml() {
@@ -1267,6 +1483,13 @@
     track('track_conversion_activate_success', { page: currentPage() });
     removeMineConversionUi();
     removeActivationPromoUi();
+    try {
+      sessionStorage.setItem(POST_ACTIVATE_PENDING_KEY, '1');
+    } catch (e0) {}
+    var taxN = taxRecordCount();
+    if (taxN > 0 && typeof showCaptureToast === 'function') {
+      showCaptureToast('已开通！编辑入口：我的 → 我要咨询 → 税务记录', { duration: 4200 });
+    }
     setTimeout(function () {
       window.location.href = 'activate_success.html';
     }, 300);
@@ -2091,6 +2314,7 @@
       }
       runMineOnboarding();
       runConsultOnboarding();
+      renderPostActivateMineEditBanner();
       patchShuimingResultEmpty();
       refreshShuimingResultEmptyCta();
       removeShuimingResultValueBar();
@@ -2120,6 +2344,9 @@
       bindPayFeatureGates();
       /* 列表异步返回后可能再次变空：短延迟再补一次 */
       setTimeout(refreshShuimingResultEmptyCta, 400);
+      setTimeout(function () {
+        renderConsultPostActivateEditBanner(false);
+      }, 450);
       setTimeout(renderConsultTaxStrongPrompt, 450);
     }
 
@@ -2309,6 +2536,8 @@
     goActivate: goActivate,
     goFillTaxRecords: goFillTaxRecords,
     goManageTaxRecords: goManageTaxRecords,
+    goEditTaxRecords: goEditTaxRecords,
+    syncConsultEditGuideAfterRecordsLoad: syncConsultEditGuideAfterRecordsLoad,
     goIncomeDetail: goIncomeDetail,
     goNajilu: goNajilu,
     gateActivation: gateActivation,

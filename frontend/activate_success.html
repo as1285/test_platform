@@ -154,11 +154,12 @@
         <div class="seal" aria-hidden="true">通</div>
         <p class="kicker">ACTIVATED</p>
         <h1>权益已开通</h1>
-        <p class="support">账号已激活。下一步添加个税演示数据，即可体验明细与完税证明。</p>
+        <p class="support" id="activateSuccessSupport">账号已激活。下一步添加个税演示数据，即可体验明细与完税证明。</p>
         <div class="actions">
             <a class="btn btn-primary" id="btnGoTax" href="consult.html?tab=records&onboarding=tax">去添加演示数据</a>
             <a class="btn btn-ghost" id="btnGoMine" href="mine.html">先回个人中心</a>
         </div>
+        <p class="hint" id="activateSuccessEntryHint" hidden>编辑入口：我的 → 我要咨询 → 税务记录 → 编辑</p>
         <p class="hint">本应用为界面演示与学习参考，非官方申报渠道</p>
     </main>
     <script>
@@ -175,12 +176,57 @@
             } else if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_activate_success_page_view', { page: 'activate_success' });
             }
+            function taxRecordCountLocal() {
+                try {
+                    return Math.max(0, Number(localStorage.getItem('tax_record_count') || '0') || 0);
+                } catch (eN) {
+                    return 0;
+                }
+            }
+            function applyActivateSuccessCopy(hasRecords) {
+                var support = document.getElementById('activateSuccessSupport');
+                var goTax = document.getElementById('btnGoTax');
+                var entryHint = document.getElementById('activateSuccessEntryHint');
+                if (hasRecords) {
+                    if (support) {
+                        support.textContent =
+                            '账号已激活。您已有个税演示数据，现在可去编辑记录，修改后完整查看明细与完税证明。';
+                    }
+                    if (goTax) {
+                        goTax.textContent = '去编辑个税记录';
+                        goTax.setAttribute('href', 'consult.html?tab=records&onboarding=edit');
+                    }
+                    if (entryHint) entryHint.hidden = false;
+                }
+            }
             var goTax = document.getElementById('btnGoTax');
             var goMine = document.getElementById('btnGoMine');
+            var hasRecords = taxRecordCountLocal() > 0;
+            applyActivateSuccessCopy(hasRecords);
+            if (!hasRecords && typeof window.authFetch === 'function') {
+                window.authFetch('api/user?action=summary')
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.code !== 200 || !data.data) return;
+                        var n = Math.max(0, Number(data.data.tax_record_count) || 0);
+                        try {
+                            localStorage.setItem('tax_record_count', String(n));
+                        } catch (eS) {}
+                        if (n > 0) applyActivateSuccessCopy(true);
+                    })
+                    .catch(function () {});
+            }
+            try {
+                sessionStorage.setItem('cg_post_activate_pending', '1');
+            } catch (eP) {}
             if (goTax) {
                 goTax.addEventListener('click', function () {
                     if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_activate_success_go_tax', { page: 'activate_success' });
+                        var n = taxRecordCountLocal();
+                        window.trackUserAction(
+                            n > 0 ? 'track_activate_success_go_edit' : 'track_activate_success_go_tax',
+                            { page: 'activate_success', tax_count: n }
+                        );
                     }
                 });
             }

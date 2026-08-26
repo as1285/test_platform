@@ -1183,6 +1183,14 @@
         }, ms);
     }
 
+    function activeUserBackHref() {
+        try {
+            var n = Math.max(0, Number(localStorage.getItem('tax_record_count') || '0') || 0);
+            if (n > 0) return 'consult.html?tab=records';
+        } catch (eTax) {}
+        return 'consult.html?tab=products';
+    }
+
     function resolveBackHref() {
         var from = '';
         try {
@@ -1191,11 +1199,12 @@
         from = String(from || '').trim().toLowerCase();
         var map = {
             mine: 'mine.html',
-            consult: 'consult.html?tab=products',
-            consult_records: 'consult.html?tab=products',
+            consult: activeUserBackHref(),
+            consult_records: 'consult.html?tab=records',
             consult_products: 'consult.html?tab=products',
-            records: 'consult.html?tab=products',
+            records: 'consult.html?tab=records',
             products: 'consult.html?tab=products',
+            tax_done: 'consult.html?tab=records',
             shouye: 'shouye.html',
             guide: 'install_guide.html',
             register: 'register.html'
@@ -1215,13 +1224,13 @@
                         path.indexOf('login') >= 0 ||
                         path.indexOf('register') >= 0
                     ) {
-                        return purchaseUserActive ? 'consult.html?tab=products' : 'mine.html';
+                        return purchaseUserActive ? activeUserBackHref() : 'mine.html';
                     }
                     return document.referrer;
                 }
             }
         } catch (e3) {}
-        return purchaseUserActive ? 'consult.html?tab=products' : 'mine.html';
+        return purchaseUserActive ? activeUserBackHref() : 'mine.html';
     }
 
     function applyActiveRenewalUi() {
@@ -1977,7 +1986,15 @@
         window.__purchasePageComplete = true;
         trackPurchase('track_alipay_payment_success');
         setAlipayStatus('付款成功，账号已开通，正在跳转…', 'ok');
-        showToast('支付宝付款成功，账号已自动开通');
+        var paidTaxCount = 0;
+        try {
+            paidTaxCount = Math.max(0, Number(localStorage.getItem('tax_record_count') || '0') || 0);
+        } catch (eTaxN) {}
+        if (paidTaxCount > 0) {
+            showToast('已开通！编辑入口：我的 → 我要咨询 → 税务记录');
+        } else {
+            showToast('支付宝付款成功，账号已自动开通');
+        }
         if (typeof window.refreshWatermarkFromApi === 'function') {
             window.refreshWatermarkFromApi();
         }

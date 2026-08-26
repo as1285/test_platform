@@ -356,6 +356,13 @@ function renderListFromArray(list) {
         html += '</div></div>';
     });
     mount.innerHTML = html;
+    syncTaxPayGuideBanner(list);
+    if (
+        window.ConversionGuide &&
+        typeof window.ConversionGuide.syncConsultEditGuideAfterRecordsLoad === 'function'
+    ) {
+        window.ConversionGuide.syncConsultEditGuideAfterRecordsLoad();
+    }
 }
 
 function expandSingleTaxRecordCard() {

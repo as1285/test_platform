@@ -1009,6 +1009,46 @@ mustInclude(
   else fail('xiaomi 13 pro UA match');
 })();
 
+mustInclude(
+  'frontend/activate_success.html',
+  [
+    'applyActivateSuccessCopy',
+    'onboarding=edit',
+    'activateSuccessEntryHint',
+    'cg_post_activate_pending',
+    'track_activate_success_go_edit'
+  ],
+  'activate success edit guidance'
+);
+mustInclude(
+  'frontend/public/js/conversion-guide.js',
+  [
+    'ONBOARD_EDIT',
+    'goEditTaxRecords',
+    'renderPostActivateMineEditBanner',
+    'renderConsultPostActivateEditBanner',
+    'showPostActivateEditCoachMark',
+    'syncConsultEditGuideAfterRecordsLoad',
+    'track_post_activate_edit_guide_show'
+  ],
+  'conversion guide post-activate edit funnel'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['activeUserBackHref', 'tax_done', '编辑入口：我的 → 我要咨询 → 税务记录'],
+  'purchase paid toast + records back href'
+);
+mustInclude(
+  'frontend/public/js/consult-records.js',
+  ['syncConsultEditGuideAfterRecordsLoad'],
+  'consult records sync edit guide after load'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['20260826-post-activate-edit'],
+  'auth conversion-guide cache bust post-activate edit'
+);
+
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
 
