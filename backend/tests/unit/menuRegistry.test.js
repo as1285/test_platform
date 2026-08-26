@@ -103,6 +103,8 @@ describe('menuRegistry', () => {
     const dataGroup = tree.find((g) => g.id === 'insights');
     expect(dataGroup.items.map((i) => i.page)).toContain('analytics-purchase');
     expect(dataGroup.items.map((i) => i.page)).toContain('channel-analysis');
+    expect(dataGroup.items.map((i) => i.page)).toContain('analytics-devices');
+    expect(getPageDef('analytics-devices').label).toBe('机型');
   });
 
   it('firstAllowedPage prefers conversion analytics', () => {

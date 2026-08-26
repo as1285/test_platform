@@ -420,8 +420,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['20260826-iphone14-aug-ui', 'var(--ufs-list-body-color, #666)'],
+  ['20260826-iphone14-row-gap', 'var(--ufs-list-body-color, #666)'],
   'shuiming_result list body color follows ufs var'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  [
+    'list-row-subtype',
+    'list-row-tax',
+    'html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-row-subtype',
+    'html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-row-tax'
+  ],
+  'iphone14 subtype/tax row gap classes'
 );
 mustExclude(
   'frontend/shuiming_result.html',
@@ -702,7 +712,7 @@ mustInclude(
 );
 mustInclude(
   'backend/scripts/ccb_flow_render.py',
-  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_ROWS', 'auto_expenses_from_total', 'total_expense', 'build_transactions'],
+  ['months_in_range', 'parse_range_pair', 'amount_min', 'MAX_MONTHS', 'MAX_ROWS', 'auto_expenses_from_total', '_force_amounts_sum', 'total_expense', 'build_transactions'],
   'ccb render month/amount range + expenses'
 );
 mustInclude(

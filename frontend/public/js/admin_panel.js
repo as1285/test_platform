@@ -1030,6 +1030,7 @@
                 'tax-records-edit',
                 'analytics-register',
                 'analytics-activity',
+                'analytics-devices',
                 'analytics-tracking',
                 'appearance',
                 'admin-accounts',
@@ -1133,6 +1134,7 @@
                 'analytics-conversion': 1,
                 'analytics-register': 1,
                 'analytics-activity': 1,
+                'analytics-devices': 1,
                                 'analytics-purchase': 1,
                 'analytics-tracking': 1,
                 'install-guide-stats': 1,
@@ -1240,6 +1242,13 @@
             }
             if (pageKey === 'analytics-tracking') {
                 loadAnalyticsTrackingPage();
+            }
+            if (pageKey === 'analytics-devices') {
+                if (typeof loadAnalyticsDevicesPage === 'function') {
+                    loadAnalyticsDevicesPage();
+                } else {
+                    callAdminModuleLoadPage('devices');
+                }
             }
             if (pageKey === 'install-guide-stats') {
                 loadInstallGuideStats();
@@ -6690,6 +6699,7 @@
             'analytics-purchase': '支付分析',
             'analytics-register': '注册分析',
             'analytics-activity': '用户活跃',
+            'analytics-devices': '机型',
             'analytics-tracking': '埋点分析',
             'install-guide-stats': '安装统计',
             'share-stats': '分享统计',

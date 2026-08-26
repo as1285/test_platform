@@ -211,6 +211,14 @@ const ADMIN_PAGE_DEFS = [
     module: 'analytics',
     order: 30
   },
+  {
+    page: 'analytics-devices',
+    menu_key: 'analytics-devices',
+    label: '机型',
+    group: 'insights',
+    module: 'devices',
+    order: 25
+  },
 
   /* —— 系统 —— */
   {

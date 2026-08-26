@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260814-ace2pro"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260826-auto-expense">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260826-device-compat">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -1936,7 +1936,7 @@
                                 <button type="button" class="btn-page" id="ccbFlowPrefillBtn">预填个税</button>
                             </div>
                         </div>
-                        <p class="hint mt-0" style="max-width:960px;">起始月～结束月可自行选择（最多 36 个月），生成流水按该区间逐月出账。预填时取时段内<strong>正常工资薪金</strong>月收入；交易日期按各月 15 日写入。</p>
+                        <p class="hint mt-0" style="max-width:960px;">起始月～结束月可自行选择（最多 15 年 / 180 个月，11 年可一次出完），生成流水按该区间逐月出账。预填时取时段内<strong>正常工资薪金</strong>月收入；交易日期按各月 15 日写入。</p>
                         <div class="form-row form-stack" style="max-width:960px;">
                             <div class="admin-tool-step">① 填写字段</div>
                             <div class="form-row flex-wrap gap-10">
@@ -1978,10 +1978,10 @@
                                 </div>
                                 <div style="flex:1;min-width:280px;">
                                     <label for="ccbFlowAmount">每月金额（可选，预填或手填）</label>
-                                    <input type="text" id="ccbFlowAmount" maxlength="640" placeholder="空则按下限～上限生成；也可逗号列出每月金额">
+                                    <input type="text" id="ccbFlowAmount" maxlength="8192" placeholder="空则按下限～上限生成；也可逗号列出每月金额">
                                 </div>
                             </div>
-                            <p class="hint mt-0">填了上限且大于下限时，每月在区间内随机（两位小数）；只填下限则每月固定。余额按「入账前余额 + 工资收入 − 支出」自动推算；总收入=工资合计。行数最多 36 行（工资月数 + 自动支出笔数）。</p>
+                            <p class="hint mt-0">填了上限且大于下限时，每月在区间内随机（两位小数）；只填下限则每月固定。余额按「入账前余额 + 工资收入 − 支出」自动推算；总收入=工资合计。工资最多 180 个月；勾选支出后会再按总金额拆成日常流水行。</p>
                             <div class="admin-tool-step" style="margin-top:14px;">② 支出（默认关闭）</div>
                             <p class="hint mt-0">不勾选则总支出为 0、明细只有工资入账。勾选并填写总支出后，按起止月自动拆成多笔日常消费/代扣/取现，合计等于总数，避免单笔大额。</p>
                             <div id="ccbFlowExpenseList" class="ccb-expense-list" style="max-width:960px;">
@@ -2318,6 +2318,92 @@
                             </div>
                         </div>
                         <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
+                    </section>
+                </div>
+
+                <div id="page-analytics-devices" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>机型 · UI 兼容对照</h2>
+                        <p class="hint mt-0">近几个月（<strong>2026-05 ~ 2026-08</strong>）苹果 / 安卓 UI 修改点，与线上 <code>user_devices</code> 对账：哪台机改过什么、现在有多少用户。通用规则按系统计入；具体机型按 UA / Cordova 型号匹配。</p>
+                        <div class="form-row flex-align-center mt-8 device-compat-toolbar">
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshDeviceCompat">刷新对账</button>
+                            <label class="device-compat-check">
+                                <input type="checkbox" id="deviceCompatOnlyUsers"> 只看已有用户
+                            </label>
+                            <input type="search" id="deviceCompatSearch" class="filter-select" placeholder="搜索机型或问题" style="min-width:180px;">
+                        </div>
+                        <p id="deviceCompatSummary" class="stat">进入本页后加载…</p>
+                        <div id="deviceCompatCards" class="user-data-stats mb-12"></div>
+                    </section>
+                    <section>
+                        <h3 class="device-compat-h3">按页面对比 · 苹果 vs 安卓</h3>
+                        <p class="hint mt-0">问题数来自修改目录；用户数按该页有修改点的系统合计（苹果 UA 常无型号，不用机型精确匹配）。下方机型表才是精确对账。</p>
+                        <div class="scroll-x">
+                            <table class="device-compat-compare">
+                                <thead>
+                                    <tr>
+                                        <th>页面</th>
+                                        <th>苹果问题</th>
+                                        <th>安卓问题</th>
+                                        <th>苹果用户</th>
+                                        <th>安卓用户</th>
+                                        <th>对比</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deviceCompatCompareTbody"><tr><td colspan="6">—</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section>
+                        <h3 class="device-compat-h3">机型修改点</h3>
+                        <div class="device-compat-filters" id="deviceCompatFilters">
+                            <div class="device-compat-chips" data-filter="platform">
+                                <button type="button" class="device-compat-chip is-on" data-value="all">全部系统</button>
+                                <button type="button" class="device-compat-chip" data-value="ios">苹果</button>
+                                <button type="button" class="device-compat-chip" data-value="android">安卓</button>
+                            </div>
+                            <div class="device-compat-chips" data-filter="page">
+                                <button type="button" class="device-compat-chip is-on" data-value="all">全部页面</button>
+                                <button type="button" class="device-compat-chip" data-value="shouye">首页</button>
+                                <button type="button" class="device-compat-chip" data-value="mine">我的</button>
+                                <button type="button" class="device-compat-chip" data-value="shuiming">纳税明细</button>
+                                <button type="button" class="device-compat-chip" data-value="nav">底栏</button>
+                                <button type="button" class="device-compat-chip" data-value="interact">交互</button>
+                                <button type="button" class="device-compat-chip" data-value="type">字体</button>
+                            </div>
+                        </div>
+                        <div class="scroll-x">
+                            <table class="device-compat-table">
+                                <thead>
+                                    <tr>
+                                        <th>机型</th>
+                                        <th>系统</th>
+                                        <th>用户</th>
+                                        <th>设备</th>
+                                        <th>问题</th>
+                                        <th>页面</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deviceCompatModelTbody"><tr><td colspan="6">—</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section>
+                        <h3 class="device-compat-h3">未建档但已有用户</h3>
+                        <p class="hint mt-0">线上已出现、目录里还没有单独修改点的机型。Safari 常只报「iPhone」，会归在这里。</p>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>机型</th>
+                                        <th>系统</th>
+                                        <th>用户</th>
+                                        <th>设备</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deviceCompatUnmatchedTbody"><tr><td colspan="4">—</td></tr></tbody>
+                            </table>
+                        </div>
                     </section>
                 </div>
 
@@ -2835,9 +2921,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260825-rename-tax-daily"></script>
+    <script src="/js/admin/loader.js?v=20260826-device-compat"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260826-deadcode"></script>
+    <script src="/js/admin_panel.js?v=20260826-device-compat"></script>
 </body>
 </html>

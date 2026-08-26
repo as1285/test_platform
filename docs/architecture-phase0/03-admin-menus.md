@@ -38,6 +38,7 @@
 | `analytics-register` | 注册分析 | 注册漏斗 |
 | `analytics-activity` | 用户活跃 | DAU 等 |
 | `analytics-tracking` | 埋点分析 | events |
+| `analytics-devices` | 机型 | UI 兼容目录与 user_devices 对账 |
 | `analytics-purchase` | 支付分析 | 购买漏斗 |
 | `channel-analysis` | 渠道分析 | 渠道漏斗 |
 | `install-guide-stats` | 安装统计 | install-guide-stats |
@@ -57,7 +58,7 @@
 
 ## 已废弃（勿再当作现行菜单）
 
-旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`analytics-devices`、`api-analytics` 等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。
+旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`api-analytics` 等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。
 
 ## 权限变更检查单
 

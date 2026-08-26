@@ -204,6 +204,12 @@ app.get(
   h.handleAdminRegisterChannelStats
 );
 app.get(
+  '/api/admin/analytics/devices',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-devices', 'analytics']),
+  h.handleAdminAnalyticsDevices
+);
+app.get(
   '/api/admin/analytics/overview',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-activity', 'analytics']),

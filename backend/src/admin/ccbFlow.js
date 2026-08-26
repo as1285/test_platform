@@ -54,7 +54,7 @@ function runCcbFlowRender(fields) {
       try {
         child.kill('SIGKILL');
       } catch (e) {}
-    }, 90000);
+    }, 150000);
     child.on('error', function (e) {
       if (settled) return;
       settled = true;

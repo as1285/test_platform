@@ -17,7 +17,9 @@ from PIL import Image, ImageDraw, ImageFont
 W = 1240
 H = 1754
 N_ROWS = 12
-MAX_ROWS = 36
+# 工资月上限：15 年（覆盖一次出 11 年流水）；行数另含自动支出
+MAX_MONTHS = 180
+MAX_ROWS = 600
 DEFAULT_COUNTERPARTY_ACCOUNT = "140500616296"
 DEFAULT_CARD_NO = "6217002740035379323"
 _RANGE_RE = re.compile(r"^\s*([\d,，.]+)\s*[-~～—–到至]+\s*([\d,，.]+)\s*$")
@@ -226,8 +228,8 @@ def parse_months(raw, n=None):
     if not out:
         return None
     if n is None:
-        return out[:MAX_ROWS]
-    n = max(1, min(int(n), MAX_ROWS))
+        return out[:MAX_MONTHS]
+    n = max(1, min(int(n), MAX_MONTHS))
     if len(out) < n:
         y, m = out[-1]
         while len(out) < n:
@@ -239,7 +241,7 @@ def parse_months(raw, n=None):
     return out[:n]
 
 
-def months_in_range(start_ym, end_ym, max_n=MAX_ROWS):
+def months_in_range(start_ym, end_ym, max_n=MAX_MONTHS):
     """含起止月的连续月份。"""
     start = parse_ym(start_ym) if not isinstance(start_ym, tuple) else start_ym
     end = parse_ym(end_ym) if not isinstance(end_ym, tuple) else end_ym
@@ -268,7 +270,7 @@ def months_in_range(start_ym, end_ym, max_n=MAX_ROWS):
 
 def default_months(n=N_ROWS, end_ym=None):
     """默认结束月往前共 n 个月（含结束月）。"""
-    n = max(1, min(int(n or N_ROWS), MAX_ROWS))
+    n = max(1, min(int(n or N_ROWS), MAX_MONTHS))
     if end_ym:
         y, m = end_ym
     else:
@@ -289,7 +291,7 @@ def default_months(n=N_ROWS, end_ym=None):
 def resolve_months(cfg):
     months = parse_months(cfg.get("months") or cfg.get("trade_months"), n=None)
     if months:
-        return months[:MAX_ROWS]
+        return months[:MAX_MONTHS]
     start = cfg.get("start_month") or cfg.get("tax_from")
     end = cfg.get("end_month") or cfg.get("tax_to")
     ranged = months_in_range(start, end)
@@ -448,6 +450,36 @@ def _pick_expense_date(rng, y, m, used):
     return datetime(y, m, d).strftime("%Y%m%d")
 
 
+def _force_amounts_sum(amounts, total):
+    """把列表调成精确合计 total，且每笔 > 0。失败返回 None。"""
+    if not amounts:
+        return None
+    total = round(float(total), 2)
+    out = [round(float(a), 2) for a in amounts]
+    n = len(out)
+    if n == 1:
+        return [total] if total > 0 else None
+    out[-1] = round(total - sum(out[:-1]), 2)
+    if out[-1] <= 0:
+        need = round(0.01 - out[-1], 2)
+        for i in range(n - 2, -1, -1):
+            give = round(min(need, max(0.0, out[i] - 0.01)), 2)
+            if give <= 0:
+                continue
+            out[i] = round(out[i] - give, 2)
+            need = round(need - give, 2)
+            if need <= 0:
+                break
+        out[-1] = round(total - sum(out[:-1]), 2)
+    if any(a <= 0 for a in out):
+        return None
+    if abs(round(sum(out), 2) - total) > 0.001:
+        out[-1] = round(total - sum(out[:-1]), 2)
+        if out[-1] <= 0:
+            return None
+    return out
+
+
 def auto_expenses_from_total(total, months, rng=None):
     """把总支出拆成多笔日常流水，合计精确等于 total，避免单笔大额。"""
     total = parse_money(total, None)
@@ -456,45 +488,61 @@ def auto_expenses_from_total(total, months, rng=None):
     total = round(float(total), 2)
     rng = rng or random.Random()
     n_income = len(months)
-    slots = MAX_ROWS - n_income
-    if slots < 3:
-        return []
-    want = min(slots, max(8, n_income * 2))
+    # 工资行再多也至少留出支出位，禁止「月份填满就整段支出变 0」
+    slots = max(8, MAX_ROWS - n_income)
+
+    # 按金额决定笔数，不要按「月数×2」硬拆——11 年 + 几千块会拆出上百笔小额，四舍五入后合计失败
+    want = int(round(total / 80.0))
+    want = max(4, min(want, slots, max(12, n_income)))
     avg = total / float(want)
     while avg > 650 and want < slots:
         want += 1
         avg = total / float(want)
-    while avg < 18 and want > 4:
+    while avg < 20 and want > 4:
         want -= 1
         avg = total / float(want)
-    want = max(3, min(int(want), slots))
+    want = max(1, min(int(want), slots))
+
+    kind_pool = _EXPENSE_KINDS
+    if avg < 180:
+        kind_pool = tuple(k for k in _EXPENSE_KINDS if k[4] < 1) or _EXPENSE_KINDS
 
     kinds = []
     raws = []
     for _i in range(want):
-        kind = _EXPENSE_KINDS[rng.randrange(len(_EXPENSE_KINDS))]
+        kind = kind_pool[rng.randrange(len(kind_pool))]
         kinds.append(kind)
-        raws.append(_round_expense_amt(rng.uniform(kind[2], kind[3]), kind[4]))
+        raws.append(_round_expense_amt(rng.uniform(kind[2], kind[3]), 0.01))
     raw_sum = sum(raws)
     if raw_sum <= 0:
-        return []
+        raws = [total]
+        kinds = [kind_pool[0]]
+        want = 1
+        raw_sum = total
     scale = total / raw_sum
-    amounts = []
-    for i, raw in enumerate(raws):
-        step = kinds[i][4] if i < want - 1 else 0.01
-        amounts.append(_round_expense_amt(raw * scale, step))
-    amounts[-1] = round(total - sum(amounts[:-1]), 2)
-    if amounts[-1] <= 0:
-        return []
+    amounts = [_round_expense_amt(raw * scale, 0.01) for raw in raws]
+    amounts = _force_amounts_sum(amounts, total)
+    if not amounts:
+        nfix = max(2, min(8, slots))
+        if total < 40:
+            nfix = 1
+        base = round(total / nfix, 2) if nfix > 1 else total
+        trial = [base] * (nfix - 1)
+        if nfix > 1:
+            trial.append(round(total - base * (nfix - 1), 2))
+        else:
+            trial = [total]
+        amounts = _force_amounts_sum(trial, total) or [total]
+        kinds = [kind_pool[rng.randrange(len(kind_pool))] for _ in range(len(amounts))]
 
     used = set()
     out = []
-    for i in range(want):
-        amt = round(float(amounts[i]), 2)
+    for i, amt in enumerate(amounts):
+        amt = round(float(amt), 2)
         if amt <= 0:
             continue
         y, m = months[i % n_income]
-        kind = kinds[i]
+        kind = kinds[i] if i < len(kinds) else kind_pool[0]
         out.append(
             {
                 "date": _pick_expense_date(rng, y, m, used),
@@ -504,6 +552,30 @@ def auto_expenses_from_total(total, months, rng=None):
                 "counterparty": "",
             }
         )
+    if not out:
+        y, m = months[-1]
+        out.append(
+            {
+                "date": _pick_expense_date(rng, y, m, used),
+                "amount": total,
+                "summary": "转账支出",
+                "memo": "生活费",
+                "counterparty": "",
+            }
+        )
+    got = round(sum(x["amount"] for x in out), 2)
+    if out and abs(got - total) > 0.001:
+        out[-1]["amount"] = round(out[-1]["amount"] + (total - got), 2)
+        if out[-1]["amount"] <= 0:
+            out = [
+                {
+                    "date": out[-1]["date"],
+                    "amount": total,
+                    "summary": "转账支出",
+                    "memo": "生活费",
+                    "counterparty": "",
+                }
+            ]
     out.sort(key=lambda x: x["date"])
     return out
 
@@ -661,7 +733,7 @@ def process(cfg):
 
     amounts = None
     months = resolve_months(cfg)
-    n_rows = max(1, min(len(months), MAX_ROWS))
+    n_rows = max(1, min(len(months), MAX_MONTHS))
     months = months[:n_rows]
     rng = None
     seed = cfg.get("amount_seed")
@@ -678,12 +750,13 @@ def process(cfg):
         amounts = amounts + [amounts[-1]] * (n_rows - len(amounts))
 
     expenses = parse_expenses(cfg.get("expenses") or cfg.get("expense_items"), fallback_months=months)
-    if not expenses:
-        want_expense = parse_money(cfg.get("total_expense") or cfg.get("total_expenditure"), None)
-        if want_expense and want_expense > 0:
-            if rng is None:
-                rng = random.Random()
-            expenses = auto_expenses_from_total(want_expense, months, rng=rng)
+    want_expense = parse_money(cfg.get("total_expense") or cfg.get("total_expenditure"), None)
+    if not expenses and want_expense and want_expense > 0:
+        if rng is None:
+            rng = random.Random()
+        expenses = auto_expenses_from_total(want_expense, months, rng=rng)
+        if not expenses:
+            expenses = auto_expenses_from_total(want_expense, months, rng=random.Random(rng.random()))
     txns = build_transactions(months, amounts, expenses, counterparty_account, account_name)
     n_rows = max(1, min(len(txns), MAX_ROWS))
     txns = txns[:n_rows]
@@ -814,7 +887,8 @@ def process(cfg):
 
     draw_text(draw, (W / 2, canvas_h - 48), "-第1页/共1页-", font_small, fill=(60, 60, 60), anchor="ct")
 
-    im.save(out_path, format="PNG", optimize=True)
+    # 长时段大图 optimize 很慢，短图才压缩
+    im.save(out_path, format="PNG", optimize=canvas_h < 4000)
     meta = {
         "ok": True,
         "rendered": True,

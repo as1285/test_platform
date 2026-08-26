@@ -13,8 +13,9 @@
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260815-zaizhi',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
-    'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-auto-expense',
-    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad'
+    'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-long-range',
+    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
+    devices: '/js/admin/modules/devices.js?v=20260826-device-compat'
   };
 
   var PAGE_MODULE = {
@@ -44,6 +45,7 @@
     'analytics-register': 'analytics',
     'analytics-purchase': 'analytics',
     'analytics-tracking': 'analytics',
+    'analytics-devices': 'devices',
     'install-guide-stats': 'analytics',
     'share-stats': 'analytics',
     'channel-analysis': 'analytics'

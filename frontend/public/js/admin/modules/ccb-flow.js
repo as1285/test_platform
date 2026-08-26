@@ -2,6 +2,8 @@
 (function (global) {
   var lastResult = null;
   var lastMonths = [];
+  /** 最多 15 年，11 年可一次出完 */
+  var MAX_FLOW_MONTHS = 180;
 
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
@@ -217,8 +219,8 @@
     if (!months.length) {
       return { amounts: [], months: [], company: '', from: fromYm, to: toYm };
     }
-    if (months.length > 36) {
-      months = months.slice(months.length - 36);
+    if (months.length > MAX_FLOW_MONTHS) {
+      months = months.slice(months.length - MAX_FLOW_MONTHS);
     }
     var amounts = months.map(function (k) {
       return fmtMoney2(byMonth[k]);
@@ -258,7 +260,7 @@
     fetchAdmin(
       '/api/admin/ccb-flow/prefill?username=' +
         encodeURIComponent(username) +
-        '&tax_limit=500'
+        '&tax_limit=2000'
     )
       .then(function (r) {
         return r.json().then(function (j) {
@@ -334,8 +336,6 @@
         setStatus('预填失败：' + msg, true);
       });
   }
-
-  var MAX_FLOW_MONTHS = 36;
 
   function enumerateMonths(fromYm, toYm) {
     var fromIdx = ymToIndex(fromYm);
@@ -485,8 +485,10 @@
       setStatus('请选择起始月和结束月', true);
       return;
     }
+    var truncated = false;
     if (months.length > MAX_FLOW_MONTHS) {
       months = months.slice(months.length - MAX_FLOW_MONTHS);
+      truncated = true;
     }
     var amountList = buildAmountsForMonths(months.length);
     if (!amountList || !amountList.length) {
@@ -520,6 +522,8 @@
       months.length +
       ' 个月工资';
     if (expenseTotal) tipDraw += ' + 总支出 ' + expenseTotal + '（自动拆多笔）';
+    if (truncated) tipDraw += '（已截最近 ' + MAX_FLOW_MONTHS + ' 个月）';
+    if (months.length >= 60) tipDraw += '，时段较长请稍候';
     tipDraw += ' 绘制…';
     setStatus(tipDraw, false);
     var token = '';

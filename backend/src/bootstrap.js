@@ -13,6 +13,7 @@ const shebaoPhoto = require('./user/shebaoPhoto');
 const ylbxPs = require('./admin/ylbxPs');
 const ccbFlow = require('./admin/ccbFlow');
 const najiluQr = require('./admin/najiluQr');
+const deviceStats = require('./admin/deviceStats');
 const purchasePriceSurvey = require('./growth/purchasePriceSurvey');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
@@ -42,6 +43,7 @@ function buildApp() {
       ylbxPs.getHandlers(),
       ccbFlow.getHandlers(),
       najiluQr.getHandlers(),
+      deviceStats.getHandlers(),
       purchasePriceSurvey.getHandlers(),
       bankSalaryFlow.getHandlers()
     ),

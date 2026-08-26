@@ -17111,7 +17111,7 @@ async function handleAdminUserDataDetail(req, res) {
       var taxLimit = 120;
       if (req.query.tax_limit != null && String(req.query.tax_limit).trim() !== '') {
         var tl = parseInt(req.query.tax_limit, 10);
-        if (isFinite(tl) && tl > 0) taxLimit = Math.min(800, tl);
+        if (isFinite(tl) && tl > 0) taxLimit = Math.min(2000, tl);
       }
       const [taxRows] = await conn.execute(
         ADMIN_TAX_RECORD_SELECT_SQL +
@@ -17946,9 +17946,19 @@ async function handleAdminUserPricingAbc(req, res) {
 /** 管理端：可设专属价的套餐列表 */
 async function handleAdminUserPriceOfferCatalog(req, res) {
   try {
+    var prices = {};
+    try {
+      prices = (await getPricingAb().loadCatalogAmounts()) || {};
+    } catch (ePrices) {
+      prices = {};
+    }
+    var skus = getUserPriceOffers().listOfferableSkus().map(function (s) {
+      if (prices[s.id]) s.amount = String(prices[s.id]);
+      return s;
+    });
     return res.json({
       code: 200,
-      data: { skus: getUserPriceOffers().listOfferableSkus() }
+      data: { skus: skus }
     });
   } catch (e) {
     console.error('admin user price offer catalog', e);
@@ -18490,6 +18500,7 @@ async function handleAdminSettingsGet(req, res) {
         landing_ab: landingAb,
         sales_agent: salesAgentPublicPayload(salesAgent),
         pricing_ab: await getPricingAb().loadPricingAbParsed(true),
+        sku_catalog_prices: await getPricingAb().loadCatalogAmounts(true),
         activation_nudge: activationNudge
       }
     });
@@ -18515,6 +18526,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
   var hasSalesAgent = body.sales_agent != null && typeof body.sales_agent === 'object';
   var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
+  var hasSkuCatalogPrices = body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -18530,11 +18542,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasLandingAb &&
     !hasSalesAgent &&
     !hasPricingAb &&
+    !hasSkuCatalogPrices &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、套餐价格或激活引导弹窗配置'
     });
   }
 
@@ -18845,6 +18858,19 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasSkuCatalogPrices) {
+      try {
+        await getPricingAb().saveCatalogAmountsFromAdmin(body.sku_catalog_prices);
+      } catch (eSkuPriceSave) {
+        var skuPriceMsg =
+          eSkuPriceSave && eSkuPriceSave.message ? String(eSkuPriceSave.message) : '保存套餐价格失败';
+        return res.status(eSkuPriceSave && eSkuPriceSave.statusCode === 400 ? 400 : 500).json({
+          code: eSkuPriceSave && eSkuPriceSave.statusCode === 400 ? 400 : 500,
+          msg: skuPriceMsg
+        });
+      }
+    }
+
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -18881,6 +18907,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
+    outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true);
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {

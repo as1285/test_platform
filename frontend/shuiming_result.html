@@ -177,7 +177,7 @@
     <script src="/js/auth.js?v=20260825-meizu20pro"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/user-font-settings.js?v=20260826-iphone14-aug-ui" data-scope=".page-root"></script>
+    <script src="/js/user-font-settings.js?v=20260826-iphone14-row-gap" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -946,6 +946,33 @@
             color: var(--ufs-list-body-color, #666) !important;
             -webkit-text-fill-color: var(--ufs-list-body-color, #666) !important;
             opacity: 1 !important;
+        }
+
+        /*
+         * iPhone 14（不含 14 Pro）：所得项目小类 / 已申报税额 行距按原版收紧。
+         * 只改这两行及紧随其后的扣缴/收入块，其它机型沿用 4px。
+         */
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-row-subtype {
+            padding-top: 1px !important;
+            padding-bottom: 0 !important;
+        }
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-row-tax {
+            padding-top: 0 !important;
+            padding-bottom: 1px !important;
+        }
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-row-subtype + .list-row-with-arrow {
+            padding-top: 1px !important;
+            padding-bottom: 1px !important;
+        }
+        html.app-ios-iphone14:not(.app-ios-iphone14pro) body.page-shuiming-result #recordList .list-row-subtype + .list-row-with-arrow .list-row {
+            padding-top: 1px !important;
+            padding-bottom: 1px !important;
+        }
+        html.app-ios-iphone14:not(.app-ios-iphone14pro):not(.user-font-custom) body.page-shuiming-result #recordList .list-row-subtype .list-label,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro):not(.user-font-custom) body.page-shuiming-result #recordList .list-row-tax .list-label,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro):not(.user-font-custom) body.page-shuiming-result #recordList .list-row-subtype + .list-row-with-arrow .list-label,
+        html.app-ios-iphone14:not(.app-ios-iphone14pro):not(.user-font-custom) body.page-shuiming-result #recordList .list-row-subtype + .list-row-with-arrow .list-company {
+            line-height: 18px !important;
         }
 
 
@@ -1955,7 +1982,7 @@
                 listHtml += '<span class="list-title">' + escapeHtml(record.income_type || '') + '</span>';
                 listHtml += '<span class="list-date">' + escapeHtml(String(record.year) + '-' + month) + '</span>';
                 listHtml += '</div>';
-                listHtml += '<div class="list-row"><span class="list-label">所得项目小类：' + escapeHtml(subtypeShow) + '</span></div>';
+                listHtml += '<div class="list-row list-row-subtype"><span class="list-label">所得项目小类：' + escapeHtml(subtypeShow) + '</span></div>';
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
                 listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
@@ -1967,7 +1994,7 @@
                 listHtml += '<img class="list-arrow" src="/jt.jpg" alt="" width="10" loading="lazy" decoding="async">';
                 listHtml += '</div>';
                 listHtml +=
-                    '<div class="list-row"><span class="list-label">已申报税额：<span class="list-amount">' +
+                    '<div class="list-row list-row-tax"><span class="list-label">已申报税额：<span class="list-amount">' +
                     escapeHtml(String(record.tax_reported)) +
                     '</span>元</span></div>';
                 listHtml += detailHref ? '</a>' : '</div>';

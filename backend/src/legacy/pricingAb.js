@@ -6,6 +6,7 @@
 'use strict';
 
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
+var SETTING_KEY_SKU_PRICES = 'sku_catalog_prices_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
 /** 现售日卡：249 */
@@ -202,6 +203,38 @@ var LEGACY_CATALOG_SKUS = [
 ];
 
 var LIVE_CATALOG_SKUS = [SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM];
+var LIVE_SKU_IDS = LIVE_CATALOG_SKUS.map(function (s) {
+  return s.id;
+});
+
+function defaultCatalogAmounts() {
+  var map = {};
+  var i;
+  for (i = 0; i < LIVE_CATALOG_SKUS.length; i++) {
+    map[LIVE_CATALOG_SKUS[i].id] = String(LIVE_CATALOG_SKUS[i].amount);
+  }
+  return map;
+}
+
+function normalizeCatalogAmount(raw) {
+  var s = String(raw == null ? '' : raw).replace(/,/g, '').replace(/，/g, '').trim();
+  if (!s) return '';
+  var n = Number(s);
+  if (!isFinite(n) || n < 0.01 || n > 99999.99) return '';
+  return n.toFixed(2);
+}
+
+function normalizeCatalogAmounts(raw) {
+  var out = defaultCatalogAmounts();
+  if (!raw || typeof raw !== 'object') return out;
+  var i;
+  for (i = 0; i < LIVE_SKU_IDS.length; i++) {
+    var id = LIVE_SKU_IDS[i];
+    var v = normalizeCatalogAmount(raw[id]);
+    if (v) out[id] = v;
+  }
+  return out;
+}
 
 var DEFAULT_PRICING_AB = {
   enabled: true,
@@ -226,8 +259,13 @@ function cloneSku(s) {
   };
 }
 
-function cloneLiveCatalog() {
-  return LIVE_CATALOG_SKUS.map(cloneSku);
+function cloneLiveCatalog(amounts) {
+  var map = amounts && typeof amounts === 'object' ? amounts : null;
+  return LIVE_CATALOG_SKUS.map(function (s) {
+    var c = cloneSku(s);
+    if (map && map[c.id]) c.amount = String(map[c.id]);
+    return c;
+  });
 }
 
 /** UTF-8 中文被当成 Latin-1 再存回时会出现 æ/å/Ã 等乱码 */
@@ -461,6 +499,8 @@ function createPricingAb(deps) {
   var alipayNormalizeAmount = deps.alipayNormalizeAmount;
   var _cache = null;
   var _cacheAt = 0;
+  var _priceCache = null;
+  var _priceCacheAt = 0;
   var _tableReady = false;
 
   async function ensureAssignmentsTable(conn) {
@@ -493,17 +533,75 @@ function createPricingAb(deps) {
     }
   }
 
+  async function loadCatalogAmounts(force) {
+    var now = Date.now();
+    if (!force && _priceCache && now - _priceCacheAt < 10000) return _priceCache;
+    var out = defaultCatalogAmounts();
+    if (!pool) {
+      _priceCache = out;
+      _priceCacheAt = now;
+      return out;
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+        [SETTING_KEY_SKU_PRICES]
+      );
+      if (rows.length && rows[0].setting_value) {
+        out = normalizeCatalogAmounts(JSON.parse(String(rows[0].setting_value)));
+      }
+    } catch (e) {
+      /* keep defaults */
+    } finally {
+      conn.release();
+    }
+    _priceCache = out;
+    _priceCacheAt = now;
+    return out;
+  }
+
+  async function saveCatalogAmountsFromAdmin(body) {
+    var next = normalizeCatalogAmounts(body && typeof body === 'object' ? body : {});
+    var missing = LIVE_SKU_IDS.filter(function (id) {
+      return !normalizeCatalogAmount(next[id]);
+    });
+    if (missing.length) {
+      var err = new Error('套餐价格无效，请填写 0.01～99999.99');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!pool || typeof upsertAppSetting !== 'function') {
+      var err2 = new Error('无法保存套餐价格');
+      err2.statusCode = 500;
+      throw err2;
+    }
+    const conn = await pool.getConnection();
+    try {
+      await upsertAppSetting(conn, SETTING_KEY_SKU_PRICES, JSON.stringify(next));
+    } finally {
+      conn.release();
+    }
+    _priceCache = next;
+    _priceCacheAt = Date.now();
+    invalidateCache();
+    return next;
+  }
+
   async function loadPricingAbParsed(force) {
     var now = Date.now();
     if (!force && _cache && now - _cacheAt < 10000) return _cache;
+    var amounts = await loadCatalogAmounts(force);
+    var live = cloneLiveCatalog(amounts);
     var out = {
       enabled: DEFAULT_PRICING_AB.enabled,
       a_percent: DEFAULT_PRICING_AB.a_percent,
       b_percent: DEFAULT_PRICING_AB.b_percent,
       c_percent: DEFAULT_PRICING_AB.c_percent,
       treatment_percent: DEFAULT_PRICING_AB.treatment_percent,
-      control_skus: DEFAULT_PRICING_AB.control_skus.map(cloneSku),
-      treatment_skus: DEFAULT_PRICING_AB.treatment_skus.map(cloneSku)
+      control_skus: live.map(cloneSku),
+      treatment_skus: live.map(cloneSku),
+      catalog_amounts: amounts
     };
     if (!pool) {
       _cache = out;
@@ -531,9 +629,10 @@ function createPricingAb(deps) {
           out.b_percent = pct.b_percent;
           out.c_percent = pct.c_percent;
           out.treatment_percent = pct.treatment_percent;
-          /* 售卖目录以代码为准，忽略库里残留的周/月/小时档 */
-          out.control_skus = cloneLiveCatalog();
-          out.treatment_skus = cloneLiveCatalog();
+          /* 售卖目录以代码为准，金额以后台「套餐价格」为准 */
+          out.control_skus = cloneLiveCatalog(amounts);
+          out.treatment_skus = cloneLiveCatalog(amounts);
+          out.catalog_amounts = amounts;
         }
       }
     } catch (e) {
@@ -561,14 +660,16 @@ function createPricingAb(deps) {
       err.statusCode = 400;
       throw err;
     }
+    var amounts = await loadCatalogAmounts(true);
     var next = {
       enabled: body.enabled !== false && body.enabled !== 0 && body.enabled !== '0',
       a_percent: a,
       b_percent: b,
       c_percent: c,
       treatment_percent: b,
-      control_skus: cloneLiveCatalog(),
-      treatment_skus: cloneLiveCatalog()
+      control_skus: cloneLiveCatalog(amounts),
+      treatment_skus: cloneLiveCatalog(amounts),
+      catalog_amounts: amounts
     };
     const conn = await pool.getConnection();
     try {
@@ -777,7 +878,7 @@ function createPricingAb(deps) {
         variant: 'treatment',
         abc_variant: 'b',
         abc_source: 'disabled',
-        skus: cloneLiveCatalog(),
+        skus: cloneLiveCatalog(cfg.catalog_amounts),
         pricing_ab_enabled: false,
         forced_by_channel: false,
         force_client_abc: false
@@ -841,7 +942,7 @@ function createPricingAb(deps) {
       skus = cfg.control_skus.map(cloneSku);
     }
     if (!skus.length) {
-      skus = cloneLiveCatalog();
+      skus = cloneLiveCatalog(cfg.catalog_amounts);
       variant = 'treatment';
       abc = 'b';
       abcSource = abcSource || 'fallback_live';
@@ -890,6 +991,8 @@ function createPricingAb(deps) {
     DEFAULT_PRICING_AB: DEFAULT_PRICING_AB,
     loadPricingAbParsed: loadPricingAbParsed,
     savePricingAbFromAdmin: savePricingAbFromAdmin,
+    loadCatalogAmounts: loadCatalogAmounts,
+    saveCatalogAmountsFromAdmin: saveCatalogAmountsFromAdmin,
     invalidateCache: invalidateCache,
     resolveOfferForUser: resolveOfferForUser,
     pickSkuFromOffer: pickSkuFromOffer,
@@ -911,6 +1014,10 @@ function createPricingAb(deps) {
 module.exports = {
   createPricingAb: createPricingAb,
   SETTING_KEY_PRICING_AB: SETTING_KEY_PRICING_AB,
+  SETTING_KEY_SKU_PRICES: SETTING_KEY_SKU_PRICES,
+  LIVE_SKU_IDS: LIVE_SKU_IDS,
+  defaultCatalogAmounts: defaultCatalogAmounts,
+  normalizeCatalogAmounts: normalizeCatalogAmounts,
   DEFAULT_PRICING_AB: DEFAULT_PRICING_AB,
   resolveCoverLongerGrant: resolveCoverLongerGrant,
   resolvePricingAbVariant: resolvePricingAbVariant,

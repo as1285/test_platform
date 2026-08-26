@@ -16,6 +16,7 @@ const OPS_SETTING_KEYS = [
   'landing_ab_json',
   'sales_agent_json',
   'pricing_ab_json',
+  'sku_catalog_prices_json',
   'activation_nudge_json',
   'activation_batch_channels_json',
   'migration_activation_codes_no_expiry_v1',
