@@ -26,6 +26,7 @@ const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const adminDownline = require('../admin/downline');
 const settingsPolicy = require('../shared/settingsPolicy');
+const { addDaysToYmd, analyticsPeriodDateKeys } = require('../shared/ymd');
 const {
   consumeRateLimit,
   kvSet,
@@ -335,9 +336,8 @@ const REGISTER_SOURCE_OTHER_MAX = 64;
 /** 规范化注册来源渠道入参 */
 function normalizeRegisterSourceChannelInput(channel, otherText) {
   var c = channel != null ? String(channel).trim() : '';
-  /* 来源渠道改为可选，降低注册摩擦 */
   if (!c) {
-    return { value: null };
+    return { err: '请选择来源渠道' };
   }
   if (c === 'other') {
     var custom = otherText != null ? String(otherText).trim() : '';
@@ -355,11 +355,11 @@ function normalizeRegisterSourceChannelInput(channel, otherText) {
   return { value: c };
 }
 
-/** 校验注册来源渠道是否合法（空值允许） */
+/** 校验注册来源渠道是否合法（必填） */
 function validateRegisterSourceChannel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
-    return null;
+    return '请选择来源渠道';
   }
   if (c.indexOf('other:') === 0) {
     var custom = c.slice(6).trim();
@@ -16505,6 +16505,145 @@ async function handleAdminUsers(req, res) {
   }
 }
 
+/** 改名超过免费次数、且未永久免改名费的用户：按日统计个税修改次数 */
+var RENAME_WATCH_NAME_CHANGES_GT = 5;
+
+async function handleAdminRenameTaxDaily(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var dateKeys = analyticsPeriodDateKeys(period, chinaDatePartsNow().todayKey);
+    if (!dateKeys.length) {
+      return res.json({
+        code: 200,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
+          name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
+          exclude_rename_fee_exempt: true,
+          dates: [],
+          users: [],
+          day_totals: [],
+          user_count: 0,
+          period_tax_edits: 0
+        })
+      });
+    }
+    var startYmd = dateKeys[0];
+    var endYmd = dateKeys[dateKeys.length - 1];
+    var cnDayExpr = "DATE_FORMAT(DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR)), '%Y-%m-%d')";
+
+    var whereClauses = [
+      'users.list_hidden_at IS NULL',
+      nonGuestUsernameSql('users.username'),
+      'COALESCE(users.rename_fee_exempt, 0) = 0',
+      `(SELECT COUNT(*) FROM user_profile_change_logs upc
+        WHERE upc.username = users.username AND upc.field_key = 'real_name') > ?`
+    ];
+    var params = [RENAME_WATCH_NAME_CHANGES_GT];
+    appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+
+    const conn = await pool.getConnection();
+    var userRows = [];
+    var dailyByUser = {};
+    try {
+      const [pageRows] = await conn.execute(
+        `SELECT users.username, users.real_name,
+                (SELECT COUNT(*) FROM user_profile_change_logs upc
+                 WHERE upc.username = users.username AND upc.field_key = 'real_name') AS name_change_count
+         FROM users
+         WHERE ${whereClauses.join(' AND ')}
+         ORDER BY name_change_count DESC, users.username ASC
+         LIMIT 200`,
+        params
+      );
+      userRows = pageRows || [];
+      var usernames = userRows.map(function (r) {
+        return String(r.username || '');
+      }).filter(Boolean);
+      if (usernames.length) {
+        var placeholders = usernames
+          .map(function () {
+            return '?';
+          })
+          .join(',');
+        const [dailyRows] = await conn.query(
+          `SELECT tcl.user_id AS username, ${cnDayExpr} AS d, COUNT(*) AS cnt
+           FROM tax_record_change_logs tcl
+           WHERE tcl.user_id IN (${placeholders})
+             AND ${cnDayExpr} >= ? AND ${cnDayExpr} <= ?
+           GROUP BY tcl.user_id, ${cnDayExpr}`,
+          usernames.concat([startYmd, endYmd])
+        );
+        (dailyRows || []).forEach(function (row) {
+          var u = String(row.username || '');
+          var dk = formatDateKey(row.d);
+          if (!u || !dk) return;
+          if (!dailyByUser[u]) dailyByUser[u] = {};
+          dailyByUser[u][dk] = Number(row.cnt) || 0;
+        });
+      }
+    } finally {
+      conn.release();
+    }
+
+    var todayKey = chinaDateKeyNow();
+    var users = userRows.map(function (r) {
+      var u = String(r.username || '');
+      var daily = dateKeys.map(function (dk) {
+        return (dailyByUser[u] && dailyByUser[u][dk]) || 0;
+      });
+      var total = 0;
+      daily.forEach(function (n) {
+        total += n;
+      });
+      return {
+        username: u,
+        real_name: r.real_name != null ? String(r.real_name) : '',
+        name_change_count: Number(r.name_change_count) || 0,
+        daily: daily,
+        period_tax_edits: total,
+        today_tax_edits: (dailyByUser[u] && dailyByUser[u][todayKey]) || 0
+      };
+    });
+    users.sort(function (a, b) {
+      if (b.period_tax_edits !== a.period_tax_edits) return b.period_tax_edits - a.period_tax_edits;
+      if (b.name_change_count !== a.name_change_count) return b.name_change_count - a.name_change_count;
+      return a.username < b.username ? -1 : a.username > b.username ? 1 : 0;
+    });
+
+    var dayTotals = dateKeys.map(function (_dk, i) {
+      var s = 0;
+      users.forEach(function (u) {
+        s += u.daily[i] || 0;
+      });
+      return s;
+    });
+    var periodTaxEdits = 0;
+    dayTotals.forEach(function (n) {
+      periodTaxEdits += n;
+    });
+
+    var meta = conversionAnalyticsPeriodMeta(period);
+    meta.period_start = startYmd;
+    meta.period_end = endYmd;
+
+    res.json({
+      code: 200,
+      data: Object.assign(meta, {
+        name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
+        exclude_rename_fee_exempt: true,
+        dates: dateKeys,
+        users: users,
+        day_totals: dayTotals,
+        user_count: users.length,
+        period_tax_edits: periodTaxEdits,
+        today_key: todayKey
+      })
+    });
+  } catch (e) {
+    console.error('admin rename-tax-daily', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 var USER_DATA_GC_DELIM = '\x1f';
 
 /** split gc list */
@@ -21962,6 +22101,7 @@ function getHandlers() {
     handleAdminSettingsPost,
     handleAdminDeletedUsers,
     handleAdminUsers,
+    handleAdminRenameTaxDaily,
     handleAdminUserDataList,
     handleAdminUserDataDetail,
     handleAdminUsersDailyConversion,

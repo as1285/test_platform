@@ -114,4 +114,21 @@ describe('menuRegistry', () => {
     const pages = ADMIN_PAGE_DEFS.map((d) => d.page);
     expect(new Set(pages).size).toBe(pages.length);
   });
+
+  it('rename-tax-daily inherits users menu', () => {
+    const def = getPageDef('rename-tax-daily');
+    expect(def).toBeTruthy();
+    expect(def.menu_key).toBe('users');
+    expect(def.label).toBe('高频改名');
+    expect(def.assignable).toBe(false);
+    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'rename-tax-daily')).toBe(
+      true
+    );
+    expect(adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'rename-tax-daily')).toBe(
+      false
+    );
+    const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
+    const usersGroup = tree.menu_tree.find((g) => g.id === 'users');
+    expect(usersGroup.items.map((i) => i.page)).toContain('rename-tax-daily');
+  });
 });

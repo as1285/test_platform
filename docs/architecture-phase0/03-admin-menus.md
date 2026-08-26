@@ -52,6 +52,7 @@
 | page | 继承 menu_key | 说明 |
 |------|---------------|------|
 | `users-deleted` | `users` | 已删除账号 |
+| `rename-tax-daily` | `users` | 改名超过 5 次且未免改名费用户的每日个税修改次数 |
 | `user-login-log` | `login-log` | 普通用户登录流水 |
 
 ## 已废弃（勿再当作现行菜单）

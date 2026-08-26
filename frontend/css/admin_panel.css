@@ -2380,4 +2380,60 @@ tr.users-detail-row > td {
 .page-hint-details summary {
     color: var(--admin-slate);
 }
+.rename-tax-daily-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 720px;
+}
+.rename-tax-daily-table th,
+.rename-tax-daily-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--admin-border-light);
+    white-space: nowrap;
+}
+.rename-tax-daily-table th.col-user,
+.rename-tax-daily-table td.col-user {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--admin-surface);
+    min-width: 120px;
+}
+.rename-tax-daily-table thead th.col-user {
+    z-index: 3;
+    background: var(--admin-table-head-alt);
+}
+.rename-tax-daily-table th.day,
+.rename-tax-daily-table td.day {
+    text-align: center;
+    min-width: 42px;
+    padding: 6px 4px;
+}
+.rename-tax-daily-table th.day.is-today,
+.rename-tax-daily-table td.day.is-today {
+    border-left: 2px solid var(--admin-primary);
+}
+.rename-tax-daily-table td.day-mid {
+    background: var(--admin-warning-bg);
+    color: var(--admin-warning);
+    font-weight: 600;
+}
+.rename-tax-daily-table td.day-hot {
+    background: var(--admin-danger-bg);
+    color: var(--admin-danger);
+    font-weight: 600;
+}
+.rename-tax-daily-table tfoot td {
+    font-weight: 600;
+    background: var(--admin-surface-muted);
+}
+.rename-tax-daily-table .btn-rename-user {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--admin-primary);
+    cursor: pointer;
+    text-decoration: underline;
+    font: inherit;
+}
 

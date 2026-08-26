@@ -32,6 +32,7 @@
     'admin-accounts': 'accounts',
     'downline-admins': 'accounts',
     users: 'users',
+    'rename-tax-daily': 'users',
     'users-deleted': 'users',
     'user-data': 'user-data',
     'tax-records-edit': 'user-data',

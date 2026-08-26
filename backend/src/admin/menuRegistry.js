@@ -101,6 +101,15 @@ const ADMIN_PAGE_DEFS = [
   /* —— 用户 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
   {
+    page: 'rename-tax-daily',
+    menu_key: 'users',
+    label: '高频改名',
+    group: 'users',
+    module: 'users',
+    order: 20,
+    assignable: false
+  },
+  {
     page: 'users-deleted',
     menu_key: 'users',
     label: '已删除',

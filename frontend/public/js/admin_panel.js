@@ -1024,6 +1024,7 @@
                 'install-guide-stats',
                 'share-stats',
                 'users',
+                'rename-tax-daily',
                 'users-deleted',
                 'user-data',
                 'tax-records-edit',
@@ -1206,6 +1207,9 @@
             }
             if (pageKey === 'users') {
                 loadUsers();
+            }
+            if (pageKey === 'rename-tax-daily') {
+                loadRenameTaxDaily();
             }
             if (pageKey === 'users-deleted') {
                 loadDeletedUsers();
@@ -5412,6 +5416,142 @@
                 });
         }
 
+        function renameTaxDailyDayLabel(ymd) {
+            var s = String(ymd || '');
+            if (s.length >= 10) return s.slice(5);
+            return s;
+        }
+
+        function renameTaxDailyCellClass(count, isToday) {
+            var n = Number(count) || 0;
+            var cls = 'day';
+            if (isToday) cls += ' is-today';
+            if (n >= 30) cls += ' day-hot';
+            else if (n >= 10) cls += ' day-mid';
+            return cls;
+        }
+
+        function loadRenameTaxDaily() {
+            var sel = document.getElementById('renameTaxDailyDays');
+            var statEl = document.getElementById('renameTaxDailyStat');
+            var hintEl = document.getElementById('renameTaxDailyPeriodHint');
+            var thead = document.getElementById('renameTaxDailyThead');
+            var tbody = document.getElementById('renameTaxDailyTbody');
+            if (!tbody) return;
+            var days = analyticsPeriodVal(sel);
+            if (statEl) statEl.textContent = '加载中…';
+            adminFetch('api/admin/rename-tax-daily?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (!data || data.code !== 200 || !data.data) {
+                        if (statEl) statEl.textContent = (data && data.msg) || '加载失败';
+                        tbody.innerHTML = '<tr><td colspan="4">加载失败</td></tr>';
+                        return;
+                    }
+                    var d = data.data;
+                    var dates = d.dates || [];
+                    var users = d.users || [];
+                    var dayTotals = d.day_totals || [];
+                    var todayKey = d.today_key || '';
+                    if (statEl) {
+                        statEl.textContent =
+                            '共 ' +
+                            (d.user_count || 0) +
+                            ' 个账号（改名超过 ' +
+                            (d.name_changes_gt || 5) +
+                            ' 次，已排除永久免改名费），区间内个税修改 ' +
+                            (d.period_tax_edits || 0) +
+                            ' 次';
+                    }
+                    if (hintEl) {
+                        hintEl.innerHTML =
+                            window.AdminAnalyticsPeriod && AdminAnalyticsPeriod.hintHtml
+                                ? AdminAnalyticsPeriod.hintHtml(d)
+                                : '';
+                    }
+                    var head =
+                        '<tr>' +
+                        '<th class="col-user">账号</th>' +
+                        '<th>当前姓名</th>' +
+                        '<th>改名</th>' +
+                        '<th>区间合计</th>';
+                    dates.forEach(function (ymd) {
+                        var isToday = ymd === todayKey;
+                        head +=
+                            '<th class="day' +
+                            (isToday ? ' is-today' : '') +
+                            '" title="' +
+                            esc(ymd) +
+                            (isToday ? '（今天）' : '') +
+                            '">' +
+                            esc(renameTaxDailyDayLabel(ymd)) +
+                            '</th>';
+                    });
+                    head += '</tr>';
+                    if (thead) thead.innerHTML = head;
+
+                    if (!users.length) {
+                        tbody.innerHTML =
+                            '<tr><td colspan="' +
+                            (4 + dates.length) +
+                            '">该区间没有符合条件的账号</td></tr>';
+                        return;
+                    }
+                    var html = '';
+                    users.forEach(function (u) {
+                        html += '<tr>';
+                        html +=
+                            '<td class="col-user"><button type="button" class="btn-rename-user" data-u="' +
+                            esc(u.username) +
+                            '">' +
+                            esc(u.username) +
+                            '</button></td>';
+                        html += '<td>' + esc(u.real_name || '—') + '</td>';
+                        html += '<td>' + esc(String(u.name_change_count || 0)) + '</td>';
+                        html += '<td>' + esc(String(u.period_tax_edits || 0)) + '</td>';
+                        (u.daily || []).forEach(function (n, i) {
+                            var ymd = dates[i] || '';
+                            var cnt = Number(n) || 0;
+                            html +=
+                                '<td class="' +
+                                renameTaxDailyCellClass(cnt, ymd === todayKey) +
+                                '">' +
+                                (cnt > 0 ? esc(String(cnt)) : '<span style="color:#bbb;">—</span>') +
+                                '</td>';
+                        });
+                        html += '</tr>';
+                    });
+                    if (dayTotals.length) {
+                        html += '<tr>';
+                        html += '<td class="col-user">合计</td><td></td><td></td>';
+                        html += '<td>' + esc(String(d.period_tax_edits || 0)) + '</td>';
+                        dayTotals.forEach(function (n, i) {
+                            var ymd = dates[i] || '';
+                            var cnt = Number(n) || 0;
+                            html +=
+                                '<td class="' +
+                                renameTaxDailyCellClass(cnt, ymd === todayKey) +
+                                '">' +
+                                (cnt > 0 ? esc(String(cnt)) : '—') +
+                                '</td>';
+                        });
+                        html += '</tr>';
+                    }
+                    tbody.innerHTML = html;
+                    tbody.querySelectorAll('.btn-rename-user').forEach(function (btn) {
+                        btn.onclick = function () {
+                            jumpToRegisteredUser(btn.getAttribute('data-u'));
+                        };
+                    });
+                })
+                .catch(function () {
+                    if (statEl) statEl.textContent = '网络错误';
+                    tbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                });
+        }
+
         /* ========== User Management — Registered Users ========== */
         var pendingHighlightUsername = '';
 
@@ -6549,6 +6689,7 @@
             appearance: '外观',
             codes: '激活码',
             users: '注册用户',
+            'rename-tax-daily': '高频改名',
             'user-data': '用户数据',
             'tax-records-edit': '个税维护',
             'login-log': '管理登录',
@@ -6872,6 +7013,18 @@
         }
 
         document.getElementById('btnSearchUsers').onclick = function() { loadUsers(1); };
+        var btnRefreshRenameTaxDaily = document.getElementById('btnRefreshRenameTaxDaily');
+        if (btnRefreshRenameTaxDaily) {
+            btnRefreshRenameTaxDaily.onclick = function () {
+                loadRenameTaxDaily();
+            };
+        }
+        var renameTaxDailyDays = document.getElementById('renameTaxDailyDays');
+        if (renameTaxDailyDays) {
+            renameTaxDailyDays.addEventListener('analytics-period-change', function () {
+                loadRenameTaxDaily();
+            });
+        }
         var btnResetUsers = document.getElementById('btnResetUsers');
         if (btnResetUsers) {
             btnResetUsers.onclick = function () {

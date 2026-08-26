@@ -208,33 +208,7 @@
             line-height: 1.45;
         }
         .guest-tip[hidden] { display: none !important; }
-        .optional-block {
-            margin: 0 0 12px;
-            border: none;
-            border-radius: 0;
-            background: transparent;
-            padding: 0;
-        }
-        .optional-block > summary {
-            list-style: none;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--reg-ink-soft);
-            padding: 8px 0;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .optional-block > summary::-webkit-details-marker { display: none; }
-        .optional-block > summary::after {
-            content: "可选";
-            float: right;
-            font-size: 12px;
-            color: var(--reg-muted);
-            font-weight: 500;
-        }
-        .optional-block[open] > summary::after { content: "收起"; color: var(--reg-accent); }
-        .optional-block .field { margin-top: 4px; margin-bottom: 10px; }
+        .source-block[hidden] { display: none !important; }
         .disclaimer {
             margin: 18px 0 0;
             text-align: center;
@@ -375,25 +349,23 @@
                             <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
                         </div>
                     </div>
-                    <details class="optional-block" id="optionalSourceBlock">
-                        <summary>从哪了解到的</summary>
-                        <div class="field">
-                            <select id="registerSourceChannel" name="register_source_channel">
-                                <option value="">暂不选择</option>
-                                <option value="douyin">抖音</option>
-                                <option value="bilibili">B站</option>
-                                <option value="tieba">百度贴吧</option>
-                                <option value="zhihu">知乎</option>
-                                <option value="friend">朋友介绍</option>
-                                <option value="github">GitHub</option>
-                                <option value="other">其他</option>
-                            </select>
-                        </div>
+                    <div class="field source-block" id="registerSourceBlock">
+                        <label for="registerSourceChannel">从哪了解到的 <span class="req">*</span></label>
+                        <select id="registerSourceChannel" name="register_source_channel" required>
+                            <option value="">请选择来源渠道</option>
+                            <option value="douyin">抖音</option>
+                            <option value="bilibili">B站</option>
+                            <option value="tieba">百度贴吧</option>
+                            <option value="zhihu">知乎</option>
+                            <option value="friend">朋友介绍</option>
+                            <option value="github">GitHub</option>
+                            <option value="other">其他</option>
+                        </select>
                         <div class="field" id="registerSourceOtherWrap" hidden style="margin-top:10px;">
-                            <label for="registerSourceChannelOther">具体来源</label>
+                            <label for="registerSourceChannelOther">具体来源 <span class="req">*</span></label>
                             <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="如：小红书、微信群" maxlength="64" autocomplete="off">
                         </div>
-                    </details>
+                    </div>
                     <p class="soft-tip" id="registerSourceAutoTip" hidden style="margin-top:8px;"></p>
 
                     <button type="submit" class="btn-submit" id="btnSubmit">创建账号</button>
@@ -469,7 +441,7 @@
                         : '';
                 if (!src) return;
                 var channelEl = document.getElementById('registerSourceChannel');
-                var block = document.getElementById('optionalSourceBlock');
+                var block = document.getElementById('registerSourceBlock');
                 var tip = document.getElementById('registerSourceAutoTip');
                 var otherWrap = document.getElementById('registerSourceOtherWrap');
                 if (channelEl) {
@@ -478,7 +450,6 @@
                 }
                 if (otherWrap) otherWrap.hidden = true;
                 if (block) {
-                    block.open = false;
                     block.hidden = true;
                 }
                 if (tip) {
@@ -598,8 +569,8 @@
             }
             markInvalid(sel, false);
             if (isOther) {
-                var block = document.getElementById('optionalSourceBlock');
-                if (block) block.open = true;
+                var block = document.getElementById('registerSourceBlock');
+                if (block) block.hidden = false;
             }
         }
 
@@ -655,17 +626,21 @@
             if (lockedSrc) {
                 sourceChannel = lockedSrc;
             }
+            if (!sourceChannel) {
+                showErr('请选择从哪了解到的');
+                if (channelEl) markInvalid(channelEl, true);
+                var emptyBlock = document.getElementById('registerSourceBlock');
+                if (emptyBlock) emptyBlock.hidden = false;
+                return;
+            }
             var sourceChannelOther = '';
             if (sourceChannel === 'other') {
                 sourceChannelOther = otherEl ? otherEl.value.trim() : '';
                 if (!sourceChannelOther) {
                     showErr('选了「其他」的话，请写一下具体来源');
                     if (otherEl) markInvalid(otherEl, true);
-                    var block = document.getElementById('optionalSourceBlock');
-                    if (block) {
-                        block.hidden = false;
-                        block.open = true;
-                    }
+                    var block = document.getElementById('registerSourceBlock');
+                    if (block) block.hidden = false;
                     return;
                 }
             }
@@ -727,7 +702,7 @@
                     action: 'register',
                     username: username,
                     password: password,
-                    register_source_channel: sourceChannel || undefined,
+                    register_source_channel: sourceChannel,
                     register_source_channel_other: sourceChannelOther || undefined,
                     from_install_guide: fromInstallGuide ? 1 : 0,
                     from_share: fromShare ? 1 : 0,

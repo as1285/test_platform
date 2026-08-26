@@ -62,6 +62,12 @@ app.post(
   h.handleAdminSettingsPost
 );
 app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeletedUsers);
+app.get(
+  '/api/admin/rename-tax-daily',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminRenameTaxDaily
+);
 app.get('/api/admin/users', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUsers);
 app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-data'), h.handleAdminUserDataList);
 app.get(
