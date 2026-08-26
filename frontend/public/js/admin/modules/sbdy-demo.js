@@ -1794,7 +1794,4 @@
     pasteAndGenerate: pasteAndGenerate
   };
   global.loadSbdyDemoPage = loadPage;
-  global.sbdyDemoGenerate = generate;
-  global.sbdyDemoFillSample = fillSample;
-  global.sbdyDemoPasteGenerate = pasteAndGenerate;
 })(window);

@@ -640,7 +640,4 @@
     pasteAndGenerate: pasteAndGenerate
   };
   global.loadGjjDemoPage = loadPage;
-  global.gjjDemoGenerate = generate;
-  global.gjjDemoFillSample = fillSample;
-  global.gjjDemoPasteGenerate = pasteAndGenerate;
 })(window);

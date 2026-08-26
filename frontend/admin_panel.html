@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260814-ace2pro"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260825-rename-tax-daily">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260826-deadcode">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -182,11 +182,11 @@
                             <div class="form-field mt-12">
                                 <label for="agentAndroidApkDownloadUrl">代理专用安卓安装包（APK）</label>
                                 <div class="mine-ui-controls mt-6">
-                                    <input class="input-flex" type="text" id="agentAndroidApkDownloadUrl" maxlength="2048" placeholder="上传代理专用 APK（App 内不可注册、内置渠道），代理推广链接下载时使用">
+                                    <input class="input-flex" type="text" id="agentAndroidApkDownloadUrl" maxlength="2048" placeholder="上传代理专用 APK（默认允许注册、内置渠道），代理推广链接下载时使用">
                                     <input type="file" class="install-pkg-file" accept=".apk,application/vnd.android.package-archive" data-target="agentAndroidApkDownloadUrl" hidden>
                                     <button type="button" class="btn-file install-pkg-pick">上传 APK</button>
                                 </div>
-                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。默认<strong>允许 App 内注册</strong>（仍绑定渠道）；若需禁注册加 <code>--no-register</code>。用户从代理推广链接（<code>?ch=渠道ID</code> 且在上方隐藏闲鱼列表中）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p></details>
+                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。默认<strong>允许 App 内注册</strong>（仍绑定渠道）；若需禁注册加 <code>--no-register</code>。用户从代理推广链接（<code>?ch=渠道ID</code>）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p></details>
                             </div>
                             <div class="form-field mt-12">
                                 <label for="iosMobileconfigDownloadUrl">苹果描述文件（mobileconfig）</label>
@@ -1143,7 +1143,6 @@
                         <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
                             <button type="button" class="batch-tax-more-item" id="btnBatchTaxMoreFill">从已有回填</button>
                             <button type="button" class="batch-tax-more-item" id="btnBatchTaxMoreBonus">仅添加年终奖</button>
-                            <button type="button" class="batch-tax-more-item" id="btnBatchTaxQuickStart" style="display:none;">30秒体验</button>
                         </div>
                     </div>
                     <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;">退出修改</button>
@@ -2831,6 +2830,6 @@
     <script src="/js/admin/loader.js?v=20260825-rename-tax-daily"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260825-rename-tax-daily"></script>
+    <script src="/js/admin_panel.js?v=20260826-deadcode"></script>
 </body>
 </html>

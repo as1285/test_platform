@@ -4765,15 +4765,6 @@
                     if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
                 });
             }
-            var quickStart = document.getElementById('btnBatchTaxQuickStart');
-            if (quickStart && !quickStart.__adminBound) {
-                quickStart.__adminBound = true;
-                quickStart.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    if (typeof window.fillBatchTaxExample === 'function') window.fillBatchTaxExample();
-                    if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
-                });
-            }
         }
 
         function loadInstallTrackStats() {
@@ -7678,16 +7669,6 @@
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
-                        var landingAb = data.data.landing_ab;
-                        if (landingAb) {
-                            var landingEnabled = document.getElementById('landingAbEnabled');
-                            var landingPct = document.getElementById('landingAbCPercent');
-                            if (landingEnabled) landingEnabled.checked = landingAb.enabled !== false;
-                            if (landingPct) landingPct.value = String(
-                                landingAb.c_percent != null ? landingAb.c_percent : 50
-                            );
-                            updateLandingAbSplitHint();
-                        }
                         var pricingAb = data.data.pricing_ab;
                         if (pricingAb) {
                             var pricingEn = document.getElementById('pricingAbEnabled');
@@ -8111,20 +8092,6 @@
             }
         })();
 
-        function updateLandingAbSplitHint() {
-            /* 落地页占比已并入支付页 A/B/C，保留空函数避免旧引用报错 */
-        }
-
-        var landingAbCPercent = document.getElementById('landingAbCPercent');
-        if (landingAbCPercent) {
-            landingAbCPercent.addEventListener('input', updateLandingAbSplitHint);
-        }
-        var btnSaveLandingAb = document.getElementById('btnSaveLandingAb');
-        if (btnSaveLandingAb) {
-            btnSaveLandingAb.addEventListener('click', function () {
-                alert('落地页分流已并入「增长与触达 → 定价/支付页 A/B/C」，请在该处配置');
-            });
-        }
         var btnSaveActNudge = document.getElementById('btnSaveActNudge');
         if (btnSaveActNudge) {
             btnSaveActNudge.addEventListener('click', function () {

@@ -1854,12 +1854,7 @@ tr.users-detail-row > td {
 .col-w-140 { width: 140px; }
 .col-w-150 { width: 150px; }
 
-.text-muted { color: var(--admin-text-muted); }
 .max-w-760 { max-width: 760px; }
-.section-title-inline {
-    margin: 0 0 8px;
-    font-size: 16px;
-}
 .field-note {
     margin: 10px 0 8px;
     color: var(--admin-text-secondary);
