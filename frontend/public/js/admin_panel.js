@@ -7715,6 +7715,11 @@
                                 );
                             }
                             updatePricingAbcSplitHint();
+                            applySkuCatalogPricesToForm(
+                                data.data.sku_catalog_prices ||
+                                    (pricingAb && pricingAb.catalog_amounts) ||
+                                    {}
+                            );
                         }
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
@@ -7790,6 +7795,66 @@
                 .catch(function () {});
         }
 
+        var SKU_PRICE_FIELD_IDS = ['skuPriceDay', 'skuPriceWeek', 'skuPriceMonth', 'skuPricePerm'];
+
+        function collectSkuCatalogPricesFromForm() {
+            var out = {};
+            SKU_PRICE_FIELD_IDS.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var skuId = el.getAttribute('data-sku-id');
+                if (!skuId) return;
+                out[skuId] = String(el.value || '').trim();
+            });
+            return out;
+        }
+
+        function applySkuCatalogPricesToForm(map) {
+            map = map || {};
+            SKU_PRICE_FIELD_IDS.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var skuId = el.getAttribute('data-sku-id');
+                if (skuId && map[skuId] != null && String(map[skuId]).trim() !== '') {
+                    el.value = String(map[skuId]);
+                }
+            });
+            updateSkuCatalogPriceLabels(map);
+        }
+
+        function formatSkuYuan(raw) {
+            var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
+            if (!isFinite(n) || n <= 0) return '';
+            return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
+        }
+
+        function updateSkuCatalogPriceLabels(map) {
+            map = map || collectSkuCatalogPricesFromForm();
+            var day = formatSkuYuan(map['sku_249_1d']) || '249';
+            var week = formatSkuYuan(map['sku_300_7d']) || '300';
+            var month = formatSkuYuan(map['sku_398_30d']) || '398';
+            var perm = formatSkuYuan(map['sku_999_perm']) || '999';
+            var skuSel = document.getElementById('priceOfferSku');
+            if (skuSel) {
+                var opts = skuSel.options;
+                for (var i = 0; i < opts.length; i++) {
+                    if (opts[i].value === 'sku_249_1d') opts[i].text = '日卡（原价 ¥' + day + '）';
+                    if (opts[i].value === 'sku_300_7d') opts[i].text = '周卡（原价 ¥' + week + '）';
+                    if (opts[i].value === 'sku_398_30d') opts[i].text = '月卡（原价 ¥' + month + '）';
+                    if (opts[i].value === 'sku_999_perm') opts[i].text = '永久（原价 ¥' + perm + '）';
+                }
+            }
+            var abcSel = document.getElementById('pricingAbcAssignVariant');
+            if (abcSel) {
+                var aOpt = abcSel.querySelector('option[value="a"]');
+                var bOpt = abcSel.querySelector('option[value="b"]');
+                var label = 'A · ' + day + '日/' + week + '周/' + month + '月/' + perm + '永久';
+                var labelB = 'B · ' + day + '日/' + week + '周/' + month + '月/' + perm + '永久';
+                if (aOpt) aOpt.text = label;
+                if (bOpt) bOpt.text = labelB;
+            }
+        }
+
         function updatePricingAbcSplitHint() {
             var aEl = document.getElementById('pricingAbAPercent');
             var bEl = document.getElementById('pricingAbBPercent');
@@ -7849,6 +7914,51 @@
                         }
                     })
                     .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
+
+        var btnSaveSkuCatalogPrices = document.getElementById('btnSaveSkuCatalogPrices');
+        if (btnSaveSkuCatalogPrices) {
+            btnSaveSkuCatalogPrices.addEventListener('click', function () {
+                var btn = btnSaveSkuCatalogPrices;
+                var prices = collectSkuCatalogPricesFromForm();
+                var ids = ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm'];
+                for (var i = 0; i < ids.length; i++) {
+                    var n = Number(String(prices[ids[i]] || '').replace(/,/g, '').trim());
+                    if (!isFinite(n) || n < 0.01 || n > 99999.99) {
+                        alert('请为四档套餐填写 0.01～99999.99 的价格');
+                        return;
+                    }
+                }
+                btn.disabled = true;
+                var hint = document.getElementById('skuCatalogPriceHint');
+                if (hint) hint.textContent = '保存中…';
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ sku_catalog_prices: prices })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) hint.textContent = '已保存';
+                            applySkuCatalogPricesToForm(
+                                (data.data && data.data.sku_catalog_prices) || prices
+                            );
+                            alert('套餐价格已保存，购买页将按新价格下单');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
                         alert('网络错误');
                     })
                     .finally(function () {

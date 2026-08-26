@@ -18567,6 +18567,7 @@ async function handleAdminSettingsPost(req, res) {
       hasConversionAb ||
       hasLandingAb ||
       hasPricingAb ||
+      hasSkuCatalogPrices ||
       hasInvite ||
       hasActivationNudge
     ) {

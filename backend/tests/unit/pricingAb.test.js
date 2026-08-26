@@ -126,3 +126,25 @@ describe('pricingAb SKU mojibake repair via load', () => {
     );
   });
 });
+
+describe('sku catalog amounts', () => {
+  const { normalizeCatalogAmounts, defaultCatalogAmounts } = require('../../src/legacy/pricingAb');
+
+  it('keeps defaults when raw is empty', () => {
+    expect(normalizeCatalogAmounts(null)).toEqual(defaultCatalogAmounts());
+  });
+
+  it('overrides live sku prices and ignores junk', () => {
+    const next = normalizeCatalogAmounts({
+      sku_249_1d: '199',
+      sku_300_7d: '0',
+      sku_999_perm: '888.5',
+      sku_fake: '12'
+    });
+    expect(next['sku_249_1d']).toBe('199.00');
+    expect(next['sku_300_7d']).toBe('300.00');
+    expect(next['sku_398_30d']).toBe('398.00');
+    expect(next['sku_999_perm']).toBe('888.50');
+    expect(next.sku_fake).toBeUndefined();
+  });
+});

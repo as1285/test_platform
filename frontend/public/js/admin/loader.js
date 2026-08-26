@@ -13,7 +13,7 @@
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260815-zaizhi',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
-    'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-long-range',
+    'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-expense-sum',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat'
   };

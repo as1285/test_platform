@@ -50,7 +50,7 @@
                     <section>
                         <h2>支付页 A/B</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A / B</strong>：支付宝四档（249 日卡 / 300 周卡 / 398 月卡 / 999 永久）+ 激活码。
+                            <strong>A / B</strong>：支付宝四档（日卡 / 周卡 / 月卡 / 永久，价格见下方）+ 激活码。
                             A+B 必须为 100%。
                         </p></details>
                         <div class="form-row form-stack">
@@ -72,6 +72,29 @@
                             <p class="hint mt-6" id="pricingAbcSplitHint">A 50% · B 50% · C 0%（已停用）</p>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B</button>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack admin-panel-inset">
+                            <p class="hint mt-0"><strong>支付套餐价格</strong>：全站购买页、支付宝下单按这里的金额。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="skuPriceDay">日卡（元）</label>
+                                <input type="number" id="skuPriceDay" data-sku-id="sku_249_1d" min="0.01" max="99999.99" step="0.01" value="249">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="skuPriceWeek">周卡（元）</label>
+                                <input type="number" id="skuPriceWeek" data-sku-id="sku_300_7d" min="0.01" max="99999.99" step="0.01" value="300">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="skuPriceMonth">月卡（元）</label>
+                                <input type="number" id="skuPriceMonth" data-sku-id="sku_398_30d" min="0.01" max="99999.99" step="0.01" value="398">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="skuPricePerm">永久（元）</label>
+                                <input type="number" id="skuPricePerm" data-sku-id="sku_999_perm" min="0.01" max="99999.99" step="0.01" value="999">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveSkuCatalogPrices">保存套餐价格</button>
+                                <span class="hint" id="skuCatalogPriceHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
                         <div class="form-row form-stack admin-panel-inset">
@@ -2924,6 +2947,6 @@
     <script src="/js/admin/loader.js?v=20260826-device-compat"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260826-device-compat"></script>
+    <script src="/js/admin_panel.js?v=20260826-sku-prices"></script>
 </body>
 </html>

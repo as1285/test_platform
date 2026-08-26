@@ -562,6 +562,10 @@
         if (meta.total_income != null) tip += ' · 总收入 ' + meta.total_income;
         if (meta.total_expense != null) tip += ' · 总支出 ' + meta.total_expense;
         if (meta.period) tip += ' · ' + meta.period;
+        if (expenseTotal && !(parseMoneyNum(meta.total_expense) > 0)) {
+          setStatus(tip + '（支出未写入，请再生成一次）', true);
+          return;
+        }
         setStatus(tip, false);
       })
       .catch(function (e) {

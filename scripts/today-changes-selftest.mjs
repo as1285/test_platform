@@ -260,8 +260,23 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', '249 日卡 / 300 周卡'],
-  'admin offer four-sku'
+  ['sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', 'btnSaveSkuCatalogPrices', '支付套餐价格'],
+  'admin offer four-sku + catalog prices'
+);
+mustInclude(
+  'backend/src/legacy/pricingAb.js',
+  ['sku_catalog_prices_json', 'saveCatalogAmountsFromAdmin', 'loadCatalogAmounts', 'catalog_amounts'],
+  'pricing catalog amounts persist'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['sku_catalog_prices', 'saveCatalogAmountsFromAdmin', 'hasSkuCatalogPrices'],
+  'admin settings sku catalog prices'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ['collectSkuCatalogPricesFromForm', 'btnSaveSkuCatalogPrices', 'sku_catalog_prices'],
+  'admin panel save sku catalog prices'
 );
 
 const purchase = read('frontend/purchase.html');
