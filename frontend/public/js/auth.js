@@ -1074,10 +1074,24 @@
     );
   }
 
+  /** 12 / 13 Pro Max / 14 Plus 同逻辑屏 428×926（含 dpr 折回）。 */
+  function isIPhone428x926Viewport() {
+    var sides = getIOSLogicalScreenSides();
+    if (!sides) {
+      return false;
+    }
+    return (
+      sides.shortSide >= 426 &&
+      sides.shortSide <= 430 &&
+      sides.longSide >= 922 &&
+      sides.longSide <= 930
+    );
+  }
+
   /**
    * iPhone 12 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大。
    * UA：iPhone13,4；逻辑屏约 428×926（容差）。
-   * 13 Pro Max（iPhone14,3）同分辨率，UA 能区分时排除。
+   * 13 Pro Max（iPhone14,3）同分辨率，UA / Cordova model 能区分时排除。
    */
   function isIPhone12ProMaxClient() {
     if (!isLikelyIOSViewportClient()) {
@@ -1086,25 +1100,35 @@
     if (isIPhone15PlusProMaxLikeClient()) {
       return false;
     }
-    var ua = navigator.userAgent || '';
+    var ua = clientUaBlob();
     if (/iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(ua)) {
       return false;
     }
     if (/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(ua)) {
       return true;
     }
-    try {
-      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
-      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
-      if (!sw || !sh) {
-        return false;
-      }
-      var shortSide = Math.min(sw, sh);
-      var longSide = Math.max(sw, sh);
-      return shortSide >= 426 && shortSide <= 430 && longSide >= 922 && longSide <= 930;
-    } catch (e) {
+    return isIPhone428x926Viewport();
+  }
+
+  /**
+   * iPhone 13 Pro Max（iPhone14,3，428×926 刘海）。
+   * Safari UA 常无型号；Cordova 用 device.model。同屏 12 PM / 14 Plus 无型号时也走此档修底栏。
+   */
+  function isIPhone13ProMaxClient() {
+    if (!isLikelyIOSViewportClient()) {
       return false;
     }
+    if (isIPhone15PlusProMaxLikeClient() || isIPhone16ProMaxClient() || isIPhone17ProMaxClient()) {
+      return false;
+    }
+    var ua = clientUaBlob();
+    if (/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*13\s*Pro\s*Max|iPhone14,3\b|iPhone\s*14\s*Plus|iPhone14,8\b/i.test(ua)) {
+      return true;
+    }
+    return isIPhone428x926Viewport();
   }
 
   /**
@@ -1140,6 +1164,23 @@
       }
     } catch (eCls) {}
     return isIPhone15PlusProMaxLikeClient();
+  }
+
+  /**
+   * iPhone 13 Pro Max：胶囊被 closeIosBottomNavExtraGap 按 screen.height 拽出屏，
+   * 只剩图标顶边，点不到。铺满底边并垫 Home Indicator，与 15 Pro Max 同一套 dock。
+   */
+  function isIPhone13ProMaxDockNavClient() {
+    try {
+      if (document.documentElement.classList.contains('app-ios-iphone13promax')) {
+        return true;
+      }
+    } catch (eCls) {}
+    return isIPhone13ProMaxClient();
+  }
+
+  function isIPhoneDockBottomNavClient() {
+    return isIPhone15ProMaxDockNavClient() || isIPhone13ProMaxDockNavClient();
   }
 
   /**
@@ -2685,12 +2726,17 @@
       'padding-bottom:8px!important;' +
       'margin-bottom:0!important;' +
       '}' +
-      'html.app-ios-client.app-ios-iphone15promax{--bottom-nav-side:0px!important;--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;--bottom-nav-radius:0px!important;--bottom-nav-clearance:calc(62px + env(safe-area-inset-bottom, 34px))!important;}' +
-      'html.app-ios-client.app-ios-iphone15promax body.page-shouye,html.app-ios-client.app-ios-iphone15promax body.page-daiban,html.app-ios-client.app-ios-iphone15promax body.page-bancha,html.app-ios-client.app-ios-iphone15promax body.page-message,html.app-ios-client.app-ios-iphone15promax body.page-mine{--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;}' +
+      'html.app-ios-client.app-ios-iphone15promax,html.app-ios-client.app-ios-iphone13promax{--bottom-nav-side:0px!important;--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;--bottom-nav-radius:0px!important;--bottom-nav-clearance:calc(62px + env(safe-area-inset-bottom, 34px))!important;}' +
+      'html.app-ios-client.app-ios-iphone15promax body.page-shouye,html.app-ios-client.app-ios-iphone15promax body.page-daiban,html.app-ios-client.app-ios-iphone15promax body.page-bancha,html.app-ios-client.app-ios-iphone15promax body.page-message,html.app-ios-client.app-ios-iphone15promax body.page-mine,' +
+      'html.app-ios-client.app-ios-iphone13promax body.page-shouye,html.app-ios-client.app-ios-iphone13promax body.page-daiban,html.app-ios-client.app-ios-iphone13promax body.page-bancha,html.app-ios-client.app-ios-iphone13promax body.page-message,html.app-ios-client.app-ios-iphone13promax body.page-mine{--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;}' +
       'html.app-ios-client.app-ios-iphone15promax body > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body > .bottom-nav.ios-device,' +
       'html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav,' +
       'html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav,' +
-      'html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device{' +
+      'html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone13promax body > .bottom-nav,html.app-ios-client.app-ios-iphone13promax body > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone13promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone13promax body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone13promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone13promax body.page-message > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav.ios-device{' +
       'left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;' +
       'border-radius:0!important;height:auto!important;min-height:54px!important;max-height:none!important;' +
       'padding-top:8px!important;padding-bottom:max(8px,env(safe-area-inset-bottom,34px))!important;' +
@@ -2758,13 +2804,17 @@
       }
     } catch (eIos) {}
 
-    var dock15Max = false;
+    var dockNav = false;
     try {
-      dock15Max = isIPhone15ProMaxDockNavClient();
+      dockNav = isIPhoneDockBottomNavClient();
     } catch (eDock) {}
-    if (dock15Max) {
+    if (dockNav) {
       try {
-        document.documentElement.classList.add('app-ios-iphone15promax');
+        if (isIPhone13ProMaxDockNavClient()) {
+          document.documentElement.classList.add('app-ios-iphone13promax');
+        } else {
+          document.documentElement.classList.add('app-ios-iphone15promax');
+        }
         nav.style.setProperty('position', 'fixed', 'important');
         nav.style.setProperty('left', '0', 'important');
         nav.style.setProperty('right', '0', 'important');
@@ -2791,6 +2841,7 @@
         nav.style.setProperty('transform', 'none', 'important');
         nav.style.setProperty('-webkit-transform', 'none', 'important');
         nav.style.setProperty('translate', 'none', 'important');
+        nav.style.setProperty('overflow', 'visible', 'important');
         nav.style.setProperty('z-index', '10050', 'important');
         nav.style.setProperty('pointer-events', 'auto', 'important');
         document.documentElement.style.setProperty('--bottom-nav-side', '0px');
@@ -2890,7 +2941,7 @@
   function closeIosBottomNavExtraGap(nav, wantGap) {
     if (!nav) return;
     try {
-      if (isIPhone15ProMaxDockNavClient()) {
+      if (isIPhoneDockBottomNavClient()) {
         return;
       }
     } catch (eDock) {}
@@ -2919,6 +2970,22 @@
     } catch (eH) {}
     if (!pinH) return;
     var rect = nav.getBoundingClientRect();
+    /*
+     * 13 Pro Max 等：layout 视口比 screen.height 矮的是顶部刘海，不是底边空隙。
+     * 若底栏已经贴在 visualViewport 底上，再按 screen.height 下拉会把 TAB 拽出屏。
+     */
+    try {
+      var visibleBottom = window.innerHeight || 0;
+      if (window.visualViewport) {
+        var vvEdge = Math.round(
+          (window.visualViewport.height || 0) + (window.visualViewport.offsetTop || 0)
+        );
+        if (vvEdge > 0) visibleBottom = vvEdge;
+      }
+      if (visibleBottom && rect.bottom >= visibleBottom - wantGap - 4) {
+        return;
+      }
+    } catch (eVis) {}
     var gap = pinH - rect.bottom;
     if (!(gap > wantGap + 2)) return;
     var cs = window.getComputedStyle(nav);
@@ -3082,6 +3149,7 @@
       var iosIPhone14Pro = iosClient && isIPhone14ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhone13 = iosClient && isIPhone13Client();
+      var iosIPhone13ProMax = iosClient && isIPhone13ProMaxClient();
       var iosIPhone12Pro = iosClient && isIPhone12ProLikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
       var iosIPhone12ProMax = iosClient && isIPhone12ProMaxClient();
@@ -3439,6 +3507,9 @@
       }
       if (iosIPhone13) {
         document.documentElement.classList.add('app-ios-iphone13');
+      }
+      if (iosIPhone13ProMax) {
+        document.documentElement.classList.add('app-ios-iphone13promax');
       }
       if (iosIPhone12Pro) {
         document.documentElement.classList.add('app-ios-iphone12pro');

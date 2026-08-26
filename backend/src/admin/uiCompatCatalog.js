@@ -119,6 +119,21 @@ var MODELS = [
     ]
   },
   {
+    id: 'iphone-13-promax',
+    platform: 'ios',
+    family: 'apple',
+    label: 'iPhone 13 Pro Max',
+    match: ['iPhone\\s*13\\s*Pro\\s*Max', 'iPhone14,3'],
+    issues: [
+      {
+        page: 'nav',
+        title: '底栏被 Home Indicator 裁掉',
+        summary: '视口比 screen 矮一截刘海时按 screen.height 下拉会把 TAB 拽出屏；铺满底边并垫 safe-area。',
+        since: '2026-08-26'
+      }
+    ]
+  },
+  {
     id: 'iphone-14',
     platform: 'ios',
     family: 'apple',

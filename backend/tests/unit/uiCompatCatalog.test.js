@@ -17,6 +17,10 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(catalog.modelMatchesBlob(mate60, 'HUAWEI Mate 70 PLA-AL00')).toBe(false);
     expect(catalog.modelMatchesBlob(iphone13, 'iPhone 13 iPhone14,5')).toBe(true);
     expect(catalog.modelMatchesBlob(iphone13, 'iPhone 13 Pro iPhone14,2')).toBe(false);
+    expect(catalog.modelMatchesBlob(iphone13, 'iPhone 13 Pro Max iPhone14,3')).toBe(false);
+    const iphone13pm = catalog.listCatalogModels().find((m) => m.id === 'iphone-13-promax');
+    expect(catalog.modelMatchesBlob(iphone13pm, 'iPhone 13 Pro Max iPhone14,3')).toBe(true);
+    expect(catalog.modelMatchesBlob(iphone13pm, 'iPhone 13 iPhone14,5')).toBe(false);
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 2211133C')).toBe(true);
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 Pro 2210132C')).toBe(false);
   });

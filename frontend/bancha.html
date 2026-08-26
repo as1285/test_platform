@@ -34,10 +34,28 @@
                     document.documentElement.classList.add('app-top-safe-shell');
                     document.documentElement.classList.add('app-ios-iphone15promax');
                 }
+                var ip13pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
+                if (!ip13pm && /iPhone|iPad|iPod/i.test(u) && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u) && !ip15pm) {
+                    try {
+                        var sw13 = Math.min(screen.width || 0, screen.height || 0);
+                        var sh13 = Math.max(screen.width || 0, screen.height || 0);
+                        var dpr13 = window.devicePixelRatio || 1;
+                        if (dpr13 >= 2 && sw13 >= 700) {
+                            sw13 = Math.round(sw13 / dpr13);
+                            sh13 = Math.round(sh13 / dpr13);
+                        }
+                        ip13pm = sw13 >= 426 && sw13 <= 430 && sh13 >= 922 && sh13 <= 930;
+                    } catch (e13) {}
+                }
+                if (ip13pm) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-ios-iphone13promax');
+                }
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260824-mate60ark6"></script>
+    <script src="/js/auth.js?v=20260826-iphone13pm"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#2b81f2">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -316,7 +334,7 @@
             font-weight: 500;
         }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260823-iphone15pm">
+    <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260810-bancha-icons-30" defer></script>
 </head>
 <body class="page-bancha">

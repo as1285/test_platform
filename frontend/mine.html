@@ -43,6 +43,22 @@
                     if (ip15pm) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
                     }
+                    var ip13pm = /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
+                    if (!ip13pm && !ip15pm && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u)) {
+                        try {
+                            var sw13 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh13 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr13 = window.devicePixelRatio || 1;
+                            if (dpr13 >= 2 && sw13 >= 700) {
+                                sw13 = Math.round(sw13 / dpr13);
+                                sh13 = Math.round(sh13 / dpr13);
+                            }
+                            ip13pm = sw13 >= 426 && sw13 <= 430 && sh13 >= 922 && sh13 <= 930;
+                        } catch (e13) {}
+                    }
+                    if (ip13pm) {
+                        document.documentElement.classList.add('app-ios-iphone13promax');
+                    }
                 }
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
@@ -127,7 +143,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260824-mate60ark6"></script>
+    <script src="/js/auth.js?v=20260826-iphone13pm"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -152,7 +168,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260823-iphone15pm">
+    <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -716,7 +732,9 @@
             bottom: 8px !important;
         }
         html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
-        html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device {
+        html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device,
+        html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav.ios-device {
             left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
