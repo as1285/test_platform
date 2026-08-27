@@ -305,7 +305,7 @@ mustInclude(
 mustInclude(
   'backend/src/legacy/monolith.js',
   [
-    'var feeOn = renameFeePolicy.isRenameFeeCharged(feeCfg.amount);',
+    'if (!renameFeePolicy.isRenameFeeCharged(renameFeeCfg.amount))',
     '改名费用为 0，无需付款'
   ],
   'rename fee 0 skips paywall and alipay create'
@@ -487,7 +487,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-mi14pro-e1bg', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -1028,7 +1028,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260827-cend-sync', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260827-mi14pro-e1bg', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1175,7 +1175,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260827-cend-sync'],
+  ['auth.js?v=20260827-mi14pro-e1bg'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
