@@ -1964,7 +1964,7 @@
             <img
                 id="headerImg"
                 class="mine-e1-img"
-                src="/img/mine/e1_01.png?v=20260802-e1fix"
+                src="/img/mine/e1_01.png?v=20260827-e1r2"
                 alt="个人中心"
                 width="1284"
                 height="2127"
@@ -1973,7 +1973,7 @@
                 (function () {
                     var hi = document.getElementById('headerImg');
                     if (!hi) return;
-                    var v = '?v=20260802-e1fix';
+                    var v = '?v=20260827-e1r2';
                     try {
                         var src = '/img/mine/e1_01.png' + v;
                         if (String(localStorage.getItem('token') || '').trim()) {
@@ -1984,6 +1984,57 @@
                         var av0 = document.getElementById('mate60AvatarFixed');
                         if (av0) av0.src = src;
                     } catch (e) {}
+                })();
+            </script>
+            <script data-mine-e1-selfheal="1">
+                (function () {
+                    /*
+                     * e1 大底图自愈：小米 14 Pro HyperOS 2 等机型会把这张 1284×2127 大图
+                     * 缓存成坏档或解码失败（小图正常、整片只剩底色）。失败时换参重拉，
+                     * 连续两次仍失败则退级 750px 副本（@sm，路径不同可绕开坏缓存）。
+                     */
+                    var hi = document.getElementById('headerImg');
+                    if (!hi) return;
+                    var tries = 0;
+                    function currentBase() {
+                        var cur = String(hi.getAttribute('src') || hi.src || '');
+                        return cur.split('?')[0];
+                    }
+                    function retry() {
+                        var base = currentBase();
+                        if (!base || tries >= 3) return;
+                        tries += 1;
+                        if (tries >= 3 && base.indexOf('@sm') < 0) {
+                            base = base.replace(/\.png$/i, '@sm.png');
+                        }
+                        hi.src = base + '?r=' + tries + '-' + Date.now();
+                    }
+                    function markOk() {
+                        if (currentBase().indexOf('@sm') >= 0) {
+                            window.__mineE1ForceSm = true;
+                        }
+                        tries = 0;
+                    }
+                    function verify() {
+                        if (!hi.complete) return;
+                        if (!(hi.naturalWidth > 0 && hi.naturalHeight > 0)) {
+                            retry();
+                            return;
+                        }
+                        if (hi.decode) {
+                            var seen = hi.currentSrc || hi.src;
+                            hi.decode().then(markOk).catch(function () {
+                                if ((hi.currentSrc || hi.src) !== seen) return;
+                                retry();
+                            });
+                        } else {
+                            markOk();
+                        }
+                    }
+                    hi.addEventListener('error', retry);
+                    hi.addEventListener('load', verify);
+                    setTimeout(verify, 0);
+                    setTimeout(verify, 1600);
                 })();
             </script>
             <script>
@@ -2036,7 +2087,7 @@
                     <span class="user-tax-label">纳税人识别号</span>
                     <span class="user-tax-value" id="userTaxIdText">--</span>
                     <button type="button" class="mine-ov-eye tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
-                        <img id="mineYanIcon" src="/img/mine/yan-b.png?v=20260802-e1fix" alt="">
+                        <img id="mineYanIcon" src="/img/mine/yan-b.png?v=20260827-e1r2" alt="">
                     </button>
                 </div>
                 <div id="mineProfileEditHit" hidden aria-hidden="true"></div>
@@ -2210,17 +2261,19 @@
                 else if (tow === 1) base = female ? 'e1_2' : 'e1_1';
                 else base = female ? 'e1_4' : 'e1_3';
                 if (fam) base += 'r';
-                hi.src = '/img/mine/' + base + '.png?v=20260802-e1fix';
+                /* 自愈逻辑判定大图在本机废掉时，后续切换直接用 750px 副本 */
+                if (window.__mineE1ForceSm) base += '@sm';
+                hi.src = '/img/mine/' + base + '.png?v=20260827-e1r2';
                 var avFix = document.getElementById('mate60AvatarFixed');
                 if (avFix) {
-                    avFix.src = '/img/mine/' + (female ? 'e1_02' : 'e1_01') + '.png?v=20260802-e1fix';
+                    avFix.src = '/img/mine/' + (female ? 'e1_02' : 'e1_01') + '.png?v=20260827-e1r2';
                 }
             }
 
             function syncMineYanIcon() {
                 var img = document.getElementById('mineYanIcon');
                 if (!img) return;
-                var v = '?v=20260802-e1fix';
+                var v = '?v=20260827-e1r2';
                 img.src = (mineTaxRevealState ? '/img/mine/yan-k.png' : '/img/mine/yan-b.png') + v;
             }
 

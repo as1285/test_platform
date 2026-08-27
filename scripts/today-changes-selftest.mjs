@@ -531,6 +531,16 @@ mustInclude(
   'mine_v2.html xiaomi 14 pro first-paint'
 );
 mustInclude(
+  'frontend/mine.html',
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
+  'mine.html e1 self-heal + fresh cache stamp'
+);
+mustInclude(
+  'frontend/mine_v2.html',
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
+  'mine_v2.html e1 self-heal + fresh cache stamp'
+);
+mustInclude(
   'frontend/public/js/auth.js',
   ['isXiaomi13ProClient', '2210132[CGEI]', 'app-android-xiaomi-13pro', 'isXiaomi13ProClient()', 'isXiaomi13Client()', 'html.app-android-xiaomi-13.app-top-safe-shell'],
   'auth.js xiaomi 13 pro immersive top'

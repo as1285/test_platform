@@ -43,4 +43,14 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
       expect(html).toContain('html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine');
     });
   });
+
+  it('mine pages self-heal the big e1 image (corrupt cache / decode fail)', () => {
+    [mine, mineV2].forEach((html) => {
+      expect(html).toContain('data-mine-e1-selfheal');
+      expect(html).toContain('@sm.png');
+      expect(html).toContain('__mineE1ForceSm');
+      expect(html).toContain('?v=20260827-e1r2');
+      expect(html).not.toContain('20260802-e1fix');
+    });
+  });
 });
