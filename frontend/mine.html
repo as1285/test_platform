@@ -69,14 +69,17 @@
                     document.documentElement.classList.add('app-top-safe-shell');
                     document.documentElement.classList.remove('app-android-mi-family');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                    /* HyperOS 2 大图能 decode 但不绘：首屏锁 750px + CSS 背景 */
+                    window.__mineE1ForceSm = true;
                     if (!document.getElementById('xiaomi14proMineFirstPaint')) {
                         var mi14Fp = document.createElement('style');
                         mi14Fp.id = 'xiaomi14proMineFirstPaint';
                         mi14Fp.setAttribute('data-xiaomi14pro-mine-firstpaint', '1');
+                        mi14Fp.setAttribute('data-xiaomi14pro-mine-e1-paint', '1');
                         mi14Fp.textContent =
                             'html.app-android-xiaomi-14pro body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;background-color:#f5f6fa!important;background-image:none!important;}' +
-                            'html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:visible!important;background:transparent!important;container-type:normal!important;width:100%!important;}' +
-                            'html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas>img,html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:fill!important;position:relative!important;top:auto!important;transform:none!important;}' +
+                            'html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:visible!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260827-e1r3)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;aspect-ratio:1284/2127!important;container-type:normal!important;width:100%!important;}' +
+                            'html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas>img,html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:fill!important;position:relative!important;top:auto!important;transform:none!important;opacity:0!important;}' +
                             'html.app-android-xiaomi-14pro body.page-mine .mine-e1-layer{top:0!important;}';
                         document.head.appendChild(mi14Fp);
                     }
@@ -161,7 +164,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260827-mi14pro-e1"></script>
+    <script src="/js/auth.js?v=20260827-mi14pro-e1bg"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -638,7 +641,10 @@
         html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas {
             padding-top: 0 !important;
             overflow: visible !important;
-            background: transparent !important;
+            background-color: #f5f6fa !important;
+            background-size: 100% 100% !important;
+            background-repeat: no-repeat !important;
+            aspect-ratio: 1284 / 2127;
             container-type: normal;
             width: 100%;
         }
@@ -649,6 +655,7 @@
             width: 100% !important;
             height: auto !important;
             max-height: none !important;
+            opacity: 0 !important;
         }
         html.app-android-xiaomi-14pro body.page-mine .mine-e1-layer {
             top: 0 !important;
@@ -2020,7 +2027,7 @@
             <img
                 id="headerImg"
                 class="mine-e1-img"
-                src="/img/mine/e1_01.png?v=20260827-e1r2"
+                src="/img/mine/e1_01.png?v=20260827-e1r3"
                 alt="个人中心"
                 width="1284"
                 height="2127"
@@ -2029,15 +2036,29 @@
                 (function () {
                     var hi = document.getElementById('headerImg');
                     if (!hi) return;
-                    var v = '?v=20260827-e1r2';
+                    var v = '?v=20260827-e1r3';
+                    var sm = false;
                     try {
-                        if (!String(localStorage.getItem('token') || '').trim()) {
-                            hi.src = '/img/mine/e1_01.png' + v;
-                            return;
+                        sm = !!(window.__mineE1ForceSm || document.documentElement.classList.contains('app-android-xiaomi-14pro'));
+                    } catch (eSm) {}
+                    if (sm) window.__mineE1ForceSm = true;
+                    try {
+                        var base = 'e1_01';
+                        if (String(localStorage.getItem('token') || '').trim()) {
+                            base = Number(localStorage.getItem('gender')) === 2 ? 'e1_02' : 'e1_01';
                         }
-                        var g = Number(localStorage.getItem('gender'));
-                        var female = g === 2;
-                        hi.src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
+                        if (sm) base += '@sm';
+                        var url = '/img/mine/' + base + '.png' + v;
+                        hi.src = url;
+                        if (sm) {
+                            var canvas = document.getElementById('mineE1Canvas');
+                            if (canvas) {
+                                canvas.style.setProperty('background-image', 'url("' + url + '")', 'important');
+                                canvas.style.setProperty('background-size', '100% 100%', 'important');
+                                canvas.style.setProperty('background-repeat', 'no-repeat', 'important');
+                                canvas.style.setProperty('background-color', '#f5f6fa', 'important');
+                            }
+                        }
                     } catch (e) {}
                 })();
             </script>
@@ -2279,9 +2300,17 @@
                 else if (tow === 1) base = female ? 'e1_2' : 'e1_1';
                 else base = female ? 'e1_4' : 'e1_3';
                 if (fam) base += 'r';
-                /* 自愈逻辑判定大图在本机废掉时，后续切换直接用 750px 副本 */
+                /* 小米 14 Pro / 自愈失败：后续切换直接用 750px 副本，并刷 CSS 背景 */
+                try {
+                    if (document.documentElement.classList.contains('app-android-xiaomi-14pro')) {
+                        window.__mineE1ForceSm = true;
+                    }
+                } catch (e14) {}
                 if (window.__mineE1ForceSm) base += '@sm';
-                hi.src = '/img/mine/' + base + '.png?v=20260827-e1r2';
+                hi.src = '/img/mine/' + base + '.png?v=20260827-e1r3';
+                if (window.__mineE1ForceSm && typeof window.paintXiaomi14ProMineE1 === 'function') {
+                    window.paintXiaomi14ProMineE1(hi.src);
+                }
             }
 
             function syncMineYanIcon() {

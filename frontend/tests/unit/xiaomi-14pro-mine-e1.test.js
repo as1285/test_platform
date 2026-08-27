@@ -29,17 +29,25 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
     expect(auth).toContain('function isXiaomi14ProClient()');
     expect(auth).toContain('function xiaomi14ProMineE1LockCss()');
     expect(auth).toContain('function pinXiaomi14ProMineE1Layout()');
+    expect(auth).toContain('function paintXiaomi14ProMineE1');
+    expect(auth).toContain('xiaomi14pro-mine-e1-paint');
     expect(auth).toContain(':not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas');
     expect(auth).toContain('overflow:visible !important');
     expect(auth).toContain('data-xiaomi14pro-mine-e1-lock');
+    expect(auth).toContain('opacity:0 !important');
+    expect(auth).toContain('background-size:100% 100% !important');
   });
 
   it('mine pages first-paint the lock so HyperOS 2 does not flash a blue empty card', () => {
     [mine, mineV2].forEach((html) => {
       expect(html).toContain('app-android-xiaomi-14pro');
       expect(html).toContain('data-xiaomi14pro-mine-firstpaint');
+      expect(html).toContain('data-xiaomi14pro-mine-e1-paint');
       expect(html).toContain('23116PN5');
       expect(html).toContain('overflow:visible!important');
+      expect(html).toContain('e1_01@sm.png');
+      expect(html).toContain('opacity:0!important');
+      expect(html).toContain('aspect-ratio:1284/2127');
       expect(html).toContain('html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine');
     });
   });
@@ -49,7 +57,8 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
       expect(html).toContain('data-mine-e1-selfheal');
       expect(html).toContain('@sm.png');
       expect(html).toContain('__mineE1ForceSm');
-      expect(html).toContain('?v=20260827-e1r2');
+      expect(html).toContain('?v=20260827-e1r3');
+      expect(html).toContain('auth.js?v=20260827-mi14pro-e1bg');
       expect(html).not.toContain('20260802-e1fix');
     });
   });

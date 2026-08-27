@@ -452,12 +452,12 @@ mustExclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
-  'mine.html e1 self-heal + fresh cache stamp'
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
+  'mine.html e1 self-heal + 14 Pro CSS paint'
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
   'mine_v2.html e1 self-heal + fresh cache stamp'
 );
 mustInclude(
@@ -543,8 +543,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn'],
-  'auth.js mi14pro inset + back-btn'
+  ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn', 'function paintXiaomi14ProMineE1', 'xiaomi14pro-mine-e1-paint'],
+  'auth.js mi14pro inset + back-btn + e1 paint'
 );
 mustInclude(
   'frontend/public/js/auth.js',

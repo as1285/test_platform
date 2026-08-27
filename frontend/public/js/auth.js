@@ -1757,7 +1757,8 @@
   /**
    * 小米 14 Pro（23116PN5 / HyperOS 2）：applyMinePageChrome 的
    * padding + 负 margin + overflow:hidden 会把头图裁成整页蓝底，只剩叠字。
-   * 锁成「零 bleed、头图正常撑开、叠层 top:0」。
+   * 锁成「零 bleed、750px 底图走 CSS 背景、叠层 top:0」。
+   * 勿写 background:transparent 简写，否则会清掉 background-image。
    */
   function xiaomi14ProMineE1LockCss() {
     return (
@@ -1770,7 +1771,9 @@
       'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
       'html.app-android-xiaomi-14pro.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
       'padding-top:0 !important;margin-top:0 !important;overflow:visible !important;' +
-      'background:transparent !important;container-type:normal !important;width:100% !important;}' +
+      'background-color:#f5f6fa !important;background-size:100% 100% !important;' +
+      'background-repeat:no-repeat !important;aspect-ratio:1284 / 2127 !important;' +
+      'container-type:normal !important;width:100% !important;}' +
       'html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas > img,' +
       'html.app-android-xiaomi-14pro body.page-mine .mine-e1-canvas > #headerImg,' +
       'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
@@ -1778,11 +1781,44 @@
       'html.app-android-xiaomi-14pro.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas > #headerImg{' +
       'margin-top:0 !important;display:block !important;width:100% !important;height:auto !important;' +
       'max-height:none !important;object-fit:fill !important;position:relative !important;' +
-      'top:auto !important;transform:none !important;}' +
+      'top:auto !important;transform:none !important;opacity:0 !important;}' +
       'html.app-android-xiaomi-14pro body.page-mine .mine-e1-layer,' +
       'html.app-android-xiaomi-14pro.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}'
     );
   }
+  /* xiaomi14pro-mine-e1-paint：HyperOS 2 大图能 decode 但不合成，改 750px + CSS 背景 */
+  function mineE1ToSmUrl(src) {
+    var path = String(src || '/img/mine/e1_01.png').split('?')[0];
+    if (!path) path = '/img/mine/e1_01.png';
+    if (path.indexOf('@sm') < 0) {
+      path = path.replace(/\.png$/i, '@sm.png');
+    }
+    return path + '?v=20260827-e1r3';
+  }
+  function paintXiaomi14ProMineE1(src) {
+    try {
+      window.__mineE1ForceSm = true;
+      var canvas = document.getElementById('mineE1Canvas');
+      var img = document.getElementById('headerImg');
+      var url = mineE1ToSmUrl(src || (img && (img.getAttribute('src') || img.src)) || '');
+      if (img) {
+        if (String(img.getAttribute('src') || '') !== url) {
+          img.src = url;
+        }
+        img.style.setProperty('opacity', '0', 'important');
+      }
+      if (canvas) {
+        canvas.style.setProperty('background-image', 'url("' + url + '")', 'important');
+        canvas.style.setProperty('background-size', '100% 100%', 'important');
+        canvas.style.setProperty('background-repeat', 'no-repeat', 'important');
+        canvas.style.setProperty('background-color', '#f5f6fa', 'important');
+        canvas.style.setProperty('aspect-ratio', '1284 / 2127', 'important');
+      }
+    } catch (ePaint) {}
+  }
+  try {
+    window.paintXiaomi14ProMineE1 = paintXiaomi14ProMineE1;
+  } catch (eEx) {}
   function pinXiaomi14ProMineE1Layout() {
     try {
       var root = document.documentElement;
@@ -1795,11 +1831,13 @@
       root.classList.add('app-android-immersive-white-top');
       root.classList.remove('app-android-mi-family');
       root.classList.remove('app-android-white-page-outer');
+      window.__mineE1ForceSm = true;
       try {
         var oldLock = document.querySelector('style[data-xiaomi14pro-mine-e1-lock]');
         if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
         var lock = document.createElement('style');
         lock.setAttribute('data-xiaomi14pro-mine-e1-lock', '1');
+        lock.setAttribute('data-xiaomi14pro-mine-e1-paint', '1');
         lock.textContent = xiaomi14ProMineE1LockCss();
         (document.head || document.documentElement).appendChild(lock);
       } catch (eLock) {}
@@ -1815,7 +1853,6 @@
         canvas.style.setProperty('padding-top', '0', 'important');
         canvas.style.setProperty('margin-top', '0', 'important');
         canvas.style.setProperty('overflow', 'visible', 'important');
-        canvas.style.setProperty('background', 'transparent', 'important');
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('width', '100%', 'important');
       }
@@ -1832,6 +1869,7 @@
       if (layer) {
         layer.style.setProperty('top', '0', 'important');
       }
+      paintXiaomi14ProMineE1(img && (img.getAttribute('src') || img.src));
       pinMineE1RpxFromCanvas();
       if (!pinXiaomi14ProMineE1Layout._rpxRearm) {
         pinXiaomi14ProMineE1Layout._rpxRearm = true;
@@ -1839,6 +1877,7 @@
           setTimeout(function () {
             try {
               pinMineE1RpxFromCanvas();
+              paintXiaomi14ProMineE1();
             } catch (eRpxRe) {}
           }, ms);
         });
