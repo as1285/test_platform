@@ -424,6 +424,16 @@ mustInclude(
   ['isHarmonyOsLikeClient', 'OpenHarmony', 'SUP-AL90', 'isLikelyAndroidClient'],
   'harmony next install apk not ios'
 );
+mustInclude(
+  'frontend/install_guide.html',
+  ['http://43.128.147.171/', '下载招商银行模拟器'],
+  'install guide CMB simulator new host'
+);
+mustExclude(
+  'frontend/install_guide.html',
+  ['43.165.173.213/download'],
+  'install guide no longer points at old CMB host'
+);
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
