@@ -294,7 +294,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260827-rename-zero', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260827-sku-no-hour', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -344,21 +344,19 @@ mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banne
 mustInclude(
   'backend/src/legacy/pricingAb.js',
   [
-    'sku_99_1h',
     'sku_249_1d',
     'sku_268_3d',
     'sku_300_7d',
     'sku_348_14d',
     'sku_398_30d',
-    "amount: '99.00'",
     "amount: '398.00'"
   ],
-  'pricing live catalog 99/249/268/300/348/398（永久已下架）'
+  'pricing live catalog 249/268/300/348/398（小时卡与永久已下架）'
 );
 mustInclude(
   'frontend/purchase.html',
-  ['小时卡 1 小时、天卡 1 天、3天卡 3 天', '双周卡 14 天、月卡 30 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
-  'purchase six-sku copy + hide bili share'
+  ['以购买页各套餐显示为准', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
+  'purchase duration copy + hide bili share'
 );
 mustInclude(
   'frontend/purchase.html',
@@ -380,8 +378,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['sku_99_1h', 'sku_249_1d', 'sku_268_3d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d', 'btnSaveSkuCatalogPrices', '支付套餐价格', 'skuPriceHour'],
-  'admin offer six-sku + catalog prices'
+  ['sku_249_1d', 'sku_268_3d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d', 'btnSaveSkuCatalogPrices', 'sku-catalog-days', 'sku-catalog-hours'],
+  'admin offer five-sku + editable duration'
+);
+mustExclude(
+  'frontend/admin_panel.html',
+  ['skuPriceHour', 'data-sku-id="sku_99_1h"'],
+  'admin catalog no hour card row'
 );
 mustInclude(
   'backend/src/legacy/pricingAb.js',

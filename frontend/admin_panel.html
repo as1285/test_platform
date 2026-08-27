@@ -51,7 +51,7 @@
                     <section>
                         <h2>支付套餐</h2>
                         <div class="form-row form-stack">
-                            <p class="hint mt-0">价格、时长、是否上架都可改。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡默认下架，勾选上架后才会出现在购买页。</p>
+                            <p class="hint mt-0">价格、天数、小时、是否上架都可改。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡已下架，不再出现在购买页。</p>
                             <div class="scroll-x">
                                 <table class="sku-catalog-table" id="skuCatalogTable">
                                     <thead>
@@ -64,13 +64,6 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr data-sku-id="sku_99_1h" data-sku-label="小时卡">
-                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledHour" aria-label="上架小时卡"></td>
-                                            <td>小时卡</td>
-                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceHour" min="0.01" max="99999.99" step="0.01" value="99"></td>
-                                            <td><input type="number" class="sku-catalog-days" id="skuDaysHour" min="0" max="365" step="1" value="0"></td>
-                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursHour" min="0" max="720" step="1" value="1"></td>
-                                        </tr>
                                         <tr data-sku-id="sku_249_1d" data-sku-label="天卡">
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledDay" aria-label="上架天卡" checked></td>
                                             <td>天卡</td>
@@ -162,7 +155,6 @@
                                     <option value="sku_300_7d">周卡（原价 ¥300）</option>
                                     <option value="sku_348_14d">双周卡（原价 ¥348）</option>
                                     <option value="sku_398_30d">月卡（原价 ¥398）</option>
-                                    <option value="sku_99_1h">小时卡（原价 ¥99）</option>
                                 </select>
                             </div>
                             <div class="form-field form-field-narrow">
@@ -3051,6 +3043,6 @@
     <script src="/js/admin/loader.js?v=20260827-bj2"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260827-rename-zero"></script>
+    <script src="/js/admin_panel.js?v=20260827-sku-no-hour"></script>
 </body>
 </html>

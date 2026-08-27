@@ -1,8 +1,8 @@
 /**
- * 支付页定价：可配置目录（小时卡 / 天卡 / 3天卡 / 周卡 / 双周卡 / 月卡）。
- * 价格、时长、是否上架以后台「支付套餐」为准；小时卡默认下架。
+ * 支付页定价：可配置目录（天卡 / 3天卡 / 周卡 / 双周卡 / 月卡）。
+ * 价格、时长、是否上架以后台「支付套餐」为准。
  * 历史 A/B/C 分流与 sticky 仍可读，新解析一律走 B（treatment）。
- * 永久档已下架，仅历史订单 / 已有专属价可解析。
+ * 小时卡 / 永久档已下架，仅历史订单 / 已有专属价可解析。
  */
 'use strict';
 
@@ -10,7 +10,7 @@ var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_SKU_PRICES = 'sku_catalog_prices_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-/** 可配置小时卡：默认下架，后台可上架并改价格 / 时长 */
+/** 旧档：小时卡已下架，仅历史订单 / 已有专属价解析 */
 var SKU_99_HOUR = {
   id: 'sku_99_1h',
   amount: '99.00',
@@ -230,6 +230,7 @@ var SKU_398_PERM_LEGACY = {
 };
 
 var LEGACY_CATALOG_SKUS = [
+  SKU_99_HOUR,
   SKU_999_PERM,
   SKU_298_DAY,
   SKU_398_PERM,
@@ -241,7 +242,6 @@ var LEGACY_CATALOG_SKUS = [
 ];
 
 var CONFIGURABLE_CATALOG_SKUS = [
-  SKU_99_HOUR,
   SKU_249_DAY,
   SKU_268_3DAY,
   SKU_300_WEEK,
@@ -251,10 +251,7 @@ var CONFIGURABLE_CATALOG_SKUS = [
 var CONFIGURABLE_SKU_IDS = CONFIGURABLE_CATALOG_SKUS.map(function (s) {
   return s.id;
 });
-/** 默认上架：不含小时卡（后台可单独上架） */
-var LIVE_CATALOG_SKUS = CONFIGURABLE_CATALOG_SKUS.filter(function (s) {
-  return s.id !== 'sku_99_1h';
-});
+var LIVE_CATALOG_SKUS = CONFIGURABLE_CATALOG_SKUS.slice();
 var LIVE_SKU_IDS = LIVE_CATALOG_SKUS.map(function (s) {
   return s.id;
 });
@@ -268,7 +265,7 @@ function skuByConfigurableId(id) {
 }
 
 function defaultCatalogEnabled(id) {
-  return String(id || '') !== 'sku_99_1h';
+  return CONFIGURABLE_SKU_IDS.indexOf(String(id || '')) >= 0;
 }
 
 function defaultCatalogConfig() {
@@ -327,16 +324,6 @@ function catalogEntryHasGrant(entry) {
   );
 }
 
-function catalogHasStructuredEntries(raw) {
-  if (!raw || typeof raw !== 'object') return false;
-  var i;
-  for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
-    var v = raw[CONFIGURABLE_SKU_IDS[i]];
-    if (v && typeof v === 'object' && !Array.isArray(v)) return true;
-  }
-  return false;
-}
-
 function normalizeCatalogEntry(raw, fallback) {
   var fb = fallback || {};
   var obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null;
@@ -360,13 +347,11 @@ function normalizeCatalogEntry(raw, fallback) {
 
 function normalizeCatalogConfig(raw) {
   var defaults = defaultCatalogConfig();
-  var structured = catalogHasStructuredEntries(raw);
   var out = {};
   var i;
   for (i = 0; i < CONFIGURABLE_SKU_IDS.length; i++) {
     var id = CONFIGURABLE_SKU_IDS[i];
     var fb = Object.assign({}, defaults[id]);
-    if (!structured && id === 'sku_99_1h') fb.enabled = false;
     var src = raw && typeof raw === 'object' ? raw[id] : null;
     out[id] = normalizeCatalogEntry(src, fb);
   }

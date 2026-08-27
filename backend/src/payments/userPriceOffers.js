@@ -5,16 +5,6 @@
 
 var LIVE_OFFERABLE_SKUS = [
   {
-    id: 'sku_99_1h',
-    amount: '99.00',
-    label: '小时卡',
-    subject: '激活码·小时卡',
-    grant_kind: 'trial',
-    grant_hours: 1,
-    grant_days: 0,
-    grant_minutes: 0
-  },
-  {
     id: 'sku_249_1d',
     amount: '249.00',
     label: '天卡',
@@ -68,6 +58,16 @@ var LIVE_OFFERABLE_SKUS = [
 
 /** 旧档：已有专属价仍可解析，不再出现在新建下拉 */
 var LEGACY_OFFERABLE_SKUS = [
+  {
+    id: 'sku_99_1h',
+    amount: '99.00',
+    label: '小时卡',
+    subject: '激活码·小时卡',
+    grant_kind: 'trial',
+    grant_hours: 1,
+    grant_days: 0,
+    grant_minutes: 0
+  },
   {
     id: 'sku_999_perm',
     amount: '999.00',
@@ -284,11 +284,11 @@ function createUserPriceOffers(deps) {
   async function listOfferableSkusLive() {
     var skus = listOfferableSkus();
     var cfg = await catalogConfigSafe();
-    if (!cfg) return skus.filter(function (s) { return s.id !== 'sku_99_1h'; });
+    if (!cfg) return skus;
     return skus
       .filter(function (s) {
         var e = cfg[s.id];
-        if (!e) return s.id !== 'sku_99_1h';
+        if (!e) return true;
         return e.enabled !== false;
       })
       .map(function (s) {

@@ -156,14 +156,13 @@ describe('pricingAb SKU mojibake repair via load', () => {
     });
     const cfg = await api.loadPricingAbParsed(true);
     const ids = (cfg.treatment_skus || []).map((s) => s.id);
-    expect(ids).toContain('sku_99_1h');
+    expect(ids).not.toContain('sku_99_1h');
     expect(ids).not.toContain('sku_268_3d');
-    const hour = cfg.treatment_skus.find((s) => s.id === 'sku_99_1h');
-    expect(hour.grant_hours).toBe(2);
-    expect(hour.amount).toBe('59.00');
+    expect(ids).toEqual(['sku_249_1d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d']);
     const day = cfg.treatment_skus.find((s) => s.id === 'sku_249_1d');
     expect(day.grant_days).toBe(1);
     expect(day.grant_hours).toBe(6);
+    expect(day.amount).toBe('188.00');
   });
 });
 
@@ -188,7 +187,7 @@ describe('sku catalog amounts', () => {
       sku_999_perm: '888.5',
       sku_fake: '12'
     });
-    expect(next['sku_99_1h']).toBe('88.00');
+    expect(next['sku_99_1h']).toBeUndefined();
     expect(next['sku_249_1d']).toBe('199.00');
     expect(next['sku_268_3d']).toBe('258.50');
     expect(next['sku_300_7d']).toBe('300.00');
@@ -198,13 +197,12 @@ describe('sku catalog amounts', () => {
     expect(next.sku_fake).toBeUndefined();
   });
 
-  it('parses duration and listing flags; hour stays off for legacy price-only saves', () => {
+  it('parses duration and listing flags; hour card is no longer configurable', () => {
     const legacy = normalizeCatalogConfig({
       sku_249_1d: '199',
       sku_398_30d: '380'
     });
-    expect(legacy['sku_99_1h'].enabled).toBe(false);
-    expect(legacy['sku_99_1h'].grant_hours).toBe(1);
+    expect(legacy['sku_99_1h']).toBeUndefined();
     expect(legacy['sku_249_1d'].enabled).toBe(true);
     expect(legacy['sku_249_1d'].grant_days).toBe(1);
     expect(legacy['sku_249_1d'].amount).toBe('199.00');
@@ -214,12 +212,11 @@ describe('sku catalog amounts', () => {
       sku_249_1d: { amount: '180', grant_days: 2, grant_hours: 12, enabled: true },
       sku_300_7d: { amount: '280', grant_days: 10, enabled: false }
     });
-    expect(structured['sku_99_1h'].enabled).toBe(true);
-    expect(structured['sku_99_1h'].grant_hours).toBe(3);
+    expect(structured['sku_99_1h']).toBeUndefined();
     expect(structured['sku_249_1d'].grant_days).toBe(2);
     expect(structured['sku_249_1d'].grant_hours).toBe(12);
     expect(structured['sku_300_7d'].enabled).toBe(false);
     expect(structured['sku_300_7d'].grant_days).toBe(10);
-    expect(defaultCatalogConfig()['sku_99_1h'].enabled).toBe(false);
+    expect(defaultCatalogConfig()['sku_99_1h']).toBeUndefined();
   });
 });
