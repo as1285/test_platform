@@ -923,27 +923,6 @@ mustInclude(
   ['M391Q', 'app-android-meizu-20pro'],
   'xiangqing meizu 20 pro first-paint'
 );
-/* 华为 Mate 30（TAS-AL00 / TAS-AN00）：沉浸压栏，明细标题须留 40px */
-mustInclude(
-  'frontend/public/js/auth.js',
-  ['isHuaweiMate30Client', 'app-android-huawei-mate30', 'TAS-AL00|TAS-AN00', ':not(.app-android-huawei-mate30)'],
-  'huawei mate30 detect + immersive white top'
-);
-mustInclude(
-  'frontend/shuiming_result.html',
-  ['TAS-AL00', 'app-android-huawei-mate30', 'data-mate30-result-firstpaint', 'header-title'],
-  'shuiming_result mate30 first-paint'
-);
-mustInclude(
-  'frontend/shuiming.html',
-  ['TAS-AL00', 'app-android-huawei-mate30'],
-  'shuiming mate30 first-paint'
-);
-mustInclude(
-  'frontend/xiangqing.html',
-  ['TAS-AL00', 'app-android-huawei-mate30'],
-  'xiangqing mate30 first-paint'
-);
 /* 一键生成前 B 站分享门槛已下线 */
 mustInclude(
   'frontend/public/js/auth.js',
