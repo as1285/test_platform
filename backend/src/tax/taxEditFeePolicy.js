@@ -1,7 +1,6 @@
 'use strict';
 
-/** 默认：改名大于 6 次且个税修改大于 8 天，同时满足才算同行（白名单除外） */
-var TAX_EDIT_FEE_RENAME_GT = 6;
+/** 默认：个税修改大于 8 天算同行（白名单除外）；不再看改名次数 */
 var TAX_EDIT_FEE_DAYS_GT = 8;
 
 var TAX_EDIT_SINGLE_SKU_ID = 'sku_tax_edit_fee_20';
@@ -29,7 +28,6 @@ function normalizePeerThreshold(raw, fallback) {
 function defaultTaxEditFeeConfig() {
   return {
     daily_amount: TAX_EDIT_DAILY_AMOUNT,
-    rename_gt: TAX_EDIT_FEE_RENAME_GT,
     days_gt: TAX_EDIT_FEE_DAYS_GT
   };
 }
@@ -39,10 +37,6 @@ function normalizeTaxEditFeeConfig(raw) {
   raw = raw && typeof raw === 'object' ? raw : {};
   return {
     daily_amount: normalizeTaxEditFeeAmount(raw.daily_amount) || def.daily_amount,
-    rename_gt: normalizePeerThreshold(
-      raw.rename_gt != null ? raw.rename_gt : raw.renameGt,
-      def.rename_gt
-    ),
     days_gt: normalizePeerThreshold(raw.days_gt != null ? raw.days_gt : raw.daysGt, def.days_gt)
   };
 }
@@ -51,16 +45,11 @@ function parseTaxEditFeeConfigFromAdmin(body) {
   var raw = body && typeof body === 'object' ? body : {};
   var daily = normalizeTaxEditFeeAmount(raw.daily_amount);
   if (!daily) return null;
-  var hasRename =
-    raw.rename_gt != null && String(raw.rename_gt).trim() !== '';
   var hasDays = raw.days_gt != null && String(raw.days_gt).trim() !== '';
-  var renameGt = normalizePeerThreshold(raw.rename_gt, -1);
   var daysGt = normalizePeerThreshold(raw.days_gt, -1);
-  if (hasRename && renameGt < 0) return null;
   if (hasDays && daysGt < 0) return null;
   return {
     daily_amount: daily,
-    rename_gt: hasRename ? renameGt : TAX_EDIT_FEE_RENAME_GT,
     days_gt: hasDays ? daysGt : TAX_EDIT_FEE_DAYS_GT
   };
 }
@@ -74,7 +63,6 @@ function formatYuanLabel(raw) {
 function resolvePeerThresholds(input) {
   var cfg = normalizeTaxEditFeeConfig(input || {});
   return {
-    rename_gt: cfg.rename_gt,
     days_gt: cfg.days_gt
   };
 }
@@ -112,19 +100,18 @@ function isTaxEditFeeSkuId(skuId) {
 
 function isTaxEditFeeGrantKind(grantKind) {
   var k = String(grantKind || '');
-  return k === 'tax_edit_single' || k === 'tax_edit_daily';
+  return k === 'tax_edit_single' || k === 'tax_edit_daily' || k === 'tax_daily';
 }
 
 /**
- * 是否属于同行账号 / 个税修改付费对象：改名与个税修改天数同时超过阈值，且非白名单。
+ * 是否属于同行账号 / 个税修改付费对象：个税修改天数超过阈值，且非白名单。
  */
 function isTaxEditFeeSubject(input) {
   input = input || {};
   if (input.exempt) return false;
   var th = resolvePeerThresholds(input);
-  var names = Number(input.nameChanges) || 0;
   var days = Number(input.taxModDays) || 0;
-  return names > th.rename_gt && days > th.days_gt;
+  return days > th.days_gt;
 }
 
 function isPeerAccount(input) {
@@ -134,9 +121,7 @@ function isPeerAccount(input) {
 function peerLoginNotice(input) {
   var th = resolvePeerThresholds(input);
   return (
-    '该账号为同行账号。改名已超过 ' +
-    th.rename_gt +
-    ' 次且个税修改已超过 ' +
+    '该账号为同行账号。个税修改已超过 ' +
     th.days_gt +
     ' 天，后续修改个税需先付费后才能继续。'
   );
@@ -163,9 +148,7 @@ function taxEditFeeBlockMessage(policy) {
   var cfg = normalizeTaxEditFeeConfig(policy || {});
   var daily = formatYuanLabel(cfg.daily_amount) || '30';
   return (
-    '同行账号后续修改需付费。改名已超过 ' +
-    cfg.rename_gt +
-    ' 次且个税修改已超过 ' +
+    '同行账号后续修改需付费。个税修改已超过 ' +
     cfg.days_gt +
     ' 天，请先支付 ¥' +
     daily +
@@ -177,12 +160,10 @@ function buildTaxEditFeePolicyView(input) {
   input = input || {};
   var cfg = normalizeTaxEditFeeConfig({
     daily_amount: input.dailyAmount != null ? input.dailyAmount : input.daily_amount,
-    rename_gt: input.renameGt != null ? input.renameGt : input.rename_gt,
     days_gt: input.daysGt != null ? input.daysGt : input.days_gt
   });
   var access = resolveTaxEditAccess(
     Object.assign({}, input, {
-      rename_gt: cfg.rename_gt,
       days_gt: cfg.days_gt
     })
   );
@@ -192,7 +173,6 @@ function buildTaxEditFeePolicyView(input) {
     peer_login_notice: peer ? peerLoginNotice(cfg) : '',
     name_change_count: Number(input.nameChanges) || 0,
     tax_mod_days: Number(input.taxModDays) || 0,
-    rename_gt: cfg.rename_gt,
     days_gt: cfg.days_gt,
     rename_fee_exempt: !!input.exempt,
     tax_edit_fee_exempt: !!input.exempt,
@@ -204,7 +184,6 @@ function buildTaxEditFeePolicyView(input) {
 }
 
 module.exports = {
-  TAX_EDIT_FEE_RENAME_GT: TAX_EDIT_FEE_RENAME_GT,
   TAX_EDIT_FEE_DAYS_GT: TAX_EDIT_FEE_DAYS_GT,
   SETTING_KEY_TAX_EDIT_FEE: SETTING_KEY_TAX_EDIT_FEE,
   TAX_EDIT_SINGLE_SKU_ID: TAX_EDIT_SINGLE_SKU_ID,

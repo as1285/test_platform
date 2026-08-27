@@ -567,4 +567,91 @@ describe('sbdyDemo', () => {
     expect(p.detail_rows[0].base).toBe(4308);
     expect(p.detail_rows[3].base).toBe(4053);
   });
+
+  it('normalizePayload builds Beijing official rights record', () => {
+    const p = normalizePayload({
+      region: 'bj',
+      name: '李明',
+      id_number: '110105198203151239',
+      company_name: '北京华信科技有限公司',
+      area: '朝阳区',
+      period_start: '1998-11',
+      period_end: '2005-07',
+      base_amount: 6821,
+      print_date: '2025年03月24日',
+      verify_code: 'f4yvki',
+      query_serial: '11010520250324205821'
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('bj');
+    expect(p.layout).toBe('bj_official_v1');
+    expect(p.verify_code).toBe('f4yvki');
+    expect(p.query_serial).toBe('11010520250324205821');
+    expect(p.agency_name).toBe('北京市朝阳区社会保险基金管理中心');
+    expect(p.query_date_label).toBe('2025年03月24日');
+    expect(p.query_period_label).toBe('1998年11月至2005年07月');
+    expect(p.header_company).toBe('北京华信科技有限公司');
+    expect(p.employers.length).toBe(1);
+    expect(p.employers[0].company_name).toBe('北京华信科技有限公司');
+    expect(p.employers[0].agency).toBe('北京市朝阳区');
+    expect(p.year_rows.length).toBe(8);
+    expect(p.year_rows[0].label).toMatch(/^\*1998-11至1998-12$/);
+    expect(p.year_rows[0].unemp_months).toBe(0);
+    expect(p.year_rows[3].medical_months).toBeGreaterThan(0);
+    expect(p.totals.pension_months).toBe(81);
+    expect(p.totals.maternity_months).toBeGreaterThan(0);
+    expect(p.pension_total_months).toBeGreaterThan(p.totals.pension_months);
+    expect(p.pension_years_label).toMatch(/年.*个月/);
+    const html = renderCertHtml(p, {}, { authCode: p.query_serial });
+    expect(html).toContain('北京市社会保险个人权益记录');
+    expect(html).toContain('养老保险单位变动记录');
+    expect(html).toContain('五险缴费明细');
+    expect(html).toContain('查询时间段');
+    expect(html).toContain('补充资料');
+    expect(html).toContain('个人账户资金余额');
+    expect(html).toContain('f4yvki');
+    expect(html).toContain('11010520250324205821');
+    expect(html).toContain('fuwu.rsj.beijing.gov.cn');
+    expect(html).toContain('/img/sbdy_bj_si_seal.png');
+    expect(html).toContain('/img/sbdy_bj_mi_seal.png');
+    expect(html).toContain('北京华信科技有限公司');
+    expect(html).toContain('第1页 （共2页）');
+  });
+
+  it('Beijing multi-employer segments and HTML escape', () => {
+    const p = normalizePayload({
+      region: 'bj',
+      name: '<b>李</b>',
+      id_number: '110105198203151239',
+      area: '海淀区',
+      period_start: '2004-01',
+      period_end: '2005-12',
+      base_amount: 6821,
+      segments: [
+        {
+          company_name: '北京甲公司',
+          area: '海淀区',
+          period_start: '2004-01',
+          period_end: '2004-12'
+        },
+        {
+          company_name: '北京乙公司',
+          area: '朝阳区',
+          period_start: '2005-01',
+          period_end: '2005-12'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.employers.length).toBe(2);
+    expect(p.header_company).toBe('');
+    expect(p.employers[0].agency).toBe('北京市海淀区');
+    expect(p.employers[1].agency).toBe('北京市朝阳区');
+    expect(p.query_serial.startsWith('110105')).toBe(true);
+    const html = renderCertHtml(p);
+    expect(html).toContain('&lt;b&gt;李&lt;/b&gt;');
+    expect(html).not.toMatch(/<td[^>]*>\s*<b>李<\/b>/);
+    expect(html).toContain('北京甲公司');
+    expect(html).toContain('北京乙公司');
+  });
 });

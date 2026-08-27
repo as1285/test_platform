@@ -1553,7 +1553,7 @@
                             a.variant === 'control'
                                 ? 'A·对照'
                                 : a.variant === 'treatment'
-                                  ? 'B·六档'
+                                  ? 'B·五档'
                                   : a.variant === 'b'
                                     ? 'C·激活码'
                                     : a.variant;
@@ -7550,8 +7550,10 @@
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var pricingAb = data.data.pricing_ab;
-                        applySkuCatalogPricesToForm(
-                            data.data.sku_catalog_prices ||
+                        applySkuCatalogToForm(
+                            data.data.sku_catalog ||
+                                data.data.sku_catalog_prices ||
+                                (pricingAb && pricingAb.sku_catalog) ||
                                 (pricingAb && pricingAb.catalog_amounts) ||
                                 {}
                         );
@@ -7631,38 +7633,79 @@
                 .catch(function () {});
         }
 
-        var SKU_PRICE_FIELD_IDS = [
-            'skuPriceHour',
-            'skuPriceDay',
-            'skuPrice3Day',
-            'skuPriceWeek',
-            'skuPriceTwoWeek',
-            'skuPriceMonth'
-        ];
+        function skuCatalogRows() {
+            var table = document.getElementById('skuCatalogTable');
+            if (!table) return [];
+            return Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-sku-id]'));
+        }
 
-        function collectSkuCatalogPricesFromForm() {
+        function collectSkuCatalogFromForm() {
             var out = {};
-            SKU_PRICE_FIELD_IDS.forEach(function (id) {
-                var el = document.getElementById(id);
-                if (!el) return;
-                var skuId = el.getAttribute('data-sku-id');
+            skuCatalogRows().forEach(function (row) {
+                var skuId = row.getAttribute('data-sku-id');
                 if (!skuId) return;
-                out[skuId] = String(el.value || '').trim();
+                var enabledEl = row.querySelector('.sku-catalog-enabled');
+                var amountEl = row.querySelector('.sku-catalog-amount');
+                var daysEl = row.querySelector('.sku-catalog-days');
+                var hoursEl = row.querySelector('.sku-catalog-hours');
+                out[skuId] = {
+                    amount: amountEl ? String(amountEl.value || '').trim() : '',
+                    grant_days: daysEl ? String(daysEl.value || '').trim() : '0',
+                    grant_hours: hoursEl ? String(hoursEl.value || '').trim() : '0',
+                    enabled: !!(enabledEl && enabledEl.checked)
+                };
             });
             return out;
         }
 
-        function applySkuCatalogPricesToForm(map) {
+        function collectSkuCatalogPricesFromForm() {
+            var catalog = collectSkuCatalogFromForm();
+            var out = {};
+            Object.keys(catalog).forEach(function (id) {
+                out[id] = catalog[id].amount;
+            });
+            return out;
+        }
+
+        function applySkuCatalogToForm(map) {
             map = map || {};
-            SKU_PRICE_FIELD_IDS.forEach(function (id) {
-                var el = document.getElementById(id);
-                if (!el) return;
-                var skuId = el.getAttribute('data-sku-id');
-                if (skuId && map[skuId] != null && String(map[skuId]).trim() !== '') {
-                    el.value = String(map[skuId]);
+            skuCatalogRows().forEach(function (row) {
+                var skuId = row.getAttribute('data-sku-id');
+                if (!skuId) return;
+                var raw = map[skuId];
+                var entry =
+                    raw && typeof raw === 'object'
+                        ? raw
+                        : raw != null && String(raw).trim() !== ''
+                          ? { amount: raw }
+                          : null;
+                if (!entry) return;
+                var enabledEl = row.querySelector('.sku-catalog-enabled');
+                var amountEl = row.querySelector('.sku-catalog-amount');
+                var daysEl = row.querySelector('.sku-catalog-days');
+                var hoursEl = row.querySelector('.sku-catalog-hours');
+                if (amountEl && entry.amount != null && String(entry.amount).trim() !== '') {
+                    amountEl.value = String(entry.amount);
+                }
+                if (daysEl && entry.grant_days != null && String(entry.grant_days).trim() !== '') {
+                    daysEl.value = String(entry.grant_days);
+                }
+                if (hoursEl && entry.grant_hours != null && String(entry.grant_hours).trim() !== '') {
+                    hoursEl.value = String(entry.grant_hours);
+                }
+                if (enabledEl && entry.enabled != null) {
+                    enabledEl.checked = !(
+                        entry.enabled === false ||
+                        entry.enabled === 0 ||
+                        entry.enabled === '0'
+                    );
                 }
             });
             updateSkuCatalogPriceLabels(map);
+        }
+
+        function applySkuCatalogPricesToForm(map) {
+            applySkuCatalogToForm(map);
         }
 
         function formatSkuYuan(raw) {
@@ -7671,26 +7714,49 @@
             return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
         }
 
+        function formatSkuDurationBits(entry) {
+            var days = parseInt(entry && entry.grant_days, 10) || 0;
+            var hours = parseInt(entry && entry.grant_hours, 10) || 0;
+            var bits = [];
+            if (days) bits.push(days + '天');
+            if (hours) bits.push(hours + '小时');
+            return bits.join('');
+        }
+
         function updateSkuCatalogPriceLabels(map) {
-            map = map || collectSkuCatalogPricesFromForm();
-            var hour = formatSkuYuan(map['sku_99_1h']) || '99';
-            var day = formatSkuYuan(map['sku_249_1d']) || '249';
-            var day3 = formatSkuYuan(map['sku_268_3d']) || '268';
-            var week = formatSkuYuan(map['sku_300_7d']) || '300';
-            var week2 = formatSkuYuan(map['sku_348_14d']) || '348';
-            var month = formatSkuYuan(map['sku_398_30d']) || '398';
-            var skuSel = document.getElementById('priceOfferSku');
-            if (skuSel) {
-                var opts = skuSel.options;
-                for (var i = 0; i < opts.length; i++) {
-                    if (opts[i].value === 'sku_99_1h') opts[i].text = '小时卡（原价 ¥' + hour + '）';
-                    if (opts[i].value === 'sku_249_1d') opts[i].text = '天卡（原价 ¥' + day + '）';
-                    if (opts[i].value === 'sku_268_3d') opts[i].text = '3天卡（原价 ¥' + day3 + '）';
-                    if (opts[i].value === 'sku_300_7d') opts[i].text = '周卡（原价 ¥' + week + '）';
-                    if (opts[i].value === 'sku_348_14d') opts[i].text = '双周卡（原价 ¥' + week2 + '）';
-                    if (opts[i].value === 'sku_398_30d') opts[i].text = '月卡（原价 ¥' + month + '）';
-                }
+            var catalog = collectSkuCatalogFromForm();
+            if (map && typeof map === 'object') {
+                Object.keys(map).forEach(function (id) {
+                    var raw = map[id];
+                    if (raw && typeof raw === 'object') {
+                        catalog[id] = Object.assign({}, catalog[id] || {}, raw);
+                    } else if (raw != null && String(raw).trim() !== '') {
+                        catalog[id] = Object.assign({}, catalog[id] || {}, { amount: raw });
+                    }
+                });
             }
+            var skuSel = document.getElementById('priceOfferSku');
+            if (!skuSel) return;
+            var current = skuSel.value;
+            skuSel.innerHTML = '';
+            skuCatalogRows().forEach(function (row) {
+                var skuId = row.getAttribute('data-sku-id');
+                var label = row.getAttribute('data-sku-label') || skuId;
+                var entry = catalog[skuId] || {};
+                if (entry.enabled === false) {
+                    label += '（已下架）';
+                }
+                var yuan = formatSkuYuan(entry.amount);
+                var dur = formatSkuDurationBits(entry);
+                var text = label;
+                if (dur) text += ' ' + dur;
+                if (yuan) text += '（原价 ¥' + yuan + '）';
+                var opt = document.createElement('option');
+                opt.value = skuId;
+                opt.textContent = text;
+                skuSel.appendChild(opt);
+            });
+            if (current) skuSel.value = current;
         }
 
         function applyRenameFeeToForm(cfg) {
@@ -7831,21 +7897,39 @@
         if (btnSaveSkuCatalogPrices) {
             btnSaveSkuCatalogPrices.addEventListener('click', function () {
                 var btn = btnSaveSkuCatalogPrices;
-                var prices = collectSkuCatalogPricesFromForm();
-                var ids = ['sku_99_1h', 'sku_249_1d', 'sku_268_3d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d'];
+                var catalog = collectSkuCatalogFromForm();
+                var ids = Object.keys(catalog);
+                var enabledCount = 0;
                 for (var i = 0; i < ids.length; i++) {
-                    var n = Number(String(prices[ids[i]] || '').replace(/,/g, '').trim());
+                    var row = catalog[ids[i]];
+                    var n = Number(String(row.amount || '').replace(/,/g, '').trim());
                     if (!isFinite(n) || n < 0.01 || n > 99999.99) {
-                        alert('请为六档套餐填写 0.01～99999.99 的价格');
+                        alert('请为每个套餐填写 0.01～99999.99 的价格');
                         return;
                     }
+                    var days = parseInt(row.grant_days, 10);
+                    var hours = parseInt(row.grant_hours, 10);
+                    if (!isFinite(days) || days < 0 || days > 365 ||
+                        !isFinite(hours) || hours < 0 || hours > 720) {
+                        alert('套餐时长请填写天数 0–365、小时 0–720');
+                        return;
+                    }
+                    if (days + hours < 1) {
+                        alert('每个套餐至少填写天数或小时');
+                        return;
+                    }
+                    if (row.enabled) enabledCount += 1;
+                }
+                if (!enabledCount) {
+                    alert('请至少上架一个套餐');
+                    return;
                 }
                 btn.disabled = true;
                 var hint = document.getElementById('skuCatalogPriceHint');
                 if (hint) hint.textContent = '保存中…';
                 adminFetch('api/admin/settings', {
                     method: 'POST',
-                    body: JSON.stringify({ sku_catalog_prices: prices })
+                    body: JSON.stringify({ sku_catalog: catalog })
                 })
                     .then(function (r) {
                         return r.json();
@@ -7853,10 +7937,11 @@
                     .then(function (data) {
                         if (data.code === 200) {
                             if (hint) hint.textContent = '已保存';
-                            applySkuCatalogPricesToForm(
-                                (data.data && data.data.sku_catalog_prices) || prices
+                            applySkuCatalogToForm(
+                                (data.data && (data.data.sku_catalog || data.data.sku_catalog_prices)) ||
+                                    catalog
                             );
-                            alert('套餐价格已保存，购买页将按新价格下单');
+                            alert('套餐已保存，购买页将按新价格和时长下单');
                         } else {
                             if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');

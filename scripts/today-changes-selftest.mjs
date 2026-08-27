@@ -61,9 +61,7 @@ mustInclude(
     '--mine-top-bleed:0px !important',
     'pinMate60MineShift',
     'transform:none !important',
-    'pinMineE1RpxFromCanvas',
-    'xiaomi14ProMineE1LockCss',
-    'pinXiaomi14ProMineE1Layout'
+    'pinMineE1RpxFromCanvas'
   ],
   'mate60 0-bleed e1 + daiban header'
 );
@@ -315,6 +313,21 @@ mustInclude(
 mustInclude(
   'backend/src/legacy/monolith.js',
   [
+    "var taxFeePricingVariant = 'tax_daily'",
+    'insertPendingAddonOrder',
+    'ensurePaymentOrdersVariantColumns',
+    '创建个税修改订单失败：'
+  ],
+  'tax edit order pricing_variant fits VARCHAR(16)'
+);
+mustInclude(
+  'backend/migrations/034_payment_orders_pricing_variant_widen.sql',
+  ['MODIFY COLUMN pricing_variant VARCHAR(32)'],
+  'widen payment_orders.pricing_variant'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
     'parent_admin_username',
     'appendSubAdminOwnedUsersScopeForAdmin',
     'adminCanManageAccountsPage',
@@ -425,6 +438,16 @@ mustExclude(
   'mine.html no longer redirects Mate60 to jul23 card'
 );
 mustInclude(
+  'frontend/mine.html',
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
+  'mine.html e1 self-heal + fresh cache stamp'
+);
+mustInclude(
+  'frontend/mine_v2.html',
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
+  'mine_v2.html e1 self-heal + fresh cache stamp'
+);
+mustInclude(
   'frontend/public/js/auth.js',
   ['isVivoS50ProMiniClient', 'app-android-vivo-s50promini', 'S50 Pro mini', 'isHuaweiNova13Client', 'BLK-AL80', 'MIS-AL00', 'HUAWEIBLK', 'app-android-huawei-nova13', 'isHuaweiNova13Client()', 'isHuaweiWhitePageImmersiveClient', 'pinWhitePageImmersiveHeader', 'pinNova13MineE1Layout', 'HMSCore|Huawei|HUAWEI', ':not(.app-android-huawei-nova13):not(.app-android-immersive-white-top) body.page-shuiming > .header', 'resetMate60MineE1RpxToViewport', 'pinMineE1RpxFromCanvas', 'setProperty(\'--mine-rpx\', rpx, imp)'],
   'huawei nova 13 mine overlay + white-top detect'
@@ -451,7 +474,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-mi14pro-e1', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -509,36 +532,6 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn'],
   'auth.js mi14pro inset + back-btn'
-);
-mustInclude(
-  'frontend/public/js/auth.js',
-  [
-    'function xiaomi14ProMineE1LockCss()',
-    'function pinXiaomi14ProMineE1Layout()',
-    ':not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas',
-    'data-xiaomi14pro-mine-e1-lock'
-  ],
-  'auth.js xiaomi 14 pro mine e1 lock'
-);
-mustInclude(
-  'frontend/mine.html',
-  ['data-xiaomi14pro-mine-firstpaint', '23116PN5', 'overflow:visible!important'],
-  'mine.html xiaomi 14 pro first-paint'
-);
-mustInclude(
-  'frontend/mine_v2.html',
-  ['data-xiaomi14pro-mine-firstpaint', '23116PN5', 'overflow:visible!important'],
-  'mine_v2.html xiaomi 14 pro first-paint'
-);
-mustInclude(
-  'frontend/mine.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
-  'mine.html e1 self-heal + fresh cache stamp'
-);
-mustInclude(
-  'frontend/mine_v2.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r2'],
-  'mine_v2.html e1 self-heal + fresh cache stamp'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -917,11 +910,11 @@ mustInclude(
   ['武汉版：打印时间始终用当天', 'defaultPrintDateCn()'],
   'sbdy Wuhan admin force today print date'
 );
-/* loader cache must point at the Wuhan print/seal fix bundle */
+/* loader cache must point at the latest sbdy-demo bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260826-app-sync'],
-  'sbdy-demo loader cache for Wuhan print/seal'
+  ['20260827-bj2'],
+  'sbdy-demo loader cache for Beijing layout'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
   fail('sbdy Wuhan seal assets present', 'missing wh_seal.png');
@@ -969,6 +962,51 @@ mustInclude(
   'sbdy Hunan admin panel radio'
 );
 
+mustInclude(
+  'backend/scripts/sbdy_bj_render_pdf.py',
+  [
+    '北京市社会保险个人权益记录',
+    '五险缴费明细',
+    '养老保险单位变动记录',
+    'bj_si_seal.png',
+    'bj_mi_seal.png',
+    '查询时间段',
+    '补充资料',
+    'fuwu.rsj.beijing.gov.cn'
+  ],
+  'sbdy Beijing PDF renderer'
+);
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  ['SBDY_BJ_RENDER_SCRIPT', 'normalizeBjPayload', 'isBjRegion', 'renderBjCertHtml', 'query_period_label', '补充资料'],
+  'sbdy Beijing backend routing'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['sbdyRegionBj', '朝阳区', '北京示例', '王佩茹', '6821'],
+  'sbdy Beijing admin UI'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['sbdyRegionBj', '北京社会保险个人权益记录'],
+  'sbdy Beijing admin panel radio'
+);
+mustInclude(
+  'frontend/sbdy_demo.html',
+  ['sbdyRegionBj', '20260827-bj2'],
+  'sbdy Beijing C-end radio + cache'
+);
+if (
+  !exists('backend/assets/sbdy/bj_si_seal.png') ||
+  !exists('backend/assets/sbdy/bj_mi_seal.png') ||
+  !exists('frontend/public/img/sbdy_bj_si_seal.png') ||
+  !exists('frontend/public/img/sbdy_bj_mi_seal.png')
+) {
+  fail('sbdy Beijing seal assets present', 'missing bj_*_seal.png');
+} else {
+  ok('sbdy Beijing seal assets present');
+}
+
 
 mustInclude(
   'frontend/public/js/auth.js',
@@ -977,7 +1015,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260827-mi14pro-e1', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260827-cend-sync', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1124,7 +1162,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260827-mi14pro-e1'],
+  ['auth.js?v=20260827-cend-sync'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(

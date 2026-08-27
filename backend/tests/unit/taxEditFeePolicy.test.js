@@ -7,6 +7,7 @@ const {
   resolveTaxEditAccess,
   isTaxEditFeeWriteAction,
   isTaxEditFeeSkuId,
+  isTaxEditFeeGrantKind,
   buildTaxEditFeePolicyView,
   taxEditFeeBlockMessage,
   normalizeTaxEditFeeConfig,
@@ -74,6 +75,9 @@ describe('taxEditFeePolicy', () => {
     expect(isTaxEditFeeSkuId('sku_tax_edit_fee_20')).toBe(true);
     expect(isTaxEditFeeSkuId('sku_tax_edit_unlimited_30')).toBe(true);
     expect(isTaxEditFeeSkuId('sku_rename_fee_10')).toBe(false);
+    expect(isTaxEditFeeGrantKind('tax_edit_daily')).toBe(true);
+    expect(isTaxEditFeeGrantKind('tax_daily')).toBe(true);
+    expect(isTaxEditFeeGrantKind('rename_credit')).toBe(false);
   });
 
   it('builds client policy view with AND peer rule', () => {

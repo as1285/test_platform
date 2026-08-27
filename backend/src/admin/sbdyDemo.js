@@ -17,6 +17,8 @@ const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render
 const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
 const SBDY_HN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_hn_render_pdf.py');
 const SBDY_JS_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_js_render_pdf.py');
+const SBDY_BJ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_bj_render_pdf.py');
+const BJ_VERIFY_URL = 'http://fuwu.rsj.beijing.gov.cn/bjdkhy/ggfw/';
 const SBDY_WATERMARK_SCRIPT = path.join(__dirname, '../../scripts/sbdy_watermark.py');
 const WH_VERIFY_URL = 'https://hbsb.hb12333.com/hbrswt/template/dzsbzmyz.html';
 
@@ -61,6 +63,8 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
       script = SBDY_SZ_RENDER_SCRIPT;
     } else if (region === 'js' || region === 'jiangsu' || region === 'js_official_v1') {
       script = SBDY_JS_RENDER_SCRIPT;
+    } else if (region === 'bj' || region === 'beijing' || region === 'bj_official_v1') {
+      script = SBDY_BJ_RENDER_SCRIPT;
     }
     var child = spawn(py, [script, inJson, outPdf], {
       stdio: ['ignore', 'pipe', 'pipe']
@@ -290,6 +294,348 @@ function isHnRegion(body) {
 function isJsRegion(body) {
   var r = String((body && (body.region || body.layout)) || '').toLowerCase();
   return r === 'js' || r === 'jiangsu' || r === 'js_official_v1';
+}
+
+function isBjRegion(body) {
+  var r = String((body && (body.region || body.layout)) || '').toLowerCase();
+  return r === 'bj' || r === 'beijing' || r === 'bj_official_v1';
+}
+
+function regionKeyOf(payload) {
+  var r = String((payload && payload.region) || '').toLowerCase();
+  if (r === 'sz' || r === 'wh' || r === 'hn' || r === 'js' || r === 'bj') return r;
+  return 'zj';
+}
+
+function isZjStylePayload(p) {
+  p = p || {};
+  return (
+    p.region !== 'sz' &&
+    p.region !== 'wh' &&
+    p.region !== 'hn' &&
+    p.region !== 'js' &&
+    p.region !== 'bj' &&
+    p.layout !== 'sz_official_v1' &&
+    p.layout !== 'wh_official_v1' &&
+    p.layout !== 'hn_official_v1' &&
+    p.layout !== 'js_official_v1' &&
+    p.layout !== 'bj_official_v1'
+  );
+}
+
+function randLowerLetters(n) {
+  var chars = 'abcdefghijkmnpqrstuvwxyz';
+  var out = '';
+  while (out.length < n) {
+    out += chars.charAt(crypto.randomInt(0, chars.length));
+  }
+  return out;
+}
+
+function randHexLower(n) {
+  var chars = '0123456789abcdef';
+  var out = '';
+  while (out.length < n) {
+    out += chars.charAt(crypto.randomInt(0, chars.length));
+  }
+  return out;
+}
+
+function bjDistrictCode(area) {
+  var a = String(area || '');
+  if (/东城/.test(a)) return '101';
+  if (/西城/.test(a)) return '102';
+  if (/朝阳/.test(a)) return '105';
+  if (/丰台/.test(a)) return '106';
+  if (/石景山/.test(a)) return '107';
+  if (/海淀/.test(a)) return '108';
+  if (/门头沟/.test(a)) return '109';
+  if (/房山/.test(a)) return '111';
+  if (/通州/.test(a)) return '112';
+  if (/顺义/.test(a)) return '113';
+  if (/昌平/.test(a)) return '114';
+  if (/大兴/.test(a)) return '115';
+  if (/怀柔/.test(a)) return '116';
+  if (/平谷/.test(a)) return '117';
+  if (/密云/.test(a)) return '118';
+  if (/延庆/.test(a)) return '119';
+  return '105';
+}
+
+function bjAgencyName(area) {
+  var a = String(area || '').trim();
+  if (/社会保险基金管理中心/.test(a)) return a.substring(0, 40);
+  var dist = a.replace(/^北京市/, '').replace(/市$/, '').trim();
+  if (/区|县/.test(dist)) {
+    return ('北京市' + dist + '社会保险基金管理中心').substring(0, 40);
+  }
+  return '北京市朝阳区社会保险基金管理中心';
+}
+
+function bjDistrictLabel(area) {
+  var a = String(area || '').trim();
+  a = a.replace(/社会保险基金管理中心$/, '').replace(/^北京市/, '').replace(/市$/, '').trim();
+  if (/区|县/.test(a)) return ('北京市' + a).substring(0, 16);
+  return '北京市朝阳区';
+}
+
+function formatYmCnRange(startYm, endYm) {
+  var a = parseYm(startYm);
+  var b = parseYm(endYm);
+  if (!a || !b) return '';
+  return formatYmCn(a.y, a.m) + '至' + formatYmCn(b.y, b.m);
+}
+
+function monthsBetweenYm(startYm, endYm) {
+  var a = parseYm(startYm);
+  var b = parseYm(endYm);
+  if (!a || !b) return 0;
+  var n = (b.y - a.y) * 12 + (b.m - a.m) + 1;
+  return n > 0 ? n : 0;
+}
+
+function formatYearsMonths(totalMonths) {
+  var n = Math.max(0, parseInt(totalMonths, 10) || 0);
+  var y = Math.floor(n / 12);
+  var m = n % 12;
+  return y + '年' + pad2(m) + '个月';
+}
+
+function buildBjEmployerChanges(body, periodStart, periodEnd, company, area) {
+  var segs = Array.isArray(body && body.segments) ? body.segments : [];
+  var out = [];
+  segs.forEach(function (s) {
+    if (!s) return;
+    var c = String(s.company_name || s.company || '').trim();
+    var ps = String(s.period_start || s.periodStart || periodStart).trim();
+    var pe = String(s.period_end || s.periodEnd || periodEnd).trim();
+    if (!c || !parseYm(ps) || !parseYm(pe)) return;
+    var ar = String(s.area || area || '').trim();
+    var n = monthsBetweenYm(ps, pe);
+    out.push({
+      start_ym: ps,
+      end_ym: pe,
+      months: n,
+      company_name: c.substring(0, 64),
+      area: ar || area,
+      agency: bjDistrictLabel(ar || area)
+    });
+  });
+  if (!out.length) {
+    out.push({
+      start_ym: periodStart,
+      end_ym: periodEnd,
+      months: monthsBetweenYm(periodStart, periodEnd),
+      company_name: String(company || '').substring(0, 64),
+      area: area,
+      agency: bjDistrictLabel(area)
+    });
+  }
+  return out;
+}
+
+function bjEraMonthlyBase(year, formBase) {
+  var base = Number(formBase) || 6821;
+  if (base < 4000 || year >= 2016) return round2(base);
+  var factor = {
+    1992: 0.12,
+    1993: 0.13,
+    1994: 0.14,
+    1995: 0.15,
+    1996: 0.16,
+    1997: 0.17,
+    1998: 0.18,
+    1999: 0.2,
+    2000: 0.23,
+    2001: 0.26,
+    2002: 0.29,
+    2003: 0.33,
+    2004: 0.37,
+    2005: 0.41,
+    2006: 0.46,
+    2007: 0.52,
+    2008: 0.58,
+    2009: 0.62,
+    2010: 0.66,
+    2011: 0.72,
+    2012: 0.78,
+    2013: 0.84,
+    2014: 0.9,
+    2015: 0.95
+  };
+  return round2(base * (factor[year] != null ? factor[year] : 1));
+}
+
+function buildBjYearRows(periodStart, periodEnd, monthlyBase) {
+  var a = parseYm(periodStart);
+  var b = parseYm(periodEnd);
+  var rows = [];
+  if (!a || !b) return rows;
+  var y = a.y;
+  while (y <= b.y && rows.length < 48) {
+    var sm = y === a.y ? a.m : 1;
+    var em = y === b.y ? b.m : 12;
+    var n = em - sm + 1;
+    var monthPay = bjEraMonthlyBase(y, monthlyBase);
+    var annualBase = round2(monthPay * 12);
+    var unempOn = y >= 1999;
+    var injuryOn = y >= 2004;
+    var medicalOn = y >= 2001;
+    var maternityOn = y >= 2005;
+    var star = y < 2006;
+    rows.push({
+      label: (star ? '*' : '') + y + '-' + pad2(sm) + '至' + y + '-' + pad2(em),
+      year: y,
+      start_ym: y + '-' + pad2(sm),
+      end_ym: y + '-' + pad2(em),
+      supplement: star,
+      pension_months: n,
+      pension_base: annualBase,
+      pension_pay: round2(monthPay * 0.08 * n),
+      unemp_months: unempOn ? n : 0,
+      unemp_base: unempOn ? annualBase : 0,
+      unemp_pay: unempOn ? round2(monthPay * 0.005 * n) : 0,
+      injury_months: injuryOn ? n : 0,
+      injury_base: injuryOn ? annualBase : 0,
+      medical_months: medicalOn ? n : 0,
+      medical_base: medicalOn ? annualBase : 0,
+      medical_pay: medicalOn ? round2(monthPay * 0.02 * n) : 0,
+      maternity_months: maternityOn ? n : 0,
+      maternity_base: maternityOn ? annualBase : 0
+    });
+    y += 1;
+  }
+  return rows;
+}
+
+function sumBjYearField(rows, key) {
+  var t = 0;
+  (rows || []).forEach(function (r) {
+    t += Number(r && r[key]) || 0;
+  });
+  return round2(t);
+}
+
+function normalizeBjPayload(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var name = String(b.name || '').trim().substring(0, 64);
+  var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
+  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
+  var area = String(b.area || '朝阳区').trim().substring(0, 32) || '朝阳区';
+  var periodStart = String(b.period_start || b.periodStart || '').trim();
+  var periodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
+  if (!isFinite(baseAmt) || baseAmt <= 0) baseAmt = 6821;
+  if (!name || !idNumber) {
+    return { error: '姓名与证件号码必填' };
+  }
+  if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+    return { error: '缴费起止月份格式应为 YYYY-MM' };
+  }
+  var a0 = parseYm(periodStart);
+  var b0 = parseYm(periodEnd);
+  if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
+    var tmp = periodStart;
+    periodStart = periodEnd;
+    periodEnd = tmp;
+    a0 = parseYm(periodStart);
+    b0 = parseYm(periodEnd);
+  }
+  var yearRows = buildBjYearRows(periodStart, periodEnd, baseAmt);
+  if (!yearRows.length) {
+    return { error: '缴费月份区间无效' };
+  }
+  var employers = buildBjEmployerChanges(b, periodStart, periodEnd, company, area);
+  var listCompany = company;
+  if (!listCompany && employers.length) {
+    listCompany = employers[employers.length - 1].company_name;
+  }
+  var headerCompany = employers.length > 1 ? '' : listCompany;
+  var serialArea = area;
+  if (employers.length && employers[employers.length - 1].area) {
+    serialArea = employers[employers.length - 1].area;
+  }
+  var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
+  var verifyCode = String(b.verify_code || b.verifyCode || '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toLowerCase()
+    .substring(0, 6);
+  if (verifyCode.length < 6) verifyCode = randHexLower(6);
+  var querySerial = String(b.query_serial || b.querySerial || '').replace(/\D/g, '').substring(0, 20);
+  if (querySerial.length < 20) {
+    var bjNow = new Date(Date.now() + 8 * 3600 * 1000);
+    querySerial = (
+      '110' +
+      bjDistrictCode(serialArea) +
+      String(bjNow.getUTCFullYear()) +
+      pad2(bjNow.getUTCMonth() + 1) +
+      pad2(bjNow.getUTCDate()) +
+      pad2(bjNow.getUTCHours()) +
+      pad2(bjNow.getUTCMinutes()) +
+      pad2(bjNow.getUTCSeconds())
+    ).substring(0, 20);
+  }
+  var pensionMonths = sumBjYearField(yearRows, 'pension_months');
+  var medicalMonths = sumBjYearField(yearRows, 'medical_months');
+  var userPensionTotal = b.pension_total_months != null || b.pensionTotalMonths != null;
+  var userMedicalTotal = b.medical_total_months != null || b.medicalTotalMonths != null;
+  var extraPension = Number(b.pension_total_months != null ? b.pension_total_months : b.pensionTotalMonths);
+  var extraMedical = Number(b.medical_total_months != null ? b.medical_total_months : b.medicalTotalMonths);
+  var asOfYear = Number(b.as_of_year != null ? b.as_of_year : b.asOfYear);
+  if (!isFinite(asOfYear) || asOfYear < 1990) asOfYear = bjNowParts().y - 1;
+  if (!isFinite(extraPension) || extraPension < pensionMonths) extraPension = pensionMonths;
+  if (!isFinite(extraMedical) || extraMedical < medicalMonths) extraMedical = medicalMonths;
+  if (!userPensionTotal && b0 && b0.y <= asOfYear - 8) {
+    extraPension = pensionMonths + (asOfYear - b0.y) * 11;
+  }
+  if (!userMedicalTotal && b0 && b0.y <= asOfYear - 8) {
+    extraMedical = medicalMonths + (asOfYear - Math.max(b0.y, 2001)) * 11;
+  }
+  var accountBal = Number(b.account_balance != null ? b.account_balance : b.accountBalance);
+  if (!isFinite(accountBal) || accountBal <= 0) {
+    var slicePay = sumBjYearField(yearRows, 'pension_pay');
+    var avgPay = pensionMonths > 0 ? slicePay / pensionMonths : 0;
+    accountBal = round2(avgPay * extraPension * 1.65);
+  }
+  return {
+    region: 'bj',
+    layout: 'bj_official_v1',
+    name: name,
+    id_number: idNumber,
+    company_name: listCompany,
+    company_display: listCompany,
+    header_company: headerCompany,
+    area: area,
+    agency_name: bjAgencyName(serialArea || area),
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_label: formatYmCnRange(periodStart, periodEnd),
+    query_period_label: formatYmCnRange(periodStart, periodEnd),
+    query_date_label: printDate,
+    base_amount: baseAmt,
+    print_date: printDate,
+    verify_code: verifyCode,
+    query_serial: querySerial,
+    verify_url: BJ_VERIFY_URL,
+    employers: employers,
+    year_rows: yearRows,
+    totals: {
+      pension_months: pensionMonths,
+      pension_pay: sumBjYearField(yearRows, 'pension_pay'),
+      unemp_months: sumBjYearField(yearRows, 'unemp_months'),
+      unemp_pay: sumBjYearField(yearRows, 'unemp_pay'),
+      injury_months: sumBjYearField(yearRows, 'injury_months'),
+      medical_months: medicalMonths,
+      medical_pay: sumBjYearField(yearRows, 'medical_pay'),
+      maternity_months: sumBjYearField(yearRows, 'maternity_months')
+    },
+    pension_total_months: extraPension,
+    medical_total_months: extraMedical,
+    pension_years_label: formatYearsMonths(extraPension),
+    medical_years_label: formatYearsMonths(extraMedical),
+    account_balance: accountBal,
+    as_of_year: asOfYear
+  };
 }
 
 function ymCompact(ym) {
@@ -1235,6 +1581,9 @@ function normalizeZjStatusLabel(value, fallback) {
 }
 
 function normalizePayload(body) {
+  if (isBjRegion(body)) {
+    return normalizeBjPayload(body);
+  }
   if (isJsRegion(body)) {
     return normalizeJsPayload(body);
   }
@@ -1633,15 +1982,7 @@ function companyDisplayOf(p) {
   p = p || {};
   var months = Array.isArray(p.months) ? p.months : [];
   var segments = Array.isArray(p.segments) ? p.segments : [];
-  var isZj =
-    p.region !== 'sz' &&
-    p.region !== 'wh' &&
-    p.region !== 'hn' &&
-    p.region !== 'js' &&
-    p.layout !== 'sz_official_v1' &&
-    p.layout !== 'wh_official_v1' &&
-    p.layout !== 'hn_official_v1' &&
-    p.layout !== 'js_official_v1';
+  var isZj = isZjStylePayload(p);
   if (isZj) {
     var raw = String(p.company_display || p.company_name || '').trim();
     if (/[、,，]/.test(raw) || segments.length > 1 || months.length) {
@@ -2206,9 +2547,212 @@ function renderJsCertHtml(payload, links, opts) {
   );
 }
 
+function bjHtmlNum(n, months) {
+  if (!months) return '';
+  var x = Number(n);
+  if (!isFinite(x) || x === 0) return '';
+  if (Math.abs(x - Math.round(x)) < 1e-9) return String(Math.round(x));
+  return x.toFixed(2);
+}
+
+function bjHtmlPay(n, months) {
+  if (!months) return '';
+  var x = Number(n);
+  if (!isFinite(x)) return '';
+  return x.toFixed(2);
+}
+
+function renderBjCertHtml(payload, links, opts) {
+  opts = opts || {};
+  var p = payload || {};
+  var employers = Array.isArray(p.employers) ? p.employers : [];
+  var yearRows = Array.isArray(p.year_rows) ? p.year_rows : [];
+  var totals = p.totals || {};
+  var empHtml = '';
+  employers.forEach(function (r) {
+    empHtml +=
+      '<tr><td>' +
+      escHtml(r.start_ym || '') +
+      '</td><td>' +
+      escHtml(r.end_ym || '') +
+      '</td><td>' +
+      escHtml(r.months || '') +
+      '</td><td class="cn">' +
+      escHtml(r.company_name || '') +
+      '</td><td class="cn">' +
+      escHtml(r.agency || '') +
+      '</td></tr>';
+  });
+  var yearHtml = '';
+  yearRows.forEach(function (r) {
+    yearHtml +=
+      '<tr><td class="l">' +
+      escHtml(r.label || '') +
+      '</td><td>' +
+      escHtml(r.pension_months || '') +
+      '</td><td>' +
+      escHtml(bjHtmlNum(r.pension_base, r.pension_months)) +
+      '</td><td>' +
+      escHtml(bjHtmlPay(r.pension_pay, r.pension_months)) +
+      '</td><td>' +
+      escHtml(r.unemp_months || '') +
+      '</td><td>' +
+      escHtml(bjHtmlNum(r.unemp_base, r.unemp_months)) +
+      '</td><td>' +
+      escHtml(bjHtmlPay(r.unemp_pay, r.unemp_months)) +
+      '</td><td>' +
+      escHtml(r.injury_months || '') +
+      '</td><td>' +
+      escHtml(bjHtmlNum(r.injury_base, r.injury_months)) +
+      '</td><td>' +
+      escHtml(r.medical_months || '') +
+      '</td><td>' +
+      escHtml(bjHtmlNum(r.medical_base, r.medical_months)) +
+      '</td><td>' +
+      escHtml(bjHtmlPay(r.medical_pay, r.medical_months)) +
+      '</td><td>' +
+      escHtml(r.maternity_months || '') +
+      '</td><td>' +
+      escHtml(bjHtmlNum(r.maternity_base, r.maternity_months)) +
+      '</td></tr>';
+  });
+  var headerBlock =
+    '<div class="seals">' +
+    '<img class="seal si" src="/img/sbdy_bj_si_seal.png" alt="">' +
+    '<img class="seal mi" src="/img/sbdy_bj_mi_seal.png" alt="">' +
+    '</div>' +
+    '<h1>北京市社会保险个人权益记录<br><span>（参保人员缴费信息）</span></h1>' +
+    '<div class="meta">' +
+    '<div><span class="k">参保人姓名</span>' +
+    escHtml(p.name || '') +
+    '</div>' +
+    '<div><span class="k">校验码</span>' +
+    escHtml(p.verify_code || '') +
+    '</div>' +
+    '<div><span class="k">社会保障号码</span>' +
+    escHtml(p.id_number || '') +
+    '</div>' +
+    '<div><span class="k">查询流水号</span>' +
+    escHtml(p.query_serial || opts.authCode || '') +
+    '</div>' +
+    '<div><span class="k">单位名称</span>' +
+    escHtml(p.header_company || '') +
+    '</div>' +
+    '<div><span class="k">查询日期</span>' +
+    escHtml(p.query_date_label || p.print_date || '') +
+    '</div>' +
+    '<div><span class="k">查询时间段</span>' +
+    escHtml(p.query_period_label || p.period_label || '') +
+    '</div>' +
+    '<div></div>' +
+    '</div>';
+  return (
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>北京市社会保险个人权益记录（参保人员缴费信息）</title>' +
+    '<style>' +
+    '*{box-sizing:border-box}' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;' +
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
+    'padding:10mm 8mm 12mm;position:relative}' +
+    '.page+.page{page-break-before:always}' +
+    'h1{margin:2mm 28mm 4mm;text-align:center;font-size:16pt;font-weight:700;line-height:1.35}' +
+    'h1 span{font-size:13pt;font-weight:700}' +
+    '.seals{position:absolute;left:8mm;right:8mm;top:6mm;height:28mm;pointer-events:none}' +
+    '.seal{position:absolute;width:26mm;height:26mm;opacity:.92}' +
+    '.seal.si{left:8mm;top:0}' +
+    '.seal.mi{right:8mm;top:0}' +
+    '.meta{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:10.5pt;margin:2mm 0 4mm}' +
+    '.meta .k{display:inline-block;min-width:7.2em;font-weight:700}' +
+    'h2{margin:5mm 0 2mm;font-size:11.5pt;font-weight:700}' +
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
+    'th,td{border:0.6pt solid #222;padding:2px 2px;text-align:center;font-size:8pt;font-weight:400;line-height:1.25;word-break:break-all}' +
+    'th{font-weight:700}' +
+    'td.cn,td.l{text-align:left;padding-left:3px}' +
+    '.sum{margin:8mm 1mm 0;font-size:11pt;line-height:1.75;text-indent:2em}' +
+    '.notes{margin-top:8mm;font-size:10pt;line-height:1.7}' +
+    '.notes .t{font-weight:700}' +
+    '.foot{margin-top:14mm;text-align:right;font-size:11pt;line-height:1.8;padding-right:8mm}' +
+    '.pn{text-align:center;font-size:10pt;margin-top:8mm}' +
+    '@media print{.page{padding:8mm 7mm}}' +
+    '</style></head><body>' +
+    '<div class="page">' +
+    headerBlock +
+    '<h2>一、养老保险单位变动记录</h2>' +
+    '<table><thead><tr>' +
+    '<th style="width:14%">缴费起始年月</th><th style="width:14%">缴费截止年月</th>' +
+    '<th style="width:12%">实际缴费月数</th><th style="width:28%">单位名称</th>' +
+    '<th>缴费区县</th></tr></thead><tbody>' +
+    empHtml +
+    '</tbody></table>' +
+    '<h2>二、五险缴费明细</h2>' +
+    '<table><thead>' +
+    '<tr><th rowspan="2" style="width:13%">缴费起止年月</th>' +
+    '<th colspan="3">养老实际缴费</th><th colspan="3">失业实际缴费</th>' +
+    '<th colspan="2">工伤实际缴费</th><th colspan="3">医疗实际缴费</th>' +
+    '<th colspan="2">生育实际缴费</th></tr>' +
+    '<tr><th>月数</th><th>年缴费基数</th><th>个人缴费</th>' +
+    '<th>月数</th><th>年缴费基数</th><th>个人缴费</th>' +
+    '<th>月数</th><th>年缴费基数</th>' +
+    '<th>月数</th><th>年缴费基数</th><th>个人缴费</th>' +
+    '<th>月数</th><th>年缴费基数</th></tr>' +
+    '</thead><tbody>' +
+    yearHtml +
+    '<tr><td>合计</td><td>' +
+    escHtml(totals.pension_months || '') +
+    '</td><td></td><td>' +
+    escHtml(bjHtmlPay(totals.pension_pay, totals.pension_months)) +
+    '</td><td>' +
+    escHtml(totals.unemp_months || '') +
+    '</td><td></td><td>' +
+    escHtml(bjHtmlPay(totals.unemp_pay, totals.unemp_months)) +
+    '</td><td>' +
+    escHtml(totals.injury_months || '') +
+    '</td><td></td><td>' +
+    escHtml(totals.medical_months || '') +
+    '</td><td></td><td>' +
+    escHtml(bjHtmlPay(totals.medical_pay, totals.medical_months)) +
+    '</td><td>' +
+    escHtml(totals.maternity_months || '') +
+    '</td><td></td></tr>' +
+    '</tbody></table>' +
+    '<div class="pn">第1页 （共2页）</div>' +
+    '</div>' +
+    '<div class="page">' +
+    headerBlock +
+    '<h2>三、补充资料</h2>' +
+    '<p class="sum">参保人在我市养老保险累计实际缴费月数为' +
+    escHtml(p.pension_total_months || '') +
+    '个月，医疗保险累计实际缴费月数为' +
+    escHtml(p.medical_total_months || '') +
+    '个月。北京市养老保险个人账户资金余额为' +
+    escHtml(bjHtmlPay(p.account_balance, 1)) +
+    '元。</p>' +
+    '<div class="notes"><div class="t">备注：</div>' +
+    '1. 本记录可通过北京市人力资源和社会保障局公共服务平台核验：' +
+    escHtml(p.verify_url || BJ_VERIFY_URL) +
+    '<br>2. 本记录涉及个人权益信息，请妥善保管，因泄露造成的不良后果由参保人自行承担。<br>' +
+    '3. 缴费起止年月前标注“*”的，含补缴信息。<br>' +
+    '4. 养老保险、工伤保险、失业保险数据来源于社会保险经办机构；医疗保险、生育保险数据来源于医疗保险经办机构。' +
+    '</div>' +
+    '<div class="foot">' +
+    escHtml(p.agency_name || '北京市朝阳区社会保险基金管理中心') +
+    '<br>日期：' +
+    escHtml(p.print_date || defaultPrintDateCn()) +
+    '</div>' +
+    '<div class="pn">第2页 （共2页）</div>' +
+    '</div></body></html>'
+  );
+}
+
 function renderCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
+  if (p.region === 'bj' || p.layout === 'bj_official_v1') {
+    return renderBjCertHtml(p, links, opts);
+  }
   if (p.region === 'js' || p.layout === 'js_official_v1') {
     return renderJsCertHtml(p, links, opts);
   }
@@ -2440,6 +2984,8 @@ async function createSbdyDemoCert(req, body, creator) {
     authCode = randToken(16);
   } else if (normalized.region === 'js') {
     authCode = randToken(16);
+  } else if (normalized.region === 'bj') {
+    authCode = String(normalized.query_serial || randDigits(20)).substring(0, 20);
   } else {
     authCode = randDigits(20);
   }
@@ -2517,16 +3063,7 @@ async function handleAdminSbdyDemoList(req, res) {
         name: payload && payload.name ? payload.name : '',
         id_number: payload && payload.id_number ? payload.id_number : '',
         company_name: payload && payload.company_name ? payload.company_name : '',
-        region:
-          payload && payload.region === 'sz'
-            ? 'sz'
-            : payload && payload.region === 'wh'
-              ? 'wh'
-              : payload && payload.region === 'hn'
-                ? 'hn'
-                : payload && payload.region === 'js'
-                  ? 'js'
-                  : 'zj',
+        region: regionKeyOf(payload),
         created_by_admin: r.created_by_admin || '',
         created_by_user: r.created_by_user || '',
         created_at: r.created_at,
@@ -2556,16 +3093,7 @@ async function handleAdminSbdyDemoList(req, res) {
             name: payload && payload.name ? payload.name : '',
             id_number: payload && payload.id_number ? payload.id_number : '',
             company_name: payload && payload.company_name ? payload.company_name : '',
-            region:
-              payload && payload.region === 'sz'
-                ? 'sz'
-                : payload && payload.region === 'wh'
-                  ? 'wh'
-                  : payload && payload.region === 'hn'
-                    ? 'hn'
-                    : payload && payload.region === 'js'
-                      ? 'js'
-                      : 'zj',
+            region: regionKeyOf(payload),
             created_by_admin: r.created_by_admin || '',
             created_by_user: '',
             created_at: r.created_at,
@@ -2694,17 +3222,7 @@ async function handlePublicSbdyDemoShow(req, res) {
       }
     }
     /* 浙江版历史 payload 若头部拼了多家单位，展示/出证时只保留最近一家 */
-    if (
-      payload &&
-      payload.region !== 'sz' &&
-      payload.region !== 'wh' &&
-      payload.region !== 'hn' &&
-      payload.region !== 'js' &&
-      payload.layout !== 'sz_official_v1' &&
-      payload.layout !== 'wh_official_v1' &&
-      payload.layout !== 'hn_official_v1' &&
-      payload.layout !== 'js_official_v1'
-    ) {
+    if (payload && isZjStylePayload(payload)) {
       ['status_pension', 'status_medical', 'status_injury', 'status_unemployment'].forEach(function (key) {
         if (payload[key]) payload[key] = normalizeZjStatusLabel(payload[key]);
       });
@@ -2723,17 +3241,7 @@ async function handlePublicSbdyDemoShow(req, res) {
     } else if (payload && !payload.company_display) {
       payload.company_display = companyDisplayOf(payload);
     }
-    if (
-      payload &&
-      payload.region !== 'sz' &&
-      payload.region !== 'wh' &&
-      payload.region !== 'hn' &&
-      payload.region !== 'js' &&
-      payload.layout !== 'sz_official_v1' &&
-      payload.layout !== 'wh_official_v1' &&
-      payload.layout !== 'hn_official_v1' &&
-      payload.layout !== 'js_official_v1'
-    ) {
+    if (payload && isZjStylePayload(payload)) {
       payload.months = migrateMonthsForShow(payload);
     }
     var links = buildLinks(req, row.auth_code, row.token);

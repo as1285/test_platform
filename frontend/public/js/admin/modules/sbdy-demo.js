@@ -186,6 +186,8 @@
     var sz = document.getElementById('sbdyRegionSz');
     var wh = document.getElementById('sbdyRegionWh');
     var js = document.getElementById('sbdyRegionJs');
+    var bj = document.getElementById('sbdyRegionBj');
+    if (bj && bj.checked) return 'bj';
     if (js && js.checked) return 'js';
     if (hn && hn.checked) return 'hn';
     if (sz && sz.checked) return 'sz';
@@ -220,43 +222,40 @@
       el.hidden = region !== 'zj' && region !== 'wh';
     });
     document.querySelectorAll('.sbdy-zj-wh-js').forEach(function (el) {
-      el.hidden = region !== 'zj' && region !== 'wh' && region !== 'js';
+      el.hidden = region !== 'zj' && region !== 'wh' && region !== 'js' && region !== 'bj';
     });
     document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
       el.hidden = region !== 'js';
     });
     document.querySelectorAll('.sbdy-zj-js').forEach(function (el) {
-      el.hidden = region !== 'zj' && region !== 'js';
+      el.hidden = region !== 'zj' && region !== 'js' && region !== 'bj';
+    });
+    var regionDefaults = {
+      zj: { area: '余杭区', base: '4986' },
+      sz: { area: '深圳市', base: '4492' },
+      wh: { area: '武汉市', base: '4224' },
+      hn: { area: '常德市鼎城区', base: '4053' },
+      js: { area: '溧水区', base: '4494' },
+      bj: { area: '朝阳区', base: '6821' }
+    };
+    var defaultAreas = [];
+    var defaultBases = ['6120', '4308'];
+    Object.keys(regionDefaults).forEach(function (key) {
+      defaultAreas.push(regionDefaults[key].area);
+      defaultBases.push(regionDefaults[key].base);
     });
     var base = document.getElementById('sbdyBase');
     var area = document.getElementById('sbdyArea');
-    if (region === 'sz') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4053')) {
-        base.value = '4492';
-      }
-      if (area && (area.value === '余杭区' || area.value === '武汉市' || area.value === '常德市鼎城区' || area.value === '溧水区')) area.value = '深圳市';
-    } else if (region === 'wh') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4053')) {
-        base.value = '4224';
-      }
-      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '常德市鼎城区' || area.value === '溧水区')) area.value = '武汉市';
+    var next = regionDefaults[region] || regionDefaults.zj;
+    if (base && defaultBases.indexOf(String(base.value)) >= 0) {
+      base.value = next.base;
+    }
+    if (area && defaultAreas.indexOf(area.value) >= 0) {
+      area.value = next.area;
+    }
+    if (region === 'wh') {
       var insure = document.getElementById('sbdyInsureType');
       if (insure && !insure.value) insure.value = '企业养老';
-    } else if (region === 'hn') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4492')) {
-        base.value = '4053';
-      }
-      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '武汉市' || area.value === '溧水区')) area.value = '常德市鼎城区';
-    } else if (region === 'js') {
-      if (base && (String(base.value) === '4986' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4492' || String(base.value) === '4053')) {
-        base.value = '4494';
-      }
-      if (area && (area.value === '余杭区' || area.value === '深圳市' || area.value === '武汉市' || area.value === '常德市鼎城区')) area.value = '溧水区';
-    } else {
-      if (base && (String(base.value) === '4492' || String(base.value) === '6120' || String(base.value) === '4224' || String(base.value) === '4308' || String(base.value) === '4494' || String(base.value) === '4053')) {
-        base.value = '4986';
-      }
-      if (area && (area.value === '深圳市' || area.value === '武汉市' || area.value === '常德市鼎城区' || area.value === '溧水区')) area.value = '余杭区';
     }
     var med = document.getElementById('sbdyMedicalBase');
     if (region === 'sz' && med && !med.value) med.value = base ? base.value : '4492';
@@ -293,7 +292,8 @@
       sz: '440305',
       wh: '420106',
       hn: '430703',
-      js: '320102'
+      js: '320102',
+      bj: '110105'
     };
     var prefix =
       (areaCodes[region] || areaCodes.zj) +
@@ -531,16 +531,29 @@
     var looksJs = !!(
       /江苏|权益记录单|南京|苏州|无锡|常州|徐州|南通|扬州|盐城|泰州|镇江|淮安|连云港|宿迁/.test(text)
     );
-    if (looksJs && /浙江|杭州|余杭|深圳|武汉|湖北|湖南|常德/.test(text)) looksJs = false;
-    var region = looksHn
-      ? 'hn'
-      : looksWh
-        ? 'wh'
-        : looksJs
-          ? 'js'
-          : looksSz
-            ? 'sz'
-            : 'zj';
+    if (looksJs && /浙江|杭州|余杭|深圳|武汉|湖北|湖南|常德|北京/.test(text)) looksJs = false;
+    var looksBj = !!(
+      /北京市社会保险|个人权益记录|查询流水号|查询时间段|补充资料|校验码|朝阳区社会保险|海淀区社会保险|fuwu\.rsj\.beijing/.test(
+        text
+      ) ||
+      (/北京/.test(text) &&
+        /社保|参保|缴费/.test(text) &&
+        !/浙江|杭州|深圳|武汉|湖北|湖南|江苏|南京/.test(text))
+    );
+    if (looksBj && /浙江|杭州|余杭|深圳|武汉|湖北|湖南|江苏/.test(text) && !/北京/.test(text)) {
+      looksBj = false;
+    }
+    var region = looksBj
+      ? 'bj'
+      : looksHn
+        ? 'hn'
+        : looksWh
+          ? 'wh'
+          : looksJs
+            ? 'js'
+            : looksSz
+              ? 'sz'
+              : 'zj';
     var idNumberDefaulted = false;
     if (!idNumber) {
       idNumber = defaultDemoIdNumber(region, gender || '女');
@@ -562,7 +575,9 @@
                 ? 4053
                 : region === 'js'
                   ? 4494
-                  : 4986;
+                  : region === 'bj'
+                    ? 6821
+                    : 4986;
     }
     var pension = Math.round(base * 0.08 * 100) / 100;
     var unemp = Math.round(base * (region === 'sz' ? 0.002 : 0.005) * 100) / 100;
@@ -597,7 +612,9 @@
               ? '常德市鼎城区'
               : region === 'js'
                 ? '南京市'
-                : '余杭区'),
+                : region === 'bj'
+                  ? '朝阳区'
+                  : '余杭区'),
       period_start: period.start,
       period_end: period.end,
       month_count: monthCountBetween(period.start, period.end),
@@ -625,6 +642,9 @@
     } else if (parsed.region === 'js') {
       var jsRadio = document.getElementById('sbdyRegionJs');
       if (jsRadio) jsRadio.checked = true;
+    } else if (parsed.region === 'bj') {
+      var bjRadio = document.getElementById('sbdyRegionBj');
+      if (bjRadio) bjRadio.checked = true;
     } else if (parsed.region === 'zj') {
       var zjRadio = document.getElementById('sbdyRegionZj');
       if (zjRadio) zjRadio.checked = true;
@@ -644,7 +664,9 @@
               ? '常德市鼎城区'
               : parsed.region === 'js'
                 ? '南京市'
-                : '余杭区')
+                : parsed.region === 'bj'
+                  ? '朝阳区'
+                  : '余杭区')
     );
     setField('sbdyUnitCode', parsed.unit_code || '');
     setField('sbdyComputerNo', parsed.computer_no || '');
@@ -832,7 +854,9 @@
               ? '湖南'
               : row.region === 'js'
                 ? '江苏'
-                : '浙江';
+                : row.region === 'bj'
+                  ? '北京'
+                  : '浙江';
       html +=
         '<tr>' +
         '<td>' +
@@ -963,7 +987,17 @@
   function generate() {
     var region = currentRegion();
     var defaultBase =
-      region === 'sz' ? 4492 : region === 'wh' ? 4224 : region === 'hn' ? 4053 : 4986;
+      region === 'sz'
+        ? 4492
+        : region === 'wh'
+          ? 4224
+          : region === 'hn'
+            ? 4053
+            : region === 'js'
+              ? 4494
+              : region === 'bj'
+                ? 6821
+                : 4986;
     var defaultArea =
       region === 'sz'
         ? '深圳市'
@@ -971,7 +1005,11 @@
           ? '武汉市'
           : region === 'hn'
             ? '常德市鼎城区'
-            : '余杭区';
+            : region === 'js'
+              ? '溧水区'
+              : region === 'bj'
+                ? '朝阳区'
+                : '余杭区';
     var formGender =
       val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女';
     var formIdNumber = val('sbdyIdNumber');
@@ -1071,6 +1109,11 @@
         body.month_units = prefillMonthUnits;
       }
     }
+    if (region === 'bj') {
+      var bjSegs = readSegments();
+      if (bjSegs.length) body.segments = bjSegs;
+      body.print_date = val('sbdyPrintDate') || defaultPrintDateCn();
+    }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
       body.snapshot_ym = '202604';
       body.snapshot_base = 4308;
@@ -1160,6 +1203,39 @@
       '月' +
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
+    if (currentRegion() === 'bj') {
+      setField('sbdyName', '王佩茹');
+      setField('sbdyIdNumber', '372921198202101116');
+      setField('sbdyGender', '女');
+      setField('sbdyCompany', '');
+      setField('sbdyArea', '东城区');
+      setField('sbdyBase', 6821);
+      setField('sbdyPeriodStart', '1992-10');
+      setField('sbdyPeriodEnd', '2024-11');
+      setField('sbdyPrintDate', printDate);
+      renderSegments([
+        {
+          company_name: '北京市西城劳务服务有限责任公司',
+          area: '西城区',
+          period_start: '1992-10',
+          period_end: '2005-12'
+        },
+        {
+          company_name: '海淀区人力资源公共服务中心',
+          area: '海淀区',
+          period_start: '2006-01',
+          period_end: '2015-06'
+        },
+        {
+          company_name: '北京众合众智管理咨询有限责任公司',
+          area: '东城区',
+          period_start: '2015-07',
+          period_end: '2024-11'
+        }
+      ]);
+      setStatus('已填充北京示例：王佩茹（1992-10 至 2024-11，三家单位，可再点生成）', false);
+      return;
+    }
     if (currentRegion() === 'js') {
       setField('sbdyName', '樊宜');
       setField('sbdyIdNumber', '342501199307088233');

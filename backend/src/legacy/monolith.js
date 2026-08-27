@@ -578,6 +578,9 @@ function getUserPriceOffers() {
       /* 原价与套餐列表统一走 pricingAb 的后台可配目录价，避免两份 LIVE SKU 漂移 */
       loadCatalogAmounts: function () {
         return getPricingAb().loadCatalogAmounts();
+      },
+      loadCatalogConfig: function () {
+        return getPricingAb().loadCatalogConfig();
       }
     });
   }
@@ -2261,6 +2264,7 @@ async function initDatabase() {
     
     await createTables();
     await runMigrations(pool);
+    await ensurePaymentOrdersVariantColumns(pool);
     registerGuard.initRegisterGuard(pool);
     console.log('Database initialized successfully');
   } catch (error) {
@@ -5171,6 +5175,127 @@ async function applyActivationCode(username, rawCode) {
   await getInviteReward().applyActivationCodeExtended(username, rawCode, activationSourceFromCodeNote);
 }
 
+var _paymentOrderVariantColsReady = false;
+
+/** 加宽 payment_orders 增值字段，避免 tax_edit_unlimited 等超 VARCHAR(16) 写库失败 */
+async function ensurePaymentOrdersVariantColumns(connOrPool) {
+  if (_paymentOrderVariantColsReady || !connOrPool) return;
+  var owned = false;
+  var conn = connOrPool;
+  if (typeof connOrPool.getConnection === 'function') {
+    conn = await connOrPool.getConnection();
+    owned = true;
+  }
+  try {
+    await conn.query(
+      "ALTER TABLE payment_orders MODIFY COLUMN pricing_variant VARCHAR(32) NULL COMMENT 'control|treatment|tax_daily|rename'"
+    );
+    await conn.query(
+      "ALTER TABLE payment_orders MODIFY COLUMN grant_kind VARCHAR(32) NULL COMMENT 'trial|permanent|tax_edit_daily|rename_credit'"
+    );
+    _paymentOrderVariantColsReady = true;
+  } catch (eEnsure) {
+    console.error('ensurePaymentOrdersVariantColumns', eEnsure && eEnsure.sqlMessage ? eEnsure.sqlMessage : eEnsure);
+  } finally {
+    if (owned) {
+      try {
+        conn.release();
+      } catch (eRel) {}
+    }
+  }
+}
+
+function paymentDbErrorHint(err) {
+  var raw = err && (err.sqlMessage || err.message);
+  var hint = raw != null ? String(raw).replace(/\s+/g, ' ').trim() : '';
+  if (hint.length > 140) hint = hint.slice(0, 140);
+  return hint;
+}
+
+/** 查找 30 分钟内未支付的同 SKU 订单；缺列时降级查询 */
+async function findRecentPendingAddonOrder(conn, username, skuId) {
+  var tries = [
+    `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+            grant_kind, grant_days, grant_hours, grant_minutes
+     FROM payment_orders
+     WHERE username = ? AND status = 'pending' AND sku_id = ?
+       AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+    `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id, grant_kind
+     FROM payment_orders
+     WHERE username = ? AND status = 'pending' AND sku_id = ?
+       AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     ORDER BY id DESC LIMIT 1 FOR UPDATE`
+  ];
+  var lastErr = null;
+  for (var i = 0; i < tries.length; i++) {
+    try {
+      const [rows] = await conn.execute(tries[i], [username, skuId]);
+      return rows;
+    } catch (eFind) {
+      lastErr = eFind;
+      if (!eFind || eFind.errno !== 1054) throw eFind;
+    }
+  }
+  throw lastErr;
+}
+
+/** 写入增值待支付订单；缺列或超长时降级再写 */
+async function insertPendingAddonOrder(conn, row) {
+  var tries = [
+    {
+      sql: `INSERT INTO payment_orders
+        (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+        VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+      params: [
+        row.out_trade_no,
+        row.username,
+        row.subject,
+        row.amount,
+        row.pricing_variant,
+        row.sku_id,
+        row.grant_kind,
+        row.grant_days || 0,
+        row.grant_hours || 0,
+        row.grant_minutes || 0
+      ]
+    },
+    {
+      sql: `INSERT INTO payment_orders
+        (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind)
+        VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`,
+      params: [
+        row.out_trade_no,
+        row.username,
+        row.subject,
+        row.amount,
+        row.pricing_variant,
+        row.sku_id,
+        row.grant_kind
+      ]
+    },
+    {
+      sql: `INSERT INTO payment_orders
+        (out_trade_no, username, subject, amount, status, sku_id)
+        VALUES (?, ?, ?, ?, 'pending', ?)`,
+      params: [row.out_trade_no, row.username, row.subject, row.amount, row.sku_id]
+    }
+  ];
+  var lastErr = null;
+  for (var i = 0; i < tries.length; i++) {
+    try {
+      await conn.execute(tries[i].sql, tries[i].params);
+      return;
+    } catch (eIns) {
+      lastErr = eIns;
+      var tooLong = eIns && (eIns.errno === 1406 || /too long/i.test(String(eIns.sqlMessage || eIns.message || '')));
+      var badCol = eIns && eIns.errno === 1054;
+      if (!tooLong && !badCol) throw eIns;
+    }
+  }
+  throw lastErr;
+}
+
 /** 生成支付宝商户订单号 */
 function createAlipayOutTradeNo() {
   var now = new Date();
@@ -5303,28 +5428,24 @@ async function countUnusedRenameCredits(userId) {
   }
 }
 
-/** 改名收费策略（白名单与个税修改费共用 rename_fee_exempt） */
+/** 改名不再收费；保留接口字段供旧客户端兼容 */
 async function getRenameFeePolicy(userId) {
   var nameChanges = await countUserRealNameChanges(userId);
   var activeDays = await countUserActiveDaysRecent(userId, RENAME_FREQ_WINDOW_DAYS);
   var unused = await countUnusedRenameCredits(userId);
-  var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
   var exempt = await isRenameFeeExemptUser(userId);
-  var feeCfg = await loadRenameFeeConfig(false);
-  var feeOn = renameFeePolicy.isRenameFeeCharged(feeCfg.amount);
-  var needFee = feeOn && !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   return {
-    need_fee: needFee,
-    can_rename_now: !needFee || unused > 0,
+    need_fee: false,
+    can_rename_now: true,
     unused_credits: unused,
     name_change_count: nameChanges,
     free_limit: RENAME_FREE_LIMIT,
     active_days: activeDays,
     activity_window_days: RENAME_FREQ_WINDOW_DAYS,
-    is_mid_high_frequency: isMidHigh,
+    is_mid_high_frequency: activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS,
     rename_fee_exempt: exempt,
     tax_edit_fee_exempt: exempt,
-    fee_amount: feeCfg.amount,
+    fee_amount: '0.00',
     fee_subject: RENAME_FEE_SUBJECT,
     sku_id: RENAME_FEE_SKU_ID
   };
@@ -6411,54 +6532,34 @@ async function handleAlipayCreateOrder(req, res) {
     var taxFeeSubject = taxEditFeePolicy.TAX_EDIT_DAILY_SUBJECT;
     var taxFeeGrantKind = 'tax_edit_daily';
     var taxFeeProduct = 'tax_edit_unlimited';
+    /* payment_orders.pricing_variant 历史列为 VARCHAR(16)，不可写入 tax_edit_unlimited(18) */
+    var taxFeePricingVariant = 'tax_daily';
     if (!taxFeeAmount) {
       return res.status(503).json({ code: 503, msg: '个税修改费用配置无效' });
     }
+    await ensurePaymentOrdersVariantColumns(pool);
     const connTaxFee = await pool.getConnection();
     var taxFeeOrder = null;
     try {
       await connTaxFee.beginTransaction();
-      const [existingTaxFee] = await connTaxFee.execute(
-        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
-                grant_kind, grant_days, grant_hours, grant_minutes
-         FROM payment_orders
-         WHERE username = ? AND status = 'pending' AND sku_id = ?
-           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
-         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
-        [req.authUserId, taxFeeSkuId]
-      );
+      var existingTaxFee = await findRecentPendingAddonOrder(connTaxFee, req.authUserId, taxFeeSkuId);
       if (existingTaxFee.length) {
         taxFeeOrder = existingTaxFee[0];
       } else {
         taxFeeOrder = {
           out_trade_no: createAlipayOutTradeNo(),
+          username: req.authUserId,
           subject: taxFeeSubject,
           amount: taxFeeAmount,
           status: 'pending',
-          pricing_variant: taxFeeProduct,
+          pricing_variant: taxFeePricingVariant,
           sku_id: taxFeeSkuId,
           grant_kind: taxFeeGrantKind,
           grant_days: 0,
           grant_hours: 0,
           grant_minutes: 0
         };
-        await connTaxFee.execute(
-          `INSERT INTO payment_orders
-           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
-           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
-          [
-            taxFeeOrder.out_trade_no,
-            req.authUserId,
-            taxFeeOrder.subject,
-            taxFeeOrder.amount,
-            taxFeeOrder.pricing_variant,
-            taxFeeOrder.sku_id,
-            taxFeeOrder.grant_kind,
-            taxFeeOrder.grant_days,
-            taxFeeOrder.grant_hours,
-            taxFeeOrder.grant_minutes
-          ]
-        );
+        await insertPendingAddonOrder(connTaxFee, taxFeeOrder);
       }
       await connTaxFee.commit();
     } catch (eTaxFeeDb) {
@@ -6469,7 +6570,11 @@ async function handleAlipayCreateOrder(req, res) {
       try {
         connTaxFee.release();
       } catch (eRel) {}
-      return res.status(500).json({ code: 500, msg: '创建个税修改订单失败' });
+      var dbHint = paymentDbErrorHint(eTaxFeeDb);
+      return res.status(500).json({
+        code: 500,
+        msg: dbHint ? '创建个税修改订单失败：' + dbHint : '创建个税修改订单失败'
+      });
     }
     try {
       var taxFeePre = await alipay.createFaceToFaceQr({
@@ -6483,7 +6588,7 @@ async function handleAlipayCreateOrder(req, res) {
           order: plainPaymentOrder(taxFeeOrder),
           qr_code: taxFeePre.qrCode,
           payment_url: taxFeePre.qrCode,
-          pricing_variant: taxFeeProduct,
+          pricing_variant: taxFeePricingVariant,
           sku_id: taxFeeSkuId,
           product: taxFeeProduct
         }
@@ -9393,22 +9498,6 @@ async function handleUserPost(req, res) {
           var renamePolicy = null;
           if (renaming) {
             renamePolicy = await getRenameFeePolicy(userId);
-            if (renamePolicy.need_fee) {
-              var consumed = await consumeRenameCreditInConn(conn, userId);
-              if (!consumed) {
-                await conn.rollback();
-                return res.status(402).json({
-                  code: 402,
-                  msg:
-                    '中高频用户改名已超过免费 ' +
-                    RENAME_FREE_LIMIT +
-                    ' 次，请支付 ¥' +
-                    (renameFeePolicy.formatYuanLabel(renamePolicy.fee_amount) || '10') +
-                    ' 后再修改',
-                  data: Object.assign({ need_rename_fee: true }, renamePolicy)
-                });
-              }
-            }
           }
           updateParams.push(userId);
           await conn.execute(`UPDATE users SET ${updateFields.join(', ')} WHERE username = ?`, updateParams);
@@ -18482,6 +18571,7 @@ async function handleAdminSettingsGet(req, res) {
         sales_agent: salesAgentPublicPayload(salesAgent),
         pricing_ab: await getPricingAb().loadPricingAbParsed(true),
         sku_catalog_prices: await getPricingAb().loadCatalogAmounts(true),
+        sku_catalog: await getPricingAb().loadCatalogConfig(true),
         tax_edit_fee: await loadTaxEditFeeConfig(true),
         rename_fee: await loadRenameFeeConfig(true),
         activation_nudge: activationNudge
@@ -18509,7 +18599,9 @@ async function handleAdminSettingsPost(req, res) {
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
   var hasSalesAgent = body.sales_agent != null && typeof body.sales_agent === 'object';
   var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
-  var hasSkuCatalogPrices = body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object';
+  var hasSkuCatalogPrices =
+    (body.sku_catalog != null && typeof body.sku_catalog === 'object') ||
+    (body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object');
   var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
   var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
@@ -18534,7 +18626,7 @@ async function handleAdminSettingsPost(req, res) {
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、套餐价格、个税修改收费、改名费用或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用或激活引导弹窗配置'
     });
   }
 
@@ -18850,7 +18942,11 @@ async function handleAdminSettingsPost(req, res) {
 
     if (hasSkuCatalogPrices) {
       try {
-        await getPricingAb().saveCatalogAmountsFromAdmin(body.sku_catalog_prices);
+        await getPricingAb().saveCatalogAmountsFromAdmin(
+          body.sku_catalog && typeof body.sku_catalog === 'object'
+            ? body.sku_catalog
+            : body.sku_catalog_prices
+        );
       } catch (eSkuPriceSave) {
         var skuPriceMsg =
           eSkuPriceSave && eSkuPriceSave.message ? String(eSkuPriceSave.message) : '保存套餐价格失败';
@@ -18924,6 +19020,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.landing_ab = await loadLandingAbParsed();
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
     outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true);
+    outData.sku_catalog = await getPricingAb().loadCatalogConfig(true);
     outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
     outData.rename_fee = await loadRenameFeeConfig(true);
     outData.activation_nudge = await loadActivationNudgeParsed();

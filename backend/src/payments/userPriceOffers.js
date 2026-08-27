@@ -214,15 +214,48 @@ function createUserPriceOffers(deps) {
   var normalizeAmount = deps.normalizeAmount;
   var loadCatalogAmounts =
     typeof deps.loadCatalogAmounts === 'function' ? deps.loadCatalogAmounts : null;
+  var loadCatalogConfig =
+    typeof deps.loadCatalogConfig === 'function' ? deps.loadCatalogConfig : null;
 
-  /** 后台「支付套餐价格」目录价；读取失败回落到本文件默认值 */
-  async function catalogAmountsSafe() {
+  /** 后台「支付套餐」目录；读取失败回落到本文件默认值 */
+  async function catalogConfigSafe() {
+    if (loadCatalogConfig) {
+      try {
+        return (await loadCatalogConfig()) || null;
+      } catch (eCfg) {
+        /* fall through */
+      }
+    }
     if (!loadCatalogAmounts) return null;
     try {
-      return (await loadCatalogAmounts()) || null;
+      var amounts = (await loadCatalogAmounts()) || null;
+      if (!amounts) return null;
+      var out = {};
+      Object.keys(amounts).forEach(function (id) {
+        out[id] = { amount: String(amounts[id]), enabled: true };
+      });
+      return out;
     } catch (e) {
       return null;
     }
+  }
+
+  async function catalogAmountsSafe() {
+    var cfg = await catalogConfigSafe();
+    if (!cfg) return null;
+    var map = {};
+    Object.keys(cfg).forEach(function (id) {
+      if (cfg[id] && cfg[id].amount) map[id] = String(cfg[id].amount);
+    });
+    return map;
+  }
+
+  function applyCatalogEntryToSku(sku, entry) {
+    if (!sku || !entry) return sku;
+    if (entry.grant_days != null) sku.grant_days = parseInt(entry.grant_days, 10) || 0;
+    if (entry.grant_hours != null) sku.grant_hours = parseInt(entry.grant_hours, 10) || 0;
+    if (entry.grant_minutes != null) sku.grant_minutes = parseInt(entry.grant_minutes, 10) || 0;
+    return sku;
   }
 
   async function getOffer(username, opts) {
@@ -247,16 +280,23 @@ function createUserPriceOffers(deps) {
     return row;
   }
 
-  /** 现售套餐列表（金额按后台目录价覆盖） */
+  /** 现售套餐列表（金额、时长、上架以后台目录为准） */
   async function listOfferableSkusLive() {
     var skus = listOfferableSkus();
-    var amounts = await catalogAmountsSafe();
-    if (amounts) {
-      skus.forEach(function (s) {
-        if (amounts[s.id]) s.amount = String(amounts[s.id]);
+    var cfg = await catalogConfigSafe();
+    if (!cfg) return skus.filter(function (s) { return s.id !== 'sku_99_1h'; });
+    return skus
+      .filter(function (s) {
+        var e = cfg[s.id];
+        if (!e) return s.id !== 'sku_99_1h';
+        return e.enabled !== false;
+      })
+      .map(function (s) {
+        var e = cfg[s.id];
+        if (e && e.amount) s.amount = String(e.amount);
+        applyCatalogEntryToSku(s, e);
+        return s;
       });
-    }
-    return skus;
   }
 
   async function upsertOffer(username, input, createdBy) {
@@ -269,7 +309,7 @@ function createUserPriceOffers(deps) {
       throw e0;
     }
     if (!base) {
-      var e1 = new Error('请选择有效套餐（小时/天/3天/周/双周/月）');
+      var e1 = new Error('请选择有效套餐');
       e1.statusCode = 400;
       throw e1;
     }
@@ -328,6 +368,8 @@ function createUserPriceOffers(deps) {
     if (!sku) {
       return { offer: pricingOffer, customOffer: null };
     }
+    var cfg = await catalogConfigSafe();
+    if (cfg && cfg[sku.id]) applyCatalogEntryToSku(sku, cfg[sku.id]);
     var next = Object.assign({}, pricingOffer || {}, {
       skus: [sku],
       custom_offer: true,

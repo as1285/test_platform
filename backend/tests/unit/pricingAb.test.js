@@ -113,16 +113,16 @@ describe('pricingAb SKU mojibake repair via load', () => {
     });
     const cfg = await api.loadPricingAbParsed(true);
     expect((cfg.treatment_skus || []).map((s) => s.id).join('|')).toBe(
-      'sku_99_1h|sku_249_1d|sku_268_3d|sku_300_7d|sku_348_14d|sku_398_30d'
+      'sku_249_1d|sku_268_3d|sku_300_7d|sku_348_14d|sku_398_30d'
     );
     expect((cfg.control_skus || []).map((s) => s.amount).join('|')).toBe(
-      '99.00|249.00|268.00|300.00|348.00|398.00'
+      '249.00|268.00|300.00|348.00|398.00'
     );
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.label).join('|')).toBe(
-      '小时卡|天卡|3天卡|周卡|双周卡|月卡'
+      '天卡|3天卡|周卡|双周卡|月卡'
     );
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
-      '99.00|249.00|268.00|300.00|348.00|398.00'
+      '249.00|268.00|300.00|348.00|398.00'
     );
     expect(cfg.a_percent).toBe(0);
     expect(cfg.b_percent).toBe(100);
@@ -130,16 +130,56 @@ describe('pricingAb SKU mojibake repair via load', () => {
     expect(DEFAULT_PRICING_AB.a_percent).toBe(0);
     expect(DEFAULT_PRICING_AB.b_percent).toBe(100);
   });
+
+  it('applies admin duration and listing to live skus', async () => {
+    const catalog = {
+      sku_99_1h: { amount: '59.00', grant_hours: 2, grant_days: 0, enabled: true },
+      sku_249_1d: { amount: '188.00', grant_days: 1, grant_hours: 6, enabled: true },
+      sku_268_3d: { amount: '258.00', grant_days: 3, enabled: false },
+      sku_300_7d: { amount: '280.00', grant_days: 7, enabled: true },
+      sku_348_14d: { amount: '330.00', grant_days: 14, enabled: true },
+      sku_398_30d: { amount: '360.00', grant_days: 30, enabled: true }
+    };
+    const conn = {
+      execute: async (sql) => {
+        if (String(sql).includes('sku_catalog_prices_json') || String(sql).includes('?')) {
+          return [[{ setting_value: JSON.stringify(catalog) }]];
+        }
+        return [[]];
+      },
+      release: () => {}
+    };
+    const api = createPricingAb({
+      pool: { getConnection: async () => conn },
+      upsertAppSetting: async () => {},
+      alipayNormalizeAmount: (v) => String(v || '')
+    });
+    const cfg = await api.loadPricingAbParsed(true);
+    const ids = (cfg.treatment_skus || []).map((s) => s.id);
+    expect(ids).toContain('sku_99_1h');
+    expect(ids).not.toContain('sku_268_3d');
+    const hour = cfg.treatment_skus.find((s) => s.id === 'sku_99_1h');
+    expect(hour.grant_hours).toBe(2);
+    expect(hour.amount).toBe('59.00');
+    const day = cfg.treatment_skus.find((s) => s.id === 'sku_249_1d');
+    expect(day.grant_days).toBe(1);
+    expect(day.grant_hours).toBe(6);
+  });
 });
 
 describe('sku catalog amounts', () => {
-  const { normalizeCatalogAmounts, defaultCatalogAmounts } = require('../../src/legacy/pricingAb');
+  const {
+    normalizeCatalogAmounts,
+    defaultCatalogAmounts,
+    normalizeCatalogConfig,
+    defaultCatalogConfig
+  } = require('../../src/legacy/pricingAb');
 
   it('keeps defaults when raw is empty', () => {
     expect(normalizeCatalogAmounts(null)).toEqual(defaultCatalogAmounts());
   });
 
-  it('overrides live sku prices and ignores junk', () => {
+  it('overrides configurable sku prices and ignores junk', () => {
     const next = normalizeCatalogAmounts({
       sku_99_1h: '88',
       sku_249_1d: '199',
@@ -154,8 +194,32 @@ describe('sku catalog amounts', () => {
     expect(next['sku_300_7d']).toBe('300.00');
     expect(next['sku_348_14d']).toBe('348.00');
     expect(next['sku_398_30d']).toBe('398.00');
-    /* 永久档已下架：忽略残留配置 */
     expect(next['sku_999_perm']).toBeUndefined();
     expect(next.sku_fake).toBeUndefined();
+  });
+
+  it('parses duration and listing flags; hour stays off for legacy price-only saves', () => {
+    const legacy = normalizeCatalogConfig({
+      sku_249_1d: '199',
+      sku_398_30d: '380'
+    });
+    expect(legacy['sku_99_1h'].enabled).toBe(false);
+    expect(legacy['sku_99_1h'].grant_hours).toBe(1);
+    expect(legacy['sku_249_1d'].enabled).toBe(true);
+    expect(legacy['sku_249_1d'].grant_days).toBe(1);
+    expect(legacy['sku_249_1d'].amount).toBe('199.00');
+
+    const structured = normalizeCatalogConfig({
+      sku_99_1h: { amount: '50', grant_hours: 3, grant_days: 0, enabled: true },
+      sku_249_1d: { amount: '180', grant_days: 2, grant_hours: 12, enabled: true },
+      sku_300_7d: { amount: '280', grant_days: 10, enabled: false }
+    });
+    expect(structured['sku_99_1h'].enabled).toBe(true);
+    expect(structured['sku_99_1h'].grant_hours).toBe(3);
+    expect(structured['sku_249_1d'].grant_days).toBe(2);
+    expect(structured['sku_249_1d'].grant_hours).toBe(12);
+    expect(structured['sku_300_7d'].enabled).toBe(false);
+    expect(structured['sku_300_7d'].grant_days).toBe(10);
+    expect(defaultCatalogConfig()['sku_99_1h'].enabled).toBe(false);
   });
 });

@@ -47,37 +47,70 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格、改名费用、个税修改收费与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格与时长、改名费用、个税修改收费与激活引导弹窗</p></div>
                     <section>
-                        <h2>支付套餐价格</h2>
+                        <h2>支付套餐</h2>
                         <div class="form-row form-stack">
-                            <p class="hint mt-0">全站购买页只保留这一套六档。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
-                            <div class="form-field form-field-narrow">
-                                <label for="skuPriceHour">小时卡（元）</label>
-                                <input type="number" id="skuPriceHour" data-sku-id="sku_99_1h" min="0.01" max="99999.99" step="0.01" value="99">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="skuPriceDay">天卡（元）</label>
-                                <input type="number" id="skuPriceDay" data-sku-id="sku_249_1d" min="0.01" max="99999.99" step="0.01" value="249">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="skuPrice3Day">3天卡（元）</label>
-                                <input type="number" id="skuPrice3Day" data-sku-id="sku_268_3d" min="0.01" max="99999.99" step="0.01" value="268">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="skuPriceWeek">周卡（元）</label>
-                                <input type="number" id="skuPriceWeek" data-sku-id="sku_300_7d" min="0.01" max="99999.99" step="0.01" value="300">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="skuPriceTwoWeek">双周卡（元）</label>
-                                <input type="number" id="skuPriceTwoWeek" data-sku-id="sku_348_14d" min="0.01" max="99999.99" step="0.01" value="348">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="skuPriceMonth">月卡（元）</label>
-                                <input type="number" id="skuPriceMonth" data-sku-id="sku_398_30d" min="0.01" max="99999.99" step="0.01" value="398">
+                            <p class="hint mt-0">价格、时长、是否上架都可改。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡默认下架，勾选上架后才会出现在购买页。</p>
+                            <div class="scroll-x">
+                                <table class="sku-catalog-table" id="skuCatalogTable">
+                                    <thead>
+                                        <tr>
+                                            <th>上架</th>
+                                            <th>套餐</th>
+                                            <th>价格（元）</th>
+                                            <th>天数</th>
+                                            <th>小时</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr data-sku-id="sku_99_1h" data-sku-label="小时卡">
+                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledHour" aria-label="上架小时卡"></td>
+                                            <td>小时卡</td>
+                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceHour" min="0.01" max="99999.99" step="0.01" value="99"></td>
+                                            <td><input type="number" class="sku-catalog-days" id="skuDaysHour" min="0" max="365" step="1" value="0"></td>
+                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursHour" min="0" max="720" step="1" value="1"></td>
+                                        </tr>
+                                        <tr data-sku-id="sku_249_1d" data-sku-label="天卡">
+                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledDay" aria-label="上架天卡" checked></td>
+                                            <td>天卡</td>
+                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceDay" min="0.01" max="99999.99" step="0.01" value="249"></td>
+                                            <td><input type="number" class="sku-catalog-days" id="skuDaysDay" min="0" max="365" step="1" value="1"></td>
+                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursDay" min="0" max="720" step="1" value="0"></td>
+                                        </tr>
+                                        <tr data-sku-id="sku_268_3d" data-sku-label="3天卡">
+                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabled3Day" aria-label="上架3天卡" checked></td>
+                                            <td>3天卡</td>
+                                            <td><input type="number" class="sku-catalog-amount" id="skuPrice3Day" min="0.01" max="99999.99" step="0.01" value="268"></td>
+                                            <td><input type="number" class="sku-catalog-days" id="skuDays3Day" min="0" max="365" step="1" value="3"></td>
+                                            <td><input type="number" class="sku-catalog-hours" id="skuHours3Day" min="0" max="720" step="1" value="0"></td>
+                                        </tr>
+                                        <tr data-sku-id="sku_300_7d" data-sku-label="周卡">
+                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledWeek" aria-label="上架周卡" checked></td>
+                                            <td>周卡</td>
+                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceWeek" min="0.01" max="99999.99" step="0.01" value="300"></td>
+                                            <td><input type="number" class="sku-catalog-days" id="skuDaysWeek" min="0" max="365" step="1" value="7"></td>
+                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursWeek" min="0" max="720" step="1" value="0"></td>
+                                        </tr>
+                                        <tr data-sku-id="sku_348_14d" data-sku-label="双周卡">
+                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledTwoWeek" aria-label="上架双周卡" checked></td>
+                                            <td>双周卡</td>
+                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceTwoWeek" min="0.01" max="99999.99" step="0.01" value="348"></td>
+                                            <td><input type="number" class="sku-catalog-days" id="skuDaysTwoWeek" min="0" max="365" step="1" value="14"></td>
+                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursTwoWeek" min="0" max="720" step="1" value="0"></td>
+                                        </tr>
+                                        <tr data-sku-id="sku_398_30d" data-sku-label="月卡">
+                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledMonth" aria-label="上架月卡" checked></td>
+                                            <td>月卡</td>
+                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceMonth" min="0.01" max="99999.99" step="0.01" value="398"></td>
+                                            <td><input type="number" class="sku-catalog-days" id="skuDaysMonth" min="0" max="365" step="1" value="30"></td>
+                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursMonth" min="0" max="720" step="1" value="0"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                             <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveSkuCatalogPrices">保存套餐价格</button>
+                                <button type="button" class="btn-primary" id="btnSaveSkuCatalogPrices">保存套餐</button>
                                 <span class="hint" id="skuCatalogPriceHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
@@ -124,12 +157,12 @@
                             <div class="form-field form-field-narrow">
                                 <label for="priceOfferSku">套餐</label>
                                 <select id="priceOfferSku">
-                                    <option value="sku_99_1h">小时卡（原价 ¥99）</option>
                                     <option value="sku_249_1d">天卡（原价 ¥249）</option>
                                     <option value="sku_268_3d">3天卡（原价 ¥268）</option>
                                     <option value="sku_300_7d">周卡（原价 ¥300）</option>
                                     <option value="sku_348_14d">双周卡（原价 ¥348）</option>
                                     <option value="sku_398_30d">月卡（原价 ¥398）</option>
+                                    <option value="sku_99_1h">小时卡（原价 ¥99）</option>
                                 </select>
                             </div>
                             <div class="form-field form-field-narrow">
@@ -1432,7 +1465,7 @@
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>或<strong>江苏社会保险权益记录单</strong>（版式分别对齐浙里办 / 深圳清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社样张）。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>江苏社会保险权益记录单</strong>或<strong>北京社会保险个人权益记录</strong>（版式分别对齐浙里办 / 深圳清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社 / 北京个人权益记录样张）。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
@@ -1440,7 +1473,8 @@
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz"> 深圳</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
-                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js"> 江苏</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js"> 江苏</label>
+                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj"> 北京</label>
                             </div>
                         </div>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
@@ -1474,7 +1508,7 @@
 公司名称：杭州千雨千寻文化科技有限公司
 税号：91330102MA7E2YNM2R
 写参保缴费 不要停保"></textarea>
-                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>。默认<strong>正常参保</strong>并自动生成缴费记录。</p>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>。默认<strong>正常参保</strong>并自动生成缴费记录。</p>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>
@@ -1535,7 +1569,7 @@
                             </div>
                             <div class="sbdy-zj-js" id="sbdySegmentsWrap">
                                 <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
-                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>；浙江版缴费明细按月显示各自单位编号与参保地；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴。预填 2 家及以上会自动填入下方分段。</p>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>；浙江版缴费明细按月显示各自单位编号与参保地；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」。预填 2 家及以上会自动填入下方分段。</p>
                                 <div id="sbdySegments"></div>
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
                             </div>
@@ -3014,7 +3048,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260827-peer-accounts"></script>
+    <script src="/js/admin/loader.js?v=20260827-bj2"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260827-rename-zero"></script>

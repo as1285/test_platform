@@ -1689,6 +1689,38 @@ tr.users-detail-row > td {
 .form-field-narrow {
     max-width: 320px;
 }
+.sku-catalog-table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.sku-catalog-table th,
+.sku-catalog-table td {
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--admin-border-light);
+    text-align: left;
+    vertical-align: middle;
+}
+.sku-catalog-table th {
+    color: var(--admin-text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.sku-catalog-table input[type='number'] {
+    width: 100%;
+    max-width: 120px;
+    border: 1px solid var(--admin-border-strong);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.sku-catalog-table .sku-catalog-days,
+.sku-catalog-table .sku-catalog-hours {
+    max-width: 80px;
+}
 .form-field label,
 .field-label {
     font-size: 13px;
