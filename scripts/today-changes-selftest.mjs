@@ -164,6 +164,16 @@ mustInclude('frontend/css/nav.css', ['nav-unread-badge'], 'nav.css badge');
 mustInclude('frontend/purchase.html', ['track_purchase_page_leave', '__purchasePageComplete'], 'purchase leave track');
 mustInclude('frontend/admin_panel.html', ['inactive_has_tax', 'inactive_purchase_no_pay'], 'admin bulk audiences');
 mustInclude('backend/src/growth/purchasePriceSurvey.js', ['SKIP_SENTIMENT', "'skipped'"], 'price survey skipped');
+mustInclude(
+  'frontend/purchase.html',
+  [
+    '点一下就走',
+    'PRICE_SURVEY_AUTO_LEAVE_MS',
+    '这次先不说',
+    "submitPriceSurvey({ skipped: false })"
+  ],
+  'purchase leave survey one-tap submit'
+);
 mustInclude('frontend/public/js/consult-batch-tax.js', ['batchMsModalDraft', 'renderBatchMsModalPage'], 'batch-ms pagination');
 mustInclude('frontend/public/js/conversion-guide.js', ['openPayGateModal', 'bindPayFeatureGates'], 'conversion pay gate');
 mustInclude('frontend/public/js/consult-records.js', ['expandSingleTaxRecordCard', 'taxMoreCard', 'syncTaxPayGuideBanner'], 'editRecord + pay guide');
