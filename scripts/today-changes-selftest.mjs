@@ -2,7 +2,7 @@
  * 今日前端/后端改动静态自检（无外部依赖）
  * node scripts/today-changes-selftest.mjs
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -72,7 +72,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['mineE1Canvas', '20260824-mate60ark6', 'mate60BuildMark', 'UI:e1-v12', 'padding-top:0!important', 'pinMate60RpxEarly', 'mine_mate60_aug12.html', '20260824-aug12r6'],
+  ['mineE1Canvas', '20260827-cend-sync', 'mate60BuildMark', 'UI:e1-v12', 'padding-top:0!important', 'pinMate60RpxEarly', 'mine_mate60_aug12.html', '20260824-aug12r6'],
   'mine_v2 e1 page forwards Mate60 to frozen aug12'
 );
 mustInclude(
@@ -102,7 +102,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['/api/sbdy-demo/status', '/api/sbdy-demo/generate', 'sku_sbdy_demo_199', 'sbdyRegion', 'period_start', 'btnSbdyOpenPdf'],
+  ['/api/sbdy-demo/status', 'sku_sbdy_demo_199', 'sbdyRegion', 'period_start', 'btnSbdyOpenPdf'],
   'sbdy demo C-side page'
 );
 mustExclude(
@@ -179,7 +179,7 @@ mustExclude(
   ['bindTaxRecycleBinModal'],
   'recycle bin bind removed from consult-batch-tax'
 );
-mustInclude('frontend/consult.html', ['consult-records.js?v=20260825-recycle-bind'], 'consult recycle-bind cache');
+mustInclude('frontend/consult.html', ['consult-records.js?v=20260827-tax-edit-fee'], 'consult recycle-bind cache');
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
@@ -313,7 +313,7 @@ mustInclude(
 /* UI 已回退到 2026-08-13 ~10:00 CST（a7a24f0/885ea22）；勿再锁定其后 Mate/小米17 顶栏改动 */
 mustInclude(
   'frontend/login.html',
-  ['20260824-mate60ark6'],
+  ['20260827-cend-sync'],
   'login.html auth cache neo8'
 );
 mustInclude(
@@ -353,7 +353,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260825-meizu20pro', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -394,12 +394,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260821-home-perf2', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
+  ['20260827-cend-sync', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
   'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260825-meizu20pro', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
@@ -419,12 +419,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260825-meizu20pro', '2211133', 'app-android-xiaomi-13'],
+  ['2210132[CGEI]', 'app-android-xiaomi-13pro', '20260827-cend-sync', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result xiaomi 13 pro first-paint'
 );
 mustInclude(
   'frontend/xiangqing.html',
-  ['BLK-AL80', 'app-android-huawei-nova13', '20260825-meizu20pro', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint', '2211133', 'app-android-xiaomi-13'],
+  ['BLK-AL80', 'app-android-huawei-nova13', '20260827-cend-sync', 'padding-top: calc(10px + 40px)', 'tax_device_model_v1', 'data-nova13-xq-firstpaint', '2211133', 'app-android-xiaomi-13'],
   'xiangqing nova 13 statusbar inset'
 );
 mustInclude(
@@ -444,7 +444,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['20260826-iphone14-row-gap', 'var(--ufs-list-body-color, #666)'],
+  ['20260827-cend-sync', 'var(--ufs-list-body-color, #666)'],
   'shuiming_result list body color follows ufs var'
 );
 mustInclude(
@@ -671,7 +671,7 @@ mustInclude(
 mustInclude('frontend/consult.html', ['>激活页面<'], 'consult tab 激活页面');
 mustInclude(
   'frontend/consult.html',
-  ['id="cardShebaoPhoto" hidden', '20260826-hide-shebao-entry'],
+  ['id="cardShebaoPhoto" hidden', '20260827-peer-banner'],
   'consult shebao upload entry hidden'
 );
 mustInclude(
@@ -691,7 +691,7 @@ mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '复制模板�
 mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'admin copy tpl btn');
 mustInclude(
   'frontend/admin_panel.html',
-  ['col-cert-perm', '20260817-cert-unlock'],
+  ['col-cert-perm', '/js/admin_panel.js?v='],
   'admin users cert perm column + cache'
 );
 mustInclude(
@@ -792,7 +792,7 @@ mustInclude(
 /* loader cache must point at the Wuhan print/seal fix bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260825-wh-print-today-seal-ref'],
+  ['20260826-app-sync'],
   'sbdy-demo loader cache for Wuhan print/seal'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
@@ -849,7 +849,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260825-meizu20pro', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260827-cend-sync', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -876,7 +876,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2505A', 'app-android-iqoo-15', 'data-iqoo15-result-firstpaint', '20260825-meizu20pro'],
+  ['V2505A', 'app-android-iqoo-15', 'data-iqoo15-result-firstpaint', '20260827-cend-sync'],
   'shuiming_result iqoo 15 first-paint'
 );
 mustInclude(
@@ -897,7 +897,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['M391Q', 'app-android-meizu-20pro', 'data-meizu20pro-result-firstpaint', '20260825-meizu20pro'],
+  ['M391Q', 'app-android-meizu-20pro', 'data-meizu20pro-result-firstpaint', '20260827-cend-sync'],
   'shuiming_result meizu 20 pro first-paint'
 );
 mustInclude(
@@ -933,7 +933,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['20260820-no-bili-gate', 'consult-batch-tax.js?v=20260820-no-bili-gate'],
+  ['20260827-peer-fee', 'consult-batch-tax.js?v=20260827-peer-fee'],
   'consult no-bili-gate cache'
 );
 if (!read('frontend/consult.html').includes('为什么生成前要分享到 B 站')) {
@@ -975,7 +975,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260824-mate60ark6'],
+  ['auth.js?v=20260827-cend-sync'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1209,6 +1209,54 @@ mustInclude(
   ['已下线，仅存档'],
   'admin xianyu setting labeled as offline'
 );
+
+/* ===== 共享 C 端脚本 ?v= 全站一致性守卫（nginx /js/ 强缓存 7 天，戳不齐会新旧混跑） =====
+ * mine_mate60_aug12.html 为冻结页豁免；管理页不参与。
+ * 升级共享脚本时：sed 统一全部 C 端页面到同一个新戳，勿只改单页。 */
+{
+  const FROZEN_PAGES = new Set(['mine_mate60_aug12.html', 'admin_panel.html', 'admin_login.html']);
+  const SHARED_SCRIPTS = [
+    'auth',
+    'watermark',
+    'theme-loader',
+    'browser-install-prompt',
+    'shenbao_jilu_store',
+    'user-font-settings'
+  ];
+  const htmlPages = readdirSync(join(root, 'frontend')).filter(
+    (f) => f.endsWith('.html') && !FROZEN_PAGES.has(f)
+  );
+  SHARED_SCRIPTS.forEach((name) => {
+    const stamps = new Map();
+    htmlPages.forEach((p) => {
+      const src = read('frontend/' + p);
+      const re = new RegExp(
+        'js/' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.js\\?v=([\\w.-]+)',
+        'g'
+      );
+      let m;
+      while ((m = re.exec(src))) {
+        if (!stamps.has(m[1])) stamps.set(m[1], []);
+        stamps.get(m[1]).push(p);
+      }
+    });
+    if (stamps.size <= 1) {
+      ok(
+        'shared ?v= uniform: ' +
+          name +
+          '.js' +
+          (stamps.size ? ' (' + [...stamps.keys()][0] + ')' : ' (unused)')
+      );
+    } else {
+      fail(
+        'shared ?v= drift: ' + name + '.js',
+        [...stamps.entries()]
+          .map(([s, ps]) => s + '×' + ps.length + '页(如 ' + ps[0] + ')')
+          .join(' | ')
+      );
+    }
+  });
+}
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);

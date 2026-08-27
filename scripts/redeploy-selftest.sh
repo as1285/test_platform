@@ -166,7 +166,7 @@ echo "[selftest] issued code ok"
 reg="$(
   curl_json POST "$BASE/api/auth" \
     -H "Referer: $BASE/register.html" \
-    -d "{\"action\":\"register\",\"username\":\"$U\",\"password\":\"$P\",\"phone\":\"$PH\"}"
+    -d "{\"action\":\"register\",\"username\":\"$U\",\"password\":\"$P\",\"phone\":\"$PH\",\"register_source_channel\":\"other\",\"register_source_channel_other\":\"redeploy-selftest\"}"
 )"
 TOKEN="$(echo "$reg" | json_field data token)"
 if [[ -z "$TOKEN" ]]; then

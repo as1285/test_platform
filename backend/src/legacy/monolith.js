@@ -16330,6 +16330,7 @@ async function handleAdminUsers(req, res) {
     var qLoginInactiveDays = parseInt(req.query.login_inactive_days, 10);
     var qNameChangesGt = parseInt(req.query.name_changes_gt, 10);
     var qTaxModDaysGt = parseInt(req.query.tax_mod_days_gt, 10);
+    var qPeer = req.query.peer === '1'; // '1' 仅同行账号（超阈值改名/改税且未免改名费）
     var qGuest =
       req.query.guest === '1' ||
       req.query.guest === 'true' ||
