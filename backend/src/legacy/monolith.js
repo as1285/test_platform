@@ -5310,8 +5310,9 @@ async function getRenameFeePolicy(userId) {
   var unused = await countUnusedRenameCredits(userId);
   var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
   var exempt = await isRenameFeeExemptUser(userId);
-  var needFee = !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   var feeCfg = await loadRenameFeeConfig(false);
+  var feeOn = renameFeePolicy.isRenameFeeCharged(feeCfg.amount);
+  var needFee = feeOn && !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   return {
     need_fee: needFee,
     can_rename_now: !needFee || unused > 0,
@@ -5451,7 +5452,7 @@ async function loadRenameFeeConfig(force) {
 async function saveRenameFeeConfigFromAdmin(body) {
   var next = renameFeePolicy.parseRenameFeeConfigFromAdmin(body);
   if (!next) {
-    var err = new Error('改名费用金额无效，请填写 0.01～99999.99');
+    var err = new Error('改名费用金额无效，请填写 0～99999.99（0 表示不用付款）');
     err.statusCode = 400;
     throw err;
   }
@@ -6305,6 +6306,9 @@ async function handleAlipayCreateOrder(req, res) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
     var renameFeeCfg = await loadRenameFeeConfig(false);
+    if (!renameFeePolicy.isRenameFeeCharged(renameFeeCfg.amount)) {
+      return res.status(409).json({ code: 409, msg: '改名费用为 0，无需付款' });
+    }
     var renameAmount = alipay.normalizeAmount(renameFeeCfg.amount);
     if (!renameAmount) {
       return res.status(503).json({ code: 503, msg: '改名费用配置无效' });

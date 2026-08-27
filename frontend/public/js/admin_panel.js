@@ -7715,8 +7715,8 @@
                 var btn = btnSaveRenameFee;
                 var fees = collectRenameFeeFromForm();
                 var n = Number(String(fees.amount || '').replace(/,/g, '').trim());
-                if (!isFinite(n) || n < 0.01 || n > 99999.99) {
-                    alert('请填写 0.01～99999.99 的单次改名金额');
+                if (!isFinite(n) || n < 0 || n > 99999.99) {
+                    alert('请填写 0～99999.99 的单次改名金额；填 0 表示不用付款');
                     return;
                 }
                 btn.disabled = true;
@@ -7733,7 +7733,11 @@
                         if (data.code === 200) {
                             if (hint) hint.textContent = '已保存';
                             applyRenameFeeToForm((data.data && data.data.rename_fee) || fees);
-                            alert('改名费用已保存，超限账号将按新价格付款');
+                            alert(
+                                n <= 0
+                                    ? '改名费用已保存为 0，超限账号改名也不用付款'
+                                    : '改名费用已保存，超限账号将按新价格付款'
+                            );
                         } else {
                             if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');

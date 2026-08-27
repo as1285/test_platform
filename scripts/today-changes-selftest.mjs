@@ -296,8 +296,21 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260827-exempt-both'],
-  'admin_panel.js cache bust after exempt-both copy'
+  ['admin_panel.js?v=20260827-rename-zero', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  'admin rename fee allows 0 and cache-busts'
+);
+mustInclude(
+  'backend/src/user/renameFeePolicy.js',
+  ['function isRenameFeeCharged', 'n < 0 || n > 99999.99'],
+  'rename fee amount accepts 0'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'var feeOn = renameFeePolicy.isRenameFeeCharged(feeCfg.amount);',
+    '改名费用为 0，无需付款'
+  ],
+  'rename fee 0 skips paywall and alipay create'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',

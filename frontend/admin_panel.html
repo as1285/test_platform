@@ -85,10 +85,10 @@
                     <section>
                         <h2>个税修改收费</h2>
                         <div class="form-row form-stack">
-                            <p class="hint mt-0"><strong>改名费用</strong>：近 30 天活跃不少于 2 天、且历史改名超过 5 次后，每次再改名需先付下面金额。白名单免收。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <p class="hint mt-0"><strong>改名费用</strong>：近 30 天活跃不少于 2 天、且历史改名超过 5 次后，每次再改名需先付下面金额。填 <strong>0</strong> 则超限后也不收费、不用付款。白名单免收。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
                             <div class="form-field form-field-narrow">
                                 <label for="renameFeeAmount">单次改名（元）</label>
-                                <input type="number" id="renameFeeAmount" min="0.01" max="99999.99" step="0.01" value="10">
+                                <input type="number" id="renameFeeAmount" min="0" max="99999.99" step="0.01" value="10">
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveRenameFee">保存改名费用</button>
@@ -3017,6 +3017,6 @@
     <script src="/js/admin/loader.js?v=20260827-peer-accounts"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260827-exempt-both"></script>
+    <script src="/js/admin_panel.js?v=20260827-rename-zero"></script>
 </body>
 </html>
