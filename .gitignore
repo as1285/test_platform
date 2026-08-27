@@ -31,7 +31,7 @@ logs/
 
 # Generated/debug artifacts
 /frontend/static/
-/frontend/js/
+/frontend/js
 /tmp_*
 
 # Docker
