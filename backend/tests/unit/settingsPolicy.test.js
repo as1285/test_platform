@@ -20,6 +20,7 @@ describe('settingsPolicy', () => {
 
   it('allows ops keys', () => {
     expect(isOpsSettingKey('pricing_ab_json')).toBe(true);
+    expect(isOpsSettingKey('tax_edit_fee_json')).toBe(true);
     expect(isForbiddenSettingKey('pricing_ab_json')).toBe(false);
   });
 });

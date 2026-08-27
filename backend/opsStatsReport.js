@@ -182,7 +182,9 @@ function emptyDay(d) {
     treat_n: 0,
     treat_amt: 0,
     rename_n: 0,
-    rename_amt: 0
+    rename_amt: 0,
+    tax_edit_n: 0,
+    tax_edit_amt: 0
   };
 }
 
@@ -267,7 +269,9 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       "SUM(CASE WHEN grant_kind IN ('permanent','trial') THEN 1 ELSE 0 END) AS treat_n, " +
       "ROUND(SUM(CASE WHEN grant_kind IN ('permanent','trial') THEN amount ELSE 0 END), 2) AS treat_amt, " +
       "SUM(CASE WHEN grant_kind = 'rename_credit' OR sku_id LIKE 'sku_rename%' THEN 1 ELSE 0 END) AS rename_n, " +
-      "ROUND(SUM(CASE WHEN grant_kind = 'rename_credit' OR sku_id LIKE 'sku_rename%' THEN amount ELSE 0 END), 2) AS rename_amt " +
+      "ROUND(SUM(CASE WHEN grant_kind = 'rename_credit' OR sku_id LIKE 'sku_rename%' THEN amount ELSE 0 END), 2) AS rename_amt, " +
+      "SUM(CASE WHEN grant_kind IN ('tax_edit_single','tax_edit_daily') OR sku_id LIKE 'sku_tax_edit%' THEN 1 ELSE 0 END) AS tax_edit_n, " +
+      "ROUND(SUM(CASE WHEN grant_kind IN ('tax_edit_single','tax_edit_daily') OR sku_id LIKE 'sku_tax_edit%' THEN amount ELSE 0 END), 2) AS tax_edit_amt " +
       "FROM payment_orders WHERE status = 'paid' AND " +
       cnPaid +
       ' BETWEEN ? AND ? GROUP BY d',
@@ -303,6 +307,8 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       row.treat_amt = Number(payMap[d].treat_amt) || 0;
       row.rename_n = Number(payMap[d].rename_n) || 0;
       row.rename_amt = Number(payMap[d].rename_amt) || 0;
+      row.tax_edit_n = Number(payMap[d].tax_edit_n) || 0;
+      row.tax_edit_amt = Number(payMap[d].tax_edit_amt) || 0;
     }
     return row;
   });
@@ -321,6 +327,8 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       a.treat_amt += r.treat_amt;
       a.rename_n += r.rename_n;
       a.rename_amt += r.rename_amt;
+      a.tax_edit_n += r.tax_edit_n;
+      a.tax_edit_amt += r.tax_edit_amt;
       return a;
     },
     emptyDay('')
@@ -356,7 +364,8 @@ function kpiTable(tot, opts) {
     tr(['新激活', num(tot.act) + '（admin ' + num(tot.act_admin) + ' / 其他 ' + num(tot.act_other) + '）']) +
     tr(['已付订单', num(tot.paid_n) + ' / ' + num(tot.paid_uv) + ' 人 / ' + yuan(tot.paid_amt)]) +
     tr(['其中治疗类', num(tot.treat_n) + ' 单 / ' + yuan(tot.treat_amt)]) +
-    tr(['其中改名费', num(tot.rename_n) + ' 单 / ' + yuan(tot.rename_amt)]);
+    tr(['其中改名费', num(tot.rename_n) + ' 单 / ' + yuan(tot.rename_amt)]) +
+    tr(['其中个税修改费', num(tot.tax_edit_n) + ' 单 / ' + yuan(tot.tax_edit_amt)]);
   return (
     '<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;font-size:14px;">' +
     rows +

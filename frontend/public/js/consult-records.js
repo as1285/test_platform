@@ -1,4 +1,15 @@
 /** consult-records: tax record list CRUD / recycle */
+function consultTaxWrite(body) {
+    if (window.consultTaxPost) {
+        return window.consultTaxPost(body);
+    }
+    return window.authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+}
+
 function closeConsultActivateModal() {
     var root = document.getElementById('consultActivateModal');
     if (root) {
@@ -178,15 +189,11 @@ function onSubmitRecord(e) {
                 o.tax_reported = computeSingleRecordTaxReported(o, list);
                 document.getElementById('f_tax_reported').value = o.tax_reported;
             }
-            return window.authFetch('api/tax', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            return consultTaxWrite({
                     action: 'save_record',
                     user_id: currentUserId(),
                     record: o
-                })
-            });
+                });
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -427,15 +434,11 @@ function editRecord(id) {
 
 function deleteRecord(id) {
     if (!confirm('确定删除？删除后可在回收站恢复。')) return;
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'delete_record',
             user_id: currentUserId(),
             id: id
         })
-    })
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200) {
@@ -453,14 +456,10 @@ function deleteRecord(id) {
 
 function deleteAllTaxRecords() {
     if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复。')) return;
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'delete_all_records',
             user_id: currentUserId()
         })
-    })
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200) {
@@ -489,14 +488,10 @@ function deleteTaxRecordsByYear() {
         return;
     }
     if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复。')) return;
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'delete_records_by_year',
             year: year
         })
-    })
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200) {
@@ -520,14 +515,10 @@ function dedupeTaxRecords() {
     ) {
         return;
     }
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'dedupe_records',
             user_id: currentUserId()
         })
-    })
         .then(function (r) {
             return r.json();
         })
@@ -616,15 +607,11 @@ function openTaxRecycleBin() {
 }
 
 function restoreDeletedTaxRecord(id) {
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'restore_record',
             user_id: currentUserId(),
             id: id
         })
-    })
         .then(function (r) {
             return r.json();
         })
@@ -657,15 +644,11 @@ function restoreDeletedTaxRecordsByCompanyName(companyName) {
     if (!confirm('确定恢复扣缴单位「' + company + '」下的 ' + n + ' 条记录？')) {
         return;
     }
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'restore_records_by_company',
             user_id: currentUserId(),
             company_name: company
         })
-    })
         .then(function (r) {
             return r.json();
         })

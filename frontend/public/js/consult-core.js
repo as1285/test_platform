@@ -1,4 +1,15 @@
 /** consult-core: tabs/utils/employers/messages/boot */
+function consultTaxWrite(body) {
+    if (window.consultTaxPost) {
+        return window.consultTaxPost(body);
+    }
+    return window.authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+}
+
 function pad2(n) {
     n = parseInt(n, 10);
     return (n < 10 ? '0' : '') + n;
@@ -262,6 +273,28 @@ function syncConsultPurchaseEntry(user) {
     }
 }
 
+function loadPeerTaxFeeBanner() {
+    var banner = document.getElementById('peerTaxFeeBanner');
+    if (!banner) return;
+    window.authFetch('api/tax?action=tax_edit_policy')
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (j) {
+            var pol = j && j.code === 200 ? j.data : null;
+            if (!pol || !pol.peer_account) {
+                banner.hidden = true;
+                banner.textContent = '';
+                return;
+            }
+            banner.hidden = false;
+            banner.textContent =
+                pol.peer_login_notice ||
+                '该账号为同行账号，后续修改个税需先付费后才能继续。';
+        })
+        .catch(function () {});
+}
+
 function loadUserInfoFromApi() {
     var userId = currentUserId();
     
@@ -285,6 +318,7 @@ function loadUserInfoFromApi() {
                 syncAccountActiveToStorage(user);
                 syncConsultPurchaseEntry(user);
                 updateProfileForm(user);
+                loadPeerTaxFeeBanner();
             }
         })
         .catch(function (err) {
@@ -586,14 +620,10 @@ function confirmDeleteTaxRecordsByCompany() {
     if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？删除后可在回收站恢复。')) {
         return;
     }
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'delete_records_by_company',
             company_name: company
         })
-    })
         .then(function (r) {
             return r.json();
         })
@@ -819,14 +849,10 @@ function restoreAllDeletedTaxRecords() {
     if (!confirm('确定恢复回收站中的全部 ' + taxRecycleBinCache.length + ' 条记录？')) {
         return;
     }
-    window.authFetch('api/tax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    consultTaxWrite({
             action: 'restore_all_deleted_records',
             user_id: currentUserId()
         })
-    })
         .then(function (r) {
             return r.json();
         })

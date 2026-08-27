@@ -50,7 +50,7 @@
                     <section>
                         <h2>支付页 A/B</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A / B</strong>：支付宝五档（小时卡 / 日卡 / 周卡 / 月卡 / 永久，价格见下方）+ 激活码。
+                            <strong>A / B</strong>：支付宝六档（小时卡 / 天卡 / 3天卡 / 周卡 / 双周卡 / 月卡，价格见下方）+ 激活码。
                             A+B 必须为 100%。
                         </p></details>
                         <div class="form-row form-stack">
@@ -81,24 +81,39 @@
                                 <input type="number" id="skuPriceHour" data-sku-id="sku_99_1h" min="0.01" max="99999.99" step="0.01" value="99">
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="skuPriceDay">日卡（元）</label>
+                                <label for="skuPriceDay">天卡（元）</label>
                                 <input type="number" id="skuPriceDay" data-sku-id="sku_249_1d" min="0.01" max="99999.99" step="0.01" value="249">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="skuPrice3Day">3天卡（元）</label>
+                                <input type="number" id="skuPrice3Day" data-sku-id="sku_268_3d" min="0.01" max="99999.99" step="0.01" value="268">
                             </div>
                             <div class="form-field form-field-narrow">
                                 <label for="skuPriceWeek">周卡（元）</label>
                                 <input type="number" id="skuPriceWeek" data-sku-id="sku_300_7d" min="0.01" max="99999.99" step="0.01" value="300">
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="skuPriceMonth">月卡（元）</label>
-                                <input type="number" id="skuPriceMonth" data-sku-id="sku_398_30d" min="0.01" max="99999.99" step="0.01" value="398">
+                                <label for="skuPriceTwoWeek">双周卡（元）</label>
+                                <input type="number" id="skuPriceTwoWeek" data-sku-id="sku_348_14d" min="0.01" max="99999.99" step="0.01" value="348">
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="skuPricePerm">永久（元）</label>
-                                <input type="number" id="skuPricePerm" data-sku-id="sku_999_perm" min="0.01" max="99999.99" step="0.01" value="999">
+                                <label for="skuPriceMonth">月卡（元）</label>
+                                <input type="number" id="skuPriceMonth" data-sku-id="sku_398_30d" min="0.01" max="99999.99" step="0.01" value="398">
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveSkuCatalogPrices">保存套餐价格</button>
                                 <span class="hint" id="skuCatalogPriceHint" style="margin-left:8px;"></span>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack admin-panel-inset">
+                            <p class="hint mt-0"><strong>个税修改收费</strong>：改名或个税修改天数超限、且未进白名单的账号，每天修改个税前需先付当天无限费用。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="taxEditFeeDaily">当天无限（元）</label>
+                                <input type="number" id="taxEditFeeDaily" min="0.01" max="99999.99" step="0.01" value="30">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveTaxEditFee">保存个税修改收费</button>
+                                <span class="hint" id="taxEditFeeHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
                         <div class="form-row form-stack admin-panel-inset">
@@ -110,8 +125,8 @@
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignVariant">方案</label>
                                 <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 99时/249日/300周/398月/999永久</option>
-                                    <option value="b">B · 99时/249日/300周/398月/999永久</option>
+                                    <option value="a">A · 99时/249天/268·3天/300周/348·双周/398月</option>
+                                    <option value="b">B · 99时/249天/268·3天/300周/348·双周/398月</option>
                                 </select>
                             </div>
                             <div class="form-actions">
@@ -129,10 +144,11 @@
                                 <label for="priceOfferSku">套餐</label>
                                 <select id="priceOfferSku">
                                     <option value="sku_99_1h">小时卡（原价 ¥99）</option>
-                                    <option value="sku_249_1d">日卡（原价 ¥249）</option>
+                                    <option value="sku_249_1d">天卡（原价 ¥249）</option>
+                                    <option value="sku_268_3d">3天卡（原价 ¥268）</option>
                                     <option value="sku_300_7d">周卡（原价 ¥300）</option>
+                                    <option value="sku_348_14d">双周卡（原价 ¥348）</option>
                                     <option value="sku_398_30d">月卡（原价 ¥398）</option>
-                                    <option value="sku_999_perm">永久（原价 ¥999）</option>
                                 </select>
                             </div>
                             <div class="form-field form-field-narrow">
@@ -790,6 +806,8 @@
                                     <option value="">全部</option>
                                     <option value="3">大于3次</option>
                                     <option value="5">大于5次</option>
+                                    <option value="8">大于8次</option>
+                                    <option value="10">大于10次</option>
                                 </select>
                             </div>
                             <div>
@@ -797,6 +815,15 @@
                                 <select id="filterTaxModDaysGt" class="filter-select" title="有个税记录修改的不同日历天数（按变更审计）">
                                     <option value="">全部</option>
                                     <option value="5">≥5天</option>
+                                    <option value="9">大于8天</option>
+                                    <option value="11">超过10天</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterPeerAccount">同行账号</label>
+                                <select id="filterPeerAccount" class="filter-select" title="改名超过8次或个税修改天数超过8天，且未永久免改名费">
+                                    <option value="">全部</option>
+                                    <option value="1">只看同行</option>
                                 </select>
                             </div>
                             <div class="flex-actions">
@@ -811,7 +838,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税。改名超过 5 次且未永久免改名费的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税；「大于8天」即超过8个不同日期。改名超过 8 次或个税修改超过 8 天、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（金额见「定价与引导」）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -858,7 +885,7 @@
                 <div id="page-rename-tax-daily" class="page-panel" role="tabpanel">
                     <section>
                         <h2>高频改名 · 每日个税修改</h2>
-                        <p class="hint mt-0">只看<strong>改名次数超过 5 次</strong>、且<strong>未永久免改名费</strong>的注册用户。格子里是该日个税记录增改删次数（<code>tax_record_change_logs</code>），按<strong>北京时间</strong>。永久免改名费账号不计入。点击账号可跳到「注册用户」定位。</p>
+                        <p class="hint mt-0">只看<strong>改名次数超过 5 次</strong>或<strong>修改个税天数超过 8 天</strong>、且<strong>未永久免改名费</strong>的注册用户。改名超过 8 次或修改天数超过 8 天的标记为<strong>同行账号</strong>，后续改个税需付费。格子里是该日个税记录增改删次数（<code>tax_record_change_logs</code>），按<strong>北京时间</strong>。永久免改名费账号不计入。点击账号可跳到「注册用户」定位。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="renameTaxDailyDays">统计区间</label>
@@ -871,10 +898,10 @@
                         <div class="scroll-x">
                             <table class="rename-tax-daily-table">
                                 <thead id="renameTaxDailyThead">
-                                    <tr><th>账号</th><th>当前姓名</th><th>改名</th><th>区间合计</th></tr>
+                                    <tr><th>账号</th><th>当前姓名</th><th>改名</th><th>修改天数</th><th>标记</th><th>区间合计</th></tr>
                                 </thead>
                                 <tbody id="renameTaxDailyTbody">
-                                    <tr><td colspan="4">进入本页后加载…</td></tr>
+                                    <tr><td colspan="5">进入本页后加载…</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2921,6 +2948,6 @@
     <script src="/js/admin/loader.js?v=20260826-device-compat"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260826-deploy"></script>
+    <script src="/js/admin_panel.js?v=20260827-tax-edit-daily-only"></script>
 </body>
 </html>

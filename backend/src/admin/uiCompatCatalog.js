@@ -521,6 +521,14 @@ var MODELS = [
     issues: [{ page: 'shuiming', title: '避开 ColorOS 沉浸状态栏', summary: '真沉浸机，「我的」可保留 inset。', since: '2026-08-17' }]
   },
   {
+    id: 'oppo-k9x',
+    platform: 'android',
+    family: 'oppo',
+    label: 'OPPO K9x',
+    match: ['PGCM10', '\\bK9x\\b'],
+    issues: [{ page: 'shuiming', title: '收入纳税明细顶栏避让', summary: 'ColorOS 沉浸 WebView 仍压在系统状态栏下，顶栏「返回/标题」须留 40px，勿按 OPPO 族外置黑条清零。', since: '2026-08-27' }]
+  },
+  {
     id: 'meizu-20pro',
     platform: 'android',
     family: 'meizu',

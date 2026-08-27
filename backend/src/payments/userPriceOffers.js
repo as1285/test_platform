@@ -17,11 +17,21 @@ var LIVE_OFFERABLE_SKUS = [
   {
     id: 'sku_249_1d',
     amount: '249.00',
-    label: '日卡',
-    subject: '激活码·日卡',
+    label: '天卡',
+    subject: '激活码·天卡',
     grant_kind: 'trial',
     grant_hours: 0,
     grant_days: 1,
+    grant_minutes: 0
+  },
+  {
+    id: 'sku_268_3d',
+    amount: '268.00',
+    label: '3天卡',
+    subject: '激活码·3天卡',
+    grant_kind: 'trial',
+    grant_hours: 0,
+    grant_days: 3,
     grant_minutes: 0
   },
   {
@@ -35,6 +45,16 @@ var LIVE_OFFERABLE_SKUS = [
     grant_minutes: 0
   },
   {
+    id: 'sku_348_14d',
+    amount: '348.00',
+    label: '双周卡',
+    subject: '激活码·双周卡',
+    grant_kind: 'trial',
+    grant_hours: 0,
+    grant_days: 14,
+    grant_minutes: 0
+  },
+  {
     id: 'sku_398_30d',
     amount: '398.00',
     label: '月卡',
@@ -43,7 +63,11 @@ var LIVE_OFFERABLE_SKUS = [
     grant_hours: 0,
     grant_days: 30,
     grant_minutes: 0
-  },
+  }
+];
+
+/** 旧档：已有专属价仍可解析，不再出现在新建下拉 */
+var LEGACY_OFFERABLE_SKUS = [
   {
     id: 'sku_999_perm',
     amount: '999.00',
@@ -53,11 +77,7 @@ var LIVE_OFFERABLE_SKUS = [
     grant_hours: 0,
     grant_days: 0,
     grant_minutes: 0
-  }
-];
-
-/** 旧档：已有专属价仍可解析，不再出现在新建下拉 */
-var LEGACY_OFFERABLE_SKUS = [
+  },
   {
     id: 'sku_298_1d',
     amount: '298.00',
@@ -249,7 +269,7 @@ function createUserPriceOffers(deps) {
       throw e0;
     }
     if (!base) {
-      var e1 = new Error('请选择有效套餐（日/周/月/永久）');
+      var e1 = new Error('请选择有效套餐（小时/天/3天/周/双周/月）');
       e1.statusCode = 400;
       throw e1;
     }

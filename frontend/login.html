@@ -727,6 +727,17 @@
         </div>
     </div>
 
+    <div id="loginPeerNoticeModal" class="login-welcome-modal" role="alertdialog" aria-modal="true" aria-labelledby="loginPeerNoticeTitle">
+        <div class="login-welcome-modal-mask" id="loginPeerNoticeMask"></div>
+        <div class="login-welcome-modal-panel">
+            <p class="login-welcome-modal-title" id="loginPeerNoticeTitle">同行账号提示</p>
+            <p class="login-welcome-modal-body" id="loginPeerNoticeBody">该账号为同行账号，后续修改个税需先付费后才能继续。</p>
+            <div class="login-error-modal-actions">
+                <button type="button" class="login-welcome-modal-btn" id="loginPeerNoticeOk">我知道了</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script>
         function isNeedActivateMode() {
@@ -1008,6 +1019,35 @@
             if (mask) mask.addEventListener('click', closeLoginErrorModal);
         })();
 
+        var __loginPeerNextHref = '';
+        function finishLoginRedirect(href) {
+            window.location.href = href || 'shouye.html';
+        }
+        function showLoginPeerNotice(msg, nextHref) {
+            __loginPeerNextHref = nextHref || 'shouye.html';
+            var root = document.getElementById('loginPeerNoticeModal');
+            var body = document.getElementById('loginPeerNoticeBody');
+            if (!root || !body) {
+                finishLoginRedirect(__loginPeerNextHref);
+                return;
+            }
+            body.textContent =
+                String(msg || '').trim() ||
+                '该账号为同行账号，后续修改个税需先付费后才能继续。';
+            root.classList.add('is-open');
+        }
+        function closeLoginPeerNotice() {
+            var root = document.getElementById('loginPeerNoticeModal');
+            if (root) root.classList.remove('is-open');
+            finishLoginRedirect(__loginPeerNextHref);
+        }
+        (function bindLoginPeerNoticeModal() {
+            var ok = document.getElementById('loginPeerNoticeOk');
+            var mask = document.getElementById('loginPeerNoticeMask');
+            if (ok) ok.addEventListener('click', closeLoginPeerNotice);
+            if (mask) mask.addEventListener('click', closeLoginPeerNotice);
+        })();
+
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;
@@ -1114,22 +1154,31 @@
                         } catch (eNext) {
                             loginNext = '';
                         }
+                        var nextHref = 'shouye.html';
                         if (loginNext && /^[a-z0-9_\-]+\.html/i.test(loginNext)) {
                             /* 登录成功不进支付页；激活入口由「我的」主动进入 */
                             var nextPageOnly = String(loginNext).split('?')[0].split('#')[0].toLowerCase();
                             if (nextPageOnly === 'purchase.html') {
                                 loginNext = 'shouye.html';
                             }
-                            var nextHref = loginNext;
+                            nextHref = loginNext;
                             try {
                                 if (typeof window.appendSalesChannelToUrl === 'function') {
                                     nextHref = window.appendSalesChannelToUrl(loginNext);
                                 }
                             } catch (eCh) {}
-                            window.location.href = nextHref;
+                        }
+                        if (d.peer_account) {
+                            try {
+                                sessionStorage.setItem(
+                                    'peer_login_notice',
+                                    String(d.peer_login_notice || '')
+                                );
+                            } catch (ePeerSs) {}
+                            showLoginPeerNotice(d.peer_login_notice, nextHref);
                             return;
                         }
-                        window.location.href = 'shouye.html';
+                        finishLoginRedirect(nextHref);
                         return;
                     }
                     showLoginErrorModal(data.msg || '登录失败');

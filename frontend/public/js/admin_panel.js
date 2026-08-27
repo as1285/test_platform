@@ -1558,7 +1558,7 @@
                             a.variant === 'control'
                                 ? 'A·对照'
                                 : a.variant === 'treatment'
-                                  ? 'B·五档'
+                                  ? 'B·六档'
                                   : a.variant === 'b'
                                     ? 'C·激活码'
                                     : a.variant;
@@ -5113,7 +5113,7 @@
                 .then(function (data) {
                     if (!data || data.code !== 200 || !data.data) {
                         if (statEl) statEl.textContent = (data && data.msg) || '加载失败';
-                        tbody.innerHTML = '<tr><td colspan="4">加载失败</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5">加载失败</td></tr>';
                         return;
                     }
                     var d = data.data;
@@ -5127,7 +5127,9 @@
                             (d.user_count || 0) +
                             ' 个账号（改名超过 ' +
                             (d.name_changes_gt || 5) +
-                            ' 次，已排除永久免改名费），区间内个税修改 ' +
+                            ' 次或修改个税天数大于 ' +
+                            (d.tax_mod_days_gt || 8) +
+                            ' 天，已排除永久免改名费），区间内个税修改 ' +
                             (d.period_tax_edits || 0) +
                             ' 次';
                     }
@@ -5142,6 +5144,8 @@
                         '<th class="col-user">账号</th>' +
                         '<th>当前姓名</th>' +
                         '<th>改名</th>' +
+                        '<th>修改天数</th>' +
+                        '<th>标记</th>' +
                         '<th>区间合计</th>';
                     dates.forEach(function (ymd) {
                         var isToday = ymd === todayKey;
@@ -5161,7 +5165,7 @@
                     if (!users.length) {
                         tbody.innerHTML =
                             '<tr><td colspan="' +
-                            (4 + dates.length) +
+                            (6 + dates.length) +
                             '">该区间没有符合条件的账号</td></tr>';
                         return;
                     }
@@ -5176,6 +5180,13 @@
                             '</button></td>';
                         html += '<td>' + esc(u.real_name || '—') + '</td>';
                         html += '<td>' + esc(String(u.name_change_count || 0)) + '</td>';
+                        html += '<td>' + esc(String(u.tax_mod_days || 0)) + '</td>';
+                        html +=
+                            '<td>' +
+                            (u.is_peer_account
+                                ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="改名超过8次或个税修改超过8天">同行</span>'
+                                : '<span style="color:#bbb;">—</span>') +
+                            '</td>';
                         html += '<td>' + esc(String(u.period_tax_edits || 0)) + '</td>';
                         (u.daily || []).forEach(function (n, i) {
                             var ymd = dates[i] || '';
@@ -5191,7 +5202,7 @@
                     });
                     if (dayTotals.length) {
                         html += '<tr>';
-                        html += '<td class="col-user">合计</td><td></td><td></td>';
+                        html += '<td class="col-user">合计</td><td></td><td></td><td></td><td></td>';
                         html += '<td>' + esc(String(d.period_tax_edits || 0)) + '</td>';
                         dayTotals.forEach(function (n, i) {
                             var ymd = dates[i] || '';
@@ -5214,7 +5225,7 @@
                 })
                 .catch(function () {
                     if (statEl) statEl.textContent = '网络错误';
-                    tbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
                 });
         }
 
@@ -5235,6 +5246,7 @@
             var loginInactiveEl = document.getElementById('filterLoginInactive');
             var nameChangesGtEl = document.getElementById('filterNameChangesGt');
             var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+            var peerEl = document.getElementById('filterPeerAccount');
             if (usernameEl) usernameEl.value = name;
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = true;
@@ -5245,6 +5257,7 @@
             if (loginInactiveEl) loginInactiveEl.value = '';
             if (nameChangesGtEl) nameChangesGtEl.value = '';
             if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+            if (peerEl) peerEl.value = '';
             pendingHighlightUsername = name;
             userPage = 1;
             var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
@@ -5302,6 +5315,8 @@
             var nameChangesGt = nameChangesGtEl ? String(nameChangesGtEl.value || '').trim() : '';
             var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
             var taxModDaysGt = taxModDaysGtEl ? String(taxModDaysGtEl.value || '').trim() : '';
+            var peerEl = document.getElementById('filterPeerAccount');
+            var peerAccount = peerEl ? String(peerEl.value || '').trim() : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -5321,6 +5336,9 @@
             }
             if (taxModDaysGt !== '') {
                 url += '&tax_mod_days_gt=' + encodeURIComponent(taxModDaysGt);
+            }
+            if (peerAccount !== '') {
+                url += '&peer=' + encodeURIComponent(peerAccount);
             }
 
             adminFetch(url)
@@ -5455,8 +5473,8 @@
                             (u.rename_fee_exempt ? '1' : '0') +
                             '" title="' +
                             (u.rename_fee_exempt
-                                ? '该账号已豁免五次改名收费，点击重新加限制'
-                                : '取消后该账号改名不再收取费用') +
+                                ? '该账号已豁免改名费与个税修改费，点击重新加限制'
+                                : '取消后该账号改名、个税修改不再收取费用') +
                             '">' +
                             (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
                             '</button>'
@@ -5509,7 +5527,7 @@
                         if (taxModDays > 0) {
                             taxModBadge +=
                                 '<div style="margin-top:3px;font-size:11px;color:' +
-                                (taxModDays >= 5 ? '#b45309' : '#888') +
+                                (taxModDays > 10 ? '#b45309' : '#888') +
                                 ';" title="有个税记录修改的不同天数">' +
                                 esc(String(taxModDays)) +
                                 '天</div>';
@@ -5522,10 +5540,15 @@
                             'font-size:11px;white-space:nowrap;" title="姓名历史修改次数">改名' +
                             esc(String(nameChangeCount)) +
                             '次</span>';
+                        if (u.is_peer_account) {
+                            nameChangeBadge +=
+                                '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                                'background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="改名超过8次或个税修改超过8天，后续改个税需付费">同行</span>';
+                        }
                         if (u.rename_fee_exempt) {
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
-                                'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已取消改名收费限制">免改名费</span>';
+                                'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已取消改名/个税修改收费限制">免改名费</span>';
                         }
                         if (u.lizhi_cert_unlocked) {
                             nameChangeBadge +=
@@ -5658,7 +5681,7 @@
                                     var noteEl = document.getElementById('priceOfferNote');
                                     var hint = document.getElementById('priceOfferHint');
                                     if (offer && offer.enabled) {
-                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_999_perm';
+                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_398_30d';
                                         if (amountEl) amountEl.value = offer.amount || '';
                                         if (noteEl) noteEl.value = offer.note || '';
                                         if (hint) {
@@ -5687,11 +5710,11 @@
                                         var amtNew = prompt(
                                             '为「' +
                                                 name +
-                                                '」设置永久专属价（元），例如 300：\n（也可在「定价与引导」里选套餐后保存）',
+                                                '」设置月卡专属价（元），例如 300：\n（也可在「定价与引导」里选套餐后保存）',
                                             '300'
                                         );
                                         if (amtNew == null) return;
-                                        if (skuEl) skuEl.value = 'sku_999_perm';
+                                        if (skuEl) skuEl.value = 'sku_398_30d';
                                         if (amountEl) amountEl.value = String(amtNew).trim();
                                         document.getElementById('btnSavePriceOffer') &&
                                             document.getElementById('btnSavePriceOffer').click();
@@ -5708,8 +5731,8 @@
                             var isExempt = btn.getAttribute('data-exempt') === '1';
                             var nextExempt = !isExempt;
                             var actionText = nextExempt
-                                ? '取消改名限制（之后改名不再收费）'
-                                : '重新加改名限制（达到次数后需付费改名）';
+                                ? '取消改名/个税修改收费限制（之后改名、改个税不再收费）'
+                                : '重新加改名/个税修改收费限制（达到次数后需付费）';
                             if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
                             btn.disabled = true;
                             adminFetch('api/admin/user-rename-fee-exempt', {
@@ -6704,6 +6727,7 @@
                 var loginInactiveEl = document.getElementById('filterLoginInactive');
                 var nameChangesGtEl = document.getElementById('filterNameChangesGt');
                 var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+                var peerEl = document.getElementById('filterPeerAccount');
                 if (usernameEl) usernameEl.value = '';
                 if (realNameEl) realNameEl.value = '';
                 if (exactEl) exactEl.checked = false;
@@ -6714,6 +6738,7 @@
                 if (loginInactiveEl) loginInactiveEl.value = '';
                 if (nameChangesGtEl) nameChangesGtEl.value = '';
                 if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+                if (peerEl) peerEl.value = '';
                 loadUsers(1);
             };
         }
@@ -7210,6 +7235,7 @@
                                     {}
                             );
                         }
+                        applyTaxEditFeeToForm(data.data.tax_edit_fee || {});
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
                             var nEn = document.getElementById('actNudgeEnabled');
@@ -7284,7 +7310,14 @@
                 .catch(function () {});
         }
 
-        var SKU_PRICE_FIELD_IDS = ['skuPriceHour', 'skuPriceDay', 'skuPriceWeek', 'skuPriceMonth', 'skuPricePerm'];
+        var SKU_PRICE_FIELD_IDS = [
+            'skuPriceHour',
+            'skuPriceDay',
+            'skuPrice3Day',
+            'skuPriceWeek',
+            'skuPriceTwoWeek',
+            'skuPriceMonth'
+        ];
 
         function collectSkuCatalogPricesFromForm() {
             var out = {};
@@ -7321,28 +7354,30 @@
             map = map || collectSkuCatalogPricesFromForm();
             var hour = formatSkuYuan(map['sku_99_1h']) || '99';
             var day = formatSkuYuan(map['sku_249_1d']) || '249';
+            var day3 = formatSkuYuan(map['sku_268_3d']) || '268';
             var week = formatSkuYuan(map['sku_300_7d']) || '300';
+            var week2 = formatSkuYuan(map['sku_348_14d']) || '348';
             var month = formatSkuYuan(map['sku_398_30d']) || '398';
-            var perm = formatSkuYuan(map['sku_999_perm']) || '999';
             var skuSel = document.getElementById('priceOfferSku');
             if (skuSel) {
                 var opts = skuSel.options;
                 for (var i = 0; i < opts.length; i++) {
                     if (opts[i].value === 'sku_99_1h') opts[i].text = '小时卡（原价 ¥' + hour + '）';
-                    if (opts[i].value === 'sku_249_1d') opts[i].text = '日卡（原价 ¥' + day + '）';
+                    if (opts[i].value === 'sku_249_1d') opts[i].text = '天卡（原价 ¥' + day + '）';
+                    if (opts[i].value === 'sku_268_3d') opts[i].text = '3天卡（原价 ¥' + day3 + '）';
                     if (opts[i].value === 'sku_300_7d') opts[i].text = '周卡（原价 ¥' + week + '）';
+                    if (opts[i].value === 'sku_348_14d') opts[i].text = '双周卡（原价 ¥' + week2 + '）';
                     if (opts[i].value === 'sku_398_30d') opts[i].text = '月卡（原价 ¥' + month + '）';
-                    if (opts[i].value === 'sku_999_perm') opts[i].text = '永久（原价 ¥' + perm + '）';
                 }
             }
             var abcSel = document.getElementById('pricingAbcAssignVariant');
             if (abcSel) {
                 var aOpt = abcSel.querySelector('option[value="a"]');
                 var bOpt = abcSel.querySelector('option[value="b"]');
-                var label = 'A · ' + hour + '时/' + day + '日/' + week + '周/' + month + '月/' + perm + '永久';
-                var labelB = 'B · ' + hour + '时/' + day + '日/' + week + '周/' + month + '月/' + perm + '永久';
-                if (aOpt) aOpt.text = label;
-                if (bOpt) bOpt.text = labelB;
+                var tiers =
+                    hour + '时/' + day + '天/' + day3 + '·3天/' + week + '周/' + week2 + '·双周/' + month + '月';
+                if (aOpt) aOpt.text = 'A · ' + tiers;
+                if (bOpt) bOpt.text = 'B · ' + tiers;
             }
         }
 
@@ -7413,16 +7448,71 @@
             });
         }
 
+        function applyTaxEditFeeToForm(cfg) {
+            cfg = cfg || {};
+            var dailyEl = document.getElementById('taxEditFeeDaily');
+            if (dailyEl && cfg.daily_amount != null && String(cfg.daily_amount).trim() !== '') {
+                dailyEl.value = String(cfg.daily_amount);
+            }
+        }
+
+        function collectTaxEditFeeFromForm() {
+            var dailyEl = document.getElementById('taxEditFeeDaily');
+            return {
+                daily_amount: dailyEl ? String(dailyEl.value || '').trim() : ''
+            };
+        }
+
+        var btnSaveTaxEditFee = document.getElementById('btnSaveTaxEditFee');
+        if (btnSaveTaxEditFee) {
+            btnSaveTaxEditFee.addEventListener('click', function () {
+                var btn = btnSaveTaxEditFee;
+                var fees = collectTaxEditFeeFromForm();
+                var dailyN = Number(String(fees.daily_amount || '').replace(/,/g, '').trim());
+                if (!isFinite(dailyN) || dailyN < 0.01 || dailyN > 99999.99) {
+                    alert('请填写 0.01～99999.99 的当天无限修改金额');
+                    return;
+                }
+                btn.disabled = true;
+                var hint = document.getElementById('taxEditFeeHint');
+                if (hint) hint.textContent = '保存中…';
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ tax_edit_fee: fees })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) hint.textContent = '已保存';
+                            applyTaxEditFeeToForm((data.data && data.data.tax_edit_fee) || fees);
+                            alert('个税修改收费已保存，超限账号将按新价格付款');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
+
         var btnSaveSkuCatalogPrices = document.getElementById('btnSaveSkuCatalogPrices');
         if (btnSaveSkuCatalogPrices) {
             btnSaveSkuCatalogPrices.addEventListener('click', function () {
                 var btn = btnSaveSkuCatalogPrices;
                 var prices = collectSkuCatalogPricesFromForm();
-                var ids = ['sku_99_1h', 'sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm'];
+                var ids = ['sku_99_1h', 'sku_249_1d', 'sku_268_3d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d'];
                 for (var i = 0; i < ids.length; i++) {
                     var n = Number(String(prices[ids[i]] || '').replace(/,/g, '').trim());
                     if (!isFinite(n) || n < 0.01 || n > 99999.99) {
-                        alert('请为五档套餐填写 0.01～99999.99 的价格');
+                        alert('请为六档套餐填写 0.01～99999.99 的价格');
                         return;
                     }
                 }

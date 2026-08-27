@@ -11,6 +11,12 @@ function consultTaxApiFetch(body) {
             body: JSON.stringify(payload)
         });
     }
+    if (window.ConsultTaxEditPay && typeof window.ConsultTaxEditPay.fetchResponse === 'function') {
+        return window.ConsultTaxEditPay.fetchResponse(body);
+    }
+    if (typeof window.consultTaxPost === 'function') {
+        return window.consultTaxPost(body || {});
+    }
     return window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

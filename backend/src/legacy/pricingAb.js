@@ -1,6 +1,7 @@
 /**
  * 支付页 A/B/C：
- * 现售五档：小时卡 99 / 日卡 249 / 周卡 300 / 月卡 398 / 永久 999（A/B 分流仍保留，两边 SKU 相同）。
+ * 现售六档：小时卡 99 / 天卡 249 / 3天卡 268 / 周卡 300 / 双周卡 348 / 月卡 398（A/B 分流仍保留，两边 SKU 相同）。
+ * 永久档已下架，仅历史订单可解析。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -21,15 +22,27 @@ var SKU_99_HOUR = {
   grant_minutes: 0
 };
 
-/** 现售日卡：249 */
+/** 现售天卡：249 */
 var SKU_249_DAY = {
   id: 'sku_249_1d',
   amount: '249.00',
-  label: '日卡',
-  subject: '激活码·日卡',
+  label: '天卡',
+  subject: '激活码·天卡',
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 1,
+  grant_minutes: 0
+};
+
+/** 现售3天卡：268 */
+var SKU_268_3DAY = {
+  id: 'sku_268_3d',
+  amount: '268.00',
+  label: '3天卡',
+  subject: '激活码·3天卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 3,
   grant_minutes: 0
 };
 
@@ -45,6 +58,18 @@ var SKU_300_WEEK = {
   grant_minutes: 0
 };
 
+/** 现售双周卡：348 */
+var SKU_348_2WEEK = {
+  id: 'sku_348_14d',
+  amount: '348.00',
+  label: '双周卡',
+  subject: '激活码·双周卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 14,
+  grant_minutes: 0
+};
+
 /** 现售月卡：398 */
 var SKU_398_MONTH = {
   id: 'sku_398_30d',
@@ -57,7 +82,7 @@ var SKU_398_MONTH = {
   grant_minutes: 0
 };
 
-/** 现售永久档：999 */
+/** 旧档：永久 999 已下架，仅历史订单 / 已有专属价解析 */
 var SKU_999_PERM = {
   id: 'sku_999_perm',
   amount: '999.00',
@@ -205,6 +230,7 @@ var SKU_398_PERM_LEGACY = {
 };
 
 var LEGACY_CATALOG_SKUS = [
+  SKU_999_PERM,
   SKU_298_DAY,
   SKU_398_PERM,
   SKU_398_WEEK,
@@ -214,7 +240,14 @@ var LEGACY_CATALOG_SKUS = [
   SKU_398_PERM_LEGACY
 ];
 
-var LIVE_CATALOG_SKUS = [SKU_99_HOUR, SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM];
+var LIVE_CATALOG_SKUS = [
+  SKU_99_HOUR,
+  SKU_249_DAY,
+  SKU_268_3DAY,
+  SKU_300_WEEK,
+  SKU_348_2WEEK,
+  SKU_398_MONTH
+];
 var LIVE_SKU_IDS = LIVE_CATALOG_SKUS.map(function (s) {
   return s.id;
 });
@@ -457,7 +490,7 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_99_HOUR, SKU_249_DAY, SKU_300_WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
+    [SKU_99_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_300_WEEK, SKU_348_2WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
       LEGACY_CATALOG_SKUS
     )
   ];

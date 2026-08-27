@@ -46,6 +46,7 @@ const {
 const { createPricingAb, DEFAULT_PRICING_AB } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
+const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql
@@ -207,20 +208,6 @@ function activationSourceFromCodeNote(note) {
   return activationSourceKeyFromLabel(label);
 }
 
-/** 按渠道生成激活批次备注 */
-function activationBatchNoteFromChannel(channelInput) {
-  var lab = sanitizeActivationBatchChannelLabel(channelInput);
-  if (!lab) lab = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
-  var keys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-  for (var i = 0; i < keys.length; i++) {
-    if (keys[i] === lab) {
-      lab = ACTIVATION_BATCH_BUILTIN_CHANNELS[keys[i]];
-      break;
-    }
-  }
-  return lab + '批量';
-}
-
 /** 激活来源渠道展示文案 */
 function activationSourceChannelLabel(channel) {
   var c = channel != null ? String(channel).trim() : '';
@@ -290,18 +277,6 @@ async function loadActivationBatchCustomChannels(conn) {
   } finally {
     if (ownConn && c) c.release();
   }
-}
-
-/** 保存激活批次自定义渠道 */
-async function saveActivationBatchCustomChannels(conn, labels) {
-  var list = parseActivationBatchCustomChannels(labels);
-  var json = JSON.stringify(list);
-  await conn.execute(
-    `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
-    [SETTING_KEY_ACTIVATION_BATCH_CHANNELS, json]
-  );
-  return list;
 }
 
 /** 组装激活批次渠道配置响应 */
@@ -5275,10 +5250,12 @@ function isNonActivationSkuId(skuId, grantKind) {
     isLizhiCertSkuId(skuId) ||
     isZaizhiCertSkuId(skuId) ||
     isSbdyDemoSkuId(skuId) ||
+    taxEditFeePolicy.isTaxEditFeeSkuId(skuId) ||
     String(grantKind || '') === 'rename_credit' ||
     String(grantKind || '') === 'lizhi_cert' ||
     String(grantKind || '') === 'zaizhi_cert' ||
-    String(grantKind || '') === 'sbdy_demo'
+    String(grantKind || '') === 'sbdy_demo' ||
+    taxEditFeePolicy.isTaxEditFeeGrantKind(grantKind)
   );
 }
 
@@ -5362,6 +5339,133 @@ async function getRenameFeePolicy(userId) {
     fee_subject: RENAME_FEE_SUBJECT,
     sku_id: RENAME_FEE_SKU_ID
   };
+}
+
+/** 是否永久免改名费 / 个税修改费（同一白名单） */
+async function isRenameFeeExemptUser(userId) {
+  var uname = String(userId || '').trim();
+  if (!uname) return false;
+  try {
+    const [exemptRows] = await pool.execute(
+      'SELECT rename_fee_exempt FROM users WHERE username = ? LIMIT 1',
+      [uname]
+    );
+    return !!(
+      exemptRows.length &&
+      (exemptRows[0].rename_fee_exempt === true ||
+        Number(exemptRows[0].rename_fee_exempt) === 1)
+    );
+  } catch (eExempt) {
+    return false;
+  }
+}
+
+/** 有个税记录变更的不同北京日历天数 */
+async function countUserTaxModDistinctDays(userId) {
+  if (!userId) return 0;
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(DISTINCT DATE(DATE_ADD(changed_at, INTERVAL 8 HOUR))) AS c
+       FROM tax_record_change_logs
+       WHERE user_id = ?`,
+      [String(userId)]
+    );
+    return Number((rows[0] || {}).c) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function hasTaxEditDailyUnlock(userId, dayKey) {
+  if (!userId || !dayKey) return false;
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id FROM user_tax_edit_daily_unlocks
+       WHERE username = ? AND unlock_date = ? LIMIT 1`,
+      [String(userId), String(dayKey)]
+    );
+    return !!(rows && rows.length);
+  } catch (e) {
+    return false;
+  }
+}
+
+var _taxEditFeeConfigCache = null;
+var _taxEditFeeConfigCacheAt = 0;
+var TAX_EDIT_FEE_CONFIG_CACHE_MS = 10000;
+
+async function loadTaxEditFeeConfig(force) {
+  var now = Date.now();
+  if (!force && _taxEditFeeConfigCache && now - _taxEditFeeConfigCacheAt < TAX_EDIT_FEE_CONFIG_CACHE_MS) {
+    return _taxEditFeeConfigCache;
+  }
+  var out = taxEditFeePolicy.defaultTaxEditFeeConfig();
+  try {
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [taxEditFeePolicy.SETTING_KEY_TAX_EDIT_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = taxEditFeePolicy.normalizeTaxEditFeeConfig(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认当天无限金额 */
+  }
+  _taxEditFeeConfigCache = out;
+  _taxEditFeeConfigCacheAt = now;
+  return out;
+}
+
+async function saveTaxEditFeeConfigFromAdmin(body) {
+  var next = taxEditFeePolicy.parseTaxEditFeeConfigFromAdmin(body);
+  if (!next) {
+    var err = new Error('个税修改收费金额无效，请填写 0.01～99999.99');
+    err.statusCode = 400;
+    throw err;
+  }
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, taxEditFeePolicy.SETTING_KEY_TAX_EDIT_FEE, JSON.stringify(next));
+  } finally {
+    conn.release();
+  }
+  _taxEditFeeConfigCache = next;
+  _taxEditFeeConfigCacheAt = Date.now();
+  return next;
+}
+
+/** 个税修改收费策略（超限账号，白名单除外；金额以后台配置为准） */
+async function getTaxEditFeePolicy(userId) {
+  var nameChanges = await countUserRealNameChanges(userId);
+  var taxModDays = await countUserTaxModDistinctDays(userId);
+  var today = chinaDateKeyNow();
+  var hasDaily = await hasTaxEditDailyUnlock(userId, today);
+  var exempt = await isRenameFeeExemptUser(userId);
+  var amounts = await loadTaxEditFeeConfig(false);
+  return taxEditFeePolicy.buildTaxEditFeePolicyView({
+    nameChanges: nameChanges,
+    taxModDays: taxModDays,
+    hasDailyUnlock: hasDaily,
+    exempt: exempt,
+    today: today,
+    dailyAmount: amounts.daily_amount
+  });
+}
+
+async function okTaxWrite(res, userId, policy, data) {
+  return res.json({ code: 200, data: data });
+}
+
+async function sendTaxEditFeeBlockIfNeeded(res, userId, action) {
+  if (!taxEditFeePolicy.isTaxEditFeeWriteAction(action) || !userId) return false;
+  var policy = await getTaxEditFeePolicy(userId);
+  if (!policy.need_fee) return false;
+  res.status(402).json({
+    code: 402,
+    msg: taxEditFeePolicy.taxEditFeeBlockMessage(policy),
+    data: Object.assign({ need_tax_edit_fee: true, peer_account: true }, policy)
+  });
+  return true;
 }
 
 /** 在事务中消耗一次改名额度；失败返回 false */
@@ -5725,6 +5829,99 @@ async function handleAlipayConfig(req, res) {
   }
 }
 
+/** 增值商品（改名/个税修改等）当面付下单：复用 30 分钟内未支付订单 */
+async function createAddonFaceToFaceOrder(req, res, spec) {
+  if (!req.authUserId) {
+    return res.status(401).json({ code: 401, msg: '请先登录' });
+  }
+  var amount = alipay.normalizeAmount(spec.amount);
+  if (!amount) {
+    return res.status(503).json({ code: 503, msg: spec.invalidAmountMsg || '费用配置无效' });
+  }
+  const conn = await pool.getConnection();
+  var order = null;
+  try {
+    await conn.beginTransaction();
+    const [existing] = await conn.execute(
+      `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+              grant_kind, grant_days, grant_hours, grant_minutes
+       FROM payment_orders
+       WHERE username = ? AND status = 'pending' AND sku_id = ?
+         AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+       ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+      [req.authUserId, spec.skuId]
+    );
+    if (existing.length) {
+      order = existing[0];
+    } else {
+      order = {
+        out_trade_no: createAlipayOutTradeNo(),
+        subject: spec.subject,
+        amount: amount,
+        status: 'pending',
+        pricing_variant: spec.pricingVariant,
+        sku_id: spec.skuId,
+        grant_kind: spec.grantKind,
+        grant_days: 0,
+        grant_hours: 0,
+        grant_minutes: 0
+      };
+      await conn.execute(
+        `INSERT INTO payment_orders
+         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+        [
+          order.out_trade_no,
+          req.authUserId,
+          order.subject,
+          order.amount,
+          order.pricing_variant,
+          order.sku_id,
+          order.grant_kind,
+          order.grant_days,
+          order.grant_hours,
+          order.grant_minutes
+        ]
+      );
+    }
+    await conn.commit();
+  } catch (eDb) {
+    try {
+      await conn.rollback();
+    } catch (eRb) {}
+    console.error('create addon order db', spec.product, eDb);
+    try {
+      conn.release();
+    } catch (eRel) {}
+    return res.status(500).json({ code: 500, msg: spec.dbFailMsg || '创建订单失败' });
+  }
+  try {
+    var pre = await alipay.createFaceToFaceQr({
+      outTradeNo: String(order.out_trade_no),
+      subject: String(order.subject),
+      amount: alipay.normalizeAmount(order.amount)
+    });
+    return res.json({
+      code: 200,
+      data: {
+        order: plainPaymentOrder(order),
+        qr_code: pre.qrCode,
+        payment_url: pre.qrCode,
+        pricing_variant: spec.pricingVariant,
+        sku_id: spec.skuId,
+        product: spec.product
+      }
+    });
+  } catch (ePay) {
+    console.error('create addon precreate', spec.product, ePay);
+    return res.status(500).json({ code: 500, msg: spec.payFailMsg || '创建支付宝订单失败' });
+  } finally {
+    try {
+      conn.release();
+    } catch (eRel2) {}
+  }
+}
+
 /** 创建支付宝当面付预下单 */
 async function handleAlipayCreateOrder(req, res) {
   if (!alipay.isConfigured()) {
@@ -5735,6 +5932,11 @@ async function handleAlipayCreateOrder(req, res) {
   var skuIdReq = body.sku_id != null ? String(body.sku_id).trim() : '';
   var isRenameFee =
     product === 'rename_fee' || isRenameFeeSkuId(skuIdReq) || skuIdReq === 'rename_fee';
+  var isTaxEditDaily =
+    product === 'tax_edit_unlimited' ||
+    product === 'tax_edit_fee' ||
+    product === 'tax_edit_single' ||
+    taxEditFeePolicy.isTaxEditFeeSkuId(skuIdReq);
 
   var isLizhiCert =
     product === 'lizhi_cert' || isLizhiCertSkuId(skuIdReq) || skuIdReq === 'lizhi_cert';
@@ -6152,6 +6354,107 @@ async function handleAlipayCreateOrder(req, res) {
     } finally {
       try {
         connRen.release();
+      } catch (eRel2) {}
+    }
+  }
+
+  /* —— 同行账号个税修改：当天无限（不走开通激活逻辑；旧单次 SKU 一律按当天无限下单） —— */
+  if (isTaxEditDaily) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    if (await hasTaxEditDailyUnlock(req.authUserId, chinaDateKeyNow())) {
+      return res.status(409).json({ code: 409, msg: '今日已开通个税无限修改，无需重复购买' });
+    }
+    var taxFeeSkuId = taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID;
+    var taxFeeAmounts = await loadTaxEditFeeConfig(false);
+    var taxFeeAmount = alipay.normalizeAmount(taxFeeAmounts.daily_amount);
+    var taxFeeSubject = taxEditFeePolicy.TAX_EDIT_DAILY_SUBJECT;
+    var taxFeeGrantKind = 'tax_edit_daily';
+    var taxFeeProduct = 'tax_edit_unlimited';
+    if (!taxFeeAmount) {
+      return res.status(503).json({ code: 503, msg: '个税修改费用配置无效' });
+    }
+    const connTaxFee = await pool.getConnection();
+    var taxFeeOrder = null;
+    try {
+      await connTaxFee.beginTransaction();
+      const [existingTaxFee] = await connTaxFee.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, taxFeeSkuId]
+      );
+      if (existingTaxFee.length) {
+        taxFeeOrder = existingTaxFee[0];
+      } else {
+        taxFeeOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: taxFeeSubject,
+          amount: taxFeeAmount,
+          status: 'pending',
+          pricing_variant: taxFeeProduct,
+          sku_id: taxFeeSkuId,
+          grant_kind: taxFeeGrantKind,
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connTaxFee.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            taxFeeOrder.out_trade_no,
+            req.authUserId,
+            taxFeeOrder.subject,
+            taxFeeOrder.amount,
+            taxFeeOrder.pricing_variant,
+            taxFeeOrder.sku_id,
+            taxFeeOrder.grant_kind,
+            taxFeeOrder.grant_days,
+            taxFeeOrder.grant_hours,
+            taxFeeOrder.grant_minutes
+          ]
+        );
+      }
+      await connTaxFee.commit();
+    } catch (eTaxFeeDb) {
+      try {
+        await connTaxFee.rollback();
+      } catch (eRb) {}
+      console.error('create tax edit fee order db', eTaxFeeDb);
+      try {
+        connTaxFee.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建个税修改订单失败' });
+    }
+    try {
+      var taxFeePre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(taxFeeOrder.out_trade_no),
+        subject: String(taxFeeOrder.subject),
+        amount: alipay.normalizeAmount(taxFeeOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(taxFeeOrder),
+          qr_code: taxFeePre.qrCode,
+          payment_url: taxFeePre.qrCode,
+          pricing_variant: taxFeeProduct,
+          sku_id: taxFeeSkuId,
+          product: taxFeeProduct
+        }
+      });
+    } catch (eTaxFeePay) {
+      console.error('create tax edit fee precreate', eTaxFeePay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝个税修改订单失败' });
+    } finally {
+      try {
+        connTaxFee.release();
       } catch (eRel2) {}
     }
   }
@@ -6675,6 +6978,38 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     );
     var meta = orderMetaRows[0] || {};
     var grantKind = meta.grant_kind != null ? String(meta.grant_kind) : 'permanent';
+
+    /* 个税修改：当天无限解锁；历史单次 SKU 到账也按当天无限发放，不开通账号 */
+    if (
+      taxEditFeePolicy.isTaxEditFeeSkuId(meta.sku_id) ||
+      taxEditFeePolicy.isTaxEditFeeGrantKind(grantKind)
+    ) {
+      await conn.execute(
+        `INSERT INTO user_tax_edit_daily_unlocks
+         (username, unlock_date, payment_order_id, out_trade_no)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           payment_order_id = VALUES(payment_order_id),
+           out_trade_no = VALUES(out_trade_no)`,
+        [
+          locked.username,
+          chinaDateKeyNow(),
+          locked.id,
+          String(locked.out_trade_no || order.out_trade_no || '')
+        ]
+      );
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInvTax2) {}
+      return true;
+    }
 
     /* 改名费用：只发改名次数，不开通账号 */
     if (isRenameFeeSkuId(meta.sku_id) || grantKind === 'rename_credit') {
@@ -8685,6 +9020,7 @@ async function handleUserGet(req, res) {
     action !== 'info' &&
     action !== 'summary' &&
     action !== 'rename_policy' &&
+    action !== 'tax_edit_policy' &&
     action !== 'employers' &&
     action !== 'family_members' &&
     action !== 'family_member' &&
@@ -8701,6 +9037,10 @@ async function handleUserGet(req, res) {
     if (action === 'rename_policy') {
       var renamePol = await getRenameFeePolicy(userId);
       return res.json({ code: 200, data: renamePol });
+    }
+    if (action === 'tax_edit_policy') {
+      var taxEditPol = await getTaxEditFeePolicy(userId);
+      return res.json({ code: 200, data: taxEditPol });
     }
     if (action === 'summary') {
       var summary = await getUserSummaryForApi(userId);
@@ -11132,6 +11472,19 @@ async function handleTaxVerifyIssueGet(req, res) {
 /** 税务域 GET */
 async function handleTaxGet(req, res) {
   var action = req.query.action;
+  if (action === 'tax_edit_policy') {
+    var uidPol = req.authUserId;
+    if (uidPol == null || uidPol === '') {
+      return res.status(400).json({ code: 400, msg: 'user_id required' });
+    }
+    try {
+      var taxPol = await getTaxEditFeePolicy(uidPol);
+      return res.json({ code: 200, data: taxPol });
+    } catch (ePol) {
+      console.error(ePol);
+      return res.status(500).json({ code: 500, msg: String(ePol.message) });
+    }
+  }
   if (action === 'detail') {
     var userId = req.authUserId;
     var rid = req.query.id;
@@ -11886,8 +12239,19 @@ async function handleTaxPost(req, res) {
   var body = req.body || {};
   var action = body.action;
   var userId = req.authUserId;
+  var taxEditPolicy = null;
 
   try {
+    if (taxEditFeePolicy.isTaxEditFeeWriteAction(action) && userId) {
+      taxEditPolicy = await getTaxEditFeePolicy(userId);
+      if (taxEditPolicy.subject && !taxEditPolicy.can_edit_now) {
+        return res.status(402).json({
+          code: 402,
+          msg: taxEditFeePolicy.taxEditFeeBlockMessage(taxEditPolicy),
+          data: Object.assign({ need_tax_edit_fee: true, peer_account: true }, taxEditPolicy)
+        });
+      }
+    }
     if (action === 'save_record' || action === 'add_record') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
@@ -11898,10 +12262,7 @@ async function handleTaxPost(req, res) {
       }
       var out = await saveRecord(userId, record);
       /* 单条保存不再同步全量去重（可走明确的 dedupe_records）；批量写入仍会去重 */
-      return res.json({
-        code: 200,
-        data: Object.assign({}, out, { auto_deduped: 0 })
-      });
+      return okTaxWrite(res, userId, taxEditPolicy, Object.assign({}, out, { auto_deduped: 0 }));
     }
     if (action === 'batch_save_records') {
       if (!userId) {
@@ -11918,7 +12279,7 @@ async function handleTaxPost(req, res) {
         });
       }
       var batchOut = await batchSaveRecords(userId, records);
-      return res.json({ code: 200, data: batchOut });
+      return okTaxWrite(res, userId, taxEditPolicy, batchOut);
     }
     if (action === 'batch_replace_records') {
       if (!userId) {
@@ -11939,7 +12300,7 @@ async function handleTaxPost(req, res) {
         });
       }
       var replaceOut = await batchReplaceTaxRecords(userId, idsToDelete, replaceRecords);
-      return res.json({ code: 200, data: replaceOut });
+      return okTaxWrite(res, userId, taxEditPolicy, replaceOut);
     }
     if (action === 'delete_record') {
       if (!userId) {
@@ -11950,14 +12311,14 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: 'id required' });
       }
       await deleteRecord(userId, id);
-      return res.json({ code: 200, data: {} });
+      return okTaxWrite(res, userId, taxEditPolicy, {});
     }
     if (action === 'delete_all_records') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var delAllOut = await deleteAllRecords(userId);
-      return res.json({ code: 200, data: delAllOut });
+      return okTaxWrite(res, userId, taxEditPolicy, delAllOut);
     }
     if (action === 'restore_record') {
       if (!userId) {
@@ -11971,14 +12332,14 @@ async function handleTaxPost(req, res) {
       if (!restoreOne.restored) {
         return res.status(404).json({ code: 404, msg: '回收站中未找到该记录' });
       }
-      return res.json({ code: 200, data: restoreOne });
+      return okTaxWrite(res, userId, taxEditPolicy, restoreOne);
     }
     if (action === 'restore_all_deleted_records') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var restoreAllOut = await restoreAllDeletedTaxRecords(userId);
-      return res.json({ code: 200, data: restoreAllOut });
+      return okTaxWrite(res, userId, taxEditPolicy, restoreAllOut);
     }
     if (action === 'restore_records_by_company') {
       if (!userId) {
@@ -11992,7 +12353,7 @@ async function handleTaxPost(req, res) {
       if (!restoreCompanyOut.restored) {
         return res.status(404).json({ code: 404, msg: '回收站中未找到该单位的记录' });
       }
-      return res.json({ code: 200, data: restoreCompanyOut });
+      return okTaxWrite(res, userId, taxEditPolicy, restoreCompanyOut);
     }
     if (action === 'delete_records_by_year') {
       if (!userId) {
@@ -12003,7 +12364,7 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: '请填写合法年份（1–9999）' });
       }
       var delOut = await deleteRecordsByYear(userId, delYear);
-      return res.json({ code: 200, data: delOut });
+      return okTaxWrite(res, userId, taxEditPolicy, delOut);
     }
     if (action === 'delete_records_by_company') {
       if (!userId) {
@@ -12014,14 +12375,14 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: '请填写扣缴单位名称' });
       }
       var delCompanyOut = await deleteRecordsByCompany(userId, delCompany);
-      return res.json({ code: 200, data: delCompanyOut });
+      return okTaxWrite(res, userId, taxEditPolicy, delCompanyOut);
     }
     if (action === 'dedupe_records') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var dedupeOut = await dedupeTaxRecords(userId);
-      return res.json({ code: 200, data: dedupeOut });
+      return okTaxWrite(res, userId, taxEditPolicy, dedupeOut);
     }
     if (action === 'log_issue_application') {
       if (!userId) {
@@ -12527,6 +12888,14 @@ async function handleAuthPost(req, res) {
           username: out2.username,
           reported: true
         });
+      }
+      try {
+        var loginTaxPol = await getTaxEditFeePolicy(out2.username);
+        out2.peer_account = !!loginTaxPol.peer_account;
+        out2.peer_login_notice = loginTaxPol.peer_login_notice || '';
+        out2.tax_edit_fee_policy = loginTaxPol;
+      } catch (ePeerLogin) {
+        out2.peer_account = false;
       }
       return res.json({ code: 200, data: out2 });
     }
@@ -16031,12 +16400,25 @@ async function handleAdminUsers(req, res) {
       params.push(qNameChangesGt);
     }
     if (isFinite(qTaxModDaysGt) && qTaxModDaysGt >= 0) {
-      /* 有个税记录修改的不同日历天数（tax_record_change_logs）≥ N */
+      /* 有个税记录修改的不同北京日历天数（tax_record_change_logs）≥ N */
       whereClauses.push(
-        `(SELECT COUNT(DISTINCT DATE(tcl.changed_at)) FROM tax_record_change_logs tcl
+        `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
           WHERE tcl.user_id = users.username) >= ?`
       );
       params.push(qTaxModDaysGt);
+    }
+    if (qPeer) {
+      whereClauses.push('COALESCE(users.rename_fee_exempt, 0) = 0');
+      whereClauses.push(
+        '(' +
+          `(SELECT COUNT(*) FROM user_profile_change_logs upc
+            WHERE upc.username = users.username AND upc.field_key = 'real_name') > ?` +
+          ' OR ' +
+          `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
+            WHERE tcl.user_id = users.username) > ?` +
+          ')'
+      );
+      params.push(taxEditFeePolicy.TAX_EDIT_FEE_RENAME_GT, taxEditFeePolicy.TAX_EDIT_FEE_DAYS_GT);
     }
     if (!qGuest) {
       /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
@@ -16110,7 +16492,7 @@ async function handleAdminUsers(req, res) {
         nameChangeCountMap[String(row.username || '')] = Number(row.cnt) || 0;
       });
       const [taxModDaysRows] = await conn.query(
-        `SELECT user_id, COUNT(DISTINCT DATE(changed_at)) AS days_cnt
+        `SELECT user_id, COUNT(DISTINCT DATE(DATE_ADD(changed_at, INTERVAL 8 HOUR))) AS days_cnt
          FROM tax_record_change_logs
          WHERE user_id IN (` +
           nameChangePlaceholders +
@@ -16138,12 +16520,23 @@ async function handleAdminUsers(req, res) {
         r.sales_promo_channel != null && String(r.sales_promo_channel).trim() !== ''
           ? String(r.sales_promo_channel).trim()
           : '';
+      var nameChangeCountOut = nameChangeCountMap[uname] || 0;
+      var taxModifiedDaysOut = taxModDaysMap[uname] || 0;
+      var renameExemptOut =
+        r.rename_fee_exempt === 1 ||
+        r.rename_fee_exempt === true ||
+        Number(r.rename_fee_exempt) === 1;
       return {
         id: r.id,
         username: r.username,
         real_name: r.real_name,
-        name_change_count: nameChangeCountMap[uname] || 0,
-        tax_modified_days: taxModDaysMap[uname] || 0,
+        name_change_count: nameChangeCountOut,
+        tax_modified_days: taxModifiedDaysOut,
+        is_peer_account: taxEditFeePolicy.isPeerAccount({
+          nameChanges: nameChangeCountOut,
+          taxModDays: taxModifiedDaysOut,
+          exempt: renameExemptOut
+        }),
         tax_id: r.tax_id,
         account_active: r.account_active === 1 || r.account_active === true,
         activation_kind:
@@ -16238,8 +16631,15 @@ async function handleAdminUsers(req, res) {
   }
 }
 
-/** 改名超过免费次数、且未永久免改名费的用户：按日统计个税修改次数 */
+/** 改名超过免费次数、或个税修改天数超阈值、且未永久免改名费的用户：按日统计个税修改次数 */
 var RENAME_WATCH_NAME_CHANGES_GT = 5;
+var RENAME_WATCH_TAX_MOD_DAYS_GT = 8;
+var RENAME_WATCH_NAME_CHANGE_COUNT_SQL =
+  `(SELECT COUNT(*) FROM user_profile_change_logs upc
+    WHERE upc.username = users.username AND upc.field_key = 'real_name')`;
+var RENAME_WATCH_TAX_MOD_DAYS_SQL =
+  `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
+    WHERE tcl.user_id = users.username)`;
 
 async function handleAdminRenameTaxDaily(req, res) {
   try {
@@ -16250,6 +16650,7 @@ async function handleAdminRenameTaxDaily(req, res) {
         code: 200,
         data: Object.assign(conversionAnalyticsPeriodMeta(period), {
           name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
+          tax_mod_days_gt: RENAME_WATCH_TAX_MOD_DAYS_GT,
           exclude_rename_fee_exempt: true,
           dates: [],
           users: [],
@@ -16267,10 +16668,13 @@ async function handleAdminRenameTaxDaily(req, res) {
       'users.list_hidden_at IS NULL',
       nonGuestUsernameSql('users.username'),
       'COALESCE(users.rename_fee_exempt, 0) = 0',
-      `(SELECT COUNT(*) FROM user_profile_change_logs upc
-        WHERE upc.username = users.username AND upc.field_key = 'real_name') > ?`
+      '(' +
+        RENAME_WATCH_NAME_CHANGE_COUNT_SQL +
+        ' > ? OR ' +
+        RENAME_WATCH_TAX_MOD_DAYS_SQL +
+        ' > ?)'
     ];
-    var params = [RENAME_WATCH_NAME_CHANGES_GT];
+    var params = [RENAME_WATCH_NAME_CHANGES_GT, RENAME_WATCH_TAX_MOD_DAYS_GT];
     appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
 
     const conn = await pool.getConnection();
@@ -16279,12 +16683,12 @@ async function handleAdminRenameTaxDaily(req, res) {
     try {
       const [pageRows] = await conn.execute(
         `SELECT users.username, users.real_name,
-                (SELECT COUNT(*) FROM user_profile_change_logs upc
-                 WHERE upc.username = users.username AND upc.field_key = 'real_name') AS name_change_count
+                ${RENAME_WATCH_NAME_CHANGE_COUNT_SQL} AS name_change_count,
+                ${RENAME_WATCH_TAX_MOD_DAYS_SQL} AS tax_mod_days
          FROM users
          WHERE ${whereClauses.join(' AND ')}
-         ORDER BY name_change_count DESC, users.username ASC
-         LIMIT 200`,
+         ORDER BY tax_mod_days DESC, name_change_count DESC, users.username ASC
+         LIMIT 400`,
         params
       );
       userRows = pageRows || [];
@@ -16331,6 +16735,7 @@ async function handleAdminRenameTaxDaily(req, res) {
         username: u,
         real_name: r.real_name != null ? String(r.real_name) : '',
         name_change_count: Number(r.name_change_count) || 0,
+        tax_mod_days: Number(r.tax_mod_days) || 0,
         daily: daily,
         period_tax_edits: total,
         today_tax_edits: (dailyByUser[u] && dailyByUser[u][todayKey]) || 0
@@ -16338,6 +16743,7 @@ async function handleAdminRenameTaxDaily(req, res) {
     });
     users.sort(function (a, b) {
       if (b.period_tax_edits !== a.period_tax_edits) return b.period_tax_edits - a.period_tax_edits;
+      if (b.tax_mod_days !== a.tax_mod_days) return b.tax_mod_days - a.tax_mod_days;
       if (b.name_change_count !== a.name_change_count) return b.name_change_count - a.name_change_count;
       return a.username < b.username ? -1 : a.username > b.username ? 1 : 0;
     });
@@ -16362,6 +16768,7 @@ async function handleAdminRenameTaxDaily(req, res) {
       code: 200,
       data: Object.assign(meta, {
         name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
+        tax_mod_days_gt: RENAME_WATCH_TAX_MOD_DAYS_GT,
         exclude_rename_fee_exempt: true,
         dates: dateKeys,
         users: users,
@@ -17975,6 +18382,7 @@ async function handleAdminSettingsGet(req, res) {
         sales_agent: salesAgentPublicPayload(salesAgent),
         pricing_ab: await getPricingAb().loadPricingAbParsed(true),
         sku_catalog_prices: await getPricingAb().loadCatalogAmounts(true),
+        tax_edit_fee: await loadTaxEditFeeConfig(true),
         activation_nudge: activationNudge
       }
     });
@@ -18001,6 +18409,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasSalesAgent = body.sales_agent != null && typeof body.sales_agent === 'object';
   var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
   var hasSkuCatalogPrices = body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object';
+  var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -18017,11 +18426,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasSalesAgent &&
     !hasPricingAb &&
     !hasSkuCatalogPrices &&
+    !hasTaxEditFee &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、套餐价格或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、套餐价格、个税修改收费或激活引导弹窗配置'
     });
   }
 
@@ -18042,6 +18452,7 @@ async function handleAdminSettingsPost(req, res) {
       hasLandingAb ||
       hasPricingAb ||
       hasSkuCatalogPrices ||
+      hasTaxEditFee ||
       hasInvite ||
       hasActivationNudge
     ) {
@@ -18346,6 +18757,19 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasTaxEditFee) {
+      try {
+        await saveTaxEditFeeConfigFromAdmin(body.tax_edit_fee);
+      } catch (eTaxFeeSave) {
+        var taxFeeMsg =
+          eTaxFeeSave && eTaxFeeSave.message ? String(eTaxFeeSave.message) : '保存个税修改收费失败';
+        return res.status(eTaxFeeSave && eTaxFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eTaxFeeSave && eTaxFeeSave.statusCode === 400 ? 400 : 500,
+          msg: taxFeeMsg
+        });
+      }
+    }
+
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -18383,6 +18807,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.landing_ab = await loadLandingAbParsed();
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
     outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true);
+    outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
@@ -18961,7 +19386,7 @@ async function handleAdminUserRefund(req, res) {
        SET status = 'refunded'
        WHERE username = ? AND status = 'paid'
          AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
-         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%'))`,
+         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%' AND sku_id NOT LIKE 'sku_tax_edit%'))`,
       [target]
     );
     await conn.commit();
@@ -20286,6 +20711,12 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         "(sku_id = '" +
         RENAME_FEE_SKU_ID +
         "' OR grant_kind = 'rename_credit')";
+      var taxEditSkuSql =
+        "(sku_id IN ('" +
+        taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID +
+        "','" +
+        taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID +
+        "') OR grant_kind IN ('tax_edit_single','tax_edit_daily'))";
       var activationOrderCase =
         'CASE WHEN ' +
         lizhiSkuSql +
@@ -20293,6 +20724,8 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         zaizhiSkuSql +
         ' THEN 0 WHEN ' +
         renameSkuSql +
+        ' THEN 0 WHEN ' +
+        taxEditSkuSql +
         ' THEN 0 ELSE 1 END';
       var activationAmountCase =
         'CASE WHEN ' +
@@ -20301,6 +20734,8 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         zaizhiSkuSql +
         ' THEN 0 WHEN ' +
         renameSkuSql +
+        ' THEN 0 WHEN ' +
+        taxEditSkuSql +
         ' THEN 0 ELSE amount END';
       try {
         const [paidDaily] = await conn.execute(

@@ -1,0 +1,186 @@
+'use strict';
+
+/** 改名超过该次数，或个税修改天数超过该天数，则标记为同行账号并纳入个税修改付费（白名单除外） */
+var TAX_EDIT_FEE_RENAME_GT = 8;
+var TAX_EDIT_FEE_DAYS_GT = 8;
+
+var TAX_EDIT_SINGLE_SKU_ID = 'sku_tax_edit_fee_20';
+var TAX_EDIT_DAILY_SKU_ID = 'sku_tax_edit_unlimited_30';
+var TAX_EDIT_DAILY_AMOUNT = '30.00';
+var TAX_EDIT_DAILY_SUBJECT = '个税修改（当天无限）';
+var SETTING_KEY_TAX_EDIT_FEE = 'tax_edit_fee_json';
+
+function normalizeTaxEditFeeAmount(raw) {
+  var s = String(raw == null ? '' : raw).replace(/,/g, '').replace(/，/g, '').trim();
+  if (!s) return '';
+  var n = Number(s);
+  if (!isFinite(n) || n < 0.01 || n > 99999.99) return '';
+  return n.toFixed(2);
+}
+
+function defaultTaxEditFeeConfig() {
+  return {
+    daily_amount: TAX_EDIT_DAILY_AMOUNT
+  };
+}
+
+function normalizeTaxEditFeeConfig(raw) {
+  var def = defaultTaxEditFeeConfig();
+  raw = raw && typeof raw === 'object' ? raw : {};
+  return {
+    daily_amount: normalizeTaxEditFeeAmount(raw.daily_amount) || def.daily_amount
+  };
+}
+
+function parseTaxEditFeeConfigFromAdmin(body) {
+  var raw = body && typeof body === 'object' ? body : {};
+  var daily = normalizeTaxEditFeeAmount(raw.daily_amount);
+  if (!daily) return null;
+  return { daily_amount: daily };
+}
+
+function formatYuanLabel(raw) {
+  var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
+  if (!isFinite(n) || n <= 0) return '';
+  return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
+}
+
+var TAX_EDIT_FEE_WRITE_ACTIONS = {
+  save_record: true,
+  add_record: true,
+  batch_save_records: true,
+  batch_replace_records: true,
+  delete_record: true,
+  delete_all_records: true,
+  restore_record: true,
+  restore_all_deleted_records: true,
+  restore_records_by_company: true,
+  delete_records_by_year: true,
+  delete_records_by_company: true,
+  dedupe_records: true
+};
+
+function isTaxEditFeeWriteAction(action) {
+  return !!TAX_EDIT_FEE_WRITE_ACTIONS[String(action || '')];
+}
+
+function isTaxEditSingleSkuId(skuId) {
+  return String(skuId || '') === TAX_EDIT_SINGLE_SKU_ID;
+}
+
+function isTaxEditDailySkuId(skuId) {
+  return String(skuId || '') === TAX_EDIT_DAILY_SKU_ID;
+}
+
+function isTaxEditFeeSkuId(skuId) {
+  return isTaxEditSingleSkuId(skuId) || isTaxEditDailySkuId(skuId);
+}
+
+function isTaxEditFeeGrantKind(grantKind) {
+  var k = String(grantKind || '');
+  return k === 'tax_edit_single' || k === 'tax_edit_daily';
+}
+
+/**
+ * 是否属于同行账号 / 个税修改付费对象：改名>8 或 个税修改天数>8，且非白名单。
+ */
+function isTaxEditFeeSubject(input) {
+  input = input || {};
+  if (input.exempt) return false;
+  var names = Number(input.nameChanges) || 0;
+  var days = Number(input.taxModDays) || 0;
+  return names > TAX_EDIT_FEE_RENAME_GT || days > TAX_EDIT_FEE_DAYS_GT;
+}
+
+function isPeerAccount(input) {
+  return isTaxEditFeeSubject(input);
+}
+
+function peerLoginNotice() {
+  return (
+    '该账号为同行账号。改名已超过 ' +
+    TAX_EDIT_FEE_RENAME_GT +
+    ' 次或个税修改已超过 ' +
+    TAX_EDIT_FEE_DAYS_GT +
+    ' 天，后续修改个税需先付费后才能继续。'
+  );
+}
+
+/**
+ * 解析当前是否需要付费、能否立即修改。
+ * 仅当天无限解锁可改；不再提供单次额度。
+ */
+function resolveTaxEditAccess(input) {
+  input = input || {};
+  var subject = isTaxEditFeeSubject(input);
+  var hasDaily = !!input.hasDailyUnlock;
+  var canNow = !subject || hasDaily;
+  return {
+    subject: subject,
+    need_fee: subject && !canNow,
+    can_edit_now: canNow,
+    has_daily_unlock: hasDaily
+  };
+}
+
+function taxEditFeeBlockMessage(policy) {
+  var cfg = normalizeTaxEditFeeConfig(policy || {});
+  var daily = formatYuanLabel(cfg.daily_amount) || '30';
+  return (
+    '同行账号后续修改需付费。改名已超过 ' +
+    TAX_EDIT_FEE_RENAME_GT +
+    ' 次或个税修改已超过 ' +
+    TAX_EDIT_FEE_DAYS_GT +
+    ' 天，请先支付 ¥' +
+    daily +
+    ' 开通当天无限修改'
+  );
+}
+
+function buildTaxEditFeePolicyView(input) {
+  input = input || {};
+  var access = resolveTaxEditAccess(input);
+  var peer = !!access.subject;
+  var cfg = normalizeTaxEditFeeConfig({
+    daily_amount: input.dailyAmount != null ? input.dailyAmount : input.daily_amount
+  });
+  return Object.assign({}, access, {
+    peer_account: peer,
+    peer_login_notice: peer ? peerLoginNotice() : '',
+    name_change_count: Number(input.nameChanges) || 0,
+    tax_mod_days: Number(input.taxModDays) || 0,
+    rename_gt: TAX_EDIT_FEE_RENAME_GT,
+    days_gt: TAX_EDIT_FEE_DAYS_GT,
+    rename_fee_exempt: !!input.exempt,
+    today: input.today != null ? String(input.today) : '',
+    daily_amount: cfg.daily_amount,
+    daily_sku_id: TAX_EDIT_DAILY_SKU_ID,
+    daily_subject: TAX_EDIT_DAILY_SUBJECT
+  });
+}
+
+module.exports = {
+  TAX_EDIT_FEE_RENAME_GT: TAX_EDIT_FEE_RENAME_GT,
+  TAX_EDIT_FEE_DAYS_GT: TAX_EDIT_FEE_DAYS_GT,
+  SETTING_KEY_TAX_EDIT_FEE: SETTING_KEY_TAX_EDIT_FEE,
+  TAX_EDIT_SINGLE_SKU_ID: TAX_EDIT_SINGLE_SKU_ID,
+  TAX_EDIT_DAILY_SKU_ID: TAX_EDIT_DAILY_SKU_ID,
+  TAX_EDIT_DAILY_AMOUNT: TAX_EDIT_DAILY_AMOUNT,
+  TAX_EDIT_DAILY_SUBJECT: TAX_EDIT_DAILY_SUBJECT,
+  normalizeTaxEditFeeAmount: normalizeTaxEditFeeAmount,
+  defaultTaxEditFeeConfig: defaultTaxEditFeeConfig,
+  normalizeTaxEditFeeConfig: normalizeTaxEditFeeConfig,
+  parseTaxEditFeeConfigFromAdmin: parseTaxEditFeeConfigFromAdmin,
+  formatYuanLabel: formatYuanLabel,
+  isTaxEditFeeWriteAction: isTaxEditFeeWriteAction,
+  isTaxEditSingleSkuId: isTaxEditSingleSkuId,
+  isTaxEditDailySkuId: isTaxEditDailySkuId,
+  isTaxEditFeeSkuId: isTaxEditFeeSkuId,
+  isTaxEditFeeGrantKind: isTaxEditFeeGrantKind,
+  isTaxEditFeeSubject: isTaxEditFeeSubject,
+  isPeerAccount: isPeerAccount,
+  peerLoginNotice: peerLoginNotice,
+  resolveTaxEditAccess: resolveTaxEditAccess,
+  taxEditFeeBlockMessage: taxEditFeeBlockMessage,
+  buildTaxEditFeePolicyView: buildTaxEditFeePolicyView
+};
