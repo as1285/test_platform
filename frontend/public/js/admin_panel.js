@@ -5124,7 +5124,7 @@
                             (d.name_changes_gt || 5) +
                             ' 次或修改个税天数大于 ' +
                             (d.tax_mod_days_gt || 8) +
-                            ' 天，已排除永久免改名费），区间内个税修改 ' +
+                            ' 天，已排除永久免改名/改税），区间内个税修改 ' +
                             (d.period_tax_edits || 0) +
                             ' 次';
                     }
@@ -5481,7 +5481,7 @@
                                 ? '该账号已豁免改名费与个税修改费，点击重新加限制'
                                 : '取消后该账号改名、个税修改不再收取费用') +
                             '">' +
-                            (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
+                            (u.rename_fee_exempt ? '重新加改名/改税限制' : '取消改名/改税限制') +
                             '</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         var certPermHtml =
@@ -5553,7 +5553,7 @@
                         if (u.rename_fee_exempt) {
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
-                                'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已取消改名/个税修改收费限制">免改名费</span>';
+                                'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已取消改名/个税修改收费限制">免改名改税</span>';
                         }
                         if (u.lizhi_cert_unlocked) {
                             nameChangeBadge +=
@@ -5753,8 +5753,8 @@
                                     alert(
                                         d.msg ||
                                             (nextExempt
-                                                ? '已取消改名限制'
-                                                : '已重新加改名限制')
+                                                ? '已取消改名与个税修改限制'
+                                                : '已重新加改名与个税修改限制')
                                     );
                                     loadUsers();
                                 })
@@ -6115,8 +6115,12 @@
                             esc(u.username) +
                             '" data-exempt="' +
                             (u.rename_fee_exempt ? '1' : '0') +
+                            '" title="' +
+                            (u.rename_fee_exempt
+                                ? '该账号已豁免改名费与个税修改费，点击重新加限制'
+                                : '取消后该账号改名、个税修改不再收取费用') +
                             '">' +
-                            (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
+                            (u.rename_fee_exempt ? '重新加改名/改税限制' : '取消改名/改税限制') +
                             '</button> ' +
                             (u.banned
                                 ? '<button type="button" class="btn-sm btn-unban btn-peer-ban-act" data-u="' +
@@ -6173,7 +6177,9 @@
                                     }
                                     alert(
                                         d.msg ||
-                                            (nextExempt ? '已取消改名限制' : '已重新加改名限制')
+                                            (nextExempt
+                                                ? '已取消改名与个税修改限制'
+                                                : '已重新加改名与个税修改限制')
                                     );
                                     loadPeerAccounts();
                                 })

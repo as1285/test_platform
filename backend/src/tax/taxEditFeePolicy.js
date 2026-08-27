@@ -195,6 +195,7 @@ function buildTaxEditFeePolicyView(input) {
     rename_gt: cfg.rename_gt,
     days_gt: cfg.days_gt,
     rename_fee_exempt: !!input.exempt,
+    tax_edit_fee_exempt: !!input.exempt,
     today: input.today != null ? String(input.today) : '',
     daily_amount: cfg.daily_amount,
     daily_sku_id: TAX_EDIT_DAILY_SKU_ID,

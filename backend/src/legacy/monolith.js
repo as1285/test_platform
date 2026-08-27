@@ -5303,31 +5303,13 @@ async function countUnusedRenameCredits(userId) {
   }
 }
 
-/** 改名收费策略 */
+/** 改名收费策略（白名单与个税修改费共用 rename_fee_exempt） */
 async function getRenameFeePolicy(userId) {
   var nameChanges = await countUserRealNameChanges(userId);
   var activeDays = await countUserActiveDaysRecent(userId, RENAME_FREQ_WINDOW_DAYS);
   var unused = await countUnusedRenameCredits(userId);
   var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
-  var uname = String(userId || '').trim().toLowerCase();
-  var exempt = false;
-  if (uname) {
-    try {
-      const [exemptRows] = await pool.execute(
-        'SELECT rename_fee_exempt FROM users WHERE username = ? LIMIT 1',
-        [userId]
-      );
-      exempt =
-        exempt ||
-        !!(
-          exemptRows.length &&
-          (exemptRows[0].rename_fee_exempt === true ||
-            Number(exemptRows[0].rename_fee_exempt) === 1)
-        );
-    } catch (eExempt) {
-      /* 迁移完成前继续使用内置豁免名单 */
-    }
-  }
+  var exempt = await isRenameFeeExemptUser(userId);
   var needFee = !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   var feeCfg = await loadRenameFeeConfig(false);
   return {
@@ -5340,6 +5322,7 @@ async function getRenameFeePolicy(userId) {
     activity_window_days: RENAME_FREQ_WINDOW_DAYS,
     is_mid_high_frequency: isMidHigh,
     rename_fee_exempt: exempt,
+    tax_edit_fee_exempt: exempt,
     fee_amount: feeCfg.amount,
     fee_subject: RENAME_FEE_SUBJECT,
     sku_id: RENAME_FEE_SKU_ID
@@ -18093,7 +18076,7 @@ async function handleAdminUserPriceOfferClear(req, res) {
   }
 }
 
-/** 管理端：取消或恢复指定账号的五次改名收费限制 */
+/** 管理端：取消或恢复指定账号的改名费 / 个税修改费（同一白名单） */
 async function handleAdminUserRenameFeeExempt(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -18123,12 +18106,18 @@ async function handleAdminUserRenameFeeExempt(req, res) {
     invalidateUserInfoApiCache(canonicalUsername);
     return res.json({
       code: 200,
-      msg: exempt ? '已取消该账号的改名限制' : '已重新加改名限制',
-      data: { username: canonicalUsername, rename_fee_exempt: exempt }
+      msg: exempt
+        ? '已取消该账号的改名与个税修改限制'
+        : '已重新加改名与个税修改限制',
+      data: {
+        username: canonicalUsername,
+        rename_fee_exempt: exempt,
+        tax_edit_fee_exempt: exempt
+      }
     });
   } catch (e) {
     console.error('admin user rename fee exempt', e);
-    return res.status(500).json({ code: 500, msg: '修改改名限制失败' });
+    return res.status(500).json({ code: 500, msg: '修改改名/个税限制失败' });
   } finally {
     conn.release();
   }

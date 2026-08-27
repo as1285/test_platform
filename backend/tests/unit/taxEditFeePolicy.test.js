@@ -24,6 +24,18 @@ describe('taxEditFeePolicy', () => {
   it('exempt accounts are never subject', () => {
     expect(isTaxEditFeeSubject({ exempt: true, nameChanges: 99, taxModDays: 99 })).toBe(false);
     expect(isPeerAccount({ exempt: true, nameChanges: 99, taxModDays: 99 })).toBe(false);
+    var view = buildTaxEditFeePolicyView({
+      nameChanges: 99,
+      taxModDays: 99,
+      exempt: true,
+      today: '2026-08-27'
+    });
+    expect(view.subject).toBe(false);
+    expect(view.peer_account).toBe(false);
+    expect(view.need_fee).toBe(false);
+    expect(view.can_edit_now).toBe(true);
+    expect(view.rename_fee_exempt).toBe(true);
+    expect(view.tax_edit_fee_exempt).toBe(true);
   });
 
   it('requires both rename and tax-mod days over threshold', () => {

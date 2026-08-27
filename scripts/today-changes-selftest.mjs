@@ -280,6 +280,26 @@ mustInclude(
 mustInclude(
   'backend/src/legacy/monolith.js',
   [
+    '是否永久免改名费 / 个税修改费（同一白名单）',
+    'var exempt = await isRenameFeeExemptUser(userId);',
+    '已取消该账号的改名与个税修改限制',
+    'tax_edit_fee_exempt: exempt'
+  ],
+  'rename_fee_exempt whitelist gates rename and tax-edit'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ['取消改名/改税限制', '重新加改名/改税限制', '免改名改税'],
+  'admin exempt button covers rename and tax-edit'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['admin_panel.js?v=20260827-exempt-both'],
+  'admin_panel.js cache bust after exempt-both copy'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
     'parent_admin_username',
     'appendSubAdminOwnedUsersScopeForAdmin',
     'adminCanManageAccountsPage',
