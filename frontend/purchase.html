@@ -70,41 +70,80 @@
             padding: 8px 20px 0;
         }
         .hero {
-            padding: 20px 18px;
+            padding: 16px 16px;
             border: none;
-            border-radius: 18px;
-            margin-bottom: 12px;
+            border-radius: 16px;
+            margin-bottom: 10px;
             color: #fff;
             background: linear-gradient(135deg, #1264cc 0%, #2c86eb 58%, #70b8ff 100%);
-            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.2);
+            box-shadow: 0 8px 20px rgba(29, 111, 216, 0.18);
         }
         .hero .brand-line {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.82);
             letter-spacing: 0.06em;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .hero h1 {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 650;
             color: #fff;
-            margin: 0 0 6px;
+            margin: 0 0 4px;
             letter-spacing: 0.01em;
         }
         .hero p {
-            font-size: 14px;
-            line-height: 1.5;
+            font-size: 13px;
+            line-height: 1.45;
             color: rgba(255, 255, 255, 0.82);
             margin: 0;
         }
+        body.is-high-intent .hero {
+            padding: 12px 14px;
+            margin-bottom: 8px;
+        }
+        body.is-high-intent .hero .brand-line { display: none; }
+        body.is-high-intent .hero h1 {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+        body.is-high-intent .hero p { font-size: 12px; }
+        body.is-high-intent .purchase-benefits { display: none; }
         .card {
-            padding: 17px 16px;
-            margin-top: 12px;
+            padding: 14px 14px;
+            margin-top: 10px;
             border: 1px solid rgba(226, 232, 240, 0.85);
             background: #fff;
             box-shadow: 0 5px 18px rgba(15, 23, 42, 0.055);
             border-radius: 16px;
+        }
+        #cardAlipay {
+            margin-top: 0;
+            border: 1px solid rgba(29, 111, 216, 0.16);
+            box-shadow: 0 8px 22px rgba(29, 111, 216, 0.08);
+        }
+        #cardAlipay .btn-alipay {
+            min-height: 52px;
+            font-size: 16px;
+            box-shadow: 0 8px 18px rgba(29, 111, 216, 0.22);
+        }
+        .card-alipay-skel {
+            margin-top: 0;
+            min-height: 168px;
+        }
+        .card-alipay-skel[hidden] { display: none !important; }
+        .skel-bar {
+            height: 44px;
+            background: linear-gradient(90deg, #e8eef6 0%, #f8fafc 50%, #e8eef6 100%);
+            background-size: 200% 100%;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            animation: purchaseSkel 1.2s ease-in-out infinite;
+        }
+        .skel-bar.is-cta { height: 52px; margin-top: 12px; margin-bottom: 0; }
+        @keyframes purchaseSkel {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
         }
         .card[hidden] { display: none !important; }
         .card-title {
@@ -253,60 +292,82 @@
         }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .pricing-sku-list {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
             margin: 0 0 12px;
         }
         .pricing-sku-item {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
             width: 100%;
-            min-height: 48px;
+            min-height: 72px;
             text-align: left;
-            border: 1px solid var(--line);
+            border: 1.5px solid var(--line);
             background: #fff;
-            border-radius: 10px;
-            padding: 12px 14px;
+            border-radius: 12px;
+            padding: 10px 10px 11px;
             cursor: pointer;
             font-family: inherit;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
         }
         .pricing-sku-item.is-selected {
             border-color: var(--accent);
             background: var(--accent-soft);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+        .pricing-sku-radio {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 50%;
+            background: #fff;
+        }
+        .pricing-sku-item.is-selected .pricing-sku-radio {
+            border-color: var(--accent);
+            background: var(--accent);
+            box-shadow: inset 0 0 0 3px #fff;
         }
         .pricing-sku-price {
-            font-size: 17px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--accent-deep);
-            min-width: 72px;
+            min-width: 0;
+            line-height: 1.15;
+            padding-right: 20px;
         }
         .pricing-sku-price del {
-            display: block;
+            display: inline;
+            margin-right: 4px;
             color: #94a3b8;
             font-size: 11px;
             font-weight: 400;
             line-height: 1.2;
         }
         .pricing-sku-price .discount-price {
-            display: block;
+            display: inline;
             color: #e5484d;
         }
         .pricing-sku-label {
-            flex: 1;
-            font-size: 14px;
+            font-size: 13px;
             color: var(--ink);
-            font-weight: 500;
+            font-weight: 600;
+            line-height: 1.3;
         }
         .pricing-sku-tag {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--muted);
         }
         .pricing-sku-badge {
             display: inline-block;
-            margin-left: 6px;
-            padding: 1px 6px;
+            margin-left: 4px;
+            padding: 1px 5px;
             border-radius: 4px;
             font-size: 10px;
             font-weight: 600;
@@ -317,31 +378,47 @@
         .pricing-sku-badge.is-rec {
             background: var(--accent);
         }
+        .purchase-trust {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            list-style: none;
+            margin: 10px 0 0;
+            padding: 0;
+        }
+        .purchase-trust li {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.3;
+            color: var(--muted);
+        }
         .purchase-benefits {
             list-style: none;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            margin: 0 0 12px;
-            padding: 12px 14px;
+            display: flex;
+            gap: 6px;
+            margin: 0 0 10px;
+            padding: 8px 10px;
             background: #fff;
             border: 1px solid var(--line);
             border-radius: 12px;
         }
         .purchase-benefits li {
+            flex: 1;
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            font-size: 13px;
-            line-height: 1.45;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 11px;
+            line-height: 1.3;
             color: var(--ink-soft);
+            text-align: center;
         }
         .purchase-benefits li::before {
             content: '';
-            flex: 0 0 6px;
-            width: 6px;
-            height: 6px;
-            margin-top: 6px;
+            flex: 0 0 5px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             background: var(--accent);
         }
@@ -350,14 +427,14 @@
             font-weight: 600;
         }
         .purchase-offer-banner {
-            margin: 0 0 12px;
-            padding: 10px 12px;
+            margin: 0 0 10px;
+            padding: 8px 12px;
             border-radius: 10px;
             background: linear-gradient(135deg, #fff7e8, #fffaf2);
             border: 1px solid #fde68a;
             color: #9a3412;
             font-size: 12px;
-            line-height: 1.45;
+            line-height: 1.4;
             font-weight: 500;
         }
         .cheaper-channels-hint {
@@ -866,6 +943,23 @@
     </style>
 </head>
 <body class="page-purchase">
+    <script>
+    (function markHighIntentPurchase() {
+        try {
+            var from = String(new URLSearchParams(window.location.search).get('from') || '')
+                .trim()
+                .toLowerCase();
+            if (
+                from === 'consult_products' ||
+                from === 'products' ||
+                from === 'consult' ||
+                from === 'tax_done'
+            ) {
+                document.body.classList.add('is-high-intent');
+            }
+        } catch (eHigh) {}
+    })();
+    </script>
     <div class="header">
         <a class="back-btn" id="purchaseBackBtn" href="mine.html">
             <img src="/jt.png" alt="" width="9" decoding="async">
@@ -881,22 +975,33 @@
         </div>
 
         <ul class="purchase-benefits" aria-label="开通后可获得">
-            <li><span><strong>去除水印</strong>：收入与纳税明细完整展示</span></li>
-            <li><span><strong>完整明细</strong>：按月查看演示数据</span></li>
-            <li><span><strong>可编辑</strong>：演示数据支持按需调整</span></li>
+            <li><span><strong>去水印</strong></span></li>
+            <li><span><strong>完整明细</strong></span></li>
+            <li><span><strong>可编辑</strong></span></li>
         </ul>
         <div class="purchase-offer-banner" id="purchaseOfferBanner">
             新用户 24 小时内可享体验价（划线为对照原价）。
         </div>
 
+        <div class="card card-alipay-skel" id="cardAlipaySkel" aria-hidden="true">
+            <div class="skel-bar"></div>
+            <div class="skel-bar"></div>
+            <div class="skel-bar"></div>
+            <div class="skel-bar is-cta"></div>
+        </div>
         <div class="card" id="cardAlipay" hidden>
             <div class="card-head">
                 <div class="card-title">选套餐 · 支付宝付款</div>
                 <span class="badge-auto">付款后自动开通</span>
             </div>
-            <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，可点其他套餐。</p>
+            <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，点选其他套餐即可改价。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">体验价 · 打开支付宝付款</button>
+            <ul class="purchase-trust" id="purchaseTrustRow" aria-label="开通保障">
+                <li>秒级开通</li>
+                <li>支付宝官方</li>
+                <li>请勿关闭本页</li>
+            </ul>
             <div class="pay-status" id="alipayPayStatus" hidden role="status" aria-live="polite"></div>
             <div class="share-inline-teaser" id="shareInlineTeaser" hidden>
                 想再便宜？<a href="#foldShareDiscount" id="shareInlineTeaserLink">分享 1 次到 B 站，立减 ¥50</a>
@@ -929,7 +1034,7 @@
             <div class="purchase-faq-title">支付常见问题</div>
             <p class="purchase-faq-sub" id="purchaseFaqSub">付款前可先看这几条，减少顾虑。</p>
             <div id="purchaseFaqList">
-                <details class="purchase-faq-item" data-faq-id="when_active" open>
+                <details class="purchase-faq-item" data-faq-id="when_active">
                     <summary>付款后多久开通？</summary>
                     <p>支付宝到账后一般几秒内自动开通。请勿关闭本页；若已付款仍未开通，可再点一次付款按钮刷新状态，或联系客服协助。</p>
                 </details>
@@ -955,7 +1060,7 @@
                 </details>
                 <details class="purchase-faq-item" data-faq-id="lizhi_extra">
                     <summary>离职证明要另付吗？</summary>
-                    <p>主产品开通不等于离职证明。离职证明为独立 ¥50 去水印服务，可在下方「其它服务」中进入。</p>
+                    <p>主产品开通不等于离职证明。离职证明为独立 ¥50 去水印服务，可在下方「增值服务与其它」中进入。</p>
                 </details>
             </div>
         </section>
@@ -976,31 +1081,31 @@
             </div>
         </details>
 
-        <p class="section-label" id="purchaseExtraServicesLabel">增值服务</p>
-        <div class="card" id="cardLizhiCert">
-            <div class="card-head">
-                <div class="card-title">离职证明生成</div>
-                <span class="badge-auto">¥50 去水印</span>
-            </div>
-            <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。</p>
-            <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
-        </div>
-
-        <div class="card" id="cardZaizhiCert">
-            <div class="card-head">
-                <div class="card-title">在职证明生成</div>
-                <span class="badge-auto">¥50 去水印</span>
-            </div>
-            <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
-            <a class="btn btn-primary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
-        </div>
-
         <details class="purchase-fold" id="foldMoreServices">
             <summary>
-                <span>其它服务</span>
-                <span class="purchase-fold-hint">下载 / 其它购买方式</span>
+                <span>增值服务与其它</span>
+                <span class="purchase-fold-hint">离职/在职证明 · 下载</span>
             </summary>
             <div class="purchase-fold-body">
+                <p class="section-label" id="purchaseExtraServicesLabel">增值服务</p>
+                <div class="card" id="cardLizhiCert">
+                    <div class="card-head">
+                        <div class="card-title">离职证明生成</div>
+                        <span class="badge-auto">¥50 去水印</span>
+                    </div>
+                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。</p>
+                    <a class="btn btn-secondary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
+                </div>
+
+                <div class="card" id="cardZaizhiCert">
+                    <div class="card-head">
+                        <div class="card-title">在职证明生成</div>
+                        <span class="badge-auto">¥50 去水印</span>
+                    </div>
+                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
+                    <a class="btn btn-secondary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
+                </div>
+
                 <div class="card download-box" id="cardDownloadApp" hidden>
                     <div class="card-title">下载 App</div>
                     <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
@@ -1718,25 +1823,14 @@
         var hint = document.getElementById('alipayPurchaseHint');
         var payBtn = document.getElementById('btnPurchaseAlipay');
         var discounted = selected ? discountedSkuAmount(selected.amount) : '';
-        var anchor = selected ? skuListAnchorAmount(selected, alipayPricing.skus) : '';
         if (hint && selected) {
             if (discounted) {
-                hint.textContent =
-                    '分享优惠已解锁：对照价 ¥' +
-                    (anchor || selected.amount) +
-                    '，套餐价 ¥' +
-                    selected.amount +
-                    '，本次实付 ¥' +
-                    discounted +
-                    '。';
+                hint.textContent = '分享优惠已解锁，本次实付 ¥' + discounted + '。';
             } else {
                 hint.textContent =
                     '已选「' +
                     (selected.label || selected.subject || '套餐') +
-                    '」体验价 ¥' +
-                    selected.amount +
-                    (anchor ? '（对照原价 ¥' + anchor + '）' : '') +
-                    '，付款后自动开通。';
+                    '」，付款后自动开通。';
             }
         }
         var ctaText = '体验价 · 打开支付宝付款';
@@ -2059,6 +2153,7 @@
     };
     /** legacy=支付宝+激活码；treatment=多档支付宝+激活码 */
     var purchaseUiMode = 'legacy';
+    var purchaseAlipayUiSettled = false;
 
     function applyPurchaseUiMode() {
         var isCodeOnly = purchaseUiMode === 'code_only';
@@ -2081,6 +2176,8 @@
         var sticky = document.getElementById('purchaseStickyCta');
         var page = document.querySelector('.page');
         var hero = document.querySelector('.hero');
+        var skel = document.getElementById('cardAlipaySkel');
+        var highIntent = document.body.classList.contains('is-high-intent');
 
         /* A/B 均保留激活码出口 */
         if (activateBox) activateBox.hidden = false;
@@ -2115,11 +2212,19 @@
             if (isCodeOnly) {
                 heroP.textContent =
                     '下载 App 后填写激活码，即可开通去水印的完整个税演示。';
+            } else if (highIntent && purchaseUserActive) {
+                heroP.textContent = '选套餐付款，时长叠加到当前账号。';
+            } else if (highIntent) {
+                heroP.textContent = '选套餐付款，到账后自动开通。';
             } else if (purchaseUserActive) {
                 heroP.textContent = '付款可叠加使用时长，继续使用去水印的完整个税演示。';
             } else {
                 heroP.textContent = '付款后去除水印，完整查看收入与纳税明细。';
             }
+        }
+        var heroH = document.getElementById('purchaseHeroTitle');
+        if (heroH && !isCodeOnly && highIntent) {
+            heroH.textContent = purchaseUserActive ? '续费 / 加时' : '选套餐开通';
         }
         if (steps) {
             if (isCodeOnly) {
@@ -2150,6 +2255,13 @@
 
         var benefits = document.querySelector('.purchase-benefits');
         var offerBanner = document.getElementById('purchaseOfferBanner');
+        if (skel) {
+            skel.hidden = !!(
+                isCodeOnly ||
+                purchaseAlipayUiSettled ||
+                (cardAlipay && !cardAlipay.hidden)
+            );
+        }
         if (isCodeOnly) {
             if (foldActivate) foldActivate.open = true;
             orderAfterHero([
@@ -2161,14 +2273,16 @@
                 otherCard
             ]);
         } else {
+            /* 首屏只留套餐+付款；激活码 / 增值 / FAQ 下移 */
             orderAfterHero([
                 benefits,
                 offerBanner,
+                skel,
                 cardAlipay,
-                foldShare,
-                faq,
                 foldActivate,
-                foldMore
+                foldMore,
+                foldShare,
+                faq
             ]);
         }
         if (typeof syncPurchaseStickyCta === 'function') syncPurchaseStickyCta();
@@ -2210,6 +2324,11 @@
         ) {
             alipayPricing.selectedSkuId = cheapestId;
         }
+        var longestDays = 0;
+        alipayPricing.skus.forEach(function (x) {
+            var d = Number(x && x.grant_days) || 0;
+            if (d > longestDays) longestDays = d;
+        });
         list.hidden = false;
         list.innerHTML = alipayPricing.skus
             .map(function (s) {
@@ -2237,7 +2356,7 @@
                 var badge = '';
                 if (s.id === cheapestId) {
                     badge = '<span class="pricing-sku-badge">体验价</span>';
-                } else if (s.grant_kind === 'permanent') {
+                } else if (s.grant_kind === 'permanent' || (longestDays && Number(s.grant_days) === longestDays)) {
                     badge = '<span class="pricing-sku-badge is-rec">更划算</span>';
                 }
                 return (
@@ -2246,6 +2365,7 @@
                     '" data-sku-id="' +
                     String(s.id).replace(/"/g, '') +
                     '">' +
+                    '<span class="pricing-sku-radio" aria-hidden="true"></span>' +
                     '<span class="pricing-sku-price">' +
                     priceHtml +
                     '</span>' +
@@ -2269,6 +2389,12 @@
             if (alipayPricing.skus[i].id === id) return alipayPricing.skus[i];
         }
         return alipayPricing.skus[0] || null;
+    }
+
+    function hideAlipaySkeleton() {
+        purchaseAlipayUiSettled = true;
+        var skel = document.getElementById('cardAlipaySkel');
+        if (skel) skel.hidden = true;
     }
 
     function loadAlipayPurchase() {
@@ -2314,6 +2440,7 @@
                     setShareUiVisible(false);
                     purchaseUiMode = 'legacy';
                     applyPurchaseUiMode();
+                    hideAlipaySkeleton();
                     try {
                         showToast((x.body && x.body.msg) || '登录已失效，请重新登录后再开通');
                     } catch (eToast) {}
@@ -2328,6 +2455,7 @@
                     purchaseUiMode = 'code_only';
                     alipayPricing.variant = 'c';
                     applyPurchaseUiMode();
+                    hideAlipaySkeleton();
                     trackPurchase('track_pricing_ab_expose_code', {
                         pricing_variant: 'c',
                         purchase_abc: 'c',
@@ -2366,6 +2494,7 @@
                     }
                     updatePayCtaFromSelection();
                     if (card) card.hidden = false;
+                    hideAlipaySkeleton();
                     applyPurchaseUiMode();
                     trackPurchase(
                         variant === 'treatment'
@@ -2386,11 +2515,13 @@
                         /* enabled=false 且非 C：保持隐藏（配置未就绪） */
                         card.hidden = true;
                     }
+                    hideAlipaySkeleton();
                     applyPurchaseUiMode();
                 }
                 return checkAlipayLatestOrder();
             })
             .catch(function () {
+                hideAlipaySkeleton();
                 var cardFail = document.getElementById('cardAlipay');
                 if (cardFail) cardFail.hidden = true;
                 var foldShareFail = document.getElementById('foldShareDiscount');
