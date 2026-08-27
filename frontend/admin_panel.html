@@ -225,9 +225,9 @@
                                 </div>
                             </div>
                             <div class="form-field mt-12">
-                                <label for="xianyuPurchaseUrl">闲鱼购买文案（用户端购买页）</label>
-                                <input class="input-block" type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写闲鱼分享文案（可含链接与说明文字），留空则购买页不显示该按钮">
-                                <p class="hint mt-6">用户在「我的」点「激活」进入购买页后，点击「闲鱼购买」会复制此处全文到剪贴板。</p>
+                                <label for="xianyuPurchaseUrl">闲鱼购买文案（已下线，仅存档）</label>
+                                <input class="input-block" type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="C 端购买页闲鱼入口已下线，此配置暂不生效">
+                                <p class="hint mt-6">C 端购买页已隐藏「闲鱼购买」入口（auth.js 强制不展示），改这里不会影响用户端；仅保留历史配置。</p>
                             </div>
                             <div class="form-field mt-12">
                                 <label for="qqAddUrl">添加客服 QQ 链接</label>
@@ -2077,7 +2077,7 @@
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
                     <section>
                         <h2>支付页 A/B</h2>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售五档：99 小时卡 / 249 日卡 / 300 周卡 / 398 月卡 / 999 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售套餐与金额以「定价与引导 → 支付套餐价格」配置为准。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>

@@ -1,6 +1,6 @@
-/** 管理端图表辅助（按需加载） */
+/** 管理端图表辅助（按需加载）
+ * 安装统计（install-guide）图表由 admin_panel.js 本地创建/销毁，不在本模块。 */
         var _registerTimeChartInstances = [];
-        var _installGuideChartInstances = [];
         var DEVICE_CHART_FALLBACK = [
             '#1e6fff', '#3ddc84', '#ff6900', '#cf0a2c', '#415fff', '#1428a0', '#0078d4', '#9aa5b1'
         ];
@@ -27,16 +27,6 @@
             afternoon: '#1e6fff',
             evening: '#6b4ce6'
         };
-
-        function destroyInstallGuideCharts() {
-            _installGuideChartInstances.forEach(function (c) {
-                try {
-                    c.destroy();
-                } catch (e0) {}
-            });
-            _installGuideChartInstances = [];
-        }
-
 
         function destroyChannelAnalysisCharts() {
             _channelAnalysisChartInstances.forEach(function (c) {
@@ -798,7 +788,6 @@
         }
 
         window.destroyRegisterTimeCharts = destroyRegisterTimeCharts;
-        window.destroyInstallGuideCharts = destroyInstallGuideCharts;
         window.destroyChannelAnalysisCharts = destroyChannelAnalysisCharts;
         window.loadChannelAnalysis = loadChannelAnalysis;
         window.loadAnalyticsRegisterPlatform = loadAnalyticsRegisterPlatform;

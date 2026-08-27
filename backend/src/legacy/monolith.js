@@ -598,6 +598,10 @@ function getUserPriceOffers() {
       pool: pool,
       normalizeAmount: function (v) {
         return alipay.normalizeAmount(v);
+      },
+      /* 原价与套餐列表统一走 pricingAb 的后台可配目录价，避免两份 LIVE SKU 漂移 */
+      loadCatalogAmounts: function () {
+        return getPricingAb().loadCatalogAmounts();
       }
     });
   }
@@ -3405,10 +3409,10 @@ async function createTables() {
      SELECT admin_id, 'activated-user-analysis' FROM admin_account_menus WHERE menu_key = 'user-data'`
   );
 
-  /* 清理已下线的数据分析 / 用户反馈 / 在线客服菜单权限 */
+  /* 清理已下线的数据分析 / 用户反馈 / 在线客服菜单权限（勿加现行菜单键：analytics-activity / analytics-devices 仍在用） */
   await conn.execute(
     `DELETE FROM admin_account_menus WHERE menu_key IN (
-      'user-behavior', 'analytics-activity', 'analytics-devices', 'api-analytics', 'feedback', 'chat', 'share-stats'
+      'user-behavior', 'api-analytics', 'feedback', 'chat', 'share-stats'
     )`
   );
 
@@ -7454,66 +7458,6 @@ function parseTaxRecordIncome(raw) {
   var s = String(raw).replace(/,/g, '').trim();
   n = parseFloat(s);
   return isNaN(n) || n < 0 ? 0 : n;
-}
-
-/** 格式化：avg salary6m label */
-function formatAvgSalary6mLabel(avg, monthCount) {
-  if (avg == null || isNaN(avg)) return '未填写';
-  var n = Number(avg);
-  var base = n.toFixed(2) + ' 元';
-  if (monthCount > 0 && monthCount < 6) {
-    return base + '（' + monthCount + '个月平均）';
-  }
-  return base;
-}
-
-/** compute tax records avg salary6m */
-function computeTaxRecordsAvgSalary6m(records) {
-  if (!records || !records.length) {
-    return { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
-  }
-  var byMonth = {};
-  records.forEach(function (r) {
-    var y = r.year != null ? Number(r.year) : null;
-    var m = r.month != null ? Number(r.month) : null;
-    if (!y || !m) {
-      var tp = r.tax_period != null ? String(r.tax_period).trim() : '';
-      var mm = tp.match(/^(\d{4})-(\d{1,2})/);
-      if (mm) {
-        y = Number(mm[1]);
-        m = Number(mm[2]);
-      }
-    }
-    if (!y || !m || isNaN(y) || isNaN(m)) return;
-    var key = y + '-' + String(m).padStart(2, '0');
-    var inc = parseTaxRecordIncome(r.income);
-    if (!byMonth[key]) byMonth[key] = { y: y, m: m, total: 0 };
-    byMonth[key].total += inc;
-  });
-  var months = Object.keys(byMonth).map(function (k) {
-    return byMonth[k];
-  });
-  months.sort(function (a, b) {
-    if (a.y !== b.y) return b.y - a.y;
-    return b.m - a.m;
-  });
-  var withIncome = months.filter(function (x) {
-    return x.total > 0;
-  });
-  var pick = withIncome.slice(0, 6);
-  if (!pick.length) {
-    return { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
-  }
-  var sum = 0;
-  for (var i = 0; i < pick.length; i++) {
-    sum += pick[i].total;
-  }
-  var avg = Math.round((sum / pick.length) * 100) / 100;
-  return {
-    avg_salary_6m: avg,
-    avg_salary_6m_label: formatAvgSalary6mLabel(avg, pick.length),
-    salary_month_count: pick.length
-  };
 }
 
 /**
@@ -15225,18 +15169,6 @@ function appendBulkMsgAudienceFilters(audience, where, params) {
   }
 }
 
-function bulkMsgAudienceLabel(audience) {
-  var labels = {
-    pending_activate_24h: '注册超 24h 未激活',
-    all_inactive: '全部未激活',
-    inactive_has_tax: '未激活且有个税记录',
-    inactive_no_tax: '未激活且无个税记录',
-    inactive_visited_purchase: '未激活且去过支付页',
-    inactive_purchase_no_pay: '未激活、去过支付页、未支付成功'
-  };
-  return labels[audience] || audience;
-}
-
 /**
  * 未激活用户站内信群发（管理端 / 定时任务共用）
  * opts: { audience, title, content, linkUrl, dryRun, skipAlreadySent, admin, idPrefix }
@@ -16546,16 +16478,6 @@ function conversionAnalyticsOwnerAdmin(admin) {
   return String(admin.username).trim();
 }
 
-/** append conversion analytics admin scope */
-function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCol) {
-  whereClauses.push(nonGuestUsernameSql(userCol));
-  var owner = conversionAnalyticsOwnerAdmin(admin);
-  if (!owner) {
-    return;
-  }
-  appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
-}
-
 /** append conversion analytics registration scope */
 function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
   whereParts.push(nonGuestUsernameSql(userCol));
@@ -16607,11 +16529,6 @@ function userTableAliasFromCol(userCol) {
   if (!userCol) return 'users';
   var idx = String(userCol).indexOf('.');
   return idx >= 0 ? String(userCol).slice(0, idx) : String(userCol);
-}
-
-/** append non refunded user filter */
-function appendNonRefundedUserFilter(whereClauses, userCol) {
-  whereClauses.push(userActivationStatsEligibleSql(userCol));
 }
 
 /** 构建：user data batch maps */
@@ -17094,100 +17011,6 @@ async function handleAdminIssueCode(req, res) {
   }
 }
 
-/** 批量发放激活码 */
-async function handleAdminIssueCodeBatch(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成激活码' });
-  }
-  var body = req.body || {};
-  var count = parseInt(body.count, 10);
-  if (!count || count < 1) {
-    return res.status(400).json({ code: 400, msg: '批量数量须为大于 0 的整数' });
-  }
-  if (count > 5000) {
-    return res.status(400).json({ code: 400, msg: '单次批量数量不能超过 5000' });
-  }
-  var channelInput =
-    body.channel != null
-      ? String(body.channel).trim()
-      : body.channel_label != null
-        ? String(body.channel_label).trim()
-        : '';
-  var noteRaw = body.note != null ? String(body.note).trim() : '';
-  var note = noteRaw
-    ? noteRaw
-    : activationBatchNoteFromChannel(channelInput || ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu);
-  if (note.length > 255) {
-    note = note.slice(0, 255);
-  }
-  var channelLabel = activationChannelLabelFromNote(note) || sanitizeActivationBatchChannelLabel(channelInput);
-  if (!channelLabel) {
-    channelLabel = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
-  }
-  var maxUses = 1;
-  var owner = req.admin && req.admin.username ? req.admin.username : null;
-  var codes = [];
-  var seen = Object.create(null);
-  while (codes.length < count) {
-    var c = randomActivationCodePlain();
-    if (seen[c]) {
-      continue;
-    }
-    seen[c] = true;
-    codes.push(c);
-  }
-
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    for (var i = 0; i < codes.length; i++) {
-      await conn.execute(
-        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?)',
-        [codes[i], maxUses, null, note, owner]
-      );
-    }
-    var customList = await loadActivationBatchCustomChannels(conn);
-    var isBuiltin = false;
-    var builtinKeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-    for (var bi = 0; bi < builtinKeys.length; bi++) {
-      if (
-        ACTIVATION_BATCH_BUILTIN_CHANNELS[builtinKeys[bi]] === channelLabel ||
-        builtinKeys[bi] === channelLabel
-      ) {
-        isBuiltin = true;
-        break;
-      }
-    }
-    if (!isBuiltin && channelLabel) {
-      customList = parseActivationBatchCustomChannels(customList.concat([channelLabel]));
-      await saveActivationBatchCustomChannels(conn, customList);
-    }
-    await conn.commit();
-    return res.json({
-      code: 200,
-      data: {
-        codes: codes,
-        count: codes.length,
-        max_uses: maxUses,
-        note: note,
-        channel: activationSourceKeyFromLabel(channelLabel),
-        channel_label: channelLabel,
-        channels: buildActivationBatchChannelsPayload(customList),
-        generated_at: new Date().toISOString()
-      }
-    });
-  } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (eRb) {}
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  } finally {
-    conn.release();
-  }
-}
-
-/** 删除未使用的周卡激活码 */
 /** 删除未使用激活码（默认非闲鱼/非批量/非周卡的普通码；已使用的不删） */
 async function handleAdminDeleteUnusedCodes(req, res) {
   try {
@@ -17238,144 +17061,17 @@ async function handleAdminDeleteUnusedCodes(req, res) {
   }
 }
 
-async function handleAdminDeleteWeeklyCode(req, res) {
-  try {
-    var body = req.body || {};
-    var code =
-      body.code != null
-        ? String(body.code).trim()
-        : req.query.code != null
-          ? String(req.query.code).trim()
-          : '';
-    var id = parseInt(body.id != null ? body.id : req.query.id, 10);
-    if (!code && !(isFinite(id) && id > 0)) {
-      return res.status(400).json({ code: 400, msg: '请指定要删除的周卡激活码' });
-    }
-    const conn = await pool.getConnection();
-    try {
-      var rows;
-      if (isFinite(id) && id > 0) {
-        const [byId] = await conn.execute(
-          `SELECT id, code, used_count, note, owner_admin_username
-           FROM activation_codes WHERE id = ? LIMIT 1`,
-          [id]
-        );
-        rows = byId;
-      } else {
-        const [byCode] = await conn.execute(
-          `SELECT id, code, used_count, note, owner_admin_username
-           FROM activation_codes WHERE code = ? LIMIT 1`,
-          [code]
-        );
-        rows = byCode;
-      }
-      if (!rows || !rows.length) {
-        return res.status(404).json({ code: 404, msg: '激活码不存在' });
-      }
-      var row = rows[0];
-      var note = row.note != null ? String(row.note) : '';
-      if (note.indexOf('周卡') < 0) {
-        return res.status(400).json({ code: 400, msg: '仅可删除周卡激活码' });
-      }
-      if (Number(row.used_count) > 0) {
-        return res.status(400).json({ code: 400, msg: '该周卡码已使用，无法删除' });
-      }
-      if (!(req.admin && req.admin.is_super)) {
-        var owner = row.owner_admin_username != null ? String(row.owner_admin_username).trim() : '';
-        var selfName = req.admin && req.admin.username ? String(req.admin.username) : '';
-        if (!selfName || owner !== selfName) {
-          return res.status(403).json({ code: 403, msg: '只能删除自己生成的周卡激活码' });
-        }
-      }
-      const [result] = await conn.execute(
-        'DELETE FROM activation_codes WHERE id = ? AND used_count = 0 AND note LIKE ? LIMIT 1',
-        [row.id, '%周卡%']
-      );
-      if (!result || !result.affectedRows) {
-        return res.status(409).json({ code: 409, msg: '删除失败，码可能刚被使用' });
-      }
-      return res.json({
-        code: 200,
-        msg: '已删除',
-        data: { id: row.id, code: row.code }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error('handleAdminDeleteWeeklyCode', e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 激活批次渠道配置 */
+/** 激活批次渠道配置（只读：批量发码已下线，仅保留渠道下拉数据源） */
 async function handleAdminActivationBatchChannels(req, res) {
   if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可管理批量渠道' });
+    return res.status(403).json({ code: 403, msg: '仅超级管理员可查看批量渠道' });
   }
   try {
-    if (req.method === 'GET') {
-      var list = await loadActivationBatchCustomChannels();
-      return res.json({
-        code: 200,
-        data: { channels: buildActivationBatchChannelsPayload(list) }
-      });
-    }
-    var body = req.body || {};
-    var action = body.action != null ? String(body.action).trim() : 'add';
-    var label = sanitizeActivationBatchChannelLabel(body.label != null ? body.label : body.channel);
-    if (!label) {
-      return res.status(400).json({ code: 400, msg: '请输入渠道名称' });
-    }
-    const conn = await pool.getConnection();
-    try {
-      var custom = await loadActivationBatchCustomChannels(conn);
-      if (action === 'remove' || action === 'delete') {
-        var builtinRemove = false;
-        var brKeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-        for (var bri = 0; bri < brKeys.length; bri++) {
-          if (
-            ACTIVATION_BATCH_BUILTIN_CHANNELS[brKeys[bri]] === label ||
-            brKeys[bri] === label
-          ) {
-            builtinRemove = true;
-            break;
-          }
-        }
-        if (builtinRemove) {
-          return res.status(400).json({ code: 400, msg: '内置渠道不可删除' });
-        }
-        custom = custom.filter(function (x) {
-          return x !== label;
-        });
-      } else {
-        var builtinHit = false;
-        var bkeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
-        for (var i = 0; i < bkeys.length; i++) {
-          if (
-            ACTIVATION_BATCH_BUILTIN_CHANNELS[bkeys[i]] === label ||
-            bkeys[i] === label
-          ) {
-            builtinHit = true;
-            break;
-          }
-        }
-        if (builtinHit) {
-          return res.json({
-            code: 200,
-            data: { channels: buildActivationBatchChannelsPayload(custom), msg: '内置渠道无需添加' }
-          });
-        }
-        custom = parseActivationBatchCustomChannels(custom.concat([label]));
-      }
-      custom = await saveActivationBatchCustomChannels(conn, custom);
-      return res.json({
-        code: 200,
-        data: { channels: buildActivationBatchChannelsPayload(custom) }
-      });
-    } finally {
-      conn.release();
-    }
+    var list = await loadActivationBatchCustomChannels();
+    return res.json({
+      code: 200,
+      data: { channels: buildActivationBatchChannelsPayload(list) }
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -17744,29 +17440,6 @@ async function handleAdminUserPricingAbc(req, res) {
   }
 }
 
-/** 管理端：可设专属价的套餐列表 */
-async function handleAdminUserPriceOfferCatalog(req, res) {
-  try {
-    var prices = {};
-    try {
-      prices = (await getPricingAb().loadCatalogAmounts()) || {};
-    } catch (ePrices) {
-      prices = {};
-    }
-    var skus = getUserPriceOffers().listOfferableSkus().map(function (s) {
-      if (prices[s.id]) s.amount = String(prices[s.id]);
-      return s;
-    });
-    return res.json({
-      code: 200,
-      data: { skus: skus }
-    });
-  } catch (e) {
-    console.error('admin user price offer catalog', e);
-    return res.status(500).json({ code: 500, msg: '读取套餐失败' });
-  }
-}
-
 /** 管理端：查询账号专属报价 */
 async function handleAdminUserPriceOfferGet(req, res) {
   var target =
@@ -17798,7 +17471,7 @@ async function handleAdminUserPriceOfferGet(req, res) {
       data: {
         username: canonicalUsername,
         offer: offer,
-        skus: getUserPriceOffers().listOfferableSkus()
+        skus: await getUserPriceOffers().listOfferableSkusLive()
       }
     });
   } catch (e) {
@@ -19191,92 +18864,6 @@ async function handleAdminUserTaxRecordsWrite(req, res) {
   }
 }
 
-/** 页面路径 → 中文 title（与 C 端 HTML title 一致，供行为分析展示） */
-var CERT_PAGE_TITLE_ZH = {
-  'index.html': '个人所得税',
-  'login.html': '个人所得税',
-  'shouye.html': '首页',
-  'mine.html': '我的',
-  'consult.html': '个人中心',
-  'profile.html': '个人中心',
-  'shuiming.html': '收入纳税明细',
-  'shuiming_result.html': '收入纳税明细',
-  'xiangqing.html': '收入纳税明细详情',
-  'daiban.html': '待办',
-  'bancha.html': '办查',
-  'message.html': '消息',
-  'message_detail.html': '消息详情',
-  'zonghe.html': '综合所得年度汇算',
-  'renzhi.html': '任职受雇',
-  'renzhi_detail.html': '详情',
-  'jtcy.html': '家庭成员',
-  'jtcy_add.html': '添加家庭成员',
-  'jtcy_detail.html': '详情',
-  'yhk.html': '银行卡',
-  'yhk_add.html': '添加银行卡',
-  'yhk_manage.html': '管理',
-  'aqzx.html': '安全中心',
-  'xiugaimima.html': '修改密码',
-  'gerenxinxi.html': '个人信息',
-  'personal_info.html': '个人信息',
-  'register.html': '注册账号',
-  'najilu.html': '纳税记录开具',
-  'shenbao_jilu.html': '申报记录',
-  'shenbao_jilu_detail.html': '申报记录详情',
-  'shenbao_income_detail.html': '工资薪金',
-  'shuikuanjisuan.html': '税款计算',
-  'zxkouchu.html': '专项附加扣除',
-  'help_center.html': '帮助中心',
-  'install_guide.html': '引导安装'
-};
-
-/** html file from page path */
-function htmlFileFromPagePath(pagePath) {
-  var p = String(pagePath || '').trim().toLowerCase();
-  if (!p) return '';
-  var eventM = p.match(/\/event\/jump\/([a-z0-9_-]+)_html/);
-  if (eventM) return eventM[1].replace(/-/g, '_') + '.html';
-  var fileM = p.match(/\/([^/?#]+\.html)$/);
-  return fileM ? fileM[1] : '';
-}
-
-/** chinese title from page path */
-function chineseTitleFromPagePath(pagePath) {
-  var p = String(pagePath || '').trim().toLowerCase();
-  if (!p) return '—';
-  if (p.indexOf('__history_back__') >= 0 || p.indexOf('_history_back__') >= 0) {
-    return '返回上一页';
-  }
-  var file = htmlFileFromPagePath(p);
-  var title = file && CERT_PAGE_TITLE_ZH[file] ? CERT_PAGE_TITLE_ZH[file] : '';
-  if (!title && file) {
-    title = file.replace(/\.html$/, '');
-  }
-  var tabM = p.match(/tab_([a-z0-9_]+)/);
-  if (tabM) {
-    var tabMap = {
-      employers: '任职信息',
-      messages: '消息通知',
-      records: '税务记录',
-      profile: '个人资料'
-    };
-    var tabLabel = tabMap[tabM[1]] || tabM[1];
-    return (title || '个人中心') + ' - ' + tabLabel;
-  }
-  if (title) return title;
-  if (p.indexOf('/event/') === 0) return '页面内操作';
-  return p;
-}
-
-/** beijing date key from created at */
-function beijingDateKeyFromCreatedAt(createdAt) {
-  if (!createdAt) return '';
-  var d = createdAt instanceof Date ? createdAt : new Date(createdAt);
-  if (isNaN(d.getTime())) return '';
-  var utcMs = d.getTime() + d.getTimezoneOffset() * 60000;
-  return formatDateKey(new Date(utcMs + 8 * 3600000));
-}
-
 /** 格式化：stay seconds label */
 function formatStaySecondsLabel(sec) {
   var s = Math.max(0, Math.round(Number(sec) || 0));
@@ -20325,17 +19912,12 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
   'track_kufaka_purchase_click',
-  'track_purchase_wechat_view',
-  'track_purchase_wechat_expand',
-  'track_xianyu_purchase_click',
   'track_purchase_sales_agent_view',
   'track_purchase_sales_agent_copy_wechat',
   'track_purchase_sales_agent_qr',
   'track_purchase_sales_agent_copy_phone',
   'track_purchase_sales_agent_copy_qq',
   'track_purchase_sales_agent_xianyu',
-  'track_online_chat_click',
-  'track_qq_group_click',
   'track_qq_add_click',
   'track_purchase_back_click',
   'track_purchase_page_leave'
@@ -20385,17 +19967,12 @@ function purchasePageTrackEventLabel(eventKey) {
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_kufaka_purchase_click: '酷发卡购买',
-    track_purchase_wechat_view: '微信购买入口',
-    track_purchase_wechat_expand: '展开微信收款码',
-    track_xianyu_purchase_click: '闲鱼购买',
     track_purchase_sales_agent_view: 'C·销售代理入口',
     track_purchase_sales_agent_copy_wechat: 'C·复制销售微信',
     track_purchase_sales_agent_qr: 'C·销售微信二维码',
     track_purchase_sales_agent_copy_phone: 'C·复制销售手机',
     track_purchase_sales_agent_copy_qq: 'C·复制销售QQ',
     track_purchase_sales_agent_xianyu: 'C·销售闲鱼',
-    track_online_chat_click: '在线客服',
-    track_qq_group_click: '加入QQ群',
     track_qq_add_click: '添加QQ号',
     track_purchase_back_click: '购买页返回',
     track_purchase_page_leave: '购买页离开'
@@ -21025,14 +20602,9 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_purchase_price_survey_skip',
   'track_purchase_price_survey_soft_dismiss',
   'track_kufaka_purchase_click',
-  'track_purchase_wechat_view',
-  'track_purchase_wechat_expand',
-  'track_xianyu_purchase_click',
   'track_purchase_sales_agent_view',
   'track_purchase_sales_agent_copy_wechat',
   'track_purchase_sales_agent_qr',
-  'track_online_chat_click',
-  'track_qq_group_click',
   'track_qq_add_click',
   'track_purchase_back_click',
   'track_activation_nudge_show',
@@ -21063,14 +20635,9 @@ function activateTrackEventLabel(eventKey) {
     track_activate_prompt_open: '激活弹窗打开',
     track_activate_prompt_cancel: '激活弹窗-取消',
     track_activate_prompt_confirm: '确认激活',
-    track_xianyu_purchase_click: '闲鱼购买',
     track_kufaka_purchase_click: '酷发卡购买',
-    track_online_chat_click: '在线客服',
     track_qq_add_click: '添加QQ号',
-    track_qq_group_click: '加入QQ群',
     track_purchase_page_view: '购买页浏览',
-    track_purchase_wechat_view: '微信购买入口展示',
-    track_purchase_wechat_expand: '展开微信收款码',
     track_purchase_sales_agent_view: 'C·销售代理入口',
     track_purchase_sales_agent_copy_wechat: 'C·复制销售微信',
     track_purchase_sales_agent_qr: 'C·销售微信二维码',
@@ -21948,14 +21515,12 @@ function getHandlers() {
     handleAdminUserTaxRecords,
     handleAdminUserTaxRecordsWrite,
     handleAdminIssueCode,
-    handleAdminIssueCodeBatch,
     handleAdminDeleteUnusedCodes,
     handleAdminActivationBatchChannels,
     handleAdminCodes,
     handleAdminUserActivate,
     handleAdminUserMakePermanent,
     handleAdminUserPricingAbc,
-    handleAdminUserPriceOfferCatalog,
     handleAdminUserPriceOfferGet,
     handleAdminUserPriceOfferSet,
     handleAdminUserPriceOfferClear,

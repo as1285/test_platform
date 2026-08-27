@@ -1054,7 +1054,7 @@
         <div class="price-survey-mask" id="priceSurveyMask"></div>
         <div class="price-survey-panel">
             <div class="price-survey-title" id="priceSurveyTitle">离开前，花 3 秒告诉我们</div>
-            <p class="price-survey-sub">当前最低约 ¥199。点一下即可，心理价位选填。</p>
+            <p class="price-survey-sub">点一下「偏贵 / 合适 / 偏便宜」即可，心理价位选填。</p>
             <label class="price-survey-label">您觉得现在的价格</label>
             <div class="price-survey-opts" id="priceSurveySentimentOpts">
                 <button type="button" class="price-survey-opt" data-sentiment="expensive">偏贵</button>
@@ -1068,7 +1068,6 @@
                     <button type="button" class="price-survey-chip" data-price="98">¥98</button>
                     <button type="button" class="price-survey-chip" data-price="148">¥148</button>
                     <button type="button" class="price-survey-chip" data-price="198">¥198</button>
-                    <button type="button" class="price-survey-chip" data-price="199">¥199</button>
                     <button type="button" class="price-survey-chip" data-price="other">其他</button>
                 </div>
                 <input type="number" id="priceSurveyExpected" class="price-survey-input" inputmode="decimal" min="1" max="999999" step="1" placeholder="填写金额，例如 128" hidden>
@@ -2341,51 +2340,12 @@
                 if (enabled) {
                     var variant = data.pricing_variant || 'control';
                     var skus = Array.isArray(data.skus) ? data.skus : [];
+                    /* 旧版接口兜底（仅 amount 无 skus）：金额只信服务端，禁止本地写死价目表 */
                     if (!skus.length && data.amount) {
                         skus = [
                             {
-                                id: 'sku_99_1h',
-                                amount: '99.00',
-                                label: '小时卡',
-                                subject: '激活码·小时卡',
-                                grant_kind: 'trial',
-                                grant_days: 0,
-                                grant_hours: 1,
-                                grant_minutes: 0
-                            },
-                            {
-                                id: 'sku_249_1d',
-                                amount: '249.00',
-                                label: '日卡',
-                                subject: '激活码·日卡',
-                                grant_kind: 'trial',
-                                grant_days: 1,
-                                grant_hours: 0,
-                                grant_minutes: 0
-                            },
-                            {
-                                id: 'sku_300_7d',
-                                amount: '300.00',
-                                label: '周卡',
-                                subject: '激活码·周卡',
-                                grant_kind: 'trial',
-                                grant_days: 7,
-                                grant_hours: 0,
-                                grant_minutes: 0
-                            },
-                            {
-                                id: 'sku_398_30d',
-                                amount: '398.00',
-                                label: '月卡',
-                                subject: '激活码·月卡',
-                                grant_kind: 'trial',
-                                grant_days: 30,
-                                grant_hours: 0,
-                                grant_minutes: 0
-                            },
-                            {
                                 id: 'sku_999_perm',
-                                amount: '999.00',
+                                amount: String(data.amount),
                                 label: '永久',
                                 subject: data.subject || '激活码·永久',
                                 grant_kind: 'permanent',

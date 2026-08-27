@@ -106,11 +106,12 @@
     return loadScript('/js/najilu.js?v=20260821-qr-smooth');
   }
 
-  /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB） */
+  /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB）
+   *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260806-admin-tax-align',
-      '/js/consult-batch-tax.js?v=20260813-copy-tpl',
+      '/js/consult-core.js?v=20260827-peer-banner',
+      '/js/consult-batch-tax.js?v=20260827-peer-fee',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

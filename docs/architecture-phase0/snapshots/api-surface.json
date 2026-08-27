@@ -124,10 +124,6 @@
       "path": "/api/admin/activation-batch-channels"
     },
     {
-      "method": "POST",
-      "path": "/api/admin/activation-batch-channels"
-    },
-    {
       "method": "GET",
       "path": "/api/admin/admin-login-logs"
     },
@@ -266,10 +262,6 @@
     {
       "method": "GET",
       "path": "/api/admin/guest-users"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/issue-code-batch"
     },
     {
       "method": "POST",

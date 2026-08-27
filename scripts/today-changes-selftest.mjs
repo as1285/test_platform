@@ -245,13 +245,22 @@ mustInclude(
 mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banner');
 mustInclude(
   'backend/src/legacy/pricingAb.js',
-  ['sku_99_1h', 'sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', "amount: '99.00'", "amount: '999.00'"],
-  'pricing live catalog 99/249/300/398/999'
+  [
+    'sku_99_1h',
+    'sku_249_1d',
+    'sku_268_3d',
+    'sku_300_7d',
+    'sku_348_14d',
+    'sku_398_30d',
+    "amount: '99.00'",
+    "amount: '398.00'"
+  ],
+  'pricing live catalog 99/249/268/300/348/398（永久已下架）'
 );
 mustInclude(
   'frontend/purchase.html',
-  ['sku_99_1h', 'sku_249_1d', 'sku_999_perm', '小时卡 1 小时、日卡 1 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
-  'purchase five-sku copy + hide bili share'
+  ['小时卡 1 小时、天卡 1 天、3天卡 3 天', '双周卡 14 天、月卡 30 天', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
+  'purchase six-sku copy + hide bili share'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -260,8 +269,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['sku_99_1h', 'sku_249_1d', 'sku_300_7d', 'sku_398_30d', 'sku_999_perm', 'btnSaveSkuCatalogPrices', '支付套餐价格', 'skuPriceHour'],
-  'admin offer five-sku + catalog prices'
+  ['sku_99_1h', 'sku_249_1d', 'sku_268_3d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d', 'btnSaveSkuCatalogPrices', '支付套餐价格', 'skuPriceHour'],
+  'admin offer six-sku + catalog prices'
 );
 mustInclude(
   'backend/src/legacy/pricingAb.js',
@@ -1110,16 +1119,96 @@ mustExclude(
   'admin routes no batch issue API'
 );
 
+/* ===== 2026-08-27 管理后台重构：死代码清理 + C 端/后台数据对齐 ===== */
+mustExclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'handleAdminIssueCodeBatch',
+    'handleAdminDeleteWeeklyCode',
+    'handleAdminUserPriceOfferCatalog',
+    'activationBatchNoteFromChannel',
+    'saveActivationBatchCustomChannels',
+    'computeTaxRecordsAvgSalary6m',
+    'bulkMsgAudienceLabel',
+    'appendConversionAnalyticsAdminScope',
+    'appendNonRefundedUserFilter',
+    'chineseTitleFromPagePath',
+    'CERT_PAGE_TITLE_ZH',
+    'beijingDateKeyFromCreatedAt',
+    'track_xianyu_purchase_click',
+    'track_purchase_wechat_view',
+    'track_online_chat_click',
+    'track_qq_group_click'
+  ],
+  'monolith dead admin handlers/helpers/event-keys removed'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ["'user-behavior', 'api-analytics', 'feedback', 'chat', 'share-stats'", 'listOfferableSkusLive'],
+  'migrate keeps live menu keys; price offer reads catalog prices'
+);
+mustInclude(
+  'backend/src/payments/userPriceOffers.js',
+  ['loadCatalogAmounts', 'listOfferableSkusLive'],
+  'user price offers aligned to admin catalog prices'
+);
+mustExclude(
+  'backend/src/admin/routes.js',
+  ['ccb-flow/template', 'user-price-offer/catalog'],
+  'admin routes drop unused template/catalog endpoints'
+);
+mustExclude(
+  'backend/src/admin/ccbFlow.js',
+  ['handleAdminCcbFlowTemplate'],
+  'ccb flow template handler removed'
+);
+/* 管理端与 C 端共享脚本 ?v= 必须一致，防止管理端跑旧缓存逻辑 */
+{
+  const consultHtmlSrc = read('frontend/consult.html');
+  const adminLoaderSrc = read('frontend/public/js/admin/loader.js');
+  ['consult-core.js', 'consult-batch-tax.js'].forEach((name) => {
+    const m = consultHtmlSrc.match(new RegExp(name.replace(/\./g, '\\.') + '\\?v=([\\w-]+)'));
+    if (!m) {
+      fail('consult.html missing ' + name + ' ?v=');
+      return;
+    }
+    if (adminLoaderSrc.includes(name + '?v=' + m[1])) {
+      ok('admin loader ' + name + ' ?v= matches C-side (' + m[1] + ')');
+    } else {
+      fail('admin loader ' + name + ' ?v= mismatch', 'C-side=' + m[1]);
+    }
+  });
+}
+mustExclude(
+  'frontend/purchase.html',
+  ["amount: '249.00'", "amount: '999.00'", '当前最低约 ¥199'],
+  'purchase page no hardcoded fallback price list'
+);
+mustExclude(
+  'frontend/public/js/admin/modules/charts.js',
+  ['destroyInstallGuideCharts', '_installGuideChartInstances'],
+  'install-guide chart destroy lives in admin_panel.js only'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ["label: '百度贴吧'"],
+  'channel link label matches backend REGISTER_SOURCE_CHANNELS'
+);
+mustExclude(
+  'frontend/css/admin_panel.css',
+  ['share-funnel', 'share-daily', 'share-land-pages', 'share-today-tag', 'share-stats-error', 'is-emit', 'is-reach'],
+  'admin css share-stats dead styles removed'
+);
+mustExclude(
+  'frontend/public/js/admin_panel.js',
+  ['cnDateTodayYmd'],
+  'admin_panel.js dead date helper removed'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['已下线，仅存档'],
+  'admin xianyu setting labeled as offline'
+);
+
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
-
-mustExclude(
-  'frontend/mine_v2.html',
-  ['mountMate60Avatar', 'transform:none !important', 'calc(-599 / 1284 * 100vw)'],
-  'mine_v2 without Mate60 crop/avatar hacks'
-);
-mustExclude(
-  'frontend/public/js/auth.js',
-  ['calc(-599 / 1284 * 100vw)', 'transform:none !important'],
-  'auth.js Mate60 without crop/translate hacks'
-);

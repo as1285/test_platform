@@ -13,9 +13,7 @@
         }
 
         /* charts: /js/admin/modules/charts.js (lazy) — 挂 window 供懒加载覆盖 */
-        var _installGuideChartInstances = [];
         window.destroyRegisterTimeCharts = function () {};
-        window.destroyInstallGuideCharts = function () {};
         window.destroyChannelAnalysisCharts = function () {};
         window.loadChannelAnalysis = function () {};
         window.loadAnalyticsRegisterPlatform = function () {};
@@ -26,8 +24,15 @@
         function destroyRegisterTimeCharts() {
             return window.destroyRegisterTimeCharts.apply(this, arguments);
         }
+        /* 安装统计图表实例在本文件创建，销毁也必须清本地数组（勿再转发 window，charts.js 那份永远为空） */
+        var _installGuideChartInstances = [];
         function destroyInstallGuideCharts() {
-            return window.destroyInstallGuideCharts.apply(this, arguments);
+            _installGuideChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _installGuideChartInstances = [];
         }
         function destroyChannelAnalysisCharts() {
             return window.destroyChannelAnalysisCharts.apply(this, arguments);
@@ -87,10 +92,11 @@
         }
 
         /** 渠道分析页：预设注册来源链接（?src=），与代理 ?ch= 分离 */
+        /* 展示名与后端 REGISTER_SOURCE_CHANNELS 保持一致 */
         var CHANNEL_SOURCE_LINK_ITEMS = [
             { key: 'douyin', label: '抖音' },
             { key: 'bilibili', label: 'B站' },
-            { key: 'tieba', label: '贴吧' },
+            { key: 'tieba', label: '百度贴吧' },
             { key: 'zhihu', label: '知乎' },
             { key: 'friend', label: '朋友介绍' },
             { key: 'github', label: 'GitHub' }
@@ -1286,11 +1292,6 @@
             'track_alipay_payment_success',
             'track_purchase_faq_expand',
             'track_kufaka_purchase_click',
-            'track_purchase_wechat_view',
-            'track_purchase_wechat_expand',
-            'track_xianyu_purchase_click',
-            'track_online_chat_click',
-            'track_qq_group_click',
             'track_qq_add_click',
             'track_purchase_back_click'
         ];
@@ -1309,11 +1310,6 @@
             track_alipay_payment_success: '支付宝成',
             track_purchase_faq_expand: 'FAQ展开',
             track_kufaka_purchase_click: '酷发卡',
-            track_purchase_wechat_view: '微信展示',
-            track_purchase_wechat_expand: '展开微信',
-            track_xianyu_purchase_click: '闲鱼',
-            track_online_chat_click: '客服',
-            track_qq_group_click: 'QQ群',
             track_qq_add_click: '加QQ',
             track_purchase_back_click: '返回'
         };
@@ -3957,14 +3953,6 @@
                 .catch(function () {
                     el.textContent = '加载失败';
                 });
-        }
-
-        function cnDateTodayYmd() {
-            try {
-                return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-            } catch (e0) {
-                return '';
-            }
         }
 
         /* ========== 个税记录维护 ========== */

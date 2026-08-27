@@ -192,6 +192,18 @@ function buildSkuFromOffer(row) {
 function createUserPriceOffers(deps) {
   var pool = deps.pool;
   var normalizeAmount = deps.normalizeAmount;
+  var loadCatalogAmounts =
+    typeof deps.loadCatalogAmounts === 'function' ? deps.loadCatalogAmounts : null;
+
+  /** 后台「支付套餐价格」目录价；读取失败回落到本文件默认值 */
+  async function catalogAmountsSafe() {
+    if (!loadCatalogAmounts) return null;
+    try {
+      return (await loadCatalogAmounts()) || null;
+    } catch (e) {
+      return null;
+    }
+  }
 
   async function getOffer(username, opts) {
     var u = String(username || '').trim();
@@ -205,7 +217,26 @@ function createUserPriceOffers(deps) {
            FROM user_price_offers WHERE username = ? LIMIT 1`,
       [u]
     );
-    return rows.length ? plainOfferRow(rows[0]) : null;
+    var row = rows.length ? plainOfferRow(rows[0]) : null;
+    if (row && row.sku_id) {
+      var amounts = await catalogAmountsSafe();
+      if (amounts && amounts[row.sku_id]) {
+        row.catalog_amount = String(amounts[row.sku_id]);
+      }
+    }
+    return row;
+  }
+
+  /** 现售套餐列表（金额按后台目录价覆盖） */
+  async function listOfferableSkusLive() {
+    var skus = listOfferableSkus();
+    var amounts = await catalogAmountsSafe();
+    if (amounts) {
+      skus.forEach(function (s) {
+        if (amounts[s.id]) s.amount = String(amounts[s.id]);
+      });
+    }
+    return skus;
   }
 
   async function upsertOffer(username, input, createdBy) {
@@ -289,6 +320,7 @@ function createUserPriceOffers(deps) {
   return {
     OFFERABLE_SKUS: OFFERABLE_SKUS,
     listOfferableSkus: listOfferableSkus,
+    listOfferableSkusLive: listOfferableSkusLive,
     findOfferableSku: findOfferableSku,
     buildSkuFromOffer: buildSkuFromOffer,
     getOffer: getOffer,

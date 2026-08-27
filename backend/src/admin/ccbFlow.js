@@ -7,8 +7,6 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const CCB_RENDER_SCRIPT = path.join(__dirname, '../../scripts/ccb_flow_render.py');
-/** 兼容旧引用；模板仅作示例预览，生成不再依赖原图 PS */
-const CCB_TEMPLATE = path.join(__dirname, '../../assets/ccb_flow/template.png');
 
 function runCcbFlowRender(fields) {
   return new Promise(function (resolve, reject) {
@@ -89,45 +87,6 @@ function runCcbFlowRender(fields) {
   });
 }
 
-/** @deprecated 兼容旧名 */
-function runCcbFlowEdit(_imageBuf, fields) {
-  return runCcbFlowRender(fields);
-}
-
-function loadTemplateBuf() {
-  if (!fs.existsSync(CCB_TEMPLATE)) {
-    throw new Error('缺少建行流水示例图 assets/ccb_flow/template.png');
-  }
-  return fs.readFileSync(CCB_TEMPLATE);
-}
-
-async function handleAdminCcbFlowTemplate(req, res) {
-  try {
-    var buf = loadTemplateBuf();
-    res.json({
-      code: 200,
-      data: {
-        filename: 'ccb-flow-sample.png',
-        mime: 'image/png',
-        image_base64: buf.toString('base64'),
-        note: '示例样式参考；正式预览请点「生成流水图」，按表单数据完整绘制。',
-        defaults: {
-          counterparty_account: '140500616296',
-          amount: '15002.70',
-          opening_balance: '7415.60',
-          company_name: '北京瑞祥茂和科技有限公司',
-          account_name: '北京瑞祥茂和科技有限公司',
-          name: '陈祥涛',
-          card_no: '6217002740035379323'
-        }
-      }
-    });
-  } catch (e) {
-    console.error('[ccb-flow] template', e);
-    res.status(500).json({ code: 500, msg: (e && e.message) || '示例图加载失败' });
-  }
-}
-
 function parseMaybeJsonArray(raw) {
   if (raw == null) return raw;
   if (Array.isArray(raw)) return raw;
@@ -206,14 +165,11 @@ async function handleAdminCcbFlowEdit(req, res) {
 
 function getHandlers() {
   return {
-    handleAdminCcbFlowTemplate: handleAdminCcbFlowTemplate,
     handleAdminCcbFlowEdit: handleAdminCcbFlowEdit
   };
 }
 
 module.exports = {
   getHandlers: getHandlers,
-  runCcbFlowEdit: runCcbFlowEdit,
-  runCcbFlowRender: runCcbFlowRender,
-  CCB_TEMPLATE: CCB_TEMPLATE
+  runCcbFlowRender: runCcbFlowRender
 };

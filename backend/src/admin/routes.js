@@ -108,12 +108,6 @@ app.get(
   h.handleAdminUserDataDetail
 );
 app.get(
-  '/api/admin/ccb-flow/template',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('ccb-flow'),
-  h.handleAdminCcbFlowTemplate
-);
-app.get(
   '/api/admin/najilu-qr/prefill',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['najilu-qr', 'user-data']),
@@ -249,12 +243,6 @@ app.post(
   h.handleAdminUserMakePermanent
 );
 app.post('/api/admin/user-pricing-abc', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPricingAbc);
-app.get(
-  '/api/admin/user-price-offer/catalog',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
-  h.handleAdminUserPriceOfferCatalog
-);
 app.get(
   '/api/admin/user-price-offer',
   mw.requireAdminAuth,

@@ -2116,75 +2116,17 @@ tr.users-detail-row > td {
     overflow-y: auto;
 }
 
-/* ========== Share stats page ========== */
-.share-land-pages {
-    margin: 12px 0 4px;
-}
-.share-land-pages .share-daily-title {
-    margin-bottom: 8px;
-}
+/* ========== 统计卡片通用样式（离职/在职证明统计复用；share 前缀为历史命名） ========== */
 .share-stats-mount {
     margin-top: 12px;
 }
 .share-stats-note {
     margin: 0 0 14px;
 }
-.share-stats-loading,
 .share-stats-empty {
     padding: 20px 12px;
     color: var(--admin-text-muted);
     font-size: 14px;
-}
-.share-stats-error {
-    padding: 16px 12px;
-    color: var(--admin-danger);
-    font-size: 14px;
-}
-.share-funnel {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 8px;
-    margin: 0 0 18px;
-    padding: 14px 16px;
-    background: var(--admin-surface-tint);
-    border: 1px solid var(--admin-border);
-    border-radius: var(--admin-radius-sm);
-}
-.share-funnel-step {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 72px;
-    padding: 4px 8px;
-}
-.share-funnel-step.is-convert .share-funnel-val {
-    color: var(--admin-primary);
-}
-.share-funnel-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--admin-text-muted);
-    text-transform: uppercase;
-}
-.share-funnel-val {
-    font-size: 22px;
-    font-weight: 650;
-    color: var(--admin-heading);
-    line-height: 1.2;
-}
-.share-funnel-sub {
-    font-size: 12px;
-    color: var(--admin-text-secondary);
-}
-.share-funnel-arrow {
-    display: flex;
-    align-items: center;
-    color: var(--admin-text-muted);
-    font-size: 16px;
-    padding: 0 2px;
-    user-select: none;
 }
 .share-kpi-section-label {
     font-size: 12px;
@@ -2207,14 +2149,6 @@ tr.users-detail-row > td {
     padding: 12px 14px;
     border-left: 3px solid var(--admin-border-strong);
 }
-.share-kpi-card.is-emit {
-    border-left-color: var(--admin-emit);
-    background: linear-gradient(180deg, var(--admin-surface-muted) 0%, var(--admin-surface) 100%);
-}
-.share-kpi-card.is-reach {
-    border-left-color: var(--admin-primary);
-    background: linear-gradient(180deg, var(--admin-surface-tint) 0%, var(--admin-surface) 100%);
-}
 .share-kpi-card.is-convert {
     border-left-color: var(--admin-success);
     background: linear-gradient(180deg, var(--admin-success-bg) 0%, var(--admin-surface) 72%);
@@ -2230,9 +2164,6 @@ tr.users-detail-row > td {
     margin-top: 4px;
     line-height: 1.2;
 }
-.share-kpi-card.is-emit .ud-val {
-    color: var(--admin-heading);
-}
 .share-kpi-card.is-convert .ud-val {
     color: var(--admin-success);
 }
@@ -2242,64 +2173,6 @@ tr.users-detail-row > td {
     color: var(--admin-text-muted);
     line-height: 1.4;
 }
-.share-daily {
-    margin-top: 4px;
-}
-.share-daily-title {
-    margin: 0 0 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--admin-heading);
-}
-.share-daily table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-.share-daily th,
-.share-daily td {
-    border: 1px solid var(--admin-border);
-    padding: 8px 10px;
-}
-.share-daily th {
-    background: var(--admin-surface-muted);
-    color: var(--admin-text-secondary);
-    font-weight: 600;
-    text-align: left;
-}
-.share-daily th.num,
-.share-daily td.num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-.share-daily tr.is-today td {
-    background: var(--admin-primary-soft);
-}
-.share-today-tag {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--admin-primary);
-    background: var(--admin-surface);
-    border: 1px solid var(--admin-primary-border);
-}
-.share-daily-empty {
-    text-align: center;
-    color: var(--admin-text-muted);
-    padding: 18px 10px !important;
-}
-@media (max-width: 700px) {
-    .share-funnel-arrow {
-        display: none;
-    }
-    .share-funnel-step {
-        min-width: calc(50% - 12px);
-    }
-}
-
 
 /* ========== UI cleanup: shared patterns ========== */
 .filter-bar,
