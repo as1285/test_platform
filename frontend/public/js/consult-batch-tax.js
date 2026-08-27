@@ -3461,7 +3461,7 @@ function applyProfilePasteImport() {
                     if (pack.http === 402 || data.code === 402) {
                         throw new Error(
                             (data.msg || '改名需支付费用') +
-                                '；请到「我的」页修改姓名并完成 ¥10 支付后再试'
+                                '；请到「我的」页修改姓名并完成支付后再试'
                         );
                     }
                     if (!data || data.code !== 200) {

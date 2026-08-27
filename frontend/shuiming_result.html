@@ -145,6 +145,30 @@
                         (document.head || document.documentElement).appendChild(mz20St);
                     }
                 }
+                if (
+                    !/LIO-|Mate\s*30\s*Pro/i.test(u) &&
+                    (/TAS-AL00|TAS-AN00|TAS-TL00|TAS-L29|TAS-LX9|TAS-AL\d{2}|TAS-AN\d{2}|HUAWEITAS/i.test(u) ||
+                        /(?:Huawei|HUAWEI|华为)?[\s_-]*Mate[\s_-]*30(?![\s_-]*Pro)/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate30');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-mate30-result-firstpaint]')) {
+                        var m30St = document.createElement('style');
+                        m30St.setAttribute('data-mate30-result-firstpaint', '1');
+                        m30St.textContent =
+                            'html.app-android-huawei-mate30 body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;}' +
+                            'html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;}' +
+                            'html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header .header-title{position:relative !important;z-index:2 !important;display:block !important;visibility:visible !important;opacity:1 !important;color:#000 !important;line-height:var(--header-height,48px) !important;height:var(--header-height,48px) !important;}' +
+                            'html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;}' +
+                            'html.app-android-huawei-mate30 body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(m30St);
+                    }
+                }
                 if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
@@ -1566,6 +1590,79 @@
             -webkit-user-select: none;
         }
     
+        /* 华为 Mate 30（TAS）：沉浸压栏，标题钉在状态栏下；压过 harmony / white-page-outer 清零 */
+        html.app-android-huawei-mate30 body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate30.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root {
+            --app-shell-statusbar-top: 40px !important;
+            --safe-top: 40px !important;
+            --android-status-inset: 40px !important;
+        }
+        html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate30.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header {
+            top: 0 !important;
+            height: calc(var(--header-height, 48px) + 40px) !important;
+            min-height: calc(var(--header-height, 48px) + 40px) !important;
+            padding: 40px 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            overflow: visible !important;
+        }
+        html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate30.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate30.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right {
+            top: 40px !important;
+            height: var(--header-height, 48px) !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-title {
+            position: relative !important;
+            z-index: 2 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #000 !important;
+            line-height: var(--header-height, 48px) !important;
+            height: var(--header-height, 48px) !important;
+        }
+        html.app-android-huawei-mate30 body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate30.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + 40px) !important;
+        }
+        html.app-android-huawei-mate30 body.page-shuiming-result .list,
+        html.app-android-huawei-mate30.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-huawei-mate30.app-android-white-page-outer body.page-shuiming-result .list,
+        html.app-android-huawei-mate30.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-huawei-mate30.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + 40px) !important;
+        }
+
         /* vivo X300 Pro / S50 Pro mini：压过 cordova white-page-outer / vivo-family 清零顶距 */
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,

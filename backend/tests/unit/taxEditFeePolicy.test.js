@@ -16,8 +16,8 @@ const {
 } = require('../../src/tax/taxEditFeePolicy');
 
 describe('taxEditFeePolicy', () => {
-  it('uses >8 thresholds for peer / fee', () => {
-    expect(TAX_EDIT_FEE_RENAME_GT).toBe(8);
+  it('defaults to rename >6 and days >8', () => {
+    expect(TAX_EDIT_FEE_RENAME_GT).toBe(6);
     expect(TAX_EDIT_FEE_DAYS_GT).toBe(8);
   });
 
@@ -26,22 +26,32 @@ describe('taxEditFeePolicy', () => {
     expect(isPeerAccount({ exempt: true, nameChanges: 99, taxModDays: 99 })).toBe(false);
   });
 
-  it('rename exactly 8 is not subject', () => {
-    expect(isTaxEditFeeSubject({ nameChanges: 8, taxModDays: 0 })).toBe(false);
-    expect(isPeerAccount({ nameChanges: 8, taxModDays: 8 })).toBe(false);
+  it('requires both rename and tax-mod days over threshold', () => {
+    expect(isTaxEditFeeSubject({ nameChanges: 7, taxModDays: 8 })).toBe(false);
+    expect(isTaxEditFeeSubject({ nameChanges: 6, taxModDays: 9 })).toBe(false);
+    expect(isTaxEditFeeSubject({ nameChanges: 9, taxModDays: 0 })).toBe(false);
+    expect(isTaxEditFeeSubject({ nameChanges: 0, taxModDays: 9 })).toBe(false);
+    expect(isTaxEditFeeSubject({ nameChanges: 7, taxModDays: 9 })).toBe(true);
+    expect(isPeerAccount({ nameChanges: 7, taxModDays: 9 })).toBe(true);
   });
 
-  it('rename 9 or tax days 9 is peer / subject', () => {
-    expect(isTaxEditFeeSubject({ nameChanges: 9, taxModDays: 0 })).toBe(true);
-    expect(isTaxEditFeeSubject({ nameChanges: 0, taxModDays: 9 })).toBe(true);
-    expect(isPeerAccount({ nameChanges: 9, taxModDays: 0 })).toBe(true);
+  it('uses configured thresholds', () => {
+    expect(
+      isPeerAccount({ nameChanges: 4, taxModDays: 3, rename_gt: 3, days_gt: 2 })
+    ).toBe(true);
+    expect(
+      isPeerAccount({ nameChanges: 4, taxModDays: 2, rename_gt: 3, days_gt: 2 })
+    ).toBe(false);
   });
 
   it('requires fee unless daily unlock; leftover credits and session do not unlock', () => {
-    expect(resolveTaxEditAccess({ nameChanges: 9 }).need_fee).toBe(true);
-    expect(resolveTaxEditAccess({ nameChanges: 9, hasDailyUnlock: true }).can_edit_now).toBe(true);
-    expect(resolveTaxEditAccess({ nameChanges: 9, unusedCredits: 1 }).can_edit_now).toBe(false);
-    expect(resolveTaxEditAccess({ nameChanges: 9, hasRecentSession: true }).can_edit_now).toBe(false);
+    expect(resolveTaxEditAccess({ nameChanges: 7, taxModDays: 9 }).need_fee).toBe(true);
+    expect(
+      resolveTaxEditAccess({ nameChanges: 7, taxModDays: 9, hasDailyUnlock: true }).can_edit_now
+    ).toBe(true);
+    expect(
+      resolveTaxEditAccess({ nameChanges: 7, taxModDays: 9, unusedCredits: 1 }).can_edit_now
+    ).toBe(false);
     expect(resolveTaxEditAccess({ nameChanges: 3, taxModDays: 2 }).need_fee).toBe(false);
   });
 
@@ -54,41 +64,55 @@ describe('taxEditFeePolicy', () => {
     expect(isTaxEditFeeSkuId('sku_rename_fee_10')).toBe(false);
   });
 
-  it('builds client policy view with daily amount only', () => {
-    var view = buildTaxEditFeePolicyView({
+  it('builds client policy view with AND peer rule', () => {
+    var notPeer = buildTaxEditFeePolicyView({
       nameChanges: 12,
       taxModDays: 3,
-      unusedCredits: 0,
       today: '2026-08-27'
     });
-    expect(view.subject).toBe(true);
-    expect(view.peer_account).toBe(true);
-    expect(view.need_fee).toBe(true);
-    expect(view.single_amount).toBeUndefined();
-    expect(view.daily_amount).toBe('30.00');
-    expect(view.today).toBe('2026-08-27');
-    expect(String(view.peer_login_notice || '')).toContain('同行账号');
-    expect(peerLoginNotice()).toContain('付费');
+    expect(notPeer.subject).toBe(false);
+    expect(notPeer.peer_account).toBe(false);
+    expect(notPeer.need_fee).toBe(false);
+    expect(notPeer.rename_gt).toBe(6);
+    expect(notPeer.days_gt).toBe(8);
+
+    var peer = buildTaxEditFeePolicyView({
+      nameChanges: 12,
+      taxModDays: 9,
+      today: '2026-08-27'
+    });
+    expect(peer.subject).toBe(true);
+    expect(peer.peer_account).toBe(true);
+    expect(peer.need_fee).toBe(true);
+    expect(peer.daily_amount).toBe('30.00');
+    expect(String(peer.peer_login_notice || '')).toContain('且');
+    expect(peerLoginNotice()).toContain('且');
   });
 
-  it('normalizes and parses admin daily amount only', () => {
-    expect(normalizeTaxEditFeeConfig({ single_amount: '15', daily_amount: '25.5' })).toEqual({
-      daily_amount: '25.50'
+  it('normalizes and parses admin amounts and thresholds', () => {
+    expect(normalizeTaxEditFeeConfig({ daily_amount: '25.5' })).toEqual({
+      daily_amount: '25.50',
+      rename_gt: 6,
+      days_gt: 8
     });
-    expect(normalizeTaxEditFeeConfig({})).toEqual({ daily_amount: '30.00' });
+    expect(normalizeTaxEditFeeConfig({ daily_amount: '30', rename_gt: 4, days_gt: 10 })).toEqual({
+      daily_amount: '30.00',
+      rename_gt: 4,
+      days_gt: 10
+    });
     expect(parseTaxEditFeeConfigFromAdmin({ daily_amount: '0' })).toBeNull();
-    expect(parseTaxEditFeeConfigFromAdmin({ single_amount: '12.3', daily_amount: '40' })).toEqual({
-      daily_amount: '40.00'
+    expect(parseTaxEditFeeConfigFromAdmin({ daily_amount: '40', rename_gt: '5', days_gt: '7' })).toEqual({
+      daily_amount: '40.00',
+      rename_gt: 5,
+      days_gt: 7
     });
-    expect(parseTaxEditFeeConfigFromAdmin({ daily_amount: '40' })).toEqual({
-      daily_amount: '40.00'
-    });
+    expect(parseTaxEditFeeConfigFromAdmin({ daily_amount: '40', rename_gt: '-1' })).toBeNull();
   });
 
-  it('block message uses daily amount only', () => {
-    var msg = taxEditFeeBlockMessage({ single_amount: '15.00', daily_amount: '25.00' });
-    expect(msg).not.toContain('¥15');
+  it('block message uses daily amount and AND copy', () => {
+    var msg = taxEditFeeBlockMessage({ daily_amount: '25.00', rename_gt: 6, days_gt: 8 });
     expect(msg).toContain('¥25');
+    expect(msg).toContain('且');
     expect(msg).toContain('当天无限修改');
   });
 });

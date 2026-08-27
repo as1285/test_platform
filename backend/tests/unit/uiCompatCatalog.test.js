@@ -25,6 +25,14 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 Pro 2210132C')).toBe(false);
   });
 
+  it('matches Mate 30 without taking Mate 30 Pro or Mate 60', () => {
+    const m = catalog.listCatalogModels().find((x) => x.id === 'huawei-mate30');
+    expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 30 TAS-AL00')).toBe(true);
+    expect(catalog.modelMatchesBlob(m, 'Android 10; TAS-AN00 Build/HUAWEITAS-AN00')).toBe(true);
+    expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 30 Pro LIO-AN00')).toBe(false);
+    expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 60 ALN-AL00')).toBe(false);
+  });
+
   it('matches S50 Pro mini without vivo prefix', () => {
     const m = catalog.listCatalogModels().find((x) => x.id === 'vivo-s50promini');
     expect(catalog.modelMatchesBlob(m, 'S50 Pro mini V2527A')).toBe(true);

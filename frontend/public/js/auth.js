@@ -625,8 +625,13 @@
     if (isMeizu20ProClient()) {
       return false;
     }
-    /* Mate 60 / Mate 70 / nova 13：Harmony 壳 overlays=false 常失效，须保留顶距 */
-    if (isHuaweiMate60Client() || isHuaweiMate70Client() || isHuaweiNova13Client()) {
+    /* Mate 30 / 60 / 70 / nova 13：Harmony 壳 overlays=false 常失效，须保留顶距 */
+    if (
+      isHuaweiMate30Client() ||
+      isHuaweiMate60Client() ||
+      isHuaweiMate70Client() ||
+      isHuaweiNova13Client()
+    ) {
       return false;
     }
     return (
@@ -1486,6 +1491,24 @@
   }
 
   /**
+   * 华为 Mate 30 / 30 5G（TAS-AL00 / TAS-AN00 等，不含 Pro）。
+   * Cordova 白顶栏仍沉浸压栏，overlays=false 常失效；TAS 又被排除在通用鸿蒙沉浸之外，
+   * 标题会落在系统时间栏下，只剩空白顶栏。须留 40px，勿走外置清零。
+   */
+  function isHuaweiMate30Client() {
+    var ua = clientUaBlob();
+    if (isHuaweiLioAn00Client() || /Mate\s*30\s*Pro/i.test(ua) || /LIO-/i.test(ua)) {
+      return false;
+    }
+    if (/(?:Huawei|HUAWEI|华为)?[\s_-]*Mate[\s_-]*30(?![\s_-]*Pro)/i.test(ua)) {
+      return true;
+    }
+    return /TAS-AL00|TAS-AN00|TAS-TL00|TAS-L29|TAS-LX9|TAS-AL\d{2}|TAS-AN\d{2}|HUAWEITAS/i.test(
+      ua
+    );
+  }
+
+  /**
    * 华为 Mate 30 Pro 5G（LIO-AN00 等）：Cordova 默认 overlaysWebView，白顶栏页会与系统时间/电量重叠。
    * 白顶栏页需 overlays=false + 黑状态栏，对齐「外置黑条」正常机型观感。
    */
@@ -1549,13 +1572,18 @@
    * 不把整族鸿蒙标成 Mate 60，也不给「我的」套 nova13 胶囊规则。
    */
   function isHuaweiWhitePageImmersiveClient() {
-    if (isHuaweiMate60Client() || isHuaweiMate70Client() || isHuaweiNova13Client()) {
+    if (
+      isHuaweiMate30Client() ||
+      isHuaweiMate60Client() ||
+      isHuaweiMate70Client() ||
+      isHuaweiNova13Client()
+    ) {
       return true;
     }
     if (isHiNovaFamilyClient() || isHuaweiPura70LikeClient()) {
       return false;
     }
-    if (isHuaweiLioAn00Client() || isHuaweiClsAl00Client() || isHuaweiTasAn00Client()) {
+    if (isHuaweiLioAn00Client() || isHuaweiClsAl00Client()) {
       return false;
     }
     var ua = clientUaBlob();
@@ -2533,12 +2561,13 @@
       if (!isWhitePage) {
         return;
       }
-      /* 小米 13 / 13 Pro / 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / iQOO 15 / X300 Pro / S50 Pro mini / 魅族 20 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
+      /* 小米 13 / 13 Pro / 14 Pro / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 30 / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / iQOO 15 / X300 Pro / S50 Pro mini / 魅族 20 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
       var immersiveTopInsetClient =
         isXiaomiImmersiveTopClient() ||
         isOnePlusAce2ImmersiveTopClient() ||
         isVivoImmersiveTopClient() ||
         isMeizu20ProClient() ||
+        isHuaweiMate30Client() ||
         isHuaweiMate70Client() ||
         isHuaweiNova13Client() ||
         isHuaweiWhitePageImmersiveClient() ||
@@ -2560,6 +2589,7 @@
         root.classList.contains('app-android-vivo-x300pro') ||
         root.classList.contains('app-android-vivo-s50promini') ||
         root.classList.contains('app-android-huawei-mate70') ||
+        root.classList.contains('app-android-huawei-mate30') ||
         root.classList.contains('app-android-huawei-nova13') ||
         isHuaweiMate60Client() ||
         root.classList.contains('app-android-huawei-mate60');
@@ -2597,6 +2627,10 @@
           }
           if (isHuaweiMate70Client() || root.classList.contains('app-android-huawei-mate70')) {
             root.classList.add('app-android-huawei-mate70');
+            root.classList.add('app-android-client');
+          }
+          if (isHuaweiMate30Client() || root.classList.contains('app-android-huawei-mate30')) {
+            root.classList.add('app-android-huawei-mate30');
             root.classList.add('app-android-client');
           }
           if (isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60')) {
@@ -3135,6 +3169,10 @@
       if (huaweiMate60Client) {
         androidClient = true;
       }
+      var huaweiMate30Client = isHuaweiMate30Client();
+      if (huaweiMate30Client) {
+        androidClient = true;
+      }
       var huaweiNova13Client = isHuaweiNova13Client();
       if (huaweiNova13Client) {
         androidClient = true;
@@ -3163,6 +3201,7 @@
         !redmiK70UltraClient &&
         !redmi12CClient &&
         !huaweiMate60Client &&
+        !huaweiMate30Client &&
         !huaweiNova13Client &&
         !onePlusAce2Immersive;
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
@@ -3562,6 +3601,9 @@
       if (huaweiTasAn00Client) {
         document.documentElement.classList.add('app-android-huawei-tas-an00');
       }
+      if (huaweiMate30Client) {
+        document.documentElement.classList.add('app-android-huawei-mate30');
+      }
       if (huaweiLioAn00Client) {
         document.documentElement.classList.add('app-android-huawei-lio-an00');
       }
@@ -3647,11 +3689,12 @@
           'html.app-android-xiaomi-15pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-10.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-iqoo-neo8.app-top-safe-shell,html.app-android-iqoo-neo8pro.app-top-safe-shell,html.app-android-iqoo-15.app-top-safe-shell,html.app-android-meizu-20pro.app-top-safe-shell,html.app-android-vivo-x300pro.app-top-safe-shell,html.app-android-vivo-s50promini.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell,html.app-android-mi-family.app-top-safe-shell,html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x),html.app-android-vivo-family.app-top-safe-shell:not(.app-android-immersive-white-top):not(.app-android-vivo-x300pro):not(.app-android-vivo-s50promini):not(.app-android-iqoo-15):not(.app-android-meizu-20pro),html.app-android-samsung.app-top-safe-shell,html.app-android-samsung-s24u.app-top-safe-shell,html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-huawei-mate70):not(.app-android-huawei-mate30):not(.app-android-huawei-nova13):not(.app-android-immersive-white-top),html.app-android-hinova.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
           /* 沉浸压栏机（含 Mate60 / Mate70 白顶栏 / 小米10 / K70至尊 / 12C / Ace 2 Pro / Neo8 Pro / 魅族 20 Pro）：压过族清零 */ +
           'html.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-mate60.app-top-safe-shell,' +
           'html.app-android-huawei-mate70.app-top-safe-shell,' +
+          'html.app-android-huawei-mate30.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-harmony.app-android-huawei-mate70.app-top-safe-shell,' +
           'html.app-android-huawei-harmony.app-android-immersive-white-top.app-top-safe-shell,' +
           'html.app-android-huawei-nova13.app-top-safe-shell,' +

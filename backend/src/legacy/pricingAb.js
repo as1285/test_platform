@@ -1,8 +1,7 @@
 /**
- * 支付页 A/B/C：
- * 现售六档：小时卡 99 / 天卡 249 / 3天卡 268 / 周卡 300 / 双周卡 348 / 月卡 398（A/B 分流仍保留，两边 SKU 相同）。
+ * 支付页定价：全站只保留一套六档（小时卡 / 天卡 / 3天卡 / 周卡 / 双周卡 / 月卡）。
+ * 历史 A/B/C 分流与 sticky 仍可读，新解析一律走 B（treatment）。
  * 永久档已下架，仅历史订单可解析。
- * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
 
@@ -283,10 +282,10 @@ function normalizeCatalogAmounts(raw) {
 
 var DEFAULT_PRICING_AB = {
   enabled: true,
-  a_percent: 50,
-  b_percent: 50,
+  a_percent: 0,
+  b_percent: 100,
   c_percent: 0,
-  treatment_percent: 50,
+  treatment_percent: 100,
   control_skus: LIVE_CATALOG_SKUS.slice(),
   treatment_skus: LIVE_CATALOG_SKUS.slice()
 };
@@ -662,18 +661,11 @@ function createPricingAb(deps) {
       if (rows.length && rows[0].setting_value) {
         var parsed = JSON.parse(String(rows[0].setting_value));
         if (parsed && typeof parsed === 'object') {
-          out.enabled = parsed.enabled !== false;
-          var landingC = 0;
-          var needsLegacy =
-            parsed.a_percent == null && parsed.b_percent == null && parsed.c_percent == null;
-          if (needsLegacy) {
-            landingC = await loadLandingCPercentHint(conn);
-          }
-          var pct = normalizeAbcPercents(parsed, landingC);
-          out.a_percent = pct.a_percent;
-          out.b_percent = pct.b_percent;
-          out.c_percent = pct.c_percent;
-          out.treatment_percent = pct.treatment_percent;
+          out.enabled = true;
+          out.a_percent = 0;
+          out.b_percent = 100;
+          out.c_percent = 0;
+          out.treatment_percent = 100;
           /* 售卖目录以代码为准，金额以后台「套餐价格」为准 */
           out.control_skus = cloneLiveCatalog(amounts);
           out.treatment_skus = cloneLiveCatalog(amounts);
@@ -695,23 +687,14 @@ function createPricingAb(deps) {
     _cacheAt = 0;
   }
 
-  async function savePricingAbFromAdmin(body) {
-    var cur = await loadPricingAbParsed(true);
-    var a = clampPct(body.a_percent != null ? body.a_percent : cur.a_percent, cur.a_percent);
-    var b = clampPct(body.b_percent != null ? body.b_percent : cur.b_percent, cur.b_percent);
-    var c = clampPct(body.c_percent != null ? body.c_percent : cur.c_percent, cur.c_percent);
-    if (a + b + c !== 100) {
-      var err = new Error('A/B/C 流量占比之和必须为 100（当前 ' + (a + b + c) + '）');
-      err.statusCode = 400;
-      throw err;
-    }
+  async function savePricingAbFromAdmin() {
     var amounts = await loadCatalogAmounts(true);
     var next = {
-      enabled: body.enabled !== false && body.enabled !== 0 && body.enabled !== '0',
-      a_percent: a,
-      b_percent: b,
-      c_percent: c,
-      treatment_percent: b,
+      enabled: true,
+      a_percent: 0,
+      b_percent: 100,
+      c_percent: 0,
+      treatment_percent: 100,
       control_skus: cloneLiveCatalog(amounts),
       treatment_skus: cloneLiveCatalog(amounts),
       catalog_amounts: amounts
@@ -825,182 +808,25 @@ function createPricingAb(deps) {
     return getStickyAssignment(u);
   }
 
-  /**
-   * 为用户解析可见 SKU 列表与变体。
-   * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
-   * 命中代理专属渠道时强制（空配置按 C）；无渠道强制时不接受客户端上报的 c。
-   */
-  /** 后台把 A 占比设为 0 且 B 为 100 时，全站强制 B（覆盖 sticky / 渠道 / 客户端） */
-  function isGlobalForceB(cfg) {
-    return !!(
-      cfg &&
-      cfg.enabled !== false &&
-      Number(cfg.a_percent) === 0 &&
-      Number(cfg.b_percent) === 100
-    );
-  }
-
-  async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
+  async function resolveOfferForUser(username) {
     var cfg = await loadPricingAbParsed();
     var seed = String(username || '').trim() || 'guest';
-    if (isGlobalForceB(cfg)) {
-      if (seed !== 'guest') {
-        await setStickyAbc(seed, 'b', 'global_b', true);
-      }
-      return {
-        enabled: true,
-        variant: 'treatment',
-        abc_variant: 'b',
-        abc_source: 'global_b',
-        skus: cfg.treatment_skus.map(cloneSku),
-        pricing_ab_enabled: true,
-        forced_by_channel: false,
-        force_client_abc: true
-      };
-    }
-    var forcedAbc = null;
-    if (seed !== 'guest' && typeof deps.getForcedAbcForUser === 'function') {
-      try {
-        forcedAbc = await deps.getForcedAbcForUser(seed);
-      } catch (eForce) {
-        forcedAbc = null;
-      }
-      forcedAbc = normalizeAbcToken(forcedAbc);
-      if (!forcedAbc) {
-        forcedAbc = null;
-      }
-    }
-    function acceptPreferredAbc(pref) {
-      var p = normalizeAbcToken(pref);
-      if (!p) return '';
-      /* C 仅允许渠道 abc / 管理端强制；客户端误 sticky 的 c 不采纳 */
-      if (p === 'c' && !forcedAbc) return '';
-      return p;
-    }
-    if (!cfg.enabled) {
-      var stickyOff = null;
-      if (seed !== 'guest') {
-        stickyOff = await getStickyAssignment(seed);
-      }
-      if (stickyOff && stickyOff.source === 'admin_force' && stickyOff.variant) {
-        var adminAbc = stickyOff.variant;
-        return {
-          enabled: adminAbc !== 'c',
-          variant: abcToOfferVariant(adminAbc),
-          abc_variant: adminAbc,
-          abc_source: 'admin_force',
-          skus:
-            adminAbc === 'c'
-              ? []
-              : adminAbc === 'b'
-                ? cfg.treatment_skus.map(cloneSku)
-                : cfg.control_skus.map(cloneSku),
-          pricing_ab_enabled: false,
-          forced_by_channel: false,
-          force_client_abc: true
-        };
-      }
-      if (forcedAbc === 'c') {
-        forcedAbc = 'b';
-      }
-      if (forcedAbc === 'b') {
-        if (seed !== 'guest') {
-          await setStickyAbc(seed, 'b', 'agent_channel', true);
-        }
-        return {
-          enabled: true,
-          variant: 'treatment',
-          abc_variant: 'b',
-          abc_source: 'agent_channel',
-          skus: cfg.treatment_skus.map(cloneSku),
-          pricing_ab_enabled: false,
-          forced_by_channel: true,
-          force_client_abc: true
-        };
-      }
-      return {
-        enabled: true,
-        variant: 'treatment',
-        abc_variant: 'b',
-        abc_source: 'disabled',
-        skus: cloneLiveCatalog(cfg.catalog_amounts),
-        pricing_ab_enabled: false,
-        forced_by_channel: false,
-        force_client_abc: false
-      };
-    }
-
-    var abc = null;
-    var abcSource = '';
-    var repairedNonChannelC = false;
-    var sticky = null;
+    var skus =
+      cfg.treatment_skus && cfg.treatment_skus.length
+        ? cfg.treatment_skus.map(cloneSku)
+        : cloneLiveCatalog(cfg.catalog_amounts);
     if (seed !== 'guest') {
-      sticky = await getStickyAssignment(seed);
-    }
-    /* 管理端强制分配优先于代理渠道默认方案 */
-    if (sticky && sticky.source === 'admin_force' && sticky.variant) {
-      abc = sticky.variant;
-      abcSource = 'admin_force';
-    } else if (forcedAbc) {
-      abc = forcedAbc;
-      abcSource = 'agent_channel';
-      if (seed !== 'guest') {
-        await setStickyAbc(seed, abc, 'agent_channel', true);
-      }
-    } else if (sticky && sticky.variant) {
-      if (sticky.variant === 'c' && sticky.source !== 'admin_force') {
-        sticky = null;
-        repairedNonChannelC = true;
-      } else {
-        abc = sticky.variant;
-        abcSource = sticky.source || 'sticky';
-      }
-    }
-    if (!abc) {
-      var pref = acceptPreferredAbc(preferredAbc);
-      if (pref) {
-        abc = pref;
-        abcSource = 'client_sticky';
-      } else {
-        abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, 0);
-        abcSource = repairedNonChannelC ? 'repair_non_channel_c' : 'allocation';
-      }
-      if (abc === 'c') {
-        abc = 'b';
-        abcSource = repairedNonChannelC ? 'repair_non_channel_c' : 'allocation';
-      }
-      if (seed !== 'guest') {
-        await setStickyAbc(
-          seed,
-          abc,
-          abcSource === 'client_sticky' ? 'client_sticky' : abcSource,
-          repairedNonChannelC
-        );
-      }
-    }
-
-    var variant = abcToOfferVariant(abc);
-    var skus = [];
-    if (abc === 'b') {
-      skus = cfg.treatment_skus.map(cloneSku);
-    } else {
-      skus = cfg.control_skus.map(cloneSku);
-    }
-    if (!skus.length) {
-      skus = cloneLiveCatalog(cfg.catalog_amounts);
-      variant = 'treatment';
-      abc = 'b';
-      abcSource = abcSource || 'fallback_live';
+      await setStickyAbc(seed, 'b', 'single_plan', true);
     }
     return {
       enabled: true,
-      variant: variant,
-      abc_variant: abc,
-      abc_source: abcSource,
+      variant: 'treatment',
+      abc_variant: 'b',
+      abc_source: 'single_plan',
       skus: skus,
-      pricing_ab_enabled: true,
-      forced_by_channel: !!forcedAbc && abcSource === 'agent_channel',
-      force_client_abc: abcSource === 'admin_force' || (!!forcedAbc && abcSource === 'agent_channel') || repairedNonChannelC
+      pricing_ab_enabled: false,
+      forced_by_channel: false,
+      force_client_abc: true
     };
   }
 
@@ -1016,16 +842,14 @@ function createPricingAb(deps) {
     return null;
   }
 
-  /** 公开配置：供落地/支付页客户端分流（已分配设备自行 sticky） */
+  /** 公开配置：全站只走一套支付页，客户端不再分流 */
   async function publicAbcConfig() {
-    var cfg = await loadPricingAbParsed();
-    var enabled = cfg.enabled !== false;
     return {
-      enabled: enabled,
-      a_percent: enabled ? cfg.a_percent : 100,
-      b_percent: enabled ? 100 - cfg.a_percent : 0,
+      enabled: true,
+      a_percent: 0,
+      b_percent: 100,
       c_percent: 0,
-      b_landing_percent: enabled ? 100 - cfg.a_percent : 100,
+      b_landing_percent: 100,
       experiment: 'purchase_abc_v1',
       delegated: true
     };

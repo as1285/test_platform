@@ -124,6 +124,11 @@ describe('pricingAb SKU mojibake repair via load', () => {
     expect(DEFAULT_PRICING_AB.treatment_skus.map((s) => s.amount).join('|')).toBe(
       '99.00|249.00|268.00|300.00|348.00|398.00'
     );
+    expect(cfg.a_percent).toBe(0);
+    expect(cfg.b_percent).toBe(100);
+    expect(cfg.c_percent).toBe(0);
+    expect(DEFAULT_PRICING_AB.a_percent).toBe(0);
+    expect(DEFAULT_PRICING_AB.b_percent).toBe(100);
   });
 });
 

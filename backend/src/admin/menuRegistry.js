@@ -93,22 +93,28 @@ const ADMIN_PAGE_DEFS = [
   /* —— 用户 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
   {
+    page: 'peer-accounts',
+    menu_key: 'peer-accounts',
+    label: '同行账号',
+    group: 'users',
+    module: 'users',
+    order: 15
+  },
+  {
     page: 'rename-tax-daily',
-    menu_key: 'users',
+    menu_key: 'rename-tax-daily',
     label: '高频改名',
     group: 'users',
     module: 'users',
-    order: 20,
-    assignable: false
+    order: 20
   },
   {
     page: 'users-deleted',
-    menu_key: 'users',
+    menu_key: 'users-deleted',
     label: '已删除',
     group: 'users',
     module: 'users',
-    order: 30,
-    assignable: false
+    order: 30
   },
   { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 60 },
   {
@@ -242,12 +248,11 @@ const ADMIN_PAGE_DEFS = [
   },
   {
     page: 'user-login-log',
-    menu_key: 'login-log',
+    menu_key: 'user-login-log',
     label: '用户登录',
     group: 'system',
     module: 'logs',
-    order: 40,
-    assignable: false
+    order: 40
   },
   {
     page: 'server-monitor',
@@ -298,9 +303,15 @@ const ADMIN_MENU_LABELS = (function () {
   }
   // 历史兼容文案（账号勾选不展示，仅兜底）
   map.analytics = '数据统计（旧）';
-  map['user-login-log'] = '普通用户登录流水';
   return map;
 })();
+
+function menuGroupMeta(groupId) {
+  for (var g = 0; g < ADMIN_MENU_GROUPS.length; g++) {
+    if (ADMIN_MENU_GROUPS[g].id === groupId) return ADMIN_MENU_GROUPS[g];
+  }
+  return { id: groupId || '', label: '', order: 999 };
+}
 
 /** 获取：AssignableMenuDefs */
 function getAssignableMenuDefs() {
@@ -311,10 +322,14 @@ function getAssignableMenuDefs() {
     if (d.assignable === false) continue;
     if (seen[d.menu_key]) continue;
     seen[d.menu_key] = 1;
+    var grp = menuGroupMeta(d.group);
     out.push({
       key: d.menu_key,
       label: d.label,
       group: d.group,
+      group_label: grp.label || '',
+      group_order: grp.order,
+      order: d.order,
       module: d.module,
       super_only: !!d.super_only
     });

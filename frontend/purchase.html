@@ -1428,9 +1428,9 @@
                 var cfg = body && body.code === 200 && body.data ? body.data : null;
                 if (!cfg || cfg.enabled === false) {
                     if (typeof window.setPurchaseAbcAssignment === 'function') {
-                        window.setPurchaseAbcAssignment('a', 'disabled');
+                        window.setPurchaseAbcAssignment('b', 'disabled');
                     }
-                    return 'a';
+                    return 'b';
                 }
                 var payload =
                     typeof window.buildClientDevicePayload === 'function'
@@ -1452,9 +1452,9 @@
             })
             .catch(function () {
                 if (typeof window.setPurchaseAbcAssignment === 'function') {
-                    window.setPurchaseAbcAssignment('a', 'config_error');
+                    window.setPurchaseAbcAssignment('b', 'config_error');
                 }
-                return 'a';
+                return 'b';
             });
     }
 

@@ -61,14 +61,20 @@ app.post(
   mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance']),
   h.handleAdminSettingsPost
 );
-app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeletedUsers);
+function requireAdminUsersListMenu(req, res, next) {
+  var peer = String((req.query && req.query.peer) || '').trim().toLowerCase();
+  var isPeer = peer === '1' || peer === 'exempt';
+  return mw.requireAdminAnyMenu(isPeer ? ['peer-accounts'] : ['users'])(req, res, next);
+}
+
+app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users-deleted'), h.handleAdminDeletedUsers);
 app.get(
   '/api/admin/rename-tax-daily',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
+  mw.requireAdminMenu('rename-tax-daily'),
   h.handleAdminRenameTaxDaily
 );
-app.get('/api/admin/users', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUsers);
+app.get('/api/admin/users', mw.requireAdminAuth, requireAdminUsersListMenu, h.handleAdminUsers);
 app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-data'), h.handleAdminUserDataList);
 app.get(
   '/api/admin/user-data/detail',
@@ -264,7 +270,7 @@ app.post(
 app.post(
   '/api/admin/user-rename-fee-exempt',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
+  mw.requireAdminAnyMenu(['users', 'peer-accounts']),
   h.handleAdminUserRenameFeeExempt
 );
 app.post(
@@ -274,7 +280,7 @@ app.post(
   h.handleAdminUserLizhiCertUnlock
 );
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
-app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);
+app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'peer-accounts']), h.handleAdminBan);
 app.post(
   '/api/admin/block-ip',
   mw.requireAdminAuth,
@@ -295,8 +301,8 @@ app.get(
 );
 app.post('/api/admin/user-delete', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeleteUser);
 app.post('/api/admin/user-refund', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRefund);
-app.post('/api/admin/user-restore', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRestore);
-app.post('/api/admin/user-hard-delete', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserHardDelete);
+app.post('/api/admin/user-restore', mw.requireAdminAuth, mw.requireAdminMenu('users-deleted'), h.handleAdminUserRestore);
+app.post('/api/admin/user-hard-delete', mw.requireAdminAuth, mw.requireAdminMenu('users-deleted'), h.handleAdminUserHardDelete);
 app.post('/api/admin/users/purge-bots', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminPurgeBotUsers);
 app.get(
   '/api/admin/analytics/events',
@@ -322,7 +328,7 @@ app.post(
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   h.handleAdminAnalyticsEventsClear
 );
-app.get('/api/admin/analytics/login-recent', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminAnalyticsLoginRecent);
+app.get('/api/admin/analytics/login-recent', mw.requireAdminAuth, mw.requireAdminMenu('user-login-log'), h.handleAdminAnalyticsLoginRecent);
 app.get('/api/admin/admin-login-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminLoginLogs);
 app.get('/api/admin/admin-operation-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminOperationLogs);
 app.get(

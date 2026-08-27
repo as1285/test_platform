@@ -6,6 +6,7 @@ const {
   adminProfileCanAccessPage,
   buildMenuTreeForAdmin,
   firstAllowedPage,
+  getAssignableMenuDefs,
   ADMIN_MENU_GROUPS,
   ADMIN_PAGE_DEFS
 } = require('../../src/admin/menuRegistry');
@@ -117,20 +118,50 @@ describe('menuRegistry', () => {
     expect(new Set(pages).size).toBe(pages.length);
   });
 
-  it('rename-tax-daily inherits users menu', () => {
-    const def = getPageDef('rename-tax-daily');
-    expect(def).toBeTruthy();
-    expect(def.menu_key).toBe('users');
-    expect(def.label).toBe('高频改名');
-    expect(def.assignable).toBe(false);
-    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'rename-tax-daily')).toBe(
-      true
+  it('sidebar child pages are independently assignable', () => {
+    const assignable = getAssignableMenuDefs().map((d) => d.key);
+    expect(assignable).toEqual(
+      expect.arrayContaining([
+        'peer-accounts',
+        'rename-tax-daily',
+        'users-deleted',
+        'user-login-log'
+      ])
     );
-    expect(adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'rename-tax-daily')).toBe(
+    expect(getPageDef('peer-accounts').menu_key).toBe('peer-accounts');
+    expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
+    expect(getPageDef('users-deleted').menu_key).toBe('users-deleted');
+    expect(getPageDef('user-login-log').menu_key).toBe('user-login-log');
+    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'peer-accounts')).toBe(
       false
     );
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['peer-accounts'] }, 'peer-accounts')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'rename-tax-daily')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ['rename-tax-daily'] },
+        'rename-tax-daily'
+      )
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['login-log'] }, 'user-login-log')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ['user-login-log'] },
+        'user-login-log'
+      )
+    ).toBe(true);
     const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const usersGroup = tree.menu_tree.find((g) => g.id === 'users');
-    expect(usersGroup.items.map((i) => i.page)).toContain('rename-tax-daily');
+    expect(usersGroup.items.map((i) => i.page)).toEqual(
+      expect.arrayContaining(['users', 'peer-accounts', 'rename-tax-daily', 'users-deleted'])
+    );
+    const peerDef = getAssignableMenuDefs().find((d) => d.key === 'peer-accounts');
+    expect(peerDef.group_label).toBe('用户管理');
   });
 });

@@ -28,6 +28,9 @@
 | `install-guide` | 安装分发 | settings 共用门闸之一 |
 | `appearance` | 外观 | settings 共用门闸之一 |
 | `users` | 注册用户 | 用户 CRUD / 封禁等 |
+| `peer-accounts` | 同行账号 | 超阈值改名/改税账号，可豁免或封禁 |
+| `rename-tax-daily` | 高频改名 | 改名/个税修改天数超阈值用户的每日修改次数 |
+| `users-deleted` | 已删除 | 已删除账号恢复 / 硬删除 |
 | `user-data` | 用户数据 | `/api/admin/user-data*` |
 | `tax-records-edit` | 个税维护 | `/api/admin/user-tax-records` |
 | `sbdy-demo` | 社保演示 | 工具 |
@@ -42,18 +45,18 @@
 | `analytics-purchase` | 支付分析 | 购买漏斗 |
 | `channel-analysis` | 渠道分析 | 渠道漏斗 |
 | `install-guide-stats` | 安装统计 | install-guide-stats |
-| `admin-accounts` | 账号权限 | 子账号（`super_only`） |
-| `login-log` | 管理登录 | 管理端登录流水 |
+| `gjj-demo` | 公积金演示 | 工具 |
+| `zaizhi-cert` | 在职证明 | 工具 |
+| `admin-accounts` | 账号权限 | 子账号（`super_only`，不出现在勾选列表） |
+| `downline-admins` | 下线管理员 | 子账号可再发展下线 |
+| `login-log` | 管理登录 | 管理端登录 / 操作流水 |
+| `user-login-log` | 用户登录 | 普通用户登录流水 |
 | `server-monitor` | 监控 | `monitor/overview` |
 | `blocked-ips` | IP 黑名单 | 封禁 IP |
 
-## 页面别名（同 menu_key）
+## 页面与 menu_key
 
-| page | 继承 menu_key | 说明 |
-|------|---------------|------|
-| `users-deleted` | `users` | 已删除账号 |
-| `rename-tax-daily` | `users` | 改名超过 5 次或个税修改天数大于 8 天、且未免改名费用户的每日个税修改次数 |
-| `user-login-log` | `login-log` | 普通用户登录流水 |
+侧栏每一项对应独立 `menu_key`（`page` 与 `menu_key` 同名），在「可用菜单」中按分组勾选。`admin-accounts` 仍为超管专属，不出现在子账号勾选列表。
 
 ## 已废弃（勿再当作现行菜单）
 

@@ -347,6 +347,21 @@ var MODELS = [
     issues: [{ page: 'mine', title: '接缝漏蓝、「个人信息」挡眼睛', summary: '我的页接缝与底栏漏蓝。', since: '2026-08' }]
   },
   {
+    id: 'huawei-mate30',
+    platform: 'android',
+    family: 'huawei',
+    label: '华为 Mate 30',
+    match: ['Mate\\s*30(?!\\s*Pro)', 'TAS-AL00', 'TAS-AN00', 'TAS-TL00', 'TAS-L29', 'HUAWEITAS'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '白顶栏标题避开系统状态栏',
+        summary: 'TAS 被排除在通用鸿蒙沉浸外又走外置清零，标题压进系统栏只剩空白。须 40px 顶距。',
+        since: '2026-08-27'
+      }
+    ]
+  },
+  {
     id: 'huawei-mate60',
     platform: 'android',
     family: 'huawei',

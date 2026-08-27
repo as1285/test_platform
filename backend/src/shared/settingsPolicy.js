@@ -18,6 +18,7 @@ const OPS_SETTING_KEYS = [
   'pricing_ab_json',
   'sku_catalog_prices_json',
   'tax_edit_fee_json',
+  'rename_fee_json',
   'activation_nudge_json',
   'activation_batch_channels_json',
   'migration_activation_codes_no_expiry_v1',

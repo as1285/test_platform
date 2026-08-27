@@ -857,6 +857,9 @@
         var deletedUserPage = 1;
         var deletedUserLimit = 10;
         var DELETED_USER_LIMIT_STORAGE_KEY = 'admin_deleted_user_list_limit';
+        var peerAccountPage = 1;
+        var peerAccountLimit = 10;
+        var PEER_ACCOUNT_LIMIT_STORAGE_KEY = 'admin_peer_account_list_limit';
         (function initUserListPageLimit() {
             var saved = parseInt(localStorage.getItem(USER_LIMIT_STORAGE_KEY), 10);
             if (USER_LIMIT_OPTIONS.indexOf(saved) >= 0) {
@@ -874,6 +877,14 @@
             if (selDeleted) {
                 selDeleted.value = String(deletedUserLimit);
             }
+            var savedPeer = parseInt(localStorage.getItem(PEER_ACCOUNT_LIMIT_STORAGE_KEY), 10);
+            if (USER_LIMIT_OPTIONS.indexOf(savedPeer) >= 0) {
+                peerAccountLimit = savedPeer;
+            }
+            var selPeer = document.getElementById('peerAccountPageLimit');
+            if (selPeer) {
+                selPeer.value = String(peerAccountLimit);
+            }
         })();
         var codePage = 1;
         var codeLimit = 8;
@@ -886,6 +897,7 @@
         var userLoginLimit = 20;
         var currentAdminProfile = { username: '', full_name: '', is_super: false, menus: [] };
         var adminMenuKeyList = [];
+        var adminMenuDefsList = [];
         var userDataPage = 1;
         var userDataLimit = 15;
         /* 连续两次进入同一页时跳过（如登录后 applyAdminRoute 连调）；切走再回来会刷新 */
@@ -895,8 +907,6 @@
         function adminHasMenu(menuKey) {
             menuKey = String(menuKey || '');
             if (!menuKey) return false;
-            if (menuKey === 'user-login-log') menuKey = 'login-log';
-            if (menuKey === 'users-deleted') menuKey = 'users';
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
             if (menus.indexOf(menuKey) >= 0) return true;
@@ -939,6 +949,7 @@
                 'install-guide',
                 'install-guide-stats',
                 'users',
+                'peer-accounts',
                 'rename-tax-daily',
                 'users-deleted',
                 'user-data',
@@ -1037,6 +1048,8 @@
                 'admin-accounts': 1,
                 'downline-admins': 1,
                 users: 1,
+                'peer-accounts': 1,
+                'rename-tax-daily': 1,
                 'users-deleted': 1,
                 'user-data': 1,
                 'tax-records-edit': 1,
@@ -1117,6 +1130,9 @@
             }
             if (pageKey === 'users') {
                 loadUsers();
+            }
+            if (pageKey === 'peer-accounts') {
+                loadPeerAccounts();
             }
             if (pageKey === 'rename-tax-daily') {
                 loadRenameTaxDaily();
@@ -1524,28 +1540,7 @@
                     var d = body.data;
                     var html = analyticsPeriodHintHtml(d);
                     html +=
-                        '<p class="hint">实验' +
-                        (d.pricing_ab && d.pricing_ab.enabled ? '进行中' : '已关闭') +
-                        ' · A ' +
-                        (d.pricing_ab && d.pricing_ab.a_percent != null
-                            ? d.pricing_ab.a_percent
-                            : Math.max(
-                                  0,
-                                  100 -
-                                      (d.pricing_ab ? d.pricing_ab.treatment_percent || 0 : 50) -
-                                      (d.pricing_ab && d.pricing_ab.c_percent != null
-                                          ? d.pricing_ab.c_percent
-                                          : 0)
-                              )) +
-                        '% · B ' +
-                        (d.pricing_ab
-                            ? d.pricing_ab.b_percent != null
-                                ? d.pricing_ab.b_percent
-                                : d.pricing_ab.treatment_percent
-                            : 50) +
-                        '% · C ' +
-                        (d.pricing_ab && d.pricing_ab.c_percent != null ? d.pricing_ab.c_percent : 0) +
-                        '% · 主指标：' +
+                        '<p class="hint">全站同一套支付页 · 主指标：' +
                         esc(d.primary_metric_label || 'ARPU') +
                         '</p>';
                     html +=
@@ -5184,7 +5179,7 @@
                         html +=
                             '<td>' +
                             (u.is_peer_account
-                                ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="改名超过8次或个税修改超过8天">同行</span>'
+                                ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="同时超过改名与个税修改天数阈值">同行</span>'
                                 : '<span style="color:#bbb;">—</span>') +
                             '</td>';
                         html += '<td>' + esc(String(u.period_tax_edits || 0)) + '</td>';
@@ -5295,6 +5290,16 @@
             }, 3200);
         }
 
+        function readFilterGtNumber(el) {
+            if (!el) return '';
+            var raw = String(el.value || '').trim();
+            if (raw === '') return '';
+            var n = parseInt(raw, 10);
+            if (!isFinite(n) || n < 0) return '';
+            if (n > 9999) n = 9999;
+            return String(n);
+        }
+
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -5312,9 +5317,9 @@
             var loginInactiveEl = document.getElementById('filterLoginInactive');
             var loginInactiveDays = loginInactiveEl ? loginInactiveEl.value : '';
             var nameChangesGtEl = document.getElementById('filterNameChangesGt');
-            var nameChangesGt = nameChangesGtEl ? String(nameChangesGtEl.value || '').trim() : '';
+            var nameChangesGt = readFilterGtNumber(nameChangesGtEl);
             var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
-            var taxModDaysGt = taxModDaysGtEl ? String(taxModDaysGtEl.value || '').trim() : '';
+            var taxModDaysGt = readFilterGtNumber(taxModDaysGtEl);
             var peerEl = document.getElementById('filterPeerAccount');
             var peerAccount = peerEl ? String(peerEl.value || '').trim() : '';
 
@@ -5543,7 +5548,7 @@
                         if (u.is_peer_account) {
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
-                                'background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="改名超过8次或个税修改超过8天，后续改个税需付费">同行</span>';
+                                'background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="同时超过改名与个税修改天数阈值，后续改个税需付费">同行</span>';
                         }
                         if (u.rename_fee_exempt) {
                             nameChangeBadge +=
@@ -6003,6 +6008,216 @@
                 });
         }
 
+        function peerAccountModeValue() {
+            var el = document.getElementById('filterPeerListMode');
+            var v = el ? String(el.value || '').trim() : '1';
+            return v === 'exempt' ? 'exempt' : '1';
+        }
+
+        function updatePeerAccountHint(data) {
+            var hint = document.getElementById('peerAccountHint');
+            if (!hint) return;
+            var renameGt = data && data.peer_rename_gt != null ? Number(data.peer_rename_gt) : 6;
+            var daysGt = data && data.peer_days_gt != null ? Number(data.peer_days_gt) : 8;
+            var amount = data && data.peer_daily_amount != null ? String(data.peer_daily_amount) : '30.00';
+            var yuan = Number(amount);
+            var yuanLabel = isFinite(yuan) ? (yuan % 1 === 0 ? String(Math.round(yuan)) : yuan.toFixed(2)) : amount;
+            hint.innerHTML =
+                '本页只列<strong>同时</strong>超过改名大于 ' +
+                esc(String(renameGt)) +
+                ' 次且个税修改大于 ' +
+                esc(String(daysGt)) +
+                ' 天的账号。当前同行未进白名单，后续每天改个税需先付当天无限费用（¥' +
+                esc(yuanLabel) +
+                '）；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。';
+        }
+
+        function loadPeerAccounts(p) {
+            if (p != null) peerAccountPage = p;
+            var tbody = document.getElementById('peerAccountTbody');
+            var statEl = document.getElementById('peerAccountStat');
+            if (!tbody) return;
+
+            var usernameEl = document.getElementById('filterPeerUsername');
+            var realNameEl = document.getElementById('filterPeerRealName');
+            var exactEl = document.getElementById('filterPeerExact');
+            var activeEl = document.getElementById('filterPeerActive');
+            var bannedEl = document.getElementById('filterPeerBanned');
+            var taxModEl = document.getElementById('filterPeerTaxModifiedToday');
+            var username = usernameEl ? usernameEl.value.trim() : '';
+            var realName = realNameEl ? realNameEl.value.trim() : '';
+            var exact = exactEl && exactEl.checked;
+            var active = activeEl ? activeEl.value : '';
+            var banned = bannedEl ? bannedEl.value : '';
+            var taxModifiedToday = taxModEl ? taxModEl.value : '';
+            var peerMode = peerAccountModeValue();
+
+            var url = 'api/admin/users?peer=' + encodeURIComponent(peerMode) +
+                '&page=' + peerAccountPage + '&limit=' + peerAccountLimit;
+            if (username) url += '&username=' + encodeURIComponent(username);
+            if (realName) url += '&real_name=' + encodeURIComponent(realName);
+            if (exact) url += '&exact=1';
+            if (active !== '') url += '&active=' + encodeURIComponent(active);
+            if (banned !== '') url += '&banned=' + encodeURIComponent(banned);
+            if (taxModifiedToday !== '') {
+                url += '&tax_modified_today=' + encodeURIComponent(taxModifiedToday);
+            }
+
+            if (statEl) statEl.textContent = '加载中…';
+            adminFetch(url)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || data.code !== 200 || !data.data) {
+                        if (statEl) statEl.textContent = (data && data.msg) || '加载失败';
+                        tbody.innerHTML = '<tr><td colspan="10">加载失败</td></tr>';
+                        return;
+                    }
+                    var list = data.data.users || [];
+                    var total = data.data.total || 0;
+                    updatePeerAccountHint(data.data);
+                    var modeLabel = peerMode === 'exempt' ? '已豁免账号' : '当前同行';
+                    if (statEl) {
+                        statEl.textContent = '共 ' + total + ' 个' + modeLabel;
+                    }
+                    var totalPages = Math.ceil(total / peerAccountLimit) || 1;
+                    var pageInfo = document.getElementById('peerAccountPageInfo');
+                    if (pageInfo) {
+                        pageInfo.textContent =
+                            '第 ' + peerAccountPage + ' 页 / 共 ' + totalPages + ' 页（每页 ' + peerAccountLimit + ' 条）';
+                    }
+                    var prevBtn = document.getElementById('peerAccountPrev');
+                    var nextBtn = document.getElementById('peerAccountNext');
+                    if (prevBtn) prevBtn.disabled = peerAccountPage <= 1;
+                    if (nextBtn) nextBtn.disabled = peerAccountPage >= totalPages;
+
+                    var html = '';
+                    list.forEach(function (u) {
+                        var nameChangeCount = Number(u.name_change_count) || 0;
+                        var taxModDays = Number(u.tax_modified_days) || 0;
+                        var act = u.account_active
+                            ? '<span class="badge badge-yes">已激活</span>'
+                            : '<span class="badge badge-no">未激活</span>';
+                        var ban = u.banned
+                            ? '<span class="badge badge-no">已封禁</span>'
+                            : '<span class="badge badge-yes">正常</span>';
+                        var taxModBadge = u.tax_modified_today
+                            ? '<span class="dau-tax-badge modified-today">有</span>'
+                            : '<span style="color:#bbb;">—</span>';
+                        var paidBadge = u.tax_edit_daily_unlocked_today
+                            ? '<span class="badge badge-yes" title="今日已开通当天无限修改">已付费</span>'
+                            : (peerMode === 'exempt'
+                                ? '<span class="badge" style="background:#ecfdf5;color:#047857;" title="已豁免改名/个税修改收费">已豁免</span>'
+                                : '<span class="badge badge-no" title="今日尚未支付当天无限费用">待付费</span>');
+                        var ops =
+                            '<button type="button" class="btn-sm ' +
+                            (u.rename_fee_exempt ? 'btn-ban' : 'btn-page') +
+                            ' btn-peer-rename-exempt" data-u="' +
+                            esc(u.username) +
+                            '" data-exempt="' +
+                            (u.rename_fee_exempt ? '1' : '0') +
+                            '">' +
+                            (u.rename_fee_exempt ? '重新加改名限制' : '取消改名限制') +
+                            '</button> ' +
+                            (u.banned
+                                ? '<button type="button" class="btn-sm btn-unban btn-peer-ban-act" data-u="' +
+                                  esc(u.username) +
+                                  '" data-b="0">解封</button>'
+                                : '<button type="button" class="btn-sm btn-ban btn-peer-ban-act" data-u="' +
+                                  esc(u.username) +
+                                  '" data-b="1">封禁</button>') +
+                            ' <button type="button" class="btn-sm btn-detail btn-peer-jump-user" data-u="' +
+                            esc(u.username) +
+                            '">注册用户</button>';
+                        html += '<tr data-username="' + esc(u.username) + '">';
+                        html += '<td class="cell-break">' + esc(u.username) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.real_name || '—') + '</td>';
+                        html +=
+                            '<td title="姓名历史修改次数">' +
+                            esc(String(nameChangeCount)) +
+                            '次</td>';
+                        html +=
+                            '<td title="有个税记录修改的不同日历天数" style="color:' +
+                            (taxModDays > 10 ? '#b45309' : '') +
+                            ';">' +
+                            esc(String(taxModDays)) +
+                            '天</td>';
+                        html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
+                        html += '<td>' + paidBadge + '</td>';
+                        html += '<td>' + act + '</td>';
+                        html += '<td>' + ban + '</td>';
+                        html += '<td>' + formatDt(u.created_at) + '</td>';
+                        html += '<td class="col-ops">' + ops + '</td>';
+                        html += '</tr>';
+                    });
+                    tbody.innerHTML = html || '<tr><td colspan="10">暂无符合条件的账号</td></tr>';
+
+                    tbody.querySelectorAll('.btn-peer-rename-exempt').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            var isExempt = btn.getAttribute('data-exempt') === '1';
+                            var nextExempt = !isExempt;
+                            var actionText = nextExempt
+                                ? '取消改名/个税修改收费限制（之后改名、改个税不再收费，将移出当前同行名单）'
+                                : '重新加改名/个税修改收费限制（达到次数后需付费）';
+                            if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-rename-fee-exempt', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, exempt: nextExempt ? 1 : 0 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '操作失败');
+                                        return;
+                                    }
+                                    alert(
+                                        d.msg ||
+                                            (nextExempt ? '已取消改名限制' : '已重新加改名限制')
+                                    );
+                                    loadPeerAccounts();
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    tbody.querySelectorAll('.btn-peer-ban-act').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            var b = btn.getAttribute('data-b') === '1';
+                            var tip = b ? '确定封禁「' + name + '」？' : '确定解封「' + name + '」？';
+                            if (!confirm(tip)) return;
+                            adminFetch('api/admin/ban', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, banned: b ? 1 : 0 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadPeerAccounts();
+                                    } else {
+                                        alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                    tbody.querySelectorAll('.btn-peer-jump-user').forEach(function (btn) {
+                        btn.onclick = function () {
+                            jumpToRegisteredUser(btn.getAttribute('data-u'));
+                        };
+                    });
+                })
+                .catch(function () {
+                    if (statEl) statEl.textContent = '加载失败';
+                    tbody.innerHTML = '<tr><td colspan="10">网络错误</td></tr>';
+                });
+        }
+
         function loadDeletedUsers(p) {
             if (p != null) deletedUserPage = p;
 
@@ -6378,7 +6593,9 @@
             appearance: '外观',
             codes: '激活码',
             users: '注册用户',
+            'peer-accounts': '同行账号',
             'rename-tax-daily': '高频改名',
+            'users-deleted': '已删除',
             'user-data': '用户数据',
             'tax-records-edit': '个税维护',
             'login-log': '管理登录',
@@ -6407,9 +6624,61 @@
 
         function applyMenuDefsFromServer(defs) {
             if (!Array.isArray(defs)) return;
-            defs.forEach(function (d) {
-                if (d && d.key) ADMIN_MENU_LABELS[d.key] = d.label || d.key;
+            adminMenuDefsList = defs.filter(function (d) { return d && d.key; });
+            adminMenuDefsList.forEach(function (d) {
+                ADMIN_MENU_LABELS[d.key] = d.label || d.key;
             });
+        }
+
+        function adminMenuDefsForSelector() {
+            if (adminMenuDefsList.length) return adminMenuDefsList;
+            return adminMenuKeyList.map(function (k) {
+                return { key: k, label: menuLabel(k), group: '', group_label: '', group_order: 0, order: 0 };
+            });
+        }
+
+        function adminMenuSelectorHtml(selected) {
+            var selectedMap = {};
+            (selected || []).forEach(function (k) { selectedMap[k] = true; });
+            var defs = adminMenuDefsForSelector();
+            var groups = [];
+            var groupIndex = Object.create(null);
+            defs.forEach(function (d) {
+                var gid = d.group || '_';
+                if (!groupIndex[gid]) {
+                    groupIndex[gid] = {
+                        id: gid,
+                        label: d.group_label || '',
+                        order: d.group_order != null ? Number(d.group_order) : 999,
+                        items: []
+                    };
+                    groups.push(groupIndex[gid]);
+                }
+                groupIndex[gid].items.push(d);
+            });
+            groups.sort(function (a, b) { return a.order - b.order; });
+            groups.forEach(function (g) {
+                g.items.sort(function (a, b) {
+                    return (Number(a.order) || 0) - (Number(b.order) || 0);
+                });
+            });
+            var html = '<div class="admin-menu-selector">';
+            groups.forEach(function (g) {
+                if (g.label) {
+                    html += '<div class="admin-menu-selector-group-title">' + esc(g.label) + '</div>';
+                }
+                html += '<div class="admin-menu-selector-group-items">';
+                g.items.forEach(function (d) {
+                    var k = d.key;
+                    html += '<label class="admin-menu-selector-item">';
+                    html += '<input type="checkbox" data-menu-key="' + esc(k) + '"' + (selectedMap[k] ? ' checked' : '') + '>';
+                    html += '<span>' + esc(d.label || menuLabel(k)) + '</span>';
+                    html += '</label>';
+                });
+                html += '</div>';
+            });
+            html += '</div>';
+            return html;
         }
 
         function menuLabel(key) {
@@ -6512,16 +6781,7 @@
         /* ========== Admin Accounts ========== */
         function renderAdminMenuSelector(rootEl, selected) {
             if (!rootEl) return;
-            var selectedMap = {};
-            (selected || []).forEach(function (k) { selectedMap[k] = true; });
-            var html = '';
-            adminMenuKeyList.forEach(function (k) {
-                html += '<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#444;">';
-                html += '<input type="checkbox" data-menu-key="' + esc(k) + '"' + (selectedMap[k] ? ' checked' : '') + '>';
-                html += '<span>' + esc(menuLabel(k)) + '</span>';
-                html += '</label>';
-            });
-            rootEl.innerHTML = html;
+            rootEl.innerHTML = adminMenuSelectorHtml(selected);
         }
 
         function syncAdminAccountsPageCopy() {
@@ -6557,7 +6817,8 @@
                         applyMenuDefsFromServer(data.data.menu_defs);
                         adminMenuKeyList = data.data.menu_defs.map(function (d) { return d.key; });
                     } else {
-                    adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
+                        adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
+                        adminMenuDefsList = [];
                     }
                     var defaultMenus = adminMenuKeyList.indexOf('codes') >= 0 ? ['codes'] : adminMenuKeyList.slice(0, 1);
                     renderAdminMenuSelector(document.getElementById('adminAccountMenuSelector'), defaultMenus);
@@ -6597,14 +6858,8 @@
                             html += '<input type="text" class="admin-account-fullname" data-username="' + esc(a.username) + '" value="' + esc(a.full_name || '') + '" placeholder="填写姓名">';
                             html += '</div>';
                             html += '<div style="margin:0 0 6px;font-size:12px;color:#666;">可用菜单</div>';
-                            html += '<div class="form-row admin-account-menu-row" data-username="' + esc(a.username) + '" style="gap:12px;margin:0;padding:0 0 2px;">';
-                            adminMenuKeyList.forEach(function (mk) {
-                                var checked = a.menus && a.menus.indexOf(mk) >= 0;
-                                html += '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#555;">';
-                                html += '<input type="checkbox" data-menu-key="' + esc(mk) + '"' + (checked ? ' checked' : '') + '>';
-                                html += '<span>' + esc(menuLabel(mk)) + '</span>';
-                                html += '</label>';
-                            });
+                            html += '<div class="admin-account-menu-row" data-username="' + esc(a.username) + '">';
+                            html += adminMenuSelectorHtml(a.menus || []);
                             html += '</div>';
                             html += '<div style="margin-top:8px;">';
                             html += '<button type="button" class="btn-sm btn-primary btn-admin-account-save" data-username="' + esc(a.username) + '">保存</button>';
@@ -6701,7 +6956,102 @@
             };
         }
 
+        var peerAccountPrev = document.getElementById('peerAccountPrev');
+        if (peerAccountPrev) {
+            peerAccountPrev.onclick = function () {
+                if (peerAccountPage > 1) loadPeerAccounts(peerAccountPage - 1);
+            };
+        }
+        var peerAccountNext = document.getElementById('peerAccountNext');
+        if (peerAccountNext) {
+            peerAccountNext.onclick = function () {
+                loadPeerAccounts(peerAccountPage + 1);
+            };
+        }
+        (function initPeerAccountPageJump() {
+            var input = document.getElementById('peerAccountPageJumpInput');
+            var btn = document.getElementById('peerAccountPageJumpBtn');
+            if (!input || !btn) return;
+            function doJump() {
+                var n = parseInt(input.value, 10);
+                if (!n || n < 1) return;
+                var infoEl = document.getElementById('peerAccountPageInfo');
+                var infoText = infoEl ? infoEl.textContent : '';
+                var m = infoText.match(/共 (\d+) 页/);
+                var maxPage = m ? parseInt(m[1], 10) : 99999;
+                if (n > maxPage) n = maxPage;
+                input.value = '';
+                loadPeerAccounts(n);
+            }
+            btn.onclick = doJump;
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); doJump(); }
+            });
+        })();
+        var peerAccountPageLimitSel = document.getElementById('peerAccountPageLimit');
+        if (peerAccountPageLimitSel) {
+            peerAccountPageLimitSel.onchange = function () {
+                var n = parseInt(this.value, 10);
+                peerAccountLimit = USER_LIMIT_OPTIONS.indexOf(n) >= 0 ? n : 10;
+                this.value = String(peerAccountLimit);
+                try {
+                    localStorage.setItem(PEER_ACCOUNT_LIMIT_STORAGE_KEY, String(peerAccountLimit));
+                } catch (e) {}
+                loadPeerAccounts(1);
+            };
+        }
+        var btnSearchPeerAccounts = document.getElementById('btnSearchPeerAccounts');
+        if (btnSearchPeerAccounts) {
+            btnSearchPeerAccounts.onclick = function () { loadPeerAccounts(1); };
+        }
+        var filterPeerUsername = document.getElementById('filterPeerUsername');
+        if (filterPeerUsername) {
+            filterPeerUsername.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); loadPeerAccounts(1); }
+            });
+        }
+        var filterPeerRealName = document.getElementById('filterPeerRealName');
+        if (filterPeerRealName) {
+            filterPeerRealName.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); loadPeerAccounts(1); }
+            });
+        }
+        var filterPeerListMode = document.getElementById('filterPeerListMode');
+        if (filterPeerListMode) {
+            filterPeerListMode.onchange = function () { loadPeerAccounts(1); };
+        }
+        var btnResetPeerAccounts = document.getElementById('btnResetPeerAccounts');
+        if (btnResetPeerAccounts) {
+            btnResetPeerAccounts.onclick = function () {
+                var usernameEl = document.getElementById('filterPeerUsername');
+                var realNameEl = document.getElementById('filterPeerRealName');
+                var exactEl = document.getElementById('filterPeerExact');
+                var modeEl = document.getElementById('filterPeerListMode');
+                var activeEl = document.getElementById('filterPeerActive');
+                var bannedEl = document.getElementById('filterPeerBanned');
+                var taxModEl = document.getElementById('filterPeerTaxModifiedToday');
+                if (usernameEl) usernameEl.value = '';
+                if (realNameEl) realNameEl.value = '';
+                if (exactEl) exactEl.checked = false;
+                if (modeEl) modeEl.value = '1';
+                if (activeEl) activeEl.value = '';
+                if (bannedEl) bannedEl.value = '';
+                if (taxModEl) taxModEl.value = '';
+                loadPeerAccounts(1);
+            };
+        }
+
         document.getElementById('btnSearchUsers').onclick = function() { loadUsers(1); };
+        ['filterNameChangesGt', 'filterTaxModDaysGt'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loadUsers(1);
+                }
+            });
+        });
         var btnRefreshRenameTaxDaily = document.getElementById('btnRefreshRenameTaxDaily');
         if (btnRefreshRenameTaxDaily) {
             btnRefreshRenameTaxDaily.onclick = function () {
@@ -7194,48 +7544,13 @@
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var pricingAb = data.data.pricing_ab;
-                        if (pricingAb) {
-                            var pricingEn = document.getElementById('pricingAbEnabled');
-                            var pricingA = document.getElementById('pricingAbAPercent');
-                            var pricingB = document.getElementById('pricingAbBPercent');
-                            var pricingC = document.getElementById('pricingAbCPercent');
-                            if (pricingEn) pricingEn.checked = pricingAb.enabled !== false;
-                            if (pricingA) {
-                                pricingA.value = String(
-                                    pricingAb.a_percent != null
-                                        ? pricingAb.a_percent
-                                        : Math.max(
-                                              0,
-                                              100 -
-                                                  (pricingAb.treatment_percent != null
-                                                      ? pricingAb.treatment_percent
-                                                      : 50) -
-                                                  (pricingAb.c_percent != null ? pricingAb.c_percent : 0)
-                                          )
-                                );
-                            }
-                            if (pricingB) {
-                                pricingB.value = String(
-                                    pricingAb.b_percent != null
-                                        ? pricingAb.b_percent
-                                        : pricingAb.treatment_percent != null
-                                          ? pricingAb.treatment_percent
-                                          : 50
-                                );
-                            }
-                            if (pricingC) {
-                                pricingC.value = String(
-                                    pricingAb.c_percent != null ? pricingAb.c_percent : 0
-                                );
-                            }
-                            updatePricingAbcSplitHint();
-                            applySkuCatalogPricesToForm(
-                                data.data.sku_catalog_prices ||
-                                    (pricingAb && pricingAb.catalog_amounts) ||
-                                    {}
-                            );
-                        }
+                        applySkuCatalogPricesToForm(
+                            data.data.sku_catalog_prices ||
+                                (pricingAb && pricingAb.catalog_amounts) ||
+                                {}
+                        );
                         applyTaxEditFeeToForm(data.data.tax_edit_fee || {});
+                        applyRenameFeeToForm(data.data.rename_fee || {});
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
                             var nEn = document.getElementById('actNudgeEnabled');
@@ -7370,76 +7685,56 @@
                     if (opts[i].value === 'sku_398_30d') opts[i].text = '月卡（原价 ¥' + month + '）';
                 }
             }
-            var abcSel = document.getElementById('pricingAbcAssignVariant');
-            if (abcSel) {
-                var aOpt = abcSel.querySelector('option[value="a"]');
-                var bOpt = abcSel.querySelector('option[value="b"]');
-                var tiers =
-                    hour + '时/' + day + '天/' + day3 + '·3天/' + week + '周/' + week2 + '·双周/' + month + '月';
-                if (aOpt) aOpt.text = 'A · ' + tiers;
-                if (bOpt) bOpt.text = 'B · ' + tiers;
+        }
+
+        function applyRenameFeeToForm(cfg) {
+            cfg = cfg || {};
+            var el = document.getElementById('renameFeeAmount');
+            var raw = cfg.amount != null ? cfg.amount : cfg.fee_amount;
+            if (el && raw != null && String(raw).trim() !== '') {
+                el.value = String(raw);
             }
         }
 
-        function updatePricingAbcSplitHint() {
-            var aEl = document.getElementById('pricingAbAPercent');
-            var bEl = document.getElementById('pricingAbBPercent');
-            var cEl = document.getElementById('pricingAbCPercent');
-            var hint = document.getElementById('pricingAbcSplitHint');
-            if (!hint) return;
-            var a = Math.max(0, Math.min(100, parseInt(aEl && aEl.value, 10) || 0));
-            var b = Math.max(0, Math.min(100, parseInt(bEl && bEl.value, 10) || 0));
-            var c = Math.max(0, Math.min(100, parseInt(cEl && cEl.value, 10) || 0));
-            hint.textContent = 'A ' + a + '% · B ' + b + '% · C ' + c + '%（合计 ' + (a + b + c) + '%）';
-            if (a + b + c !== 100) {
-                hint.textContent += ' — 须等于 100%';
-            }
+        function collectRenameFeeFromForm() {
+            var el = document.getElementById('renameFeeAmount');
+            return {
+                amount: el ? String(el.value || '').trim() : ''
+            };
         }
 
-        ['pricingAbAPercent', 'pricingAbBPercent', 'pricingAbCPercent'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('input', updatePricingAbcSplitHint);
-        });
-
-        var btnSavePricingAb = document.getElementById('btnSavePricingAb');
-        if (btnSavePricingAb) {
-            btnSavePricingAb.addEventListener('click', function () {
-                var btn = btnSavePricingAb;
-                var a = parseInt(document.getElementById('pricingAbAPercent').value, 10);
-                var b = parseInt(document.getElementById('pricingAbBPercent').value, 10);
-                var c = parseInt(document.getElementById('pricingAbCPercent').value, 10);
-                if (!isFinite(a) || !isFinite(b) || a < 0 || b < 0 || a > 100 || b > 100) {
-                    alert('A/B 占比请各输入 0–100 的整数');
-                    return;
-                }
-                if (a + b !== 100) {
-                    alert('A+B 必须等于 100（当前 ' + (a + b) + '）');
+        var btnSaveRenameFee = document.getElementById('btnSaveRenameFee');
+        if (btnSaveRenameFee) {
+            btnSaveRenameFee.addEventListener('click', function () {
+                var btn = btnSaveRenameFee;
+                var fees = collectRenameFeeFromForm();
+                var n = Number(String(fees.amount || '').replace(/,/g, '').trim());
+                if (!isFinite(n) || n < 0.01 || n > 99999.99) {
+                    alert('请填写 0.01～99999.99 的单次改名金额');
                     return;
                 }
                 btn.disabled = true;
+                var hint = document.getElementById('renameFeeHint');
+                if (hint) hint.textContent = '保存中…';
                 adminFetch('api/admin/settings', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        pricing_ab: {
-                            enabled: !!document.getElementById('pricingAbEnabled').checked,
-                            a_percent: a,
-                            b_percent: b,
-                            c_percent: 0
-                        }
-                    })
+                    body: JSON.stringify({ rename_fee: fees })
                 })
                     .then(function (r) {
                         return r.json();
                     })
                     .then(function (data) {
                         if (data.code === 200) {
-                            alert('支付页 A/B 已保存');
-                            loadAdminSettings();
+                            if (hint) hint.textContent = '已保存';
+                            applyRenameFeeToForm((data.data && data.data.rename_fee) || fees);
+                            alert('改名费用已保存，超限账号将按新价格付款');
                         } else {
+                            if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');
                         }
                     })
                     .catch(function () {
+                        if (hint) hint.textContent = '';
                         alert('网络错误');
                     })
                     .finally(function () {
@@ -7451,15 +7746,27 @@
         function applyTaxEditFeeToForm(cfg) {
             cfg = cfg || {};
             var dailyEl = document.getElementById('taxEditFeeDaily');
+            var renameEl = document.getElementById('taxEditFeeRenameGt');
+            var daysEl = document.getElementById('taxEditFeeDaysGt');
             if (dailyEl && cfg.daily_amount != null && String(cfg.daily_amount).trim() !== '') {
                 dailyEl.value = String(cfg.daily_amount);
+            }
+            if (renameEl && cfg.rename_gt != null && String(cfg.rename_gt).trim() !== '') {
+                renameEl.value = String(cfg.rename_gt);
+            }
+            if (daysEl && cfg.days_gt != null && String(cfg.days_gt).trim() !== '') {
+                daysEl.value = String(cfg.days_gt);
             }
         }
 
         function collectTaxEditFeeFromForm() {
             var dailyEl = document.getElementById('taxEditFeeDaily');
+            var renameEl = document.getElementById('taxEditFeeRenameGt');
+            var daysEl = document.getElementById('taxEditFeeDaysGt');
             return {
-                daily_amount: dailyEl ? String(dailyEl.value || '').trim() : ''
+                daily_amount: dailyEl ? String(dailyEl.value || '').trim() : '',
+                rename_gt: renameEl ? String(renameEl.value || '').trim() : '',
+                days_gt: daysEl ? String(daysEl.value || '').trim() : ''
             };
         }
 
@@ -7469,8 +7776,15 @@
                 var btn = btnSaveTaxEditFee;
                 var fees = collectTaxEditFeeFromForm();
                 var dailyN = Number(String(fees.daily_amount || '').replace(/,/g, '').trim());
+                var renameN = parseInt(String(fees.rename_gt || '').trim(), 10);
+                var daysN = parseInt(String(fees.days_gt || '').trim(), 10);
                 if (!isFinite(dailyN) || dailyN < 0.01 || dailyN > 99999.99) {
                     alert('请填写 0.01～99999.99 的当天无限修改金额');
+                    return;
+                }
+                if (!isFinite(renameN) || renameN < 0 || renameN > 999 ||
+                    !isFinite(daysN) || daysN < 0 || daysN > 999) {
+                    alert('请填写 0～999 的同行判定阈值（改名大于、个税修改大于）');
                     return;
                 }
                 btn.disabled = true;
@@ -7487,7 +7801,7 @@
                         if (data.code === 200) {
                             if (hint) hint.textContent = '已保存';
                             applyTaxEditFeeToForm((data.data && data.data.tax_edit_fee) || fees);
-                            alert('个税修改收费已保存，超限账号将按新价格付款');
+                            alert('个税修改收费与同行判定已保存');
                         } else {
                             if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');
@@ -7536,69 +7850,6 @@
                         } else {
                             if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        if (hint) hint.textContent = '';
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btn.disabled = false;
-                    });
-            });
-        }
-
-        var btnAssignPricingAbc = document.getElementById('btnAssignPricingAbc');
-        if (btnAssignPricingAbc) {
-            btnAssignPricingAbc.addEventListener('click', function () {
-                var btn = btnAssignPricingAbc;
-                var username = String(
-                    (document.getElementById('pricingAbcAssignUsername') || {}).value || ''
-                ).trim();
-                var abc = String(
-                    (document.getElementById('pricingAbcAssignVariant') || {}).value || ''
-                )
-                    .trim()
-                    .toLowerCase();
-                var hint = document.getElementById('pricingAbcAssignHint');
-                if (!username) {
-                    alert('请填写账号');
-                    return;
-                }
-                if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
-                    alert('请选择方案 A / B / C');
-                    return;
-                }
-                if (
-                    !confirm(
-                        '确认将账号「' +
-                            username +
-                            '」立即分配为方案 ' +
-                            abc.toUpperCase() +
-                            '？\n将覆盖该账号原有支付方案锁定。'
-                    )
-                ) {
-                    return;
-                }
-                btn.disabled = true;
-                if (hint) hint.textContent = '分配中…';
-                adminFetch('api/admin/user-pricing-abc', {
-                    method: 'POST',
-                    body: JSON.stringify({ username: username, abc: abc })
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            if (hint) {
-                                hint.textContent =
-                                    '已生效：' + username + ' → ' + String(abc).toUpperCase();
-                            }
-                            alert(data.msg || '已分配');
-                        } else {
-                            if (hint) hint.textContent = '';
-                            alert(data.msg || '分配失败');
                         }
                     })
                     .catch(function () {
@@ -8706,7 +8957,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v13-downline-admins';
+                var MENU_TREE_VER = 'ops-ia-v15-assignable-sidebar';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

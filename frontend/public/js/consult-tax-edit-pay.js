@@ -58,7 +58,7 @@
             '<div class="activate-modal-panel consult-tax-edit-pay-panel">' +
             '<p class="activate-modal-title" id="consultTaxEditPayTitle">同行账号需付费修改</p>' +
             '<p class="activate-modal-hint" id="consultTaxEditPayHint" style="display:block;margin:0 0 12px;font-size:13px;color:#666;line-height:1.55;">' +
-            '同行账号（改名超过 8 次或个税修改超过 8 天）后续修改需先支付当天无限费用。</p>' +
+            '同行账号（改名与个税修改天数同时超限）后续修改需先支付当天无限费用。</p>' +
             '<div class="consult-tax-edit-pay-choices" id="consultTaxEditPayChoices" hidden>' +
             '<button type="button" class="btn btn-primary btn-block" id="btnConsultTaxEditPayDaily">支付 ¥30，当天无限改</button>' +
             '</div>' +

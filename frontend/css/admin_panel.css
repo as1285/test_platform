@@ -784,6 +784,9 @@ tr.users-detail-row td { background: transparent; }
     min-width: 1360px;
     table-layout: fixed;
 }
+.peer-accounts-table {
+    min-width: 1180px;
+}
 .users-registry-table th,
 .users-registry-table td {
     vertical-align: middle;
@@ -1014,6 +1017,11 @@ tr.users-detail-row > td {
     max-width: 100%;
     box-sizing: border-box;
 }
+.user-filter-bar input.filter-num {
+    width: 112px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
 .analytics-conv-wrap {
     margin-top: 12px;
 }
@@ -1156,6 +1164,40 @@ tr.users-detail-row > td {
     white-space: nowrap;
 }
 .btn-detail { background: var(--admin-neutral-btn); color: var(--admin-on-primary); }
+.admin-menu-selector-host,
+.admin-account-menu-row {
+    width: 100%;
+}
+.admin-menu-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+.admin-menu-selector-group-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--admin-text-secondary, #888);
+    margin: 2px 0 0;
+}
+.admin-menu-selector-group-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: center;
+}
+.admin-menu-selector-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    color: #444;
+    white-space: nowrap;
+}
+.admin-menu-selector-item input {
+    margin: 0;
+}
 .admin-account-activated-wrap {
     background: var(--admin-surface-tint);
     border: 1px solid var(--admin-primary-border);

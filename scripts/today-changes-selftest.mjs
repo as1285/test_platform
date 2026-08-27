@@ -224,7 +224,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v13-downline-admins'],
+  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v15-assignable-sidebar'],
   'admin zaizhi-cert hash not bounced'
 );
 mustInclude(
@@ -236,6 +236,46 @@ mustInclude(
   'backend/src/admin/menuRegistry.js',
   ["page: 'downline-admins'", "label: '下线管理员'", 'hide_for_super: true'],
   'menuRegistry downline-admins'
+);
+mustInclude(
+  'backend/src/admin/menuRegistry.js',
+  [
+    "page: 'peer-accounts'",
+    "menu_key: 'peer-accounts'",
+    "page: 'rename-tax-daily'",
+    "menu_key: 'rename-tax-daily'",
+    "page: 'users-deleted'",
+    "menu_key: 'users-deleted'",
+    "page: 'user-login-log'",
+    "menu_key: 'user-login-log'",
+    'group_label'
+  ],
+  'menuRegistry assignable sidebar child pages'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  [
+    "requireAdminMenu('users-deleted')",
+    "requireAdminMenu('rename-tax-daily')",
+    "requireAdminMenu('user-login-log')",
+    "['peer-accounts']"
+  ],
+  'admin routes gate new sidebar menu keys'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    "SELECT DISTINCT admin_id, 'peer-accounts'",
+    "SELECT DISTINCT admin_id, 'rename-tax-daily'",
+    "SELECT DISTINCT admin_id, 'users-deleted'",
+    "SELECT DISTINCT admin_id, 'user-login-log'"
+  ],
+  'bootstrap migrate sidebar child menu keys'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v15-assignable-sidebar'],
+  'admin accounts menu selector grouped by sidebar'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -932,6 +972,27 @@ mustInclude(
   'frontend/xiangqing.html',
   ['M391Q', 'app-android-meizu-20pro'],
   'xiangqing meizu 20 pro first-paint'
+);
+/* 华为 Mate 30（TAS-AL00 / TAS-AN00）：沉浸压栏，明细标题须留 40px */
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isHuaweiMate30Client', 'app-android-huawei-mate30', 'TAS-AL00|TAS-AN00', ':not(.app-android-huawei-mate30)'],
+  'huawei mate30 detect + immersive white top'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['TAS-AL00', 'app-android-huawei-mate30', 'data-mate30-result-firstpaint', 'header-title'],
+  'shuiming_result mate30 first-paint'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['TAS-AL00', 'app-android-huawei-mate30'],
+  'shuiming mate30 first-paint'
+);
+mustInclude(
+  'frontend/xiangqing.html',
+  ['TAS-AL00', 'app-android-huawei-mate30'],
+  'xiangqing mate30 first-paint'
 );
 /* 一键生成前 B 站分享门槛已下线 */
 mustInclude(

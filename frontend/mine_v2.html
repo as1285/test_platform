@@ -2609,6 +2609,13 @@
             var __mineRenamePayPayload = null;
             var __mineRenamePayPollTimer = null;
             var __mineRenamePayOutTradeNo = '';
+            var __mineRenamePayYuan = '10';
+
+            function formatRenameYuan(raw) {
+                var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
+                if (!isFinite(n) || n <= 0) return '10';
+                return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
+            }
 
             function closeMineRenamePayModal() {
                 var root = document.getElementById('mineRenamePayModal');
@@ -2628,9 +2635,12 @@
 
             function openMineRenamePayModal(payload, policy) {
                 __mineRenamePayPayload = payload;
+                __mineRenamePayYuan = formatRenameYuan(policy && policy.fee_amount);
                 var root = document.getElementById('mineRenamePayModal');
+                var title = document.getElementById('mineRenamePayTitle');
                 var hint = document.getElementById('mineRenamePayHint');
                 var qrWrap = document.getElementById('mineRenamePayQrWrap');
+                if (title) title.textContent = '改名需支付 ¥' + __mineRenamePayYuan;
                 if (hint && policy) {
                     hint.textContent =
                         '近 ' +
@@ -2642,7 +2652,7 @@
                         ' 次（免费 ' +
                         (policy.free_limit || 5) +
                         ' 次）。请支付 ¥' +
-                        (policy.fee_amount || '10.00') +
+                        __mineRenamePayYuan +
                         ' 获得 1 次改名。';
                 }
                 if (qrWrap) qrWrap.innerHTML = '<p style="color:#888;font-size:13px;">正在生成付款码…</p>';
@@ -2707,7 +2717,7 @@
                                     '</p>';
                             }
                         }
-                        setMineRenamePayStatus('请使用支付宝扫码支付 ¥10');
+                        setMineRenamePayStatus('请使用支付宝扫码支付 ¥' + __mineRenamePayYuan);
                         if (__mineRenamePayPollTimer) clearInterval(__mineRenamePayPollTimer);
                         __mineRenamePayPollTimer = setInterval(pollMineRenamePay, 2500);
                     })

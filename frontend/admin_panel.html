@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <script src="/js/admin_auth.js?v=20260814-ace2pro"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260826-device-compat">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260827-menu-sync">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -46,36 +47,11 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">定价实验与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格、改名费用、个税修改收费与激活引导弹窗</p></div>
                     <section>
-                        <h2>支付页 A/B</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A / B</strong>：支付宝六档（小时卡 / 天卡 / 3天卡 / 周卡 / 双周卡 / 月卡，价格见下方）+ 激活码。
-                            A+B 必须为 100%。
-                        </p></details>
+                        <h2>支付套餐价格</h2>
                         <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label><input type="checkbox" id="pricingAbEnabled" checked> 启用支付页 A/B</label>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="pricingAbAPercent">A 方案流量占比 %</label>
-                                <input type="number" id="pricingAbAPercent" min="0" max="100" step="1" value="50">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="pricingAbBPercent">B 方案流量占比 %</label>
-                                <input type="number" id="pricingAbBPercent" min="0" max="100" step="1" value="50">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="pricingAbCPercent">C 方案流量占比 %</label>
-                                <input type="number" id="pricingAbCPercent" min="0" max="100" step="1" value="0" disabled>
-                            </div>
-                            <p class="hint mt-6" id="pricingAbcSplitHint">A 50% · B 50% · C 0%（已停用）</p>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B</button>
-                            </div>
-                        </div>
-                        <div class="form-row form-stack admin-panel-inset">
-                            <p class="hint mt-0"><strong>支付套餐价格</strong>：全站购买页、支付宝下单按这里的金额。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <p class="hint mt-0">全站购买页只保留这一套六档。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
                             <div class="form-field form-field-narrow">
                                 <label for="skuPriceHour">小时卡（元）</label>
                                 <input type="number" id="skuPriceHour" data-sku-id="sku_99_1h" min="0.01" max="99999.99" step="0.01" value="99">
@@ -105,8 +81,28 @@
                                 <span class="hint" id="skuCatalogPriceHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
-                        <div class="form-row form-stack admin-panel-inset">
-                            <p class="hint mt-0"><strong>个税修改收费</strong>：改名或个税修改天数超限、且未进白名单的账号，每天修改个税前需先付当天无限费用。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                    </section>
+                    <section>
+                        <h2>个税修改收费</h2>
+                        <div class="form-row form-stack">
+                            <p class="hint mt-0"><strong>改名费用</strong>：近 30 天活跃不少于 2 天、且历史改名超过 5 次后，每次再改名需先付下面金额。白名单免收。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="renameFeeAmount">单次改名（元）</label>
+                                <input type="number" id="renameFeeAmount" min="0.01" max="99999.99" step="0.01" value="10">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveRenameFee">保存改名费用</button>
+                                <span class="hint" id="renameFeeHint" style="margin-left:8px;"></span>
+                            </div>
+                            <p class="hint">未进白名单的账号，<strong>同时</strong>满足「改名大于」且「个税修改大于」才算同行，每天改个税前需先付当天无限费用。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="taxEditFeeRenameGt">改名大于（次）</label>
+                                <input type="number" id="taxEditFeeRenameGt" min="0" max="999" step="1" value="6">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="taxEditFeeDaysGt">个税修改大于（天）</label>
+                                <input type="number" id="taxEditFeeDaysGt" min="0" max="999" step="1" value="8">
+                            </div>
                             <div class="form-field form-field-narrow">
                                 <label for="taxEditFeeDaily">当天无限（元）</label>
                                 <input type="number" id="taxEditFeeDaily" min="0.01" max="99999.99" step="0.01" value="30">
@@ -116,26 +112,11 @@
                                 <span class="hint" id="taxEditFeeHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
-                        <div class="form-row form-stack admin-panel-inset">
-                            <p class="hint mt-0"><strong>指定账号分配方案</strong>（即刻生效，覆盖该账号原有 sticky；优先于代理渠道默认方案。用户下次打开购买页会强制同步。）</p>
-                            <div class="form-field form-field-narrow">
-                                <label for="pricingAbcAssignUsername">账号</label>
-                                <input type="text" id="pricingAbcAssignUsername" maxlength="64" placeholder="用户名 / 手机号">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="pricingAbcAssignVariant">方案</label>
-                                <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 99时/249天/268·3天/300周/348·双周/398月</option>
-                                    <option value="b">B · 99时/249天/268·3天/300周/348·双周/398月</option>
-                                </select>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnAssignPricingAbc">立即分配</button>
-                                <span class="hint" id="pricingAbcAssignHint" style="margin-left:8px;"></span>
-                            </div>
-                        </div>
-                        <div class="form-row form-stack admin-panel-inset">
-                            <p class="hint mt-0"><strong>用户专属报价</strong>：为指定账号设置「套餐 + 特价」。用户打开购买页只看到该档，支付宝按特价下单；优先于 A/B/C。支付成功后报价仍保留，可手动取消。</p>
+                    </section>
+                    <section>
+                        <h2>用户专属报价</h2>
+                        <div class="form-row form-stack">
+                            <p class="hint mt-0">为指定账号设置「套餐 + 特价」。用户打开购买页只看到该档，支付宝按特价下单；优先于全站套餐价。支付成功后报价仍保留，可手动取消。</p>
                             <div class="form-field form-field-narrow">
                                 <label for="priceOfferUsername">账号</label>
                                 <input type="text" id="priceOfferUsername" maxlength="64" placeholder="用户名 / 手机号">
@@ -209,7 +190,7 @@
                     <div class="page-lede"><p class="page-lede-text">安装包、代理渠道与引导视频</p></div>
                     <section>
                         <h2>落地页说明</h2>
-                        <p class="hint">分流见「定价与引导」。A/B 走迷你产品首页；落地页相关设置仍单独保留。</p>
+                        <p class="hint">落地页相关设置在此单独配置；购买页全站同一套套餐价，见「定价与引导」。</p>
                     </section>
                     <section>
                         <h2>安装包下载</h2>
@@ -718,7 +699,7 @@
                             </div>
                         </div>
                         <div class="field-note">可用菜单</div>
-                        <div id="adminAccountMenuSelector" class="form-row flex-align-center gap-16"></div>
+                        <div id="adminAccountMenuSelector" class="admin-menu-selector-host"></div>
                     </section>
                     <section>
                         <h2 id="adminAccountsListTitle">后台账号列表</h2>
@@ -802,26 +783,15 @@
                             </div>
                             <div>
                                 <label for="filterNameChangesGt">改名次数</label>
-                                <select id="filterNameChangesGt" class="filter-select" title="按姓名历史修改次数筛选">
-                                    <option value="">全部</option>
-                                    <option value="3">大于3次</option>
-                                    <option value="5">大于5次</option>
-                                    <option value="8">大于8次</option>
-                                    <option value="10">大于10次</option>
-                                </select>
+                                <input type="number" id="filterNameChangesGt" class="filter-select filter-num" min="0" max="9999" step="1" inputmode="numeric" placeholder="大于几次" title="填数字：改名次数大于该值；留空为全部">
                             </div>
                             <div>
                                 <label for="filterTaxModDaysGt">修改天数</label>
-                                <select id="filterTaxModDaysGt" class="filter-select" title="有个税记录修改的不同日历天数（按变更审计）">
-                                    <option value="">全部</option>
-                                    <option value="5">≥5天</option>
-                                    <option value="9">大于8天</option>
-                                    <option value="11">超过10天</option>
-                                </select>
+                                <input type="number" id="filterTaxModDaysGt" class="filter-select filter-num" min="0" max="9999" step="1" inputmode="numeric" placeholder="≥几天" title="填数字：个税修改天数不少于该值；留空为全部">
                             </div>
                             <div>
                                 <label for="filterPeerAccount">同行账号</label>
-                                <select id="filterPeerAccount" class="filter-select" title="改名超过8次或个税修改天数超过8天，且未永久免改名费">
+                                <select id="filterPeerAccount" class="filter-select" title="同时满足改名与个税修改天数超限（阈值见定价与引导），且未永久免改名费。完整名单请用侧栏「同行账号」">
                                     <option value="">全部</option>
                                     <option value="1">只看同行</option>
                                 </select>
@@ -838,7 +808,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税；「大于8天」即超过8个不同日期。改名超过 8 次或个税修改超过 8 天、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（金额见「定价与引导」）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -882,10 +852,109 @@
                     </section>
                 </div>
 
+                <div id="page-peer-accounts" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">单独查看与处置同行账号：豁免收费、封禁、跳转注册用户</p></div>
+                    <section>
+                        <h2>同行账号</h2>
+                        <p class="hint mt-0" id="peerAccountHint">本页只列<strong>同时</strong>超过改名阈值与个税修改天数阈值的账号。当前同行未进白名单，后续每天改个税需先付当天无限费用；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。</p>
+                        <div class="user-filter-bar">
+                            <div class="user-filter-fields">
+                            <div>
+                                <label>账号</label>
+                                <div class="filter-account-row">
+                                    <input type="text" id="filterPeerUsername" class="filter-text-wide" placeholder="搜索账号">
+                                    <label class="filter-inline-check">
+                                        <input type="checkbox" id="filterPeerExact"> 精准查询
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label>姓名</label>
+                                <input type="text" id="filterPeerRealName" class="filter-text-wide" placeholder="搜索姓名">
+                            </div>
+                            <div>
+                                <label for="filterPeerListMode">名单</label>
+                                <select id="filterPeerListMode" class="filter-select" title="当前同行或已豁免白名单">
+                                    <option value="1">当前同行</option>
+                                    <option value="exempt">已豁免</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>激活状态</label>
+                                <select class="filter-select" id="filterPeerActive">
+                                    <option value="">全部</option>
+                                    <option value="1">已激活</option>
+                                    <option value="0">未激活</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>封禁状态</label>
+                                <select class="filter-select" id="filterPeerBanned">
+                                    <option value="">全部</option>
+                                    <option value="1">已封禁</option>
+                                    <option value="0">正常</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>当日有否修改</label>
+                                <select id="filterPeerTaxModifiedToday" class="filter-select">
+                                    <option value="">全部</option>
+                                    <option value="1">当日有修改个税</option>
+                                    <option value="0">当日无修改</option>
+                                </select>
+                            </div>
+                            <div class="flex-actions">
+                                <button type="button" class="btn-primary" id="btnSearchPeerAccounts">查询</button>
+                                <button type="button" class="btn-page" id="btnResetPeerAccounts">重置</button>
+                            </div>
+                            </div>
+                        </div>
+                        <p class="stat" id="peerAccountStat">加载中…</p>
+                        <div class="scroll-x">
+                            <table class="users-registry-table peer-accounts-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-w-120">账号</th>
+                                        <th class="col-w-110">姓名</th>
+                                        <th class="col-w-72">改名</th>
+                                        <th class="col-w-88">修改天数</th>
+                                        <th class="col-tax-mod">当日修改</th>
+                                        <th class="col-w-88">当日付费</th>
+                                        <th class="col-w-72">激活</th>
+                                        <th class="col-w-72">封禁</th>
+                                        <th class="col-w-150">注册时间</th>
+                                        <th class="col-ops">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="peerAccountTbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="peerAccountPagination">
+                            <button type="button" class="btn-page" id="peerAccountPrev">上一页</button>
+                            <span id="peerAccountPageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="peerAccountNext">下一页</button>
+                            <span class="pagination-jump">
+                                <input type="number" id="peerAccountPageJumpInput" class="pagination-jump-input" min="1" placeholder="页码" aria-label="跳转到页码">
+                                <button type="button" class="btn-page btn-page-jump" id="peerAccountPageJumpBtn">跳转</button>
+                            </span>
+                            <label class="pagination-size-label" for="peerAccountPageLimit">
+                                每页
+                                <select id="peerAccountPageLimit" class="pagination-size-select" aria-label="每页条数">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                条
+                            </label>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-rename-tax-daily" class="page-panel" role="tabpanel">
                     <section>
                         <h2>高频改名 · 每日个税修改</h2>
-                        <p class="hint mt-0">只看<strong>改名次数超过 5 次</strong>或<strong>修改个税天数超过 8 天</strong>、且<strong>未永久免改名费</strong>的注册用户。改名超过 8 次或修改天数超过 8 天的标记为<strong>同行账号</strong>，后续改个税需付费。格子里是该日个税记录增改删次数（<code>tax_record_change_logs</code>），按<strong>北京时间</strong>。永久免改名费账号不计入。点击账号可跳到「注册用户」定位。</p>
+                        <p class="hint mt-0">只看<strong>改名次数超过 5 次</strong>或<strong>修改个税天数超过 8 天</strong>、且<strong>未永久免改名费</strong>的注册用户。同行标记按「定价与引导」：须<strong>同时</strong>超过改名阈值与个税修改天数阈值。格子里是该日个税记录增改删次数（<code>tax_record_change_logs</code>），按<strong>北京时间</strong>。永久免改名费账号不计入。点击账号可跳到「注册用户」定位。同行账号的豁免/封禁请到侧栏「同行账号」单独管理。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="renameTaxDailyDays">统计区间</label>
@@ -2103,16 +2172,16 @@
 
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>支付页 A/B</h2>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售套餐与金额以「定价与引导 → 支付套餐价格」配置为准。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
+                        <h2>支付转化</h2>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售套餐与金额以「定价与引导 → 支付套餐价格」配置为准。全站现为同一套支付页。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
                                 <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                             </div>
-                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新支付页 A/B/C</button>
+                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新支付转化</button>
                         </div>
-                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付页 A/B/C 加载中…</div>
+                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付转化加载中…</div>
                     </section>
                     <section>
                         <h2>注册转化率</h2>
@@ -2945,9 +3014,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260826-device-compat"></script>
+    <script src="/js/admin/loader.js?v=20260827-peer-accounts"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260827-tax-edit-daily-only"></script>
+    <script src="/js/admin_panel.js?v=20260827-menu-sync"></script>
 </body>
 </html>
