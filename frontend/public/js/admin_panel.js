@@ -1553,7 +1553,7 @@
                             a.variant === 'control'
                                 ? 'A·对照'
                                 : a.variant === 'treatment'
-                                  ? 'B·五档'
+                                  ? 'B·三档'
                                   : a.variant === 'b'
                                     ? 'C·激活码'
                                     : a.variant;

@@ -5,26 +5,6 @@
 
 var LIVE_OFFERABLE_SKUS = [
   {
-    id: 'sku_249_1d',
-    amount: '249.00',
-    label: '天卡',
-    subject: '激活码·天卡',
-    grant_kind: 'trial',
-    grant_hours: 0,
-    grant_days: 1,
-    grant_minutes: 0
-  },
-  {
-    id: 'sku_268_3d',
-    amount: '268.00',
-    label: '3天卡',
-    subject: '激活码·3天卡',
-    grant_kind: 'trial',
-    grant_hours: 0,
-    grant_days: 3,
-    grant_minutes: 0
-  },
-  {
     id: 'sku_300_7d',
     amount: '300.00',
     label: '周卡',
@@ -58,6 +38,26 @@ var LIVE_OFFERABLE_SKUS = [
 
 /** 旧档：已有专属价仍可解析，不再出现在新建下拉 */
 var LEGACY_OFFERABLE_SKUS = [
+  {
+    id: 'sku_249_1d',
+    amount: '249.00',
+    label: '天卡',
+    subject: '激活码·天卡',
+    grant_kind: 'trial',
+    grant_hours: 0,
+    grant_days: 1,
+    grant_minutes: 0
+  },
+  {
+    id: 'sku_268_3d',
+    amount: '268.00',
+    label: '3天卡',
+    subject: '激活码·3天卡',
+    grant_kind: 'trial',
+    grant_hours: 0,
+    grant_days: 3,
+    grant_minutes: 0
+  },
   {
     id: 'sku_99_1h',
     amount: '99.00',

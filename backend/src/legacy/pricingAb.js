@@ -1,8 +1,8 @@
 /**
- * 支付页定价：可配置目录（天卡 / 3天卡 / 周卡 / 双周卡 / 月卡）。
+ * 支付页定价：可配置目录（周卡 / 双周卡 / 月卡）。
  * 价格、时长、是否上架以后台「支付套餐」为准。
  * 历史 A/B/C 分流与 sticky 仍可读，新解析一律走 B（treatment）。
- * 小时卡 / 永久档已下架，仅历史订单 / 已有专属价可解析。
+ * 小时卡 / 天卡 / 3天卡 / 永久档已下架，仅历史订单 / 已有专属价可解析。
  */
 'use strict';
 
@@ -22,7 +22,7 @@ var SKU_99_HOUR = {
   grant_minutes: 0
 };
 
-/** 现售天卡：249 */
+/** 旧档：天卡已下架，仅历史订单 / 已有专属价解析 */
 var SKU_249_DAY = {
   id: 'sku_249_1d',
   amount: '249.00',
@@ -34,7 +34,7 @@ var SKU_249_DAY = {
   grant_minutes: 0
 };
 
-/** 现售3天卡：268 */
+/** 旧档：3天卡已下架，仅历史订单 / 已有专属价解析 */
 var SKU_268_3DAY = {
   id: 'sku_268_3d',
   amount: '268.00',
@@ -231,6 +231,8 @@ var SKU_398_PERM_LEGACY = {
 
 var LEGACY_CATALOG_SKUS = [
   SKU_99_HOUR,
+  SKU_249_DAY,
+  SKU_268_3DAY,
   SKU_999_PERM,
   SKU_298_DAY,
   SKU_398_PERM,
@@ -242,8 +244,6 @@ var LEGACY_CATALOG_SKUS = [
 ];
 
 var CONFIGURABLE_CATALOG_SKUS = [
-  SKU_249_DAY,
-  SKU_268_3DAY,
   SKU_300_WEEK,
   SKU_348_2WEEK,
   SKU_398_MONTH
@@ -427,7 +427,7 @@ function defaultSkuById(id) {
   var all = []
     .concat(DEFAULT_PRICING_AB.control_skus || [])
     .concat(DEFAULT_PRICING_AB.treatment_skus || [])
-    .concat([SKU_99_HOUR, SKU_199_HOUR, SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM])
+    .concat([SKU_99_HOUR, SKU_199_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_268_DAY, SKU_328_WEEK, SKU_398_MONTH, SKU_600_PERM])
     .concat(LEGACY_CATALOG_SKUS || []);
   for (var i = 0; i < all.length; i++) {
     if (all[i].id === id) return cloneSku(all[i]);

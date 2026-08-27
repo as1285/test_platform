@@ -51,7 +51,7 @@
                     <section>
                         <h2>支付套餐</h2>
                         <div class="form-row form-stack">
-                            <p class="hint mt-0">价格、天数、小时、是否上架都可改。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡已下架，不再出现在购买页。</p>
+                            <p class="hint mt-0">价格、天数、小时、是否上架都可改。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡、天卡、3天卡已下架，不再出现在购买页。</p>
                             <div class="scroll-x">
                                 <table class="sku-catalog-table" id="skuCatalogTable">
                                     <thead>
@@ -64,20 +64,6 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr data-sku-id="sku_249_1d" data-sku-label="天卡">
-                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledDay" aria-label="上架天卡" checked></td>
-                                            <td>天卡</td>
-                                            <td><input type="number" class="sku-catalog-amount" id="skuPriceDay" min="0.01" max="99999.99" step="0.01" value="249"></td>
-                                            <td><input type="number" class="sku-catalog-days" id="skuDaysDay" min="0" max="365" step="1" value="1"></td>
-                                            <td><input type="number" class="sku-catalog-hours" id="skuHoursDay" min="0" max="720" step="1" value="0"></td>
-                                        </tr>
-                                        <tr data-sku-id="sku_268_3d" data-sku-label="3天卡">
-                                            <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabled3Day" aria-label="上架3天卡" checked></td>
-                                            <td>3天卡</td>
-                                            <td><input type="number" class="sku-catalog-amount" id="skuPrice3Day" min="0.01" max="99999.99" step="0.01" value="268"></td>
-                                            <td><input type="number" class="sku-catalog-days" id="skuDays3Day" min="0" max="365" step="1" value="3"></td>
-                                            <td><input type="number" class="sku-catalog-hours" id="skuHours3Day" min="0" max="720" step="1" value="0"></td>
-                                        </tr>
                                         <tr data-sku-id="sku_300_7d" data-sku-label="周卡">
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledWeek" aria-label="上架周卡" checked></td>
                                             <td>周卡</td>
@@ -150,8 +136,6 @@
                             <div class="form-field form-field-narrow">
                                 <label for="priceOfferSku">套餐</label>
                                 <select id="priceOfferSku">
-                                    <option value="sku_249_1d">天卡（原价 ¥249）</option>
-                                    <option value="sku_268_3d">3天卡（原价 ¥268）</option>
                                     <option value="sku_300_7d">周卡（原价 ¥300）</option>
                                     <option value="sku_348_14d">双周卡（原价 ¥348）</option>
                                     <option value="sku_398_30d">月卡（原价 ¥398）</option>
@@ -3043,6 +3027,6 @@
     <script src="/js/admin/loader.js?v=20260827-bj2"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260827-sku-no-hour"></script>
+    <script src="/js/admin_panel.js?v=20260828-sku-no-1d3d"></script>
 </body>
 </html>

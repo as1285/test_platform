@@ -294,7 +294,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260827-sku-no-hour', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260828-sku-no-1d3d', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -344,14 +344,15 @@ mustInclude('frontend/consult.html', ['taxPayGuideBanner'], 'tax pay guide banne
 mustInclude(
   'backend/src/legacy/pricingAb.js',
   [
-    'sku_249_1d',
-    'sku_268_3d',
     'sku_300_7d',
     'sku_348_14d',
     'sku_398_30d',
-    "amount: '398.00'"
+    "amount: '398.00'",
+    'SKU_300_WEEK',
+    'SKU_249_DAY',
+    'SKU_268_3DAY'
   ],
-  'pricing live catalog 249/268/300/348/398（小时卡与永久已下架）'
+  'pricing live catalog 300/348/398（天卡与3天卡已下架）'
 );
 mustInclude(
   'frontend/purchase.html',
@@ -378,13 +379,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['sku_249_1d', 'sku_268_3d', 'sku_300_7d', 'sku_348_14d', 'sku_398_30d', 'btnSaveSkuCatalogPrices', 'sku-catalog-days', 'sku-catalog-hours'],
-  'admin offer five-sku + editable duration'
+  ['sku_300_7d', 'sku_348_14d', 'sku_398_30d', 'btnSaveSkuCatalogPrices', 'sku-catalog-days', 'sku-catalog-hours'],
+  'admin offer three-sku + editable duration'
 );
 mustExclude(
   'frontend/admin_panel.html',
-  ['skuPriceHour', 'data-sku-id="sku_99_1h"'],
-  'admin catalog no hour card row'
+  ['skuPriceHour', 'data-sku-id="sku_99_1h"', 'data-sku-id="sku_249_1d"', 'data-sku-id="sku_268_3d"', 'skuPriceDay', 'skuPrice3Day'],
+  'admin catalog no hour/1-day/3-day rows'
 );
 mustInclude(
   'backend/src/legacy/pricingAb.js',
