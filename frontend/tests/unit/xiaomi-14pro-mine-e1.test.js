@@ -1,0 +1,46 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+const MODEL_RE = /23116PN5|23116PN\b/i;
+const NAME_RE = /(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro(?!\s*Max)/i;
+
+const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8');
+const mine = readFileSync(resolve(__dirname, '../../mine.html'), 'utf8');
+const mineV2 = readFileSync(resolve(__dirname, '../../mine_v2.html'), 'utf8');
+
+describe('Xiaomi 14 Pro mine e1 lock', () => {
+  it('matches 14 Pro model codes and marketing name', () => {
+    ['23116PN5BC', '23116PN5BG', '23116PN5CG', '23116PN'].forEach((id) => {
+      expect(MODEL_RE.test(id), id).toBe(true);
+    });
+    ['Xiaomi 14 Pro', 'Mi 14 Pro', '小米14 Pro', '小米_14_Pro'].forEach((name) => {
+      expect(NAME_RE.test(name), name).toBe(true);
+    });
+  });
+
+  it('does not treat Xiaomi 14 or 14 Pro Max as 14 Pro', () => {
+    expect(NAME_RE.test('Xiaomi 14')).toBe(false);
+    expect(NAME_RE.test('Xiaomi 14 Pro Max')).toBe(false);
+    expect(MODEL_RE.test('23127PN0CC')).toBe(false);
+  });
+
+  it('auth.js locks mine e1 and excludes 14 Pro from chrome clip', () => {
+    expect(auth).toContain('function isXiaomi14ProClient()');
+    expect(auth).toContain('function xiaomi14ProMineE1LockCss()');
+    expect(auth).toContain('function pinXiaomi14ProMineE1Layout()');
+    expect(auth).toContain(':not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas');
+    expect(auth).toContain('overflow:visible !important');
+    expect(auth).toContain('data-xiaomi14pro-mine-e1-lock');
+  });
+
+  it('mine pages first-paint the lock so HyperOS 2 does not flash a blue empty card', () => {
+    [mine, mineV2].forEach((html) => {
+      expect(html).toContain('app-android-xiaomi-14pro');
+      expect(html).toContain('data-xiaomi14pro-mine-firstpaint');
+      expect(html).toContain('23116PN5');
+      expect(html).toContain('overflow:visible!important');
+      expect(html).toContain('html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine');
+    });
+  });
+});

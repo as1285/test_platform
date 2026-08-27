@@ -61,7 +61,9 @@ mustInclude(
     '--mine-top-bleed:0px !important',
     'pinMate60MineShift',
     'transform:none !important',
-    'pinMineE1RpxFromCanvas'
+    'pinMineE1RpxFromCanvas',
+    'xiaomi14ProMineE1LockCss',
+    'pinXiaomi14ProMineE1Layout'
   ],
   'mate60 0-bleed e1 + daiban header'
 );
@@ -436,7 +438,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-mi14pro-e1', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -494,6 +496,26 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn'],
   'auth.js mi14pro inset + back-btn'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'function xiaomi14ProMineE1LockCss()',
+    'function pinXiaomi14ProMineE1Layout()',
+    ':not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas',
+    'data-xiaomi14pro-mine-e1-lock'
+  ],
+  'auth.js xiaomi 14 pro mine e1 lock'
+);
+mustInclude(
+  'frontend/mine.html',
+  ['data-xiaomi14pro-mine-firstpaint', '23116PN5', 'overflow:visible!important'],
+  'mine.html xiaomi 14 pro first-paint'
+);
+mustInclude(
+  'frontend/mine_v2.html',
+  ['data-xiaomi14pro-mine-firstpaint', '23116PN5', 'overflow:visible!important'],
+  'mine_v2.html xiaomi 14 pro first-paint'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -932,7 +954,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260827-cend-sync', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260827-mi14pro-e1', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1079,7 +1101,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260827-cend-sync'],
+  ['auth.js?v=20260827-mi14pro-e1'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
