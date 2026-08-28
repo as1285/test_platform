@@ -278,18 +278,6 @@
             </div>
             <label class="field-label" for="sbdyBase">缴费基数（元）</label>
             <input class="field" type="number" id="sbdyBase" value="4986" step="0.01">
-            <div class="sbdy-zj-only">
-                <div class="grid-2">
-                    <div>
-                        <label class="field-label" for="sbdyPensionPay">养老个人缴费</label>
-                        <input class="field" type="number" id="sbdyPensionPay" value="398.88" step="0.01">
-                    </div>
-                    <div>
-                        <label class="field-label" for="sbdyUnempPay">失业个人缴费</label>
-                        <input class="field" type="number" id="sbdyUnempPay" value="24.93" step="0.01">
-                    </div>
-                </div>
-            </div>
             <div class="sbdy-sz-only" hidden>
                 <label class="field-label" for="sbdyMedicalBase">医保基数（元）</label>
                 <input class="field" type="number" id="sbdyMedicalBase" value="4492" step="0.01">
@@ -333,7 +321,7 @@
     <script>
 window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
     </script>
-    <script src="/js/admin/modules/sbdy-demo.js?v=20260828-zj-head"></script>
+    <script src="/js/admin/modules/sbdy-demo.js?v=20260828-no-pay"></script>
     <script>
 (function () {
     function token() {

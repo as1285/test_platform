@@ -1059,8 +1059,10 @@
         body.company_name = cleanCompanyName(body.company_name);
       }
     }
-    /* 浙江版：多家误写在单框时先拆到分段；有分段则以分段为准 */
+    /* 浙江版：养老/失业个人按各段缴费基数自动算，不再手填统一金额 */
     if (region === 'zj') {
+      delete body.pension_pay;
+      delete body.unemployment_pay;
       promoteJoinedCompanyField();
       body.company_name = cleanCompanyName(val('sbdyCompany'));
       body.credit_code = val('sbdyCredit');

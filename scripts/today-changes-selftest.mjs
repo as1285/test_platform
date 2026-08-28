@@ -937,7 +937,7 @@ mustInclude(
 /* loader cache must point at the latest sbdy-demo bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260828-zj-head'],
+  ['20260828-no-pay'],
   'sbdy-demo loader cache for Beijing layout'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
@@ -1017,7 +1017,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionBj', '20260828-zj-head'],
+  ['sbdyRegionBj', '20260828-no-pay'],
   'sbdy Beijing C-end radio + cache'
 );
 if (
