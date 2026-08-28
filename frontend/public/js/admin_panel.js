@@ -5170,7 +5170,13 @@
                         return;
                     }
                     var html = '';
+                    var sumNameChanges = 0;
+                    var sumTaxModDays = 0;
                     users.forEach(function (u) {
+                        var nameChanges = Number(u.name_change_count) || 0;
+                        var taxModDays = Number(u.tax_mod_days) || 0;
+                        sumNameChanges += nameChanges;
+                        sumTaxModDays += taxModDays;
                         html += '<tr>';
                         html +=
                             '<td class="col-user"><button type="button" class="btn-rename-user" data-u="' +
@@ -5179,8 +5185,8 @@
                             esc(u.username) +
                             '</button></td>';
                         html += '<td>' + esc(u.real_name || '—') + '</td>';
-                        html += '<td>' + esc(String(u.name_change_count || 0)) + '</td>';
-                        html += '<td>' + esc(String(u.tax_mod_days || 0)) + '</td>';
+                        html += '<td>' + esc(String(nameChanges)) + '</td>';
+                        html += '<td>' + esc(String(taxModDays)) + '</td>';
                         html +=
                             '<td>' +
                             (u.is_peer_account
@@ -5202,7 +5208,12 @@
                     });
                     if (dayTotals.length) {
                         html += '<tr>';
-                        html += '<td class="col-user">合计</td><td></td><td></td><td></td><td></td>';
+                        html +=
+                            '<td class="col-user">合计</td><td></td><td>' +
+                            esc(String(sumNameChanges)) +
+                            '</td><td>' +
+                            esc(String(sumTaxModDays)) +
+                            '</td><td></td>';
                         html += '<td>' + esc(String(d.period_tax_edits || 0)) + '</td>';
                         dayTotals.forEach(function (n, i) {
                             var ymd = dates[i] || '';
