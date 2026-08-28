@@ -1476,7 +1476,7 @@
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
                             </div>
-                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江版只采用浙江税务机关记录，外省记录不计入缴费月；若指定查询起止月，证明括号内保留该查询区间，但“前 N 个月”按浙江实际缴费月数显示。</p>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江版只采用浙江税务机关记录，外省记录不计入缴费月。抬头按官方写「参保缴费」，查询窗不足 24 个月时向前补满，「出具证明前24个月」按查询窗显示。</p>
                         </div>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
@@ -1491,7 +1491,7 @@
 公司名称：杭州千雨千寻文化科技有限公司
 税号：91330102MA7E2YNM2R
 写参保缴费 不要停保"></textarea>
-                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>。默认<strong>正常参保</strong>并自动生成缴费记录。</p>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>
@@ -1552,7 +1552,7 @@
                             </div>
                             <div class="sbdy-zj-js" id="sbdySegmentsWrap">
                                 <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
-                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>；浙江版缴费明细按月显示各自单位编号与参保地；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」。预填 2 家及以上会自动填入下方分段。</p>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>。浙江版缴费明细按月用各段自己的<strong>缴费基数</strong>算养老/失业个人缴费，不再让每家公司共用上面那一组统一基数和金额；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」。预填 2 家及以上会自动填入下方分段。</p>
                                 <div id="sbdySegments"></div>
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
                             </div>
@@ -1571,11 +1571,11 @@
                                     <input type="number" id="sbdyBase" value="4986" step="0.01">
                                 </div>
                                 <div class="sbdy-zj-only">
-                                    <label for="sbdyPensionPay">养老个人缴费</label>
+                                    <label for="sbdyPensionPay">养老个人缴费（按上方基数；有分段则按各段基数折算）</label>
                                     <input type="number" id="sbdyPensionPay" value="398.88" step="0.01">
                                 </div>
                                 <div class="sbdy-zj-only">
-                                    <label for="sbdyUnempPay">失业个人缴费</label>
+                                    <label for="sbdyUnempPay">失业个人缴费（按上方基数；有分段则按各段基数折算）</label>
                                     <input type="number" id="sbdyUnempPay" value="24.93" step="0.01">
                                 </div>
                                 <div class="sbdy-sz-only" hidden>
@@ -1588,19 +1588,19 @@
                                 <div class="form-row flex-wrap gap-10 mt-8">
                                     <div class="sbdy-zj-only">
                                         <label for="sbdyStatusPension">养老保险状态</label>
-                                        <input type="text" id="sbdyStatusPension" value="正常参保">
+                                        <input type="text" id="sbdyStatusPension" value="参保缴费">
                                     </div>
                                     <div class="sbdy-zj-only">
                                         <label for="sbdyStatusMedical">医疗保险状态</label>
-                                        <input type="text" id="sbdyStatusMedical" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
+                                        <input type="text" id="sbdyStatusMedical" value="参保缴费" placeholder="如：参保缴费 / 暂停缴费">
                                     </div>
                                     <div class="sbdy-zj-only">
                                         <label for="sbdyStatusInjury">工伤保险状态</label>
-                                        <input type="text" id="sbdyStatusInjury" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
+                                        <input type="text" id="sbdyStatusInjury" value="参保缴费" placeholder="如：参保缴费 / 暂停缴费">
                                     </div>
                                     <div class="sbdy-zj-only">
                                         <label for="sbdyStatusUnemp">失业保险状态</label>
-                                        <input type="text" id="sbdyStatusUnemp" value="正常参保">
+                                        <input type="text" id="sbdyStatusUnemp" value="参保缴费">
                                     </div>
                                     <div>
                                         <label for="sbdyPrintDate">打印时间文案</label>

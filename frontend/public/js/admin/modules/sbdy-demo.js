@@ -583,7 +583,7 @@
     var unemp = Math.round(base * (region === 'sz' ? 0.002 : 0.005) * 100) / 100;
 
     var active = wantsActiveStatus(text);
-    var status = active ? '正常参保' : '暂停缴费';
+    var status = active ? (region === 'zj' ? '参保缴费' : '正常参保') : '暂停缴费';
 
     if (!name) return { error: '模版中未识别到姓名' };
     if (!period || !period.start || !period.end) {
@@ -1036,10 +1036,10 @@
       medical_base: num('sbdyMedicalBase', num('sbdyBase', 4492)),
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
-      status_pension: val('sbdyStatusPension') || '正常参保',
-      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || '正常参保',
-      status_injury: val('sbdyStatusInjury') || '正常参保',
-      status_unemployment: val('sbdyStatusUnemp') || '正常参保',
+      status_pension: val('sbdyStatusPension') || (region === 'zj' ? '参保缴费' : '正常参保'),
+      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || (region === 'zj' ? '参保缴费' : '正常参保'),
+      status_injury: val('sbdyStatusInjury') || (region === 'zj' ? '参保缴费' : '正常参保'),
+      status_unemployment: val('sbdyStatusUnemp') || (region === 'zj' ? '参保缴费' : '正常参保'),
       print_date: val('sbdyPrintDate')
     };
     /* 武汉版：打印时间始终用当天，覆盖表单里可能残留的示例日期 */
@@ -1384,7 +1384,7 @@
     setField('sbdyBase', sample.base);
     setField('sbdyPensionPay', sample.pension);
     setField('sbdyUnempPay', sample.unemp);
-    var st = sample.name === '李晓晴' ? '暂停缴费' : '正常参保';
+    var st = sample.name === '李晓晴' ? '暂停缴费' : '参保缴费';
     setField('sbdyStatusPension', st);
     setField('sbdyStatusMedical', st);
     setField('sbdyStatusInjury', st);

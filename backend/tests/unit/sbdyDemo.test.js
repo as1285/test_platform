@@ -100,8 +100,84 @@ describe('sbdyDemo', () => {
     expect(p.company_name).toBe('杭州圆趣企业运营管理有限公司');
     expect(p.company_display).toBe('杭州圆趣企业运营管理有限公司（91330109MAETP27PX2）');
     expect(p.company_display).not.toContain('华鲜');
-    expect(p.period_start).toBe('2025-04');
+    expect(p.contribution_period_start).toBe('2025-04');
+    expect(p.contribution_period_end).toBe('2026-08');
+    expect(p.period_start).toBe('2024-09');
     expect(p.period_end).toBe('2026-08');
+    expect(p.status_pension).toBe('参保缴费');
+  });
+
+  it('scales Zhejiang personal pays by each segment base using the header rate', () => {
+    const p = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      base_amount: 4986,
+      pension_pay: 398,
+      unemployment_pay: 25,
+      segments: [
+        {
+          company_name: '杭州华鲜高新技术有限公司',
+          credit_code: '91330110MADG8JH092',
+          area: '余杭区',
+          base_amount: 5000,
+          period_start: '2025-04',
+          period_end: '2026-06'
+        },
+        {
+          company_name: '杭州圆趣企业运营管理有限公司',
+          credit_code: '91330109MAETP27PX2',
+          area: '萧山区',
+          base_amount: 4986,
+          period_start: '2026-07',
+          period_end: '2026-07'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.months[0].pension_base).toBe(5000);
+    expect(p.months[0].pension_pay).toBe(399.12);
+    expect(p.months[0].unemp_pay).toBe(25.07);
+    const last = p.months[p.months.length - 1];
+    expect(last.pension_base).toBe(4986);
+    expect(last.pension_pay).toBe(398);
+    expect(last.unemp_pay).toBe(25);
+  });
+
+  it('prints official Zhejiang header: 参保缴费 and last 24 months', () => {
+    const p = normalizePayload({
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      status_pension: '正常参保',
+      status_injury: '正常参保',
+      status_unemployment: '正常参保',
+      segments: [
+        {
+          company_name: '杭州华鲜高新技术有限公司',
+          credit_code: '91330110MADG8JH092',
+          area: '余杭区',
+          base_amount: 5000,
+          period_start: '2025-04',
+          period_end: '2026-06'
+        },
+        {
+          company_name: '杭州圆趣企业运营管理有限公司',
+          credit_code: '91330109MAETP27PX2',
+          area: '萧山区',
+          base_amount: 4986,
+          period_start: '2026-07',
+          period_end: '2026-07'
+        }
+      ]
+    });
+    expect(p.period_start).toBe('2024-08');
+    expect(p.period_end).toBe('2026-07');
+    expect(p.contribution_period_start).toBe('2025-04');
+    expect(p.status_pension).toBe('参保缴费');
+    const html = renderCertHtml(p, { show_url: 'https://example.test/show.pdf' });
+    expect(html).toContain('出具证明前24个月缴费情况（2024年08月-2026年07月）');
+    expect(html).toContain('参保缴费');
+    expect(html).not.toContain('正常参保');
+    expect(html).not.toContain('出具证明前16个月缴费情况');
   });
 
   it('keeps the selected window and labels its full Zhejiang month span', () => {

@@ -1319,9 +1319,25 @@ function normalizeSegments(raw, defaults) {
   return out;
 }
 
+/** 用上方「缴费基数 + 养老/失业个人」折出比例，再乘各公司自己的基数 */
+function zjPersonalPayRates(baseAmt, pensionPay, unempPay) {
+  var base = Number(baseAmt);
+  var p = Number(pensionPay);
+  var u = Number(unempPay);
+  return {
+    pension: base > 0 && isFinite(p) && p >= 0 ? p / base : 0.08,
+    unemp: base > 0 && isFinite(u) && u >= 0 ? u / base : 0.005
+  };
+}
+
 /** 按分段逐月构建：每月取覆盖它的分段的 单位编号/参保地/基数（重叠时较晚起的段覆盖） */
-function buildMonthRowsFromSegments(segments) {
+function buildMonthRowsFromSegments(segments, rates) {
   if (!segments || !segments.length) return [];
+  rates = rates || {};
+  var pensionRate = Number(rates.pension);
+  var unempRate = Number(rates.unemp);
+  if (!isFinite(pensionRate) || pensionRate < 0) pensionRate = 0.08;
+  if (!isFinite(unempRate) || unempRate < 0) unempRate = 0.005;
   var startN = null;
   var endN = null;
   segments.forEach(function (s) {
@@ -1351,11 +1367,11 @@ function buildMonthRowsFromSegments(segments) {
         unit_code: seg.credit_code || '',
         area: seg.area || '',
         pension_base: base,
-        pension_pay: round2(base * 0.08),
+        pension_pay: round2(base * pensionRate),
         pension_status: '已到账',
         unemp_area: seg.area || '',
         unemp_base: base,
-        unemp_pay: round2(base * 0.005),
+        unemp_pay: round2(base * unempRate),
         unemp_status: '已到账',
         remark: ''
       });
@@ -1577,7 +1593,60 @@ function normalizeZjStatusLabel(value, fallback) {
   if (status === '暂停缴费（中断）' || status === '中断缴费') {
     return '暂停缴费';
   }
+  /* 官方抬头写「参保缴费」，旧表单/旧证书的「正常参保」按这个出 */
+  if (!status || status === '正常参保') {
+    return '参保缴费';
+  }
   return status;
+}
+
+function addMonthsYm(ym, delta) {
+  var p = parseYm(ym);
+  if (!p) return '';
+  var n = p.y * 12 + (p.m - 1) + Number(delta || 0);
+  var y = Math.floor(n / 12);
+  var m = (n % 12) + 1;
+  if (y < 1) return '';
+  return y + '-' + pad2(m);
+}
+
+/** 浙江官方抬头：状态用「参保缴费」，查询窗不足 24 个月时向前补满 */
+function applyZjOfficialHeader(payload) {
+  if (!payload || !isZjStylePayload(payload)) return payload;
+  ['status_pension', 'status_medical', 'status_injury', 'status_unemployment'].forEach(function (key) {
+    payload[key] = normalizeZjStatusLabel(payload[key], payload[key] || '参保缴费');
+  });
+  var endYm = payload.period_end;
+  if (!parseYm(endYm)) {
+    var months = Array.isArray(payload.months) ? payload.months : [];
+    var last = months.length ? months[months.length - 1] : null;
+    if (last && last.year != null && last.month != null) {
+      endYm = last.year + '-' + pad2(last.month);
+    }
+  }
+  if (!parseYm(endYm)) return payload;
+  var span = zjPeriodSpanMonths(
+    { period_start: payload.period_start, period_end: endYm },
+    0
+  );
+  if (span >= 24) {
+    if (!payload.period_label) {
+      var keptA = parseYm(payload.period_start);
+      var keptB = parseYm(endYm);
+      if (keptA && keptB) {
+        payload.period_label = formatYmCn(keptA.y, keptA.m) + '-' + formatYmCn(keptB.y, keptB.m);
+      }
+    }
+    return payload;
+  }
+  var startYm = addMonthsYm(endYm, -23);
+  if (!startYm) return payload;
+  payload.period_start = startYm;
+  payload.period_end = endYm;
+  var a = parseYm(startYm);
+  var b = parseYm(endYm);
+  payload.period_label = formatYmCn(a.y, a.m) + '-' + formatYmCn(b.y, b.m);
+  return payload;
 }
 
 function normalizePayload(body) {
@@ -1633,18 +1702,18 @@ function normalizePayload(body) {
   if (!isFinite(pensionPay)) pensionPay = Math.round(baseAmt * 0.08 * 100) / 100;
   if (!isFinite(unempPay)) unempPay = Math.round(baseAmt * 0.005 * 100) / 100;
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
-  var statusPension = normalizeZjStatusLabel(b.status_pension, '正常参保').substring(0, 32);
+  var statusPension = normalizeZjStatusLabel(b.status_pension, '参保缴费').substring(0, 32);
   var statusMedical = normalizeZjStatusLabel(
     b.status_medical || b.status_injury,
-    '正常参保'
+    '参保缴费'
   ).substring(0, 32);
   var statusInjury = normalizeZjStatusLabel(
     b.status_injury || b.status_medical,
-    '正常参保'
+    '参保缴费'
   ).substring(0, 32);
   var statusUnemp = normalizeZjStatusLabel(
     b.status_unemployment,
-    '正常参保'
+    '参保缴费'
   ).substring(0, 32);
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
@@ -1694,7 +1763,10 @@ function normalizePayload(body) {
           '」起月相同，请按实际任职时间错开各段起止月'
       };
     }
-    var segMonths = buildMonthRowsFromSegments(segments);
+    var segMonths = buildMonthRowsFromSegments(
+      segments,
+      zjPersonalPayRates(baseAmt, pensionPay, unempPay)
+    );
     if (!segMonths.length) {
       return { error: '分段任职的起止月无效' };
     }
@@ -1704,7 +1776,7 @@ function normalizePayload(body) {
     /*
      * 分段决定实际缴费月份；用户指定的更大查询区间只用于证明标题。
      * 例如查询 2024-08～2026-07、浙江实际缴费 2025-04～2026-07：
-     * 明细保留 16 行，标题显示“前16个月（2024年08月-2026年07月）”。
+     * 明细保留 16 行，标题按官方抬头显示“前24个月（2024年08月-2026年07月）”。
      */
     var displayPs = segPs;
     var displayPe = segPe;
@@ -1741,7 +1813,7 @@ function normalizePayload(body) {
       });
     }
     if (!currentSeg) currentSeg = segments[segments.length - 1];
-    return {
+    return applyZjOfficialHeader({
       name: name,
       id_number: idNumber,
       gender: gender,
@@ -1773,7 +1845,7 @@ function normalizePayload(body) {
       months: segMonths,
       region: 'zj',
       layout: 'zj_official_v2'
-    };
+    });
   }
   if (!parseYm(periodStart) || !parseYm(periodEnd)) {
     return { error: '缴费起止月份格式应为 YYYY-MM' };
@@ -1803,7 +1875,7 @@ function normalizePayload(body) {
     months: months,
     segments: []
   });
-  return {
+  return applyZjOfficialHeader({
     name: name,
     id_number: idNumber,
     gender: gender,
@@ -1829,7 +1901,7 @@ function normalizePayload(body) {
     months: months,
     region: 'zj',
     layout: 'zj_official_v2'
-  };
+  });
 }
 
 function publicOriginFromReq(req) {
@@ -2762,6 +2834,7 @@ function renderCertHtml(payload, links, opts) {
   if (p.region === 'sz' || p.layout === 'sz_official_v1') {
     return renderSzCertHtml(p, links, opts);
   }
+  p = applyZjOfficialHeader(Object.assign({}, payload || {}));
   var months = migrateMonthsForShow(p);
   var verifyUrl = (links && links.verify_url) || '';
   /* 二维码扫码直达 PDF 样例页（与纸质证明一致） */
@@ -3221,11 +3294,9 @@ async function handlePublicSbdyDemoShow(req, res) {
         }
       }
     }
-    /* 浙江版历史 payload 若头部拼了多家单位，展示/出证时只保留最近一家 */
+    /* 浙江版历史 payload：抬头按官方「参保缴费 + 近24个月」；多家单位只留最近一家 */
     if (payload && isZjStylePayload(payload)) {
-      ['status_pension', 'status_medical', 'status_injury', 'status_unemployment'].forEach(function (key) {
-        if (payload[key]) payload[key] = normalizeZjStatusLabel(payload[key]);
-      });
+      applyZjOfficialHeader(payload);
       var fixedDisp = companyDisplayOf(payload);
       if (fixedDisp) {
         payload.company_display = fixedDisp;
