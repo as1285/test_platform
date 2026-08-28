@@ -377,9 +377,23 @@ function resolveLegacyCompanyFromForm() {
 function sumEmploymentBonusTax(employments) {
     var sum = 0;
     (employments || []).forEach(function (emp) {
-        if (emp.yearEndBonus > 0) {
-            sum = round2(sum + yearEndBonusTaxSeparate(emp.yearEndBonus));
+        var list = [];
+        if (emp && Array.isArray(emp.bonuses) && emp.bonuses.length) {
+            list = emp.bonuses;
+        } else {
+            if (emp && emp.yearEndBonus > 0) {
+                list.push({ amount: emp.yearEndBonus });
+            }
+            (emp && emp.extraBonuses ? emp.extraBonuses : []).forEach(function (b) {
+                list.push(b);
+            });
         }
+        list.forEach(function (b) {
+            var amt = round2(parseFloat(b && (b.amount != null ? b.amount : b.yearEndBonus)) || 0);
+            if (amt > 0) {
+                sum = round2(sum + yearEndBonusTaxSeparate(amt));
+            }
+        });
     });
     return sum;
 }
@@ -1657,8 +1671,6 @@ function applyOneTaxPasteEmpToRow(row, emp) {
         salary = incomes[Math.floor(incomes.length / 2)] || incomes[0] || 0;
     }
     var bonuses = Array.isArray(emp.bonuses) ? emp.bonuses.slice() : [];
-    var primary = bonuses.length ? bonuses[0] : null;
-    var extra = bonuses.length > 1 ? bonuses.slice(1) : [];
     var pension = emp.pension != null ? emp.pension : 0;
     var medical = emp.medical != null ? emp.medical : 0;
     var unemployment = emp.unemployment != null ? emp.unemployment : 0;
@@ -1687,14 +1699,12 @@ function applyOneTaxPasteEmpToRow(row, emp) {
         fund: fund,
         special: 0,
         deductOpen: hasSpecials,
-        yearEndBonus: primary ? primary.amount : 0,
-        bonusYear: primary ? primary.year : '',
-        bonusMonth: primary ? primary.month : 12,
+        bonuses: bonuses.map(function (b) {
+            return { amount: b.amount, year: b.year, month: b.month };
+        }),
+        bonusOpen: bonuses.length > 0,
         monthSalaryMap: monthSalaryMap,
         monthTaxMap: monthTaxMap
-    });
-    row._extraBonuses = extra.map(function (b) {
-        return { year: b.year, month: b.month, amount: b.amount };
     });
     updateBatchEmpMonthSalaryBadge(row);
 }

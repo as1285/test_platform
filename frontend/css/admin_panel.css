@@ -2290,6 +2290,29 @@ tr.users-detail-row > td {
     padding-top: var(--admin-space-3);
     border-top: 1px dashed var(--admin-border-dashed);
 }
+.batch-emp-bonus-list { display: flex; flex-direction: column; gap: 10px; }
+.batch-emp-bonus-item {
+    padding: 10px 12px 4px;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: var(--admin-surface);
+}
+.batch-emp-bonus-item-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.batch-emp-bonus-item-title { font-size: 12px; font-weight: 600; color: var(--admin-text-muted); }
+.batch-emp-bonus-remove {
+    background: transparent;
+    border: none;
+    color: var(--admin-danger, #dc2626);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+.batch-emp-bonus-add { margin-top: 8px; }
 
 /* Align KPI card typography */
 .user-data-stat-card .ud-label,

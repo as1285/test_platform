@@ -11,7 +11,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260827-peer-banner">
+    <link rel="stylesheet" href="/css/consult.css?v=20260828-multi-bonus">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260827-cend-sync" defer></script>
 </head>
@@ -276,7 +276,7 @@
                     </div>
                 </div>
                 <div id="batchTaxFormSection" class="batch-tax-form-section" hidden>
-                <p class="batch-hint" id="batchTaxCardHint">只需填公司、起止年月和月薪，再点「一键生成」。税号、社保、年终奖可按需展开。</p>
+                <p class="batch-hint" id="batchTaxCardHint">只需填公司、起止年月和月薪，再点「一键生成」。税号、社保、年终奖可按需展开；一年可填多笔年终奖。</p>
                 <div class="batch-tax-empty" id="batchTaxEmptyState" hidden></div>
                 <div class="batch-tax-toolbar" id="batchTaxToolbar">
                     <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="openTaxStartPath('example')">示例填写</button>
@@ -420,25 +420,35 @@
                         </div>
                         <div class="batch-emp-bonus-meta">
                             <button type="button" class="batch-emp-bonus-toggle" aria-expanded="false">
-                                <span>年终奖（可选）</span>
+                                <span>年终奖（可选，可多笔）</span>
                                 <span class="batch-emp-bonus-toggle-icon" aria-hidden="true">▼</span>
                             </button>
                             <div class="batch-emp-bonus-body">
-                                <p class="batch-emp-bonus-hint">单独计税并生成独立记录；无年终奖可忽略本项。</p>
-                                <div class="form-group">
-                                    <label>年终奖（元）</label>
-                                    <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>年终奖归属年度</label>
-                                        <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>归属月份（1–12 月）</label>
-                                        <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
-                                    </div>
-                                </div>
+                                <p class="batch-emp-bonus-hint">单独计税并各生成一条记录。同一年可填多笔（请用不同月份）；无年终奖可忽略。</p>
+                                <div class="batch-emp-bonus-list"></div>
+                                <button type="button" class="batch-emp-bonus-add">再加一笔年终奖</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template id="batchEmpBonusItemTpl">
+                    <div class="batch-emp-bonus-item">
+                        <div class="batch-emp-bonus-item-head">
+                            <span class="batch-emp-bonus-item-title">年终奖</span>
+                            <button type="button" class="batch-emp-bonus-remove">删除这笔</button>
+                        </div>
+                        <div class="form-group">
+                            <label>年终奖（元）</label>
+                            <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>年终奖归属年度</label>
+                                <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
+                            </div>
+                            <div class="form-group">
+                                <label>归属月份（1–12 月）</label>
+                                <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
                             </div>
                         </div>
                     </div>
@@ -882,8 +892,8 @@
     <script src="/js/watermark.js?v=20260827-cend-sync"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260827-peer-banner"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260827-peer-fee"></script>
+    <script defer src="/js/consult-core.js?v=20260828-multi-bonus"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260828-multi-bonus"></script>
     <script defer src="/js/consult-records.js?v=20260827-tax-edit-fee"></script>
 </body>
 </html>

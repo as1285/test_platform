@@ -762,6 +762,12 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
 #panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-body { display: block; }
 #panel-records .batch-emp-bonus-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
 #panel-records .batch-emp-bonus-meta { margin-top: 4px; }
+#panel-records .batch-emp-bonus-list { display: flex; flex-direction: column; gap: 10px; }
+#panel-records .batch-emp-bonus-item { padding: 10px 10px 4px; border: 1px solid var(--color-border-light); border-radius: 10px; background: var(--color-surface-alt, #f8fafc); }
+#panel-records .batch-emp-bonus-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#panel-records .batch-emp-bonus-item-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+#panel-records .batch-emp-bonus-remove { background: transparent; border: none; color: var(--color-danger); font-size: 12px; padding: 2px 4px; cursor: pointer; }
+#panel-records .batch-emp-bonus-add { display: block; width: 100%; margin: 8px 0 2px; padding: 8px 10px; font-size: 13px; color: var(--color-primary); background: transparent; border: 1px dashed var(--color-primary-border, #93c5fd); border-radius: 8px; cursor: pointer; }
 
 /* 年月输入 */
 #panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }

@@ -806,7 +806,7 @@ mustInclude(
 mustInclude('frontend/consult.html', ['>激活页面<'], 'consult tab 激活页面');
 mustInclude(
   'frontend/consult.html',
-  ['id="cardShebaoPhoto" hidden', '20260827-peer-banner'],
+  ['id="cardShebaoPhoto" hidden', '20260828-multi-bonus'],
   'consult shebao upload entry hidden'
 );
 mustInclude(
@@ -1144,8 +1144,18 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['20260827-peer-fee', 'consult-batch-tax.js?v=20260827-peer-fee'],
-  'consult no-bili-gate cache'
+  ['20260828-multi-bonus', 'consult-batch-tax.js?v=20260828-multi-bonus', '再加一笔年终奖', 'batchEmpBonusItemTpl'],
+  'consult multi-bonus cache'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'batch-emp-bonus-item'],
+  'admin multi-bonus form'
+);
+mustInclude(
+  'frontend/public/js/consult-batch-tax.js',
+  ['collectBatchEmpBonusesFromRow', 'setBatchEmpBonusesOnRow', 'function employmentBonusList', 'assignBonusRecordsToPayloads'],
+  'batch tax multi-bonus helpers'
 );
 if (!read('frontend/consult.html').includes('为什么生成前要分享到 B 站')) {
   ok('consult FAQ without bili share gate');

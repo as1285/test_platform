@@ -111,8 +111,8 @@
    *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260827-peer-banner',
-      '/js/consult-batch-tax.js?v=20260827-peer-fee',
+      '/js/consult-core.js?v=20260828-multi-bonus',
+      '/js/consult-batch-tax.js?v=20260828-multi-bonus',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

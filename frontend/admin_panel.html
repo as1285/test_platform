@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260827-menu-sync">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260828-multi-bonus">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -1391,19 +1391,30 @@
                             <span class="batch-emp-month-salary-badge" hidden></span>
                         </div>
                         <div class="batch-emp-bonus-block admin-divider-dashed">
+                            <p class="hint">年终奖单独计税，一年可填多笔（请用不同月份）。</p>
+                            <div class="batch-emp-bonus-list"></div>
+                            <button type="button" class="btn btn-default btn-sm batch-emp-bonus-add">再加一笔年终奖</button>
+                        </div>
+                    </div>
+                </template>
+                <template id="batchEmpBonusItemTpl">
+                    <div class="batch-emp-bonus-item">
+                        <div class="batch-emp-bonus-item-head">
+                            <span class="batch-emp-bonus-item-title">年终奖</span>
+                            <button type="button" class="batch-emp-bonus-remove">删除这笔</button>
+                        </div>
+                        <div class="form-group">
+                            <label>年终奖（元）</label>
+                            <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
-                                <label>年终奖（元，可选；单独计税并生成独立记录）</label>
-                                <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
+                                <label>年终奖归属年度</label>
+                                <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>年终奖归属年度</label>
-                                    <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
-                                </div>
-                                <div class="form-group">
-                                    <label>归属月份（1–12 月）</label>
-                                    <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
-                                </div>
+                            <div class="form-group">
+                                <label>归属月份（1–12 月）</label>
+                                <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
                             </div>
                         </div>
                     </div>
