@@ -226,6 +226,44 @@
     return isHuaweiMate60Client();
   }
 
+  /** 首帧前只打安全区 class，避免等大段 OEM 样式时顶栏先歪 */
+  function markViewportChromeClasses() {
+    try {
+      var root = document.documentElement;
+      var ua = '';
+      try {
+        ua = String(navigator.userAgent || '');
+      } catch (eUa) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+      } catch (eStoredUa) {}
+      var ios =
+        /iPhone|iPad|iPod/i.test(ua) ||
+        (typeof navigator.platform === 'string' &&
+          navigator.platform === 'MacIntel' &&
+          navigator.maxTouchPoints > 1);
+      var android =
+        !ios &&
+        (/Android/i.test(ua) ||
+          /HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(ua) ||
+          /Mate\s*60|ALN-AL/i.test(ua));
+      if (android) {
+        root.classList.add('app-android-client');
+        root.classList.add('app-top-safe-shell');
+      }
+      if (ios) {
+        root.classList.add('app-ios-client');
+        root.classList.add('app-top-safe-shell');
+      }
+    } catch (eMark) {}
+  }
+  try {
+    window.markViewportChromeClasses = markViewportChromeClasses;
+  } catch (eExposeMark) {}
+
   function getAndroidMajorVersion() {
     var m = String(navigator.userAgent || '').match(/Android\s+(\d+)/i);
     return m ? parseInt(m[1], 10) || 0 : 0;
@@ -4897,20 +4935,58 @@
   }
 
   showIosWebClipLaunchSplash();
-  setupMobileStatusBar();
-  syncAppShellStatusbarTop();
+  /* 首屏只打安全区 class，大段 OEM 样式放到首帧后再跑，避免挡住安卓首绘 */
+  markViewportChromeClasses();
+  function runDeferredMobileChrome() {
+    setupMobileStatusBar();
+    syncAppShellStatusbarTop();
+    applyMinePageChrome();
+    applyDaibanBanchaPageChrome();
+    applyMessagePageChrome();
+    applyShouyePageChrome();
+    applyIosStandaloneEntryChrome();
+    applyIPhone16ProPageChrome();
+    applyImmersiveNotchWhitePageChrome();
+  }
+  function scheduleDeferredMobileChrome() {
+    if (window.__authDeferredChromeScheduled) {
+      return;
+    }
+    window.__authDeferredChromeScheduled = 1;
+    var ran = false;
+    function run() {
+      if (ran) {
+        return;
+      }
+      ran = true;
+      try {
+        runDeferredMobileChrome();
+      } catch (eChrome) {}
+    }
+    function afterPaint(cb) {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(cb);
+        });
+      } else {
+        setTimeout(cb, 50);
+      }
+    }
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(function () {
+        afterPaint(run);
+      }, { timeout: 80 });
+    } else {
+      afterPaint(run);
+    }
+    setTimeout(run, 80);
+  }
+  scheduleDeferredMobileChrome();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bindIosTopBarDiagnostics);
   } else {
     bindIosTopBarDiagnostics();
   }
-  applyMinePageChrome();
-  applyDaibanBanchaPageChrome();
-  applyMessagePageChrome();
-  applyShouyePageChrome();
-  applyIosStandaloneEntryChrome();
-  applyIPhone16ProPageChrome();
-  applyImmersiveNotchWhitePageChrome();
   try {
   } catch (eMate60Boot) {}
   if (document.readyState === 'loading') {
@@ -7347,6 +7423,7 @@
     });
   }
 
+  window.markViewportChromeClasses = markViewportChromeClasses;
   window.isCordovaTaxAppShell = isCordovaTaxAppShell;
   window.isIosStandaloneApp = isIosStandaloneApp;
   window.isInstalledAppClient = isInstalledAppClient;
@@ -7455,8 +7532,21 @@
       s.defer = true;
       document.head.appendChild(s);
     }
-    /* 首页：空闲后再拉 ~90KB 引导脚本，避免与首屏大图抢主线程 */
-    if (currentPageName() === 'shouye.html') {
+    /* 首页 / 安卓主 Tab：空闲后再拉 ~90KB 引导脚本，避免与首屏抢主线程 */
+    var primaryTabs = {
+      'shouye.html': true,
+      'mine.html': true,
+      'daiban.html': true,
+      'bancha.html': true,
+      'message.html': true
+    };
+    var androidLike = false;
+    try {
+      androidLike = /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+        String(navigator.userAgent || '')
+      );
+    } catch (eUaCg) {}
+    if (currentPageName() === 'shouye.html' || (androidLike && primaryTabs[currentPageName()])) {
       if (typeof requestIdleCallback === 'function') {
         requestIdleCallback(function () {
           appendCg();
@@ -7529,7 +7619,7 @@
     if (currentPageName() === 'admin_panel.html') return;
     if (document.querySelector('script[data-fast-nav-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/fast-nav.js?v=20260811-bfcache-hide';
+    s.src = '/js/fast-nav.js?v=20260828-android-load';
     s.setAttribute('data-fast-nav-js', '1');
     s.async = true;
     document.head.appendChild(s);

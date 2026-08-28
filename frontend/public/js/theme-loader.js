@@ -268,7 +268,21 @@
     }
   }
 
+  function isAndroidLikeWebView() {
+    try {
+      return /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+        String(navigator.userAgent || '')
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
   function prefetchBottomNavPages() {
+    /* 安卓 / 鸿蒙：进页不预取底栏其它页，主题色逻辑不动 */
+    if (isAndroidLikeWebView()) {
+      return;
+    }
     var pages = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
     var here = '';
     try {

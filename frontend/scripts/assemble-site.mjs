@@ -24,7 +24,7 @@ const APP_ASSETS = [
 ];
 
 /** 混淆关键业务脚本（不改 window 全局名）；体积大的管理端只做 minify。
- * auth.js / conversion-guide.js 为登录后关键路径，强混淆易在部分环境运行期崩溃，仅 minify。
+ * auth.js / auth-boot.js / conversion-guide.js 为登录后关键路径，强混淆易在部分环境运行期崩溃，仅 minify。
  */
 const OBFUSCATE_REL = new Set([
   'js/app/ui.js',
@@ -236,6 +236,10 @@ function shellSnippet(manifest) {
 function injectSiteConfig(html) {
   if (/\/js\/site-config\.js/i.test(html)) return html;
   const tag = '<script src="/js/site-config.js"></script>';
+  const bootRe = /(<script[^>]*\/js\/auth-boot\.js[^>]*><\/script>)/i;
+  if (bootRe.test(html)) {
+    return html.replace(bootRe, `${tag}\n    $1`);
+  }
   const authRe = /(<script[^>]*\/js\/auth\.js[^>]*><\/script>)/i;
   if (authRe.test(html)) {
     return html.replace(authRe, `${tag}\n    $1`);

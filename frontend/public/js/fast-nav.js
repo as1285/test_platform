@@ -11,9 +11,10 @@
 
   var TAB_PAGES = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
   var WARM_JS = [
-    '/js/auth.js?v=20260821-home-perf2',
+    '/js/auth-boot.js?v=20260828-android-load',
+    '/js/auth.js?v=20260828-android-load',
     '/js/page-loading.js?v=20260824-skip-hide',
-    '/js/theme-loader.js?v=20260720-nav-speed',
+    '/js/theme-loader.js?v=20260828-android-load',
     '/js/toast-duration.js?v=20260529-toast-3s'
   ];
   var warmed = Object.create(null);
@@ -141,7 +142,21 @@
   document.addEventListener('pointerdown', onIntent, true);
   document.addEventListener('touchstart', onIntent, { capture: true, passive: true });
 
+  function isAndroidLikeWebView() {
+    try {
+      return /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+        String(navigator.userAgent || '')
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
   function start() {
+    /* 安卓 / 鸿蒙：进页不预取其它 Tab，避免和首屏大图抢网；按下仍走 onIntent */
+    if (isAndroidLikeWebView()) {
+      return;
+    }
     warmCriticalAssets();
     installSpeculationRules();
   }

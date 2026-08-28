@@ -498,7 +498,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260828-vivo-x90', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260828-android-load', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -1054,7 +1054,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260828-vivo-x90', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260828-android-load', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 mustInclude(
@@ -1064,7 +1064,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260828-vivo-x90'],
+  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260828-android-load'],
   'shuiming_result vivo X90 first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1221,8 +1221,48 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260828-vivo-x90'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-load'],
   'install_guide auth cache for skip-hide'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'function markViewportChromeClasses()',
+    'function scheduleDeferredMobileChrome()',
+    'runDeferredMobileChrome',
+    "androidLike && primaryTabs[currentPageName()]",
+    '20260828-android-load',
+  ],
+  'auth.js defer OEM chrome after first paint'
+);
+mustInclude(
+  'frontend/public/js/auth-boot.js',
+  ['function getToken()', 'function isPublicPage()', 'window.authFetch', 'markViewportChromeClasses', 'buildLoginPageUrl'],
+  'auth-boot sync APIs for deferred auth.js'
+);
+mustInclude(
+  'frontend/public/js/fast-nav.js',
+  ['function isAndroidLikeWebView()', '/* 安卓 / 鸿蒙：进页不预取其它 Tab', 'pointerdown', 'touchstart'],
+  'fast-nav skip android idle prefetch'
+);
+mustInclude(
+  'frontend/public/js/theme-loader.js',
+  ['function isAndroidLikeWebView()', '/* 安卓 / 鸿蒙：进页不预取底栏其它页'],
+  'theme-loader skip android nav prefetch'
+);
+mustInclude(
+  'frontend/shouye.html',
+  [
+    'auth-boot.js?v=20260828-android-load',
+    'auth.js?v=20260828-android-load" defer',
+    'ahead.png?v=20260828-android-load',
+  ],
+  'shouye auth-boot + compressed ahead'
+);
+mustInclude(
+  'frontend/mine.html',
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-load" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
   'frontend/shouye.html',
@@ -1463,6 +1503,7 @@ mustInclude(
   const FROZEN_PAGES = new Set(['mine_mate60_aug12.html', 'admin_panel.html', 'admin_login.html']);
   const SHARED_SCRIPTS = [
     'auth',
+    'auth-boot',
     'watermark',
     'theme-loader',
     'browser-install-prompt',

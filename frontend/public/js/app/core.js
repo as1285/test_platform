@@ -4,8 +4,13 @@
  */
 (function (global) {
   function pick(name, fallback) {
-    if (typeof global[name] === 'function') return global[name];
-    return fallback;
+    return function () {
+      var fn = global[name];
+      if (typeof fn === 'function') {
+        return fn.apply(this, arguments);
+      }
+      return fallback.apply(this, arguments);
+    };
   }
 
   var ui = global.TaxAppUI || {
