@@ -274,6 +274,12 @@ app.post(
   h.handleAdminUserRenameFeeExempt
 );
 app.post(
+  '/api/admin/user-agent-flag',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserAgentFlag
+);
+app.post(
   '/api/admin/user-lizhi-cert-unlock',
   mw.requireAdminAuth,
   mw.requireAdminMenu('users'),

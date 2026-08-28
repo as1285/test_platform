@@ -780,6 +780,14 @@
                                 </select>
                             </div>
                             <div>
+                                <label for="filterAgent">代理标识</label>
+                                <select id="filterAgent" class="filter-select" title="手动标记的代理账号">
+                                    <option value="">全部</option>
+                                    <option value="1">仅代理</option>
+                                    <option value="0">非代理</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label>当日有否修改</label>
                                 <select id="filterTaxModifiedToday" class="filter-select">
                                     <option value="">全部</option>
@@ -821,7 +829,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -3054,6 +3062,6 @@
     <script src="/js/admin/loader.js?v=20260828-qr-real"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260828-rename-sum"></script>
+    <script src="/js/admin_panel.js?v=20260828-agent-flag"></script>
 </body>
 </html>

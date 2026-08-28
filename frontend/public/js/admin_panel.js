@@ -5259,6 +5259,7 @@
             var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
             var peerEl = document.getElementById('filterPeerAccount');
             var whitelistEl = document.getElementById('filterWhitelist');
+            var agentEl = document.getElementById('filterAgent');
             if (usernameEl) usernameEl.value = name;
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = true;
@@ -5271,6 +5272,7 @@
             if (taxModDaysGtEl) taxModDaysGtEl.value = '';
             if (peerEl) peerEl.value = '';
             if (whitelistEl) whitelistEl.value = '';
+            if (agentEl) agentEl.value = '';
             pendingHighlightUsername = name;
             userPage = 1;
             var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
@@ -5342,6 +5344,8 @@
             var peerAccount = peerEl ? String(peerEl.value || '').trim() : '';
             var whitelistEl = document.getElementById('filterWhitelist');
             var whitelist = whitelistEl ? String(whitelistEl.value || '').trim() : '';
+            var agentEl = document.getElementById('filterAgent');
+            var agentFlag = agentEl ? String(agentEl.value || '').trim() : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -5367,6 +5371,9 @@
             }
             if (whitelist !== '') {
                 url += '&whitelist=' + encodeURIComponent(whitelist);
+            }
+            if (agentFlag !== '') {
+                url += '&agent=' + encodeURIComponent(agentFlag);
             }
 
             adminFetch(url)
@@ -5506,6 +5513,19 @@
                             '">' +
                             (u.rename_fee_exempt ? '重新加改名/改税限制' : '取消改名/改税限制') +
                             '</button>'
+                            + ' <button type="button" class="btn-sm ' +
+                            (u.is_agent ? 'btn-ban' : 'btn-page') +
+                            ' btn-user-agent-flag" data-u="' +
+                            esc(u.username) +
+                            '" data-agent="' +
+                            (u.is_agent ? '1' : '0') +
+                            '" title="' +
+                            (u.is_agent
+                                ? '该账号已标记为代理，点击取消'
+                                : '将该账号手动标记为代理') +
+                            '">' +
+                            (u.is_agent ? '取消代理标识' : '设为代理') +
+                            '</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         var certPermHtml =
                             '<div class="user-cert-perm-btns">' +
@@ -5588,16 +5608,28 @@
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
                                 'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已开通在职证明生成权益">在职证明</span>';
                         }
-                        html += '<td class="cell-break">' + esc(u.username) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.username) +
+                            (u.is_agent
+                                ? '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                                  'background:#eff6ff;color:#1d4ed8;font-size:11px;white-space:nowrap;" title="手动标记的代理账号">代理</span>'
+                                : '') +
+                            '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
                         html +=
                             '<td class="cell-break">' +
                             esc(u.real_name || '—') +
                             nameChangeBadge +
                             '</td>';
+                        var channelLabel =
+                            u.channel_analysis_label || u.register_source_channel_label || '';
+                        if (!channelLabel && u.is_agent) {
+                            channelLabel = '代理';
+                        } else if (channelLabel && u.is_agent && String(channelLabel).indexOf('代理') < 0) {
+                            channelLabel = String(channelLabel) + ' · 代理';
+                        }
                         html +=
                             '<td class="cell-break">' +
-                            esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
+                            esc(channelLabel || '—') +
                             '</td>';
                         var pwdText =
                             u.password != null && String(u.password).trim() !== ''
@@ -5779,6 +5811,37 @@
                                                 ? '已取消改名与个税修改限制'
                                                 : '已重新加改名与个税修改限制')
                                     );
+                                    loadUsers();
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-agent-flag').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            var isAgent = btn.getAttribute('data-agent') === '1';
+                            var nextAgent = !isAgent;
+                            var actionText = nextAgent ? '设为代理标识' : '取消代理标识';
+                            if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-agent-flag', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, is_agent: nextAgent ? 1 : 0 })
+                            })
+                                .then(function (r) {
+                                    return r.json();
+                                })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '操作失败');
+                                        return;
+                                    }
+                                    alert(d.msg || (nextAgent ? '已设为代理标识' : '已取消代理标识'));
                                     loadUsers();
                                 })
                                 .catch(function () {
@@ -7106,6 +7169,7 @@
                 var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
                 var peerEl = document.getElementById('filterPeerAccount');
                 var whitelistEl = document.getElementById('filterWhitelist');
+                var agentEl = document.getElementById('filterAgent');
                 if (usernameEl) usernameEl.value = '';
                 if (realNameEl) realNameEl.value = '';
                 if (exactEl) exactEl.checked = false;
@@ -7118,6 +7182,7 @@
                 if (taxModDaysGtEl) taxModDaysGtEl.value = '';
                 if (peerEl) peerEl.value = '';
                 if (whitelistEl) whitelistEl.value = '';
+                if (agentEl) agentEl.value = '';
                 loadUsers(1);
             };
         }

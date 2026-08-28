@@ -16463,6 +16463,8 @@ async function handleAdminUsers(req, res) {
     var qPeerExempt = qPeerRaw === 'exempt'; // 已豁免但仍超阈值（白名单）
     var qWhitelistRaw = String(req.query.whitelist || '').trim();
     var qWhitelist = qWhitelistRaw === '1' || qWhitelistRaw === '0' ? qWhitelistRaw : '';
+    var qAgentRaw = String(req.query.agent || '').trim();
+    var qAgent = qAgentRaw === '1' || qAgentRaw === '0' ? qAgentRaw : '';
     var qGuest =
       req.query.guest === '1' ||
       req.query.guest === 'true' ||
@@ -16563,6 +16565,11 @@ async function handleAdminUsers(req, res) {
     } else if (qWhitelist === '0') {
       whereClauses.push('COALESCE(users.rename_fee_exempt, 0) = 0');
     }
+    if (qAgent === '1') {
+      whereClauses.push('COALESCE(users.is_agent, 0) = 1');
+    } else if (qAgent === '0') {
+      whereClauses.push('COALESCE(users.is_agent, 0) = 0');
+    }
     if (!qGuest) {
       /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
       appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
@@ -16582,6 +16589,7 @@ async function handleAdminUsers(req, res) {
       SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
              lizhi_cert_unlocked,
              zaizhi_cert_unlocked,
+             is_agent,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, activation_kind, active_until,
              user_type, sales_promo_channel, invited_by,
@@ -16722,6 +16730,8 @@ async function handleAdminUsers(req, res) {
           r.zaizhi_cert_unlocked === 1 ||
           r.zaizhi_cert_unlocked === true ||
           Number(r.zaizhi_cert_unlocked) === 1,
+        is_agent:
+          r.is_agent === 1 || r.is_agent === true || Number(r.is_agent) === 1,
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
@@ -18216,6 +18226,52 @@ async function handleAdminUserRenameFeeExempt(req, res) {
   } catch (e) {
     console.error('admin user rename fee exempt', e);
     return res.status(500).json({ code: 500, msg: '修改改名/个税限制失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：手动设置或取消账号的「代理」标识 */
+async function handleAdminUserAgentFlag(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var isAgent =
+    body.is_agent === true ||
+    body.is_agent === 1 ||
+    String(body.is_agent || '') === '1' ||
+    body.agent === true ||
+    body.agent === 1 ||
+    String(body.agent || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute('UPDATE users SET is_agent = ? WHERE username = ?', [
+      isAgent ? 1 : 0,
+      canonicalUsername
+    ]);
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: isAgent ? '已设为代理标识' : '已取消代理标识',
+      data: { username: canonicalUsername, is_agent: isAgent }
+    });
+  } catch (e) {
+    console.error('admin user agent flag', e);
+    return res.status(500).json({ code: 500, msg: '设置代理标识失败' });
   } finally {
     conn.release();
   }
@@ -22180,6 +22236,7 @@ function getHandlers() {
     handleAdminUserPriceOfferSet,
     handleAdminUserPriceOfferClear,
     handleAdminUserRenameFeeExempt,
+    handleAdminUserAgentFlag,
     handleAdminUserLizhiCertUnlock,
     handleAdminUserZaizhiCertUnlock,
     handleAdminUserPassword,
