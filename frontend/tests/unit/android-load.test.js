@@ -17,6 +17,9 @@ describe('android first-paint load', () => {
   it('defers OEM chrome and conversion-guide on primary tabs', () => {
     expect(auth).toContain('function markViewportChromeClasses()');
     expect(auth).toContain('function scheduleDeferredMobileChrome()');
+    expect(auth).toContain('function refreshMobilePageChrome()');
+    expect(auth).toContain('if (document.body)');
+    expect(auth).toContain('onDocumentReadyChrome');
     expect(auth).toContain('setupMobileStatusBar()');
     expect(auth).toContain('applyShouyePageChrome()');
     expect(auth).toMatch(/requestIdleCallback\(function \(\) \{\s*afterPaint\(run\);/);
@@ -60,9 +63,9 @@ describe('android first-paint load', () => {
     pages.forEach((name) => {
       const html = readFileSync(join(frontend, name), 'utf8');
       expect(html, name).toContain('auth-boot.js?v=20260828-android-load');
-      expect(html, name).toMatch(/auth\.js\?v=20260828-android-load" defer/);
+      expect(html, name).toMatch(/auth\.js\?v=20260828-android-st" defer/);
       const bootAt = html.indexOf('auth-boot.js');
-      const authAt = html.indexOf('auth.js?v=20260828-android-load');
+      const authAt = html.indexOf('auth.js?v=20260828-android-st');
       expect(bootAt, name).toBeGreaterThan(-1);
       expect(authAt, name).toBeGreaterThan(bootAt);
     });

@@ -3033,8 +3033,11 @@
    * iOS 勿把 safe-area 加进 bottom/padding，否则会整条上移留下大块灰底。
    */
   function pinTabBottomNav() {
+    if (typeof document === 'undefined' || !document.body) {
+      return;
+    }
     var nav = document.querySelector('.bottom-nav');
-    if (!nav || !document.body) {
+    if (!nav) {
       return;
     }
     try {
@@ -4937,9 +4940,16 @@
   showIosWebClipLaunchSplash();
   /* 首屏只打安全区 class，大段 OEM 样式放到首帧后再跑，避免挡住安卓首绘 */
   markViewportChromeClasses();
-  function runDeferredMobileChrome() {
+  function refreshMobilePageChrome() {
+    if (typeof document === 'undefined' || !document.documentElement) {
+      return;
+    }
     setupMobileStatusBar();
     syncAppShellStatusbarTop();
+    pinMate60MineE1Layout();
+    pinXiaomi14ProMineE1Layout();
+    pinNova13MineE1Layout();
+    pinHonorMagic5ProHomeCards();
     applyMinePageChrome();
     applyDaibanBanchaPageChrome();
     applyMessagePageChrome();
@@ -4960,7 +4970,7 @@
       }
       ran = true;
       try {
-        runDeferredMobileChrome();
+        refreshMobilePageChrome();
       } catch (eChrome) {}
     }
     function afterPaint(cb) {
@@ -4971,6 +4981,11 @@
       } else {
         setTimeout(cb, 50);
       }
+    }
+    /* defer 后 body 已在、首帧已过，只等两帧即可，勿再空等 80ms */
+    if (document.body) {
+      afterPaint(run);
+      return;
     }
     if (typeof requestIdleCallback === 'function') {
       requestIdleCallback(function () {
@@ -4989,30 +5004,13 @@
   }
   try {
   } catch (eMate60Boot) {}
+  function onDocumentReadyChrome() {
+    refreshMobilePageChrome();
+  }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      syncAppShellStatusbarTop();
-      pinMate60MineE1Layout();
-      pinXiaomi14ProMineE1Layout();
-      pinNova13MineE1Layout();
-      pinHonorMagic5ProHomeCards();
-      applyMinePageChrome();
-      applyDaibanBanchaPageChrome();
-      applyMessagePageChrome();
-      applyShouyePageChrome();
-      applyIosStandaloneEntryChrome();
-      applyIPhone16ProPageChrome();
-      applyImmersiveNotchWhitePageChrome();
-    });
+    document.addEventListener('DOMContentLoaded', onDocumentReadyChrome);
   } else {
-    setTimeout(function () {
-      syncAppShellStatusbarTop();
-      pinMate60MineE1Layout();
-      pinXiaomi14ProMineE1Layout();
-      pinNova13MineE1Layout();
-      pinHonorMagic5ProHomeCards();
-      applyImmersiveNotchWhitePageChrome();
-    }, 0);
+    setTimeout(onDocumentReadyChrome, 0);
   }
   window.addEventListener('orientationchange', function () {
     setTimeout(function () {

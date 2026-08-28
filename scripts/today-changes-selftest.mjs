@@ -1221,7 +1221,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-st'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1229,9 +1229,10 @@ mustInclude(
   [
     'function markViewportChromeClasses()',
     'function scheduleDeferredMobileChrome()',
-    'runDeferredMobileChrome',
+    'function refreshMobilePageChrome()',
+    'onDocumentReadyChrome',
+    'if (document.body)',
     "androidLike && primaryTabs[currentPageName()]",
-    '20260828-android-load',
   ],
   'auth.js defer OEM chrome after first paint'
 );
@@ -1251,17 +1252,22 @@ mustInclude(
   'theme-loader skip android nav prefetch'
 );
 mustInclude(
+  'scripts/android-load-selftest.mjs',
+  ['android shouye no idle prefetch', 'android daiban guest redirects via auth-boot', 'ios still prefetches other tabs'],
+  'android load runtime selftest'
+);
+mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260828-android-load" defer',
+    'auth.js?v=20260828-android-st" defer',
     'ahead.png?v=20260828-android-load',
   ],
   'shouye auth-boot + compressed ahead'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-load" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-st" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
