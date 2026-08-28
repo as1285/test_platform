@@ -92,6 +92,10 @@
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x90');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-acepro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -108,7 +112,7 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260827-mi14pro-e1bg"></script>
+    <script src="/js/auth.js?v=20260828-vivo-x90"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">

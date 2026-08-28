@@ -488,7 +488,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260827-mi14pro-e1bg', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260828-vivo-x90', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
@@ -1029,8 +1029,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260827-mi14pro-e1bg', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260828-vivo-x90', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isVivoX90Client', 'app-android-vivo-x90', 'V2241A|V2241EA|PD2241\\b', ':not(.app-android-vivo-x90)'],
+  'vivo X90 detect + immersive'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260828-vivo-x90'],
+  'shuiming_result vivo X90 first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
 mustInclude(
@@ -1176,7 +1186,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth.js?v=20260827-mi14pro-e1bg'],
+  ['auth.js?v=20260828-vivo-x90'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(

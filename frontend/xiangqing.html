@@ -49,6 +49,12 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x90');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-15');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -110,7 +116,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260827-mi14pro-e1bg"></script>
+    <script src="/js/auth.js?v=20260828-vivo-x90"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
