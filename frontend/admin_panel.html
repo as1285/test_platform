@@ -1484,7 +1484,7 @@
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
                             </div>
-                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江版只采用浙江税务机关记录，外省记录不计入缴费月。抬头按官方写「参保缴费」，查询窗不足 24 个月时向前补满，「出具证明前24个月」按查询窗显示。</p>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江版只采用浙江税务机关记录，外省记录不计入缴费月；若指定查询起止月，证明括号内保留该查询区间，但“前 N 个月”按浙江实际缴费月数显示。</p>
                         </div>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
@@ -1797,7 +1797,7 @@
                 <div id="page-lizhi-cert" class="page-panel" role="tabpanel">
                     <section>
                         <h2>离职证明使用统计</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端离职证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端离职证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。下方「离开页调研」统计用户首次退出证明页时的价格、体验与优化问卷（每账号最多 1 条）。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="lizhiStatsDays">统计区间</label>
@@ -1875,7 +1875,7 @@
                 <div id="page-zaizhi-cert" class="page-panel" role="tabpanel">
                     <section>
                         <h2>在职证明使用统计</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端在职/工作证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端在职/工作证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。下方「离开页调研」统计用户首次退出证明页时的价格、体验与优化问卷（每账号最多 1 条）。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="zaizhiStatsDays">统计区间</label>
@@ -2392,6 +2392,26 @@
                 </div>
 
                 
+                <div id="page-tax-fill-survey" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>个税填写调研</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端 <code>consult.html</code> 税务记录填写页问卷：体验满意度、最想优化项、用户写下的优化建议。每账号最多 1 条。页内卡片与离开补问共用同一份答卷。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="taxFillSurveyDays">统计区间</label>
+                                <select id="taxFillSurveyDays" class="filter-select">
+                                    <option value="1">今天</option>
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshTaxFillSurvey">刷新统计</button>
+                        </div>
+                        <div id="taxFillSurveyMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
+                    </section>
+                </div>
+
                 <div id="page-analytics-activity" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户日活与登录趋势</h2>
@@ -3031,7 +3051,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260827-bj2"></script>
+    <script src="/js/admin/loader.js?v=20260828-tax-fill"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin_panel.js?v=20260828-whitelist"></script>

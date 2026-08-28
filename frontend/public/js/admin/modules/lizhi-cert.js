@@ -203,6 +203,149 @@
     }
   }
 
+  function sentimentLabel(key) {
+    if (key === 'expensive') return '偏贵';
+    if (key === 'fair') return '合适';
+    if (key === 'cheap') return '偏便宜';
+    if (key === 'skipped') return '跳过';
+    return key || '—';
+  }
+
+  function experienceLabel(key) {
+    if (key === 'good') return '好用';
+    if (key === 'ok') return '一般';
+    if (key === 'bad') return '不好用';
+    return key || '—';
+  }
+
+  function improveLabel(key) {
+    var map = {
+      form: '填写预填',
+      preview: '预览效果',
+      share: '分享保存',
+      pay: '支付开通',
+      price: '价格',
+      other: '其他'
+    };
+    return map[key] || key || '—';
+  }
+
+  function renderSurveyBlock(survey) {
+    var s = survey || {};
+    var html = '<div class="share-kpi-section-label">离开页调研（价格 / 体验 / 优化）</div>';
+    html +=
+      '<p class="hint share-stats-note">用户首次退出证明页时弹出；每账号最多 1 条。态度占比仅统计正式提交。</p>';
+    html += '<div class="share-kpi-grid">';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">调研提交</div><div class="ud-val">' +
+      esc(String(s.submitted || 0)) +
+      '</div><div class="share-kpi-sub">跳过 ' +
+      esc(String(s.skipped || 0)) +
+      ' · 合计 ' +
+      esc(String(s.total || 0)) +
+      '</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">偏贵占比</div><div class="ud-val">' +
+      esc(String(s.expensive_pct != null ? s.expensive_pct : 0)) +
+      '%</div><div class="share-kpi-sub">偏贵 ' +
+      esc(String(s.expensive || 0)) +
+      ' · 合适 ' +
+      esc(String(s.fair || 0)) +
+      ' · 偏便宜 ' +
+      esc(String(s.cheap || 0)) +
+      '</div></div>';
+    var exp = s.experience || {};
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">体验不好</div><div class="ud-val">' +
+      esc(String(exp.bad || 0)) +
+      '</div><div class="share-kpi-sub">好用 ' +
+      esc(String(exp.good || 0)) +
+      ' · 一般 ' +
+      esc(String(exp.ok || 0)) +
+      '</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">平均心理价</div><div class="ud-val">' +
+      (s.avg_expected_price != null ? '¥' + esc(String(s.avg_expected_price)) : '—') +
+      '</div><div class="share-kpi-sub">有填金额 ' +
+      esc(String(s.with_expected_price || 0)) +
+      '</div></div>';
+    html += '</div>';
+
+    html += '<div class="analytics-grid mb-12">';
+    html += '<div class="scroll-x"><p class="stat">态度分布（正式提交）</p><table class="user-detail-table"><thead><tr><th>选项</th><th>人数</th></tr></thead><tbody>';
+    [
+      ['偏贵', s.expensive],
+      ['合适', s.fair],
+      ['偏便宜', s.cheap]
+    ].forEach(function (row) {
+      html +=
+        '<tr><td>' +
+        esc(row[0]) +
+        '</td><td>' +
+        esc(String(row[1] || 0)) +
+        '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    html += '<div class="scroll-x"><p class="stat">最想优化</p><table class="user-detail-table"><thead><tr><th>选项</th><th>人数</th></tr></thead><tbody>';
+    var improve = s.improve || {};
+    ['form', 'preview', 'share', 'pay', 'price', 'other'].forEach(function (key) {
+      html +=
+        '<tr><td>' +
+        esc(improveLabel(key)) +
+        '</td><td>' +
+        esc(String(improve[key] || 0)) +
+        '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    var buckets = (s.expected_price_buckets || []).filter(function (b) {
+      return Number(b.count) > 0;
+    });
+    html += '<div class="share-kpi-section-label">心理价位</div>';
+    if (!buckets.length) {
+      html += '<div class="share-stats-empty">该区间暂无心理价位</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>价位</th><th>人数</th></tr></thead><tbody>';
+      buckets.forEach(function (row) {
+        html +=
+          '<tr><td>' +
+          esc(row.label || '—') +
+          '</td><td>' +
+          esc(String(row.count || 0)) +
+          '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var recent = s.recent || [];
+    html += '<div class="share-kpi-section-label">最近调研（最多 30）</div>';
+    if (!recent.length) {
+      html += '<div class="share-stats-empty">该区间暂无调研记录</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>价格</th><th>体验</th><th>优化</th><th>心理价</th><th>类型</th></tr></thead><tbody>';
+      recent.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + esc(sentimentLabel(row.sentiment)) + '</td>';
+        html += '<td>' + esc(row.experience ? experienceLabel(row.experience) : '—') + '</td>';
+        html += '<td>' + esc(row.improve_topic ? improveLabel(row.improve_topic) : '—') + '</td>';
+        html +=
+          '<td>' +
+          (row.expected_price != null ? '¥' + esc(String(row.expected_price)) : '—') +
+          '</td>';
+        html += '<td>' + (row.skipped ? '跳过' : '提交') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    return html;
+  }
+
   function renderStats(data) {
     var el = document.getElementById('lizhiStatsMount');
     if (!el) return;
@@ -338,6 +481,7 @@
       html += '</tbody></table></div>';
     }
 
+    html += renderSurveyBlock(data.survey);
     el.innerHTML = html;
   }
 

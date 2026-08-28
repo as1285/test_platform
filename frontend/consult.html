@@ -17,7 +17,7 @@
 </head>
 <body class="tax-app-shell has-bottom-nav page-consult">
     <div class="header">
-        <a href="mine.html" class="back-link"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
+        <a href="mine.html" class="back-link" id="consultBackLink"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
         <h1 id="consultPageTitle">个人中心</h1>
     </div>
 
@@ -492,6 +492,35 @@
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
 
+            <div class="card tax-fill-survey-card" id="taxFillSurveyCard">
+                <div class="card-title">填写体验调研</div>
+                <div id="taxFillSurveyCardForm">
+                    <p class="tax-fill-survey-sub">占用半分钟：选个体验，有建议也可以写下来。</p>
+                    <label class="tax-fill-survey-label">体验满意度</label>
+                    <div class="tax-fill-survey-opts" id="taxFillSurveyCardSatOpts">
+                        <button type="button" class="tax-fill-survey-opt" data-satisfaction="good">满意</button>
+                        <button type="button" class="tax-fill-survey-opt" data-satisfaction="ok">一般</button>
+                        <button type="button" class="tax-fill-survey-opt" data-satisfaction="bad">不满意</button>
+                    </div>
+                    <label class="tax-fill-survey-label">最想优化 <span class="tax-fill-survey-optional">选填</span></label>
+                    <div class="tax-fill-survey-chips" id="taxFillSurveyCardImproveChips">
+                        <button type="button" class="tax-fill-survey-chip" data-improve="start">开始方式</button>
+                        <button type="button" class="tax-fill-survey-chip" data-improve="paste">粘贴导入</button>
+                        <button type="button" class="tax-fill-survey-chip" data-improve="manual">手动填写</button>
+                        <button type="button" class="tax-fill-survey-chip" data-improve="generate">一键生成</button>
+                        <button type="button" class="tax-fill-survey-chip" data-improve="list">记录列表</button>
+                        <button type="button" class="tax-fill-survey-chip" data-improve="calc">计算说明</button>
+                        <button type="button" class="tax-fill-survey-chip" data-improve="other">其他</button>
+                    </div>
+                    <label class="tax-fill-survey-label" for="taxFillSurveyCardSuggestion">优化建议 <span class="tax-fill-survey-optional">选填</span></label>
+                    <textarea id="taxFillSurveyCardSuggestion" class="tax-fill-survey-text" maxlength="500" placeholder="例如：粘贴导入经常失败、想按月改工资更方便…"></textarea>
+                    <p class="tax-fill-survey-count" id="taxFillSurveyCardCount">0 / 500</p>
+                    <p class="tax-fill-survey-err" id="taxFillSurveyCardErr" aria-live="polite"></p>
+                    <button type="button" class="btn btn-primary btn-block" id="taxFillSurveyCardSubmit">提交建议</button>
+                </div>
+                <p class="tax-fill-survey-thanks" id="taxFillSurveyCardThanks" hidden>已收到，谢谢你的反馈。</p>
+            </div>
+
             <div class="card is-open" id="taxFaqCard">
                 <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="true">
                     <span>个税常见问题 FAQ</span>
@@ -895,5 +924,6 @@
     <script defer src="/js/consult-core.js?v=20260828-multi-bonus"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260828-multi-bonus"></script>
     <script defer src="/js/consult-records.js?v=20260827-tax-edit-fee"></script>
+    <script defer src="/js/tax-fill-survey.js?v=20260828-tax-fill"></script>
 </body>
 </html>

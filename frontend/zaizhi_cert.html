@@ -180,6 +180,7 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+    <script src="/js/cert-page-survey.js?v=20260828-cert-survey"></script>
 </head>
 <body>
     <div class="header">
@@ -288,6 +289,7 @@
     var pollTimer = null;
     var pendingOtn = '';
     var feeAmount = '50.00';
+    var certUnlocked = false;
 
     function base64ToBlob(b64, mime) {
         var bin = atob(b64);
@@ -819,6 +821,7 @@
     });
 
     function applyUnlocked(unlocked) {
+        certUnlocked = !!unlocked;
         cardPay.hidden = !!unlocked;
         cardForm.hidden = false;
         var badge = document.getElementById('lizhiUnlockBadge');
@@ -1047,6 +1050,21 @@
     }
     loadStatus();
     window.addEventListener('pagehide', revokeLastPdfUrl);
+    if (typeof window.initCertPageSurvey === 'function') {
+        window.initCertPageSurvey({
+            product: 'zaizhi',
+            productLabel: '在职证明',
+            backBtnId: 'lizhiBack',
+            authFetch: authFetch,
+            getSeenPrice: function () {
+                var n = Number(feeAmount);
+                return isFinite(n) && n > 0 ? n : 50;
+            },
+            getUnlocked: function () {
+                return !!certUnlocked;
+            }
+        });
+    }
 })();
     </script>
 </body>

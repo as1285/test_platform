@@ -1,0 +1,69 @@
+{
+  "id": "najilu",
+  "title": "完税二维码",
+  "page": "najilu.html",
+  "phase": 2,
+  "status": "planned",
+  "admin": "najilu",
+  "trigger": {
+    "type": "exit",
+    "once_per_user": true,
+    "session_snooze": true
+  },
+  "price": {
+    "enabled": true,
+    "optional_if": "purchase_survey_done",
+    "question": "开通后看完整完税记录，价格感觉",
+    "options": [
+      { "id": "expensive", "label": "偏贵" },
+      { "id": "fair", "label": "合适" },
+      { "id": "cheap", "label": "偏便宜" }
+    ],
+    "chips_expensive": [50, 98, 148],
+    "chips_cheap": [148, 198, 258]
+  },
+  "usage": {
+    "satisfaction_question": "扫码 / 对照体验",
+    "satisfaction": [
+      { "id": "good", "label": "好用" },
+      { "id": "ok", "label": "一般" },
+      { "id": "bad", "label": "不好用" }
+    ],
+    "improve_question": "最想优化",
+    "improve": [
+      { "id": "scan", "label": "扫码识别" },
+      { "id": "list", "label": "完税列表" },
+      { "id": "qr", "label": "二维码展示" },
+      { "id": "share", "label": "分享保存" },
+      { "id": "pay", "label": "开通去水印" },
+      { "id": "other", "label": "其他" }
+    ]
+  },
+  "concerns": [
+    {
+      "id": "vs_official",
+      "label": "怕和电子税务局完税证明不是一回事",
+      "explain": "本页用来演示完税记录和二维码对照，不是税务机关出具的完税证明。对外正式完税请在电子税务局或个人所得税 APP 开具。"
+    },
+    {
+      "id": "qr_fake",
+      "label": "怕二维码被人当真",
+      "explain": "页面二维码仅用于本平台演示核验，扫描后不会进入官方税务系统。请勿把演示码当作对外缴税凭证。"
+    },
+    {
+      "id": "watermark",
+      "label": "怕不开通看不全",
+      "explain": "未开通也可先看演示版式和部分记录，完整去水印需开通主套餐。开通后请先刷新本页。"
+    },
+    {
+      "id": "scan_fail",
+      "label": "怕扫码对不上",
+      "explain": "请用本页生成的演示码在本平台内对照。若识别失败，可改用手输记录或重新生成后再扫，不必反复付款。"
+    }
+  ],
+  "suggestion": {
+    "enabled": true,
+    "max": 500,
+    "placeholder": "扫码、列表或开通还有哪里不放心"
+  }
+}

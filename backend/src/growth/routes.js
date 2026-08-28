@@ -18,6 +18,26 @@ function registerGrowthRoutes(app, deps) {
     mw.requireAuth,
     h.handlePurchasePriceSurveySubmit
   );
+  app.get(
+    '/api/growth/cert-page-survey/status',
+    mw.requireAuth,
+    h.handleCertPageSurveyStatus
+  );
+  app.post(
+    '/api/growth/cert-page-survey',
+    mw.requireAuth,
+    h.handleCertPageSurveySubmit
+  );
+  app.get(
+    '/api/growth/tax-fill-survey/status',
+    mw.requireAuth,
+    h.handleTaxFillSurveyStatus
+  );
+  app.post(
+    '/api/growth/tax-fill-survey',
+    mw.requireAuth,
+    h.handleTaxFillSurveySubmit
+  );
   app.get('/api/public/mine-ui', h.handlePublicMineUi);
   app.get('/api/public/install-packages', h.handlePublicInstallPackages);
   app.get('/api/public/asset', h.handlePublicAssetGet);

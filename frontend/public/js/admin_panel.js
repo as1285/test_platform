@@ -956,6 +956,7 @@
                 'tax-records-edit',
                 'analytics-register',
                 'analytics-activity',
+                'tax-fill-survey',
                 'analytics-devices',
                 'analytics-tracking',
                 'appearance',
@@ -1056,6 +1057,7 @@
                 'analytics-conversion': 1,
                 'analytics-register': 1,
                 'analytics-activity': 1,
+                'tax-fill-survey': 1,
                 'analytics-devices': 1,
                                 'analytics-purchase': 1,
                 'analytics-tracking': 1,
@@ -1157,6 +1159,9 @@
             }
             if (pageKey === 'analytics-register') {
                 loadAnalyticsRegisterPage();
+            }
+            if (pageKey === 'tax-fill-survey') {
+                callAdminModuleLoadPage('tax-fill-survey');
             }
             if (pageKey === 'analytics-activity') {
                 loadAnalyticsActivityPage();
@@ -6615,6 +6620,7 @@
             'analytics-purchase': '支付分析',
             'analytics-register': '注册分析',
             'analytics-activity': '用户活跃',
+            'tax-fill-survey': '填写调研',
             'analytics-devices': '机型',
             'analytics-tracking': '埋点分析',
             'install-guide-stats': '安装统计',

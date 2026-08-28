@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { getPool } = require('../shared/db');
+const { summarizeCertPageSurvey } = require('../growth/certPageSurvey');
 
 var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
 
@@ -435,6 +436,7 @@ async function handleAdminLizhiCertStats(req, res) {
       }
 
       var paid = paidSumRows && paidSumRows[0] ? paidSumRows[0] : {};
+      var survey = await summarizeCertPageSurvey(conn, 'lizhi', days);
       return res.json({
         code: 200,
         data: {
@@ -444,7 +446,7 @@ async function handleAdminLizhiCertStats(req, res) {
             period_key: String(days)
           },
           note:
-            '使用用户 = 区间内有生成或付费的账号；生成次数自统计上线后累计。后台演示生成不计入。',
+            '使用用户 = 区间内有生成或付费的账号；生成次数自统计上线后累计。后台演示生成不计入。离开调研为首次退出问卷。',
           summary: {
             unlocked_users: unlockRows && unlockRows[0] ? Number(unlockRows[0].n) || 0 : 0,
             paid_orders: Number(paid.orders) || 0,
@@ -461,7 +463,8 @@ async function handleAdminLizhiCertStats(req, res) {
           daily: daily,
           usage_users: usageUsers,
           recent_paid: recentPaid,
-          recent_generations: recentGens
+          recent_generations: recentGens,
+          survey: survey
         }
       });
     } finally {

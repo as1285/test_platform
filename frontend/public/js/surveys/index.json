@@ -1,0 +1,14 @@
+{
+  "version": "2026-08-28",
+  "note": "核心功能调查文件目录。点选 concerns 后须展示 explain。",
+  "features": [
+    { "id": "purchase", "file": "purchase.json", "phase": 1, "priority": 10 },
+    { "id": "tax_fill", "file": "tax_fill.json", "phase": 1, "priority": 20 },
+    { "id": "lizhi_cert", "file": "lizhi_cert.json", "phase": 1, "priority": 30 },
+    { "id": "zaizhi_cert", "file": "zaizhi_cert.json", "phase": 1, "priority": 40 },
+    { "id": "sbdy_demo", "file": "sbdy_demo.json", "phase": 2, "priority": 50 },
+    { "id": "najilu", "file": "najilu.json", "phase": 2, "priority": 60 },
+    { "id": "ccb_flow", "file": "ccb_flow.json", "phase": 2, "priority": 70 },
+    { "id": "gjj_demo", "file": "gjj_demo.json", "phase": 2, "priority": 80 }
+  ]
+}

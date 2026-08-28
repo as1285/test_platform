@@ -1,0 +1,76 @@
+{
+  "id": "tax_fill",
+  "title": "个税记录填写",
+  "page": "consult.html?tab=records",
+  "phase": 1,
+  "status": "live_partial",
+  "admin": "tax-fill-survey",
+  "trigger": {
+    "type": "both",
+    "once_per_user": true,
+    "session_snooze": true,
+    "card": true
+  },
+  "price": {
+    "enabled": true,
+    "optional_if": "purchase_survey_done",
+    "question": "开通去水印看完整记录，价格感觉",
+    "options": [
+      { "id": "expensive", "label": "偏贵" },
+      { "id": "fair", "label": "合适" },
+      { "id": "cheap", "label": "偏便宜" }
+    ],
+    "chips_expensive": [50, 98, 148],
+    "chips_cheap": [148, 198, 258]
+  },
+  "usage": {
+    "satisfaction_question": "填写体验",
+    "satisfaction": [
+      { "id": "good", "label": "满意" },
+      { "id": "ok", "label": "一般" },
+      { "id": "bad", "label": "不满意" }
+    ],
+    "improve_question": "最想优化",
+    "improve": [
+      { "id": "start", "label": "开始方式" },
+      { "id": "paste", "label": "粘贴导入" },
+      { "id": "manual", "label": "手动填写" },
+      { "id": "generate", "label": "一键生成" },
+      { "id": "list", "label": "记录列表" },
+      { "id": "calc", "label": "计算说明" },
+      { "id": "other", "label": "其他" }
+    ]
+  },
+  "concerns": [
+    {
+      "id": "vs_official_app",
+      "label": "怕和个税 APP 不是一回事",
+      "explain": "本页用来演练和留存对照，计税按常见累计预扣规则推演，但不是税务机关申报通道。正式申报、更正、汇算请以个人所得税 APP / 电子税务局为准。"
+    },
+    {
+      "id": "calc_wrong",
+      "label": "怕税额算错",
+      "explain": "列表税额按「累计应纳税额 − 已预扣」推演，减除费用按每月 5000 累计。可打开单月记录对照收入、三险一金；也可用页内「个税计算表」用累计应纳税所得额验算档位。"
+    },
+    {
+      "id": "paste_fail",
+      "label": "怕粘贴导入不准",
+      "explain": "粘贴个税 APP 文本能解析常见月明细和聊天摘要。字段不全时再手动补公司、月薪或扣除即可生成。导入是加速填写，最终以你核对后的列表为准。"
+    },
+    {
+      "id": "must_fill_shebao",
+      "label": "怕社保公积金必填",
+      "explain": "三险一金可以留空或填 0，系统仍按收入和 5000 减除做累计预扣演示。想更接近到手税，再展开填缴费基数或金额。"
+    },
+    {
+      "id": "watermark",
+      "label": "怕不开通看不全",
+      "explain": "未开通也可生成和查看演示记录，部分明细带水印。开通后去水印并完整查看；主套餐不管证明类增值服务。"
+    }
+  ],
+  "suggestion": {
+    "enabled": true,
+    "max": 500,
+    "placeholder": "例如：粘贴导入经常失败、想按月改工资更方便…"
+  }
+}

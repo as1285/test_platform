@@ -202,6 +202,14 @@ const ADMIN_PAGE_DEFS = [
     order: 20
   },
   {
+    page: 'tax-fill-survey',
+    menu_key: 'tax-fill-survey',
+    label: '填写调研',
+    group: 'insights',
+    module: 'tax-fill-survey',
+    order: 22
+  },
+  {
     page: 'analytics-tracking',
     menu_key: 'analytics-tracking',
     label: '埋点分析',

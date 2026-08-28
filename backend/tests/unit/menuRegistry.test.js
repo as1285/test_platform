@@ -105,6 +105,8 @@ describe('menuRegistry', () => {
     expect(dataGroup.items.map((i) => i.page)).toContain('analytics-purchase');
     expect(dataGroup.items.map((i) => i.page)).toContain('channel-analysis');
     expect(dataGroup.items.map((i) => i.page)).toContain('analytics-devices');
+    expect(dataGroup.items.map((i) => i.page)).toContain('tax-fill-survey');
+    expect(getPageDef('tax-fill-survey').label).toBe('填写调研');
     expect(getPageDef('analytics-devices').label).toBe('机型');
   });
 

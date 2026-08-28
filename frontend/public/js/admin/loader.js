@@ -10,12 +10,13 @@
     charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260828-list-del',
     'gjj-demo': '/js/admin/modules/gjj-demo.js?v=20260826-deadcode',
-    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260810-lizhi-tpl',
-    'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260815-zaizhi',
+    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260828-cert-survey',
+    'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260828-cert-survey',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-expense-sum',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
-    devices: '/js/admin/modules/devices.js?v=20260826-device-compat'
+    devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
+    'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260828-tax-fill'
   };
 
   var PAGE_MODULE = {
@@ -47,6 +48,7 @@
     'analytics-purchase': 'analytics',
     'analytics-tracking': 'analytics',
     'analytics-devices': 'devices',
+    'tax-fill-survey': 'tax-fill-survey',
     'install-guide-stats': 'analytics',
     'channel-analysis': 'analytics'
   };

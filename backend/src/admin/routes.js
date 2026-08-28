@@ -424,6 +424,12 @@ app.get(
   mw.requireAdminMenu('zaizhi-cert'),
   h.handleAdminZaizhiCertStats
 );
+app.get(
+  '/api/admin/tax-fill-survey/stats',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('tax-fill-survey'),
+  h.handleAdminTaxFillSurveyStats
+);
 app.post(
   '/api/admin/user-zaizhi-cert-unlock',
   mw.requireAdminAuth,

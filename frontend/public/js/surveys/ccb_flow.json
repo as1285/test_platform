@@ -1,0 +1,69 @@
+{
+  "id": "ccb_flow",
+  "title": "工资流水",
+  "page": "ccb / 流水演示",
+  "phase": 2,
+  "status": "planned",
+  "admin": "ccb-flow",
+  "trigger": {
+    "type": "exit",
+    "once_per_user": true,
+    "session_snooze": true
+  },
+  "price": {
+    "enabled": true,
+    "optional_if": "purchase_survey_done",
+    "question": "开通后看完整流水，价格感觉",
+    "options": [
+      { "id": "expensive", "label": "偏贵" },
+      { "id": "fair", "label": "合适" },
+      { "id": "cheap", "label": "偏便宜" }
+    ],
+    "chips_expensive": [50, 98, 148],
+    "chips_cheap": [148, 198, 258]
+  },
+  "usage": {
+    "satisfaction_question": "这次流水体验",
+    "satisfaction": [
+      { "id": "good", "label": "好用" },
+      { "id": "ok", "label": "一般" },
+      { "id": "bad", "label": "不好用" }
+    ],
+    "improve_question": "最想优化",
+    "improve": [
+      { "id": "form", "label": "填写工资" },
+      { "id": "preview", "label": "流水版式" },
+      { "id": "months", "label": "月份条数" },
+      { "id": "share", "label": "分享保存" },
+      { "id": "pay", "label": "开通去水印" },
+      { "id": "other", "label": "其他" }
+    ]
+  },
+  "concerns": [
+    {
+      "id": "not_bank",
+      "label": "怕不能当银行流水",
+      "explain": "本页是工资入账的演示样例，不是银行盖章流水，也不能代替网银对账单。贷款、签证、租房等请到发卡行或网银导出官方流水。"
+    },
+    {
+      "id": "ccb_only",
+      "label": "怕必须是建设银行",
+      "explain": "版式按常见建行工资入账做演示对照，不代表已开通该行账户，也不会向银行报送数据。需要他行版式时请说明，我们按演示能力评估。"
+    },
+    {
+      "id": "amount_wrong",
+      "label": "怕金额对不上工资条",
+      "explain": "入账金额按你填写的税后或约定金额生成，不是从银行拉取。请对照工资条改数字后再出，可多次生成。"
+    },
+    {
+      "id": "watermark",
+      "label": "怕水印去不掉",
+      "explain": "未开通主套餐时带演示水印。开通后刷新本页再导出。演示文件仍非正式银行凭证。"
+    }
+  ],
+  "suggestion": {
+    "enabled": true,
+    "max": 500,
+    "placeholder": "版式、月份或开通还有哪里不放心"
+  }
+}
