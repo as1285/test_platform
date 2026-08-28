@@ -16545,15 +16545,16 @@ async function handleAdminUsers(req, res) {
           ? 'COALESCE(users.rename_fee_exempt, 0) = 1'
           : 'COALESCE(users.rename_fee_exempt, 0) = 0'
       );
-      whereClauses.push(
-        `(SELECT COUNT(*) FROM user_profile_change_logs upc
-            WHERE upc.username = users.username AND upc.field_key = 'real_name') > ?`
-      );
+      /* 同行只按个税修改天数；勿再绑定已删除的 rename_gt，否则 mysql2 会因 undefined 直接 500 */
+      var peerDaysGt = Number(peerFeeCfg && peerFeeCfg.days_gt);
+      if (!isFinite(peerDaysGt) || peerDaysGt < 0) {
+        peerDaysGt = taxEditFeePolicy.TAX_EDIT_FEE_DAYS_GT;
+      }
       whereClauses.push(
         `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
             WHERE tcl.user_id = users.username) > ?`
       );
-      params.push(peerFeeCfg.rename_gt, peerFeeCfg.days_gt);
+      params.push(peerDaysGt);
     }
     if (!qGuest) {
       /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
@@ -16686,7 +16687,6 @@ async function handleAdminUsers(req, res) {
           nameChanges: nameChangeCountOut,
           taxModDays: taxModifiedDaysOut,
           exempt: renameExemptOut,
-          rename_gt: peerFeeCfg.rename_gt,
           days_gt: peerFeeCfg.days_gt
         }),
         tax_id: r.tax_id,
@@ -16776,7 +16776,6 @@ async function handleAdminUsers(req, res) {
         tax_modified_date: todayKey,
         guest_mode: !!qGuest,
         scope_label: qGuest ? '游客模式' : '注册用户',
-        peer_rename_gt: peerFeeCfg.rename_gt,
         peer_days_gt: peerFeeCfg.days_gt,
         peer_daily_amount: peerFeeCfg.daily_amount,
         peer_filter: qPeerExempt ? 'exempt' : qPeer ? '1' : ''
@@ -16914,7 +16913,6 @@ async function handleAdminRenameTaxDaily(req, res) {
           nameChanges: Number(r.name_change_count) || 0,
           taxModDays: Number(r.tax_mod_days) || 0,
           exempt: false,
-          rename_gt: peerFeeCfg.rename_gt,
           days_gt: peerFeeCfg.days_gt
         }),
         daily: daily,
@@ -16950,7 +16948,6 @@ async function handleAdminRenameTaxDaily(req, res) {
       data: Object.assign(meta, {
         name_changes_gt: RENAME_WATCH_NAME_CHANGES_GT,
         tax_mod_days_gt: RENAME_WATCH_TAX_MOD_DAYS_GT,
-        peer_rename_gt: peerFeeCfg.rename_gt,
         peer_days_gt: peerFeeCfg.days_gt,
         exclude_rename_fee_exempt: true,
         dates: dateKeys,

@@ -294,8 +294,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260828-sku-no-1d3d', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260828-peer-days', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
+);
+mustExclude(
+  'backend/src/legacy/monolith.js',
+  ['params.push(peerFeeCfg.rename_gt', 'peer_rename_gt:'],
+  'peer list binds days_gt only'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['勿再绑定已删除的 rename_gt', 'params.push(peerDaysGt)'],
+  'peer list days-only bind'
 );
 mustInclude(
   'backend/src/user/renameFeePolicy.js',

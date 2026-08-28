@@ -5179,7 +5179,7 @@
                         html +=
                             '<td>' +
                             (u.is_peer_account
-                                ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="同时超过改名与个税修改天数阈值">同行</span>'
+                                ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="个税修改天数超过阈值">同行</span>'
                                 : '<span style="color:#bbb;">—</span>') +
                             '</td>';
                         html += '<td>' + esc(String(u.period_tax_edits || 0)) + '</td>';
@@ -5548,7 +5548,7 @@
                         if (u.is_peer_account) {
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
-                                'background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="同时超过改名与个税修改天数阈值，后续改个税需付费">同行</span>';
+                                'background:#fef2f2;color:#b91c1c;font-size:11px;white-space:nowrap;" title="个税修改天数超过阈值，后续改个税需付费">同行</span>';
                         }
                         if (u.rename_fee_exempt) {
                             nameChangeBadge +=
@@ -6017,17 +6017,14 @@
         function updatePeerAccountHint(data) {
             var hint = document.getElementById('peerAccountHint');
             if (!hint) return;
-            var renameGt = data && data.peer_rename_gt != null ? Number(data.peer_rename_gt) : 6;
             var daysGt = data && data.peer_days_gt != null ? Number(data.peer_days_gt) : 8;
             var amount = data && data.peer_daily_amount != null ? String(data.peer_daily_amount) : '30.00';
             var yuan = Number(amount);
             var yuanLabel = isFinite(yuan) ? (yuan % 1 === 0 ? String(Math.round(yuan)) : yuan.toFixed(2)) : amount;
             hint.innerHTML =
-                '本页只列<strong>同时</strong>超过改名大于 ' +
-                esc(String(renameGt)) +
-                ' 次且个税修改大于 ' +
+                '本页只列个税修改天数大于 ' +
                 esc(String(daysGt)) +
-                ' 天的账号。当前同行未进白名单，后续每天改个税需先付当天无限费用（¥' +
+                ' 天的账号（不再看改名次数）。当前同行未进白名单，后续每天改个税需先付当天无限费用（¥' +
                 esc(yuanLabel) +
                 '）；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。';
         }
@@ -7822,13 +7819,9 @@
         function applyTaxEditFeeToForm(cfg) {
             cfg = cfg || {};
             var dailyEl = document.getElementById('taxEditFeeDaily');
-            var renameEl = document.getElementById('taxEditFeeRenameGt');
             var daysEl = document.getElementById('taxEditFeeDaysGt');
             if (dailyEl && cfg.daily_amount != null && String(cfg.daily_amount).trim() !== '') {
                 dailyEl.value = String(cfg.daily_amount);
-            }
-            if (renameEl && cfg.rename_gt != null && String(cfg.rename_gt).trim() !== '') {
-                renameEl.value = String(cfg.rename_gt);
             }
             if (daysEl && cfg.days_gt != null && String(cfg.days_gt).trim() !== '') {
                 daysEl.value = String(cfg.days_gt);
@@ -7837,11 +7830,9 @@
 
         function collectTaxEditFeeFromForm() {
             var dailyEl = document.getElementById('taxEditFeeDaily');
-            var renameEl = document.getElementById('taxEditFeeRenameGt');
             var daysEl = document.getElementById('taxEditFeeDaysGt');
             return {
                 daily_amount: dailyEl ? String(dailyEl.value || '').trim() : '',
-                rename_gt: renameEl ? String(renameEl.value || '').trim() : '',
                 days_gt: daysEl ? String(daysEl.value || '').trim() : ''
             };
         }
@@ -7852,15 +7843,13 @@
                 var btn = btnSaveTaxEditFee;
                 var fees = collectTaxEditFeeFromForm();
                 var dailyN = Number(String(fees.daily_amount || '').replace(/,/g, '').trim());
-                var renameN = parseInt(String(fees.rename_gt || '').trim(), 10);
                 var daysN = parseInt(String(fees.days_gt || '').trim(), 10);
                 if (!isFinite(dailyN) || dailyN < 0.01 || dailyN > 99999.99) {
                     alert('请填写 0.01～99999.99 的当天无限修改金额');
                     return;
                 }
-                if (!isFinite(renameN) || renameN < 0 || renameN > 999 ||
-                    !isFinite(daysN) || daysN < 0 || daysN > 999) {
-                    alert('请填写 0～999 的同行判定阈值（改名大于、个税修改大于）');
+                if (!isFinite(daysN) || daysN < 0 || daysN > 999) {
+                    alert('请填写 0～999 的个税修改天数阈值');
                     return;
                 }
                 btn.disabled = true;

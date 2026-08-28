@@ -106,11 +106,7 @@
                                 <button type="button" class="btn-primary" id="btnSaveRenameFee">保存改名费用</button>
                                 <span class="hint" id="renameFeeHint" style="margin-left:8px;"></span>
                             </div>
-                            <p class="hint">未进白名单的账号，<strong>同时</strong>满足「改名大于」且「个税修改大于」才算同行，每天改个税前需先付当天无限费用。</p>
-                            <div class="form-field form-field-narrow">
-                                <label for="taxEditFeeRenameGt">改名大于（次）</label>
-                                <input type="number" id="taxEditFeeRenameGt" min="0" max="999" step="1" value="6">
-                            </div>
+                            <p class="hint">未进白名单的账号，个税修改天数大于下面阈值即算同行，每天改个税前需先付当天无限费用（不再看改名次数）。</p>
                             <div class="form-field form-field-narrow">
                                 <label for="taxEditFeeDaysGt">个税修改大于（天）</label>
                                 <input type="number" id="taxEditFeeDaysGt" min="0" max="999" step="1" value="8">
@@ -865,7 +861,7 @@
                     <div class="page-lede"><p class="page-lede-text">单独查看与处置同行账号：豁免收费、封禁、跳转注册用户</p></div>
                     <section>
                         <h2>同行账号</h2>
-                        <p class="hint mt-0" id="peerAccountHint">本页只列<strong>同时</strong>超过改名阈值与个税修改天数阈值的账号。当前同行未进白名单，后续每天改个税需先付当天无限费用；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。</p>
+                        <p class="hint mt-0" id="peerAccountHint">本页只列个税修改天数超过阈值的账号（不再看改名次数）。当前同行未进白名单，后续每天改个税需先付当天无限费用；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。</p>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
                             <div>
@@ -3038,6 +3034,6 @@
     <script src="/js/admin/loader.js?v=20260827-bj2"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260828-sku-no-1d3d"></script>
+    <script src="/js/admin_panel.js?v=20260828-peer-days"></script>
 </body>
 </html>
