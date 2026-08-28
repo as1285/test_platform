@@ -98,7 +98,12 @@
   }
 
   function ensureQrcode() {
-    if (typeof global.QRCode === 'function') return Promise.resolve();
+    if (typeof global.QRCode !== 'undefined' && typeof global.QRCode.create === 'function') {
+      return Promise.resolve();
+    }
+    if (typeof global.QRCode !== 'undefined' && typeof global.QRCode.toDataURL === 'function') {
+      return Promise.resolve();
+    }
     return loadScript('/js/vendor/qrcode.min.js');
   }
 
@@ -106,7 +111,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260821-qr-smooth');
+    return loadScript('/js/najilu.js?v=20260828-qr-real');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB）

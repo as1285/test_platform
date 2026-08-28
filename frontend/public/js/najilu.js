@@ -1420,52 +1420,92 @@
     });
   }
 
-  function drawQr(ctx, x, y, size, seed) {
-    ctx.save();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x, y, size, size);
-    ctx.fillStyle = '#111';
-    var cells = 37;
-    var c = size / cells;
-    function finder(cx, cy) {
-      ctx.fillRect(x + cx * c, y + cy * c, c * 7, c * 7);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + (cx + 1) * c, y + (cy + 1) * c, c * 5, c * 5);
-      ctx.fillStyle = '#111';
-      ctx.fillRect(x + (cx + 2) * c, y + (cy + 2) * c, c * 3, c * 3);
+  /**
+   * 用 qrcode 库的 modules 矩阵画到 canvas（不经 toDataURL/Image）。
+   * 旧版伪随机 drawQr 会画出对角条纹、无法扫描，已废弃。
+   */
+  function paintQrModulesToCanvas(text, pixelSize) {
+    if (typeof QRCode === 'undefined' || typeof QRCode.create !== 'function') {
+      return null;
     }
-    finder(1, 1); finder(cells - 8, 1); finder(1, cells - 8);
-    var n = 0;
-    for (var i = 0; i < String(seed).length; i++) n += String(seed).charCodeAt(i) * (i + 3);
-    for (var yy = 0; yy < cells; yy++) {
-      for (var xx = 0; xx < cells; xx++) {
-        if ((xx < 8 && yy < 8) || (xx >= cells - 8 && yy < 8) || (xx < 8 && yy >= cells - 8)) continue;
-        if (((xx * 13 + yy * 7 + n) % 5) < 2 || ((xx * 3 + yy * 11 + n) % 7) < 2) {
-          ctx.fillRect(x + xx * c, y + yy * c, c, c);
+    var qr;
+    try {
+      qr = QRCode.create(String(text || ''), { errorCorrectionLevel: 'M' });
+    } catch (eCreate) {
+      try {
+        qr = QRCode.create(String(text || ''), { errorCorrectionLevel: 'L' });
+      } catch (e2) {
+        return null;
+      }
+    }
+    if (!qr || !qr.modules || !qr.modules.size) return null;
+    var n = qr.modules.size;
+    var quiet = 1;
+    var total = n + quiet * 2;
+    var scale = Math.max(1, Math.floor(Number(pixelSize) / total) || 1);
+    var dim = total * scale;
+    var c = document.createElement('canvas');
+    c.width = dim;
+    c.height = dim;
+    var qctx = c.getContext('2d');
+    if (!qctx) return null;
+    qctx.fillStyle = '#ffffff';
+    qctx.fillRect(0, 0, dim, dim);
+    qctx.fillStyle = '#000000';
+    var y;
+    var x;
+    for (y = 0; y < n; y++) {
+      for (x = 0; x < n; x++) {
+        if (qr.modules.get(x, y)) {
+          qctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
         }
       }
     }
-    ctx.restore();
+    return c;
   }
 
-  /** 右上角二维码：按整数像素对齐绘制，保证手机可扫 */
-  function drawSharpQr(ctx, x, y, size, qrImg, seed) {
+  function makeCertificateQrCanvas(text, pixelSize) {
+    var painted = paintQrModulesToCanvas(text, pixelSize);
+    if (painted) {
+      return Promise.resolve(painted);
+    }
+    return new Promise(function (resolve) {
+      if (typeof QRCode === 'undefined' || typeof QRCode.toCanvas !== 'function') {
+        resolve(null);
+        return;
+      }
+      var c = document.createElement('canvas');
+      QRCode.toCanvas(
+        c,
+        String(text || ''),
+        {
+          width: Math.max(64, Number(pixelSize) || 185),
+          margin: 1,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#000000', light: '#ffffff' }
+        },
+        function (err) {
+          resolve(err ? null : c);
+        }
+      );
+    });
+  }
+
+  /** 右上角二维码：最近邻整数像素绘制，避免平滑/伪图案导致不可扫 */
+  function drawSharpQr(ctx, x, y, size, qrImg) {
     var ix = Math.round(x);
     var iy = Math.round(y);
     var isz = Math.max(1, Math.round(size));
     ctx.save();
     ctx.fillStyle = '#fff';
     ctx.fillRect(ix, iy, isz, isz);
-    if (qrImg && qrImg.complete && qrImg.naturalWidth) {
-      /* 1:1 或等比缩放到整数边长；开平滑避免模块边缘出现白缝 */
-      ctx.imageSmoothingEnabled = true;
-      if (typeof ctx.imageSmoothingQuality === 'string') {
-        ctx.imageSmoothingQuality = 'high';
-      }
-      ctx.drawImage(qrImg, ix, iy, isz, isz);
-    } else {
+    var ok =
+      qrImg &&
+      ((qrImg.tagName === 'CANVAS' && qrImg.width) ||
+        (qrImg.complete && (qrImg.naturalWidth || qrImg.width)));
+    if (ok) {
       ctx.imageSmoothingEnabled = false;
-      drawQr(ctx, ix, iy, isz, seed);
+      ctx.drawImage(qrImg, ix, iy, isz, isz);
     }
     ctx.restore();
   }
@@ -1532,24 +1572,17 @@
 
   function buildCertificateVerifyUrl(app) {
     var code = queryCode(app);
+    /* 只带验证码，缩短 payload → 更少模块，预览缩小时不易糊成条纹 */
     try {
       var u = new URL('najilu.html', certificatePublicOrigin() + '/');
       u.searchParams.set('view', 'verify');
       u.searchParams.set('code', code);
-      if (app && app.id) {
-        u.searchParams.set('id', String(app.id));
-      }
-      if (app && app.record_no) {
-        u.searchParams.set('record', String(app.record_no));
-      }
       return u.href;
     } catch (e1) {
       return (
         certificatePublicOrigin() +
         '/najilu.html?view=verify&code=' +
-        encodeURIComponent(code) +
-        (app && app.id ? '&id=' + encodeURIComponent(String(app.id)) : '') +
-        (app && app.record_no ? '&record=' + encodeURIComponent(String(app.record_no)) : '')
+        encodeURIComponent(code)
       );
     }
   }
@@ -1715,7 +1748,7 @@
       }
       var usedBlock = drawQrVerifyBlock(ctx, width - 257, 42, 185, qrBlockImg);
       if (!usedBlock) {
-        drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
+        drawSharpQr(ctx, width - 257, 42, 185, qrImg);
         drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
         drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
           size: 26,
@@ -1884,43 +1917,25 @@
 
       if (qrBlockUrl) {
         return loadImageUrl(qrBlockUrl).then(function (blockImg) {
-          return finishWithQr(null, blockImg);
+          if (blockImg) return finishWithQr(null, blockImg);
+          /* 整块素材加载失败时改生成可扫二维码，避免对角假图案 */
+          return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
+            return finishWithQr(qrCanvas, null);
+          });
         });
       }
 
       if (qrOnlyUrl) {
         return loadImageUrl(qrOnlyUrl).then(function (customQr) {
-          return finishWithQr(customQr, null);
+          if (customQr) return finishWithQr(customQr, null);
+          return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
+            return finishWithQr(qrCanvas, null);
+          });
         });
       }
 
-      if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-        return finishWithQr(null, null);
-      }
-      return new Promise(function (resolve) {
-        QRCode.toDataURL(
-          verifyUrl,
-          {
-            width: 185 * CERT_RENDER_SCALE,
-            margin: 1,
-            errorCorrectionLevel: 'H',
-            color: { dark: '#000000', light: '#ffffff' }
-          },
-          function (err, dataUrl) {
-            if (err || !dataUrl) {
-              resolve(finishWithQr(null, null));
-              return;
-            }
-            var img = new Image();
-            img.onload = function () {
-              resolve(finishWithQr(img, null));
-            };
-            img.onerror = function () {
-              resolve(finishWithQr(null, null));
-            };
-            img.src = dataUrl;
-          }
-        );
+      return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
+        return finishWithQr(qrCanvas, null);
       });
     });
   }
