@@ -7,18 +7,23 @@ const sbdyCode = readFileSync(
   'utf8'
 );
 
-function recordsFor(company, credit, authority, startYm, endYm) {
+function recordsFor(company, credit, authority, startYm, endYm, extra) {
   const out = [];
   let [year, month] = startYm.split('-').map(Number);
   const [endYear, endMonth] = endYm.split('-').map(Number);
   while (year < endYear || (year === endYear && month <= endMonth)) {
-    out.push({
-      year,
-      month,
-      company_name: company,
-      company_tax_id: credit,
-      tax_authority: authority
-    });
+    out.push(
+      Object.assign(
+        {
+          year,
+          month,
+          company_name: company,
+          company_tax_id: credit,
+          tax_authority: authority
+        },
+        extra || {}
+      )
+    );
     month += 1;
     if (month > 12) {
       year += 1;
@@ -123,6 +128,83 @@ describe('社保演示预填分段', () => {
     expect(document.getElementById('sbdyDemoStatus').textContent).toContain(
       '已排除外地 8 个月'
     );
+  });
+
+  it('浙江预填按各公司个税推算各段缴费基数，不套统一基数', async () => {
+    const taxRecords = recordsFor(
+      '杭州华鲜高新技术有限公司',
+      '91330110MADG8JH092',
+      '国家税务总局杭州市余杭区税务局',
+      '2025-04',
+      '2026-06',
+      { income: '5000.00', pension_insurance: '400.00', income_subtype: '正常工资薪金' }
+    )
+      .concat([
+        {
+          year: 2025,
+          month: 12,
+          company_name: '杭州华鲜高新技术有限公司',
+          company_tax_id: '91330110MADG8JH092',
+          tax_authority: '国家税务总局杭州市余杭区税务局',
+          income: '20000.00',
+          pension_insurance: '0.00',
+          income_subtype: '全年一次性奖金收入'
+        }
+      ])
+      .concat(
+        recordsFor(
+          '杭州圆趣企业运营管理有限公司',
+          '91330109MAETP27PX2',
+          '国家税务总局杭州市萧山区税务局',
+          '2026-07',
+          '2026-07',
+          { income: '4986.00', pension_insurance: '398.88', income_subtype: '正常工资薪金' }
+        )
+      );
+
+    window.adminFetch = vi.fn((url) => {
+      if (String(url).includes('/prefill?')) {
+        return Promise.resolve({
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              code: 200,
+              data: {
+                user: {
+                  real_name: '王龙雪',
+                  user_tax_id: '371323199701195223'
+                },
+                employers: [],
+                tax_records: taxRecords
+              }
+            })
+        });
+      }
+      return Promise.resolve({
+        status: 200,
+        json: () => Promise.resolve({ code: 200, data: { list: [] } })
+      });
+    });
+
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    window.AdminModules['sbdy-demo'].loadPage();
+    document.getElementById('sbdyPrefillBtn').click();
+
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll('.sbdy-seg-row')).toHaveLength(2);
+    });
+
+    const rows = document.querySelectorAll('.sbdy-seg-row');
+    expect(rows[0].querySelector('.seg-company').value).toBe(
+      '杭州华鲜高新技术有限公司'
+    );
+    expect(Number(rows[0].querySelector('.seg-base').value)).toBe(5000);
+    expect(rows[1].querySelector('.seg-company').value).toBe(
+      '杭州圆趣企业运营管理有限公司'
+    );
+    expect(Number(rows[1].querySelector('.seg-base').value)).toBe(4986);
+    expect(Number(document.getElementById('sbdyBase').value)).toBe(4986);
   });
 
   it('江苏多公司分段时上方保留最近单位作为现参保单位', async () => {

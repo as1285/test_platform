@@ -99,7 +99,8 @@ async function handleSbdyDemoPrefill(req, res) {
     var taxRecords = [];
     try {
       const [trows] = await pool.execute(
-        `SELECT year, month, company_name, company_tax_id, tax_authority
+        `SELECT year, month, company_name, company_tax_id, tax_authority,
+                income, pension_insurance, income_subtype, income_type
          FROM tax_records
          WHERE user_id = ? AND deleted_at IS NULL
          ORDER BY year DESC, month DESC, id DESC
@@ -112,7 +113,11 @@ async function handleSbdyDemoPrefill(req, res) {
           month: row.month != null ? Number(row.month) : null,
           company_name: clean(row.company_name),
           company_tax_id: clean(row.company_tax_id),
-          tax_authority: clean(row.tax_authority)
+          tax_authority: clean(row.tax_authority),
+          income: row.income,
+          pension_insurance: row.pension_insurance,
+          income_subtype: clean(row.income_subtype),
+          income_type: clean(row.income_type)
         };
       });
     } catch (eTax) {

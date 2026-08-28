@@ -1417,6 +1417,48 @@
     return parts && parts.length ? parts[parts.length - 1] : '';
   }
 
+  function isBonusLikeRecord(r) {
+    var t = String((r && (r.income_subtype || r.income_type)) || '');
+    return /全年一次性|年终奖|奖金/.test(t);
+  }
+
+  function typicalAmount(nums) {
+    var rounded = [];
+    (nums || []).forEach(function (n) {
+      var x = Math.round(Number(n) * 100) / 100;
+      if (isFinite(x) && x > 0) rounded.push(x);
+    });
+    if (!rounded.length) return null;
+    var counts = {};
+    var best = rounded[0];
+    var bestN = 0;
+    rounded.forEach(function (n) {
+      var k = String(n);
+      counts[k] = (counts[k] || 0) + 1;
+      if (counts[k] > bestN) {
+        bestN = counts[k];
+        best = n;
+      }
+    });
+    return best;
+  }
+
+  /** 优先用养老个人÷8% 还原基数，否则取常规工资；跳过年终奖 */
+  function inferBaseFromRecords(list) {
+    var fromPension = [];
+    var fromIncome = [];
+    (list || []).forEach(function (r) {
+      if (isBonusLikeRecord(r)) return;
+      var p = Number(r.pension_insurance);
+      if (isFinite(p) && p > 0) {
+        fromPension.push(Math.round((p / 0.08) * 100) / 100);
+      }
+      var inc = Number(r.income);
+      if (isFinite(inc) && inc > 0) fromIncome.push(inc);
+    });
+    return typicalAmount(fromPension) || typicalAmount(fromIncome);
+  }
+
   function collectEmployerInfo(d, rangeStart, rangeEnd, region) {
     d = d || {};
     var allRecords = Array.isArray(d.tax_records) ? d.tax_records : [];
@@ -1472,7 +1514,11 @@
         ym: y + '-' + pad2(m),
         company: r.company_name ? String(r.company_name).trim() : '',
         credit: r.company_tax_id ? String(r.company_tax_id).trim() : '',
-        area: areaFromTaxAuthority(r.tax_authority)
+        area: areaFromTaxAuthority(r.tax_authority),
+        income: r.income,
+        pension_insurance: r.pension_insurance,
+        income_subtype: r.income_subtype,
+        income_type: r.income_type
       });
     });
     recs.sort(function (a, b) {
@@ -1562,6 +1608,19 @@
         });
       }
     });
+    segments.forEach(function (seg) {
+      var start = ymToNum(seg.period_start);
+      var end = ymToNum(seg.period_end);
+      var matched = recs.filter(function (r) {
+        if (start != null && r.n < start) return false;
+        if (end != null && r.n > end) return false;
+        if (seg.company_name && r.company && r.company !== seg.company_name) return false;
+        if (seg.credit_code && r.credit && r.credit !== seg.credit_code) return false;
+        return !!(r.company || r.credit);
+      });
+      var inferred = inferBaseFromRecords(matched);
+      if (inferred != null) seg.base_amount = inferred;
+    });
     if (!companies.length && !regionScoped) {
       employers.forEach(function (e) {
         var cn = e && e.company_name ? String(e.company_name).trim() : '';
@@ -1613,12 +1672,17 @@
       latestCompany = companies[0];
       latestCredit = creditByCompany[latestCompany] || credits[0] || '';
     }
+    var latestBase = null;
+    if (segments.length && segments[segments.length - 1].base_amount != null) {
+      latestBase = segments[segments.length - 1].base_amount;
+    }
     return {
       companies: companies,
       credits: credits,
       latestCompany: latestCompany,
       latestCredit: latestCredit,
       latestArea: latestArea,
+      latestBase: latestBase,
       monthUnits: monthUnits,
       segments: segments,
       regionScoped: regionScoped,
@@ -1802,6 +1866,7 @@
           return s.credit_code || s.company_name;
         });
         var defArea = val('sbdyArea') || '余杭区';
+        if (info.latestBase != null) setField('sbdyBase', info.latestBase);
         var defBase = val('sbdyBase') || '4986';
         var keepSelectedWindow = !!(rangeStart && rangeEnd);
         var forceSingleLocalSegment =
