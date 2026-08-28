@@ -24,7 +24,8 @@ from lizhi_render_pdf import (  # noqa: E402
     blank_or,
     body_font,
     bold_font,
-    make_seal,
+    SEAL_PT,
+    place_seal,
     make_watermark_png,
     parse_ymd,
     text_width,
@@ -153,7 +154,7 @@ def render_page_image(payload):
         leading,
     )
 
-    seal_pt = int(156 * SCALE)
+    seal_pt = int(SEAL_PT * SCALE)
     right_pad = int(42 * SCALE)
     seal_x = PAGE_W - right_pad - seal_pt
     seal_y = max(y + int(50 * SCALE), int(400 * SCALE))
@@ -202,11 +203,7 @@ def render_page_image(payload):
     else:
         painter.draw_run(dx, date_y, blank_or(issue_date, 10), date_f, underline=True)
 
-    seal_img = make_seal(company)
-    seal_r = seal_img.resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
-    sa = seal_r.split()[-1].point(lambda v: int(v * 0.64))
-    seal_r.putalpha(sa)
-    img.alpha_composite(seal_r, (int(seal_x), int(seal_y)))
+    place_seal(img, company, seal_x, seal_y, seal_pt)
 
     note_y = max(date_y + int(70 * SCALE), PAGE_H - int(96 * SCALE))
     if note:

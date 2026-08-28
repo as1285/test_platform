@@ -193,8 +193,13 @@ mustInclude('frontend/consult.html', ['consult-records.js?v=20260827-tax-edit-fe
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
-  ['.preview.png', 'SEAL_RED = (230, 118, 108, 255)', 'SS * 0.012', 'int(v * 0.64)'],
-  'lizhi render png + thinner lighter seal'
+  ['.preview.png', 'SEAL_RED = (214, 28, 32, 255)', 'SS * 0.032', 'SEAL_STAMP_ALPHA = 0.90', 'place_seal'],
+  'lizhi render png + large vermilion seal'
+);
+mustInclude(
+  'backend/scripts/zaizhi_render_pdf.py',
+  ['place_seal', 'SEAL_PT'],
+  'zaizhi uses shared vermilion seal'
 );
 mustInclude('frontend/lizhi_cert.html', ['lizhiPdfPreview', 'preview_png_base64'], 'lizhi cert img preview');
 mustInclude(
