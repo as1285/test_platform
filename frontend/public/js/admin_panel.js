@@ -5242,6 +5242,7 @@
             var nameChangesGtEl = document.getElementById('filterNameChangesGt');
             var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
             var peerEl = document.getElementById('filterPeerAccount');
+            var whitelistEl = document.getElementById('filterWhitelist');
             if (usernameEl) usernameEl.value = name;
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = true;
@@ -5253,6 +5254,7 @@
             if (nameChangesGtEl) nameChangesGtEl.value = '';
             if (taxModDaysGtEl) taxModDaysGtEl.value = '';
             if (peerEl) peerEl.value = '';
+            if (whitelistEl) whitelistEl.value = '';
             pendingHighlightUsername = name;
             userPage = 1;
             var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
@@ -5322,6 +5324,8 @@
             var taxModDaysGt = readFilterGtNumber(taxModDaysGtEl);
             var peerEl = document.getElementById('filterPeerAccount');
             var peerAccount = peerEl ? String(peerEl.value || '').trim() : '';
+            var whitelistEl = document.getElementById('filterWhitelist');
+            var whitelist = whitelistEl ? String(whitelistEl.value || '').trim() : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -5344,6 +5348,9 @@
             }
             if (peerAccount !== '') {
                 url += '&peer=' + encodeURIComponent(peerAccount);
+            }
+            if (whitelist !== '') {
+                url += '&whitelist=' + encodeURIComponent(whitelist);
             }
 
             adminFetch(url)
@@ -7081,6 +7088,7 @@
                 var nameChangesGtEl = document.getElementById('filterNameChangesGt');
                 var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
                 var peerEl = document.getElementById('filterPeerAccount');
+                var whitelistEl = document.getElementById('filterWhitelist');
                 if (usernameEl) usernameEl.value = '';
                 if (realNameEl) realNameEl.value = '';
                 if (exactEl) exactEl.checked = false;
@@ -7092,6 +7100,7 @@
                 if (nameChangesGtEl) nameChangesGtEl.value = '';
                 if (taxModDaysGtEl) taxModDaysGtEl.value = '';
                 if (peerEl) peerEl.value = '';
+                if (whitelistEl) whitelistEl.value = '';
                 loadUsers(1);
             };
         }

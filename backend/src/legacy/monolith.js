@@ -16461,6 +16461,8 @@ async function handleAdminUsers(req, res) {
     var qPeerRaw = String(req.query.peer || '').trim().toLowerCase();
     var qPeer = qPeerRaw === '1'; // 仅当前同行（超阈值改名/改税且未免改名费）
     var qPeerExempt = qPeerRaw === 'exempt'; // 已豁免但仍超阈值（白名单）
+    var qWhitelistRaw = String(req.query.whitelist || '').trim();
+    var qWhitelist = qWhitelistRaw === '1' || qWhitelistRaw === '0' ? qWhitelistRaw : '';
     var qGuest =
       req.query.guest === '1' ||
       req.query.guest === 'true' ||
@@ -16555,6 +16557,11 @@ async function handleAdminUsers(req, res) {
             WHERE tcl.user_id = users.username) > ?`
       );
       params.push(peerDaysGt);
+    }
+    if (qWhitelist === '1') {
+      whereClauses.push('COALESCE(users.rename_fee_exempt, 0) = 1');
+    } else if (qWhitelist === '0') {
+      whereClauses.push('COALESCE(users.rename_fee_exempt, 0) = 0');
     }
     if (!qGuest) {
       /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
@@ -16778,7 +16785,8 @@ async function handleAdminUsers(req, res) {
         scope_label: qGuest ? '游客模式' : '注册用户',
         peer_days_gt: peerFeeCfg.days_gt,
         peer_daily_amount: peerFeeCfg.daily_amount,
-        peer_filter: qPeerExempt ? 'exempt' : qPeer ? '1' : ''
+        peer_filter: qPeerExempt ? 'exempt' : qPeer ? '1' : '',
+        whitelist_filter: qWhitelist
       }
     });
   } catch (e) {
