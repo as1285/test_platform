@@ -937,7 +937,7 @@ mustInclude(
 /* loader cache must point at the latest sbdy-demo bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260828-seg-base'],
+  ['20260828-list-del'],
   'sbdy-demo loader cache for Beijing layout'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
@@ -1017,8 +1017,23 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionBj', '20260828-seg-base'],
+  ['sbdyRegionBj', '20260828-list-del'],
   'sbdy Beijing C-end radio + cache'
+);
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  ['handleAdminSbdyDemoDelete', 'DELETE FROM sbdy_demo_certs WHERE id = ?'],
+  'sbdy demo list delete handler'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ['/api/admin/sbdy-demo/delete', 'handleAdminSbdyDemoDelete'],
+  'sbdy demo list delete route'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['sbdy-demo-del', 'api/admin/sbdy-demo/delete', '确认删除'],
+  'sbdy demo list delete UI'
 );
 if (
   !exists('backend/assets/sbdy/bj_si_seal.png') ||

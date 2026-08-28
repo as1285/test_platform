@@ -24,7 +24,7 @@
       if (u.indexOf('generate') >= 0) {
         return global.authFetch('/api/sbdy-demo/generate', opts);
       }
-      if (u.indexOf('/list') >= 0) {
+      if (u.indexOf('/list') >= 0 || u.indexOf('/delete') >= 0) {
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -887,9 +887,62 @@
         (links.verify_url
           ? '<a href="' + esc(links.verify_url) + '" target="_blank" rel="noopener">核验</a>'
           : '') +
+        (row.id
+          ? (links.show_url || links.verify_url ? ' · ' : '') +
+            '<button type="button" class="sbdy-demo-del" data-id="' +
+            esc(row.id) +
+            '" data-name="' +
+            esc(row.name || '') +
+            '" style="border:0;background:none;padding:0;color:#b42318;cursor:pointer;">删除</button>'
+          : '') +
         '</td></tr>';
     });
     tbody.innerHTML = html;
+  }
+
+  function deleteCert(id, name) {
+    var idNum = parseInt(id, 10);
+    if (!idNum) {
+      setStatus('缺少记录 id', true);
+      return;
+    }
+    var label = name ? '「' + name + '」的演示样例' : '这条演示样例';
+    if (!window.confirm('确认删除' + label + '？删除后样例与核验链接将失效。')) return;
+    setStatus('删除中…', false);
+    fetchAdmin('api/admin/sbdy-demo/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: idNum })
+    })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          return { http: r.status, j: j };
+        });
+      })
+      .then(function (pack) {
+        var j = pack.j;
+        if (!j || j.code !== 200) {
+          setStatus((j && j.msg) || '删除失败（HTTP ' + pack.http + '）', true);
+          return;
+        }
+        setStatus('已删除', false);
+        loadList();
+      })
+      .catch(function (e) {
+        setStatus('删除失败：' + (e && e.message ? e.message : '网络错误'), true);
+      });
+  }
+
+  function bindListActions() {
+    var tbody = document.getElementById('sbdyDemoListTbody');
+    if (!tbody || tbody.__sbdyDelBound) return;
+    tbody.__sbdyDelBound = true;
+    tbody.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.classList || !t.classList.contains('sbdy-demo-del')) return;
+      e.preventDefault();
+      deleteCert(t.getAttribute('data-id'), t.getAttribute('data-name') || '');
+    });
   }
 
   function loadList() {
@@ -1970,6 +2023,7 @@
         setStatus('列表已刷新', false);
       };
     }
+    bindListActions();
     var prefillBtn = document.getElementById('sbdyPrefillBtn');
     if (prefillBtn) prefillBtn.onclick = prefill;
     var pasteFill = document.getElementById('btnSbdyPasteFill');

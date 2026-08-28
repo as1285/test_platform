@@ -53,7 +53,7 @@ describe('社保演示预填分段', () => {
       <input id="sbdyPeriodEnd" type="month">
       <span id="sbdyDemoStatus"></span>
       <div id="sbdySegments"></div>
-      <tbody id="sbdyDemoListTbody"></tbody>
+      <table><tbody id="sbdyDemoListTbody"></tbody></table>
     `;
     delete window.AdminModules;
     delete window.loadSbdyDemoPage;
@@ -288,5 +288,72 @@ describe('社保演示预填分段', () => {
       0
     );
     expect(parsed.id_number.charAt(17)).toBe(checks.charAt(sum % 11));
+  });
+
+  it('最近生成列表可删除并刷新', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    window.adminFetch = vi.fn((url, opts) => {
+      if (String(url).includes('/delete')) {
+        expect(opts && opts.method).toBe('POST');
+        expect(JSON.parse(opts.body).id).toBe(42);
+        return Promise.resolve({
+          status: 200,
+          json: () => Promise.resolve({ code: 200, msg: '已删除', data: { id: 42 } })
+        });
+      }
+      if (String(url).includes('/list')) {
+        const alreadyDeleted = window.adminFetch.mock.calls.some((c) =>
+          String(c[0]).includes('/delete')
+        );
+        return Promise.resolve({
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              code: 200,
+              data: {
+                list: alreadyDeleted
+                  ? []
+                  : [
+                      {
+                        id: 42,
+                        name: '王龙雪',
+                        id_number: '371323199701195223',
+                        company_name: '杭州圆趣企业运营管理有限公司',
+                        region: 'zj',
+                        auth_code: 'SBDYTEST',
+                        created_at: '2026-08-28 10:56:23',
+                        links: {
+                          show_url: '/taxmock/SBDYTEST/show.pdf',
+                          verify_url: '/taxmock/SBDYTEST/verify'
+                        }
+                      }
+                    ]
+              }
+            })
+        });
+      }
+      return Promise.resolve({
+        status: 200,
+        json: () => Promise.resolve({ code: 200, data: {} })
+      });
+    });
+
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    window.AdminModules['sbdy-demo'].loadPage();
+
+    await vi.waitFor(() => {
+      expect(document.querySelector('.sbdy-demo-del')).toBeTruthy();
+    });
+    document.querySelector('.sbdy-demo-del').click();
+
+    await vi.waitFor(() => {
+      expect(document.getElementById('sbdyDemoListTbody').textContent).toContain('暂无记录');
+    });
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(
+      window.adminFetch.mock.calls.some((c) => String(c[0]).includes('/delete'))
+    ).toBe(true);
+    confirmSpy.mockRestore();
   });
 });

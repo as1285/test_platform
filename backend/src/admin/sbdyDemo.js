@@ -3182,6 +3182,26 @@ async function handleAdminSbdyDemoList(req, res) {
   }
 }
 
+async function handleAdminSbdyDemoDelete(req, res) {
+  try {
+    var id = parseInt(req.body && req.body.id, 10);
+    if (!id || id < 1) {
+      return res.status(400).json({ code: 400, msg: '缺少记录 id' });
+    }
+    const [result] = await getPool().execute(
+      'DELETE FROM sbdy_demo_certs WHERE id = ? LIMIT 1',
+      [id]
+    );
+    if (!result || !result.affectedRows) {
+      return res.status(404).json({ code: 404, msg: '记录不存在或已删除' });
+    }
+    return res.json({ code: 200, msg: '已删除', data: { id: id } });
+  } catch (e) {
+    console.error('[sbdy-demo] delete', e);
+    return res.status(500).json({ code: 500, msg: '删除失败' });
+  }
+}
+
 async function loadCertByAuthOrToken(code, token) {
   if (token) {
     const [rows] = await getPool().execute(
@@ -3348,6 +3368,7 @@ function getHandlers() {
   return {
     handleAdminSbdyDemoGenerate: handleAdminSbdyDemoGenerate,
     handleAdminSbdyDemoList: handleAdminSbdyDemoList,
+    handleAdminSbdyDemoDelete: handleAdminSbdyDemoDelete,
     handlePublicSbdyDemoVerify: handlePublicSbdyDemoVerify,
     handlePublicSbdyDemoShow: handlePublicSbdyDemoShow
   };

@@ -377,6 +377,12 @@ app.get(
   h.handleAdminSbdyDemoList
 );
 app.post(
+  '/api/admin/sbdy-demo/delete',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('sbdy-demo'),
+  h.handleAdminSbdyDemoDelete
+);
+app.post(
   '/api/admin/gjj-demo/generate',
   mw.requireAdminAuth,
   mw.requireAdminMenu('gjj-demo'),
