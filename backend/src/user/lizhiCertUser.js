@@ -18,6 +18,105 @@ function clean(s) {
   return String(s == null ? '' : s).trim();
 }
 
+function dateKey(raw) {
+  var s = clean(raw);
+  var m = s.match(/(\d{4})\D+(\d{1,2})(?:\D+(\d{1,2}))?/);
+  if (!m) return 0;
+  return Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3] || 1);
+}
+
+function ymKey(year, month) {
+  var y = Number(year);
+  var mo = Number(month);
+  if (!y || !mo) return 0;
+  return y * 100 + mo;
+}
+
+function formatYmDay(year, month, day) {
+  return String(year) + '/' + String(Number(month)) + '/' + String(Number(day));
+}
+
+function lastDayOfMonth(year, month) {
+  return new Date(Number(year), Number(month), 0).getDate();
+}
+
+function employerIsCurrent(row) {
+  var st = row && row.status;
+  if (st === 1 || st === '1' || st === '在职') return true;
+  return !clean(row && row.leave_date);
+}
+
+function employerRecency(row) {
+  var leave = dateKey(row && row.leave_date);
+  var hire = dateKey(row && row.hire_date);
+  var current = employerIsCurrent(row) ? 100000000 : 0;
+  return current + Math.max(leave, hire);
+}
+
+/** 当前最后一家公司：优先个税最近月份对应单位，否则取任职里最近一段。 */
+function pickLastCompany(employers, taxRecords) {
+  var list = Array.isArray(employers) ? employers : [];
+  var taxes = Array.isArray(taxRecords) ? taxRecords : [];
+  var company = '';
+  var firstYm = 0;
+  var lastYm = 0;
+  var i;
+  for (i = 0; i < taxes.length; i++) {
+    var cn = clean(taxes[i] && taxes[i].company_name);
+    var k = ymKey(taxes[i] && taxes[i].year, taxes[i] && taxes[i].month);
+    if (!cn || !k) continue;
+    if (!company) {
+      company = cn;
+      firstYm = k;
+      lastYm = k;
+      continue;
+    }
+    if (cn !== company) continue;
+    if (k < firstYm) firstYm = k;
+    if (k > lastYm) lastYm = k;
+  }
+
+  var match = null;
+  if (company) {
+    for (i = 0; i < list.length; i++) {
+      if (clean(list[i] && list[i].company_name) === company) {
+        match = list[i];
+        break;
+      }
+    }
+  }
+  if (!match && list.length) {
+    match = list.slice().sort(function (a, b) {
+      return employerRecency(b) - employerRecency(a);
+    })[0];
+    company = clean(match && match.company_name);
+  }
+
+  var hire = '';
+  var leave = '';
+  if (firstYm) {
+    hire = formatYmDay(Math.floor(firstYm / 100), firstYm % 100, 1);
+  }
+  if (lastYm) {
+    var ly = Math.floor(lastYm / 100);
+    var lm = lastYm % 100;
+    leave = formatYmDay(ly, lm, lastDayOfMonth(ly, lm));
+  }
+  if (match) {
+    if (!company) company = clean(match.company_name);
+    if (clean(match.hire_date)) hire = clean(match.hire_date);
+    if (clean(match.leave_date)) leave = clean(match.leave_date);
+    else if (employerIsCurrent(match)) leave = '';
+  }
+
+  return {
+    company_name: company,
+    position: match ? clean(match.position) : '',
+    hire_date: hire,
+    leave_date: leave
+  };
+}
+
 function purgeTempShares() {
   var now = Date.now();
   tempShareStore.forEach(function (item, key) {
@@ -132,34 +231,44 @@ async function handleLizhiCertPrefill(req, res) {
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
     var u = urows[0];
-    var company = '';
-    var position = '';
-    var hire = '';
-    var leave = '';
+    var employers = [];
+    var taxRecords = [];
     try {
       const [erows] = await pool.execute(
-        `SELECT company_name, position, hire_date, leave_date
-         FROM employers WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1`,
+        `SELECT company_name, position, hire_date, leave_date, status
+         FROM employers WHERE user_id = ?`,
         [uname]
       );
-      if (erows.length) {
-        company = clean(erows[0].company_name);
-        position = clean(erows[0].position);
-        hire = clean(erows[0].hire_date);
-        leave = clean(erows[0].leave_date);
-      }
+      employers = erows || [];
     } catch (eEmp) {
       /* ignore */
     }
+    try {
+      const [trows] = await pool.execute(
+        `SELECT company_name, year, month
+         FROM tax_records
+         WHERE user_id = ? AND deleted_at IS NULL
+           AND TRIM(IFNULL(company_name,'')) <> ''
+         ORDER BY year DESC, month DESC, id DESC
+         LIMIT 240`,
+        [uname]
+      );
+      taxRecords = trows || [];
+    } catch (eTax) {
+      /* ignore */
+    }
+    var last = pickLastCompany(employers, taxRecords);
     return res.json({
       code: 200,
       data: {
         name: clean(u.real_name),
         id_number: clean(u.tax_id),
-        company_name: company,
-        position: position,
-        hire_date: hire,
-        leave_date: leave
+        company_name: last.company_name,
+        department: '',
+        position: last.position,
+        hire_date: last.hire_date,
+        leave_date: last.leave_date,
+        last_company: true
       }
     });
   } catch (e) {
@@ -280,6 +389,7 @@ module.exports = {
   isLizhiCertSkuId: isLizhiCertSkuId,
   markLizhiUnlocked: markLizhiUnlocked,
   userHasLizhiUnlocked: userHasLizhiUnlocked,
+  pickLastCompany: pickLastCompany,
   LIZHI_CERT_SKU_ID: LIZHI_CERT_SKU_ID,
   LIZHI_CERT_AMOUNT: LIZHI_CERT_AMOUNT,
   LIZHI_CERT_SUBJECT: LIZHI_CERT_SUBJECT

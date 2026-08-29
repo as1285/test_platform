@@ -193,8 +193,8 @@ mustInclude('frontend/consult.html', ['consult-records.js?v=20260827-tax-edit-fe
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
-  ['.preview.png', 'SEAL_RED = (216, 128, 118, 255)', 'SEAL_STAMP_ALPHA = 0.56', 'place_seal', 'inner_w = max(6'],
-  'lizhi render png + pale double-ring seal'
+  ['.preview.png', 'SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.82', 'place_seal', 'x_scale = 0.68', 'inner_w = max(6'],
+  'lizhi render png + SealUtil-style double-ring seal'
 );
 mustExclude(
   'backend/scripts/lizhi_render_pdf.py',
@@ -206,7 +206,12 @@ mustInclude(
   ['place_seal', 'SEAL_PT'],
   'zaizhi uses shared vermilion seal'
 );
-mustInclude('frontend/lizhi_cert.html', ['lizhiPdfPreview', 'preview_png_base64'], 'lizhi cert img preview');
+mustInclude('frontend/lizhi_cert.html', ['lizhiPdfPreview', 'preview_png_base64', 'btnLizhiQuick', '一键生成最后一家公司'], 'lizhi cert img preview + quick generate');
+mustInclude(
+  'backend/src/user/lizhiCertUser.js',
+  ['pickLastCompany', 'last_company', 'ORDER BY year DESC, month DESC'],
+  'lizhi prefill last company from tax + employers'
+);
 mustInclude(
   'backend/scripts/zaizhi_render_pdf.py',
   ['工作证明', '性别', '为我公司在职员工', 'zaizhi_render_pdf'],
@@ -668,19 +673,28 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isIPhone13Client', 'iPhone14,5', 'app-ios-iphone13'],
+  [
+    'isIPhone13Client',
+    'iPhone14,5',
+    'app-ios-iphone13',
+    'window.isIPhone13Client',
+    'iPhone14,[2-5]'
+  ],
   'iphone 13 company ellipsis detect'
 );
 mustInclude(
   'frontend/shuiming_result.html',
   [
-    'isIPhone13CompanyEllipsisClient',
-    'app-ios-iphone13',
-    'truncateChars(company, iphone13Company ? 13 : 12)',
+    'isIosCompanyNameEllipsisClient',
+    'list-company-name',
+    'max-width: 13em',
+    'iosCompanyEllipsis ? company : truncateChars(company, 12)',
+    'maybeRerenderCompanyEllipsis',
+    'text-overflow: clip',
     '#recordList .list-label',
     '--ufs-list-body-color, #666'
   ],
-  'shuiming_result iphone13 company 13-char ellipsis'
+  'shuiming_result ios company 13em ellipsis'
 );
 mustExclude(
   'frontend/shuiming_result.html',

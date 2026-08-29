@@ -1345,10 +1345,15 @@
     if (/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,1|iPhone16,2/i.test(ua)) {
       return false;
     }
-    if (/iPhone\s*12\s*Pro\b(?!\s*Max)|iPhone13,3\b|iPhone13,2\b|iPhone14,2\b|iPhone14,5\b/i.test(ua)) {
+    /* iPhone14,5=13、iPhone14,2=13 Pro，勿当成 14 */
+    if (/iPhone\s*12\s*Pro\b(?!\s*Max)|iPhone13,3\b|iPhone13,2\b/i.test(ua)) {
       return true;
     }
-    if (/iPhone\s*14\b|iPhone14,7\b/i.test(ua)) {
+    /* iPhone14,[2-5] 是 13 系，不能用 iPhone14\b 一把梭 */
+    if (/iPhone14,[2-5]\b/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*14\b(?!\s*Pro)|iPhone14,7\b|iPhone14,8\b/i.test(ua)) {
       return true;
     }
     try {
@@ -1369,13 +1374,16 @@
 
   /**
    * iPhone 13（iPhone14,5 / MLDY3CH/A）。勿匹配 13 Pro / mini / Pro Max。
-   * Safari UA 常无型号码，Cordova 用 device.model。
+   * Safari UA 常无型号码；Cordova 用 device.model，并读 tax_device_model_v1。
    */
   function isIPhone13Client() {
     if (!isLikelyIOSViewportClient()) {
       return false;
     }
     var blob = navigator.userAgent || '';
+    try {
+      blob += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+    } catch (eLs) {}
     try {
       if (window.device && window.device.model) {
         blob += ' ' + String(window.device.model);
@@ -1386,11 +1394,27 @@
         blob += ' ' + String(window.top.device.model);
       }
     } catch (e1) {}
-    if (/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,2\b|iPhone14,3\b|iPhone14,4\b/i.test(blob)) {
+    if (
+      /iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,2\b|iPhone14,3\b|iPhone14,4\b/i.test(
+        blob
+      )
+    ) {
       return false;
     }
-    return /iPhone\s*13\b|iPhone14,5\b/i.test(blob);
+    if (/iPhone\s*13\b|iPhone14,5\b/i.test(blob)) {
+      return true;
+    }
+    try {
+      if (document.documentElement.classList.contains('app-ios-iphone13')) {
+        return true;
+      }
+    } catch (e2) {}
+    return false;
   }
+
+  try {
+    window.isIPhone13Client = isIPhone13Client;
+  } catch (eExposeI13) {}
 
   function isIPhone16ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {

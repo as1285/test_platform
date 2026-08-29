@@ -113,6 +113,29 @@
             color: var(--ink-soft);
             border: 1px solid var(--line);
         }
+        .quick-box {
+            margin: 0 0 16px;
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--accent-soft);
+            border: 1px solid #dbeafe;
+        }
+        .quick-box .card-hint { margin-bottom: 0; color: var(--ink-soft); }
+        .quick-company {
+            display: none;
+            margin: 8px 0 0;
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--accent-deep);
+            font-weight: 600;
+        }
+        .quick-company.is-on { display: block; }
+        .form-divider {
+            margin: 4px 0 14px;
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+        }
         .status {
             margin-top: 10px;
             font-size: 13px;
@@ -205,7 +228,13 @@
         <div class="card" id="cardForm">
             <span class="badge" id="lizhiUnlockBadge">未开通 · PDF 含演示水印</span>
             <div class="card-title">填写并生成</div>
-            <p class="card-hint">已按账号资料预填，可修改后生成 PDF。App 内请用系统分享「存储到文件」。</p>
+            <p class="card-hint">可一键用账号里最后一家公司生成，也可改表单后再生成。App 内请用系统分享「存储到文件」。</p>
+            <div class="quick-box">
+                <button type="button" class="btn" id="btnLizhiQuick">一键生成最后一家公司</button>
+                <p class="quick-company" id="lizhiQuickCompany"></p>
+                <p class="card-hint" style="margin-top:8px;">按个税最近月份对应的任职公司直接出证明，岗位为空时按「职员」。</p>
+            </div>
+            <p class="form-divider">或修改下方信息后生成</p>
             <label class="field-label" for="lzName">姓名</label>
             <input class="field" id="lzName" maxlength="64" autocomplete="name">
             <label class="field-label" for="lzId">身份证号</label>
@@ -847,6 +876,20 @@
         if (d.hire_date != null) document.getElementById('lzHire').value = d.hire_date;
         if (d.leave_date != null) document.getElementById('lzLeave').value = d.leave_date;
         if (d.issue_date != null) document.getElementById('lzIssue').value = d.issue_date;
+        showQuickCompany(d.company_name);
+    }
+
+    function showQuickCompany(name) {
+        var el = document.getElementById('lizhiQuickCompany');
+        if (!el) return;
+        var n = String(name || '').trim();
+        if (!n) {
+            el.textContent = '';
+            el.classList.remove('is-on');
+            return;
+        }
+        el.textContent = '当前最后一家：' + n;
+        el.classList.add('is-on');
     }
 
     function defaultIssueDate() {
@@ -956,7 +999,15 @@
             .catch(function () {});
     }
 
-    function generate() {
+    function setGenerateBusy(busy) {
+        ['btnLizhiGenerate', 'btnLizhiQuick', 'btnLizhiPrefill'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.disabled = !!busy;
+        });
+    }
+
+    function generate(opts) {
+        opts = opts || {};
         var payload = {
             name: document.getElementById('lzName').value.trim(),
             id_number: document.getElementById('lzId').value.trim(),
@@ -967,25 +1018,29 @@
             leave_date: document.getElementById('lzLeave').value.trim(),
             issue_date: document.getElementById('lzIssue').value.trim() || defaultIssueDate()
         };
+        if (opts.quick && !payload.position) payload.position = '职员';
         if (!payload.name || !payload.id_number) {
+            setGenerateBusy(false);
             setStatus(genStatus, '请填写姓名与身份证号', true);
             return;
         }
         if (!payload.company_name) {
-            setStatus(genStatus, '请填写公司全称', true);
+            setGenerateBusy(false);
+            setStatus(genStatus, opts.quick ? '账号里没有找到最后一家公司，请先添加个税记录或手动填写' : '请填写公司全称', true);
             return;
         }
-        if (!payload.department) {
+        if (!opts.quick && !payload.department) {
+            setGenerateBusy(false);
             setStatus(genStatus, '请填写部门', true);
             return;
         }
         if (!payload.position) {
+            setGenerateBusy(false);
             setStatus(genStatus, '请填写担任岗位', true);
             return;
         }
-        var btn = document.getElementById('btnLizhiGenerate');
-        btn.disabled = true;
-        setStatus(genStatus, '正在生成 PDF…');
+        setGenerateBusy(true);
+        setStatus(genStatus, opts.quick ? '正在按最后一家公司生成 PDF…' : '正在生成 PDF…');
         authFetch('/api/lizhi-cert/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1018,15 +1073,34 @@
                 setStatus(genStatus, '网络错误', true);
             })
             .finally(function () {
-                btn.disabled = false;
+                setGenerateBusy(false);
+            });
+    }
+
+    function quickGenerate() {
+        setGenerateBusy(true);
+        setStatus(genStatus, '正在读取最后一家公司…');
+        loadPrefill()
+            .then(function () {
+                if (!document.getElementById('lzIssue').value) {
+                    document.getElementById('lzIssue').value = defaultIssueDate();
+                }
+                generate({ quick: true });
+            })
+            .catch(function () {
+                setGenerateBusy(false);
+                setStatus(genStatus, '读取最后一家公司失败', true);
             });
     }
 
     document.getElementById('btnLizhiPay').addEventListener('click', startPay);
-    document.getElementById('btnLizhiGenerate').addEventListener('click', generate);
+    document.getElementById('btnLizhiGenerate').addEventListener('click', function () {
+        generate();
+    });
+    document.getElementById('btnLizhiQuick').addEventListener('click', quickGenerate);
     document.getElementById('btnLizhiPrefill').addEventListener('click', function () {
         loadPrefill().then(function () {
-            setStatus(genStatus, '已重新预填');
+            setStatus(genStatus, '已按最后一家公司重新预填');
         });
     });
     document.getElementById('lzIssue').value = defaultIssueDate();

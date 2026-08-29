@@ -228,7 +228,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
+    <script src="/js/auth.js?v=20260830-ios-company13em" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -976,11 +976,23 @@
             line-height: 21px !important;
         }
 
-        /* iPhone 13：扣缴义务人仍单行省略（JS 按 13 字截断）；保留灰阶字色对齐官方。 */
-        html.app-ios-iphone13 body.page-shuiming-result .list-company {
+        /*
+         * iOS：公司名与「扣缴义务人：」拆开；名称按约 13 个汉字宽省略。
+         * 不依赖 Cordova 型号（iPhone 13/14 同屏时 UA 无型号，JS 截断常误用 12 字）。
+         */
+        html.platform-ios body.page-shuiming-result .list-company {
             white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            max-width: 100% !important;
+        }
+        html.platform-ios body.page-shuiming-result .list-company-name {
+            display: inline-block;
+            max-width: 13em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: bottom;
         }
 
         /*
@@ -994,6 +1006,7 @@
         }
         html.app-ios-iphone13 body.page-shuiming-result #recordList .list-label,
         html.app-ios-iphone13 body.page-shuiming-result #recordList .list-company,
+        html.app-ios-iphone13 body.page-shuiming-result #recordList .list-company-name,
         html.app-ios-iphone13 body.page-shuiming-result #recordList .list-amount {
             color: var(--ufs-list-body-color, #666) !important;
             -webkit-text-fill-color: var(--ufs-list-body-color, #666) !important;
@@ -2050,51 +2063,38 @@
             );
         }
 
-        function isIPhone13CompanyEllipsisClient() {
+        /** iOS：公司名交给 CSS 约 13 字宽省略；Android 仍 JS 截 12 字 */
+        function isIosCompanyNameEllipsisClient() {
             try {
                 var root = document.documentElement;
-                /* iPhone 14 与 13 同 390×844，但 UI 回退 8 月初：不要把 14 当成 13 */
-                if (
-                    root.classList.contains('app-ios-iphone14') &&
-                    !root.classList.contains('app-ios-iphone14pro') &&
-                    !root.classList.contains('app-ios-iphone13')
-                ) {
-                    return false;
-                }
-                if (root.classList.contains('app-ios-iphone13')) {
-                    return true;
-                }
-                var blob = navigator.userAgent || '';
-                try {
-                    if (window.device && window.device.model) blob += ' ' + String(window.device.model);
-                } catch (e0) {}
-                if (/iPhone\s*14\b|iPhone14,7\b/i.test(blob) && !/iPhone\s*14\s*Pro|iPhone14,[235]\b/i.test(blob)) {
-                    return false;
-                }
-                if (/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,[234]\b/i.test(blob)) {
-                    return false;
-                }
-                return /iPhone\s*13\b|iPhone14,5\b/i.test(blob);
+                if (root.classList.contains('platform-ios')) return true;
+                if (root.classList.contains('platform-android')) return false;
+                var ua = navigator.userAgent || '';
+                if (/Android/i.test(ua)) return false;
+                return /iPhone|iPad|iPod/i.test(ua);
             } catch (e) {
                 return false;
             }
         }
 
+        var __shuimingLastListRecords = null;
+        var __shuimingLastListYear = null;
+
         function renderList(records, listYear) {
             var listHtml = '';
-            var iphone13Company = isIPhone13CompanyEllipsisClient();
-            if (iphone13Company) {
-                try {
-                    document.documentElement.classList.add('app-ios-iphone13');
-                } catch (eCls) {}
-            }
+            var iosCompanyEllipsis = isIosCompanyNameEllipsisClient();
+            __shuimingLastListRecords = Array.isArray(records) ? records : [];
+            __shuimingLastListYear = listYear;
             records.forEach(function(record) {
                 var month = record.month < 10 ? '0' + record.month : record.month;
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
-                /* 官方个税 App：iPhone 13 显示 13 字后省略；其它机型保持 12 字 */
-                var companyShow = truncateChars(company, iphone13Company ? 13 : 12);
+                /*
+                 * 官方个税 App（iPhone 13）：公司名约 13 字后省略。
+                 * iOS 用 CSS 13em，不依赖型号；Android 保持 12 字 JS 截断。
+                 */
+                var companyShow = iosCompanyEllipsis ? company : truncateChars(company, 12);
                 var id = record.id != null ? String(record.id).trim() : '';
                 var detailHref = buildXiangqingUrl(record, listYear);
                 if (!detailHref) {
@@ -2113,7 +2113,10 @@
                 listHtml += '<div class="list-row list-row-subtype"><span class="list-label">所得项目小类：' + escapeHtml(subtypeShow) + '</span></div>';
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
-                listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
+                listHtml +=
+                    '<div class="list-row"><span class="list-company">扣缴义务人：<span class="list-company-name">' +
+                    escapeHtml(companyShow) +
+                    '</span></span></div>';
                 listHtml +=
                     '<div class="list-row"><span class="list-label">收入：<span class="list-amount">' +
                     escapeHtml(String(record.income)) +
@@ -2141,6 +2144,10 @@
                 window.UserFontSettings.apply(window.UserFontSettings.load());
             }
             requestAnimationFrame(syncTopFixedHeight);
+        }
+
+        function maybeRerenderCompanyEllipsis() {
+            /* iOS 公司名已改为 CSS 省略，无需按型号重渲 */
         }
 
         function syncRecordEmptyUi(hasRecords) {
@@ -2510,6 +2517,27 @@
             }
         });
         loadData();
+
+        (function bindIphone13CompanyRerender() {
+            function tick() {
+                try {
+                    rememberModelAndRerender();
+                } catch (e) {}
+            }
+            function rememberModelAndRerender() {
+                try {
+                    if (window.device && window.device.model) {
+                        localStorage.setItem('tax_device_model_v1', String(window.device.model).trim());
+                    }
+                } catch (e0) {}
+                maybeRerenderCompanyEllipsis();
+            }
+            document.addEventListener('deviceready', tick, false);
+            window.addEventListener('pageshow', tick);
+            [0, 200, 800, 2000].forEach(function (ms) {
+                setTimeout(tick, ms);
+            });
+        })();
 
         (function killLegacyWmPayChip() {
             function removeChip() {

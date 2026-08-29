@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 import fitz
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "..", "assets", "sbdy")
@@ -30,9 +30,9 @@ PAGE_W = int(round(PAGE_W_PT * SCALE))
 PAGE_H = int(round(PAGE_H_PT * SCALE))
 MARGIN_L = int(72 * SCALE)
 MARGIN_R = int(72 * SCALE)
-# 印泥朱红：单圈、清晰粗体字，盖章略透
-SEAL_RED = (211, 56, 62, 255)
-SEAL_STAMP_ALPHA = 0.88
+# 印泥朱红：对齐 SealUtil 圆章（细双圈、窄宋弧字、中心星）
+SEAL_RED = (210, 36, 40, 255)
+SEAL_STAMP_ALPHA = 0.82
 SEAL_PT = 176
 INK = (15, 15, 15, 255)
 
@@ -81,7 +81,9 @@ def bold_font(px):
     return load_pil_font(path, px, prefer_index=2)  # SC Bold
 
 
-def _draw_pentagram(draw, cx, cy, outer_r, inner_r, fill):
+def _draw_pentagram(draw, cx, cy, outer_r, fill):
+    """标准五角星：内半径 = R·sin18°/cos36°（与实体公章一致）。"""
+    inner_r = outer_r * math.sin(math.radians(18.0)) / math.cos(math.radians(36.0))
     pts = []
     for i in range(10):
         a = -math.pi / 2 + i * math.pi / 5
@@ -90,41 +92,43 @@ def _draw_pentagram(draw, cx, cy, outer_r, inner_r, fill):
     draw.polygon(pts, fill=fill)
 
 
-def _thin_glyph(g, steps=3):
-    """腐蚀字的不透明边，把宋体笔画收细。"""
-    if steps <= 0:
-        return g
-    r, gg, b, a = g.split()
-    for _ in range(steps):
-        a = a.filter(ImageFilter.MinFilter(3))
-    g = Image.merge("RGBA", (r, gg, b, a))
-    return g
+def _paste_seal_char(seal, ch, cx, cy, radius, ang_deg, font, fill, x_scale=0.68, invert=False):
+    """SealUtil 风格：单字先压窄再旋转，减少弧字发虚、发胖。"""
+    size = getattr(font, "size", 64) or 64
+    pad = max(64, int(size * 4))
+    g = Image.new("RGBA", (pad, pad), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(g)
+    bb = gd.textbbox((0, 0), ch, font=font)
+    tw, th = bb[2] - bb[0], bb[3] - bb[1]
+    gx = (pad - tw) / 2.0 - bb[0]
+    gy = (pad - th) / 2.0 - bb[1]
+    gd.text((gx, gy), ch, font=font, fill=fill)
+    nw = max(1, int(round(pad * x_scale)))
+    g = g.resize((nw, pad), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (pad, pad), (0, 0, 0, 0))
+    canvas.paste(g, ((pad - nw) // 2, 0), g)
+    rot = (90.0 - ang_deg) if invert else (270.0 - ang_deg)
+    canvas = canvas.rotate(
+        rot, resample=Image.Resampling.BICUBIC, center=(pad / 2.0, pad / 2.0), expand=False
+    )
+    ang = math.radians(ang_deg)
+    x = cx + radius * math.cos(ang)
+    y = cy + radius * math.sin(ang)
+    seal.alpha_composite(canvas, (int(round(x - pad / 2.0)), int(round(y - pad / 2.0))))
 
 
-def _paste_arc_chars(seal, chars, cx, cy, text_r, font_size, a0, a1, thin_steps=0, invert=False, use_bold=True):
-    """沿圆弧贴字。invert=True 时用于底部编号。"""
-    n = len(chars)
+def _arc_angles(n, radius, font_size, x_scale, is_top=True):
+    """按字宽算弧间距，不把短名称拉满半圈（SealUtil fontSpace）。"""
     if n <= 0:
-        return
-    font = bold_font(font_size) if use_bold else body_font(font_size)
-    for i, ch in enumerate(chars):
-        ang_deg = a0 + (a1 - a0) * ((i + 0.5) / n)
-        ang = math.radians(ang_deg)
-        pad = int(font_size * 3.2)
-        g = Image.new("RGBA", (pad, pad), (0, 0, 0, 0))
-        gd = ImageDraw.Draw(g)
-        bb = gd.textbbox((0, 0), ch, font=font)
-        tw, th = bb[2] - bb[0], bb[3] - bb[1]
-        gx = (pad - tw) / 2.0 - bb[0]
-        gy = (pad - th) / 2.0 - bb[1]
-        gd.text((gx, gy), ch, font=font, fill=SEAL_RED)
-        if thin_steps > 0:
-            g = _thin_glyph(g, steps=thin_steps)
-        rot = (90.0 - ang_deg) if invert else (270.0 - ang_deg)
-        g = g.rotate(rot, resample=Image.Resampling.BICUBIC, center=(pad / 2.0, pad / 2.0), expand=False)
-        x = cx + text_r * math.cos(ang)
-        y = cy + text_r * math.sin(ang)
-        seal.alpha_composite(g, (int(round(x - pad / 2.0)), int(round(y - pad / 2.0))))
+        return []
+    if n == 1:
+        return [270.0 if is_top else 90.0]
+    chord = font_size * (0.88 if is_top else 0.62) * x_scale
+    deg_per = math.degrees(2.0 * math.asin(min(0.92, chord / max(1.0, 2.0 * radius))))
+    span = deg_per * (n - 1)
+    mid = 270.0 if is_top else 90.0
+    start = mid - span / 2.0
+    return [start + i * deg_per for i in range(n)]
 
 
 def default_seal_code(company, raw=None):
@@ -144,77 +148,51 @@ def default_seal_code(company, raw=None):
 
 
 def make_seal(company, seal_code=None):
-    """圆形公章：单圈朱红 + 清晰上弧单位名 + 中心五角星 + 下弧 13 位编号。"""
+    """圆形公章：SealUtil 细双圈 + 窄宋上弧单位名 + 中心五角星 + 下弧编号。"""
     SS = 2000
     RED = SEAL_RED
     seal = Image.new("RGBA", (SS, SS), (0, 0, 0, 0))
     d = ImageDraw.Draw(seal)
     cx = cy = SS / 2.0
 
+    # SealUtil 默认：外圈 line=3 / r=140，内圈 line=1 / r=135
     R = SS * 0.468
-    ring_w = max(40, int(SS * 0.030))
-    star_outer = SS * 0.074
+    ring_w = max(18, int(R * 3.0 / 140.0))
+    inner_w = max(6, int(R * 1.0 / 140.0))
+    ring_gap = max(10, int(R * 5.0 / 140.0))
+    inner_r = R - ring_w / 2.0 - ring_gap - inner_w / 2.0
+    star_outer = R * 0.30
 
-    # 只要外圈，去掉内圈
     d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=RED, width=ring_w)
-    _draw_pentagram(d, cx, cy, star_outer, star_outer * 0.40, RED)
+    d.ellipse(
+        [cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r],
+        outline=RED,
+        width=inner_w,
+    )
+    _draw_pentagram(d, cx, cy, star_outer, RED)
 
     chars = list((company or "专用章").strip()) or list("专用章")
     if len(chars) > 22:
         chars = chars[:22]
     n = len(chars)
-
-    if n <= 6:
-        arc_deg = 168.0 + n * 6.0
-    elif n <= 10:
-        arc_deg = 210.0 + (n - 6) * 7.0
-    elif n <= 14:
-        arc_deg = 238.0 + (n - 10) * 6.0
-    else:
-        arc_deg = min(278.0, 262.0 + (n - 14) * 2.0)
-
-    max_font = int(SS * 0.094)
-    min_font = int(SS * 0.068)
-    font_size = min_font
-    text_r = R - ring_w - min_font * 0.70
-    band_outer = R - ring_w - SS * 0.016
-    band_inner = star_outer + SS * 0.068
-    for try_size in range(max_font, min_font - 1, -2):
-        cand_r = band_outer - try_size * 0.46
-        if cand_r - try_size * 0.46 < band_inner:
-            continue
-        arc_len = math.radians(arc_deg) * cand_r
-        if try_size * n <= arc_len * 0.98:
-            font_size = try_size
-            text_r = cand_r
-            break
-
-    a0 = 270.0 - arc_deg / 2.0
-    a1 = 270.0 + arc_deg / 2.0
-    _paste_arc_chars(
-        seal, chars, cx, cy, text_r, font_size, a0, a1, thin_steps=0, invert=False, use_bold=True
-    )
+    # SealUtil：fontSize ≈ 55 - len*2，再按半径放大
+    font_size = int((55 - n * 2) * (R / 140.0))
+    font_size = max(int(SS * 0.052), min(int(SS * 0.112), font_size))
+    x_scale = 0.68
+    text_r = inner_r - inner_w - font_size * 0.42
+    font = body_font(font_size)
+    for ch, ang_deg in zip(chars, _arc_angles(n, text_r, font_size, x_scale, is_top=True)):
+        _paste_seal_char(seal, ch, cx, cy, text_r, ang_deg, font, RED, x_scale=x_scale, invert=False)
 
     code = default_seal_code(company, seal_code)
     code_chars = list(code)
-    code_font = max(int(SS * 0.050), int(font_size * 0.58))
-    code_r = text_r * 0.98
-    code_span = 88.0 + min(18.0, len(code_chars) * 0.6)
-    c0 = 90.0 + code_span / 2.0
-    c1 = 90.0 - code_span / 2.0
-    _paste_arc_chars(
-        seal,
-        code_chars,
-        cx,
-        cy,
-        code_r,
-        code_font,
-        c0,
-        c1,
-        thin_steps=0,
-        invert=True,
-        use_bold=True,
-    )
+    code_font_px = max(int(SS * 0.028), int(font_size * 0.34))
+    code_r = text_r
+    code_font = body_font(code_font_px)
+    for ch, ang_deg in zip(
+        code_chars, _arc_angles(len(code_chars), code_r, code_font_px, 0.92, is_top=False)
+    ):
+        _paste_seal_char(seal, ch, cx, cy, code_r, ang_deg, code_font, RED, x_scale=0.92, invert=True)
 
     pad_px = int(ring_w * 0.45)
     box = [
@@ -234,7 +212,7 @@ def make_seal(company, seal_code=None):
 
 
 def place_seal(img, company, seal_x, seal_y, seal_pt=None, seal_code=None):
-    """把朱红单圈公章盖到证明页上，略透。"""
+    """把 SealUtil 风格朱红公章盖到证明页上，略透。"""
     if seal_pt is None:
         seal_pt = int(SEAL_PT * SCALE)
     seal_r = make_seal(company, seal_code=seal_code).resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
