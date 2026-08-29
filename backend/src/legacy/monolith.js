@@ -486,8 +486,37 @@ const BULK_MSG_AUDIENCE_SET = {
   inactive_has_tax: true,
   inactive_no_tax: true,
   inactive_visited_purchase: true,
-  inactive_purchase_no_pay: true
+  inactive_purchase_no_pay: true,
+  inactive_has_d1: true,
+  inactive_d1_only: true,
+  inactive_high_income: true
 };
+/** 自己填写的月收入（本期收入/收入）超过该值视为高收入跟进 */
+const HIGH_SELF_INCOME_THRESHOLD = 15000;
+
+/** 单条个税记录的月收入：优先本期收入，否则收入 */
+function taxRecordMonthIncomeSql(alias) {
+  var t = alias || 'tr';
+  return 'GREATEST(IFNULL(' + t + '.income_this_period, 0), IFNULL(' + t + '.income, 0))';
+}
+
+/**
+ * 用户自己填写过月收入大于 threshold 的有效个税（排除公司名含「示例」）
+ * userCol 为 username 列，如 users.username / u.username
+ */
+function userHasSelfFilledHighIncomeSql(userCol, threshold) {
+  var n = Number(threshold);
+  if (!isFinite(n) || n < 0) n = HIGH_SELF_INCOME_THRESHOLD;
+  return (
+    'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
+    (userCol || 'users.username') +
+    " AND tr.deleted_at IS NULL AND IFNULL(tr.company_name,'') NOT LIKE '%示例%' AND " +
+    taxRecordMonthIncomeSql('tr') +
+    ' > ' +
+    n +
+    ')'
+  );
+}
 /** 开通类自动站内信（填税后 / 离开支付页 / 注册超24h）默认关闭；设 ACTIVATION_INBOX_PROMO_ENABLED=1 可再开启 */
 const ACTIVATION_INBOX_PROMO_ENABLED =
   String(process.env.ACTIVATION_INBOX_PROMO_ENABLED || '0').trim() === '1';
@@ -13877,6 +13906,18 @@ function userLoginInactiveSinceSql(days, usernameExpr) {
   );
 }
 
+/** 当日活跃：日活表或当日成功登录（与「当日登录」筛选一致） */
+function userActiveOnDateSql(usernameExpr) {
+  var u = usernameExpr || 'users.username';
+  return (
+    '(EXISTS (SELECT 1 FROM user_daily_activity uda WHERE uda.username = ' +
+    u +
+    ' AND uda.activity_date = ?) OR EXISTS (SELECT 1 FROM user_login_events ule WHERE ule.username = ' +
+    u +
+    ' AND ule.ok = 1 AND ule.created_at >= ? AND ule.created_at < DATE_ADD(?, INTERVAL 1 DAY)))'
+  );
+}
+
 /** 构建：user login risk maps */
 async function buildUserLoginRiskMaps(conn, usernames) {
   var ipDistinct = {};
@@ -14037,6 +14078,170 @@ async function handleAdminUsersDailyConversion(req, res) {
             kufaka: kufakaSeg
           }
         })
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+function pctRateText(n, d) {
+  var num = Number(n) || 0;
+  var den = Number(d) || 0;
+  if (den <= 0) return null;
+  return (Math.round((num / den) * 1000) / 10).toFixed(1) + '%';
+}
+
+/**
+ * 注册次日回访未激活：转化对比 + 当前存量拆解
+ * 日活与 created_at 按 UTC 日对齐（与 user_daily_activity / CURDATE 一致）
+ */
+async function handleAdminD1ReturnCohort(req, res) {
+  try {
+    var whereClauses = ['users.list_hidden_at IS NULL', nonGuestUsernameSql('users.username')];
+    var params = [];
+    appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+    var whereSql = ' WHERE ' + whereClauses.join(' AND ');
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        `SELECT
+           COUNT(*) AS visible_n,
+           SUM(eligible) AS eligible,
+           SUM(eligible AND has_d1) AS has_d1,
+           SUM(eligible AND has_d1 AND activated) AS has_d1_activated,
+           SUM(eligible AND NOT has_d1) AS no_d1,
+           SUM(eligible AND NOT has_d1 AND activated) AS no_d1_activated,
+           SUM(inactive_flag AND has_d1) AS inactive_has_d1,
+           SUM(inactive_flag AND has_d1 AND NOT has_after) AS inactive_d1_only,
+           SUM(inactive_flag AND has_d1 AND has_after) AS inactive_d1_later,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND has_tax) AS d1_only_tax,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND NOT has_tax) AS d1_only_no_tax,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND visited_pay) AS d1_only_pay,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND NOT visited_pay) AS d1_only_no_pay,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND NOT has_tax AND NOT visited_pay) AS d1_only_login,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND has_tax AND visited_pay) AS d1_only_tax_pay,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND age_days <= 7) AS d1_only_7d,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND age_days BETWEEN 8 AND 30) AS d1_only_8_30,
+           SUM(inactive_flag AND has_d1 AND NOT has_after AND age_days > 30) AS d1_only_gt30
+         FROM (
+           SELECT
+             CASE WHEN users.account_active = 1 THEN 1 ELSE 0 END AS activated,
+             CASE WHEN (users.account_active IS NULL OR users.account_active = 0) THEN 1 ELSE 0 END AS inactive_flag,
+             CASE WHEN DATE(users.created_at) <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN 1 ELSE 0 END AS eligible,
+             DATEDIFF(CURDATE(), DATE(users.created_at)) AS age_days,
+             ${userHasD1DailyActivitySql('users')} AS has_d1,
+             ${userHasDailyActivityAfterD1Sql('users')} AS has_after,
+             EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL) AS has_tax,
+             EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = users.username AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_%')) AS visited_pay
+           FROM users ${whereSql}
+         ) t`,
+        params
+      );
+      var r = rows && rows[0] ? rows[0] : {};
+      function n(key) {
+        return Number(r[key]) || 0;
+      }
+      var hasD1 = n('has_d1');
+      var hasD1Act = n('has_d1_activated');
+      var noD1 = n('no_d1');
+      var noD1Act = n('no_d1_activated');
+      res.json({
+        code: 200,
+        data: {
+          definition:
+            '日活=user_daily_activity（登录或调用需登录接口）。注册日与日活日按 UTC 对齐。次日=注册日+1。「仅次日回访」=有次日日活且之后再无日活。游客与已隐藏账号已排除。',
+          visible_n: n('visible_n'),
+          historical: {
+            eligible: n('eligible'),
+            has_d1: hasD1,
+            has_d1_activated: hasD1Act,
+            has_d1_rate_pct: pctRateText(hasD1Act, hasD1),
+            no_d1: noD1,
+            no_d1_activated: noD1Act,
+            no_d1_rate_pct: pctRateText(noD1Act, noD1)
+          },
+          stock: {
+            inactive_has_d1: n('inactive_has_d1'),
+            inactive_d1_only: n('inactive_d1_only'),
+            inactive_d1_later: n('inactive_d1_later'),
+            d1_only_tax: n('d1_only_tax'),
+            d1_only_no_tax: n('d1_only_no_tax'),
+            d1_only_pay: n('d1_only_pay'),
+            d1_only_no_pay: n('d1_only_no_pay'),
+            d1_only_login: n('d1_only_login'),
+            d1_only_tax_pay: n('d1_only_tax_pay'),
+            d1_only_7d: n('d1_only_7d'),
+            d1_only_8_30: n('d1_only_8_30'),
+            d1_only_gt30: n('d1_only_gt30')
+          }
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 自己填写月收入 >1.5 万且未激活：存量拆解 */
+async function handleAdminHighIncomeInactive(req, res) {
+  try {
+    var whereClauses = [
+      'users.list_hidden_at IS NULL',
+      nonGuestUsernameSql('users.username'),
+      '(users.account_active IS NULL OR users.account_active = 0)',
+      userHasSelfFilledHighIncomeSql('users.username', HIGH_SELF_INCOME_THRESHOLD)
+    ];
+    var params = [];
+    appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+    var whereSql = ' WHERE ' + whereClauses.join(' AND ');
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(visited_pay) AS visited_pay,
+           SUM(NOT visited_pay) AS no_pay,
+           SUM(age_days <= 7) AS in_7d,
+           SUM(age_days BETWEEN 8 AND 30) AS in_8_30,
+           SUM(age_days > 30) AS gt_30
+         FROM (
+           SELECT
+             DATEDIFF(CURDATE(), DATE(users.created_at)) AS age_days,
+             EXISTS (
+               SELECT 1 FROM user_page_events e
+               WHERE e.username = users.username
+                 AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_%')
+             ) AS visited_pay
+           FROM users ${whereSql}
+         ) t`,
+        params
+      );
+      var r = rows && rows[0] ? rows[0] : {};
+      function n(key) {
+        return Number(r[key]) || 0;
+      }
+      res.json({
+        code: 200,
+        data: {
+          threshold: HIGH_SELF_INCOME_THRESHOLD,
+          definition:
+            '未激活、未隐藏、非游客；至少一条未删除个税记录的本期收入或收入大于 15000；公司名含「示例」的记录不计入。',
+          stock: {
+            inactive_high_income: n('total'),
+            visited_pay: n('visited_pay'),
+            no_pay: n('no_pay'),
+            in_7d: n('in_7d'),
+            in_8_30: n('in_8_30'),
+            gt_30: n('gt_30')
+          }
+        }
       });
     } finally {
       conn.release();
@@ -15638,6 +15843,45 @@ function maybeQueueAutoTaxDoneMessage(userId) {
     });
 }
 
+/** 日活 activity_date 与 users.created_at 均为 UTC（touch 时写 CURDATE） */
+function userRegD1DateSql(alias) {
+  var t = alias || 'users';
+  return 'DATE_ADD(DATE(' + t + '.created_at), INTERVAL 1 DAY)';
+}
+
+/** 注册次日有日活 */
+function userHasD1DailyActivitySql(alias) {
+  var t = alias || 'users';
+  return (
+    'EXISTS (SELECT 1 FROM user_daily_activity d1a WHERE d1a.username = ' +
+    t +
+    '.username AND d1a.activity_date = ' +
+    userRegD1DateSql(t) +
+    ')'
+  );
+}
+
+/** 注册次日之后仍有日活 */
+function userHasDailyActivityAfterD1Sql(alias) {
+  var t = alias || 'users';
+  return (
+    'EXISTS (SELECT 1 FROM user_daily_activity d1b WHERE d1b.username = ' +
+    t +
+    '.username AND d1b.activity_date > ' +
+    userRegD1DateSql(t) +
+    ')'
+  );
+}
+
+/** mode: has=有次日日活；only=有次日日活且之后再无日活 */
+function appendD1ReturnActivityFilters(mode, alias, where) {
+  if (mode !== 'has' && mode !== 'only') return;
+  where.push(userHasD1DailyActivitySql(alias));
+  if (mode === 'only') {
+    where.push('NOT ' + userHasDailyActivityAfterD1Sql(alias));
+  }
+}
+
 /** 群发受众 SQL 条件 */
 function appendBulkMsgAudienceFilters(audience, where, params) {
   where.push('(u.account_active IS NULL OR u.account_active = 0)');
@@ -15663,6 +15907,12 @@ function appendBulkMsgAudienceFilters(audience, where, params) {
     where.push(
       "NOT EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = u.username AND (e.route_key LIKE '%track_alipay_payment_success%' OR e.route_key LIKE '%track_purchase_activate_success%'))"
     );
+  } else if (audience === 'inactive_has_d1') {
+    appendD1ReturnActivityFilters('has', 'u', where);
+  } else if (audience === 'inactive_d1_only') {
+    appendD1ReturnActivityFilters('only', 'u', where);
+  } else if (audience === 'inactive_high_income') {
+    where.push(userHasSelfFilledHighIncomeSql('u.username', HIGH_SELF_INCOME_THRESHOLD));
   }
 }
 
@@ -15674,9 +15924,7 @@ async function sendInactiveUserMessages(opts) {
   opts = opts || {};
   var audience = opts.audience != null ? String(opts.audience).trim() : 'pending_activate_24h';
   if (!BULK_MSG_AUDIENCE_SET[audience]) {
-    var audErr = new Error(
-      'audience 须为 pending_activate_24h、all_inactive、inactive_has_tax、inactive_no_tax、inactive_visited_purchase 或 inactive_purchase_no_pay'
-    );
+    var audErr = new Error('audience 须为 ' + Object.keys(BULK_MSG_AUDIENCE_SET).join('、'));
     audErr.code = 400;
     throw audErr;
   }
@@ -16455,6 +16703,7 @@ async function handleAdminUsers(req, res) {
     var qExact = req.query.exact === '1' || req.query.exact === 'true';
     var qRisk = req.query.risk; // '1' 仅风险, '0' 非风险
     var qTaxModifiedToday = req.query.tax_modified_today; // '1' 当日有改动, '0' 当日无改动
+    var qLoggedInToday = req.query.logged_in_today; // '1' 当日已登录/活跃, '0' 当日未登录
     var qLoginInactiveDays = parseInt(req.query.login_inactive_days, 10);
     var qNameChangesGt = parseInt(req.query.name_changes_gt, 10);
     var qTaxModDaysGt = parseInt(req.query.tax_mod_days_gt, 10);
@@ -16465,6 +16714,9 @@ async function handleAdminUsers(req, res) {
     var qWhitelist = qWhitelistRaw === '1' || qWhitelistRaw === '0' ? qWhitelistRaw : '';
     var qAgentRaw = String(req.query.agent || '').trim();
     var qAgent = qAgentRaw === '1' || qAgentRaw === '0' ? qAgentRaw : '';
+    var qD1Raw = String(req.query.d1_return || '').trim().toLowerCase();
+    var qD1Return = qD1Raw === 'has' || qD1Raw === 'only' ? qD1Raw : '';
+    var qHighIncome = String(req.query.high_income || '').trim() === '1';
     var qGuest =
       req.query.guest === '1' ||
       req.query.guest === 'true' ||
@@ -16524,6 +16776,13 @@ async function handleAdminUsers(req, res) {
       );
       params.push(todayKey);
     }
+    if (qLoggedInToday === '1') {
+      whereClauses.push(userActiveOnDateSql('users.username'));
+      params.push(todayKey, todayKey, todayKey);
+    } else if (qLoggedInToday === '0') {
+      whereClauses.push('NOT ' + userActiveOnDateSql('users.username'));
+      params.push(todayKey, todayKey, todayKey);
+    }
     if (isFinite(qLoginInactiveDays) && qLoginInactiveDays > 0) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
@@ -16569,6 +16828,14 @@ async function handleAdminUsers(req, res) {
       whereClauses.push('COALESCE(users.is_agent, 0) = 1');
     } else if (qAgent === '0') {
       whereClauses.push('COALESCE(users.is_agent, 0) = 0');
+    }
+    if (qD1Return) {
+      whereClauses.push('(account_active IS NULL OR account_active = 0)');
+      appendD1ReturnActivityFilters(qD1Return, 'users', whereClauses);
+    }
+    if (qHighIncome) {
+      whereClauses.push('(account_active IS NULL OR account_active = 0)');
+      whereClauses.push(userHasSelfFilledHighIncomeSql('users.username', HIGH_SELF_INCOME_THRESHOLD));
     }
     if (!qGuest) {
       /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
@@ -16625,6 +16892,9 @@ async function handleAdminUsers(req, res) {
     var nameChangeCountMap = {};
     var taxModDaysMap = {};
     var dailyUnlockSet = Object.create(null);
+    var lastLoginAtMap = {};
+    var loggedInTodaySet = Object.create(null);
+    var maxMonthIncomeMap = {};
     if (usernamesForRisk.length) {
       var nameChangePlaceholders = usernamesForRisk
         .map(function () {
@@ -16668,6 +16938,64 @@ async function handleAdminUsers(req, res) {
         });
       } catch (eUnlock) {
         /* 表可能尚未迁移，忽略当日解锁状态 */
+      }
+      try {
+        const [lastLoginRows] = await conn.query(
+          `SELECT username, MAX(created_at) AS last_login_at
+           FROM user_login_events
+           WHERE ok = 1 AND username IN (` +
+            nameChangePlaceholders +
+            `)
+           GROUP BY username`,
+          usernamesForRisk
+        );
+        (lastLoginRows || []).forEach(function (row) {
+          lastLoginAtMap[String(row.username || '')] = row.last_login_at;
+        });
+        const [dauTodayRows] = await conn.query(
+          `SELECT username FROM user_daily_activity
+           WHERE activity_date = ? AND username IN (` +
+            nameChangePlaceholders +
+            `)`,
+          [todayKey].concat(usernamesForRisk)
+        );
+        (dauTodayRows || []).forEach(function (row) {
+          loggedInTodaySet[String(row.username || '')] = 1;
+        });
+        const [loginTodayRows] = await conn.query(
+          `SELECT DISTINCT username FROM user_login_events
+           WHERE ok = 1 AND created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
+             AND username IN (` +
+            nameChangePlaceholders +
+            `)`,
+          [todayKey, todayKey].concat(usernamesForRisk)
+        );
+        (loginTodayRows || []).forEach(function (row) {
+          loggedInTodaySet[String(row.username || '')] = 1;
+        });
+      } catch (eLoginToday) {
+        /* 日活/登录表异常时仍返回用户列表，当日登录标为未知 */
+      }
+      try {
+        const [incomeRows] = await conn.query(
+          `SELECT user_id, MAX(${taxRecordMonthIncomeSql('tr')}) AS max_income
+           FROM tax_records tr
+           WHERE tr.deleted_at IS NULL
+             AND IFNULL(tr.company_name,'') NOT LIKE '%示例%'
+             AND user_id IN (` +
+            nameChangePlaceholders +
+            `)
+           GROUP BY user_id`,
+          usernamesForRisk
+        );
+        (incomeRows || []).forEach(function (row) {
+          var v = Number(row.max_income);
+          if (isFinite(v) && v > 0) {
+            maxMonthIncomeMap[String(row.user_id || '')] = Math.round(v * 100) / 100;
+          }
+        });
+      } catch (eIncome) {
+        /* 收入汇总失败时列表仍返回 */
       }
     }
     conn.release();
@@ -16749,7 +17077,16 @@ async function handleAdminUsers(req, res) {
         risk: riskInfo.risk,
         risk_messages: riskInfo.risk_messages,
         tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date),
+        max_month_income: maxMonthIncomeMap[uname] != null ? maxMonthIncomeMap[uname] : 0,
+        high_income: !!(maxMonthIncomeMap[uname] && maxMonthIncomeMap[uname] > HIGH_SELF_INCOME_THRESHOLD),
         tax_edit_daily_unlocked_today: !!dailyUnlockSet[uname],
+        logged_in_today: !!loggedInTodaySet[uname],
+        last_login_at: (function () {
+          var v = lastLoginAtMap[uname];
+          if (!v) return '';
+          if (v instanceof Date) return v.toISOString();
+          return String(v);
+        })(),
         register_source_channel:
           r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
         register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
@@ -16796,7 +17133,9 @@ async function handleAdminUsers(req, res) {
         peer_days_gt: peerFeeCfg.days_gt,
         peer_daily_amount: peerFeeCfg.daily_amount,
         peer_filter: qPeerExempt ? 'exempt' : qPeer ? '1' : '',
-        whitelist_filter: qWhitelist
+        whitelist_filter: qWhitelist,
+        high_income_filter: qHighIncome ? '1' : '',
+        high_income_threshold: HIGH_SELF_INCOME_THRESHOLD
       }
     });
   } catch (e) {
@@ -21833,6 +22172,8 @@ function getHandlers() {
     handleAdminUserDataList,
     handleAdminUserDataDetail,
     handleAdminUsersDailyConversion,
+    handleAdminD1ReturnCohort,
+    handleAdminHighIncomeInactive,
     handleAdminChannelRegistrationFunnel,
     handleAdminActivationChannelFunnel,
     handleAdminAnalyticsPurchaseEvents,

@@ -113,7 +113,7 @@ for path in /js/message-badge.js /js/auth.js /css/nav.css; do
 done
 grep -q 'nav-unread-badge' "${ROOT}/frontend/css/nav.css" || { echo "[msg-selftest] FAIL: nav badge css missing" >&2; exit 1; }
 grep -q 'track_purchase_page_leave' "${ROOT}/frontend/purchase.html" || { echo "[msg-selftest] FAIL: purchase leave track missing" >&2; exit 1; }
-grep -q 'inactive_has_tax' "${ROOT}/frontend/admin_panel.html" || { echo "[msg-selftest] FAIL: admin audience missing" >&2; exit 1; }
+grep -q 'inactive_d1_only' "${ROOT}/frontend/admin_panel.html" || { echo "[msg-selftest] FAIL: admin audience missing" >&2; exit 1; }
 echo "[msg-selftest] ok static assets"
 
 # --- 管理端登录 ---
@@ -126,7 +126,7 @@ ADMIN_TOKEN="$(
 echo "[msg-selftest] ok admin login"
 
 # --- 分群预览 dry_run ---
-for aud in pending_activate_24h all_inactive inactive_has_tax inactive_no_tax inactive_visited_purchase inactive_purchase_no_pay; do
+for aud in pending_activate_24h all_inactive inactive_has_tax inactive_no_tax inactive_visited_purchase inactive_purchase_no_pay inactive_has_d1 inactive_d1_only; do
   resp="$(curl -sS --noproxy '*' -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
     -d "{\"audience\":\"$aud\",\"title\":\"t\",\"content\":\"c\",\"dry_run\":true}" \
     "$BASE/api/admin/messages/bulk")"

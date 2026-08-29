@@ -56,6 +56,22 @@
             return window.renderRegisterPlatformAnalysis.apply(this, arguments);
         }
 
+        function formatMonthIncomeShort(n) {
+            var v = Number(n);
+            if (!isFinite(v) || v <= 0) return '—';
+            if (v >= 10000) {
+                var wan = Math.round(v / 100) / 100;
+                return String(wan) + '万';
+            }
+            return String(Math.round(v));
+        }
+
+        function formatMonthIncomeYuan(n) {
+            var v = Number(n);
+            if (!isFinite(v) || v <= 0) return '—';
+            return '¥' + v.toFixed(v % 1 ? 2 : 0);
+        }
+
         function formatDt(iso) {
             if (iso == null || String(iso).trim() === '') return '—';
             try {
@@ -1525,6 +1541,279 @@
         function loadAnalyticsConversionPage() {
             loadAnalyticsPricingAb();
             loadAnalyticsDailyConversion();
+            loadAnalyticsD1ReturnCohort();
+            loadAnalyticsHighIncomeInactive();
+        }
+
+        function loadAnalyticsD1ReturnCohort() {
+            var el = document.getElementById('analyticsD1ReturnCohort');
+            if (!el) return;
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/d1-return-cohort')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (!j || j.code !== 200 || !j.data) {
+                        el.textContent = (j && j.msg) || '加载失败';
+                        return;
+                    }
+                    renderAnalyticsD1ReturnCohort(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
+        }
+
+        function renderAnalyticsD1ReturnCohort(data) {
+            var el = document.getElementById('analyticsD1ReturnCohort');
+            if (!el) return;
+            var h = (data && data.historical) || {};
+            var s = (data && data.stock) || {};
+            function card(label, val, extraClass) {
+                return (
+                    '<div class="user-data-stat-card' +
+                    (extraClass ? ' ' + extraClass : '') +
+                    '"><div class="ud-label">' +
+                    label +
+                    '</div><div class="ud-val">' +
+                    esc(String(val != null ? val : 0)) +
+                    '</div></div>'
+                );
+            }
+            function row(label, val) {
+                return '<tr><td>' + label + '</td><td>' + esc(String(val != null ? val : 0)) + '</td></tr>';
+            }
+            var html = '<div class="user-data-stats">';
+            html += card('仅次日回访未激活', s.inactive_d1_only, 'd1-focus-card');
+            html += card('有次日日活仍未激活', s.inactive_has_d1);
+            html += card('次日回访后还来过', s.inactive_d1_later);
+            html += card('次日回访历史转化', h.has_d1_rate_pct || '—');
+            html += card('无次日回访转化', h.no_d1_rate_pct || '—');
+            html += '</div>';
+            html +=
+                '<p class="hint">有次日日活 ' +
+                esc(h.has_d1) +
+                ' 人中已激活 ' +
+                esc(h.has_d1_activated) +
+                '（' +
+                esc(h.has_d1_rate_pct || '—') +
+                '）；无次日日活 ' +
+                esc(h.no_d1) +
+                ' 人中已激活 ' +
+                esc(h.no_d1_activated) +
+                '（' +
+                esc(h.no_d1_rate_pct || '—') +
+                '）。仅次日回访是当前最该跟的存量。</p>';
+            html += '<div class="scroll-x"><table><thead><tr><th>仅次日回访拆解</th><th>人数</th></tr></thead><tbody>';
+            html += row('有个税', s.d1_only_tax);
+            html += row('无个税', s.d1_only_no_tax);
+            html += row('去过支付页', s.d1_only_pay);
+            html += row('未去支付页', s.d1_only_no_pay);
+            html += row('有个税且去过支付', s.d1_only_tax_pay);
+            html += row('只登录（无税未去支付）', s.d1_only_login);
+            html += row('近 7 天注册', s.d1_only_7d);
+            html += row('注册 8–30 天', s.d1_only_8_30);
+            html += row('注册超过 30 天', s.d1_only_gt30);
+            html += '</tbody></table></div>';
+            if (data && data.definition) {
+                html += '<p class="hint">' + esc(data.definition) + '</p>';
+            }
+            el.innerHTML = html;
+        }
+
+        function loadAnalyticsHighIncomeInactive() {
+            var el = document.getElementById('analyticsHighIncomeInactive');
+            if (!el) return;
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/high-income-inactive')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (!j || j.code !== 200 || !j.data) {
+                        el.textContent = (j && j.msg) || '加载失败';
+                        return;
+                    }
+                    renderAnalyticsHighIncomeInactive(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
+        }
+
+        function renderAnalyticsHighIncomeInactive(data) {
+            var el = document.getElementById('analyticsHighIncomeInactive');
+            if (!el) return;
+            var s = (data && data.stock) || {};
+            function card(label, val, extraClass) {
+                return (
+                    '<div class="user-data-stat-card' +
+                    (extraClass ? ' ' + extraClass : '') +
+                    '"><div class="ud-label">' +
+                    label +
+                    '</div><div class="ud-val">' +
+                    esc(String(val != null ? val : 0)) +
+                    '</div></div>'
+                );
+            }
+            function row(label, val) {
+                return '<tr><td>' + label + '</td><td>' + esc(String(val != null ? val : 0)) + '</td></tr>';
+            }
+            var html = '<div class="user-data-stats">';
+            html += card('月入>1.5万未激活', s.inactive_high_income, 'high-income-focus-card');
+            html += card('去过支付页', s.visited_pay);
+            html += card('未去支付页', s.no_pay);
+            html += card('近 7 天注册', s.in_7d);
+            html += card('注册 8–30 天', s.in_8_30);
+            html += card('注册超过 30 天', s.gt_30);
+            html += '</div>';
+            html +=
+                '<p class="hint">月收入按自己填写的个税「本期收入 / 收入」取较大值，大于 1.5 万；公司名含「示例」不计入。这是当前该跟开通的高收入存量。</p>';
+            html += '<div class="scroll-x"><table><thead><tr><th>拆解</th><th>人数</th></tr></thead><tbody>';
+            html += row('去过支付页', s.visited_pay);
+            html += row('未去支付页', s.no_pay);
+            html += row('近 7 天注册', s.in_7d);
+            html += row('注册 8–30 天', s.in_8_30);
+            html += row('注册超过 30 天', s.gt_30);
+            html += '</tbody></table></div>';
+            if (data && data.definition) {
+                html += '<p class="hint">' + esc(data.definition) + '</p>';
+            }
+            el.innerHTML = html;
+        }
+
+        function jumpToD1ReturnUsers(mode) {
+            var m = mode === 'has' ? 'has' : 'only';
+            var usernameEl = document.getElementById('filterUsername');
+            var realNameEl = document.getElementById('filterRealName');
+            var exactEl = document.getElementById('filterExact');
+            var riskEl = document.getElementById('filterRisk');
+            var activeEl = document.getElementById('filterActive');
+            var bannedEl = document.getElementById('filterBanned');
+            var taxModEl = document.getElementById('filterTaxModifiedToday');
+            var loginInactiveEl = document.getElementById('filterLoginInactive');
+            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
+            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+            var peerEl = document.getElementById('filterPeerAccount');
+            var whitelistEl = document.getElementById('filterWhitelist');
+            var agentEl = document.getElementById('filterAgent');
+            var d1El = document.getElementById('filterD1Return');
+            var highIncomeEl = document.getElementById('filterHighIncome');
+            if (usernameEl) usernameEl.value = '';
+            if (realNameEl) realNameEl.value = '';
+            if (exactEl) exactEl.checked = false;
+            if (riskEl) riskEl.value = '';
+            if (activeEl) activeEl.value = '0';
+            if (bannedEl) bannedEl.value = '0';
+            if (taxModEl) taxModEl.value = '';
+            if (loginInactiveEl) loginInactiveEl.value = '';
+            if (nameChangesGtEl) nameChangesGtEl.value = '';
+            if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+            if (peerEl) peerEl.value = '';
+            if (whitelistEl) whitelistEl.value = '';
+            if (agentEl) agentEl.value = '';
+            if (d1El) d1El.value = m;
+            if (highIncomeEl) highIncomeEl.value = '';
+            userPage = 1;
+            var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
+            if (alreadyUsers) {
+                applyAdminRoute({ force: true });
+            } else {
+                location.hash = 'users';
+            }
+        }
+
+        var D1_BULK_TITLE = '昨天回来过，开通后可完整使用';
+        var D1_BULK_BODY =
+            '您好，看到您注册后次日仍有使用。开通后可去除水印，完整查看收入纳税明细并导出证明。点击下方「前往激活」即可开通。';
+
+        function applyD1BulkDefaultCopy() {
+            var titleEl = document.getElementById('bulkMsgTitle');
+            var bodyEl = document.getElementById('bulkMsgContent');
+            if (titleEl) titleEl.value = D1_BULK_TITLE;
+            if (bodyEl) bodyEl.value = D1_BULK_BODY;
+        }
+
+        function jumpToD1OnlyBulk() {
+            var aud = document.getElementById('bulkMsgAudience');
+            if (aud) aud.value = 'inactive_d1_only';
+            applyD1BulkDefaultCopy();
+            if (normalizeAdminPage(location.hash) !== 'analytics-conversion') {
+                location.hash = 'analytics-conversion';
+            }
+            setTimeout(function () {
+                var box = document.getElementById('bulkMsgAudience');
+                if (box && box.scrollIntoView) {
+                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 80);
+        }
+
+        var HIGH_INCOME_BULK_TITLE = '您填写的收入明细开通后可完整查看';
+        var HIGH_INCOME_BULK_BODY =
+            '您好，看到您已填写较高收入的税务记录。开通后可去除水印，完整查看收入纳税明细并导出证明。点击下方「前往激活」即可开通。';
+
+        function applyHighIncomeBulkDefaultCopy() {
+            var titleEl = document.getElementById('bulkMsgTitle');
+            var bodyEl = document.getElementById('bulkMsgContent');
+            if (titleEl) titleEl.value = HIGH_INCOME_BULK_TITLE;
+            if (bodyEl) bodyEl.value = HIGH_INCOME_BULK_BODY;
+        }
+
+        function jumpToHighIncomeUsers() {
+            var usernameEl = document.getElementById('filterUsername');
+            var realNameEl = document.getElementById('filterRealName');
+            var exactEl = document.getElementById('filterExact');
+            var riskEl = document.getElementById('filterRisk');
+            var activeEl = document.getElementById('filterActive');
+            var bannedEl = document.getElementById('filterBanned');
+            var taxModEl = document.getElementById('filterTaxModifiedToday');
+            var loginInactiveEl = document.getElementById('filterLoginInactive');
+            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
+            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+            var peerEl = document.getElementById('filterPeerAccount');
+            var whitelistEl = document.getElementById('filterWhitelist');
+            var agentEl = document.getElementById('filterAgent');
+            var d1El = document.getElementById('filterD1Return');
+            var highIncomeEl = document.getElementById('filterHighIncome');
+            if (usernameEl) usernameEl.value = '';
+            if (realNameEl) realNameEl.value = '';
+            if (exactEl) exactEl.checked = false;
+            if (riskEl) riskEl.value = '';
+            if (activeEl) activeEl.value = '0';
+            if (bannedEl) bannedEl.value = '0';
+            if (taxModEl) taxModEl.value = '';
+            if (loginInactiveEl) loginInactiveEl.value = '';
+            if (nameChangesGtEl) nameChangesGtEl.value = '';
+            if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+            if (peerEl) peerEl.value = '';
+            if (whitelistEl) whitelistEl.value = '';
+            if (agentEl) agentEl.value = '';
+            if (d1El) d1El.value = '';
+            if (highIncomeEl) highIncomeEl.value = '1';
+            userPage = 1;
+            var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
+            if (alreadyUsers) {
+                applyAdminRoute({ force: true });
+            } else {
+                location.hash = 'users';
+            }
+        }
+
+        function jumpToHighIncomeBulk() {
+            var aud = document.getElementById('bulkMsgAudience');
+            if (aud) aud.value = 'inactive_high_income';
+            applyHighIncomeBulkDefaultCopy();
+            if (normalizeAdminPage(location.hash) !== 'analytics-conversion') {
+                location.hash = 'analytics-conversion';
+            }
+            setTimeout(function () {
+                var box = document.getElementById('bulkMsgAudience');
+                if (box && box.scrollIntoView) {
+                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 80);
         }
 
         /* ========== Analytics — Register Stats ========== */
@@ -5260,6 +5549,8 @@
             var peerEl = document.getElementById('filterPeerAccount');
             var whitelistEl = document.getElementById('filterWhitelist');
             var agentEl = document.getElementById('filterAgent');
+            var d1El = document.getElementById('filterD1Return');
+            var highIncomeEl = document.getElementById('filterHighIncome');
             if (usernameEl) usernameEl.value = name;
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = true;
@@ -5273,6 +5564,8 @@
             if (peerEl) peerEl.value = '';
             if (whitelistEl) whitelistEl.value = '';
             if (agentEl) agentEl.value = '';
+            if (d1El) d1El.value = '';
+            if (highIncomeEl) highIncomeEl.value = '';
             pendingHighlightUsername = name;
             userPage = 1;
             var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
@@ -5346,6 +5639,10 @@
             var whitelist = whitelistEl ? String(whitelistEl.value || '').trim() : '';
             var agentEl = document.getElementById('filterAgent');
             var agentFlag = agentEl ? String(agentEl.value || '').trim() : '';
+            var d1El = document.getElementById('filterD1Return');
+            var d1Return = d1El ? String(d1El.value || '').trim() : '';
+            var highIncomeEl = document.getElementById('filterHighIncome');
+            var highIncome = highIncomeEl ? String(highIncomeEl.value || '').trim() : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -5375,6 +5672,12 @@
             if (agentFlag !== '') {
                 url += '&agent=' + encodeURIComponent(agentFlag);
             }
+            if (d1Return !== '') {
+                url += '&d1_return=' + encodeURIComponent(d1Return);
+            }
+            if (highIncome === '1') {
+                url += '&high_income=1';
+            }
 
             adminFetch(url)
                 .then(function (r) { return r.json(); })
@@ -5382,7 +5685,11 @@
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.users || [];
                     var total = data.data.total || 0;
-                    document.getElementById('userStat').textContent = '共 ' + total + ' 个账号';
+                    var statText = '共 ' + total + ' 个账号';
+                    if (data.data.high_income_filter === '1') {
+                        statText += '（未激活且自己填月收入>1.5万）';
+                    }
+                    document.getElementById('userStat').textContent = statText;
                     
                     var totalPages = Math.ceil(total / userLimit) || 1;
                     document.getElementById('userPageInfo').textContent =
@@ -5612,6 +5919,13 @@
                             (u.is_agent
                                 ? '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
                                   'background:#eff6ff;color:#1d4ed8;font-size:11px;white-space:nowrap;" title="手动标记的代理账号">代理</span>'
+                                : '') +
+                            (u.high_income
+                                ? '<span class="high-income-badge" title="自己填写的个税月收入（本期收入或收入）最大值 ' +
+                                  esc(formatMonthIncomeYuan(u.max_month_income)) +
+                                  '">月入' +
+                                  esc(formatMonthIncomeShort(u.max_month_income)) +
+                                  '</span>'
                                 : '') +
                             '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
@@ -6112,7 +6426,32 @@
                 esc(String(daysGt)) +
                 ' 天的账号（不再看改名次数）。当前同行未进白名单，后续每天改个税需先付当天无限费用（¥' +
                 esc(yuanLabel) +
-                '）；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。';
+                '）；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。当日登录按北京时间：当日有成功登录，或发起过需登录接口（与日活口径一致）。';
+        }
+
+        function peerLoginTodayCellHtml(u) {
+            var last = formatDt(u.last_login_at);
+            var lastTitle = last !== '—'
+                ? '最近登录：' + last
+                : (u.logged_in_today ? '当日有需登录接口活跃，无成功登录流水' : '无成功登录记录');
+            if (u.logged_in_today) {
+                var timeBit = last !== '—' ? last.slice(11, 16) : '';
+                return (
+                    '<span class="dau-tax-badge has-records" title="' +
+                    esc(lastTitle) +
+                    '">已登录</span>' +
+                    (timeBit
+                        ? '<div class="peer-last-login" title="' + esc(lastTitle) + '">' + esc(timeBit) + '</div>'
+                        : '')
+                );
+            }
+            var sub = last !== '—' ? last.slice(5, 16) : '';
+            return (
+                '<span style="color:#bbb;" title="' +
+                esc(lastTitle) +
+                '">未登录</span>' +
+                (sub ? '<div class="peer-last-login">' + esc(sub) + '</div>' : '')
+            );
         }
 
         function loadPeerAccounts(p) {
@@ -6127,12 +6466,14 @@
             var activeEl = document.getElementById('filterPeerActive');
             var bannedEl = document.getElementById('filterPeerBanned');
             var taxModEl = document.getElementById('filterPeerTaxModifiedToday');
+            var loggedInEl = document.getElementById('filterPeerLoggedInToday');
             var username = usernameEl ? usernameEl.value.trim() : '';
             var realName = realNameEl ? realNameEl.value.trim() : '';
             var exact = exactEl && exactEl.checked;
             var active = activeEl ? activeEl.value : '';
             var banned = bannedEl ? bannedEl.value : '';
             var taxModifiedToday = taxModEl ? taxModEl.value : '';
+            var loggedInToday = loggedInEl ? loggedInEl.value : '';
             var peerMode = peerAccountModeValue();
 
             var url = 'api/admin/users?peer=' + encodeURIComponent(peerMode) +
@@ -6145,6 +6486,9 @@
             if (taxModifiedToday !== '') {
                 url += '&tax_modified_today=' + encodeURIComponent(taxModifiedToday);
             }
+            if (loggedInToday !== '') {
+                url += '&logged_in_today=' + encodeURIComponent(loggedInToday);
+            }
 
             if (statEl) statEl.textContent = '加载中…';
             adminFetch(url)
@@ -6152,15 +6496,20 @@
                 .then(function (data) {
                     if (!data || data.code !== 200 || !data.data) {
                         if (statEl) statEl.textContent = (data && data.msg) || '加载失败';
-                        tbody.innerHTML = '<tr><td colspan="10">加载失败</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="11">加载失败</td></tr>';
                         return;
                     }
                     var list = data.data.users || [];
                     var total = data.data.total || 0;
                     updatePeerAccountHint(data.data);
                     var modeLabel = peerMode === 'exempt' ? '已豁免账号' : '当前同行';
+                    var loggedTodayCnt = 0;
+                    list.forEach(function (u) {
+                        if (u.logged_in_today) loggedTodayCnt += 1;
+                    });
                     if (statEl) {
-                        statEl.textContent = '共 ' + total + ' 个' + modeLabel;
+                        statEl.textContent =
+                            '共 ' + total + ' 个' + modeLabel + '（本页当日已登录 ' + loggedTodayCnt + ' 个）';
                     }
                     var totalPages = Math.ceil(total / peerAccountLimit) || 1;
                     var pageInfo = document.getElementById('peerAccountPageInfo');
@@ -6229,6 +6578,7 @@
                             esc(String(taxModDays)) +
                             '天</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
+                        html += '<td class="col-login-today">' + peerLoginTodayCellHtml(u) + '</td>';
                         html += '<td>' + paidBadge + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
@@ -6236,7 +6586,7 @@
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                     });
-                    tbody.innerHTML = html || '<tr><td colspan="10">暂无符合条件的账号</td></tr>';
+                    tbody.innerHTML = html || '<tr><td colspan="11">暂无符合条件的账号</td></tr>';
 
                     tbody.querySelectorAll('.btn-peer-rename-exempt').forEach(function (btn) {
                         btn.onclick = function () {
@@ -6303,7 +6653,7 @@
                 })
                 .catch(function () {
                     if (statEl) statEl.textContent = '加载失败';
-                    tbody.innerHTML = '<tr><td colspan="10">网络错误</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
                 });
         }
 
@@ -7120,6 +7470,7 @@
                 var activeEl = document.getElementById('filterPeerActive');
                 var bannedEl = document.getElementById('filterPeerBanned');
                 var taxModEl = document.getElementById('filterPeerTaxModifiedToday');
+                var loggedInEl = document.getElementById('filterPeerLoggedInToday');
                 if (usernameEl) usernameEl.value = '';
                 if (realNameEl) realNameEl.value = '';
                 if (exactEl) exactEl.checked = false;
@@ -7127,6 +7478,7 @@
                 if (activeEl) activeEl.value = '';
                 if (bannedEl) bannedEl.value = '';
                 if (taxModEl) taxModEl.value = '';
+                if (loggedInEl) loggedInEl.value = '';
                 loadPeerAccounts(1);
             };
         }
@@ -7170,6 +7522,8 @@
                 var peerEl = document.getElementById('filterPeerAccount');
                 var whitelistEl = document.getElementById('filterWhitelist');
                 var agentEl = document.getElementById('filterAgent');
+                var d1El = document.getElementById('filterD1Return');
+                var highIncomeEl = document.getElementById('filterHighIncome');
                 if (usernameEl) usernameEl.value = '';
                 if (realNameEl) realNameEl.value = '';
                 if (exactEl) exactEl.checked = false;
@@ -7183,6 +7537,8 @@
                 if (peerEl) peerEl.value = '';
                 if (whitelistEl) whitelistEl.value = '';
                 if (agentEl) agentEl.value = '';
+                if (d1El) d1El.value = '';
+                if (highIncomeEl) highIncomeEl.value = '';
                 loadUsers(1);
             };
         }
@@ -8529,6 +8885,48 @@
         document.getElementById('btnRefreshConversion').addEventListener('click', function () {
             loadAnalyticsDailyConversion();
         });
+        var btnRefreshD1Cohort = document.getElementById('btnRefreshD1Cohort');
+        if (btnRefreshD1Cohort) {
+            btnRefreshD1Cohort.addEventListener('click', function () {
+                loadAnalyticsD1ReturnCohort();
+            });
+        }
+        var btnJumpD1OnlyUsers = document.getElementById('btnJumpD1OnlyUsers');
+        if (btnJumpD1OnlyUsers) {
+            btnJumpD1OnlyUsers.addEventListener('click', function () {
+                jumpToD1ReturnUsers('only');
+            });
+        }
+        var btnJumpD1HasUsers = document.getElementById('btnJumpD1HasUsers');
+        if (btnJumpD1HasUsers) {
+            btnJumpD1HasUsers.addEventListener('click', function () {
+                jumpToD1ReturnUsers('has');
+            });
+        }
+        var btnJumpD1OnlyBulk = document.getElementById('btnJumpD1OnlyBulk');
+        if (btnJumpD1OnlyBulk) {
+            btnJumpD1OnlyBulk.addEventListener('click', function () {
+                jumpToD1OnlyBulk();
+            });
+        }
+        var btnRefreshHighIncome = document.getElementById('btnRefreshHighIncome');
+        if (btnRefreshHighIncome) {
+            btnRefreshHighIncome.addEventListener('click', function () {
+                loadAnalyticsHighIncomeInactive();
+            });
+        }
+        var btnJumpHighIncomeUsers = document.getElementById('btnJumpHighIncomeUsers');
+        if (btnJumpHighIncomeUsers) {
+            btnJumpHighIncomeUsers.addEventListener('click', function () {
+                jumpToHighIncomeUsers();
+            });
+        }
+        var btnJumpHighIncomeBulk = document.getElementById('btnJumpHighIncomeBulk');
+        if (btnJumpHighIncomeBulk) {
+            btnJumpHighIncomeBulk.addEventListener('click', function () {
+                jumpToHighIncomeBulk();
+            });
+        }
         var btnRefreshAnalytics = document.getElementById('btnRefreshAnalytics');
         if (btnRefreshAnalytics) {
             btnRefreshAnalytics.addEventListener('click', function () {
@@ -8682,7 +9080,10 @@
                 inactive_has_tax: '未激活且有个税记录',
                 inactive_no_tax: '未激活且无个税记录',
                 inactive_visited_purchase: '未激活且去过支付页',
-                inactive_purchase_no_pay: '未激活、去过支付页、未支付'
+                inactive_purchase_no_pay: '未激活、去过支付页、未支付',
+                inactive_has_d1: '未激活·有注册次日日活',
+                inactive_d1_only: '未激活·仅次日回访（之后未再活跃）',
+                inactive_high_income: '未激活·自己填月收入>1.5万'
             };
             return labels[audience] || audience;
         }

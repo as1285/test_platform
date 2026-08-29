@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260829-deadcode">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260829-highinc">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -812,6 +812,21 @@
                                     <option value="1">只看同行</option>
                                 </select>
                             </div>
+                            <div>
+                                <label for="filterD1Return">注册次日回访</label>
+                                <select id="filterD1Return" class="filter-select" title="未激活且注册次日有日活。仅次日回访=次日之后再无日活。日活与注册日按 UTC 对齐。">
+                                    <option value="">全部</option>
+                                    <option value="has">未激活·有次日日活</option>
+                                    <option value="only">未激活·仅次日回访</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterHighIncome">填写收入</label>
+                                <select id="filterHighIncome" class="filter-select" title="未激活，且自己填写的个税月收入（本期收入或收入）大于 1.5 万。公司名含「示例」的记录不计入。">
+                                    <option value="">全部</option>
+                                    <option value="1">未激活·月收入&gt;1.5万</option>
+                                </select>
+                            </div>
                             <div class="flex-actions">
                                 <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
                                 <button type="button" class="btn-page" id="btnResetUsers">重置</button>
@@ -824,7 +839,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「高频改名」。30 天未登录按最近成功登录判断。<strong>注册次日回访</strong>：未激活且注册次日有日活；「仅次日回访」表示次日之后再无日活。<strong>填写收入</strong>：未激活，且自己填写的个税月收入（本期收入或收入取较大值）大于 1.5 万；公司名含「示例」的记录不计入。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -869,10 +884,10 @@
                 </div>
 
                 <div id="page-peer-accounts" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">单独查看与处置同行账号：豁免收费、封禁、跳转注册用户</p></div>
+                    <div class="page-lede"><p class="page-lede-text">单独查看与处置同行账号：豁免收费、封禁、跳转注册用户，并查看当日登录与活跃</p></div>
                     <section>
                         <h2>同行账号</h2>
-                        <p class="hint mt-0" id="peerAccountHint">本页只列个税修改天数超过阈值的账号（不再看改名次数）。当前同行未进白名单，后续每天改个税需先付当天无限费用；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。</p>
+                        <p class="hint mt-0" id="peerAccountHint">本页只列个税修改天数超过阈值的账号（不再看改名次数）。当前同行未进白名单，后续每天改个税需先付当天无限费用；已豁免账号可在筛选里查看并重新加限制。阈值与金额见「定价与引导」。当日登录按北京时间：当日有成功登录，或发起过需登录接口（与日活口径一致）。</p>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
                             <div>
@@ -919,6 +934,14 @@
                                     <option value="0">当日无修改</option>
                                 </select>
                             </div>
+                            <div>
+                                <label>当日是否登录</label>
+                                <select id="filterPeerLoggedInToday" class="filter-select" title="北京时间当日有成功登录，或发起过需登录接口">
+                                    <option value="">全部</option>
+                                    <option value="1">当日已登录</option>
+                                    <option value="0">当日未登录</option>
+                                </select>
+                            </div>
                             <div class="flex-actions">
                                 <button type="button" class="btn-primary" id="btnSearchPeerAccounts">查询</button>
                                 <button type="button" class="btn-page" id="btnResetPeerAccounts">重置</button>
@@ -935,6 +958,7 @@
                                         <th class="col-w-72">改名</th>
                                         <th class="col-w-88">修改天数</th>
                                         <th class="col-tax-mod">当日修改</th>
+                                        <th class="col-login-today">当日登录</th>
                                         <th class="col-w-88">当日付费</th>
                                         <th class="col-w-72">激活</th>
                                         <th class="col-w-72">封禁</th>
@@ -2204,6 +2228,27 @@
                         <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付转化加载中…</div>
                     </section>
                     <section>
+                        <h2>注册次日回访未激活 <span class="d1-focus-tag">重点跟进</span></h2>
+                        <p class="hint mt-0">回访过却没开通：注册次日有日活、目前仍未激活。其中「仅次日回访」次日之后再没来，转化窗口最短，优先群发。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshD1Cohort">刷新这群人</button>
+                            <button type="button" class="btn-page" id="btnJumpD1OnlyUsers">查看仅次日回访名单</button>
+                            <button type="button" class="btn-page" id="btnJumpD1HasUsers">查看有次日日活名单</button>
+                            <button type="button" class="btn-page" id="btnJumpD1OnlyBulk">群发仅次日回访</button>
+                        </div>
+                        <div id="analyticsD1ReturnCohort" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                    </section>
+                    <section>
+                        <h2>月收入超过 1.5 万未激活 <span class="d1-focus-tag">重点跟进</span></h2>
+                        <p class="hint mt-0">自己填写过月收入大于 1.5 万（本期收入或收入），目前仍未开通。高收入意向更强，优先跟开通。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshHighIncome">刷新这群人</button>
+                            <button type="button" class="btn-page" id="btnJumpHighIncomeUsers">查看名单</button>
+                            <button type="button" class="btn-page" id="btnJumpHighIncomeBulk">群发这批人</button>
+                        </div>
+                        <div id="analyticsHighIncomeInactive" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                    </section>
+                    <section>
                         <h2>注册转化率</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>闲鱼 / 支付宝激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
                         <div class="form-row flex-align-center mt-8">
@@ -2228,6 +2273,9 @@
                                     <option value="inactive_no_tax">未激活且无个税记录</option>
                                     <option value="inactive_visited_purchase">未激活且去过支付页</option>
                                     <option value="inactive_purchase_no_pay">未激活、去过支付页、未支付</option>
+                                    <option value="inactive_has_d1">未激活·有注册次日日活</option>
+                                    <option value="inactive_d1_only">未激活·仅次日回访（之后未再活跃）</option>
+                                    <option value="inactive_high_income">未激活·自己填月收入&gt;1.5万</option>
                                 </select>
                             </div>
                             <div class="form-field">
@@ -3057,6 +3105,6 @@
     <script src="/js/admin/loader.js?v=20260829-ln-seal"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260829-deadcode"></script>
+    <script src="/js/admin_panel.js?v=20260829-highinc"></script>
 </body>
 </html>

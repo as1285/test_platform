@@ -138,6 +138,18 @@ app.get(
   h.handleAdminUsersDailyConversion
 );
 app.get(
+  '/api/admin/analytics/d1-return-cohort',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
+  h.handleAdminD1ReturnCohort
+);
+app.get(
+  '/api/admin/analytics/high-income-inactive',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
+  h.handleAdminHighIncomeInactive
+);
+app.get(
   '/api/admin/analytics/channel-registration-funnel',
   mw.requireAdminAuth,
   mw.requireAdminMenu('channel-analysis'),

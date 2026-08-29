@@ -314,8 +314,38 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260829-deadcode', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260829-d1return', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['filterD1Return', 'inactive_d1_only', 'analyticsD1ReturnCohort', '注册次日回访未激活'],
+  'admin D1 return cohort UI'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ['loadAnalyticsD1ReturnCohort', 'd1_return=', 'inactive_d1_only', 'jumpToD1ReturnUsers'],
+  'admin D1 return cohort JS'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['handleAdminD1ReturnCohort', 'inactive_d1_only', 'appendD1ReturnActivityFilters'],
+  'backend D1 return cohort'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ['/api/admin/analytics/d1-return-cohort', 'handleAdminD1ReturnCohort'],
+  'D1 return cohort route'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['function isRedmiK80ProClient', 'app-android-redmi-k80pro', '24122RKC7'],
+  'Redmi K80 Pro inset detector'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['app-android-redmi-k80pro', '24122RKC7'],
+  'shuiming first-paints K80 Pro'
 );
 mustExclude(
   'backend/src/legacy/monolith.js',
@@ -1241,7 +1271,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-st'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260829-k80pro'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1280,14 +1310,14 @@ mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260828-android-st" defer',
+    'auth.js?v=20260829-k80pro" defer',
     'ahead.png?v=20260828-android-load',
   ],
   'shouye auth-boot + compressed ahead'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260828-android-st" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260829-k80pro" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(

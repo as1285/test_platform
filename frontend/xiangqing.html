@@ -43,6 +43,13 @@
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k80pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -117,7 +124,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260828-android-st" defer></script>
+    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
@@ -164,6 +171,7 @@
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing {
             --app-shell-statusbar-top: 40px;
             padding-top: calc(var(--xq-header-core) + 40px);
@@ -177,6 +185,7 @@
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-xiaomi-14pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-k70-ultra.app-top-safe-shell body.page-xiangqing > .header,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing > .header {
             padding-top: calc(10px + 40px) !important;
         }

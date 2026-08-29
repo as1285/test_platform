@@ -331,6 +331,21 @@ var MODELS = [
     ]
   },
   {
+    id: 'redmi-k80pro',
+    platform: 'android',
+    family: 'xiaomi',
+    label: '红米 K80 Pro',
+    match: ['K80\\s*Pro', '24122RKC7C', '24127RK2CC', 'POCO\\s*F7\\s*Ultra'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '白顶栏避开系统状态栏',
+        summary: 'HyperOS 沉浸 WebView 压在状态栏下；勿按 K70 的 1440×3200 兜底清零顶距，返回须留 40px。',
+        since: '2026-08-29'
+      }
+    ]
+  },
+  {
     id: 'redmi-12c',
     platform: 'android',
     family: 'xiaomi',

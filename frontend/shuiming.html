@@ -37,6 +37,13 @@
                     document.documentElement.classList.add('app-android-redmi-k70-ultra');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k80pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/22120RN86[CGHI]|22126RN91Y|2212ARNC4L|22127PC95[GHI]|(?:Redmi|POCO)[\s_-]*12C|POCO\s*C55/i.test(u)) {
                     document.documentElement.classList.add('app-android-redmi-12c');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -153,7 +160,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260828-android-st" defer></script>
+    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -260,6 +267,8 @@
         html.app-android-xiaomi-10 body.page-shuiming > .header,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-redmi-k70-ultra body.page-shuiming > .header,
+        html.app-android-redmi-k80pro body.page-shuiming > .header,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-redmi-12c body.page-shuiming > .header,
         html.app-android-iqoo-neo8 body.page-shuiming > .header,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .header,
@@ -280,6 +289,8 @@
         html.app-android-xiaomi-10 body.page-shuiming > .content,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-redmi-k70-ultra body.page-shuiming > .content,
+        html.app-android-redmi-k80pro body.page-shuiming > .content,
+        html.app-android-redmi-k80pro.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-redmi-12c body.page-shuiming > .content,
         html.app-android-iqoo-neo8 body.page-shuiming > .content,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming > .content,

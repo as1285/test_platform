@@ -761,7 +761,17 @@ tr.users-detail-row td { background: transparent; }
     table-layout: fixed;
 }
 .peer-accounts-table {
-    min-width: 1180px;
+    min-width: 1280px;
+}
+.users-registry-table .col-login-today {
+    width: 96px;
+    text-align: center;
+}
+.peer-last-login {
+    margin-top: 3px;
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
 }
 .users-registry-table th,
 .users-registry-table td {
@@ -1000,6 +1010,35 @@ tr.users-detail-row > td {
 }
 .analytics-conv-wrap {
     margin-top: 12px;
+}
+.d1-focus-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #c2410c;
+    font-size: 12px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+.d1-focus-card {
+    border-color: #fdba74;
+    background: linear-gradient(180deg, #fff7ed 0%, var(--admin-surface) 100%);
+}
+.high-income-focus-card {
+    border-color: #f59e0b;
+    background: linear-gradient(180deg, #fffbeb 0%, var(--admin-surface) 100%);
+}
+.high-income-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    background: #fffbeb;
+    color: #b45309;
+    font-size: 11px;
+    white-space: nowrap;
 }
 .analytics-segment-block {
     margin-bottom: 24px;

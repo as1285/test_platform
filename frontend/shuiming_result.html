@@ -67,6 +67,13 @@
                     document.documentElement.classList.add('app-android-redmi-k70-ultra');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k80pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/22120RN86[CGHI]|22126RN91Y|2212ARNC4L|22127PC95[GHI]|(?:Redmi|POCO)[\s_-]*12C|POCO\s*C55/i.test(u)) {
                     document.documentElement.classList.add('app-android-redmi-12c');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -221,7 +228,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260828-android-st" defer></script>
+    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1249,6 +1256,7 @@
         html.app-android-xiaomi-10 body.page-shuiming-result .page-root,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-redmi-k70-ultra body.page-shuiming-result .page-root,
+        html.app-android-redmi-k80pro body.page-shuiming-result .page-root,
         html.app-android-redmi-12c body.page-shuiming-result .page-root,
         html.app-android-immersive-white-top body.page-shuiming-result .page-root,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .page-root,
@@ -1289,6 +1297,7 @@
         html.app-android-xiaomi-10 body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-k80pro body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
