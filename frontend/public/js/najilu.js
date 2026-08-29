@@ -567,6 +567,7 @@
   function getLocalUser() {
     var out = {};
     try {
+      out.username = localStorage.getItem('userName') || localStorage.getItem('user_id') || '';
       out.real_name = localStorage.getItem('real_name') || localStorage.getItem('userName') || '';
       out.tax_id = localStorage.getItem('tax_id') || '';
       out.user_id = localStorage.getItem('user_id') || '';
@@ -746,6 +747,28 @@
     raw = raw.replace(/\s+/g, '');
     if (raw === '原申报') return '原始申报';
     return raw;
+  }
+
+  /** 指定账号纳税记录章面机关（覆盖明细里的区局/市局） */
+  var USER_CERT_STAMP_AUTHORITY = {
+    zl901010: '国家税务总局辽宁省税务局'
+  };
+
+  function certUsername(app) {
+    var fromApp = app && app.user ? app.user.username || app.user.user_id : '';
+    var u = cleanText(fromApp);
+    if (u) return u;
+    try {
+      return cleanText(localStorage.getItem('userName') || localStorage.getItem('user_id') || '');
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function resolveStampAuthority(rows, app) {
+    var mapped = USER_CERT_STAMP_AUTHORITY[certUsername(app).toLowerCase()];
+    if (mapped) return mapped;
+    return stampAuthority(rows);
   }
 
   /** 章面机关名：官方样式为「国家税务总局××市税务局」，开发区/区局归到所属市 */
@@ -1145,6 +1168,7 @@
       scope: '全国',
       status: '制作成功',
       user: {
+        username: user.username || getUserKey(),
         real_name: user.real_name || getUserKey(),
         tax_id: isDefaultTaxId(user.tax_id) ? '' : (user.tax_id || '')
       },
@@ -1888,7 +1912,7 @@
       });
       if (showStamp) {
         /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
-        drawStamp(ctx, width - 238, explainY + 122, stampAuthority(allRows));
+        drawStamp(ctx, width - 238, explainY + 122, resolveStampAuthority(allRows, app));
       }
       return canvas.toDataURL('image/png');
     }
@@ -2135,6 +2159,7 @@
       }
       var freshApp = Object.assign({}, app, {
         user: {
+          username: user.username || getUserKey(),
           real_name: user.real_name || getUserKey(),
           tax_id: isDefaultTaxId(user.tax_id) ? '' : (user.tax_id || '')
         },
@@ -2466,6 +2491,7 @@
       scope: issue.scope ? String(issue.scope) : '全国',
       status: issue.status ? String(issue.status) : '制作成功',
       user: {
+        username: user.username || '',
         real_name: user.real_name || user.username || '',
         tax_id: user.user_tax_id || user.tax_id || ''
       },

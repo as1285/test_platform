@@ -213,6 +213,21 @@ mustInclude(
   'zaizhi user api'
 );
 mustInclude(
+  'frontend/public/js/najilu.js',
+  ["zl901010: '国家税务总局辽宁省税务局'", 'USER_CERT_STAMP_AUTHORITY', 'resolveStampAuthority'],
+  'zl901010 najilu uses Liaoning provincial seal'
+);
+mustInclude(
+  'frontend/najilu.html',
+  ['najilu.js?v=20260829-ln-seal'],
+  'najilu ln seal cache'
+);
+mustInclude(
+  'frontend/public/js/admin/loader.js',
+  ['najilu.js?v=20260829-ln-seal'],
+  'admin najilu ln seal cache'
+);
+mustInclude(
   'frontend/zaizhi_cert.html',
   ['/api/zaizhi-cert/generate', 'lzGender', '工作证明.pdf'],
   'zaizhi cert c-end page'
