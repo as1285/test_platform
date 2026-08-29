@@ -34,7 +34,8 @@ if [[ "${1:-}" == "--hot-only" ]]; then
 fi
 
 log() {
-  echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"
+  # 写入日志；同时打到 stderr。cron 请用 >/dev/null 2>&1，避免与 >>log 重复写行
+  echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE" >&2
 }
 
 mkdir -p "$DAILY_DIR" "$WEEKLY_DIR" "$UPLOADS_DIR" "$(dirname "$LOG_FILE")" "$(dirname "$LOCK_FILE")"
@@ -162,10 +163,14 @@ sync_cos() {
   fi
   local prefix="${COS_PREFIX:-test_platform/dr}"
   local mode_py="$MODE"
+  local cos_rc=0
   COS_HOT_RETAIN_HOURS="$COS_HOT_RETAIN_HOURS" COS_HOT_MAX="$COS_HOT_MAX" MODE="$mode_py" \
   HOT_DIR="$HOT_DIR" DAILY_DIR="$DAILY_DIR" WEEKLY_DIR="$WEEKLY_DIR" UPLOADS_DIR="$UPLOADS_DIR" \
-  "$VENV_PY" - <<'PY'
-import os, time
+  COS_SECRET_ID="${COS_SECRET_ID}" COS_SECRET_KEY="${COS_SECRET_KEY}" \
+  COS_BUCKET="${COS_BUCKET}" COS_REGION="${COS_REGION}" COS_PREFIX="$prefix" \
+  COS_TOKEN="${COS_TOKEN:-}" \
+  "$VENV_PY" - <<'PY' >>"$LOG_FILE" 2>&1
+import os, sys, time
 from qcloud_cos import CosConfig, CosS3Client
 
 sid = os.environ["COS_SECRET_ID"]
@@ -178,26 +183,51 @@ mode = os.environ.get("MODE", "full")
 hot_retain_h = int(os.environ.get("COS_HOT_RETAIN_HOURS") or "48")
 hot_max = int(os.environ.get("COS_HOT_MAX") or "200")
 
-cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https")
+cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https", Timeout=120)
 client = CosS3Client(cfg)
 
-dirs = [(os.environ["HOT_DIR"], "hot")]
+# full：先日备/周备/uploads，再热备；热备按文件名新→旧，避免旧文件失败阻断今日包
+dirs = []
 if mode != "hot":
     dirs.extend([
-        (os.environ["DAILY_DIR"], "daily"),
-        (os.environ["WEEKLY_DIR"], "weekly"),
-        (os.environ["UPLOADS_DIR"], "uploads"),
+        (os.environ["DAILY_DIR"], "daily", False),
+        (os.environ["WEEKLY_DIR"], "weekly", False),
+        (os.environ["UPLOADS_DIR"], "uploads", False),
     ])
+dirs.append((os.environ["HOT_DIR"], "hot", True))
 
-uploaded = skipped = 0
-for d, label in dirs:
+def list_files(d, newest_first):
     if not os.path.isdir(d):
-        continue
-    for name in sorted(os.listdir(d)):
+        return []
+    names = [n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n))]
+    names.sort(reverse=bool(newest_first))
+    return names
+
+def upload_with_retry(path, key, attempts=3):
+    last_err = None
+    for i in range(attempts):
+        try:
+            # 降低并发、略增分片，弱网下更稳
+            client.upload_file(
+                Bucket=bucket,
+                LocalFilePath=path,
+                Key=key,
+                PartSize=10,
+                MAXThread=2,
+                EnableMD5=False,
+            )
+            return None
+        except Exception as e:
+            last_err = e
+            print(f"[cos] retry {i+1}/{attempts} {key}: {e}", flush=True)
+            time.sleep(2 ** i)
+    return last_err
+
+uploaded = skipped = failed = 0
+errors = []
+for d, label, newest_first in dirs:
+    for name in list_files(d, newest_first):
         path = os.path.join(d, name)
-        if not os.path.isfile(path):
-            continue
-        # 跳过导入前临时备份与临时文件
         if name.endswith(".tmp") or "before-import" in name:
             continue
         key = f"{prefix}/{label}/{name}"
@@ -212,8 +242,14 @@ for d, label in dirs:
         except Exception:
             pass
         print(f"[cos] upload {path} -> cos://{bucket}/{key}", flush=True)
-        client.upload_file(Bucket=bucket, LocalFilePath=path, Key=key)
-        uploaded += 1
+        err = upload_with_retry(path, key)
+        if err is None:
+            uploaded += 1
+        else:
+            failed += 1
+            msg = f"{key}: {err}"
+            errors.append(msg)
+            print(f"[cos] FAIL {msg}", flush=True)
 
 # 清理 COS 过期热备，避免桶无限涨
 hot_prefix = f"{prefix}/hot/"
@@ -236,7 +272,7 @@ while True:
 
 now = time.time()
 cutoff = now - hot_retain_h * 3600
-# 按 LastModified 新→旧
+
 def _mtime(it):
     lm = it.get("LastModified")
     if hasattr(lm, "timestamp"):
@@ -256,11 +292,28 @@ for idx, it in enumerate(objs):
     over_max = idx >= hot_max
     if too_old or over_max:
         print(f"[cos] delete old hot {key}", flush=True)
-        client.delete_object(Bucket=bucket, Key=key)
-        deleted += 1
+        try:
+            client.delete_object(Bucket=bucket, Key=key)
+            deleted += 1
+        except Exception as e:
+            print(f"[cos] delete fail {key}: {e}", flush=True)
 
-print(f"[cos] done mode={mode} uploaded={uploaded} skipped={skipped} hot_deleted={deleted}", flush=True)
+print(
+    f"[cos] done mode={mode} uploaded={uploaded} skipped={skipped} failed={failed} hot_deleted={deleted}",
+    flush=True,
+)
+if errors:
+    print("[cos] errors:", flush=True)
+    for e in errors[:20]:
+        print(f"  - {e}", flush=True)
+    sys.exit(1)
 PY
+  cos_rc=$?
+  if ((cos_rc != 0)); then
+    log "ERROR: COS 同步失败（exit=$cos_rc），详见 $LOG_FILE"
+    return 1
+  fi
+  return 0
 }
 
 main() {
@@ -298,6 +351,14 @@ EOF
   log "$summary"
 
   if ((rc != 0)); then
+    local err_tail
+    err_tail="$(grep -E 'ERROR:|FAIL |Traceback|CosClient|\[cos\] errors' "$LOG_FILE" 2>/dev/null | tail -n 15 || true)"
+    if [[ -n "$err_tail" ]]; then
+      summary="${summary}
+---
+最近错误:
+${err_tail}"
+    fi
     if dr_alert_cooldown_ok "offsite-backup" 3600; then
       dr_send_mail "$(dr_mail_prefix) 备份/异地同步异常 $(hostname)" "$summary" || true
     fi

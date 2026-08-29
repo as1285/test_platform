@@ -37,9 +37,9 @@ crontab -l 2>/dev/null | grep -v 'scripts/health-guard.sh' | grep -v 'scripts/sy
 {
   echo "*/2 * * * * /bin/bash ${HEALTH} >/dev/null 2>&1"
   # 每 15 分钟：本机热备完成后立刻把数据库热备上传 COS（抗打挂）
-  echo "*/15 * * * * /usr/bin/flock -xn /var/lock/test_platform-mysql-backup.lock -c '/bin/bash ${MYSQL_BACKUP} && /bin/bash ${OFFSITE} --hot-only' >> /var/log/test_platform-mysql-backup.log 2>&1"
-  # 每天凌晨：日备/周备/uploads 完整异地同步
-  echo "15 3 * * * /bin/bash ${OFFSITE} >> /var/log/test_platform-offsite-backup.log 2>&1"
+  echo "*/15 * * * * /usr/bin/flock -xn /var/lock/test_platform-mysql-backup.lock -c '/bin/bash ${MYSQL_BACKUP} && /bin/bash ${OFFSITE} --hot-only' >/dev/null 2>&1"
+  # 每天 03:20：日备/周备/uploads 完整异地同步（避开整点 :00/:15 热备锁冲突）
+  echo "20 3 * * * /bin/bash ${OFFSITE} >/dev/null 2>&1"
 } >>"$tmp"
 
 crontab "$tmp"
