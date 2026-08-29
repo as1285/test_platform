@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260829-highinc">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260829-opsconv">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -729,110 +729,111 @@
                         <h2>注册用户</h2>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
-                            <div>
-                                <label>账号</label>
-                                <div class="filter-account-row">
-                                    <input type="text" id="filterUsername" class="filter-text-wide" placeholder="搜索账号">
-                                    <label class="filter-inline-check">
-                                        <input type="checkbox" id="filterExact"> 精准查询
+                                <div class="user-filter-field">
+                                    <label for="filterUsername">账号</label>
+                                    <input type="text" id="filterUsername" class="filter-control" placeholder="搜索账号" autocomplete="off">
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterExact">精准查询</label>
+                                    <label class="filter-inline-check filter-inline-check--fill" for="filterExact">
+                                        <input type="checkbox" id="filterExact"> 开启
                                     </label>
                                 </div>
+                                <div class="user-filter-field">
+                                    <label for="filterRealName">姓名</label>
+                                    <input type="text" id="filterRealName" class="filter-control" placeholder="搜索姓名" autocomplete="off">
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterRisk">风险账号</label>
+                                    <select id="filterRisk" class="filter-control">
+                                        <option value="">全部</option>
+                                        <option value="1">仅风险账号</option>
+                                        <option value="0">非风险账号</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterActive">激活状态</label>
+                                    <select class="filter-control" id="filterActive">
+                                        <option value="">全部</option>
+                                        <option value="1">已激活</option>
+                                        <option value="0">未激活</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterBanned">封禁状态</label>
+                                    <select class="filter-control" id="filterBanned">
+                                        <option value="">全部</option>
+                                        <option value="1">已封禁</option>
+                                        <option value="0">正常</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterWhitelist">白名单</label>
+                                    <select id="filterWhitelist" class="filter-control" title="永久免改名费与个税修改费的账号">
+                                        <option value="">全部</option>
+                                        <option value="1">仅白名单</option>
+                                        <option value="0">非白名单</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterAgent">代理标识</label>
+                                    <select id="filterAgent" class="filter-control" title="手动标记的代理账号">
+                                        <option value="">全部</option>
+                                        <option value="1">仅代理</option>
+                                        <option value="0">非代理</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterTaxModifiedToday">当日有否修改</label>
+                                    <select id="filterTaxModifiedToday" class="filter-control">
+                                        <option value="">全部</option>
+                                        <option value="1">当日有修改个税</option>
+                                        <option value="0">当日无修改</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterLoginInactive">最近登录</label>
+                                    <select id="filterLoginInactive" class="filter-control">
+                                        <option value="">全部</option>
+                                        <option value="30">30天未登录</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterNameChangesGt">改名次数</label>
+                                    <input type="number" id="filterNameChangesGt" class="filter-control" min="0" max="9999" step="1" inputmode="numeric" placeholder="大于几次" title="填数字：改名次数大于该值；留空为全部">
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterTaxModDaysGt">修改天数</label>
+                                    <input type="number" id="filterTaxModDaysGt" class="filter-control" min="0" max="9999" step="1" inputmode="numeric" placeholder="≥几天" title="填数字：个税修改天数不少于该值；留空为全部">
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterPeerAccount">同行账号</label>
+                                    <select id="filterPeerAccount" class="filter-control" title="同时满足改名与个税修改天数超限（阈值见定价与引导），且未永久免改名费。完整名单请用侧栏「同行账号」">
+                                        <option value="">全部</option>
+                                        <option value="1">只看同行</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterD1Return">注册次日回访</label>
+                                    <select id="filterD1Return" class="filter-control" title="未激活且注册次日有日活。仅次日回访=次日之后再无日活。日活与注册日按 UTC 对齐。">
+                                        <option value="">全部</option>
+                                        <option value="has">未激活·有次日日活</option>
+                                        <option value="only">未激活·仅次日回访</option>
+                                    </select>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterHighIncome">填写收入</label>
+                                    <select id="filterHighIncome" class="filter-control" title="未激活，且自己填写的个税月收入（本期收入或收入）大于 1.5 万。公司名含「示例」的记录不计入。">
+                                        <option value="">全部</option>
+                                        <option value="1">未激活·月收入&gt;1.5万</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label>姓名</label>
-                                <input type="text" id="filterRealName" class="filter-text-wide" placeholder="搜索姓名">
-                            </div>
-                            <div>
-                                <label>风险账号</label>
-                                <select id="filterRisk" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="1">仅风险账号</option>
-                                    <option value="0">非风险账号</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>激活状态</label>
-                                <select class="filter-select" id="filterActive">
-                                    <option value="">全部</option>
-                                    <option value="1">已激活</option>
-                                    <option value="0">未激活</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>封禁状态</label>
-                                <select class="filter-select" id="filterBanned">
-                                    <option value="">全部</option>
-                                    <option value="1">已封禁</option>
-                                    <option value="0">正常</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="filterWhitelist">白名单</label>
-                                <select id="filterWhitelist" class="filter-select" title="永久免改名费与个税修改费的账号">
-                                    <option value="">全部</option>
-                                    <option value="1">仅白名单</option>
-                                    <option value="0">非白名单</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="filterAgent">代理标识</label>
-                                <select id="filterAgent" class="filter-select" title="手动标记的代理账号">
-                                    <option value="">全部</option>
-                                    <option value="1">仅代理</option>
-                                    <option value="0">非代理</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>当日有否修改</label>
-                                <select id="filterTaxModifiedToday" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="1">当日有修改个税</option>
-                                    <option value="0">当日无修改</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>最近登录</label>
-                                <select id="filterLoginInactive" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="30">30天未登录</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="filterNameChangesGt">改名次数</label>
-                                <input type="number" id="filterNameChangesGt" class="filter-select filter-num" min="0" max="9999" step="1" inputmode="numeric" placeholder="大于几次" title="填数字：改名次数大于该值；留空为全部">
-                            </div>
-                            <div>
-                                <label for="filterTaxModDaysGt">修改天数</label>
-                                <input type="number" id="filterTaxModDaysGt" class="filter-select filter-num" min="0" max="9999" step="1" inputmode="numeric" placeholder="≥几天" title="填数字：个税修改天数不少于该值；留空为全部">
-                            </div>
-                            <div>
-                                <label for="filterPeerAccount">同行账号</label>
-                                <select id="filterPeerAccount" class="filter-select" title="同时满足改名与个税修改天数超限（阈值见定价与引导），且未永久免改名费。完整名单请用侧栏「同行账号」">
-                                    <option value="">全部</option>
-                                    <option value="1">只看同行</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="filterD1Return">注册次日回访</label>
-                                <select id="filterD1Return" class="filter-select" title="未激活且注册次日有日活。仅次日回访=次日之后再无日活。日活与注册日按 UTC 对齐。">
-                                    <option value="">全部</option>
-                                    <option value="has">未激活·有次日日活</option>
-                                    <option value="only">未激活·仅次日回访</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="filterHighIncome">填写收入</label>
-                                <select id="filterHighIncome" class="filter-select" title="未激活，且自己填写的个税月收入（本期收入或收入）大于 1.5 万。公司名含「示例」的记录不计入。">
-                                    <option value="">全部</option>
-                                    <option value="1">未激活·月收入&gt;1.5万</option>
-                                </select>
-                            </div>
-                            <div class="flex-actions">
+                            <div class="user-filter-actions">
                                 <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
                                 <button type="button" class="btn-page" id="btnResetUsers">重置</button>
                                 <button type="button" class="btn-page" id="btnPurgeBotsPreview" title="统计待清理的刷号账号">预览清理刷号</button>
-                                <button type="button" class="btn-sm btn-del-user" id="btnPurgeBotsRun" title="永久删除匹配的刷号账号">执行删除刷号</button>
-                            </div>
+                                <button type="button" class="btn-del-user" id="btnPurgeBotsRun" title="永久删除匹配的刷号账号">执行删除刷号</button>
                             </div>
                         </div>
                         <p class="stat" id="userStat">加载中…</p>
@@ -1483,16 +1484,18 @@
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>江苏社会保险权益记录单</strong>或<strong>北京社会保险个人权益记录</strong>（版式分别对齐浙里办 / 深圳清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社 / 北京个人权益记录样张）。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>或<strong>上海城镇职工养老保险参保情况</strong>（版式分别对齐浙里办 / 深圳清单 / 广州清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月样张）。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionZj" value="zj" checked> 浙江</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz"> 深圳</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionGz" value="gz"> 广州</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js"> 江苏</label>
-                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj"> 北京</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj"> 北京</label>
+                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSh" value="sh"> 上海</label>
                             </div>
                         </div>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
@@ -1526,7 +1529,7 @@
 公司名称：杭州千雨千寻文化科技有限公司
 税号：91330102MA7E2YNM2R
 写参保缴费 不要停保"></textarea>
-                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳/广州清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>；上海参保情况可写<strong>上海 / 浦东 / 累计缴费月数</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>
@@ -1587,7 +1590,7 @@
                             </div>
                             <div class="sbdy-zj-js" id="sbdySegmentsWrap">
                                 <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
-                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>。浙江版缴费明细按月用各段自己的<strong>缴费基数</strong>算养老/失业个人缴费，预填会按各公司个税推算各段基数，不再共用一组统一金额；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」。预填 2 家及以上会自动填入下方分段。</p>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>。浙江版缴费明细按月用各段自己的<strong>缴费基数</strong>算养老/失业个人缴费，预填会按各公司个税推算各段基数，不再共用一组统一金额；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」；上海版写入「近60个月缴费单位信息」并生成三栏参保情况表。预填 2 家及以上会自动填入下方分段。</p>
                                 <div id="sbdySegments"></div>
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
                             </div>
@@ -2214,18 +2217,118 @@
                     </section>
                 </div>
 
-                <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
+                <div id="page-ops-inactive" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">收集还没开通的人：填没填个税、月入多少、有没有看过填写页/开通页、怎么评价价格。</p></div>
                     <section>
-                        <h2>支付转化</h2>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售套餐与金额以「定价与引导 → 支付套餐价格」配置为准。全站现为同一套支付页。</p></details>
+                        <h2>未激活用户</h2>
+                        <div id="opsInactiveSummary" class="user-data-stats mb-12">加载中…</div>
+                        <div class="user-filter-bar">
+                            <div class="user-filter-fields">
+                                <div>
+                                    <label for="opsInactiveSegment">人群</label>
+                                    <select id="opsInactiveSegment" class="filter-select">
+                                        <option value="all">全部未激活</option>
+                                        <option value="has_tax">有个税</option>
+                                        <option value="no_tax">无个税</option>
+                                        <option value="high_income">月收入&gt;1.5万</option>
+                                        <option value="saw_purchase">去过开通页</option>
+                                        <option value="purchase_no_pay">看过开通未支付</option>
+                                        <option value="no_consult">没进填写页</option>
+                                        <option value="d1_only">仅次日回访</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsInactiveDays">注册时间</label>
+                                    <select id="opsInactiveDays" class="filter-select">
+                                        <option value="0">不限</option>
+                                        <option value="7" selected>近 7 天</option>
+                                        <option value="30">近 30 天</option>
+                                        <option value="90">近 90 天</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsInactiveChannel">注册渠道</label>
+                                    <select id="opsInactiveChannel" class="filter-select">
+                                        <option value="">全部渠道</option>
+                                        <option value="(empty)">未填渠道</option>
+                                        <option value="douyin">抖音</option>
+                                        <option value="github">GitHub</option>
+                                        <option value="friend">朋友介绍</option>
+                                        <option value="bilibili">B站</option>
+                                        <option value="tieba">贴吧</option>
+                                        <option value="zhihu">知乎</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsInactiveQ">账号 / 姓名</label>
+                                    <input type="text" id="opsInactiveQ" class="filter-text-wide" placeholder="搜索">
+                                </div>
+                                <div class="flex-actions">
+                                    <button type="button" class="btn-primary" id="btnOpsInactiveSearch">查询</button>
+                                    <button type="button" class="btn-page" id="btnOpsInactiveExport">导出本页 CSV</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="stat" id="opsInactiveStat">加载中…</p>
+                        <div class="scroll-x">
+                            <table class="users-registry-table">
+                                <thead>
+                                    <tr>
+                                        <th>账号</th>
+                                        <th>姓名</th>
+                                        <th>注册</th>
+                                        <th>渠道</th>
+                                        <th>个税</th>
+                                        <th>月入</th>
+                                        <th>填写页</th>
+                                        <th>开通页</th>
+                                        <th>价格态度</th>
+                                        <th>最近活跃</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="opsInactiveTbody"><tr><td colspan="11">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button type="button" class="btn-page" id="opsInactivePrev">上一页</button>
+                            <span id="opsInactivePageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="opsInactiveNext">下一页</button>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-ops-research" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">看未开通的人卡在哪：没填个税、填了不付，还是看过价觉得贵。</p></div>
+                    <section>
+                        <h2>转化调研</h2>
                         <div class="form-row flex-align-center mt-8">
                             <div>
-                                <label for="analyticsPricingAbDays">统计区间</label>
-                                <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                                <label for="opsResearchDays">注册区间</label>
+                                <select id="opsResearchDays" class="filter-select">
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="14">最近 14 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
                             </div>
-                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新支付转化</button>
+                            <button type="button" class="btn-page btn-page-primary" id="btnOpsResearchRefresh">刷新</button>
+                            <button type="button" class="btn-page" id="btnOpsResearchGotoFillSurvey">个税填写问卷</button>
+                            <button type="button" class="btn-page" id="btnOpsResearchGotoPurchase">支付页问卷</button>
                         </div>
-                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付转化加载中…</div>
+                        <div id="opsResearchMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                    </section>
+                </div>
+
+                <div id="page-ops-lift" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">对着高意向未开通跟进：次日回访、高收入、站内信，以及定价和发码。</p></div>
+                    <section>
+                        <h2>先做这几件事</h2>
+                        <div class="ops-hub-grid mb-12">
+                            <a class="ops-hub-card" href="#ops-inactive">去未激活名单</a>
+                            <a class="ops-hub-card" href="#settings">改定价与引导</a>
+                            <a class="ops-hub-card" href="#codes">发激活码</a>
+                        </div>
                     </section>
                     <section>
                         <h2>注册次日回访未激活 <span class="d1-focus-tag">重点跟进</span></h2>
@@ -2247,18 +2350,6 @@
                             <button type="button" class="btn-page" id="btnJumpHighIncomeBulk">群发这批人</button>
                         </div>
                         <div id="analyticsHighIncomeInactive" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
-                    </section>
-                    <section>
-                        <h2>注册转化率</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>闲鱼 / 支付宝激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsConversionDays">统计区间</label>
-                                <select id="analyticsConversionDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshConversion">刷新转化率</button>
-                        </div>
-                        <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
                     </section>
                     <section>
                         <h2>未激活用户站内信群发</h2>
@@ -2302,6 +2393,51 @@
                                 <span class="hint" id="bulkMsgStatus" aria-live="polite"></span>
                             </div>
                         </div>
+                    </section>
+                </div>
+
+                <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">运营先看未激活明细、再看转化卡点、再去做跟进。这里保留支付和日转化总览。</p></div>
+                    <section>
+                        <h2>从这三步开始</h2>
+                        <div class="ops-hub-grid mb-12">
+                            <a class="ops-hub-card" href="#ops-inactive">
+                                <strong>未激活用户</strong>
+                                <span>收集谁还没开通、填了什么、有没有看价</span>
+                            </a>
+                            <a class="ops-hub-card" href="#ops-research">
+                                <strong>转化调研</strong>
+                                <span>看卡在填写、看价还是嫌贵</span>
+                            </a>
+                            <a class="ops-hub-card" href="#ops-lift">
+                                <strong>提高转化</strong>
+                                <span>跟次日回访、高收入，发站内信</span>
+                            </a>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>支付转化</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售套餐与金额以「定价与引导 → 支付套餐价格」配置为准。全站现为同一套支付页。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="analyticsPricingAbDays">统计区间</label>
+                                <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                            </div>
+                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新支付转化</button>
+                        </div>
+                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付转化加载中…</div>
+                    </section>
+                    <section>
+                        <h2>注册转化率</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>闲鱼 / 支付宝激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="analyticsConversionDays">统计区间</label>
+                                <select id="analyticsConversionDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                            </div>
+                            <button type="button" class="btn-page" id="btnRefreshConversion">刷新转化率</button>
+                        </div>
+                        <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
                     </section>
                 </div>
 
@@ -3102,9 +3238,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260829-ln-seal"></script>
+    <script src="/js/admin/loader.js?v=20260829-convopt"></script>
     <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260829-highinc"></script>
+    <script src="/js/admin_panel.js?v=20260829-refundad"></script>
 </body>
 </html>

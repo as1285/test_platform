@@ -4,10 +4,10 @@
  * - page：前端 hash / data-page（可与 menu_key 不同，如 users-deleted）
  * - module：前端懒加载模块名
  *
- * 信息架构：工作台 → 内容配置 → 用户管理 → 业务工具 → 数据分析 → 系统与安全
+ * 信息架构：转化运营 → 内容配置 → 用户管理 → 业务工具 → 数据分析 → 系统与安全
  */
 const ADMIN_MENU_GROUPS = [
-  { id: 'ops-desk', label: '工作台', order: 10 },
+  { id: 'ops-desk', label: '转化运营', order: 10 },
   { id: 'ops-config', label: '内容配置', order: 20 },
   { id: 'users', label: '用户管理', order: 30 },
   { id: 'cert-tools', label: '业务工具', order: 35 },
@@ -29,14 +29,41 @@ const ADMIN_MENU_GROUPS = [
 
 /** @type {AdminPageDef[]} */
 const ADMIN_PAGE_DEFS = [
-  /* —— 工作台 —— */
+  /* —— 转化运营：收集未激活数据 → 调研转化 → 提高转化 —— */
+  {
+    page: 'ops-inactive',
+    menu_key: 'ops-inactive',
+    label: '未激活用户',
+    group: 'ops-desk',
+    module: 'ops-conversion',
+    order: 10,
+    alias_menus: ['analytics-conversion', 'users']
+  },
+  {
+    page: 'ops-research',
+    menu_key: 'ops-research',
+    label: '转化调研',
+    group: 'ops-desk',
+    module: 'ops-conversion',
+    order: 20,
+    alias_menus: ['analytics-conversion', 'tax-fill-survey']
+  },
+  {
+    page: 'ops-lift',
+    menu_key: 'ops-lift',
+    label: '提高转化',
+    group: 'ops-desk',
+    module: 'ops-conversion',
+    order: 30,
+    alias_menus: ['analytics-conversion']
+  },
   {
     page: 'analytics-conversion',
     menu_key: 'analytics-conversion',
     label: '转化概览',
     group: 'ops-desk',
     module: 'analytics',
-    order: 10
+    order: 40
   },
   {
     page: 'analytics-purchase',
@@ -54,7 +81,7 @@ const ADMIN_PAGE_DEFS = [
     module: 'analytics',
     order: 50
   },
-  { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 30 },
+  { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 50 },
 
   /* —— 配置 —— */
   {
@@ -282,6 +309,9 @@ const ADMIN_PAGE_DEFS = [
 
 /** 登录后优先进入的运营页（有权限则取第一个） */
 const ADMIN_PREFERRED_FIRST_PAGES = [
+  'ops-inactive',
+  'ops-research',
+  'ops-lift',
   'analytics-conversion',
   'settings',
   'codes',
@@ -384,6 +414,11 @@ function adminProfileCanAccessPage(admin, page) {
   if (admin && admin.is_super) return true;
   var menus = admin && Array.isArray(admin.menus) ? admin.menus : [];
   if (menus.indexOf(def.menu_key) >= 0) return true;
+  var aliases = Array.isArray(def.alias_menus) ? def.alias_menus : [];
+  var a;
+  for (a = 0; a < aliases.length; a++) {
+    if (menus.indexOf(aliases[a]) >= 0) return true;
+  }
   if (def.menu_key.indexOf('analytics-') === 0 && menus.indexOf('analytics') >= 0) return true;
   return false;
 }

@@ -14,7 +14,7 @@ const {
 describe('menuRegistry', () => {
   it('has task-oriented group labels', () => {
     expect(ADMIN_MENU_GROUPS.map((g) => g.label)).toEqual([
-      '工作台',
+      '转化运营',
       '内容配置',
       '用户管理',
       '业务工具',
@@ -96,7 +96,10 @@ describe('menuRegistry', () => {
     const payload = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const tree = payload.menu_tree;
     expect(Array.isArray(tree)).toBe(true);
-    expect(tree[0].label).toBe('工作台');
+    expect(tree[0].label).toBe('转化运营');
+    expect(tree[0].items.map((i) => i.page)).toEqual(
+      expect.arrayContaining(['ops-inactive', 'ops-research', 'ops-lift', 'analytics-conversion'])
+    );
     const settings = tree
       .flatMap((g) => g.items || [])
       .find((i) => i.page === 'settings');
@@ -110,9 +113,27 @@ describe('menuRegistry', () => {
     expect(getPageDef('analytics-devices').label).toBe('机型');
   });
 
-  it('firstAllowedPage prefers conversion analytics', () => {
+  it('firstAllowedPage prefers unactivated-user ops desk', () => {
     const page = firstAllowedPage({ is_super: true, menus: [] });
-    expect(page).toBe('analytics-conversion');
+    expect(page).toBe('ops-inactive');
+  });
+
+  it('ops conversion pages are visible via analytics-conversion alias', () => {
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-inactive')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-research')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-lift')
+    ).toBe(true);
+    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'ops-inactive')).toBe(
+      true
+    );
+    expect(adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-inactive')).toBe(
+      false
+    );
   });
 
   it('ADMIN_PAGE_DEFS pages are unique', () => {

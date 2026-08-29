@@ -1,0 +1,639 @@
+/**
+ * 转化运营：未激活用户明细、转化调研汇总。
+ */
+'use strict';
+
+const { getPool } = require('../shared/db');
+
+var HIGH_INCOME = 15000;
+var GUEST_PREFIX = '__guest_';
+
+function monthIncomeSql(alias) {
+  var t = alias || 'tr';
+  return 'GREATEST(IFNULL(' + t + '.income_this_period, 0), IFNULL(' + t + '.income, 0))';
+}
+
+function highIncomeExistsSql(userCol) {
+  return (
+    'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
+    userCol +
+    " AND tr.deleted_at IS NULL AND IFNULL(tr.company_name,'') NOT LIKE '%示例%' AND " +
+    monthIncomeSql('tr') +
+    ' > ' +
+    HIGH_INCOME +
+    ')'
+  );
+}
+
+function hasTaxSql(userCol) {
+  return (
+    'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
+    userCol +
+    ' AND tr.deleted_at IS NULL)'
+  );
+}
+
+function sawPurchaseSql(userCol) {
+  return (
+    "EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = " +
+    userCol +
+    " AND (e.page_path LIKE '%purchase%' OR e.route_key LIKE '%track_purchase_page_view%'))"
+  );
+}
+
+function sawConsultSql(userCol) {
+  return (
+    "EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = " +
+    userCol +
+    " AND e.page_path LIKE '%consult%')"
+  );
+}
+
+function d1HasSql(alias) {
+  var t = alias || 'users';
+  return (
+    'EXISTS (SELECT 1 FROM user_daily_activity d1 WHERE d1.username = ' +
+    t +
+    '.username AND d1.activity_date = DATE_ADD(DATE(' +
+    t +
+    '.created_at), INTERVAL 1 DAY))'
+  );
+}
+
+function d1OnlySql(alias) {
+  var t = alias || 'users';
+  return (
+    d1HasSql(t) +
+    ' AND NOT EXISTS (SELECT 1 FROM user_daily_activity da WHERE da.username = ' +
+    t +
+    '.username AND da.activity_date > DATE_ADD(DATE(' +
+    t +
+    '.created_at), INTERVAL 1 DAY))'
+  );
+}
+
+function nonGuestSql(alias) {
+  var t = alias || 'users';
+  return (
+    'LEFT(' +
+    t +
+    ".username, " +
+    GUEST_PREFIX.length +
+    ") <> '" +
+    GUEST_PREFIX +
+    "' AND COALESCE(" +
+    t +
+    '.user_type, 0) <> 2'
+  );
+}
+
+function isFullScope(admin) {
+  if (!admin) return false;
+  if (admin.is_super) return true;
+  return String(admin.username || '').trim() === '19106014552';
+}
+
+function appendRegisteredScope(where, params, admin, userCol) {
+  var col = userCol || 'users.username';
+  if (!admin || !admin.username) return;
+  if (isFullScope(admin)) return;
+  var uname = String(admin.username || '').trim();
+  if (uname.toLowerCase() === 'admin') {
+    var createdCol = String(col).replace(/\.username\s*$/i, '.created_at');
+    if (createdCol === String(col)) createdCol = 'users.created_at';
+    where.push(
+      '(EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+        col +
+        ' AND ac.owner_admin_username = ?) OR ' +
+        createdCol +
+        ' >= ?)'
+    );
+    params.push(uname, process.env.ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00');
+    return;
+  }
+  where.push(
+    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      col +
+      ' AND ac.owner_admin_username = ?)'
+  );
+  params.push(uname);
+}
+
+function parseDays(raw, fallback) {
+  var n = parseInt(raw, 10);
+  if (!isFinite(n) || n < 1) n = fallback == null ? 7 : fallback;
+  if (n > 366) n = 366;
+  return n;
+}
+
+function parseSegment(raw) {
+  var s = String(raw || '').trim().toLowerCase();
+  var ok = {
+    all: 1,
+    has_tax: 1,
+    no_tax: 1,
+    high_income: 1,
+    d1_only: 1,
+    saw_purchase: 1,
+    purchase_no_pay: 1,
+    no_consult: 1
+  };
+  return ok[s] ? s : 'all';
+}
+
+function appendSegment(where, params, segment) {
+  if (segment === 'has_tax') {
+    where.push(hasTaxSql('users.username'));
+  } else if (segment === 'no_tax') {
+    where.push('NOT ' + hasTaxSql('users.username'));
+  } else if (segment === 'high_income') {
+    where.push(highIncomeExistsSql('users.username'));
+  } else if (segment === 'd1_only') {
+    where.push(d1OnlySql('users'));
+  } else if (segment === 'saw_purchase') {
+    where.push(sawPurchaseSql('users.username'));
+  } else if (segment === 'purchase_no_pay') {
+    where.push(sawPurchaseSql('users.username'));
+    where.push(
+      "NOT EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = users.username AND (e.route_key LIKE '%track_alipay_payment_success%' OR e.route_key LIKE '%track_purchase_activate_success%'))"
+    );
+  } else if (segment === 'no_consult') {
+    where.push('NOT ' + sawConsultSql('users.username'));
+  }
+}
+
+function baseInactiveWhere(admin, extra) {
+  var where = [
+    'users.list_hidden_at IS NULL',
+    nonGuestSql('users'),
+    '(users.account_active IS NULL OR users.account_active = 0)'
+  ];
+  var params = [];
+  appendRegisteredScope(where, params, admin, 'users.username');
+  if (extra) extra(where, params);
+  return { where: where, params: params };
+}
+
+function n(row, key) {
+  return Number(row && row[key]) || 0;
+}
+
+async function handleOpsInactiveSummary(req, res) {
+  try {
+    var days = parseDays(req.query && req.query.days, 0);
+    var channel = String((req.query && req.query.channel) || '').trim();
+    var built = baseInactiveWhere(req.admin, function (where, params) {
+      if (days > 0) {
+        where.push('users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)');
+        params.push(days);
+      }
+      if (channel === '(empty)') {
+        where.push("(users.register_source_channel IS NULL OR TRIM(users.register_source_channel) = '')");
+      } else if (channel) {
+        where.push('users.register_source_channel = ?');
+        params.push(channel);
+      }
+    });
+    var whereSql = ' WHERE ' + built.where.join(' AND ');
+    var pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(${hasTaxSql('users.username')}) AS has_tax,
+           SUM(NOT ${hasTaxSql('users.username')}) AS no_tax,
+           SUM(${highIncomeExistsSql('users.username')}) AS high_income,
+           SUM(${sawPurchaseSql('users.username')}) AS saw_purchase,
+           SUM(${sawConsultSql('users.username')}) AS saw_consult,
+           SUM(${d1OnlySql('users')}) AS d1_only,
+           SUM(CASE WHEN users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS in_7d
+         FROM users ${whereSql}`,
+        built.params
+      );
+      var r = rows && rows[0] ? rows[0] : {};
+      res.json({
+        code: 200,
+        data: {
+          threshold: HIGH_INCOME,
+          days: days || null,
+          channel: channel || '',
+          stock: {
+            total: n(r, 'total'),
+            has_tax: n(r, 'has_tax'),
+            no_tax: n(r, 'no_tax'),
+            high_income: n(r, 'high_income'),
+            saw_purchase: n(r, 'saw_purchase'),
+            saw_consult: n(r, 'saw_consult'),
+            d1_only: n(r, 'd1_only'),
+            in_7d: n(r, 'in_7d')
+          }
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[ops-inactive-summary]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleOpsInactiveUsers(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var offset = (page - 1) * limit;
+    var days = parseDays(req.query && req.query.days, 0);
+    var segment = parseSegment(req.query && req.query.segment);
+    var channel = String((req.query && req.query.channel) || '').trim();
+    var q = String((req.query && req.query.q) || '').trim();
+
+    var built = baseInactiveWhere(req.admin, function (where, params) {
+      if (days > 0) {
+        where.push('users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)');
+        params.push(days);
+      }
+      if (channel === '(empty)') {
+        where.push("(users.register_source_channel IS NULL OR TRIM(users.register_source_channel) = '')");
+      } else if (channel) {
+        where.push('users.register_source_channel = ?');
+        params.push(channel);
+      }
+      if (q) {
+        where.push('(users.username LIKE ? OR users.real_name LIKE ?)');
+        params.push('%' + q + '%', '%' + q + '%');
+      }
+      appendSegment(where, params, segment);
+    });
+    var whereSql = ' WHERE ' + built.where.join(' AND ');
+    var pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      const [countRows] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM users' + whereSql,
+        built.params
+      );
+      var total = Number(countRows[0] && countRows[0].c) || 0;
+      const [pageRows] = await conn.query(
+        `SELECT users.username, users.real_name, users.created_at, users.register_source_channel,
+                users.last_login_city, users.registered_from_install_guide
+         FROM users ${whereSql}
+         ORDER BY users.created_at DESC
+         LIMIT ${limit} OFFSET ${offset}`,
+        built.params
+      );
+      var names = (pageRows || []).map(function (r) {
+        return String(r.username || '');
+      });
+      var flags = await loadInactiveUserFlags(conn, names);
+      var users = (pageRows || []).map(function (r) {
+        var uname = String(r.username || '');
+        var f = flags[uname] || {};
+        return {
+          username: uname,
+          real_name: r.real_name != null ? String(r.real_name) : '',
+          created_at: r.created_at ? new Date(r.created_at).toISOString() : '',
+          register_source_channel:
+            r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
+          last_login_city: r.last_login_city != null ? String(r.last_login_city).trim() : '',
+          from_install: Number(r.registered_from_install_guide) === 1,
+          has_tax: !!f.has_tax,
+          max_month_income: f.max_month_income || 0,
+          high_income: !!f.high_income,
+          saw_consult: !!f.saw_consult,
+          saw_purchase: !!f.saw_purchase,
+          last_seen_at: f.last_seen_at || '',
+          price_sentiment: f.price_sentiment || '',
+          expected_price: f.expected_price,
+          tax_fill_satisfaction: f.tax_fill_satisfaction || ''
+        };
+      });
+      res.json({
+        code: 200,
+        data: {
+          users: users,
+          total: total,
+          page: page,
+          limit: limit,
+          segment: segment,
+          days: days || null,
+          channel: channel || '',
+          threshold: HIGH_INCOME
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[ops-inactive-users]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function loadInactiveUserFlags(conn, names) {
+  var out = Object.create(null);
+  if (!names.length) return out;
+  names.forEach(function (u) {
+    out[u] = {
+      has_tax: false,
+      max_month_income: 0,
+      high_income: false,
+      saw_consult: false,
+      saw_purchase: false,
+      last_seen_at: '',
+      price_sentiment: '',
+      expected_price: null,
+      tax_fill_satisfaction: ''
+    };
+  });
+  var ph = names.map(function () {
+    return '?';
+  }).join(',');
+  const [incomeRows] = await conn.query(
+    `SELECT user_id, MAX(${monthIncomeSql('tr')}) AS max_income
+     FROM tax_records tr
+     WHERE tr.deleted_at IS NULL
+       AND IFNULL(tr.company_name,'') NOT LIKE '%示例%'
+       AND user_id IN (${ph})
+     GROUP BY user_id`,
+    names
+  );
+  (incomeRows || []).forEach(function (row) {
+    var u = String(row.user_id || '');
+    if (!out[u]) return;
+    var v = Number(row.max_income);
+    if (isFinite(v) && v > 0) {
+      out[u].has_tax = true;
+      out[u].max_month_income = Math.round(v * 100) / 100;
+      out[u].high_income = v > HIGH_INCOME;
+    }
+  });
+  const [taxRows] = await conn.query(
+    `SELECT DISTINCT user_id FROM tax_records WHERE deleted_at IS NULL AND user_id IN (${ph})`,
+    names
+  );
+  (taxRows || []).forEach(function (row) {
+    var u = String(row.user_id || '');
+    if (out[u]) out[u].has_tax = true;
+  });
+  const [pageRows] = await conn.query(
+    `SELECT username,
+            MAX(page_path LIKE '%consult%') AS consult,
+            MAX(page_path LIKE '%purchase%' OR route_key LIKE '%track_purchase_page_view%') AS purchase,
+            MAX(created_at) AS last_seen
+     FROM user_page_events
+     WHERE username IN (${ph})
+     GROUP BY username`,
+    names
+  );
+  (pageRows || []).forEach(function (row) {
+    var u = String(row.username || '');
+    if (!out[u]) return;
+    out[u].saw_consult = Number(row.consult) === 1;
+    out[u].saw_purchase = Number(row.purchase) === 1;
+    if (row.last_seen) {
+      out[u].last_seen_at = new Date(row.last_seen).toISOString();
+    }
+  });
+  try {
+    const [priceRows] = await conn.query(
+      `SELECT username, sentiment, expected_price
+       FROM purchase_price_survey
+       WHERE username COLLATE utf8mb4_unicode_ci IN (${ph})`,
+      names
+    );
+    (priceRows || []).forEach(function (row) {
+      var u = String(row.username || '');
+      if (!out[u]) return;
+      out[u].price_sentiment = row.sentiment != null ? String(row.sentiment) : '';
+      if (row.expected_price != null && isFinite(Number(row.expected_price))) {
+        out[u].expected_price = Math.round(Number(row.expected_price) * 100) / 100;
+      }
+    });
+  } catch (e0) {}
+  try {
+    const [taxFillRows] = await conn.query(
+      `SELECT username, satisfaction
+       FROM tax_fill_survey
+       WHERE username COLLATE utf8mb4_unicode_ci IN (${ph})`,
+      names
+    );
+    (taxFillRows || []).forEach(function (row) {
+      var u = String(row.username || '');
+      if (!out[u]) return;
+      out[u].tax_fill_satisfaction = row.satisfaction != null ? String(row.satisfaction) : '';
+    });
+  } catch (e1) {}
+  return out;
+}
+
+function pct(num, den) {
+  var a = Number(num) || 0;
+  var b = Number(den) || 0;
+  if (b <= 0) return null;
+  return (Math.round((a / b) * 1000) / 10).toFixed(1) + '%';
+}
+
+async function handleOpsConversionResearch(req, res) {
+  try {
+    var days = parseDays(req.query && req.query.days, 7);
+    var pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      var where = [
+        'users.list_hidden_at IS NULL',
+        nonGuestSql('users'),
+        'users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)'
+      ];
+      var params = [days];
+      appendRegisteredScope(where, params, req.admin, 'users.username');
+      var whereSql = ' WHERE ' + where.join(' AND ');
+      const [funnelRows] = await conn.query(
+        `SELECT
+           COUNT(*) AS registered,
+           SUM(users.account_active = 1) AS activated,
+           SUM(users.account_active = 0 OR users.account_active IS NULL) AS unactivated,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${hasTaxSql('users.username')}) AS unact_has_tax,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND NOT ${hasTaxSql('users.username')}) AS unact_no_tax,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${sawPurchaseSql('users.username')}) AS unact_saw_pay,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${highIncomeExistsSql('users.username')}) AS unact_high_income,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${sawConsultSql('users.username')} AND NOT ${hasTaxSql('users.username')}) AS opened_fill_no_submit
+         FROM users ${whereSql}`,
+        params
+      );
+      var f = funnelRows && funnelRows[0] ? funnelRows[0] : {};
+      const [chRows] = await conn.query(
+        `SELECT COALESCE(NULLIF(TRIM(users.register_source_channel), ''), '(empty)') AS ch,
+                COUNT(*) AS registered,
+                SUM(users.account_active = 1) AS activated,
+                SUM(${hasTaxSql('users.username')}) AS has_tax
+         FROM users ${whereSql}
+         GROUP BY ch
+         ORDER BY registered DESC
+         LIMIT 12`,
+        params
+      );
+      var price = { expensive: 0, fair: 0, cheap: 0, skipped: 0, expected: [] };
+      try {
+        const [priceRows] = await conn.query(
+          `SELECT p.sentiment, p.skipped, p.expected_price
+           FROM purchase_price_survey p
+           INNER JOIN users u
+             ON u.username COLLATE utf8mb4_unicode_ci = p.username COLLATE utf8mb4_unicode_ci
+           WHERE p.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)
+             AND u.list_hidden_at IS NULL
+             AND (u.account_active IS NULL OR u.account_active = 0)`,
+          [days]
+        );
+        (priceRows || []).forEach(function (row) {
+          if (Number(row.skipped) === 1) {
+            price.skipped += 1;
+            return;
+          }
+          var s = String(row.sentiment || '').toLowerCase();
+          if (price[s] != null) price[s] += 1;
+          if (row.expected_price != null && isFinite(Number(row.expected_price))) {
+            price.expected.push(Math.round(Number(row.expected_price) * 100) / 100);
+          }
+        });
+      } catch (ePrice) {}
+      var taxFill = { good: 0, ok: 0, bad: 0, skipped: 0 };
+      try {
+        const [tfRows] = await conn.query(
+          `SELECT satisfaction, skipped, COUNT(*) AS c
+           FROM tax_fill_survey
+           WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)
+           GROUP BY satisfaction, skipped`,
+          [days]
+        );
+        (tfRows || []).forEach(function (row) {
+          var c = Number(row.c) || 0;
+          if (Number(row.skipped) === 1) {
+            taxFill.skipped += c;
+            return;
+          }
+          var s = String(row.satisfaction || '').toLowerCase();
+          if (taxFill[s] != null) taxFill[s] += c;
+        });
+      } catch (eTf) {}
+      var avgExpect = null;
+      if (price.expected.length) {
+        var sum = 0;
+        price.expected.forEach(function (v) {
+          sum += v;
+        });
+        avgExpect = Math.round((sum / price.expected.length) * 10) / 10;
+      }
+      var registered = n(f, 'registered');
+      var activated = n(f, 'activated');
+      var unactivated = n(f, 'unactivated');
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          funnel: {
+            registered: registered,
+            activated: activated,
+            unactivated: unactivated,
+            activate_pct: pct(activated, registered),
+            unact_has_tax: n(f, 'unact_has_tax'),
+            unact_no_tax: n(f, 'unact_no_tax'),
+            unact_saw_pay: n(f, 'unact_saw_pay'),
+            unact_high_income: n(f, 'unact_high_income'),
+            opened_fill_no_submit: n(f, 'opened_fill_no_submit'),
+            tax_fill_pct: pct(n(f, 'unact_has_tax') + activated, registered)
+          },
+          channels: (chRows || []).map(function (r) {
+            var reg = n(r, 'registered');
+            var act = n(r, 'activated');
+            return {
+              channel: String(r.ch || ''),
+              registered: reg,
+              activated: act,
+              has_tax: n(r, 'has_tax'),
+              activate_pct: pct(act, reg)
+            };
+          }),
+          price_survey: {
+            expensive: price.expensive,
+            fair: price.fair,
+            cheap: price.cheap,
+            skipped: price.skipped,
+            avg_expected_price: avgExpect,
+            expected_samples: price.expected.length
+          },
+          tax_fill_survey: taxFill,
+          insights: buildResearchInsights({
+            registered: registered,
+            activated: activated,
+            unactivated: unactivated,
+            unactHasTax: n(f, 'unact_has_tax'),
+            unactSawPay: n(f, 'unact_saw_pay'),
+            openedFillNoSubmit: n(f, 'opened_fill_no_submit'),
+            expensive: price.expensive,
+            avgExpect: avgExpect
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[ops-research]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+function buildResearchInsights(x) {
+  var lines = [];
+  if (x.registered <= 0) {
+    return ['所选区间没有注册用户。'];
+  }
+  if (x.unactivated > 0 && x.unactHasTax > 0) {
+    lines.push(
+      '未开通里已有 ' +
+        x.unactHasTax +
+        ' 人填过个税：核心功能已经用上，开通卖的是去水印。'
+    );
+  }
+  if (x.openedFillNoSubmit > 0) {
+    lines.push(
+      x.openedFillNoSubmit + ' 人进过填写页但没留下个税，卡在提交而不是入口。'
+    );
+  }
+  if (x.unactSawPay > 0 && x.expensive > 0) {
+    lines.push(
+      '看过开通页的未开通用户里，有 ' +
+        x.expensive +
+        ' 人明确觉得贵' +
+        (x.avgExpect != null ? '，心理价大约 ' + x.avgExpect + ' 元' : '') +
+        '。'
+    );
+  }
+  if (x.activated === 0) {
+    lines.push('这期间还没有开通，优先跟高收入未开通和看过支付页的人。');
+  }
+  if (!lines.length) {
+    lines.push('按渠道拆开通率，把低开通渠道和高意向未开通分开跟。');
+  }
+  return lines;
+}
+
+function getHandlers() {
+  return {
+    handleOpsInactiveSummary: handleOpsInactiveSummary,
+    handleOpsInactiveUsers: handleOpsInactiveUsers,
+    handleOpsConversionResearch: handleOpsConversionResearch
+  };
+}
+
+module.exports = {
+  getHandlers: getHandlers,
+  HIGH_INCOME: HIGH_INCOME,
+  parseSegment: parseSegment,
+  parseDays: parseDays
+};

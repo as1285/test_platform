@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""深圳市社会保险历年参保缴费明细表（个人）演示 PDF。版式对齐邱智锋社保.pdf。"""
+"""深圳/广州社会保险历年参保缴费明细表（个人）演示 PDF。版式对齐邱智锋社保.pdf。"""
 from __future__ import print_function
 
 import json
@@ -27,12 +27,35 @@ from sbdy_render_pdf import (  # noqa: E402
 
 ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 SEAL_PNG = os.path.join(ASSETS, 'sz_seal.png')
+GZ_SEAL_PNG = os.path.join(ASSETS, 'gz_seal.png')
+
+
+def city_of(p):
+    r = str((p or {}).get('region') or (p or {}).get('layout') or '').lower()
+    if r in ('gz', 'guangzhou', 'gz_official_v1'):
+        return '广州'
+    return '深圳'
+
+
+def city_title(p):
+    return city_of(p) + '市社会保险历年参保缴费明细表（个人）'
+
+
+def city_bureau(p):
+    return city_of(p) + '市社会保险基金管理局'
+
+
+def seal_png_of(p):
+    if city_of(p) == '广州' and os.path.isfile(GZ_SEAL_PNG):
+        return GZ_SEAL_PNG
+    return SEAL_PNG
 
 PAGE_W = 612.5
 X0, X1 = 33.8, 609.1
+# 单位编号列加宽：广州等用 18 位统一社会信用代码作单位编号，原宽约 41pt 会装不下被裁掉
 COL_X = [
-    33.8, 60.9, 74.4, 115.1, 148.9, 189.5, 230.1, 257.2, 284.3,
-    324.9, 365.5, 392.5, 419.6, 453.5, 480.5, 514.4, 541.4, 575.3, 609.1,
+    33.8, 60.9, 74.4, 139.0, 168.5, 203.5, 238.5, 262.5, 286.5, 321.5,
+    356.5, 380.5, 404.5, 433.5, 457.5, 486.5, 515.5, 544.5, 609.1,
 ]
 ROW_H = 12.0
 HEAD1_H = 12.0
@@ -160,7 +183,7 @@ def totals_of(months):
 
 def collect_blob(p, months, auth_code):
     parts = [
-        '深圳市社会保险历年参保缴费明细表（个人）好差评二维码',
+        city_title(p) + '好差评二维码',
         '姓名：社保电脑号：身份证号码：页码：最近参保单位名称：单位编号：计算单位：元',
         '养老保险医疗保险生育工伤保险失业保险缴费年月单位编号基数单位交个人交险种合计备注',
         '本证明可作为参保人在本单位参加社会保险的证明。向相关部门提供，查验部门可通过登录',
@@ -170,7 +193,7 @@ def collect_blob(p, months, auth_code):
         '“5”为居民医疗保险医保，“6”为统筹医疗保险。',
         '上述“缴费明细”表中带“*”标识为补缴，空行为断缴。',
         '居民养老保险、居民（含少儿/学生）医疗保险不在本清单。',
-        '单位编号对应的单位名称：单位编号单位名称深圳市社会保险基金管理局打印日期：',
+        '单位编号对应的单位名称：单位编号单位名称' + city_bureau(p) + '打印日期：',
         str(p.get('name') or ''),
         str(p.get('computer_no') or ''),
         str(p.get('id_number') or ''),
@@ -191,17 +214,18 @@ def collect_blob(p, months, auth_code):
     return ''.join(norm_text(x) for x in parts)
 
 
-def draw_title(page, font_title, title_name, font_body, body_name, qr_path, page_idx, total_pages):
-    title = '深圳市社会保险历年参保缴费明细表（个人）'
+def draw_title(page, font_title, title_name, font_body, body_name, qr_path, page_idx, total_pages, p=None):
+    title = city_title(p)
     tsize = 15.0
     tw = text_width(font_title, title, tsize)
     page.insert_text(((PAGE_W - tw) / 2.0, 88.0), title, fontname=title_name, fontsize=tsize)
     if qr_path and os.path.isfile(qr_path):
         page.insert_image(fitz.Rect(38, 8, 90, 60), filename=qr_path)
     page.insert_text((36.0, 72.0), '好差评二维码', fontname=body_name, fontsize=8.0)
-    if os.path.isfile(SEAL_PNG):
+    seal = seal_png_of(p)
+    if os.path.isfile(seal):
         # 章盖在标题右侧空白，底边须高于表头，避免压住工伤/失业列
-        page.insert_image(fitz.Rect(508, 6, 600, 98), filename=SEAL_PNG, keep_proportion=True)
+        page.insert_image(fitz.Rect(508, 6, 600, 98), filename=seal, keep_proportion=True)
     page.insert_text(
         (555.0, 114.0),
         '页码：%d' % page_idx,
@@ -308,11 +332,19 @@ def draw_data_rows(page, font_body, body_name, chunk, y0, draw_total, tot):
             continue
         vals = row_vals(r)
         for ci, val in enumerate(vals):
-            cell_box(
-                page, font_body, body_name, val,
-                COL_X[ci], COL_X[ci + 1], yy0, yy1,
-                size=6.6, min_size=5.2,
-            )
+            # 单位编号（18 位信用代码）单独用更小下限，避免装不下整格空白
+            if ci == 2:
+                cell_box(
+                    page, font_body, body_name, val,
+                    COL_X[ci], COL_X[ci + 1], yy0, yy1,
+                    size=5.4, min_size=3.2, pad=0.6,
+                )
+            else:
+                cell_box(
+                    page, font_body, body_name, val,
+                    COL_X[ci], COL_X[ci + 1], yy0, yy1,
+                    size=6.6, min_size=5.2,
+                )
     if draw_total:
         tot_h = extra or 18.0
         cell_box(page, font_body, body_name, '合计', COL_X[0], COL_X[3], y_end, y_end + tot_h, size=7.0)
@@ -371,14 +403,15 @@ def draw_footer(page, font_body, body_name, p, auth_code, mapping, y_top, page_h
             fontname=body_name,
             fontsize=7.0,
         )
-    bureau = '深圳市社会保险基金管理局'
+    bureau = city_bureau(p)
     page.insert_text((402.2, page_h - 88), bureau, fontname=body_name, fontsize=8.0)
     pd = '打印日期：' + str(p.get('print_date') or '')
     page.insert_text((402.2, page_h - 72), pd, fontname=body_name, fontsize=8.0)
-    if os.path.isfile(SEAL_PNG):
+    seal = seal_png_of(p)
+    if os.path.isfile(seal):
         page.insert_image(
             fitz.Rect(402, page_h - 144, 522, page_h - 24),
-            filename=SEAL_PNG,
+            filename=seal,
             keep_proportion=True,
         )
 
@@ -405,7 +438,7 @@ def render(payload, auth_code, qr_url, out_path):
     subset_body = make_subset_font(full_body, blob, prefix='sbdy_sz_body_')
     subset_title = make_subset_font(
         full_title,
-        '深圳市社会保险历年参保缴费明细表（个人）养老保险医疗保险生育工伤保险失业保险缴费年月单位编号基数单位交个人交险种合计备注',
+        city_title(p) + '养老保险医疗保险生育工伤保险失业保险缴费年月单位编号基数单位交个人交险种合计备注',
         prefix='sbdy_sz_title_',
     )
     qr_path = None
@@ -420,7 +453,7 @@ def render(payload, auth_code, qr_url, out_path):
             ph = page_height_for(n_draw, is_last)
             page = doc.new_page(width=PAGE_W, height=ph)
             body_name, title_name = register_fonts(page, subset_body, subset_title)
-            draw_title(page, subset_title, title_name, subset_body, body_name, qr_path, page_idx, total_pages)
+            draw_title(page, subset_title, title_name, subset_body, body_name, qr_path, page_idx, total_pages, p)
             if page_idx == 1:
                 draw_info(page, subset_body, body_name, p)
             y_head = 144.0

@@ -193,8 +193,13 @@ mustInclude('frontend/consult.html', ['consult-records.js?v=20260827-tax-edit-fe
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
-  ['.preview.png', 'SEAL_RED = (214, 28, 32, 255)', 'SS * 0.032', 'SEAL_STAMP_ALPHA = 0.90', 'place_seal'],
-  'lizhi render png + large vermilion seal'
+  ['.preview.png', 'SEAL_RED = (216, 128, 118, 255)', 'SEAL_STAMP_ALPHA = 0.56', 'place_seal', 'inner_w = max(6'],
+  'lizhi render png + pale double-ring seal'
+);
+mustExclude(
+  'backend/scripts/lizhi_render_pdf.py',
+  ['stroke_width=stroke'],
+  'lizhi seal uses thin unstroked type'
 );
 mustInclude(
   'backend/scripts/zaizhi_render_pdf.py',
@@ -214,19 +219,28 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/najilu.js',
-  ["zl901010: '国家税务总局辽宁省税务局'", 'USER_CERT_STAMP_AUTHORITY', 'resolveStampAuthority'],
-  'zl901010 najilu uses Liaoning provincial seal'
+  [
+    "zl901010: '国家税务总局辽宁省税务局'",
+    'USER_CERT_STAMP_AUTHORITY',
+    'USER_CERT_STAMP_IMAGE',
+    'najilu_ln_seal.png',
+    'resolveStampAuthority',
+    'resolveStampImageUrl'
+  ],
+  'zl901010 najilu uses Liaoning provincial seal photo'
 );
 mustInclude(
   'frontend/najilu.html',
-  ['najilu.js?v=20260829-ln-seal'],
-  'najilu ln seal cache'
+  ['najilu.js?v=20260829-ln-photo'],
+  'najilu ln seal photo cache'
 );
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['najilu.js?v=20260829-ln-seal'],
-  'admin najilu ln seal cache'
+  ['najilu.js?v=20260829-ln-photo'],
+  'admin najilu ln seal photo cache'
 );
+if (exists('frontend/public/img/najilu_ln_seal.png')) ok('liaoning najilu seal image exists');
+else fail('liaoning najilu seal image exists', 'missing frontend/public/img/najilu_ln_seal.png');
 mustInclude(
   'frontend/zaizhi_cert.html',
   ['/api/zaizhi-cert/generate', 'lzGender', '工作证明.pdf'],
@@ -314,7 +328,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260829-d1return', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260829-refundad', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -431,6 +445,36 @@ mustInclude(
     'grid-template-columns: 1fr 1fr'
   ],
   'purchase conversion first-screen: high-intent + sku grid + trust'
+);
+mustInclude(
+  'frontend/refund_ad.html',
+  [
+    'refundAd',
+    'Tangdong6832',
+    '一手退个人所得税，到账再收费',
+    '优化材料 = 多退',
+    '不懂政策 = 漏退',
+    'btnCopyRefundWechat',
+    'track_refund_ad_view',
+    'track_refund_ad_copy'
+  ],
+  'standalone tax-refund wechat ad page'
+);
+mustInclude(
+  'frontend/purchase.html',
+  [
+    'purchaseRefundAdEntry',
+    'refund_ad.html?from=purchase',
+    '一手退个人所得税，到账再收费',
+    'track_purchase_refund_ad_entry_click',
+    'track_purchase_refund_ad_entry_view'
+  ],
+  'purchase page entry to refund ad'
+);
+mustExclude(
+  'frontend/purchase.html',
+  ['id="purchaseRefundAd"', 'Tangdong6832', 'btnCopyRefundWechat'],
+  'full refund ad stays on refund_ad page'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -625,12 +669,23 @@ mustInclude(
 mustInclude(
   'frontend/public/js/auth.js',
   ['isIPhone13Client', 'iPhone14,5', 'app-ios-iphone13'],
-  'iphone 13 company full name detect'
+  'iphone 13 company ellipsis detect'
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['isIPhone13FullCompanyClient', 'app-ios-iphone13', '#recordList .list-label', '--ufs-list-body-color, #666'],
-  'shuiming_result iphone13 full company'
+  [
+    'isIPhone13CompanyEllipsisClient',
+    'app-ios-iphone13',
+    'truncateChars(company, iphone13Company ? 13 : 12)',
+    '#recordList .list-label',
+    '--ufs-list-body-color, #666'
+  ],
+  'shuiming_result iphone13 company 13-char ellipsis'
+);
+mustExclude(
+  'frontend/shuiming_result.html',
+  ['isIPhone13FullCompanyClient', 'fullCompany ? company'],
+  'iphone13 no longer shows full company name'
 );
 mustInclude(
   'frontend/public/js/user-font-settings.js',

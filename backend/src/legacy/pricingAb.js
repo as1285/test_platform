@@ -46,6 +46,18 @@ var SKU_268_3DAY = {
   grant_minutes: 0
 };
 
+/** GitHub 未开通入口价：贴近调研心理价 50–98，不进全站货架 */
+var SKU_98_3DAY = {
+  id: 'sku_98_3d',
+  amount: '98.00',
+  label: '体验卡',
+  subject: '激活码·体验卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 3,
+  grant_minutes: 0
+};
+
 /** 现售周卡：300 */
 var SKU_300_WEEK = {
   id: 'sku_300_7d',
@@ -571,6 +583,26 @@ function normalizeAbcPercents(raw, landingCPercent) {
   };
 }
 
+function shouldOfferGithubEntry(userRow) {
+  if (!userRow) return false;
+  var active =
+    userRow.account_active === 1 ||
+    userRow.account_active === true ||
+    Number(userRow.account_active) === 1;
+  if (active) return false;
+  return String(userRow.register_source_channel || '').trim().toLowerCase() === 'github';
+}
+
+function prependGithubEntrySku(skus) {
+  var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
+  var i;
+  for (i = 0; i < next.length; i++) {
+    if (next[i].id === SKU_98_3DAY.id) return next;
+  }
+  next.unshift(cloneSku(SKU_98_3DAY));
+  return next;
+}
+
 function grantDurationMs(sku) {
   if (!sku || sku.grant_kind === 'permanent') return Infinity;
   var days = parseInt(sku.grant_days, 10) || 0;
@@ -591,7 +623,7 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_99_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_300_WEEK, SKU_348_2WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
+    [SKU_98_3DAY, SKU_99_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_300_WEEK, SKU_348_2WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
       LEGACY_CATALOG_SKUS
     )
   ];
@@ -970,15 +1002,34 @@ function createPricingAb(deps) {
     if (seed !== 'guest') {
       await setStickyAbc(seed, 'b', 'single_plan', true);
     }
+    var githubEntry = false;
+    if (seed && seed !== 'guest' && pool) {
+      try {
+        const conn = await pool.getConnection();
+        try {
+          const [rows] = await conn.execute(
+            'SELECT register_source_channel, account_active FROM users WHERE username = ? LIMIT 1',
+            [seed]
+          );
+          if (shouldOfferGithubEntry(rows && rows[0])) {
+            skus = prependGithubEntrySku(skus);
+            githubEntry = true;
+          }
+        } finally {
+          conn.release();
+        }
+      } catch (eGh) {}
+    }
     return {
       enabled: true,
       variant: 'treatment',
       abc_variant: 'b',
-      abc_source: 'single_plan',
+      abc_source: githubEntry ? 'github_entry' : 'single_plan',
       skus: skus,
       pricing_ab_enabled: false,
       forced_by_channel: false,
-      force_client_abc: true
+      force_client_abc: true,
+      github_entry: githubEntry
     };
   }
 
@@ -1049,5 +1100,8 @@ module.exports = {
   resolvePricingAbVariant: resolvePricingAbVariant,
   resolvePurchaseAbcVariant: resolvePurchaseAbcVariant,
   abcToOfferVariant: abcToOfferVariant,
-  offerVariantToAbc: offerVariantToAbc
+  offerVariantToAbc: offerVariantToAbc,
+  shouldOfferGithubEntry: shouldOfferGithubEntry,
+  prependGithubEntrySku: prependGithubEntrySku,
+  SKU_98_3DAY: SKU_98_3DAY
 };

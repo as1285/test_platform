@@ -2,7 +2,7 @@
 
 > 源码：`backend/src/admin/menuRegistry.js`（阶段 2 单一来源；`ADMIN_MENU_KEYS` 由其派生）  
 > 前端侧栏：由 `/api/admin/me` 的 `menu_tree` 渲染（`frontend/public/js/admin/nav.js`）  
-> 快照日期：2026-08-06（对齐当前 registry）
+> 快照日期：2026-08-29（对齐当前 registry）
 
 超级管理员（环境变量 `ADMIN_PANEL_USER` 对应用户）拥有全部菜单。  
 子账号权限存 `admin_account_menus`，由「后台账号权限」配置；可选菜单列表来自 `menu_defs`。
@@ -11,7 +11,7 @@
 
 | group | 中文 |
 |-------|------|
-| `ops-desk` | 工作台 |
+| `ops-desk` | 转化运营 |
 | `ops-config` | 内容配置 |
 | `users` | 用户管理 |
 | `cert-tools` | 业务工具 |
@@ -22,7 +22,10 @@
 
 | menu_key | 中文 | 典型用途 |
 |----------|------|----------|
-| `analytics-conversion` | 转化概览 | 转化 KPI |
+| `ops-inactive` | 未激活用户 | 收集未开通用户明细（也可凭 `analytics-conversion` / `users` 进入） |
+| `ops-research` | 转化调研 | 未开通漏斗、价格与填写问卷（也可凭转化概览 / 填写调研进入） |
+| `ops-lift` | 提高转化 | 次日回访、高收入跟进、站内信群发 |
+| `analytics-conversion` | 转化概览 | 支付转化 + 日转化总览 |
 | `codes` | 激活码 | 发码 / 列表 |
 | `settings` | 定价与引导 | `/api/admin/settings` |
 | `install-guide` | 安装分发 | settings 共用门闸之一 |

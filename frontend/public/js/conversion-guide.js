@@ -364,6 +364,14 @@
         localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
       } catch (e1) {}
     }
+    if (u.register_source_channel != null) {
+      try {
+        localStorage.setItem(
+          'register_source_channel',
+          String(u.register_source_channel || '').trim()
+        );
+      } catch (eCh) {}
+    }
     if (u.employer_count != null) {
       try {
         localStorage.setItem('employer_count', String(Number(u.employer_count) || 0));
@@ -822,14 +830,35 @@
     if (bar) bar.classList.toggle('is-active', on);
   }
 
+  function isGithubRegisterSource() {
+    try {
+      var s = String(localStorage.getItem('register_source_channel') || '')
+        .trim()
+        .toLowerCase();
+      if (s === 'github') return true;
+      var raw = localStorage.getItem('register_source_channel_v1');
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && String(o.src || '').toLowerCase() === 'github') return true;
+      }
+    } catch (e0) {}
+    return false;
+  }
+
+  function githubBlocksDemoEscape() {
+    return isGithubRegisterSource() && !isAccountActive();
+  }
+
   function toggleScreenshotMode() {
     if (!isScreenshotModeOn() && !isAccountActive() && !isLandingGuest()) {
       openPayGateModal({
         feature: '截图',
         from: 'gate_screenshot',
         title: '无水印截图需开通',
-        message: '开通后页面不再叠加未激活水印，截图更干净。也可先进入截图模式（水印仍在）。',
-        allowContinue: true,
+        message: githubBlocksDemoEscape()
+          ? '未开通记录带水印，不能当正式截图用。开通后去掉水印。GitHub 来源没有免费激活码。'
+          : '开通后页面不再叠加未激活水印，截图更干净。也可先进入截图模式（水印仍在）。',
+        allowContinue: !githubBlocksDemoEscape(),
         continueLabel: '先进入截图模式',
         onContinue: function () {
           setScreenshotMode(true);
@@ -1785,8 +1814,10 @@
           feature: '导出',
           from: 'gate_export',
           title: '导出图片需开通',
-          message: '开通后可导出无水印、带公章的清晰版本。也可先保存当前演示预览图。',
-          allowContinue: true,
+          message: githubBlocksDemoEscape()
+            ? '未开通只能看带水印预览。开通后导出无水印、带公章的清晰版。'
+            : '开通后可导出无水印、带公章的清晰版本。也可先保存当前演示预览图。',
+          allowContinue: !githubBlocksDemoEscape(),
           continueLabel: '先保存演示图',
           onContinue: doSave
         });
@@ -1807,8 +1838,10 @@
           feature: '分享导出',
           from: 'gate_share_export',
           title: '分享无水印图需开通',
-          message: '开通后可分享去水印版本。也可先分享当前演示预览。',
-          allowContinue: true,
+          message: githubBlocksDemoEscape()
+            ? '未开通不能分享去水印图。开通后可分享清晰版。'
+            : '开通后可分享去水印版本。也可先分享当前演示预览。',
+          allowContinue: !githubBlocksDemoEscape(),
           continueLabel: '先分享演示图',
           onContinue: doShare
         });

@@ -339,6 +339,39 @@ describe('sbdyDemo', () => {
     expect(html).not.toContain('table.map');
   });
 
+  it('normalizePayload builds Guangzhou month rows with Shenzhen-identical layout', () => {
+    const p = normalizePayload({
+      region: 'gz',
+      name: '林晓薇',
+      id_number: '440305199208156018',
+      company_name: '广州市南山区云启信息技术有限公司',
+      unit_code: '44018826',
+      computer_no: '089216473',
+      period_start: '2025-07',
+      period_end: '2025-09',
+      base_amount: 4492
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('gz');
+    expect(p.layout).toBe('gz_official_v1');
+    expect(p.computer_no).toBe('089216473');
+    expect(p.unit_code).toBe('44018826');
+    expect(p.months.length).toBe(3);
+    expect(p.months[0].pension_unit).toBe(718.72);
+    expect(p.months[0].pension_person).toBe(359.36);
+    const html = renderCertHtml(p, { show_url: 'https://example.test/show.pdf' }, { authCode: 'abc123' });
+    expect(html).toContain('广州市社会保险历年参保缴费明细表');
+    expect(html).toContain('广州市社会保险基金管理局');
+    expect(html).toContain('/img/sbdy_gz_seal.png');
+    expect(html).not.toContain('/img/sbdy_sz_seal.png');
+    expect(html).not.toContain('深圳市社会保险历年参保缴费明细表');
+    expect(html).not.toContain('深圳市社会保险基金管理局');
+    expect(html).toContain('林晓薇');
+    expect(html).toContain('abc123');
+    expect(html).toContain('<th colspan="3">养老保险</th><th colspan="4">医疗保险</th><th colspan="3">生育</th>');
+    expect(html).toContain('unit-map');
+  });
+
   it('Shenzhen unit map supports multiple employers without table borders', () => {
     const p = normalizePayload({
       region: 'sz',
@@ -729,5 +762,69 @@ describe('sbdyDemo', () => {
     expect(html).not.toMatch(/<td[^>]*>\s*<b>李<\/b>/);
     expect(html).toContain('北京甲公司');
     expect(html).toContain('北京乙公司');
+  });
+
+  it('normalizePayload builds Shanghai 60-month pension status', () => {
+    const p = normalizePayload({
+      region: 'sh',
+      name: '陈思远',
+      id_number: '310115199003152018',
+      company_name: '上海某某科技有限公司',
+      period_start: '2021-08',
+      period_end: '2026-07',
+      total_months: 175,
+      print_date: '2026年8月5日',
+      segments: [
+        {
+          company_name: '上海某某科技有限公司',
+          period_start: '2021-08',
+          period_end: '2024-11'
+        },
+        {
+          company_name: '上海某某网络科技有限公司',
+          period_start: '2024-12',
+          period_end: '2026-05'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('sh');
+    expect(p.layout).toBe('sh_official_v1');
+    expect(p.ss_number).toBe('310115199003152018');
+    expect(p.agency_name).toBe('上海市社会保险事业管理中心');
+    expect(p.months.length).toBe(60);
+    expect(p.months[0].ym).toBe('202108');
+    expect(p.months[0].status).toBe('已记账');
+    expect(p.months[59].ym).toBe('202607');
+    expect(p.months[59].status).toMatch(/未缴费|欠缴/);
+    expect(p.employers.length).toBe(2);
+    expect(p.employers[0].period_label).toContain('2021年08月');
+    expect(p.total_months).toBe(175);
+    expect(p.total_months_label).toContain('累计缴费月数 175');
+    expect(p.print_date).toBe('2026-8-5');
+    expect(p.seal_sig.length).toBeGreaterThan(40);
+    const html = renderCertHtml(p);
+    expect(html).toContain('参保人员城镇职工基本养老保险参保情况');
+    expect(html).toContain('近60个月缴费单位信息');
+    expect(html).toContain('上海某某科技有限公司');
+    expect(html).toContain('上海某某网络科技有限公司');
+    expect(html).toContain('/img/sbdy_sh_seal.png');
+    expect(html).toContain('已记账');
+    expect(html).toContain('累计缴费月数 175');
+  });
+
+  it('Shanghai HTML escapes name', () => {
+    const p = normalizePayload({
+      region: 'sh',
+      name: '<script>x</script>',
+      id_number: '310115199003152018',
+      period_start: '2025-01',
+      period_end: '2025-12',
+      company_name: '上海甲公司'
+    });
+    expect(p.error).toBeFalsy();
+    const html = renderCertHtml(p);
+    expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
+    expect(html).not.toContain('<script>x</script>');
   });
 });

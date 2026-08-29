@@ -290,6 +290,23 @@ describe('社保演示预填分段', () => {
     expect(parsed.id_number.charAt(17)).toBe(checks.charAt(sum % 11));
   });
 
+  it('粘贴广州社保模版识别为广州地区', () => {
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    const parsed = window.AdminModules['sbdy-demo'].parsePasteTemplate(`
+姓名：潘心茹
+性别：女
+时间：2025.7-2026.6
+广州社保
+公司名称：广州市前海寻文化科技有限公司
+`);
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.region).toBe('gz');
+    expect(parsed.area).toBe('广州市');
+    expect(parsed.id_number).toMatch(/^440103\d{11}[\dX]$/);
+  });
+
   it('最近生成列表可删除并刷新', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     window.adminFetch = vi.fn((url, opts) => {

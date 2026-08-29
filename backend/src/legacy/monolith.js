@@ -5977,6 +5977,7 @@ async function handleAlipayConfig(req, res) {
         forced_by_channel: !!offer.forced_by_channel,
         force_client_abc: !!offer.force_client_abc,
         custom_offer: !!customOffer,
+        github_entry: !!offer.github_entry,
         skus: skus
       }
     });
@@ -8689,7 +8690,7 @@ async function getUserSummaryForApi(userId) {
   try {
     const [rows] = await conn.execute(
       `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
-              activation_kind, active_until, created_at,
+              activation_kind, active_until, created_at, register_source_channel,
               TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours_since_register
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
@@ -8708,6 +8709,7 @@ async function getUserSummaryForApi(userId) {
         family_count: 0,
         bank_card_count: 0,
         tax_record_count: 0,
+        register_source_channel: '',
         user_type: USER_TYPE_NORMAL,
         is_guest: false,
         created_at: null,
@@ -8736,6 +8738,8 @@ async function getUserSummaryForApi(userId) {
       family_count: rec.family_count != null ? Number(rec.family_count) : 0,
       bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
       tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
+      register_source_channel:
+        rec.register_source_channel != null ? String(rec.register_source_channel).trim() : '',
       user_type: ut,
       is_test_account: ut === USER_TYPE_TEST,
       is_guest: ut === USER_TYPE_GUEST,

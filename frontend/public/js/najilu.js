@@ -754,6 +754,11 @@
     zl901010: '国家税务总局辽宁省税务局'
   };
 
+  /** 指定账号使用实物章 PNG（优先于 Canvas 绘制） */
+  var USER_CERT_STAMP_IMAGE = {
+    zl901010: '/img/najilu_ln_seal.png?v=20260829-ln-photo'
+  };
+
   function certUsername(app) {
     var fromApp = app && app.user ? app.user.username || app.user.user_id : '';
     var u = cleanText(fromApp);
@@ -769,6 +774,11 @@
     var mapped = USER_CERT_STAMP_AUTHORITY[certUsername(app).toLowerCase()];
     if (mapped) return mapped;
     return stampAuthority(rows);
+  }
+
+  function resolveStampImageUrl(app) {
+    var mapped = USER_CERT_STAMP_IMAGE[certUsername(app).toLowerCase()];
+    return mapped ? resolveCertAssetUrl(mapped) : '';
   }
 
   /** 章面机关名：官方样式为「国家税务总局××市税务局」，开发区/区局归到所属市 */
@@ -1725,7 +1735,7 @@
       options.qr_image_url || options.qrImageUrl || (app && app.qr_image_url) || ''
     );
 
-    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg, qrBlockImg) {
+    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg, qrBlockImg, stampImg) {
       var isLastPage = pageNum === pageCount;
       var rows = pageRows;
       var width = 1240;
@@ -1912,12 +1922,12 @@
       });
       if (showStamp) {
         /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
-        drawStamp(ctx, width - 238, explainY + 122, resolveStampAuthority(allRows, app));
+        drawStamp(ctx, width - 238, explainY + 122, resolveStampAuthority(allRows, app), stampImg);
       }
       return canvas.toDataURL('image/png');
     }
 
-    function paintAllPages(qrImg, headerImg, qrBlockImg) {
+    function paintAllPages(qrImg, headerImg, qrBlockImg, stampImg) {
       var allRows = normalizeRecords(app.records || []);
       var pageChunks = chunkRecords(allRows, CERT_MAX_ROWS_PER_PAGE);
       return pageChunks.map(function (pageRows, idx) {
@@ -1928,15 +1938,23 @@
           allRows,
           qrImg,
           headerImg,
-          qrBlockImg
+          qrBlockImg,
+          stampImg
         );
       });
     }
 
     return loadTaxRecordHeader().then(function (headerImg) {
       function finishWithQr(qrImg, qrBlockImg) {
-        var urls = paintAllPages(qrImg, headerImg, qrBlockImg);
-        return urls.length === 1 ? urls[0] : urls;
+        var stampUrl = showStamp ? resolveStampImageUrl(app) : '';
+        function paint(stampImg) {
+          var urls = paintAllPages(qrImg, headerImg, qrBlockImg, stampImg || null);
+          return urls.length === 1 ? urls[0] : urls;
+        }
+        if (!stampUrl) return Promise.resolve(paint(null));
+        return loadImageUrl(stampUrl).then(function (stampImg) {
+          return paint(stampImg);
+        });
       }
 
       if (qrBlockUrl) {
@@ -2090,8 +2108,21 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（标准单圈：细红圆框、上弧机关名、正中「业务专用章」） */
-  function drawStamp(ctx, cx, cy, authority) {
+  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制 */
+  function drawStamp(ctx, cx, cy, authority, stampImg) {
+    if (stampImg && stampImg.complete && stampImg.naturalWidth) {
+      var size = 188;
+      ctx.save();
+      ctx.globalAlpha = 0.94;
+      if (ctx.globalCompositeOperation) {
+        try {
+          ctx.globalCompositeOperation = 'multiply';
+        } catch (eMul) {}
+      }
+      ctx.drawImage(stampImg, cx - size / 2, cy - size / 2, size, size);
+      ctx.restore();
+      return;
+    }
     var name =
       authorityToCityStampText(authority) ||
       cleanText(authority) ||

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
+    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ff9a1f">
+    <title>二次退税 · 到账再收费</title>
+    <style>
+        :root {
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+            --ink: #1a1208;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        body.page-refund-ad {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            min-height: 100dvh;
+            background:
+                radial-gradient(120% 80% at 50% -10%, #ffe7b0 0%, transparent 55%),
+                linear-gradient(180deg, #fff6e8 0%, #ffedd5 42%, #ffe0b8 100%);
+            padding: calc(20px + var(--safe-t)) 16px calc(28px + var(--safe-b));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .refund-ad-wrap {
+            width: 100%;
+            max-width: var(--wrap);
+        }
+        .refund-ad {
+            padding: 18px 14px 14px;
+            border-radius: 18px;
+            color: var(--ink);
+            background: linear-gradient(180deg, #ffc85a 0%, #ff9a1f 52%, #ff7a00 100%);
+            box-shadow: 0 14px 32px rgba(232, 112, 0, 0.32);
+        }
+        .refund-ad-kicker {
+            margin: 0 0 6px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            color: rgba(26, 18, 8, 0.72);
+        }
+        .refund-ad-title {
+            margin: 0 0 14px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: 0.01em;
+        }
+        .refund-ad-card {
+            border-radius: 12px;
+            padding: 10px 12px 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 10px rgba(120, 52, 0, 0.12);
+        }
+        .refund-ad-card.is-core { background: #ffe14a; }
+        .refund-ad-card.is-cover { background: #fff; }
+        .refund-ad-card-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(26, 18, 8, 0.62);
+        }
+        .refund-ad-card-head::before,
+        .refund-ad-card-head::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: rgba(26, 18, 8, 0.16);
+        }
+        .refund-ad-card-main {
+            margin: 0;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+        .refund-ad-wx {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px 10px 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 4px 10px rgba(120, 52, 0, 0.12);
+        }
+        .refund-ad-wx-meta {
+            flex: 1;
+            min-width: 0;
+        }
+        .refund-ad-wx-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+        .refund-ad-wx-id {
+            display: block;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            color: #111827;
+            word-break: break-all;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-copy {
+            flex-shrink: 0;
+            min-height: 38px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 9px;
+            background: #07c160;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-copy:active { opacity: 0.9; }
+        .refund-ad-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(28px + var(--safe-b));
+            transform: translateX(-50%) translateY(12px);
+            max-width: min(90vw, 320px);
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: rgba(17, 24, 39, 0.92);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1000;
+        }
+        .refund-ad-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body class="page-refund-ad">
+    <main class="refund-ad-wrap">
+        <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
+            <p class="refund-ad-kicker">二次退税</p>
+            <h1 class="refund-ad-title">一手退个人所得税，到账再收费 🌹</h1>
+            <div class="refund-ad-card is-core">
+                <div class="refund-ad-card-head">找我的好处 1</div>
+                <p class="refund-ad-card-main">优化材料 = 多退！</p>
+            </div>
+            <div class="refund-ad-card is-cover">
+                <div class="refund-ad-card-head">找我的好处 2</div>
+                <p class="refund-ad-card-main">不懂政策 = 漏退</p>
+            </div>
+            <div class="refund-ad-wx">
+                <div class="refund-ad-wx-meta">
+                    <span class="refund-ad-wx-label">加微信咨询</span>
+                    <strong class="refund-ad-wx-id" id="refundWechatId">Tangdong6832</strong>
+                </div>
+                <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
+            </div>
+        </aside>
+    </main>
+    <div class="refund-ad-toast" id="refundAdToast" role="status" aria-live="polite"></div>
+    <script>
+    (function () {
+        var WECHAT_ID = 'Tangdong6832';
+        var copyBtn = document.getElementById('btnCopyRefundWechat');
+        var idEl = document.getElementById('refundWechatId');
+        var toastEl = document.getElementById('refundAdToast');
+        var toastTimer = null;
+
+        function showToast(msg) {
+            if (!toastEl) {
+                alert(msg);
+                return;
+            }
+            toastEl.textContent = msg != null ? String(msg) : '';
+            toastEl.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                toastEl.classList.remove('show');
+            }, 2800);
+        }
+
+        function track(action, meta) {
+            if (typeof window.trackUserAction !== 'function') return;
+            var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
+            if (!payload.page) payload.page = 'refund_ad';
+            if (!payload.source) payload.source = 'refund_ad_page';
+            window.trackUserAction(action, payload);
+        }
+
+        function copyText(text) {
+            var t = String(text || '');
+            if (!t) return Promise.reject(new Error('empty'));
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                return navigator.clipboard.writeText(t);
+            }
+            return new Promise(function (resolve, reject) {
+                var ta = document.createElement('textarea');
+                ta.value = t;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    if (document.execCommand('copy')) resolve();
+                    else reject(new Error('copy_failed'));
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    document.body.removeChild(ta);
+                }
+            });
+        }
+
+        function copyWechat() {
+            copyText(WECHAT_ID)
+                .then(function () {
+                    showToast('已复制微信号 ' + WECHAT_ID);
+                    track('track_refund_ad_copy', { wechat_id: WECHAT_ID });
+                })
+                .catch(function () {
+                    showToast('复制失败，请长按微信号手动复制');
+                });
+        }
+
+        if (copyBtn) copyBtn.addEventListener('click', copyWechat);
+        if (idEl) idEl.addEventListener('click', copyWechat);
+
+        track('track_refund_ad_view', { wechat_id: WECHAT_ID });
+    })();
+    </script>
+</body>
+</html>

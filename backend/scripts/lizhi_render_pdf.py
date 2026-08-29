@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 import fitz
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "..", "assets", "sbdy")
@@ -30,9 +30,9 @@ PAGE_W = int(round(PAGE_W_PT * SCALE))
 PAGE_H = int(round(PAGE_H_PT * SCALE))
 MARGIN_L = int(72 * SCALE)
 MARGIN_R = int(72 * SCALE)
-# 印泥大红：对齐全真公章朱红，勿再用浅粉细圈
-SEAL_RED = (214, 28, 32, 255)
-SEAL_STAMP_ALPHA = 0.90
+# 印泥朱红：单圈、清晰粗体字，盖章略透
+SEAL_RED = (211, 56, 62, 255)
+SEAL_STAMP_ALPHA = 0.88
 SEAL_PT = 176
 INK = (15, 15, 15, 255)
 
@@ -90,8 +90,61 @@ def _draw_pentagram(draw, cx, cy, outer_r, inner_r, fill):
     draw.polygon(pts, fill=fill)
 
 
-def make_seal(company):
-    """圆形公章：粗红圈 + 大号弧形单位名 + 中心五角星（印泥大红）。"""
+def _thin_glyph(g, steps=3):
+    """腐蚀字的不透明边，把宋体笔画收细。"""
+    if steps <= 0:
+        return g
+    r, gg, b, a = g.split()
+    for _ in range(steps):
+        a = a.filter(ImageFilter.MinFilter(3))
+    g = Image.merge("RGBA", (r, gg, b, a))
+    return g
+
+
+def _paste_arc_chars(seal, chars, cx, cy, text_r, font_size, a0, a1, thin_steps=0, invert=False, use_bold=True):
+    """沿圆弧贴字。invert=True 时用于底部编号。"""
+    n = len(chars)
+    if n <= 0:
+        return
+    font = bold_font(font_size) if use_bold else body_font(font_size)
+    for i, ch in enumerate(chars):
+        ang_deg = a0 + (a1 - a0) * ((i + 0.5) / n)
+        ang = math.radians(ang_deg)
+        pad = int(font_size * 3.2)
+        g = Image.new("RGBA", (pad, pad), (0, 0, 0, 0))
+        gd = ImageDraw.Draw(g)
+        bb = gd.textbbox((0, 0), ch, font=font)
+        tw, th = bb[2] - bb[0], bb[3] - bb[1]
+        gx = (pad - tw) / 2.0 - bb[0]
+        gy = (pad - th) / 2.0 - bb[1]
+        gd.text((gx, gy), ch, font=font, fill=SEAL_RED)
+        if thin_steps > 0:
+            g = _thin_glyph(g, steps=thin_steps)
+        rot = (90.0 - ang_deg) if invert else (270.0 - ang_deg)
+        g = g.rotate(rot, resample=Image.Resampling.BICUBIC, center=(pad / 2.0, pad / 2.0), expand=False)
+        x = cx + text_r * math.cos(ang)
+        y = cy + text_r * math.sin(ang)
+        seal.alpha_composite(g, (int(round(x - pad / 2.0)), int(round(y - pad / 2.0))))
+
+
+def default_seal_code(company, raw=None):
+    """公章底部防伪编号：优先入参；否则从统一社会信用代码推 13 位数字。"""
+    s = re.sub(r"\D", "", str(raw or ""))
+    if len(s) >= 17:
+        return (s[2:8] + s[8:15])[:13]
+    if len(s) >= 13:
+        return s[:13]
+    if len(s) >= 9:
+        return (s + "0000000000000")[:13]
+    seed = str(company or "seal")
+    h = 0
+    for ch in seed:
+        h = (h * 131 + ord(ch)) & 0xFFFFFFFF
+    return ("%013d" % (1000000000000 + (h % 9000000000000)))[:13]
+
+
+def make_seal(company, seal_code=None):
+    """圆形公章：单圈朱红 + 清晰上弧单位名 + 中心五角星 + 下弧 13 位编号。"""
     SS = 2000
     RED = SEAL_RED
     seal = Image.new("RGBA", (SS, SS), (0, 0, 0, 0))
@@ -99,18 +152,11 @@ def make_seal(company):
     cx = cy = SS / 2.0
 
     R = SS * 0.468
-    ring_w = max(44, int(SS * 0.032))
-    inner_w = max(10, int(SS * 0.007))
-    inner_r = R - ring_w - inner_w * 1.35
-    star_outer = SS * 0.148
+    ring_w = max(40, int(SS * 0.030))
+    star_outer = SS * 0.074
 
-    # 先画圈，字后贴，避免红圈切掉笔画
+    # 只要外圈，去掉内圈
     d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=RED, width=ring_w)
-    d.ellipse(
-        [cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r],
-        outline=RED,
-        width=inner_w,
-    )
     _draw_pentagram(d, cx, cy, star_outer, star_outer * 0.40, RED)
 
     chars = list((company or "专用章").strip()) or list("专用章")
@@ -127,44 +173,48 @@ def make_seal(company):
     else:
         arc_deg = min(278.0, 262.0 + (n - 14) * 2.0)
 
-    max_font = int(SS * 0.155)
-    min_font = int(SS * 0.088)
+    max_font = int(SS * 0.094)
+    min_font = int(SS * 0.068)
     font_size = min_font
-    text_r = inner_r - inner_w - min_font * 0.55
-    band_outer = inner_r - inner_w - SS * 0.012
-    band_inner = star_outer + SS * 0.055
+    text_r = R - ring_w - min_font * 0.70
+    band_outer = R - ring_w - SS * 0.016
+    band_inner = star_outer + SS * 0.068
     for try_size in range(max_font, min_font - 1, -2):
-        cand_r = band_outer - try_size * 0.52
-        if cand_r - try_size * 0.48 < band_inner:
+        cand_r = band_outer - try_size * 0.46
+        if cand_r - try_size * 0.46 < band_inner:
             continue
         arc_len = math.radians(arc_deg) * cand_r
-        # 公章字距偏紧，优先把字做大
         if try_size * n <= arc_len * 0.98:
             font_size = try_size
             text_r = cand_r
             break
 
-    font = bold_font(font_size)
-    stroke = max(3, int(font_size * 0.055))
     a0 = 270.0 - arc_deg / 2.0
     a1 = 270.0 + arc_deg / 2.0
+    _paste_arc_chars(
+        seal, chars, cx, cy, text_r, font_size, a0, a1, thin_steps=0, invert=False, use_bold=True
+    )
 
-    for i, ch in enumerate(chars):
-        ang_deg = a0 + (a1 - a0) * ((i + 0.5) / n)
-        ang = math.radians(ang_deg)
-        pad = int(font_size * 3.2)
-        g = Image.new("RGBA", (pad, pad), (0, 0, 0, 0))
-        gd = ImageDraw.Draw(g)
-        bb = gd.textbbox((0, 0), ch, font=font, stroke_width=stroke)
-        tw, th = bb[2] - bb[0], bb[3] - bb[1]
-        gx = (pad - tw) / 2.0 - bb[0]
-        gy = (pad - th) / 2.0 - bb[1]
-        gd.text((gx, gy), ch, font=font, fill=RED, stroke_width=stroke, stroke_fill=RED)
-        # PIL 坐标 y 向下；顶部直立、两侧沿切线
-        g = g.rotate(270.0 - ang_deg, resample=Image.Resampling.BICUBIC, center=(pad / 2.0, pad / 2.0), expand=False)
-        x = cx + text_r * math.cos(ang)
-        y = cy + text_r * math.sin(ang)
-        seal.alpha_composite(g, (int(round(x - pad / 2.0)), int(round(y - pad / 2.0))))
+    code = default_seal_code(company, seal_code)
+    code_chars = list(code)
+    code_font = max(int(SS * 0.050), int(font_size * 0.58))
+    code_r = text_r * 0.98
+    code_span = 88.0 + min(18.0, len(code_chars) * 0.6)
+    c0 = 90.0 + code_span / 2.0
+    c1 = 90.0 - code_span / 2.0
+    _paste_arc_chars(
+        seal,
+        code_chars,
+        cx,
+        cy,
+        code_r,
+        code_font,
+        c0,
+        c1,
+        thin_steps=0,
+        invert=True,
+        use_bold=True,
+    )
 
     pad_px = int(ring_w * 0.45)
     box = [
@@ -183,11 +233,11 @@ def make_seal(company):
     return out.resize((820, 820), Image.Resampling.LANCZOS)
 
 
-def place_seal(img, company, seal_x, seal_y, seal_pt=None):
-    """把大红公章盖到证明页上，略透但不发粉。"""
+def place_seal(img, company, seal_x, seal_y, seal_pt=None, seal_code=None):
+    """把朱红单圈公章盖到证明页上，略透。"""
     if seal_pt is None:
         seal_pt = int(SEAL_PT * SCALE)
-    seal_r = make_seal(company).resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
+    seal_r = make_seal(company, seal_code=seal_code).resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
     sa = seal_r.split()[-1].point(lambda v: int(v * SEAL_STAMP_ALPHA))
     seal_r.putalpha(sa)
     img.alpha_composite(seal_r, (int(seal_x), int(seal_y)))
@@ -339,7 +389,16 @@ def render_page_image(payload):
     department = str(payload.get("department") or payload.get("dept") or "").strip() or ""
     position = str(payload.get("position") or payload.get("job_title") or "").strip() or "职员"
     note = str(payload.get("note") or "").strip()
-
+    seal_code = (
+        str(
+            payload.get("seal_code")
+            or payload.get("sealCode")
+            or payload.get("company_tax_id")
+            or payload.get("credit_code")
+            or ""
+        ).strip()
+        or None
+    )
     img = Image.new("RGBA", (PAGE_W, PAGE_H), (255, 255, 255, 255))
     painter = PagePainter(img)
 
@@ -470,7 +529,7 @@ def render_page_image(payload):
     else:
         painter.draw_run(dx, date_y, blank_or(issue_date, 10), date_f, underline=True)
 
-    place_seal(img, company, seal_x, seal_y, seal_pt)
+    place_seal(img, company, seal_x, seal_y, seal_pt, seal_code=seal_code)
 
     note_y = max(date_y + int(70 * SCALE), PAGE_H - int(96 * SCALE))
     if note:

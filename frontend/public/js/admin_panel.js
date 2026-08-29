@@ -453,6 +453,18 @@
             if (k === 'track_purchase_back_click') {
                 return { button: '购买页返回', page: '购买页（purchase.html）' };
             }
+            if (k === 'track_purchase_refund_ad_view' || k === 'track_refund_ad_view') {
+                return { button: '退税广告曝光', page: '二次退税广告页' };
+            }
+            if (k === 'track_purchase_refund_ad_copy' || k === 'track_refund_ad_copy') {
+                return { button: '复制退税微信号', page: '二次退税广告页' };
+            }
+            if (k === 'track_purchase_refund_ad_entry_view') {
+                return { button: '退税广告入口曝光', page: '购买页 · 二次退税入口' };
+            }
+            if (k === 'track_purchase_refund_ad_entry_click') {
+                return { button: '退税广告入口点击', page: '购买页 · 二次退税入口' };
+            }
             return { button: '其他埋点', page: '—' };
         }
 
@@ -957,6 +969,9 @@
                 if (items.length && items[0].page) return items[0].page;
             }
             var order = [
+                'ops-inactive',
+                'ops-research',
+                'ops-lift',
                 'analytics-conversion',
                 'analytics-purchase',
                 'settings',
@@ -1173,6 +1188,13 @@
             if (pageKey === 'analytics-conversion') {
                 loadAnalyticsConversionPage();
             }
+            if (pageKey === 'ops-inactive' || pageKey === 'ops-research') {
+                callAdminModuleLoadPage('ops-conversion');
+            }
+            if (pageKey === 'ops-lift') {
+                loadAnalyticsD1ReturnCohort();
+                loadAnalyticsHighIncomeInactive();
+            }
             if (pageKey === 'analytics-register') {
                 loadAnalyticsRegisterPage();
             }
@@ -1330,7 +1352,13 @@
             'track_purchase_faq_expand',
             'track_kufaka_purchase_click',
             'track_qq_add_click',
-            'track_purchase_back_click'
+            'track_purchase_back_click',
+            'track_purchase_refund_ad_view',
+            'track_purchase_refund_ad_copy',
+            'track_refund_ad_view',
+            'track_refund_ad_copy',
+            'track_purchase_refund_ad_entry_view',
+            'track_purchase_refund_ad_entry_click'
         ];
         var ACTIVATE_EVENT_SHORT_LABELS = {
             track_purchase_page_view: '页浏览',
@@ -1348,7 +1376,13 @@
             track_purchase_faq_expand: 'FAQ展开',
             track_kufaka_purchase_click: '酷发卡',
             track_qq_add_click: '加QQ',
-            track_purchase_back_click: '返回'
+            track_purchase_back_click: '返回',
+            track_purchase_refund_ad_view: '退税广告',
+            track_purchase_refund_ad_copy: '复制微信',
+            track_refund_ad_view: '退税广告',
+            track_refund_ad_copy: '复制微信',
+            track_purchase_refund_ad_entry_view: '退税入口',
+            track_purchase_refund_ad_entry_click: '点退税入口'
         };
         var ACTIVATE_EVENTS_TABLE_COLSPAN = ACTIVATE_EVENT_KEYS.length + 4;
 
@@ -1541,8 +1575,6 @@
         function loadAnalyticsConversionPage() {
             loadAnalyticsPricingAb();
             loadAnalyticsDailyConversion();
-            loadAnalyticsD1ReturnCohort();
-            loadAnalyticsHighIncomeInactive();
         }
 
         function loadAnalyticsD1ReturnCohort() {
@@ -1739,8 +1771,8 @@
             var aud = document.getElementById('bulkMsgAudience');
             if (aud) aud.value = 'inactive_d1_only';
             applyD1BulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'analytics-conversion') {
-                location.hash = 'analytics-conversion';
+            if (normalizeAdminPage(location.hash) !== 'ops-lift') {
+                location.hash = 'ops-lift';
             }
             setTimeout(function () {
                 var box = document.getElementById('bulkMsgAudience');
@@ -1753,6 +1785,26 @@
         var HIGH_INCOME_BULK_TITLE = '您填写的收入明细开通后可完整查看';
         var HIGH_INCOME_BULK_BODY =
             '您好，看到您已填写较高收入的税务记录。开通后可去除水印，完整查看收入纳税明细并导出证明。点击下方「前往激活」即可开通。';
+        var HAS_TAX_BULK_TITLE = '税务记录已生成，开通后可去水印导出';
+        var HAS_TAX_BULK_BODY =
+            '您好，看到您已生成税务记录。开通卖的是去水印和完整导出，不是再填一遍。没有免费激活码，付款后自动开通。点击下方「前往激活」即可开通。';
+        var SAW_PAY_BULK_TITLE = '开通后即可去掉水印';
+        var SAW_PAY_BULK_BODY =
+            '您好，看到您看过开通方案但还未付款。开通后去除水印，完整查看收入纳税明细并导出证明。没有免费激活码。点击下方「前往激活」即可开通。';
+
+        function applyHasTaxBulkDefaultCopy() {
+            var titleEl = document.getElementById('bulkMsgTitle');
+            var bodyEl = document.getElementById('bulkMsgContent');
+            if (titleEl) titleEl.value = HAS_TAX_BULK_TITLE;
+            if (bodyEl) bodyEl.value = HAS_TAX_BULK_BODY;
+        }
+
+        function applySawPayBulkDefaultCopy() {
+            var titleEl = document.getElementById('bulkMsgTitle');
+            var bodyEl = document.getElementById('bulkMsgContent');
+            if (titleEl) titleEl.value = SAW_PAY_BULK_TITLE;
+            if (bodyEl) bodyEl.value = SAW_PAY_BULK_BODY;
+        }
 
         function applyHighIncomeBulkDefaultCopy() {
             var titleEl = document.getElementById('bulkMsgTitle');
@@ -1805,8 +1857,8 @@
             var aud = document.getElementById('bulkMsgAudience');
             if (aud) aud.value = 'inactive_high_income';
             applyHighIncomeBulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'analytics-conversion') {
-                location.hash = 'analytics-conversion';
+            if (normalizeAdminPage(location.hash) !== 'ops-lift') {
+                location.hash = 'ops-lift';
             }
             setTimeout(function () {
                 var box = document.getElementById('bulkMsgAudience');
@@ -9106,6 +9158,25 @@
         function setBulkMsgStatus(text) {
             var el = document.getElementById('bulkMsgStatus');
             if (el) el.textContent = text || '';
+        }
+
+        var bulkMsgAudienceEl = document.getElementById('bulkMsgAudience');
+        if (bulkMsgAudienceEl) {
+            bulkMsgAudienceEl.addEventListener('change', function () {
+                var v = String(bulkMsgAudienceEl.value || '');
+                if (v === 'inactive_d1_only' || v === 'inactive_has_d1') {
+                    applyD1BulkDefaultCopy();
+                } else if (v === 'inactive_high_income') {
+                    applyHighIncomeBulkDefaultCopy();
+                } else if (v === 'inactive_has_tax') {
+                    applyHasTaxBulkDefaultCopy();
+                } else if (
+                    v === 'inactive_visited_purchase' ||
+                    v === 'inactive_purchase_no_pay'
+                ) {
+                    applySawPayBulkDefaultCopy();
+                }
+            });
         }
 
         var btnBulkMsgPreview = document.getElementById('btnBulkMsgPreview');

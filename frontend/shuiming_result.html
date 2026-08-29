@@ -228,7 +228,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
+    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -976,13 +976,11 @@
             line-height: 21px !important;
         }
 
-        /* iPhone 13：扣缴义务人显示全称，允许换行，不要省略号。iPhone 14 不套用，保持 8 月初省略号一行。 */
+        /* iPhone 13：扣缴义务人仍单行省略（JS 按 13 字截断）；保留灰阶字色对齐官方。 */
         html.app-ios-iphone13 body.page-shuiming-result .list-company {
-            white-space: normal !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
-            word-break: break-word !important;
-            overflow-wrap: anywhere !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
 
         /*
@@ -2052,7 +2050,7 @@
             );
         }
 
-        function isIPhone13FullCompanyClient() {
+        function isIPhone13CompanyEllipsisClient() {
             try {
                 var root = document.documentElement;
                 /* iPhone 14 与 13 同 390×844，但 UI 回退 8 月初：不要把 14 当成 13 */
@@ -2084,8 +2082,8 @@
 
         function renderList(records, listYear) {
             var listHtml = '';
-            var fullCompany = isIPhone13FullCompanyClient();
-            if (fullCompany) {
+            var iphone13Company = isIPhone13CompanyEllipsisClient();
+            if (iphone13Company) {
                 try {
                     document.documentElement.classList.add('app-ios-iphone13');
                 } catch (eCls) {}
@@ -2095,7 +2093,8 @@
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
-                var companyShow = fullCompany ? company : truncateChars(company, 12);
+                /* 官方个税 App：iPhone 13 显示 13 字后省略；其它机型保持 12 字 */
+                var companyShow = truncateChars(company, iphone13Company ? 13 : 12);
                 var id = record.id != null ? String(record.id).trim() : '';
                 var detailHref = buildXiangqingUrl(record, listYear);
                 if (!detailHref) {

@@ -24,7 +24,8 @@
     'install_guide.html': true,
     'install-ios.html': true,
     'tutorial_video.html': true,
-    'zhzh_jhm.html': true
+    'zhzh_jhm.html': true,
+    'refund_ad.html': true
   };
 
   function currentPageName() {

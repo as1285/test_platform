@@ -8,7 +8,7 @@
   /* 空壳模块（仅 ready:true）已删除；PAGE_MODULE 仍映射以便按页拉 Chart/QR 等依赖 */
   var MODULE_SRC = {
     charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260828-list-del',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260829-guangzhou',
     'gjj-demo': '/js/admin/modules/gjj-demo.js?v=20260826-deadcode',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260828-cert-survey',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260828-cert-survey',
@@ -16,7 +16,8 @@
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-expense-sum',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
-    'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260828-tax-fill'
+    'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260828-tax-fill',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260829-opsconv'
   };
 
   var PAGE_MODULE = {
@@ -42,6 +43,9 @@
     'login-log': 'logs',
     'user-login-log': 'logs',
     'server-monitor': 'monitor',
+    'ops-inactive': 'ops-conversion',
+    'ops-research': 'ops-conversion',
+    'ops-lift': 'ops-conversion',
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-register': 'analytics',
@@ -111,7 +115,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260829-ln-seal');
+    return loadScript('/js/najilu.js?v=20260829-ln-photo');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB）
@@ -119,7 +123,7 @@
   function ensureTaxBatchScripts() {
     var scripts = [
       '/js/consult-core.js?v=20260828-multi-bonus',
-      '/js/consult-batch-tax.js?v=20260828-multi-bonus',
+      '/js/consult-batch-tax.js?v=20260829-fillcta',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

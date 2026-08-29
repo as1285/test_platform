@@ -342,7 +342,20 @@ function renderListFromArray(list) {
     var mount = document.getElementById('recordListMount');
     if (!mount) return;
     if (!list.length) {
-        mount.innerHTML = '<div class="empty">暂无税务记录</div>';
+        mount.innerHTML =
+            '<div class="empty tax-empty-start">' +
+            '<p class="tax-empty-start-title">还没有税务记录</p>' +
+            '<p class="tax-empty-start-desc">多数人卡在这一步。点下面即可生成今年的示例记录，再按需改。</p>' +
+            '<button type="button" class="btn btn-primary" id="btnTaxEmptyExample">一键生成示例记录</button>' +
+            '</div>';
+        var emptyBtn = document.getElementById('btnTaxEmptyExample');
+        if (emptyBtn) {
+            emptyBtn.addEventListener('click', function () {
+                if (typeof window.openTaxStartPath === 'function') {
+                    window.openTaxStartPath('example');
+                }
+            });
+        }
         syncTaxPayGuideBanner([]);
         return;
     }

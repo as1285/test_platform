@@ -62,7 +62,8 @@
     'install_guide.html': true,
     'install-ios.html': true,
     'tutorial_video.html': true,
-    'zhzh_jhm.html': true
+    'zhzh_jhm.html': true,
+    'refund_ad.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
   /** 通用顶栏蓝（登录 WebClip 等） */
@@ -7558,7 +7559,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260826-post-activate-edit';
+      s.src = '/js/conversion-guide.js?v=20260829-ghgate';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

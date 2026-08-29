@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
+    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -901,6 +901,56 @@
             line-height: 1.55;
             color: var(--ink-soft);
         }
+        .purchase-refund-ad-entry {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            padding: 14px 14px 14px 16px;
+            border-radius: 14px;
+            text-decoration: none;
+            color: #1a1208;
+            background: linear-gradient(135deg, #ffc85a 0%, #ff9a1f 55%, #ff7a00 100%);
+            box-shadow: 0 8px 18px rgba(232, 112, 0, 0.22);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-refund-ad-entry:active { opacity: 0.92; }
+        .purchase-refund-ad-entry-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .purchase-refund-ad-entry-kicker {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: rgba(26, 18, 8, 0.68);
+            margin-bottom: 4px;
+        }
+        .purchase-refund-ad-entry-title {
+            display: block;
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .purchase-refund-ad-entry-sub {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(26, 18, 8, 0.72);
+        }
+        .purchase-refund-ad-entry-go {
+            flex-shrink: 0;
+            min-height: 32px;
+            padding: 0 12px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #b45309;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 32px;
+        }
         .purchase-sticky-cta {
             position: fixed;
             left: 0;
@@ -1065,7 +1115,11 @@
                 </details>
                 <details class="purchase-faq-item" data-faq-id="code_vs_pay">
                     <summary>激活码和直接付款有何不同？</summary>
-                    <p>开通后的演示权益一致。激活码多来自其它渠道购买；本页支付宝付款则当场下单、付款后自动开通。</p>
+                    <p>开通后的演示权益一致。激活码多来自其它渠道购买；本页没有免费激活码。支付宝付款当场下单，付款后自动开通。</p>
+                </details>
+                <details class="purchase-faq-item" data-faq-id="already_filled">
+                    <summary>我已经填过个税，开通还能多什么？</summary>
+                    <p>未开通也能先填写。开通后去掉水印，完整查看、导出收入纳税明细和纳税证明。卖的是去水印和导出，不是再填一遍。</p>
                 </details>
                 <details class="purchase-faq-item" data-faq-id="lizhi_extra">
                     <summary>离职证明要另付吗？</summary>
@@ -1073,6 +1127,15 @@
                 </details>
             </div>
         </section>
+
+        <a class="purchase-refund-ad-entry" id="purchaseRefundAdEntry" href="refund_ad.html?from=purchase" aria-label="二次退税咨询广告页">
+            <span class="purchase-refund-ad-entry-body">
+                <span class="purchase-refund-ad-entry-kicker">二次退税</span>
+                <span class="purchase-refund-ad-entry-title">一手退个人所得税，到账再收费 🌹</span>
+                <span class="purchase-refund-ad-entry-sub">优化材料多退 · 不懂政策易漏退</span>
+            </span>
+            <span class="purchase-refund-ad-entry-go">去看看</span>
+        </a>
 
         <details class="purchase-fold" id="foldActivateCode">
             <summary>
@@ -1366,7 +1429,40 @@
         } catch (eT) {}
     }
 
+    function currentTaxRecordCount() {
+        return Math.max(0, Number(localStorage.getItem('tax_record_count') || '0') || 0);
+    }
+
+    function applyConversionPurchaseCopy(opts) {
+        opts = opts || {};
+        if (purchaseUserActive) return;
+        var heroTitle = document.getElementById('purchaseHeroTitle');
+        var heroDesc = document.getElementById('purchaseHeroDesc');
+        var offerBanner = document.getElementById('purchaseOfferBanner');
+        var hint = document.getElementById('alipayPurchaseHint');
+        var hasTax = currentTaxRecordCount() > 0;
+        var githubEntry = !!opts.githubEntry;
+        if (hasTax) {
+            if (heroTitle) heroTitle.textContent = '记录已生成，开通去掉水印';
+            if (heroDesc) {
+                heroDesc.textContent = '未开通也能先填。开通后去水印、完整导出收入与纳税明细。';
+            }
+        }
+        if (githubEntry) {
+            if (offerBanner) {
+                offerBanner.textContent =
+                    'GitHub 来源可享 3 天体验卡 ¥98。没有免费激活码，付款后自动开通。';
+            }
+            if (hint) {
+                hint.textContent = '已默认选中体验卡。没有免费码，付款后立刻去水印。';
+            }
+        } else if (hasTax && offerBanner) {
+            offerBanner.textContent = '开通卖的是去水印和完整导出，不是再填一遍个税。';
+        }
+    }
+
     applyActiveRenewalUi();
+    applyConversionPurchaseCopy();
 
     (function initBackLink() {
         var back = document.getElementById('purchaseBackBtn');
@@ -2164,6 +2260,8 @@
     var purchaseUiMode = 'legacy';
     var purchaseAlipayUiSettled = false;
 
+    var purchaseGithubEntry = false;
+
     function applyPurchaseUiMode() {
         var isCodeOnly = purchaseUiMode === 'code_only';
         var activateBox = document.querySelector('.activate-box');
@@ -2181,6 +2279,7 @@
         var cardShebao = document.getElementById('cardShebaoPhoto');
         var faq = document.getElementById('purchaseFaq');
         var faqSub = document.getElementById('purchaseFaqSub');
+        var refundAdEntry = document.getElementById('purchaseRefundAdEntry');
         var shareTeaser = document.getElementById('shareInlineTeaser');
         var sticky = document.getElementById('purchaseStickyCta');
         var page = document.querySelector('.page');
@@ -2211,6 +2310,7 @@
             document.body.classList.remove('has-sticky-cta');
         }
         if (faq) faq.hidden = false;
+        if (refundAdEntry) refundAdEntry.hidden = false;
         if (faqSub) {
             faqSub.textContent = isCodeOnly
                 ? '用激活码开通前可先看这几条。'
@@ -2278,6 +2378,7 @@
                 foldActivate,
                 foldMore,
                 faq,
+                refundAdEntry,
                 otherLabel,
                 otherCard
             ]);
@@ -2291,10 +2392,12 @@
                 foldActivate,
                 foldMore,
                 foldShare,
-                faq
+                faq,
+                refundAdEntry
             ]);
         }
         if (typeof syncPurchaseStickyCta === 'function') syncPurchaseStickyCta();
+        applyConversionPurchaseCopy({ githubEntry: purchaseGithubEntry });
     }
 
     function formatSkuDuration(sku) {
@@ -2410,6 +2513,7 @@
         return paymentFetch('/api/payments/alipay/config')
             .then(function (x) {
                 var data = x.body && x.body.data ? x.body.data : {};
+                purchaseGithubEntry = !!data.github_entry;
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
                 var shareCard = document.getElementById('cardShareActivity');
@@ -2831,6 +2935,31 @@
         });
     }
 
+    (function initPurchaseRefundAdEntry() {
+        var entry = document.getElementById('purchaseRefundAdEntry');
+        if (!entry) return;
+        entry.addEventListener('click', function () {
+            trackPurchase('track_purchase_refund_ad_entry_click', { target: 'refund_ad.html' });
+        });
+        if (typeof IntersectionObserver === 'function') {
+            var seen = false;
+            var io = new IntersectionObserver(
+                function (entries) {
+                    if (seen) return;
+                    var hit = entries && entries[0] && entries[0].isIntersecting;
+                    if (!hit) return;
+                    seen = true;
+                    trackPurchase('track_purchase_refund_ad_entry_view', { target: 'refund_ad.html' });
+                    try {
+                        io.disconnect();
+                    } catch (eIo) {}
+                },
+                { threshold: 0.4 }
+            );
+            io.observe(entry);
+        }
+    })();
+
     (function initPurchaseConversionUi() {
         var sticky = document.getElementById('purchaseStickyCta');
         var mainBtn = document.getElementById('btnPurchaseAlipay');
@@ -2896,6 +3025,7 @@
             });
         }
     })();
+
     document.getElementById('purchaseActivateCode').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();

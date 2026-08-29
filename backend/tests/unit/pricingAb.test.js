@@ -7,7 +7,10 @@ const {
   offerVariantToAbc,
   resolveCoverLongerGrant,
   createPricingAb,
-  DEFAULT_PRICING_AB
+  DEFAULT_PRICING_AB,
+  shouldOfferGithubEntry,
+  prependGithubEntrySku,
+  SKU_98_3DAY
 } = require('../../src/legacy/pricingAb');
 
 describe('pricingAb allocation', () => {
@@ -225,5 +228,34 @@ describe('sku catalog amounts', () => {
     expect(defaultCatalogConfig()['sku_99_1h']).toBeUndefined();
     expect(defaultCatalogConfig()['sku_249_1d']).toBeUndefined();
     expect(defaultCatalogConfig()['sku_268_3d']).toBeUndefined();
+  });
+});
+
+describe('GitHub entry SKU', () => {
+  it('offers 98/3d only to unactivated GitHub users', () => {
+    expect(shouldOfferGithubEntry({ register_source_channel: 'github', account_active: 0 })).toBe(
+      true
+    );
+    expect(shouldOfferGithubEntry({ register_source_channel: 'GitHub', account_active: false })).toBe(
+      true
+    );
+    expect(shouldOfferGithubEntry({ register_source_channel: 'github', account_active: 1 })).toBe(
+      false
+    );
+    expect(shouldOfferGithubEntry({ register_source_channel: 'douyin', account_active: 0 })).toBe(
+      false
+    );
+    expect(shouldOfferGithubEntry(null)).toBe(false);
+  });
+
+  it('prepends the 98 experience SKU once', () => {
+    expect(SKU_98_3DAY.amount).toBe('98.00');
+    expect(SKU_98_3DAY.grant_days).toBe(3);
+    const once = prependGithubEntrySku([{ id: 'sku_300_7d', amount: '300.00', label: '周卡' }]);
+    expect(once[0].id).toBe('sku_98_3d');
+    expect(once[0].amount).toBe('98.00');
+    expect(once.length).toBe(2);
+    const twice = prependGithubEntrySku(once);
+    expect(twice.filter((s) => s.id === 'sku_98_3d').length).toBe(1);
   });
 });

@@ -285,6 +285,18 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/ops/conversion-research"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ops/inactive-summary"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ops/inactive-users"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/settings"
     },
     {

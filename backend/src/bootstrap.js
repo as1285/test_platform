@@ -17,6 +17,7 @@ const deviceStats = require('./admin/deviceStats');
 const purchasePriceSurvey = require('./growth/purchasePriceSurvey');
 const certPageSurvey = require('./growth/certPageSurvey');
 const taxFillSurvey = require('./growth/taxFillSurvey');
+const opsConversion = require('./admin/opsConversion');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
 const { registerTaxRoutes } = require('./tax/routes');
@@ -49,6 +50,7 @@ function buildApp() {
       purchasePriceSurvey.getHandlers(),
       certPageSurvey.getHandlers(),
       taxFillSurvey.getHandlers(),
+      opsConversion.getHandlers(),
       bankSalaryFlow.getHandlers()
     ),
     middleware: Object.assign({}, getMiddleware(), {

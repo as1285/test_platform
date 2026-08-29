@@ -1,0 +1,535 @@
+/** Admin module: 转化运营 — 未激活明细 / 转化调研 */
+(function (global) {
+  var page = 1;
+  var lastUsers = [];
+  var lastTotal = 0;
+  var lastLimit = 20;
+  var bound = false;
+
+  function fetchAdmin(url, opts) {
+    var fn = global.adminFetch;
+    if (typeof fn !== 'function') {
+      return Promise.reject(new Error('adminFetch unavailable'));
+    }
+    return fn(url, opts);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function currentHash() {
+    return String(global.location.hash || '')
+      .replace(/^#/, '')
+      .trim()
+      .toLowerCase();
+  }
+
+  function formatDt(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      var utc = d.getTime() + d.getTimezoneOffset() * 60000;
+      var nd = new Date(utc + 3600000 * 8);
+      var pad = function (n) {
+        return n < 10 ? '0' + n : String(n);
+      };
+      return (
+        nd.getFullYear() +
+        '-' +
+        pad(nd.getMonth() + 1) +
+        '-' +
+        pad(nd.getDate()) +
+        ' ' +
+        pad(nd.getHours()) +
+        ':' +
+        pad(nd.getMinutes())
+      );
+    } catch (e0) {
+      return String(iso);
+    }
+  }
+
+  function formatIncome(n) {
+    var v = Number(n);
+    if (!isFinite(v) || v <= 0) return '—';
+    if (v >= 10000) {
+      return String(Math.round(v / 100) / 100) + '万';
+    }
+    return String(Math.round(v));
+  }
+
+  function channelLabel(ch) {
+    var key = String(ch || '').trim();
+    if (!key || key === '(empty)') return '未填';
+    var map = {
+      github: 'GitHub',
+      douyin: '抖音',
+      friend: '朋友介绍',
+      bilibili: 'B站',
+      tieba: '贴吧',
+      zhihu: '知乎'
+    };
+    return map[key] || key;
+  }
+
+  function priceLabel(row) {
+    var s = String((row && row.price_sentiment) || '').toLowerCase();
+    var map = { expensive: '贵', fair: '合理', cheap: '便宜', skipped: '跳过' };
+    var t = map[s] || (s ? s : '—');
+    if (row && row.expected_price != null && isFinite(Number(row.expected_price))) {
+      return t === '—' ? '心理价' + row.expected_price : t + ' · ' + row.expected_price;
+    }
+    return t;
+  }
+
+  function satLabel(key) {
+    var map = { good: '满意', ok: '一般', bad: '不满意', skipped: '跳过' };
+    var k = String(key || '').toLowerCase();
+    return map[k] || '';
+  }
+
+  function yesNo(v) {
+    return v ? '去过' : '未去';
+  }
+
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function queryString() {
+    var qs = [
+      'page=' + encodeURIComponent(String(page)),
+      'limit=20',
+      'days=' + encodeURIComponent(val('opsInactiveDays') || '0'),
+      'segment=' + encodeURIComponent(val('opsInactiveSegment') || 'all')
+    ];
+    var ch = val('opsInactiveChannel');
+    if (ch) qs.push('channel=' + encodeURIComponent(ch));
+    var q = val('opsInactiveQ');
+    if (q) qs.push('q=' + encodeURIComponent(q));
+    return qs.join('&');
+  }
+
+  function jumpToUser(username) {
+    var name = String(username || '').trim();
+    if (!name) return;
+    var usernameEl = document.getElementById('filterUsername');
+    var exactEl = document.getElementById('filterExact');
+    var highIncomeEl = document.getElementById('filterHighIncome');
+    var d1El = document.getElementById('filterD1Return');
+    var activeEl = document.getElementById('filterActive');
+    if (usernameEl) usernameEl.value = name;
+    if (exactEl) exactEl.checked = true;
+    if (highIncomeEl) highIncomeEl.value = '';
+    if (d1El) d1El.value = '';
+    if (activeEl) activeEl.value = '0';
+    global.location.hash = 'users';
+  }
+
+  function renderSummary(data) {
+    var el = document.getElementById('opsInactiveSummary');
+    if (!el) return;
+    var s = (data && data.stock) || {};
+    function card(seg, label, num) {
+      return (
+        '<button type="button" class="user-data-stat-card ops-summary-card" data-segment="' +
+        esc(seg) +
+        '"><div class="ud-label">' +
+        esc(label) +
+        '</div><div class="ud-val">' +
+        esc(String(num != null ? num : 0)) +
+        '</div></button>'
+      );
+    }
+    el.innerHTML =
+      card('all', '未激活', s.total) +
+      card('has_tax', '有个税', s.has_tax) +
+      card('no_tax', '无个税', s.no_tax) +
+      card('high_income', '月入>1.5万', s.high_income) +
+      card('saw_purchase', '去过开通页', s.saw_purchase) +
+      card('no_consult', '没进填写页', (s.total || 0) - (s.saw_consult || 0) > 0 ? (s.total || 0) - (s.saw_consult || 0) : 0) +
+      card('d1_only', '仅次日回访', s.d1_only);
+  }
+
+  function renderUsers(data) {
+    var tbody = document.getElementById('opsInactiveTbody');
+    var stat = document.getElementById('opsInactiveStat');
+    var info = document.getElementById('opsInactivePageInfo');
+    lastUsers = (data && data.users) || [];
+    lastTotal = Number(data && data.total) || 0;
+    lastLimit = Number(data && data.limit) || 20;
+    page = Number(data && data.page) || page;
+    if (stat) {
+      stat.textContent = '共 ' + lastTotal + ' 人 · 第 ' + page + ' 页';
+    }
+    if (info) {
+      var pages = Math.max(1, Math.ceil(lastTotal / lastLimit) || 1);
+      info.textContent = '第 ' + page + ' / ' + pages + ' 页';
+    }
+    if (!tbody) return;
+    if (!lastUsers.length) {
+      tbody.innerHTML = '<tr><td colspan="11">这批筛选没有人</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lastUsers
+      .map(function (u) {
+        var tax =
+          u.has_tax ? '有' : '无';
+        var sat = satLabel(u.tax_fill_satisfaction);
+        if (sat) tax += ' · ' + sat;
+        var income = formatIncome(u.max_month_income);
+        if (u.high_income) {
+          income =
+            '<span class="high-income-badge" title="自己填写月收入">月入' +
+            esc(income) +
+            '</span>';
+        } else {
+          income = esc(income);
+        }
+        return (
+          '<tr>' +
+          '<td class="cell-break">' +
+          esc(u.username) +
+          '</td>' +
+          '<td class="cell-break">' +
+          esc(u.real_name || '—') +
+          '</td>' +
+          '<td>' +
+          esc(formatDt(u.created_at)) +
+          '</td>' +
+          '<td>' +
+          esc(channelLabel(u.register_source_channel)) +
+          '</td>' +
+          '<td>' +
+          esc(tax) +
+          '</td>' +
+          '<td>' +
+          income +
+          '</td>' +
+          '<td>' +
+          esc(yesNo(u.saw_consult)) +
+          '</td>' +
+          '<td>' +
+          esc(yesNo(u.saw_purchase)) +
+          '</td>' +
+          '<td>' +
+          esc(priceLabel(u)) +
+          '</td>' +
+          '<td>' +
+          esc(formatDt(u.last_seen_at)) +
+          '</td>' +
+          '<td><button type="button" class="btn-sm btn-detail js-ops-open-user" data-u="' +
+          esc(u.username) +
+          '">详情</button></td>' +
+          '</tr>'
+        );
+      })
+      .join('');
+  }
+
+  function loadSummary() {
+    var el = document.getElementById('opsInactiveSummary');
+    if (!el) return;
+    var days = val('opsInactiveDays') || '0';
+    var ch = val('opsInactiveChannel');
+    var url = 'api/admin/ops/inactive-summary?days=' + encodeURIComponent(days);
+    if (ch) url += '&channel=' + encodeURIComponent(ch);
+    fetchAdmin(url)
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          el.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderSummary(j.data);
+      })
+      .catch(function () {
+        el.textContent = '加载失败';
+      });
+  }
+
+  function loadUsers() {
+    var tbody = document.getElementById('opsInactiveTbody');
+    var stat = document.getElementById('opsInactiveStat');
+    if (stat) stat.textContent = '加载中…';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+    fetchAdmin('api/admin/ops/inactive-users?' + queryString())
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="11">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
+          if (stat) stat.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderUsers(j.data);
+      })
+      .catch(function () {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载失败</td></tr>';
+        if (stat) stat.textContent = '加载失败';
+      });
+  }
+
+  function loadInactivePage() {
+    loadSummary();
+    loadUsers();
+  }
+
+  function exportCsv() {
+    if (!lastUsers.length) return;
+    var header = [
+      '账号',
+      '姓名',
+      '注册',
+      '渠道',
+      '个税',
+      '月入',
+      '填写页',
+      '开通页',
+      '价格态度',
+      '心理价',
+      '最近活跃'
+    ];
+    var lines = [header.join(',')];
+    lastUsers.forEach(function (u) {
+      var cells = [
+        u.username,
+        u.real_name || '',
+        formatDt(u.created_at),
+        channelLabel(u.register_source_channel),
+        u.has_tax ? '有' : '无',
+        u.max_month_income || '',
+        u.saw_consult ? '去过' : '未去',
+        u.saw_purchase ? '去过' : '未去',
+        u.price_sentiment || '',
+        u.expected_price != null ? u.expected_price : '',
+        formatDt(u.last_seen_at)
+      ].map(function (v) {
+        return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      });
+      lines.push(cells.join(','));
+    });
+    var blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'unactivated-users.csv';
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+    }, 800);
+  }
+
+  function card(label, val) {
+    return (
+      '<div class="user-data-stat-card"><div class="ud-label">' +
+      esc(label) +
+      '</div><div class="ud-val">' +
+      esc(String(val != null ? val : 0)) +
+      '</div></div>'
+    );
+  }
+
+  function renderResearch(data) {
+    var el = document.getElementById('opsResearchMount');
+    if (!el) return;
+    var f = (data && data.funnel) || {};
+    var html = '';
+    if (data && data.insights && data.insights.length) {
+      html += '<div class="ops-insight-box"><h3>先看这些</h3><ul>';
+      data.insights.forEach(function (line) {
+        html += '<li>' + esc(line) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    html += '<div class="user-data-stats">';
+    html += card('注册', f.registered);
+    html += card('已开通', f.activated);
+    html += card('开通率', f.activate_pct || '—');
+    html += card('未开通', f.unactivated);
+    html += card('未开通有个税', f.unact_has_tax);
+    html += card('未开通无个税', f.unact_no_tax);
+    html += card('看过开通页未付', f.unact_saw_pay);
+    html += card('高收入未开通', f.unact_high_income);
+    html += card('进填写页未提交', f.opened_fill_no_submit);
+    html += '</div>';
+    var price = (data && data.price_survey) || {};
+    html += '<h3 class="mt-12">未开通用户怎么看价格</h3>';
+    html += '<div class="user-data-stats">';
+    html += card('觉得贵', price.expensive);
+    html += card('合理', price.fair);
+    html += card('便宜', price.cheap);
+    html += card('跳过', price.skipped);
+    html += card('心理价均值', price.avg_expected_price != null ? price.avg_expected_price : '—');
+    html += card('填了心理价', price.expected_samples);
+    html += '</div>';
+    var tf = (data && data.tax_fill_survey) || {};
+    html += '<h3 class="mt-12">填写体验</h3>';
+    html += '<div class="user-data-stats">';
+    html += card('满意', tf.good);
+    html += card('一般', tf.ok);
+    html += card('不满意', tf.bad);
+    html += card('跳过', tf.skipped);
+    html += '</div>';
+    var channels = (data && data.channels) || [];
+    html += '<h3 class="mt-12">渠道开通率</h3>';
+    html += '<div class="scroll-x"><table><thead><tr><th>渠道</th><th>注册</th><th>开通</th><th>有个税</th><th>开通率</th></tr></thead><tbody>';
+    if (!channels.length) {
+      html += '<tr><td colspan="5">暂无</td></tr>';
+    } else {
+      channels.forEach(function (c) {
+        html +=
+          '<tr><td>' +
+          esc(channelLabel(c.channel)) +
+          '</td><td>' +
+          esc(c.registered) +
+          '</td><td>' +
+          esc(c.activated) +
+          '</td><td>' +
+          esc(c.has_tax) +
+          '</td><td>' +
+          esc(c.activate_pct || '—') +
+          '</td></tr>';
+      });
+    }
+    html += '</tbody></table></div>';
+    html +=
+      '<p class="hint">高收入未开通、看过开通页未付，去「提高转化」跟进；要看单人细节去「未激活用户」。</p>';
+    el.innerHTML = html;
+  }
+
+  function loadResearch() {
+    var el = document.getElementById('opsResearchMount');
+    if (!el) return;
+    el.textContent = '加载中…';
+    var days = val('opsResearchDays') || '7';
+    fetchAdmin('api/admin/ops/conversion-research?days=' + encodeURIComponent(days))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          el.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderResearch(j.data);
+      })
+      .catch(function () {
+        el.textContent = '加载失败';
+      });
+  }
+
+  function bind() {
+    if (bound) return;
+    bound = true;
+    var search = document.getElementById('btnOpsInactiveSearch');
+    if (search) {
+      search.addEventListener('click', function () {
+        page = 1;
+        loadInactivePage();
+      });
+    }
+    ['opsInactiveSegment', 'opsInactiveDays', 'opsInactiveChannel'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', function () {
+          page = 1;
+          loadInactivePage();
+        });
+      }
+    });
+    var q = document.getElementById('opsInactiveQ');
+    if (q) {
+      q.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          page = 1;
+          loadInactivePage();
+        }
+      });
+    }
+    var exp = document.getElementById('btnOpsInactiveExport');
+    if (exp) exp.addEventListener('click', exportCsv);
+    var prev = document.getElementById('opsInactivePrev');
+    if (prev) {
+      prev.addEventListener('click', function () {
+        if (page <= 1) return;
+        page -= 1;
+        loadUsers();
+      });
+    }
+    var next = document.getElementById('opsInactiveNext');
+    if (next) {
+      next.addEventListener('click', function () {
+        var pages = Math.max(1, Math.ceil(lastTotal / lastLimit) || 1);
+        if (page >= pages) return;
+        page += 1;
+        loadUsers();
+      });
+    }
+    var sum = document.getElementById('opsInactiveSummary');
+    if (sum) {
+      sum.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('[data-segment]') : null;
+        if (!btn) return;
+        var seg = btn.getAttribute('data-segment') || 'all';
+        var sel = document.getElementById('opsInactiveSegment');
+        if (sel) sel.value = seg;
+        page = 1;
+        loadInactivePage();
+      });
+    }
+    var tbody = document.getElementById('opsInactiveTbody');
+    if (tbody) {
+      tbody.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.js-ops-open-user') : null;
+        if (!btn) return;
+        jumpToUser(btn.getAttribute('data-u'));
+      });
+    }
+    var refresh = document.getElementById('btnOpsResearchRefresh');
+    if (refresh) refresh.addEventListener('click', loadResearch);
+    var daysEl = document.getElementById('opsResearchDays');
+    if (daysEl) daysEl.addEventListener('change', loadResearch);
+    var gotoFill = document.getElementById('btnOpsResearchGotoFillSurvey');
+    if (gotoFill) {
+      gotoFill.addEventListener('click', function () {
+        global.location.hash = 'tax-fill-survey';
+      });
+    }
+    var gotoPay = document.getElementById('btnOpsResearchGotoPurchase');
+    if (gotoPay) {
+      gotoPay.addEventListener('click', function () {
+        global.location.hash = 'analytics-purchase';
+      });
+    }
+  }
+
+  function loadPage() {
+    bind();
+    var hash = currentHash();
+    if (hash === 'ops-research') {
+      loadResearch();
+      return;
+    }
+    if (hash === 'ops-inactive') {
+      page = 1;
+      loadInactivePage();
+    }
+  }
+
+  global.AdminModules = global.AdminModules || {};
+  global.AdminModules['ops-conversion'] = {
+    ready: true,
+    loadPage: loadPage
+  };
+})(window);

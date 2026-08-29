@@ -1551,7 +1551,7 @@ function prepareBatchAddEmploymentsFromDom() {
 }
 
 /** 示例填写：一段完整公司工作经历（不自动提交；公司名与月薪每次随机） */
-function fillBatchTaxExample() {
+function fillBatchTaxExample(opts) {
     var list = document.getElementById('batch_employment_list');
     if (!list) return;
     showBatchTaxManualForm({ scroll: false });
@@ -1589,7 +1589,9 @@ function fillBatchTaxExample() {
             card.scrollIntoView(true);
         }
     }
-    showMsg('已填入示例工作经历，请核对后点击「一键生成税务记录」', true);
+    if (!opts || !opts.silent) {
+        showMsg('已填入示例工作经历，请核对后点击「一键生成税务记录」', true);
+    }
     exitBatchTaxEditMode();
 }
 
@@ -1995,6 +1997,16 @@ function showTaxStartChooser(opts) {
     }
 }
 
+function startExampleAndGenerate() {
+    if (typeof fillBatchTaxExample === 'function') {
+        fillBatchTaxExample({ silent: true });
+    }
+    window.__taxExampleOneClick = true;
+    if (typeof batchAddEmploymentTaxRecords === 'function') {
+        batchAddEmploymentTaxRecords();
+    }
+}
+
 function openTaxStartPath(path) {
     var p = String(path || '').trim();
     if (p === 'chooser') {
@@ -2003,9 +2015,7 @@ function openTaxStartPath(path) {
     }
     showBatchTaxManualForm({ scroll: true });
     if (p === 'example') {
-        if (typeof fillBatchTaxExample === 'function') {
-            fillBatchTaxExample();
-        }
+        startExampleAndGenerate();
         return;
     }
     if (p === 'paste') {
@@ -4168,6 +4178,7 @@ function countEmploymentBonuses(employments) {
 function batchAddEmploymentTaxRecords() {
     var parsed = prepareBatchAddEmploymentsFromDom();
     if (!parsed.ok) {
+        window.__taxExampleOneClick = false;
         showConsultStrongAlert(parsed.error || '请检查工作经历');
         return;
     }
@@ -4194,15 +4205,20 @@ function batchAddEmploymentTaxRecords() {
                       examplePlan.companies.join('、') +
                       '），再写入您的数据。'
                     : '';
-            var msgParts = [
-                '将为以下工作经历写入工资薪金记录（同一经历内按自然年度分段累计预扣）：',
-                lines.join('\n'),
-                '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
-                bonusLine,
-                '税额总计约 ' + totalTax + ' 元。',
-                exampleDeleteLine,
-                '将新增写入，不会覆盖列表中已有记录（若编号已占用则自动使用新编号）。是否写入？'
-            ];
+            var exampleOneClick =
+                !!window.__taxExampleOneClick && (!existingList || !existingList.length);
+            window.__taxExampleOneClick = false;
+            var msgParts = exampleOneClick
+                ? ['将生成今年至今的示例工资记录，可随时改或删除。是否继续？']
+                : [
+                    '将为以下工作经历写入工资薪金记录（同一经历内按自然年度分段累计预扣）：',
+                    lines.join('\n'),
+                    '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
+                    bonusLine,
+                    '税额总计约 ' + totalTax + ' 元。',
+                    exampleDeleteLine,
+                    '将新增写入，不会覆盖列表中已有记录（若编号已占用则自动使用新编号）。是否写入？'
+                ];
             if (!confirm(msgParts.join('\n'))) {
                 return null;
             }

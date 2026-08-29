@@ -140,14 +140,32 @@ app.get(
 app.get(
   '/api/admin/analytics/d1-return-cohort',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
   h.handleAdminD1ReturnCohort
 );
 app.get(
   '/api/admin/analytics/high-income-inactive',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
   h.handleAdminHighIncomeInactive
+);
+app.get(
+  '/api/admin/ops/inactive-summary',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users']),
+  h.handleOpsInactiveSummary
+);
+app.get(
+  '/api/admin/ops/inactive-users',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users']),
+  h.handleOpsInactiveUsers
+);
+app.get(
+  '/api/admin/ops/conversion-research',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-research', 'analytics-conversion', 'tax-fill-survey']),
+  h.handleOpsConversionResearch
 );
 app.get(
   '/api/admin/analytics/channel-registration-funnel',
@@ -176,7 +194,7 @@ app.get(
 app.post(
   '/api/admin/messages/bulk',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
   h.handleAdminMessagesBulk
 );
 app.get(
