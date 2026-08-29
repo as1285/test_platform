@@ -110,7 +110,6 @@ STALE_404_ALLOW = {
     '/api/admin/analytics/conversion-kpis',
     '/api/admin/analytics/device-stats',
     '/api/admin/analytics/female-age',
-    '/api/admin/analytics/register-gender',
     '/api/admin/analytics/registration-funnel',
     '/api/admin/activated-user-analysis/behavior-path',
     '/api/admin/activated-user-analysis/overview',

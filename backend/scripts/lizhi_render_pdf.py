@@ -357,7 +357,6 @@ def render_page_image(payload):
 
     title_font = bold_font(int(26 * SCALE))
     body_f = body_font(int(13.5 * SCALE))
-    sign_f = body_font(int(12.5 * SCALE))
     note_f = body_font(int(10 * SCALE))
     demo_f = body_font(int(9.5 * SCALE))
 

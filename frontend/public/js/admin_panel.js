@@ -7680,10 +7680,6 @@
                         if (iosEl && data.data.ios_mobileconfig_download_url != null) {
                             iosEl.value = String(data.data.ios_mobileconfig_download_url);
                         }
-                        var xyEl = document.getElementById('xianyuPurchaseUrl');
-                        if (xyEl && data.data.xianyu_purchase_url != null) {
-                            xyEl.value = String(data.data.xianyu_purchase_url);
-                        }
                         var qqAddEl = document.getElementById('qqAddUrl');
                         if (qqAddEl && data.data.qq_add_url != null) {
                             qqAddEl.value = String(data.data.qq_add_url);
@@ -7746,15 +7742,6 @@
             return out;
         }
 
-        function collectSkuCatalogPricesFromForm() {
-            var catalog = collectSkuCatalogFromForm();
-            var out = {};
-            Object.keys(catalog).forEach(function (id) {
-                out[id] = catalog[id].amount;
-            });
-            return out;
-        }
-
         function applySkuCatalogToForm(map) {
             map = map || {};
             skuCatalogRows().forEach(function (row) {
@@ -7790,10 +7777,6 @@
                 }
             });
             updateSkuCatalogPriceLabels(map);
-        }
-
-        function applySkuCatalogPricesToForm(map) {
-            applySkuCatalogToForm(map);
         }
 
         function formatSkuYuan(raw) {
@@ -8282,7 +8265,6 @@
                     android_apk_download_url: document.getElementById('androidApkDownloadUrl').value.trim(),
                     agent_android_apk_download_url: document.getElementById('agentAndroidApkDownloadUrl').value.trim(),
                     ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
-                    xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
                     qq_add_url: (document.getElementById('qqAddUrl') && document.getElementById('qqAddUrl').value.trim()) || '',
                     qq_group_url: (document.getElementById('qqGroupUrl') && document.getElementById('qqGroupUrl').value.trim()) || '',
                     mine_ui: (function () {

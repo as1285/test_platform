@@ -17,24 +17,6 @@ app.get(
   mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance']),
   h.handleAdminSettingsGet
 );
-app.get(
-  '/api/admin/agent-channels',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide', 'settings']),
-  h.handleAdminAgentChannelsGet
-);
-app.post(
-  '/api/admin/agent-channels',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide', 'settings']),
-  h.handleAdminAgentChannelsUpsert
-);
-app.post(
-  '/api/admin/agent-channels/delete',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide', 'settings']),
-  h.handleAdminAgentChannelsDelete
-);
 app.post(
   '/api/admin/upload-asset',
   mw.requireAdminAuth,
@@ -248,7 +230,6 @@ app.post(
   mw.requireAdminMenu('users'),
   h.handleAdminUserMakePermanent
 );
-app.post('/api/admin/user-pricing-abc', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPricingAbc);
 app.get(
   '/api/admin/user-price-offer',
   mw.requireAdminAuth,

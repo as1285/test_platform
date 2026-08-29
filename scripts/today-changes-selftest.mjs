@@ -299,7 +299,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260828-peer-days', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260829-deadcode', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustExclude(
@@ -414,7 +414,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['collectSkuCatalogPricesFromForm', 'btnSaveSkuCatalogPrices', 'sku_catalog_prices'],
+  ['collectSkuCatalogFromForm', 'btnSaveSkuCatalogPrices', 'sku_catalog_prices'],
   'admin panel save sku catalog prices'
 );
 
@@ -1501,11 +1501,53 @@ mustExclude(
   ['cnDateTodayYmd'],
   'admin_panel.js dead date helper removed'
 );
-mustInclude(
+mustExclude(
   'frontend/admin_panel.html',
-  ['已下线，仅存档'],
-  'admin xianyu setting labeled as offline'
+  ['xianyuPurchaseUrl', '已下线，仅存档'],
+  'admin offline xianyu purchase field removed'
 );
+mustExclude(
+  'frontend/public/js/admin_panel.js',
+  ['xianyuPurchaseUrl', 'collectSkuCatalogPricesFromForm', 'applySkuCatalogPricesToForm'],
+  'admin panel dead sku/xianyu helpers removed'
+);
+mustExclude(
+  'frontend/css/admin_panel.css',
+  ['.ccb-expense-row', '.admin-panel-inset', '.admin-soft-box', '.input-w-140'],
+  'admin css orphan utility blocks removed'
+);
+mustExclude(
+  'backend/src/admin/routes.js',
+  ['/api/admin/agent-channels', '/api/admin/user-pricing-abc'],
+  'admin routes drop unused agent-channels and pricing-abc'
+);
+mustExclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'handleAdminUserPricingAbc',
+    'handleAdminAgentChannelsGet',
+    'handleAdminAgentChannelsUpsert',
+    'handleAdminAgentChannelsDelete',
+    'handleAdminAnalyticsApi',
+    'normalizePricingAbcToken',
+    'ensureChannelInXianyuHideList'
+  ],
+  'monolith unused admin handlers removed'
+);
+if (!exists('frontend/profile.html')) ok('orphan profile.html removed');
+else fail('orphan profile.html removed', 'file still exists');
+if (!exists('backend/scripts/ccb_flow_edit.py')) ok('unused ccb_flow_edit.py removed');
+else fail('unused ccb_flow_edit.py removed', 'file still exists');
+if (
+  !exists('backend/assets/sbdy/img_0.png') &&
+  !exists('backend/assets/sbdy/PD4MLFZXBSJW--GB1-0_6.ttf') &&
+  !exists('backend/assets/sbdy/PD4MLNSimSun_11.ttf') &&
+  !exists('backend/assets/sbdy/SimSun_21.ttf')
+) {
+  ok('unused sbdy font/image leftovers removed');
+} else {
+  fail('unused sbdy font/image leftovers removed', 'asset still exists');
+}
 
 /* ===== 共享 C 端脚本 ?v= 全站一致性守卫（nginx /js/ 强缓存 7 天，戳不齐会新旧混跑） =====
  * mine_mate60_aug12.html 为冻结页豁免；管理页不参与。
