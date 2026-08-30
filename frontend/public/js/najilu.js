@@ -740,7 +740,15 @@
     return s + '所得';
   }
 
-  function rowRemark(r) {
+  /** 指定账号备注列留空（正版样张无「原始申报」） */
+  var USER_CERT_BLANK_REMARK = {
+    zl901010: true
+  };
+
+  function rowRemark(r, app) {
+    if (USER_CERT_BLANK_REMARK[certUsername(app).toLowerCase()]) {
+      return '';
+    }
     var raw = cleanText(r.remark || r.remarks || r.remark_text);
     if (!raw) return '原始申报';
     raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
@@ -1833,7 +1841,9 @@
       var remarkColW = cols[6];
       var remarkColX = x0;
       for (var ci = 0; ci < 6; ci++) remarkColX += cols[ci];
-      var remarks = rows.map(rowRemark);
+      var remarks = rows.map(function (r) {
+        return rowRemark(r, app);
+      });
       var mergedRemark = null;
       if (remarks.length > 0) {
         var remarkFirst = remarks[0];
@@ -1871,7 +1881,7 @@
           displayIncomeTypeForCert(r),
           displayTaxPeriodFromRecord(r),
           r.tax_authority || '',
-          rowRemark(r)
+          rowRemark(r, app)
         ];
         var cx = x0;
         vals.forEach(function (v, i) {

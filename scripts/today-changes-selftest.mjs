@@ -228,6 +228,7 @@ mustInclude(
     "zl901010: '国家税务总局辽宁省税务局'",
     'USER_CERT_STAMP_AUTHORITY',
     'USER_CERT_STAMP_IMAGE',
+    'USER_CERT_BLANK_REMARK',
     'najilu_ln_seal.png',
     'resolveStampAuthority',
     'resolveStampImageUrl'
@@ -236,13 +237,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/najilu.html',
-  ['najilu.js?v=20260829-ln-photo'],
-  'najilu ln seal photo cache'
+  ['najilu.js?v=20260830-zl-blank-remark'],
+  'najilu zl blank remark cache'
 );
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['najilu.js?v=20260829-ln-photo'],
-  'admin najilu ln seal photo cache'
+  ['najilu.js?v=20260830-zl-blank-remark'],
+  'admin najilu zl blank remark cache'
 );
 if (exists('frontend/public/img/najilu_ln_seal.png')) ok('liaoning najilu seal image exists');
 else fail('liaoning najilu seal image exists', 'missing frontend/public/img/najilu_ln_seal.png');
