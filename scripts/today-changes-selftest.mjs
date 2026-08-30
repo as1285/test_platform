@@ -1341,7 +1341,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260829-k80pro'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260830-mi14-bar'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1712,6 +1712,111 @@ if (
     }
   });
 }
+
+/* —— 近两日（沪穗社保 / 离职章号 / 运营转化 / iOS 省略 / zl 备注）—— */
+mustInclude(
+  'backend/scripts/sbdy_sh_render_pdf.py',
+  ['参保人员城镇职工基本养老保险参保情况', 'sh_seal.png', 'def render('],
+  'Shanghai sbdy PDF renderer'
+);
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  [
+    'function isGzRegion',
+    'function isShRegion',
+    'gz_official_v1',
+    'sh_official_v1',
+    'buildSzMonthRowsFromSegments',
+    'normalizeShPayload',
+    "region: gz ? 'gz' : 'sz'"
+  ],
+  'sbdyDemo Guangzhou + Shanghai normalize'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['sbdyRegionGz', 'sbdyRegionSh', '已填充上海示例'],
+  'sbdy admin Guangzhou + Shanghai radios'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  [
+    'sbdyRegionGz',
+    'sbdyRegionSh',
+    '广州历年缴费明细',
+    '上海城镇职工养老保险参保情况'
+  ],
+  'admin panel Guangzhou + Shanghai labels'
+);
+if (exists('backend/assets/sbdy/gz_seal.png') && exists('frontend/public/img/sbdy_gz_seal.png')) {
+  ok('Guangzhou sbdy seal assets present');
+} else {
+  fail('Guangzhou sbdy seal assets present', 'missing gz_seal.png');
+}
+if (exists('backend/assets/sbdy/sh_seal.png') && exists('frontend/public/img/sbdy_sh_seal.png')) {
+  ok('Shanghai sbdy seal assets present');
+} else {
+  fail('Shanghai sbdy seal assets present', 'missing sh_seal.png');
+}
+mustInclude(
+  'backend/scripts/sbdy_sz_render_pdf.py',
+  ['139.0', 'min_size=3.2', 'pad=0.6', 'if ci == 2:'],
+  'SZ/GZ unit_code column widened for 18-digit codes'
+);
+mustInclude(
+  'backend/scripts/lizhi_render_pdf.py',
+  ['default_seal_code', 'seal_code', 'place_seal'],
+  'lizhi seal supports bottom seal_code'
+);
+mustInclude(
+  'backend/src/admin/opsConversion.js',
+  [
+    'handleOpsInactiveSummary',
+    'handleOpsInactiveUsers',
+    'handleOpsConversionResearch',
+    'HIGH_INCOME'
+  ],
+  'ops conversion handlers'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  [
+    '/api/admin/ops/inactive-summary',
+    '/api/admin/ops/inactive-users',
+    '/api/admin/ops/conversion-research',
+    'handleOpsConversionResearch'
+  ],
+  'ops conversion routes'
+);
+mustInclude(
+  'backend/src/admin/menuRegistry.js',
+  ["module: 'ops-conversion'", "page: 'ops-inactive'", "page: 'ops-research'"],
+  'ops conversion admin menus'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/ops-conversion.js',
+  ["AdminModules['ops-conversion']", 'inactive-summary', 'conversion-research'],
+  'ops conversion admin module'
+);
+mustInclude(
+  'frontend/public/js/najilu.js',
+  ['USER_CERT_BLANK_REMARK', 'zl901010: true'],
+  'zl901010 blank remark whitelist'
+);
+mustExclude(
+  'frontend/public/js/najilu.js',
+  ["zl901010: '原始申报'"],
+  'zl901010 must not hardcode 原始申报'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['max-width: 13em', 'isIosCompanyNameEllipsisClient'],
+  'iOS withhold/company 13em ellipsis still wired'
+);
+mustInclude(
+  'backend/src/user/lizhiCertUser.js',
+  ['pickLastCompany', 'ORDER BY year DESC, month DESC'],
+  'lizhi prefill prefers latest tax employer'
+);
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
