@@ -4170,6 +4170,16 @@
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar{padding-bottom:20px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-title{margin-bottom:18px !important;}' +
           'html.app-top-safe-shell body:not(.page-shuiming) > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          /* Mate60 个人信息：相对定位垫高，返回钮跟标题同一行；禁止 sticky+top:52 */
+          'html.app-android-huawei-mate60 body.page-personal-info > .header,' +
+          'html.app-android-huawei-mate60 body.page-gerenxinxi > .header{' +
+          'position:relative !important;top:0 !important;' +
+          'padding-top:calc(14px + var(--app-shell-statusbar-top,52px)) !important;padding-bottom:14px !important;' +
+          'box-sizing:border-box !important;height:auto !important;min-height:0 !important;background:#fff !important;z-index:100 !important;}' +
+          'html.app-android-huawei-mate60 body.page-personal-info > .header .back-btn,' +
+          'html.app-android-huawei-mate60 body.page-gerenxinxi > .header .back-btn{' +
+          'top:calc(14px + var(--app-shell-statusbar-top,52px)) !important;height:24px !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-huawei-mate60 #arkWhiteTopShield{background:#fff !important;}' +
           'html.app-top-safe-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
           /* Android 白顶栏页：高度随内容；顶距由统一 inset / 页级规则负责，勿写死 14px 顶到状态栏 */
           'html.app-android-client.app-top-safe-shell body > .header{height:auto !important;min-height:0 !important;padding-bottom:15px !important;}' +
@@ -4388,6 +4398,15 @@
           'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,' +
           'html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
           'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
+          /*
+           * Mate 60 / Pro：ahead 图已带顶蓝，再套 Android 统一 40px 会空一截。
+           * 压过上方首页统一顶距，只留 12px 并略微上移搜索条。
+           */
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye{' +
+          '--shouye-status-inset:12px !important;--app-shell-statusbar-top:12px !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye::before{height:12px !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:12px !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead{margin-top:-8px !important;}' +
           /*
            * Android 待办/办&查/消息：与首页同理强制 40px，避免沉浸 WebView 顶进系统时间。
            * 收入纳税明细 / 详情白顶栏页改走 overlays=false 外置状态栏（见 applyImmersiveNotchWhitePageChrome），
@@ -7717,7 +7736,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260831-refundqual';
+      s.src = '/js/conversion-guide.js?v=20260831-m60home';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
@@ -8142,9 +8161,32 @@
      * 白顶页统一顶距：Mate60 沉浸压栏且 env(safe-area-inset-top) 常为 0，
      * consult/purchase/资料类二级页的头部会顶进系统状态栏。
      * 1) 钉 --safe-t / --app-shell-statusbar-top = 52px（吃变量的页面自动修复）
-     * 2) fixed 头：padding-top += 52 并垫 body；sticky 头：吸附位下移到 52
+     * 2) body>.header：相对定位 + padding-top 66，勿写 sticky+top:52（ArkWeb 当 fixed）
      * 3) 头部实际贴到视口顶且自身没留顶距时，body 垫 52
      */
+    function pinArkPlainHeader() {
+      var hdr = document.querySelector('body > .header');
+      if (!hdr) return;
+      hdr.style.setProperty('position', 'relative', 'important');
+      hdr.style.setProperty('top', '0px', 'important');
+      hdr.style.setProperty('padding-top', '66px', 'important');
+      hdr.style.setProperty('padding-bottom', '14px', 'important');
+      hdr.style.setProperty('box-sizing', 'border-box', 'important');
+      hdr.style.setProperty('height', 'auto', 'important');
+      hdr.style.setProperty('min-height', '0', 'important');
+      hdr.style.setProperty('background', '#fff', 'important');
+      hdr.style.setProperty('z-index', '100', 'important');
+      hdr.setAttribute('data-ark-sticky-pad', '1');
+      hdr.setAttribute('data-ark-sticky-top', '1');
+      hdr.setAttribute('data-ark-top-pad', '1');
+      var back = hdr.querySelector('.back-btn');
+      if (back) {
+        back.style.setProperty('top', '66px', 'important');
+        back.style.setProperty('height', '24px', 'important');
+        back.style.setProperty('display', 'flex', 'important');
+        back.style.setProperty('align-items', 'center', 'important');
+      }
+    }
     function pinArkWhiteTopInset() {
       try {
         if (isArkBlueTopPage()) return;
@@ -8156,6 +8198,7 @@
         root.style.setProperty('--safe-t', insetPx, 'important');
         b.style.setProperty('--app-shell-statusbar-top', insetPx, 'important');
         b.style.setProperty('--safe-t', insetPx, 'important');
+        pinArkPlainHeader();
         /* 全站浅色设计：防鸿蒙深色模式把页面/遮挡条算法反转成深灰 */
         try {
           root.style.colorScheme = 'light';
@@ -8167,8 +8210,12 @@
             (document.head || root).appendChild(csMeta);
           }
         } catch (eScheme) {}
-        /* 状态栏遮挡条：吸附头下移后 0-52px 会透出滚动内容；底色写死站内浅灰，勿取计算色（深色模式会反转） */
-        if (!document.getElementById('arkWhiteTopShield')) {
+        /* 状态栏遮挡条：白顶栏页用白底，避免个人信息顶栏上方露出灰条 */
+        var shieldBg = document.querySelector('body > .header') ? '#fff' : '#f5f6fa';
+        var existedShield = document.getElementById('arkWhiteTopShield');
+        if (existedShield) {
+          existedShield.style.background = shieldBg;
+        } else {
           var shield = document.createElement('div');
           shield.id = 'arkWhiteTopShield';
           /* 预打标记 + border-box：防止被下一轮 fixed 扫描当页面头再垫 52px */
@@ -8176,7 +8223,9 @@
           shield.style.cssText =
             'position:fixed;left:0;right:0;top:0;height:' +
             ARK_TOP_INSET +
-            'px;box-sizing:border-box;padding:0;background:#f5f6fa;color-scheme:light;z-index:3000;pointer-events:none;';
+            'px;box-sizing:border-box;padding:0;background:' +
+            shieldBg +
+            ';color-scheme:light;z-index:3000;pointer-events:none;';
           b.appendChild(shield);
         }
         var needBodyPad = false;
@@ -8206,19 +8255,10 @@
           }
           if (cs.position === 'sticky') {
             if (r.height > 260) continue;
+            /* 勿写 top:52：ArkWeb 常把 sticky 当 fixed，标题和第一行进遮挡条 */
             if (!el.getAttribute('data-ark-sticky-top')) {
-              var sTop = parseFloat(cs.top) || 0;
-              /* 页级已预置 top:52 时勿再叠加 */
-              if (sTop < 40) {
-                el.style.setProperty('top', sTop + ARK_TOP_INSET + 'px', 'important');
-              }
               el.setAttribute('data-ark-sticky-top', '1');
             }
-            /*
-             * sticky 的 top 只影响吸附态，不会把文档流起点下移。
-             * 遮挡条 z-index:3000 盖住 0-52px；若不垫高 sticky 头本身，
-             * 「个人信息」等白顶栏会整段藏在遮挡条下（基本信息也被盖住）。
-             */
             if (!el.getAttribute('data-ark-sticky-pad')) {
               var stickyPad = 0;
               try {
@@ -8267,12 +8307,34 @@
             el.setAttribute('data-ark-fix-t', String(wantT));
           }
         }
+        /* 引擎级收窄才干预：>24px 排除桌面/协同窗口滚动条(~16px)。
+         * ArkWeb 会把 html/body 文档流收窄约 8% 并居中（fixed 搜索条不受影响），
+         * 首页通知条/汇算卡/专项卡两侧多出约 20px 边距且第四张入口卡被挤出屏。
+         * width:100% 解不开被收窄的包含块，须钉 px 视口宽；钉宽生效后再把
+         * 居中偏移归零（测多少补多少）；钉宽失败则保持居中，不做半修。 */
+        var vw = window.innerWidth || 0;
+        var de = document.documentElement;
         var br = document.body.getBoundingClientRect();
-        /* 引擎级收窄才干预：>24px 排除桌面/协同窗口滚动条(~16px)；用 100% 而非 100vw 防横向溢出。
-         * 勿再做 margin-left 水平补偿：滚动条环境会把 body 推出 -16px（右侧被裁）。 */
-        if (window.innerWidth - br.width > 24) {
-          document.body.style.setProperty('width', '100%', 'important');
-          document.body.style.setProperty('max-width', '100%', 'important');
+        var hrW = de ? de.getBoundingClientRect().width : br.width;
+        if (vw > 0 && Math.max(vw - br.width, vw - hrW) > 24) {
+          if (de) {
+            de.style.setProperty('width', vw + 'px', 'important');
+            de.style.setProperty('max-width', 'none', 'important');
+          }
+          document.body.style.setProperty('width', vw + 'px', 'important');
+          document.body.style.setProperty('max-width', 'none', 'important');
+        }
+        var sx = window.scrollX || (de && de.scrollLeft) || 0;
+        if (vw > 0 && sx <= 2 && document.body.getAttribute('data-ark-fix-w') !== 'off') {
+          var br2 = document.body.getBoundingClientRect();
+          if (Math.abs(br2.left) > 2 && vw - br2.width <= 8) {
+            var curL = parseFloat(document.body.getAttribute('data-ark-fix-l') || '0') || 0;
+            var wantL = curL - br2.left;
+            if (Math.abs(wantL) < 240) {
+              document.body.style.setProperty('margin-left', wantL + 'px', 'important');
+              document.body.setAttribute('data-ark-fix-l', String(wantL));
+            }
+          }
         }
       } catch (e) {}
     }

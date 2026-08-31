@@ -72,7 +72,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
+    <script src="/js/auth.js?v=20260831-m60home" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -223,6 +223,24 @@
         html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,
         html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 8px !important;
+        }
+
+        /*
+         * Mate 60 / Pro：ahead 图顶上已有约 16px 空蓝，再套 Android 统一 40px
+         * 会在搜索条上方空一截。系统栏已在蓝头外时只留 12px，并略微上移 ahead。
+         */
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 12px;
+            --app-shell-statusbar-top: 12px !important;
+        }
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye::before {
+            height: 12px !important;
+        }
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 12px !important;
+        }
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead {
+            margin-top: -8px !important;
         }
 
         .sy-apk-ahead {
@@ -1507,6 +1525,6 @@
             })();
         })();
     </script>
-    <script src="/js/watermark.js?v=20260827-cend-sync"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

@@ -59,7 +59,7 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
       expect(html).toContain('__mineE1ForceSm');
       expect(html).toContain('?v=20260827-e1r3');
       expect(html).toContain('auth-boot.js?v=20260828-android-load');
-      expect(html).toContain('auth.js?v=20260831-mi15top');
+      expect(html).toContain('auth.js?v=20260831-m60home');
       expect(html).not.toContain('20260802-e1fix');
     });
   });

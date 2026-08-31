@@ -165,12 +165,19 @@
     }
   }
 
+  function isAccountActiveFlag(v) {
+    return v === true || v === 1 || v === '1';
+  }
+
   function isAccountActive() {
     try {
-      return localStorage.getItem('account_active') === '1';
-    } catch (e) {
-      return false;
-    }
+      if (localStorage.getItem('account_active') === '1') return true;
+    } catch (e) {}
+    try {
+      var cached = readProfileCache();
+      if (cached && isAccountActiveFlag(cached.account_active)) return true;
+    } catch (e2) {}
+    return false;
   }
 
   function isLandingGuest() {
@@ -224,12 +231,32 @@
     return isAccountActive();
   }
 
+  function hideLegacyShuimingRefundWechatCard() {
+    var el = document.getElementById('smRefundAdCard');
+    if (!el) return;
+    el.hidden = true;
+    el.setAttribute('hidden', '');
+    el.setAttribute('aria-hidden', 'true');
+    el.classList.remove('is-refund-qualified');
+    try {
+      el.style.display = 'none';
+    } catch (e) {}
+  }
+
   function removeActivationPromoUi() {
     /* 已激活用户仍需保留「添加个税」强提示；此处只清激活营销类 UI */
-    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast'].forEach(
+    hideLegacyShuimingRefundWechatCard();
+    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast', 'smActivateCard'].forEach(
       function (id) {
         var el = document.getElementById(id);
-        if (el && el.parentNode) el.parentNode.removeChild(el);
+        if (!el) return;
+        if (id === 'smActivateCard') {
+          el.hidden = true;
+          el.setAttribute('hidden', '');
+          el.classList.remove('is-refund-prompt');
+          return;
+        }
+        if (el.parentNode) el.parentNode.removeChild(el);
       }
     );
   }
@@ -353,15 +380,38 @@
     return !!LIGHT_SHELL_PAGES[currentPage()];
   }
 
-  function applyProfileSummary(u) {
+  function applyProfileSummary(u, opts) {
+    opts = opts || {};
     if (!u || typeof u !== 'object') return;
     if (u.account_active !== undefined && u.account_active !== null) {
-      var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
+      var active = isAccountActiveFlag(u.account_active);
+      var alreadyActive = false;
       try {
-        localStorage.setItem('account_active', active ? '1' : '0');
-      } catch (e0) {}
+        alreadyActive = localStorage.getItem('account_active') === '1';
+      } catch (eLs) {}
+      /* 会话缓存不得把已开通打回未开通，否则明细页会闪开通卡 */
       if (active) {
+        try {
+          localStorage.setItem('account_active', '1');
+        } catch (e0) {}
+        window.__smAccountActiveConfirmed = true;
+        try {
+          document.documentElement.classList.add('sm-account-active');
+        } catch (eCls) {}
         removeActivationPromoUi();
+        syncShuimingInactivePrompt();
+      } else if (!opts.fromCache) {
+        try {
+          localStorage.setItem('account_active', '0');
+        } catch (e0b) {}
+        window.__smAccountActiveConfirmed = false;
+        try {
+          document.documentElement.classList.remove('sm-account-active');
+        } catch (eCls2) {}
+      } else if (!alreadyActive) {
+        try {
+          localStorage.setItem('account_active', '0');
+        } catch (e0c) {}
       }
     }
     if (u.tax_record_count != null) {
@@ -427,8 +477,16 @@
       if (cached.hours_since_register == null) {
         opts = Object.assign({}, opts, { force: true });
       } else {
-        applyProfileSummary(cached);
-        return Promise.resolve();
+        applyProfileSummary(cached, { fromCache: true });
+        var localAct = false;
+        try {
+          localAct = localStorage.getItem('account_active') === '1';
+        } catch (eAct) {}
+        if (localAct && !isAccountActiveFlag(cached.account_active)) {
+          opts = Object.assign({}, opts, { force: true });
+        } else {
+          return Promise.resolve();
+        }
       }
     }
     if (profileFetchInFlight && !opts.force) {
@@ -1785,9 +1843,53 @@
     return href;
   }
 
+  function isInactiveRefundCardUser() {
+    if (!isLoggedIn() || isLandingGuest()) return false;
+    /* 未确认前不出卡，避免已开通账号先闪未开通 */
+    if (typeof window.__smAccountActiveConfirmed === 'boolean') {
+      return window.__smAccountActiveConfirmed === false;
+    }
+    return false;
+  }
+
+  function refundAdInactivePromptCopy(hit) {
+    if (hit && hit.year) {
+      return refundAdHitCardCopy(hit) + '。激活后可咨询并复制微信，开通后这张卡会消失。';
+    }
+    return '激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。';
+  }
+
+  function syncShuimingInactivePrompt(records) {
+    hideLegacyShuimingRefundWechatCard();
+    var card = document.getElementById('smActivateCard');
+    if (!card) return;
+    var title = document.getElementById('smActivateTitle');
+    var desc = document.getElementById('smActivateDesc');
+    var btn = document.getElementById('smActivateBtn');
+    if (!isInactiveRefundCardUser()) {
+      card.hidden = true;
+      card.setAttribute('hidden', '');
+      card.classList.remove('is-refund-prompt');
+      return;
+    }
+    var hit = primaryRefundAdTaxHit(records || []);
+    card.hidden = false;
+    card.classList.add('is-refund-prompt');
+    if (title) title.textContent = '二次退税咨询';
+    if (desc) desc.textContent = refundAdInactivePromptCopy(hit);
+    if (btn) {
+      btn.textContent = '去开通';
+      btn.setAttribute('href', 'purchase.html?from=shuiming_result');
+    }
+  }
+
   function syncRefundAdRecommendCards(records) {
+    hideLegacyShuimingRefundWechatCard();
+    syncShuimingInactivePrompt(records);
     var hit = primaryRefundAdTaxHit(records);
-    var copy = refundAdHitCardCopy(hit);
+    var copy = refundAdInactivePromptCopy(hit);
+    /* 未激活才出这张卡；激活后两处都消失 */
+    var show = isInactiveRefundCardUser();
     var nodes = [
       {
         root: 'consultRefundAdEntry',
@@ -1802,19 +1904,12 @@
         btn: 'btnConsultRefundAdProducts',
         badge: 'consultRefundAdProductBadge',
         from: 'consult_products'
-      },
-      {
-        root: 'smRefundAdCard',
-        hint: 'smRefundAdDesc',
-        btn: 'smRefundAdBtn',
-        badge: '',
-        from: 'shuiming_result'
       }
     ];
     nodes.forEach(function (spec) {
       var root = document.getElementById(spec.root);
       if (!root) return;
-      if (!hit) {
+      if (!show) {
         root.hidden = true;
         root.classList.remove('is-refund-qualified');
         return;
@@ -1822,11 +1917,14 @@
       root.hidden = false;
       root.classList.add('is-refund-qualified');
       var hint = spec.hint ? document.getElementById(spec.hint) : null;
-      if (hint) hint.textContent = copy + '。加微信备注「二次退税」。';
+      if (hint) hint.textContent = copy;
       var badge = spec.badge ? document.getElementById(spec.badge) : null;
-      if (badge) badge.textContent = '建议咨询';
+      if (badge) badge.textContent = '开通后消失';
       var btn = document.getElementById(spec.btn);
-      if (btn) btn.setAttribute('href', refundAdRecommendHref(spec.from, hit));
+      if (btn) {
+        btn.textContent = '去开通';
+        btn.setAttribute('href', 'purchase.html?from=' + encodeURIComponent(spec.from));
+      }
     });
   }
 
@@ -2558,9 +2656,9 @@
       renderMineTaxStrongPrompt();
       renderConsultTaxStrongPrompt();
       renderShouyeRetentionCard();
-      if (Array.isArray(window.__consultRecordsCache)) {
-        syncRefundAdRecommendCards(window.__consultRecordsCache);
-      }
+      syncRefundAdRecommendCards(
+        Array.isArray(window.__consultRecordsCache) ? window.__consultRecordsCache : []
+      );
       /* 无个税时对所有登录用户强提示（含已激活） */
       setTimeout(maybeShowTaxFillNudge, 480);
       bumpIncomeBrowseVisit();
@@ -2600,7 +2698,7 @@
     if (isLightShellPage()) {
       var cached = readProfileCache();
       if (cached) {
-        applyProfileSummary(cached);
+        applyProfileSummary(cached, { fromCache: true });
       }
       setTimeout(function () {
         runBoot();
@@ -2795,6 +2893,7 @@
     refundAdYearHits: refundAdYearHits,
     refundAdHitCardCopy: refundAdHitCardCopy,
     syncRefundAdRecommendCards: syncRefundAdRecommendCards,
+    syncShuimingInactivePrompt: syncShuimingInactivePrompt,
     afterEmployerSaved: afterEmployerSaved,
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     mountShuimingValueBar: mountShuimingValueBar,

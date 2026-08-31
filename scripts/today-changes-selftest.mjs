@@ -1708,6 +1708,42 @@ mustInclude(
   'admin refund eligible list and bulk audience'
 );
 mustInclude(
+  'backend/src/payments/priceBids.js',
+  ['createPriceBids', 'user_price_bids', 'floor_pct', 'acceptToOffer'],
+  'price bid module with auto accept floor'
+);
+mustInclude(
+  'backend/src/payments/routes.js',
+  ["app.get('/api/payments/price-bid'", "app.post('/api/payments/price-bid'"],
+  'price bid user routes'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ['/api/admin/price-bids', '/api/admin/price-bids/review', '/api/admin/price-bids/config'],
+  'price bid admin routes'
+);
+mustInclude(
+  'frontend/purchase.html',
+  [
+    'priceBidTeaser',
+    'btnPriceBidOpen',
+    'price-bid-mask',
+    'track_price_bid_submit',
+    "paymentFetch('/api/payments/price-bid'"
+  ],
+  'purchase page price bid entry and sheet'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['心理价出价', 'bidTbody', 'btnSaveBidCfg', 'bidCfgFloorPct'],
+  'admin price bids section'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ['api/admin/price-bids', 'bid-accept', 'bid-reject', 'api/admin/price-bids/config'],
+  'admin price bids wiring'
+);
+mustInclude(
   'backend/src/admin/routes.js',
   ['/api/admin/ops/refund-eligible', 'handleOpsRefundEligible'],
   'refund eligible admin route'

@@ -5,6 +5,12 @@
     <script>
         (function () {
             try {
+                if (localStorage.getItem('account_active') === '1') {
+                    document.documentElement.classList.add('sm-account-active');
+                    window.__smAccountActiveConfirmed = true;
+                }
+            } catch (eActive) {}
+            try {
                 var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
                 try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
                 try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
@@ -243,7 +249,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
+    <script src="/js/auth.js?v=20260831-m60home" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -428,6 +434,12 @@
             overflow: hidden;
         }
         .sm-activate-card[hidden] { display: none !important; }
+        html.sm-account-active #smActivateCard,
+        html.sm-account-active .sm-activate-card,
+        html.sm-account-active #__wm_layer__,
+        html.sm-account-active .test-account-watermark-layer {
+            display: none !important;
+        }
         .sm-activate-card::before {
             content: "";
             position: absolute;
@@ -472,41 +484,13 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
         .sm-activate-btn:active { opacity: 0.92; transform: scale(0.98); }
-
-        .sm-refund-ad-card {
-            margin: 0 0 10px;
-            padding: 14px 14px 12px;
-            border-radius: 12px;
+        .sm-activate-card.is-refund-prompt {
             background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 55%, #ef4444 100%);
-            color: #fff;
             box-shadow: 0 8px 20px rgba(185, 28, 28, 0.2);
         }
-        .sm-refund-ad-card[hidden] { display: none !important; }
-        .sm-refund-ad-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        .sm-refund-ad-desc {
-            font-size: 12px;
-            line-height: 1.5;
-            opacity: 0.92;
-            margin-bottom: 12px;
-        }
-        .sm-refund-ad-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 40px;
-            border-radius: 10px;
-            background: #fff;
+        .sm-activate-card.is-refund-prompt .sm-activate-btn {
             color: #b91c1c;
-            font-size: 15px;
-            font-weight: 700;
-            text-decoration: none;
-            -webkit-tap-highlight-color: transparent;
         }
-        .sm-refund-ad-btn:active { opacity: 0.92; transform: scale(0.98); }
 
         .summary-label {
             font-size: 14px;
@@ -1847,15 +1831,10 @@
                 <span class="summary-label"><span class="summary-label-text">已申报税额合计：</span></span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
-            <div class="sm-refund-ad-card" id="smRefundAdCard" hidden>
-                <p class="sm-refund-ad-title">二次退税咨询</p>
-                <p class="sm-refund-ad-desc" id="smRefundAdDesc">近三年缴税或收入达标的可咨询。</p>
-                <a href="refund_ad.html?from=shuiming_result" class="sm-refund-ad-btn" id="smRefundAdBtn">查看并复制微信</a>
-            </div>
             <div class="sm-activate-card" id="smActivateCard" hidden>
-                <p class="sm-activate-title">开通完整功能</p>
-                <p class="sm-activate-desc">激活后可去水印并体验完税证明；也可先下方「示例填写个税」生成演示数据</p>
-                <a href="purchase.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">立即激活</a>
+                <p class="sm-activate-title" id="smActivateTitle">二次退税咨询</p>
+                <p class="sm-activate-desc" id="smActivateDesc">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
+                <a href="purchase.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">去开通</a>
             </div>
         </div>
     </div>
@@ -2302,6 +2281,12 @@
                             localStorage.setItem('account_active', d.account_active ? '1' : '0');
                         }
                     } catch (e1) {}
+                    if (d && d.account_active !== undefined && d.account_active !== null) {
+                        window.__smAccountActiveConfirmed = !isInactive;
+                        try {
+                            document.documentElement.classList.toggle('sm-account-active', !isInactive);
+                        } catch (eCls) {}
+                    }
                     applyPurchaseWatermark(isTest && isInactive);
                     if (typeof syncSmActivateCard === 'function') syncSmActivateCard();
                 })
@@ -2383,37 +2368,7 @@
                 tax_total: payload && payload.tax_total != null ? payload.tax_total : '0.00'
             });
             renderList(records, year);
-            syncShuimingRefundAdCard();
-        }
-
-        function syncShuimingRefundAdCard() {
-            function apply(list) {
-                if (
-                    window.ConversionGuide &&
-                    typeof window.ConversionGuide.syncRefundAdRecommendCards === 'function'
-                ) {
-                    window.ConversionGuide.syncRefundAdRecommendCards(list);
-                }
-            }
-            if (Array.isArray(window.__consultRecordsCache) && window.__consultRecordsCache.length) {
-                apply(window.__consultRecordsCache);
-                return;
-            }
-            if (typeof window.authFetch !== 'function') return;
-            window
-                .authFetch('api/tax?action=records')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    var list =
-                        data && data.code === 200 && data.data && Array.isArray(data.data.records)
-                            ? data.data.records
-                            : [];
-                    window.__consultRecordsCache = list;
-                    apply(list);
-                })
-                .catch(function () {});
+            if (typeof syncSmActivateCard === 'function') syncSmActivateCard();
         }
 
         function finishShuimingPageLoading() {
@@ -2512,7 +2467,18 @@
                 });
         }
 
+        function hideLegacyRefundWechatCard() {
+            var old = document.getElementById('smRefundAdCard');
+            if (!old) return;
+            old.hidden = true;
+            old.setAttribute('hidden', '');
+            old.setAttribute('aria-hidden', 'true');
+            try {
+                old.style.display = 'none';
+            } catch (eHide) {}
+        }
         function syncSmActivateCard() {
+            hideLegacyRefundWechatCard();
             var card = document.getElementById('smActivateCard');
             var btn = document.getElementById('smActivateBtn');
             if (!card) return;
@@ -2524,7 +2490,53 @@
                     localStorage.getItem('landing_guest_v1') === '1' ||
                     String(localStorage.getItem('user_id') || '').indexOf('__guest_') === 0;
             } catch (e0) {}
-            card.hidden = !!(active || guest);
+            var confirmedActive = window.__smAccountActiveConfirmed === true || active;
+            var confirmedInactive = window.__smAccountActiveConfirmed === false;
+            /* 未确认或已开通：保持隐藏，禁止先画出未开通卡再收掉 */
+            if (confirmedActive || guest) {
+                card.hidden = true;
+                card.setAttribute('hidden', '');
+                card.classList.remove('is-refund-prompt');
+                window.__smAccountActiveConfirmed = true;
+                try {
+                    document.documentElement.classList.add('sm-account-active');
+                } catch (eOn) {}
+            } else if (!confirmedInactive) {
+                card.hidden = true;
+                card.setAttribute('hidden', '');
+                card.classList.remove('is-refund-prompt');
+            } else {
+                try {
+                    document.documentElement.classList.remove('sm-account-active');
+                } catch (eOff) {}
+            }
+            function applyPrompt(list) {
+                if (
+                    window.ConversionGuide &&
+                    typeof window.ConversionGuide.syncShuimingInactivePrompt === 'function'
+                ) {
+                    window.ConversionGuide.syncShuimingInactivePrompt(list);
+                }
+            }
+            if (Array.isArray(window.__consultRecordsCache)) {
+                applyPrompt(window.__consultRecordsCache);
+            } else if (typeof window.authFetch === 'function' && confirmedInactive && !guest) {
+                window
+                    .authFetch('api/tax?action=records')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        var list =
+                            data && data.code === 200 && data.data && Array.isArray(data.data.records)
+                                ? data.data.records
+                                : [];
+                        window.__consultRecordsCache = list;
+                        applyPrompt(list);
+                        syncTopFixedHeight();
+                    })
+                    .catch(function () {});
+            }
             if (btn && !btn.dataset.bound) {
                 btn.dataset.bound = '1';
                 btn.addEventListener('click', function () {
@@ -2660,6 +2672,6 @@
             }
         })();
     </script>
-    <script src="/js/watermark.js?v=20260827-cend-sync"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

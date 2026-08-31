@@ -14,14 +14,20 @@
                 document.documentElement.classList.add('app-android-immersive-white-top');
                 document.documentElement.style.setProperty('--app-shell-statusbar-top', '52px');
                 document.documentElement.style.setProperty('--safe-t', '52px');
+                document.documentElement.classList.add('app-android-client');
                 if (!document.querySelector('style[data-mate60-personal-info-firstpaint]')) {
                     var st = document.createElement('style');
                     st.setAttribute('data-mate60-personal-info-firstpaint', '1');
+                    /* 只垫 padding，勿写 sticky+top:52：ArkWeb 会当 fixed，标题和「基本信息」进遮挡条 */
                     st.textContent =
-                        'html.app-android-huawei-mate60 body > .header{' +
-                        'position:sticky !important;top:52px !important;' +
-                        'padding-top:calc(14px + 52px) !important;padding-bottom:14px !important;' +
-                        'box-sizing:border-box !important;background:#fff !important;z-index:100 !important;}' +
+                        'html.app-android-huawei-mate60 body.page-personal-info > .header{' +
+                        'position:relative !important;top:0 !important;' +
+                        'padding-top:66px !important;padding-bottom:14px !important;' +
+                        'box-sizing:border-box !important;height:auto !important;min-height:0 !important;' +
+                        'background:#fff !important;z-index:100 !important;}' +
+                        'html.app-android-huawei-mate60 body.page-personal-info > .header .back-btn{' +
+                        'top:66px !important;height:24px !important;display:flex !important;align-items:center !important;}' +
+                        'html.app-android-huawei-mate60 #arkWhiteTopShield{background:#fff !important;}' +
                         'html.app-android-huawei-mate60{color-scheme:light;}';
                     (document.head || document.documentElement).appendChild(st);
                 }
@@ -29,7 +35,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
+    <script src="/js/auth.js?v=20260831-m60home" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -67,11 +73,21 @@
             border-bottom: 1px solid #f0f0f0;
         }
 
-        /* Mate 60：沉浸压栏，sticky 顶栏须自带 52px 顶距（与 auth.js ark 模块一致） */
-        html.app-android-huawei-mate60 body > .header {
-            top: 52px;
-            padding-top: calc(14px + 52px);
+        /* Mate 60 / Pro：相对定位 + 顶距，返回/标题落在状态栏下方；勿用 sticky+top:52 */
+        html.app-android-huawei-mate60 body.page-personal-info > .header {
+            position: relative;
+            top: 0;
+            padding-top: 66px;
+            padding-bottom: 14px;
             box-sizing: border-box;
+            height: auto;
+            min-height: 0;
+        }
+        html.app-android-huawei-mate60 body.page-personal-info > .header .back-btn {
+            top: 66px;
+            height: 24px;
+            display: flex;
+            align-items: center;
         }
 
         .back-btn {
@@ -126,7 +142,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-personal-info">
     <div class="header">
         <a href="mine.html" class="back-btn">
             <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
@@ -163,6 +179,6 @@
             window.location.href = 'other_id.html';
         }
     </script>
-    <script src="/js/watermark.js?v=20260827-cend-sync"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

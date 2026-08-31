@@ -2,8 +2,39 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u)) return;
+                if (!/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) return;
+                document.documentElement.classList.add('app-android-client');
+                document.documentElement.classList.add('app-android-huawei-mate60');
+                document.documentElement.classList.add('app-android-immersive-white-top');
+                document.documentElement.style.setProperty('--app-shell-statusbar-top', '52px');
+                document.documentElement.style.setProperty('--safe-t', '52px');
+                if (!document.querySelector('style[data-mate60-personal-info-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-mate60-personal-info-firstpaint', '1');
+                    st.textContent =
+                        'html.app-android-huawei-mate60 body.page-gerenxinxi > .header{' +
+                        'position:relative !important;top:0 !important;' +
+                        'padding-top:66px !important;padding-bottom:14px !important;' +
+                        'box-sizing:border-box !important;height:auto !important;min-height:0 !important;' +
+                        'background:#fff !important;z-index:100 !important;}' +
+                        'html.app-android-huawei-mate60 body.page-gerenxinxi > .header .back-btn{' +
+                        'top:66px !important;height:24px !important;display:flex !important;align-items:center !important;}' +
+                        'html.app-android-huawei-mate60 #arkWhiteTopShield{background:#fff !important;}' +
+                        'html.app-android-huawei-mate60{color-scheme:light;}';
+                    (document.head || document.documentElement).appendChild(st);
+                }
+            } catch (e) {}
+        })();
+    </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
+    <script src="/js/auth.js?v=20260831-m60home" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -40,6 +71,22 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #f0f0f0;
+        }
+
+        html.app-android-huawei-mate60 body.page-gerenxinxi > .header {
+            position: relative;
+            top: 0;
+            padding-top: 66px;
+            padding-bottom: 14px;
+            box-sizing: border-box;
+            height: auto;
+            min-height: 0;
+        }
+        html.app-android-huawei-mate60 body.page-gerenxinxi > .header .back-btn {
+            top: 66px;
+            height: 24px;
+            display: flex;
+            align-items: center;
         }
 
         .back-btn {
@@ -294,7 +341,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-gerenxinxi">
     <div class="header">
         <a href="personal_info.html" class="back-btn">
             <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
@@ -1245,6 +1292,6 @@
 
         loadUserInfo();
     </script>
-    <script src="/js/watermark.js?v=20260827-cend-sync"></script>
+    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

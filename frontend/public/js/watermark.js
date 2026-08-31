@@ -173,26 +173,24 @@
             return;
         }
 
-        // 页面可先按本地状态临时展示，但最终只以接口返回的 account_active 为准。
-        var localInactive = isLocalInactiveAccount();
+        /* 本地已开通：立刻去水印。本地未开通也不先画，等接口确认，避免已开通闪一下 */
         var localActive = false;
         try {
             localActive = localStorage.getItem('account_active') === '1';
         } catch (e0) {}
         if (localActive) {
+            window.__smAccountActiveConfirmed = true;
+            try {
+                document.documentElement.classList.add('sm-account-active');
+            } catch (eCls) {}
             applyWatermark('0');
             notifyActivateCardSync();
             try {
                 localStorage.removeItem(WM_CACHE_KEY);
                 localStorage.removeItem(WM_CACHE_TIME_KEY);
             } catch (e1) {}
-        } else if (localInactive) {
-            applyWatermark('1');
-            notifyActivateCardSync();
-            try {
-                localStorage.removeItem(WM_CACHE_KEY);
-                localStorage.removeItem(WM_CACHE_TIME_KEY);
-            } catch (e2) {}
+        } else {
+            applyWatermark('0');
         }
 
         // 从 API 获取最新状态（与 /api/user 一致，需 JWT，不再使用 URL 上的 user_id）
@@ -213,12 +211,20 @@
                             localStorage.setItem('account_active', '1');
                             localStorage.setItem(WM_CACHE_KEY, '0');
                             localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
+                            window.__smAccountActiveConfirmed = true;
+                            try {
+                                document.documentElement.classList.add('sm-account-active');
+                            } catch (eOn) {}
                             applyWatermark('0');
                             notifyActivateCardSync();
                         } else if (apiInactive) {
                             localStorage.setItem('account_active', '0');
                             localStorage.setItem(WM_CACHE_KEY, '1');
                             localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
+                            window.__smAccountActiveConfirmed = false;
+                            try {
+                                document.documentElement.classList.remove('sm-account-active');
+                            } catch (eOff) {}
                             applyWatermark('1');
                             notifyActivateCardSync();
                         }

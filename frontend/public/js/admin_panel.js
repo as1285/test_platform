@@ -8746,6 +8746,205 @@
             }
         })();
 
+        /* 心理价出价：配置 + 待处理审核 */
+        (function bindPriceBids() {
+            var tbody = document.getElementById('bidTbody');
+            if (!tbody) return;
+            var hint = document.getElementById('bidCfgHint');
+            var counts = document.getElementById('bidCounts');
+            var cfgLoaded = false;
+            function currentStatus() {
+                var el = document.querySelector('input[name="bidStatusFilter"]:checked');
+                return el ? el.value : 'pending';
+            }
+            function fmtTime(v) {
+                if (!v) return '—';
+                try {
+                    var d = new Date(v);
+                    return (
+                        String(d.getMonth() + 1).padStart(2, '0') +
+                        '-' +
+                        String(d.getDate()).padStart(2, '0') +
+                        ' ' +
+                        String(d.getHours()).padStart(2, '0') +
+                        ':' +
+                        String(d.getMinutes()).padStart(2, '0')
+                    );
+                } catch (e) {
+                    return String(v);
+                }
+            }
+            function statusCell(b) {
+                if (b.status === 'pending') {
+                    return (
+                        '<input type="number" class="bid-accept-amount" data-id="' +
+                        b.id +
+                        '" value="' +
+                        esc(b.bid_amount) +
+                        '" min="1" step="0.01" style="width:76px;"> ' +
+                        '<button type="button" class="btn-sm btn-primary bid-accept" data-id="' +
+                        b.id +
+                        '">通过</button> ' +
+                        '<button type="button" class="btn-sm btn-ban bid-reject" data-id="' +
+                        b.id +
+                        '">驳回</button>'
+                    );
+                }
+                if (b.status === 'accepted') {
+                    return (
+                        '<span class="badge badge-yes">已通过 ¥' +
+                        esc(b.accepted_amount || b.bid_amount) +
+                        (b.auto ? '（自动）' : '') +
+                        '</span>'
+                    );
+                }
+                return '<span class="badge badge-no">已驳回</span>';
+            }
+            function render(items) {
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="hint">暂无记录</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = items
+                    .map(function (b) {
+                        return (
+                            '<tr><td>' +
+                            fmtTime(b.created_at) +
+                            '</td><td>' +
+                            esc(b.username) +
+                            '</td><td>' +
+                            esc(b.sku_label || b.sku_id) +
+                            '</td><td>' +
+                            (b.list_amount ? '¥' + esc(b.list_amount) : '—') +
+                            '</td><td><strong>¥' +
+                            esc(b.bid_amount) +
+                            '</strong></td><td>' +
+                            esc(b.note || '—') +
+                            '</td><td>' +
+                            statusCell(b) +
+                            '</td></tr>'
+                        );
+                    })
+                    .join('');
+            }
+            function loadBids() {
+                tbody.innerHTML = '<tr><td colspan="7" class="hint">加载中…</td></tr>';
+                adminFetch('api/admin/price-bids?status=' + encodeURIComponent(currentStatus()))
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="7" class="hint">' +
+                                esc(data.msg || '加载失败') +
+                                '</td></tr>';
+                            return;
+                        }
+                        var d = data.data || {};
+                        render(d.items || []);
+                        if (counts && d.counts) {
+                            counts.textContent =
+                                '待处理 ' +
+                                d.counts.pending +
+                                ' · 已通过 ' +
+                                d.counts.accepted +
+                                ' · 已驳回 ' +
+                                d.counts.rejected;
+                        }
+                        if (!cfgLoaded && d.config) {
+                            cfgLoaded = true;
+                            var en = document.getElementById('bidCfgEnabled');
+                            var pct = document.getElementById('bidCfgFloorPct');
+                            var min = document.getElementById('bidCfgMin');
+                            var daily = document.getElementById('bidCfgDaily');
+                            if (en) en.checked = d.config.enabled !== false;
+                            if (pct) pct.value = d.config.floor_pct;
+                            if (min) min.value = d.config.min_amount;
+                            if (daily) daily.value = d.config.daily_limit;
+                        }
+                    })
+                    .catch(function () {
+                        tbody.innerHTML = '<tr><td colspan="7" class="hint">网络错误</td></tr>';
+                    });
+            }
+            tbody.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('.bid-accept, .bid-reject');
+                if (!btn) return;
+                var id = btn.getAttribute('data-id');
+                var isAccept = btn.classList.contains('bid-accept');
+                var amount = '';
+                if (isAccept) {
+                    var input = tbody.querySelector('.bid-accept-amount[data-id="' + id + '"]');
+                    amount = input ? String(input.value || '').trim() : '';
+                    if (!amount || !(Number(amount) > 0)) {
+                        alert('请填写有效成交价');
+                        return;
+                    }
+                    if (!confirm('确认按 ¥' + amount + ' 通过该出价？将立即生效为该账号专属价。')) return;
+                } else if (!confirm('确认驳回该出价？会站内信告知用户。')) {
+                    return;
+                }
+                btn.disabled = true;
+                adminFetch('api/admin/price-bids/review', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        id: Number(id),
+                        action: isAccept ? 'accept' : 'reject',
+                        amount: amount || undefined
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        alert(data.msg || (data.code === 200 ? '已处理' : '处理失败'));
+                        loadBids();
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                        btn.disabled = false;
+                    });
+            });
+            document.querySelectorAll('input[name="bidStatusFilter"]').forEach(function (r) {
+                r.addEventListener('change', loadBids);
+            });
+            var btnReload = document.getElementById('btnReloadBids');
+            if (btnReload) btnReload.addEventListener('click', loadBids);
+            var btnSaveCfg = document.getElementById('btnSaveBidCfg');
+            if (btnSaveCfg) {
+                btnSaveCfg.addEventListener('click', function () {
+                    var payload = {
+                        enabled: !!(document.getElementById('bidCfgEnabled') || {}).checked,
+                        floor_pct: (document.getElementById('bidCfgFloorPct') || {}).value,
+                        min_amount: (document.getElementById('bidCfgMin') || {}).value,
+                        daily_limit: (document.getElementById('bidCfgDaily') || {}).value
+                    };
+                    btnSaveCfg.disabled = true;
+                    if (hint) hint.textContent = '保存中…';
+                    adminFetch('api/admin/price-bids/config', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (hint) hint.textContent = data.code === 200 ? '已保存' : '';
+                            if (data.code !== 200) alert(data.msg || '保存失败');
+                        })
+                        .catch(function () {
+                            if (hint) hint.textContent = '';
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            btnSaveCfg.disabled = false;
+                        });
+                });
+            }
+            loadBids();
+        })();
+
         var btnSaveActNudge = document.getElementById('btnSaveActNudge');
         if (btnSaveActNudge) {
             btnSaveActNudge.addEventListener('click', function () {

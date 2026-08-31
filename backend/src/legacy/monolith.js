@@ -46,6 +46,7 @@ const {
 const { createPricingAb, DEFAULT_PRICING_AB } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
+const { createPriceBids } = require('../payments/priceBids');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const renameFeePolicy = require('../user/renameFeePolicy');
 const {
@@ -615,6 +616,36 @@ function getUserPriceOffers() {
     });
   }
   return userPriceOffersApi;
+}
+
+/** 心理价出价 */
+var priceBidsApi = null;
+
+function getPriceBids() {
+  if (!priceBidsApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    priceBidsApi = createPriceBids({
+      pool: pool,
+      normalizeAmount: function (v) {
+        return alipay.normalizeAmount(v);
+      },
+      offers: getUserPriceOffers(),
+      notifyUser: async function (username, title, body, linkUrl) {
+        var uid = String(username || '').trim();
+        if (!uid) return;
+        var content = String(body || '') + '\n@@link:' + sanitizeInAppMessageLink(linkUrl);
+        var mid = 'msg_bid_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        await pool.execute(
+          'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)',
+          [mid, uid, String(title || '通知'), content, MSG_COMPANY_SYSTEM_NOTICE, new Date().toISOString().slice(0, 10)]
+        );
+        invalidateMessageListCache(uid);
+      }
+    });
+  }
+  return priceBidsApi;
 }
 
 function getInviteReward() {
@@ -5893,6 +5924,54 @@ async function handleBilibiliShareStatus(req, res) {
   } catch (e) {
     console.error('get bilibili share reward status', e);
     return res.status(500).json({ code: 500, msg: '读取分享活动进度失败' });
+  }
+}
+
+/** C 端：查询我的心理价出价状态（enabled + 最近一条） */
+async function handlePriceBidGet(req, res) {
+  try {
+    var cfg = await getPriceBids().loadConfig();
+    var bid = await getPriceBids().getLatestBid(req.authUserId || '');
+    return res.json({
+      code: 200,
+      data: {
+        enabled: !!cfg.enabled,
+        min_amount: cfg.min_amount,
+        bid: bid
+          ? {
+              status: bid.status,
+              bid_amount: bid.bid_amount,
+              accepted_amount: bid.accepted_amount,
+              sku_label: bid.sku_label,
+              created_at: bid.created_at
+            }
+          : null
+      }
+    });
+  } catch (e) {
+    console.error('price bid get', e);
+    return res.status(500).json({ code: 500, msg: '读取出价状态失败' });
+  }
+}
+
+/** C 端：提交心理价（达线自动放价，未达线转人工） */
+async function handlePriceBidSubmit(req, res) {
+  try {
+    var body = req.body || {};
+    var out = await getPriceBids().submitBid(req.authUserId || '', {
+      sku_id: body.sku_id,
+      amount: body.amount,
+      note: body.note
+    });
+    var msg =
+      out.status === 'accepted'
+        ? '已按你的心理价 ¥' + out.accepted_amount + ' 生效，现在就能按新价开通'
+        : '已提交，通过后会发站内信通知你';
+    return res.json({ code: 200, msg: msg, data: out });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('price bid submit', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '提交出价失败' });
   }
 }
 
@@ -18550,6 +18629,56 @@ async function handleAdminUserPriceOfferClear(req, res) {
   }
 }
 
+/** 管理端：心理价出价列表（默认待处理）+ 各状态计数 + 当前底价线配置 */
+async function handleAdminPriceBidsList(req, res) {
+  try {
+    var q = req.query || {};
+    var out = await getPriceBids().listBids({ status: q.status, limit: q.limit });
+    var cfg = await getPriceBids().loadConfig();
+    return res.json({ code: 200, data: { items: out.items, counts: out.counts, config: cfg } });
+  } catch (e) {
+    console.error('admin price bids list', e);
+    return res.status(500).json({ code: 500, msg: '读取出价列表失败' });
+  }
+}
+
+/** 管理端：通过（可改成交价）/ 驳回一条心理价出价 */
+async function handleAdminPriceBidsReview(req, res) {
+  try {
+    var body = req.body || {};
+    var adminName = req.admin && req.admin.username != null ? String(req.admin.username) : 'admin';
+    var out = await getPriceBids().reviewBid({
+      id: body.id,
+      action: body.action,
+      amount: body.amount,
+      admin: adminName
+    });
+    return res.json({
+      code: 200,
+      msg:
+        out.status === 'accepted'
+          ? '已通过，¥' + out.accepted_amount + ' 专属价已生效并站内信通知'
+          : '已驳回并站内信告知',
+      data: out
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('admin price bids review', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '处理失败' });
+  }
+}
+
+/** 管理端：保存心理价出价配置（开关/自动通过线/最低价/每日次数） */
+async function handleAdminPriceBidsConfigSet(req, res) {
+  try {
+    var cfg = await getPriceBids().saveConfig(req.body || {});
+    return res.json({ code: 200, msg: '出价配置已保存', data: cfg });
+  } catch (e) {
+    console.error('admin price bids config set', e);
+    return res.status(500).json({ code: 500, msg: '保存出价配置失败' });
+  }
+}
+
 /** 管理端：取消或恢复指定账号的改名费 / 个税修改费（同一白名单） */
 async function handleAdminUserRenameFeeExempt(req, res) {
   var body = req.body || {};
@@ -22241,6 +22370,8 @@ function getHandlers() {
     handleAlipayCreateOrder,
     handleAlipayLatestOrder,
     handleAlipayNotify,
+    handlePriceBidGet,
+    handlePriceBidSubmit,
     handleBilibiliShareStatus,
     handleBilibiliShareStart,
     handleBilibiliShareComplete,
@@ -22287,6 +22418,9 @@ function getHandlers() {
     handleAdminUserPriceOfferGet,
     handleAdminUserPriceOfferSet,
     handleAdminUserPriceOfferClear,
+    handleAdminPriceBidsList,
+    handleAdminPriceBidsReview,
+    handleAdminPriceBidsConfigSet,
     handleAdminUserRenameFeeExempt,
     handleAdminUserAgentFlag,
     handleAdminUserLizhiCertUnlock,

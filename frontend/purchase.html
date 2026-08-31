@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-norefundsm" defer></script>
+    <script src="/js/auth.js?v=20260831-m60home" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -1061,6 +1061,96 @@
             font-weight: 600;
             text-decoration: none;
         }
+
+        /* 心理价出价 */
+        .price-bid-teaser {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f0f7ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+        .price-bid-teaser button {
+            border: none;
+            background: none;
+            padding: 0;
+            color: #1d4ed8;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .price-bid-teaser .price-bid-state {
+            color: #64748b;
+            font-weight: 400;
+        }
+        .price-bid-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 460;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .price-bid-mask[hidden] { display: none; }
+        .price-bid-sheet {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 14px 14px 0 0;
+            padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -6px 28px rgba(15, 23, 42, 0.18);
+        }
+        .price-bid-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .price-bid-sub {
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+        .price-bid-sheet input {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 11px 12px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            background: #fff;
+            color: #0f172a;
+        }
+        .price-bid-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+            margin: 2px 0 14px;
+        }
+        .price-bid-actions {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr;
+            gap: 10px;
+        }
+        .price-bid-actions button {
+            min-height: 44px;
+            border-radius: 11px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .price-bid-cancel { background: #f1f5f9; color: #475569; }
+        .price-bid-submit { background: #1e6fff; color: #fff; }
+        .price-bid-submit:disabled { opacity: 0.6; }
     </style>
 </head>
 <body class="page-purchase">
@@ -1127,6 +1217,10 @@
             <div class="share-inline-teaser" id="shareInlineTeaser" hidden>
                 想再便宜？<a href="#foldShareDiscount" id="shareInlineTeaserLink">分享 1 次到 B 站，立减 ¥50</a>
             </div>
+            <div class="price-bid-teaser" id="priceBidTeaser" hidden>
+                觉得贵？<button type="button" id="btnPriceBidOpen">提交你的心理价</button>
+                <span class="price-bid-state" id="priceBidStateText" hidden></span>
+            </div>
         </div>
 
         <details class="purchase-fold" id="foldShareDiscount" hidden>
@@ -1150,6 +1244,20 @@
                 </div>
             </div>
         </details>
+
+        <div class="price-bid-mask" id="priceBidMask" hidden>
+            <div class="price-bid-sheet" role="dialog" aria-modal="true" aria-label="提交心理价">
+                <div class="price-bid-title">说出你的心理价</div>
+                <p class="price-bid-sub" id="priceBidSub">当前套餐：—</p>
+                <input type="number" id="priceBidAmount" min="1" step="1" inputmode="numeric" placeholder="想按多少元开通？">
+                <input type="text" id="priceBidNote" maxlength="50" placeholder="补一句话（可选）">
+                <p class="price-bid-hint" id="priceBidRuleHint">价格合适会立即生效，直接按新价开通；否则转人工处理，结果发站内信。每天可提交 1 次。</p>
+                <div class="price-bid-actions">
+                    <button type="button" class="price-bid-cancel" id="btnPriceBidCancel">再想想</button>
+                    <button type="button" class="price-bid-submit" id="btnPriceBidSubmit">提交出价</button>
+                </div>
+            </div>
+        </div>
 
         <section class="purchase-faq" id="purchaseFaq" aria-label="支付常见问题">
             <div class="purchase-faq-title">支付常见问题</div>
@@ -2605,6 +2713,137 @@
         if (skel) skel.hidden = true;
     }
 
+    /* 心理价出价：达线自动改价并立即生效，未达线转人工（站内信通知结果） */
+    var priceBidUi = { enabled: false, status: '', minAmount: 0, submitting: false };
+
+    function renderPriceBidEntry(hideAll) {
+        var teaser = document.getElementById('priceBidTeaser');
+        var btn = document.getElementById('btnPriceBidOpen');
+        var state = document.getElementById('priceBidStateText');
+        if (!teaser) return;
+        if (hideAll || !priceBidUi.enabled) {
+            teaser.hidden = true;
+            return;
+        }
+        if (priceBidUi.status === 'pending') {
+            teaser.hidden = false;
+            if (btn) btn.hidden = true;
+            if (state) {
+                state.hidden = false;
+                state.textContent = '你的出价已提交，处理结果会发站内信通知。';
+            }
+            return;
+        }
+        teaser.hidden = false;
+        if (btn) btn.hidden = false;
+        if (state) state.hidden = true;
+    }
+
+    function syncPriceBidEntry(hideAll) {
+        if (hideAll) {
+            renderPriceBidEntry(true);
+            return;
+        }
+        paymentFetch('/api/payments/price-bid')
+            .then(function (x) {
+                var d = x.status === 200 && x.body && x.body.data ? x.body.data : null;
+                priceBidUi.enabled = !!(d && d.enabled);
+                priceBidUi.minAmount = d && d.min_amount ? Number(d.min_amount) : 0;
+                priceBidUi.status = d && d.bid ? String(d.bid.status || '') : '';
+                renderPriceBidEntry(false);
+            })
+            .catch(function () {});
+    }
+
+    (function bindPriceBid() {
+        var mask = document.getElementById('priceBidMask');
+        var btnOpen = document.getElementById('btnPriceBidOpen');
+        if (!mask || !btnOpen) return;
+        var amountEl = document.getElementById('priceBidAmount');
+        var noteEl = document.getElementById('priceBidNote');
+        var subEl = document.getElementById('priceBidSub');
+        var btnCancel = document.getElementById('btnPriceBidCancel');
+        var btnSubmit = document.getElementById('btnPriceBidSubmit');
+        function closeBidSheet() {
+            mask.hidden = true;
+        }
+        btnOpen.addEventListener('click', function () {
+            var sku = findSkuById(alipayPricing.selectedSkuId);
+            if (subEl) {
+                subEl.textContent = sku
+                    ? '当前套餐：' + (sku.label || '') + '（现价 ¥' + sku.amount + '）'
+                    : '当前套餐：—';
+            }
+            if (amountEl) amountEl.value = '';
+            if (noteEl) noteEl.value = '';
+            mask.hidden = false;
+            trackPurchase('track_price_bid_open', { sku_id: alipayPricing.selectedSkuId || '' });
+            setTimeout(function () {
+                try {
+                    if (amountEl) amountEl.focus();
+                } catch (eFocus) {}
+            }, 60);
+        });
+        if (btnCancel) btnCancel.addEventListener('click', closeBidSheet);
+        mask.addEventListener('click', function (ev) {
+            if (ev.target === mask) closeBidSheet();
+        });
+        if (btnSubmit) {
+            btnSubmit.addEventListener('click', function () {
+                if (priceBidUi.submitting) return;
+                var amount = amountEl ? String(amountEl.value || '').trim() : '';
+                if (!amount || !(Number(amount) > 0)) {
+                    showToast('请填写想要的价格');
+                    return;
+                }
+                if (priceBidUi.minAmount && Number(amount) < priceBidUi.minAmount) {
+                    showToast('出价不能低于 ' + priceBidUi.minAmount + ' 元');
+                    return;
+                }
+                priceBidUi.submitting = true;
+                btnSubmit.disabled = true;
+                paymentFetch('/api/payments/price-bid', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        sku_id: alipayPricing.selectedSkuId || '',
+                        amount: amount,
+                        note: noteEl ? String(noteEl.value || '').trim() : ''
+                    })
+                })
+                    .then(function (x) {
+                        var ok = x.status === 200 && x.body && x.body.code === 200;
+                        var data = ok && x.body.data ? x.body.data : null;
+                        showToast(
+                            (x.body && x.body.msg) || (ok ? '已提交' : '提交失败，请稍后再试')
+                        );
+                        if (!ok) return;
+                        closeBidSheet();
+                        trackPurchase('track_price_bid_submit', {
+                            sku_id: alipayPricing.selectedSkuId || '',
+                            bid_amount: amount,
+                            bid_status: data ? data.status : ''
+                        });
+                        if (data && data.status === 'accepted') {
+                            priceBidUi.status = 'accepted';
+                            renderPriceBidEntry(true);
+                            /* 专属价已写入，重拉配置让页面立刻按新价展示 */
+                            loadAlipayPurchase();
+                        } else {
+                            priceBidUi.status = 'pending';
+                            renderPriceBidEntry(false);
+                        }
+                    })
+                    .catch(function () {
+                        showToast('网络错误，请稍后再试');
+                    })
+                    .finally(function () {
+                        priceBidUi.submitting = false;
+                        btnSubmit.disabled = false;
+                    });
+            });
+        }
+    })();
+
     function loadAlipayPurchase() {
         return paymentFetch('/api/payments/alipay/config')
             .then(function (x) {
@@ -2661,6 +2900,7 @@
                 if (treatAsCodeOnly) {
                     if (card) card.hidden = true;
                     setShareUiVisible(false);
+                    syncPriceBidEntry(true);
                     purchaseUiMode = 'code_only';
                     alipayPricing.variant = 'c';
                     applyPurchaseUiMode();
@@ -2701,6 +2941,8 @@
                     if (data.custom_offer) {
                         purchaseUiMode = 'legacy';
                     }
+                    /* 已有专属价（含出价通过）就不再出出价入口 */
+                    syncPriceBidEntry(!!data.custom_offer);
                     updatePayCtaFromSelection();
                     if (card) card.hidden = false;
                     hideAlipaySkeleton();

@@ -296,6 +296,24 @@ app.post(
   mw.requireAdminMenu('users'),
   h.handleAdminUserPriceOfferClear
 );
+app.get(
+  '/api/admin/price-bids',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminPriceBidsList
+);
+app.post(
+  '/api/admin/price-bids/review',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminPriceBidsReview
+);
+app.post(
+  '/api/admin/price-bids/config',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminPriceBidsConfigSet
+);
 app.post(
   '/api/admin/user-rename-fee-exempt',
   mw.requireAdminAuth,

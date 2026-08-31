@@ -154,6 +154,54 @@
                         </div>
                     </section>
                     <section>
+                        <h2>心理价出价</h2>
+                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 目录价 × 自动通过线时立即生效为该账号专属价并站内信通知；低于线的进入下方待处理，人工「通过」（可改成交价）或「驳回」，处理结果都会站内信告知用户。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field form-field-narrow">
+                                <label><input type="checkbox" id="bidCfgEnabled" checked> 开放出价入口</label>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorPct">自动通过线（目录价 %）</label>
+                                <input type="number" id="bidCfgFloorPct" min="1" max="100" step="1" placeholder="60">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgMin">最低出价（元）</label>
+                                <input type="number" id="bidCfgMin" min="1" max="99999" step="1" placeholder="30">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgDaily">每人每日次数</label>
+                                <input type="number" id="bidCfgDaily" min="1" max="10" step="1" placeholder="1">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveBidCfg">保存出价配置</button>
+                                <span class="hint" id="bidCfgHint" style="margin-left:8px;"></span>
+                            </div>
+                        </div>
+                        <div class="form-row" style="align-items:center;gap:12px;">
+                            <label><input type="radio" name="bidStatusFilter" value="pending" checked> 待处理</label>
+                            <label><input type="radio" name="bidStatusFilter" value="accepted"> 已通过</label>
+                            <label><input type="radio" name="bidStatusFilter" value="rejected"> 已驳回</label>
+                            <button type="button" class="btn-sm btn-page" id="btnReloadBids">刷新</button>
+                            <span class="hint" id="bidCounts"></span>
+                        </div>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>账号</th>
+                                        <th>套餐</th>
+                                        <th>目录价</th>
+                                        <th>出价</th>
+                                        <th>留言</th>
+                                        <th>状态 / 操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bidTbody"><tr><td colspan="7" class="hint">加载中…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section>
                         <h2>未激活引导弹窗</h2>
                         <p class="hint">对未激活用户在 App 内弹出引导（默认每日最多 1 次）。关闭后当日不再弹出；可配置注册满多少小时后才提示。</p>
                         <div class="form-row form-stack">
