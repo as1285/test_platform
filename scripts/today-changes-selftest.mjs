@@ -1405,7 +1405,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-mi15top'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-norefundsm'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1444,14 +1444,14 @@ mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260831-mi15top" defer',
+    'auth.js?v=20260831-norefundsm" defer',
     'ahead.png?v=20260828-android-load',
   ],
   'shouye auth-boot + compressed ahead'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-mi15top" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-norefundsm" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1550,7 +1550,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['20260831-refundqual', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
+  ['20260831-norefundsm', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
   'auth conversion-guide cache + xiaomi 15 result header'
 );
 mustInclude(
@@ -1589,9 +1589,14 @@ mustInclude(
   'consult records sync refund qualified card'
 );
 mustInclude(
+  'frontend/public/js/conversion-guide.js',
+  ['isAccountActive() && !!hit', 'consultRefundAdEntry', '收入纳税明细不再塞红卡'],
+  'refund ad card only for activated users on consult'
+);
+mustExclude(
   'frontend/shuiming_result.html',
-  ['smRefundAdCard', 'syncShuimingRefundAdCard'],
-  'shuiming result refund qualified card'
+  ['smRefundAdCard', 'syncShuimingRefundAdCard', 'sm-refund-ad-card'],
+  'shuiming result has no refund ad card'
 );
 mustInclude(
   'frontend/admin_panel.html',
@@ -1653,20 +1658,31 @@ mustInclude(
 );
 mustInclude(
   'frontend/gjj_extract_ad.html',
+  ['refund_ad.html', '#gjj', 'from=gjj_legacy', '公积金提取'],
+  'gjj extract ad redirects to refund page'
+);
+mustInclude(
+  'frontend/refund_ad.html',
   [
+    'id="gjjAdOnRefund"',
+    '/img/gjj-extract-ad.jpg',
+    '公积金提取',
     'track_gjj_extract_ad_view',
     'track_gjj_extract_ad_copy',
-    'track_gjj_extract_ad_page_leave',
-    '公积金提取',
-    '真实过户提取，安全可靠',
-    'Tangdong6832'
+    '备注「公积金提取」'
   ],
-  'gjj extract ad page'
+  'refund ad page embeds gjj extract'
 );
 mustInclude(
   'frontend/purchase.html',
-  ['purchaseGjjEntry', 'gjj_extract_ad.html?from=purchase_gjj', 'track_purchase_gjj_ad_entry_view'],
-  'purchase page gjj ad entry'
+  [
+    'purchaseGjjEntry',
+    '/img/gjj-extract-ad.jpg',
+    'track_gjj_extract_ad_view',
+    'track_gjj_extract_ad_copy',
+    'track_purchase_gjj_ad_entry_view'
+  ],
+  'purchase page embeds gjj ad with refund'
 );
 if (exists('frontend/public/img/gjj-extract-ad.jpg')) ok('gjj extract ad poster image');
 else fail('gjj extract ad poster image', 'missing frontend/public/img/gjj-extract-ad.jpg');
@@ -1683,9 +1699,9 @@ mustInclude(
   'douyin yuefu ad services grid banner'
 );
 mustInclude(
-  'frontend/gjj_extract_ad.html',
-  ['/img/ad-services-grid.jpg', 'ad-services-top'],
-  'gjj extract ad services grid banner'
+  'frontend/refund_ad.html',
+  ['id="gjjAdOnRefund"', 'ad-services-top'],
+  'gjj extract lives on refund ad page with services grid'
 );
 mustInclude(
   'backend/src/admin/adPageAnalytics.js',

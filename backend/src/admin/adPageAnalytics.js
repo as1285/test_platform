@@ -57,6 +57,7 @@ var SOURCE_LABELS = {
   consult_products: '咨询页增值',
   purchase_yuefu: '开通页月付入口',
   purchase_gjj: '开通页公积金入口',
+  gjj_legacy: '公积金旧页跳转',
   shuiming_result: '收入明细',
   msg_refund: '退税站内信',
   direct: '直接访问'

@@ -15,6 +15,11 @@ describe('refund_ad bottom guide copy', () => {
     expect(html).toContain('去添加任职受雇');
     expect(html).toContain('open=employer');
     expect(html).toContain('btnCopyRefundWechatGuide');
+    expect(html).toContain('id="gjjAdOnRefund"');
+    expect(html).toContain('公积金提取');
+    expect(html).toContain('/img/gjj-extract-ad.jpg');
+    expect(html).toContain('track_gjj_extract_ad_view');
+    expect(html).toContain('track_gjj_extract_ad_copy');
   });
 
   it('shows empty-employer tip from local count and tracks guide jumps', () => {

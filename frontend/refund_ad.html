@@ -56,11 +56,11 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
+    <script src="/js/auth.js?v=20260831-norefundsm" defer></script>
     <script src="/js/app/nav.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ff9a1f">
-    <title>二次退税</title>
+    <title>二次退税 · 公积金</title>
     <style>
         :root {
             --safe-t: env(safe-area-inset-top, 0px);
@@ -353,6 +353,35 @@
             color: #94a3b8;
         }
         .refund-ad-need-employer[hidden] { display: none; }
+        .gjj-ad-on-refund {
+            margin-top: 12px;
+            overflow: hidden;
+            border-radius: 16px;
+            background: #b8332a;
+            box-shadow: 0 10px 24px rgba(154, 42, 34, 0.28);
+        }
+        .gjj-ad-on-refund-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .gjj-ad-on-refund .refund-ad-wx {
+            background: #fff;
+        }
+        .gjj-ad-lede {
+            margin: 12px 2px 0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+            font-size: 13px;
+            line-height: 1.55;
+            color: #475569;
+        }
+        .gjj-ad-lede strong { color: #9a2a22; }
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
@@ -360,7 +389,7 @@
 <body class="page-refund-ad has-bottom-nav">
     <header class="refund-ad-header">
         <a href="consult.html" class="refund-ad-back" id="refundAdBackLink">返回咨询</a>
-        <h1 id="refundAdTitle">二次退税</h1>
+        <h1 id="refundAdTitle">二次退税 · 公积金</h1>
         <p class="refund-ad-header-sub" id="refundAdSub">填完了。看一眼是否符合二次退税，不想看可直接去记录。</p>
     </header>
     <main class="refund-ad-page">
@@ -393,6 +422,24 @@
                         <strong class="refund-ad-wx-id" id="refundWechatId">Tangdong6832</strong>
                     </div>
                     <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
+                </div>
+            </aside>
+            <p class="gjj-ad-lede" id="gjjAdLede">同一顾问也可问公积金：<strong>在职 / 离职 / 封存、大额 / 小额</strong>都可操作，不成功不收费，当天到账。复制微信号，备注「公积金提取」。</p>
+            <aside class="gjj-ad-on-refund" id="gjjAdOnRefund" aria-label="公积金提取">
+                <img
+                    class="gjj-ad-on-refund-img"
+                    id="gjjAdPoster"
+                    src="/img/gjj-extract-ad.jpg?v=20260831-poster"
+                    width="768"
+                    height="1024"
+                    alt="公积金提取：在职离职封存大额小额皆可操作，不成功不收费，当天到账"
+                >
+                <div class="refund-ad-wx">
+                    <div class="refund-ad-wx-meta">
+                        <span class="refund-ad-wx-label">加微信咨询（备注：公积金提取）</span>
+                        <strong class="refund-ad-wx-id" id="gjjWechatId">Tangdong6832</strong>
+                    </div>
+                    <button type="button" class="refund-ad-copy" id="btnCopyGjjWechat">复制微信号</button>
                 </div>
             </aside>
             <section class="refund-ad-guide" id="refundAdGuide" aria-labelledby="refundAdGuideTitle">
@@ -477,6 +524,7 @@
 
         function pageSource() {
             if (fromTaxDone) return 'tax_done';
+            if (fromRaw) return fromRaw;
             if (fromConsult) return fromConsult;
             return 'consult';
         }
@@ -602,11 +650,12 @@
 
         var fromTaxDone = false;
         var fromConsult = '';
+        var fromRaw = '';
         var year = '';
         var reason = '';
         try {
             var qs = new URLSearchParams(window.location.search || '');
-            var fromRaw = String(qs.get('from') || '').trim();
+            fromRaw = String(qs.get('from') || '').trim();
             fromTaxDone = fromRaw === 'tax_done';
             if (
                 fromRaw === 'consult' ||
@@ -717,6 +766,86 @@
             poster.addEventListener('click', function () {
                 track('track_refund_ad_poster_click', { wechat_id: WECHAT_ID });
             });
+        }
+
+        function copyGjjWechat(copyFrom) {
+            copyText(WECHAT_ID)
+                .then(function () {
+                    showToast('已复制微信号 ' + WECHAT_ID + '，备注公积金提取');
+                    copiedThisVisit += 1;
+                    track('track_gjj_extract_ad_copy', {
+                        wechat_id: WECHAT_ID,
+                        copy_from: copyFrom || 'wx_block',
+                        page: 'refund_ad'
+                    });
+                })
+                .catch(function () {
+                    showToast('复制失败，请长按微信号手动复制');
+                });
+        }
+
+        var gjjBlock = document.getElementById('gjjAdOnRefund');
+        var gjjCopyBtn = document.getElementById('btnCopyGjjWechat');
+        var gjjIdEl = document.getElementById('gjjWechatId');
+        var gjjPoster = document.getElementById('gjjAdPoster');
+        if (gjjCopyBtn) {
+            gjjCopyBtn.addEventListener('click', function () {
+                copyGjjWechat('wx_btn');
+            });
+        }
+        if (gjjIdEl) {
+            gjjIdEl.addEventListener('click', function () {
+                copyGjjWechat('wx_id');
+            });
+        }
+        if (gjjPoster) {
+            gjjPoster.addEventListener('click', function () {
+                track('track_gjj_extract_ad_poster_click', {
+                    wechat_id: WECHAT_ID,
+                    page: 'refund_ad'
+                });
+            });
+        }
+        if (gjjBlock) {
+            var gjjViewed = false;
+            function markGjjView() {
+                if (gjjViewed) return;
+                gjjViewed = true;
+                track('track_gjj_extract_ad_view', {
+                    wechat_id: WECHAT_ID,
+                    page: 'refund_ad'
+                });
+            }
+            if (typeof IntersectionObserver === 'function') {
+                var gjjIo = new IntersectionObserver(
+                    function (entries) {
+                        var hit = entries && entries[0] && entries[0].isIntersecting;
+                        if (!hit) return;
+                        markGjjView();
+                        try {
+                            gjjIo.disconnect();
+                        } catch (eIo) {}
+                    },
+                    { threshold: 0.28 }
+                );
+                gjjIo.observe(gjjBlock);
+            } else {
+                markGjjView();
+            }
+            var wantGjjFocus = false;
+            try {
+                wantGjjFocus =
+                    (window.location.hash || '') === '#gjj' ||
+                    fromRaw === 'purchase_gjj' ||
+                    fromRaw === 'gjj_legacy';
+            } catch (eHash) {}
+            if (wantGjjFocus) {
+                setTimeout(function () {
+                    try {
+                        gjjBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (eScroll) {}
+                }, 80);
+            }
         }
 
         var navItems = document.querySelectorAll('.bottom-nav .nav-item');

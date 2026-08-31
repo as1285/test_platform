@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
+    <script src="/js/auth.js?v=20260831-norefundsm" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -1000,49 +1000,18 @@
             color: #fe2c55;
             font-weight: 700;
         }
-        .purchase-gjj-entry {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .purchase-gjj-ad {
             margin-top: 12px;
-            padding: 14px 14px;
+            overflow: hidden;
             border-radius: 14px;
-            background: linear-gradient(135deg, #b8332a 0%, #9a2a22 100%);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            text-decoration: none;
-            color: #fff;
-            -webkit-tap-highlight-color: transparent;
+            background: #b8332a;
+            box-shadow: 0 8px 18px rgba(154, 42, 34, 0.28);
         }
-        .purchase-gjj-entry:active { opacity: 0.92; }
-        .purchase-gjj-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.16);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            font-size: 13px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-        .purchase-gjj-body { flex: 1; min-width: 0; }
-        .purchase-gjj-title {
-            font-size: 15px;
-            font-weight: 700;
-        }
-        .purchase-gjj-sub {
-            margin-top: 2px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.82);
-            line-height: 1.4;
-        }
-        .purchase-gjj-arrow {
-            flex-shrink: 0;
-            font-size: 18px;
-            font-weight: 700;
-            opacity: 0.9;
+        .purchase-gjj-ad-poster {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
         }
         .purchase-sticky-cta {
             position: fixed;
@@ -1230,15 +1199,6 @@
             <span class="purchase-yuefu-arrow" aria-hidden="true">›</span>
         </a>
 
-        <a class="purchase-gjj-entry" id="purchaseGjjEntry" href="gjj_extract_ad.html?from=purchase_gjj" aria-label="公积金提取">
-            <div class="purchase-gjj-icon" aria-hidden="true">公积金</div>
-            <div class="purchase-gjj-body">
-                <div class="purchase-gjj-title">公积金提取 · 当天到账</div>
-                <div class="purchase-gjj-sub">在职/离职/封存/大额/小额皆可 · 不成功不收费</div>
-            </div>
-            <span class="purchase-gjj-arrow" aria-hidden="true">›</span>
-        </a>
-
         <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询">
             <img
                 class="purchase-refund-ad-poster"
@@ -1253,6 +1213,23 @@
                     <strong class="purchase-refund-ad-wx-id" id="purchaseRefundWechatId">Tangdong6832</strong>
                 </div>
                 <button type="button" class="purchase-refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
+            </div>
+        </aside>
+
+        <aside class="purchase-gjj-ad" id="purchaseGjjEntry" aria-label="公积金提取">
+            <img
+                class="purchase-gjj-ad-poster"
+                src="/img/gjj-extract-ad.jpg?v=20260831-poster"
+                width="768"
+                height="1024"
+                alt="公积金提取：在职离职封存大额小额皆可操作，不成功不收费，当天到账"
+            >
+            <div class="purchase-refund-ad-wx">
+                <div class="purchase-refund-ad-wx-meta">
+                    <span class="purchase-refund-ad-wx-label">加微信咨询（备注：公积金提取）</span>
+                    <strong class="purchase-refund-ad-wx-id" id="purchaseGjjWechatId">Tangdong6832</strong>
+                </div>
+                <button type="button" class="purchase-refund-ad-copy" id="btnCopyGjjWechat">复制微信号</button>
             </div>
         </aside>
 
@@ -3123,8 +3100,29 @@
     })();
 
     (function initPurchaseGjjEntry() {
+        var WECHAT_ID = 'Tangdong6832';
         var entry = document.getElementById('purchaseGjjEntry');
+        var copyBtn = document.getElementById('btnCopyGjjWechat');
+        var idEl = document.getElementById('purchaseGjjWechatId');
         if (!entry) return;
+
+        function copyGjjWechat() {
+            copyTextFallback(WECHAT_ID)
+                .then(function () {
+                    showToast('已复制微信号 ' + WECHAT_ID + '，备注公积金提取');
+                    trackPurchase('track_gjj_extract_ad_copy', {
+                        wechat_id: WECHAT_ID,
+                        copy_from: 'purchase',
+                        page: 'purchase'
+                    });
+                })
+                .catch(function () {
+                    showToast('复制失败，请长按微信号手动复制');
+                });
+        }
+        if (copyBtn) copyBtn.addEventListener('click', copyGjjWechat);
+        if (idEl) idEl.addEventListener('click', copyGjjWechat);
+
         if (typeof IntersectionObserver === 'function') {
             var seen = false;
             var io = new IntersectionObserver(
@@ -3133,6 +3131,10 @@
                     var hit = entries && entries[0] && entries[0].isIntersecting;
                     if (!hit) return;
                     seen = true;
+                    trackPurchase('track_gjj_extract_ad_view', {
+                        wechat_id: WECHAT_ID,
+                        page: 'purchase'
+                    });
                     trackPurchase('track_purchase_gjj_ad_entry_view', {});
                     try {
                         io.disconnect();
@@ -3142,11 +3144,12 @@
             );
             io.observe(entry);
         } else {
+            trackPurchase('track_gjj_extract_ad_view', {
+                wechat_id: WECHAT_ID,
+                page: 'purchase'
+            });
             trackPurchase('track_purchase_gjj_ad_entry_view', {});
         }
-        entry.addEventListener('click', function () {
-            trackPurchase('track_purchase_gjj_ad_entry_click', {});
-        });
     })();
 
     (function initPurchaseConversionUi() {
