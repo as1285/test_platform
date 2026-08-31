@@ -509,7 +509,7 @@ mustInclude(
   'frontend/consult.html',
   [
     'id="consultRefundAdEntry"',
-    'refund_ad.html?from=consult',
+    'purchase.html?from=consult',
     '二次退税咨询',
     'id="consultRefundAdProductEntry"'
   ],
@@ -1230,6 +1230,43 @@ if (
   ok('sbdy Beijing seal assets present');
 }
 
+mustInclude(
+  'backend/scripts/sbdy_xm_render_pdf.py',
+  [
+    '基本养老个人历年缴费明细表',
+    '参保地经办机构',
+    'xm_seal.png',
+    'FIRST_ROWS = 29',
+    '全国社保卡服务平台'
+  ],
+  'sbdy Xiamen PDF renderer'
+);
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  ['SBDY_XM_RENDER_SCRIPT', 'normalizeXmPayload', 'isXmRegion', 'renderXmCertHtml', 'xm_official_v1'],
+  'sbdy Xiamen backend routing'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['sbdyRegionXm', '湖里区', '厦门示例', '张知宇', '1800'],
+  'sbdy Xiamen admin UI'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['sbdyRegionXm', '厦门基本养老个人历年缴费明细表'],
+  'sbdy Xiamen admin panel radio'
+);
+mustInclude(
+  'frontend/sbdy_demo.html',
+  ['sbdyRegionXm', '20260831-xiamen'],
+  'sbdy Xiamen C-end radio + cache'
+);
+if (!exists('backend/assets/sbdy/xm_seal.png') || !exists('frontend/public/img/sbdy_xm_seal.png')) {
+  fail('sbdy Xiamen seal assets present', 'missing xm_seal.png');
+} else {
+  ok('sbdy Xiamen seal assets present');
+}
+
 
 mustInclude(
   'frontend/public/js/auth.js',
@@ -1405,7 +1442,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-norefundsm'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-inactiveonly'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1444,14 +1481,14 @@ mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260831-norefundsm" defer',
+    'auth.js?v=20260831-inactiveonly" defer',
     'ahead.png?v=20260828-android-load',
   ],
   'shouye auth-boot + compressed ahead'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-norefundsm" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-inactiveonly" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1550,7 +1587,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['20260831-norefundsm', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
+  ['20260831-inactiveonly', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
   'auth conversion-guide cache + xiaomi 15 result header'
 );
 mustInclude(
@@ -1590,13 +1627,29 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/conversion-guide.js',
-  ['isAccountActive() && !!hit', 'consultRefundAdEntry', '收入纳税明细不再塞红卡'],
-  'refund ad card only for activated users on consult'
+  [
+    'isInactiveRefundCardUser',
+    'var show = isInactiveRefundCardUser()',
+    'consultRefundAdEntry',
+    'syncShuimingInactivePrompt',
+    '开通后这张卡会消失'
+  ],
+  'refund card only for inactive users then hides after activate'
+);
+mustInclude(
+  'frontend/consult.html',
+  ['consultRefundAdEntry" hidden', 'purchase.html?from=consult', '开通后这张卡会消失'],
+  'consult refund card hidden until inactive prompt'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['smActivateCard', 'smActivateTitle', 'is-refund-prompt', 'syncShuimingInactivePrompt'],
+  'shuiming inactive activate card with refund prompt'
 );
 mustExclude(
   'frontend/shuiming_result.html',
-  ['smRefundAdCard', 'syncShuimingRefundAdCard', 'sm-refund-ad-card'],
-  'shuiming result has no refund ad card'
+  ['smRefundAdCard', 'syncShuimingRefundAdCard', 'id="smRefundAdBtn"'],
+  'shuiming result has no wechat refund card'
 );
 mustInclude(
   'frontend/admin_panel.html',

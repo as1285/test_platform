@@ -827,4 +827,69 @@ describe('sbdyDemo', () => {
     expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
     expect(html).not.toContain('<script>x</script>');
   });
+
+  it('normalizePayload builds Xiamen pension year-detail rows', () => {
+    const p = normalizePayload({
+      region: 'xm',
+      name: '张知宇',
+      id_number: '350425198902233512',
+      area: '湖里区',
+      period_start: '2024-01',
+      period_end: '2024-03',
+      base_amount: 1800,
+      print_date: '2026-08-31',
+      unit_code: '6200088588',
+      segments: [
+        {
+          company_name: '厦门某某科技有限公司',
+          unit_code: '5001098765',
+          area: '同安区',
+          period_start: '2024-01',
+          period_end: '2024-02',
+          base_amount: 1800
+        },
+        {
+          company_name: '金旸（厦门）新材料科技有限公司',
+          unit_code: '5001016497',
+          area: '海沧区',
+          period_start: '2024-03',
+          period_end: '2024-03',
+          base_amount: 1700
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('xm');
+    expect(p.layout).toBe('xm_official_v1');
+    expect(p.person_no).toBe('350425198902233512');
+    expect(p.rows.length).toBe(3);
+    expect(p.rows[0].agency).toBe('同安区社会保险中心');
+    expect(p.rows[0].period_ym).toBe('202401');
+    expect(p.rows[2].agency).toBe('海沧区社会保险中心');
+    expect(p.rows[2].company_name).toBe('金旸（厦门）新材料科技有限公司');
+    expect(p.total_months).toBe(3);
+    expect(p.print_date).toBe('2026-08-31');
+    const html = renderCertHtml(p);
+    expect(html).toContain('基本养老个人历年缴费明细表');
+    expect(html).toContain('参保地经办机构');
+    expect(html).toContain('张知宇');
+    expect(html).toContain('同安区社会保险中心');
+    expect(html).toContain('/img/sbdy_xm_seal.png');
+    expect(html).toContain('第 1 页 共 1 页');
+  });
+
+  it('Xiamen HTML escapes name', () => {
+    const p = normalizePayload({
+      region: 'xm',
+      name: '<b>李</b>',
+      id_number: '350206199001010029',
+      period_start: '2025-01',
+      period_end: '2025-01',
+      company_name: '厦门甲公司'
+    });
+    expect(p.error).toBeFalsy();
+    const html = renderCertHtml(p);
+    expect(html).toContain('&lt;b&gt;李&lt;/b&gt;');
+    expect(html).not.toMatch(/<td[^>]*>\s*<b>李<\/b>/);
+  });
 });

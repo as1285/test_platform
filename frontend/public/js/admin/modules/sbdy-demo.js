@@ -197,6 +197,8 @@
     var js = document.getElementById('sbdyRegionJs');
     var bj = document.getElementById('sbdyRegionBj');
     var sh = document.getElementById('sbdyRegionSh');
+    var xm = document.getElementById('sbdyRegionXm');
+    if (xm && xm.checked) return 'xm';
     if (sh && sh.checked) return 'sh';
     if (bj && bj.checked) return 'bj';
     if (js && js.checked) return 'js';
@@ -222,10 +224,10 @@
       el.hidden = region !== 'wh';
     });
     document.querySelectorAll('.sbdy-wh-hn').forEach(function (el) {
-      el.hidden = region !== 'wh' && region !== 'hn';
+      el.hidden = region !== 'wh' && region !== 'hn' && region !== 'xm';
     });
     document.querySelectorAll('.sbdy-sz-wh-hn').forEach(function (el) {
-      el.hidden = !isSzStyle(region) && region !== 'wh' && region !== 'hn';
+      el.hidden = !isSzStyle(region) && region !== 'wh' && region !== 'hn' && region !== 'xm';
     });
     document.querySelectorAll('.sbdy-sz-wh').forEach(function (el) {
       el.hidden = !isSzStyle(region) && region !== 'wh';
@@ -235,7 +237,12 @@
     });
     document.querySelectorAll('.sbdy-zj-wh-js').forEach(function (el) {
       el.hidden =
-        region !== 'zj' && region !== 'wh' && region !== 'js' && region !== 'bj' && region !== 'sh';
+        region !== 'zj' &&
+        region !== 'wh' &&
+        region !== 'js' &&
+        region !== 'bj' &&
+        region !== 'sh' &&
+        region !== 'xm';
     });
     document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
       el.hidden = region !== 'js';
@@ -246,7 +253,8 @@
         region !== 'js' &&
         region !== 'bj' &&
         region !== 'sh' &&
-        region !== 'gz';
+        region !== 'gz' &&
+        region !== 'xm';
     });
     var regionDefaults = {
       zj: { area: '余杭区', base: '4986' },
@@ -256,7 +264,8 @@
       hn: { area: '常德市鼎城区', base: '4053' },
       js: { area: '溧水区', base: '4494' },
       bj: { area: '朝阳区', base: '6821' },
-      sh: { area: '上海市', base: '7313' }
+      sh: { area: '上海市', base: '7313' },
+      xm: { area: '湖里区', base: '1800' }
     };
     var defaultAreas = [];
     var defaultBases = ['6120', '4308'];
@@ -315,7 +324,8 @@
       hn: '430703',
       js: '320102',
       bj: '110105',
-      sh: '310115'
+      sh: '310115',
+      xm: '350206'
     };
     var prefix =
       (areaCodes[region] || areaCodes.zj) +
@@ -583,7 +593,17 @@
     if (looksSh && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|江苏|北京/.test(text) && !/上海/.test(text)) {
       looksSh = false;
     }
-    var region = looksSh
+    var looksXm = !!(
+      /厦门|基本养老个人历年缴费明细|湖里区社会保险|思明区社会保险|集美区社会保险|海沧区社会保险|同安区社会保险|翔安区社会保险|福建省社保移入/.test(
+        text
+      )
+    );
+    if (looksXm && /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海/.test(text) && !/厦门/.test(text)) {
+      looksXm = false;
+    }
+    var region = looksXm
+      ? 'xm'
+      : looksSh
       ? 'sh'
       : looksBj
         ? 'bj'
@@ -623,7 +643,9 @@
                     ? 6821
                     : region === 'sh'
                       ? 7313
-                      : 4986;
+                      : region === 'xm'
+                        ? 1800
+                        : 4986;
     }
     var pension = Math.round(base * 0.08 * 100) / 100;
     var unemp = Math.round(base * (isSzStyle(region) ? 0.002 : 0.005) * 100) / 100;
@@ -706,6 +728,9 @@
     } else if (parsed.region === 'sh') {
       var shRadio = document.getElementById('sbdyRegionSh');
       if (shRadio) shRadio.checked = true;
+    } else if (parsed.region === 'xm') {
+      var xmRadio = document.getElementById('sbdyRegionXm');
+      if (xmRadio) xmRadio.checked = true;
     } else if (parsed.region === 'zj') {
       var zjRadio = document.getElementById('sbdyRegionZj');
       if (zjRadio) zjRadio.checked = true;
@@ -731,7 +756,9 @@
                   ? '朝阳区'
                   : parsed.region === 'sh'
                     ? '上海市'
-                    : '余杭区')
+                    : parsed.region === 'xm'
+                      ? '湖里区'
+                      : '余杭区')
     );
     setField('sbdyUnitCode', parsed.unit_code || '');
     setField('sbdyComputerNo', parsed.computer_no || '');
@@ -925,7 +952,9 @@
                   ? '北京'
                   : row.region === 'sh'
                     ? '上海'
-                    : '浙江';
+                    : row.region === 'xm'
+                      ? '厦门'
+                      : '浙江';
       html +=
         '<tr>' +
         '<td>' +
@@ -1121,7 +1150,9 @@
                 ? 6821
                 : region === 'sh'
                   ? 7313
-                  : 4986;
+                  : region === 'xm'
+                    ? 1800
+                    : 4986;
     var defaultArea =
       region === 'gz'
         ? '广州市'
@@ -1137,7 +1168,9 @@
                 ? '朝阳区'
                 : region === 'sh'
                   ? '上海市'
-                  : '余杭区';
+                  : region === 'xm'
+                    ? '湖里区'
+                    : '余杭区';
     var formGender =
       val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女';
     var formIdNumber = val('sbdyIdNumber');
@@ -1253,6 +1286,24 @@
       if (totalEl && String(totalEl.value || '').trim()) {
         body.total_months = Number(totalEl.value);
       }
+    }
+    if (region === 'xm') {
+      var xmSegs = readSegments();
+      if (xmSegs.length) {
+        body.segments = xmSegs.map(function (s) {
+          return {
+            company_name: s.company_name,
+            unit_code: s.credit_code,
+            area: s.area,
+            base_amount: s.base_amount,
+            period_start: s.period_start,
+            period_end: s.period_end
+          };
+        });
+      }
+      body.company_name = cleanCompanyName(body.company_name);
+      if (!body.person_no) body.person_no = body.id_number;
+      body.print_date = val('sbdyPrintDate') || defaultPrintDateCn();
     }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
       body.snapshot_ym = '202604';
@@ -1399,6 +1450,39 @@
         }
       ]);
       setStatus('已填充上海示例：陈思远（近60个月参保情况，两家单位，可再点生成）', false);
+      return;
+    }
+    if (currentRegion() === 'xm') {
+      setField('sbdyName', '张知宇');
+      setField('sbdyIdNumber', '350425198902233512');
+      setField('sbdyGender', '男');
+      setField('sbdyPersonNo', '350425198902233512');
+      setField('sbdyCompany', '');
+      setField('sbdyArea', '湖里区');
+      setField('sbdyUnitCode', '6200088588');
+      setField('sbdyBase', 1800);
+      setField('sbdyPeriodStart', '2024-01');
+      setField('sbdyPeriodEnd', '2025-06');
+      setField('sbdyPrintDate', printDate);
+      renderSegments([
+        {
+          company_name: '厦门某某科技有限公司',
+          credit_code: '5001098765',
+          area: '同安区',
+          base_amount: 1800,
+          period_start: '2024-01',
+          period_end: '2024-12'
+        },
+        {
+          company_name: '金旸（厦门）新材料科技有限公司',
+          credit_code: '5001016497',
+          area: '海沧区',
+          base_amount: 1700,
+          period_start: '2025-01',
+          period_end: '2025-06'
+        }
+      ]);
+      setStatus('已填充厦门示例：张知宇（基本养老历年缴费明细，两家单位，可再点生成）', false);
       return;
     }
     if (currentRegion() === 'js') {
