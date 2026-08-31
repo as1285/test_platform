@@ -3,7 +3,8 @@
 """按参考 show.pdf（PD4ML A4）坐标生成浙江省社保参保证明演示 PDF。
 
 字体：正文 Noto Serif CJK SC Regular（贴近官方 NSimSun，不加描边）；
-标题用 Bold。字库按本文裁切（retain_gids）后绘制。
+仅主标题与表头标签用 Bold。分节标题（如「参加社会保险基本情况」）与官方一致用常规字重。
+字库按本文裁切（retain_gids）后绘制。
 
 单元格（溢出框）：缩字号适配边距；仍超宽则 textbox 限制在格线内。
 """
@@ -459,8 +460,7 @@ def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=N
 BOLD_LABEL_CHARS = (
     '姓名社会保障号证件类型证件号码性别'
     '险　　种参保状态参保单位养老保险工伤保险失业保险'
-    '参加社会保险基本情况'
-    '出具证明前个月缴费情况（续）'
+    # 分节标题「参加社会保险基本情况 / 缴费情况」官方为常规字重，不进 Bold 子集
     '年月单位编号备注参保地缴费基数(元)个人缴费状况'
     '共页第'
     '（盖章）'
@@ -814,17 +814,17 @@ def render(payload, auth_code, qr_url, out_path):
                         y_t1_1,
                         SIZE_BODY,
                     )
+                # 官方样例：分节标题为常规字重（非 Bold），与正文同族
                 cell_center(
                     page,
-                    font_title,
-                    title_name,
+                    font_body,
+                    body_name,
                     '参加社会保险基本情况',
                     X0,
                     X1,
                     y_t1_1,
                     y_t1_2,
                     SIZE_SECTION,
-                    emph=True,
                 )
 
                 # —— 参保基本情况 ——
@@ -881,15 +881,14 @@ def render(payload, auth_code, qr_url, out_path):
                 )
                 cell_center(
                     page,
-                    font_title,
-                    title_name,
+                    font_body,
+                    body_name,
                     section_title,
                     X0,
                     X1,
                     y2[3],
                     y2[4],
                     SIZE_SECTION,
-                    emph=True,
                 )
                 y_table = 207.5
             else:
@@ -897,15 +896,14 @@ def render(payload, auth_code, qr_url, out_path):
                 draw_rect(page, 193.3, 207.5)
                 cell_center(
                     page,
-                    font_title,
-                    title_name,
+                    font_body,
+                    body_name,
                     section_title + '（续）',
                     X0,
                     X1,
                     193.3,
                     207.5,
                     SIZE_SECTION,
-                    emph=True,
                 )
                 y_table = 207.5
 
