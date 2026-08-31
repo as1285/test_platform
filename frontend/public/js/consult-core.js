@@ -207,6 +207,9 @@ function initTabs() {
     var tab = getUrlParam('tab') || 'records';
     if (tab === 'batch' || tab === 'batch_records') tab = 'records';
     if (tab === 'messages' || tab === 'profile') tab = 'employers';
+    if (getUrlParam('open') === 'employer' || getUrlParam('onboarding') === 'employer') {
+        tab = 'employers';
+    }
     var valid = ['employers', 'records', 'products'];
     if (valid.indexOf(tab) < 0) tab = 'records';
     switchTab(tab, false);
@@ -2049,6 +2052,26 @@ function setConsultFormCardExpanded(cardId, expanded) {
     }
 }
 
+function tryOpenEmployerFormFromUrl() {
+    var open = getUrlParam('open');
+    var onboarding = getUrlParam('onboarding');
+    if (open !== 'employer' && onboarding !== 'employer') return;
+    if (!document.getElementById('employerFormCard')) return;
+    function cleanOpenParam() {
+        try {
+            if (!history.replaceState) return;
+            var u = new URL(window.location.href);
+            if (u.searchParams.get('open') === 'employer') u.searchParams.delete('open');
+            if (u.searchParams.get('onboarding') === 'employer') u.searchParams.delete('onboarding');
+            history.replaceState({}, '', u);
+        } catch (e0) {}
+    }
+    setTimeout(function () {
+        scrollToEmployerForm();
+        cleanOpenParam();
+    }, 80);
+}
+
 function scrollToEmployerForm() {
     setConsultFormCardExpanded('employerFormCard', true);
     var el = document.getElementById('employerFormCard');
@@ -2479,6 +2502,7 @@ function boot() {
     initBatchCompanyHistoryUi();
     initConsultRecordsUx();
     initTabs();
+    tryOpenEmployerFormFromUrl();
     setDefaultMsgDate();
     /* 首屏只拉税务列表，再串行任职；安装包延后，避免 4G 连接排队把 records 拖到数秒 */
     refreshRecordList({ force: false })

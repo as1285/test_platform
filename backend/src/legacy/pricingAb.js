@@ -3,6 +3,7 @@
  * 价格、时长、是否上架以后台「支付套餐」为准。
  * 历史 A/B/C 分流与 sticky 仍可读，新解析一律走 B（treatment）。
  * 小时卡 / 天卡 / 3天卡 / 永久档已下架，仅历史订单 / 已有专属价可解析。
+ * GitHub 渠道：未开通另加 ¥98/3天体验卡；周卡/双周/月卡改为 200/300/398（不改全站货架）。
  */
 'use strict';
 
@@ -583,6 +584,12 @@ function normalizeAbcPercents(raw, landingCPercent) {
   };
 }
 
+function isGithubChannel(userRow) {
+  return String((userRow && userRow.register_source_channel) || '')
+    .trim()
+    .toLowerCase() === 'github';
+}
+
 function shouldOfferGithubEntry(userRow) {
   if (!userRow) return false;
   var active =
@@ -590,7 +597,24 @@ function shouldOfferGithubEntry(userRow) {
     userRow.account_active === true ||
     Number(userRow.account_active) === 1;
   if (active) return false;
-  return String(userRow.register_source_channel || '').trim().toLowerCase() === 'github';
+  return isGithubChannel(userRow);
+}
+
+/** GitHub 渠道货架价：周卡 200 / 双周 300 / 月卡 398；不改全站目录 */
+var GITHUB_CHANNEL_AMOUNT_BY_SKU = {
+  sku_300_7d: '200.00',
+  sku_348_14d: '300.00',
+  sku_398_30d: '398.00'
+};
+
+function applyGithubChannelCatalogPrices(skus) {
+  var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
+  var i;
+  for (i = 0; i < next.length; i++) {
+    var amt = GITHUB_CHANNEL_AMOUNT_BY_SKU[next[i].id];
+    if (amt) next[i].amount = amt;
+  }
+  return next;
 }
 
 function prependGithubEntrySku(skus) {
@@ -1011,6 +1035,9 @@ function createPricingAb(deps) {
             'SELECT register_source_channel, account_active FROM users WHERE username = ? LIMIT 1',
             [seed]
           );
+          if (isGithubChannel(rows && rows[0])) {
+            skus = applyGithubChannelCatalogPrices(skus);
+          }
           if (shouldOfferGithubEntry(rows && rows[0])) {
             skus = prependGithubEntrySku(skus);
             githubEntry = true;
@@ -1102,6 +1129,9 @@ module.exports = {
   abcToOfferVariant: abcToOfferVariant,
   offerVariantToAbc: offerVariantToAbc,
   shouldOfferGithubEntry: shouldOfferGithubEntry,
+  isGithubChannel: isGithubChannel,
+  applyGithubChannelCatalogPrices: applyGithubChannelCatalogPrices,
+  GITHUB_CHANNEL_AMOUNT_BY_SKU: GITHUB_CHANNEL_AMOUNT_BY_SKU,
   prependGithubEntrySku: prependGithubEntrySku,
   SKU_98_3DAY: SKU_98_3DAY
 };

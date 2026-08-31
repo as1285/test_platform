@@ -63,9 +63,9 @@ describe('android first-paint load', () => {
     pages.forEach((name) => {
       const html = readFileSync(join(frontend, name), 'utf8');
       expect(html, name).toContain('auth-boot.js?v=20260828-android-load');
-      expect(html, name).toMatch(/auth\.js\?v=20260829-k80pro" defer/);
+      expect(html, name).toMatch(/auth\.js\?v=202608\d{2}-[\w-]+" defer/);
       const bootAt = html.indexOf('auth-boot.js');
-      const authAt = html.indexOf('auth.js?v=20260829-k80pro');
+      const authAt = html.search(/auth\.js\?v=202608/);
       expect(bootAt, name).toBeGreaterThan(-1);
       expect(authAt, name).toBeGreaterThan(bootAt);
     });

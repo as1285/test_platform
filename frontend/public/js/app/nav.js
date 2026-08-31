@@ -6,7 +6,7 @@
     'shouye.html': 'shouye',
     'daiban.html': 'daiban',
     'bancha.html': 'bancha',
-    'refund_ad.html': 'refund',
+    'refund_ad.html': 'mine',
     'message.html': 'message',
     'mine.html': 'mine',
     'consult.html': 'mine'
@@ -28,7 +28,7 @@
       if (body.classList.contains('page-daiban')) return 'daiban';
       if (body.classList.contains('page-bancha')) return 'bancha';
       if (body.classList.contains('page-message')) return 'message';
-      if (body.classList.contains('page-refund-ad')) return 'refund';
+      if (body.classList.contains('page-refund-ad')) return 'mine';
     }
     return '';
   }

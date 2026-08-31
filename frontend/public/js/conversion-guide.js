@@ -18,6 +18,9 @@
   var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
   var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
   var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
+  /** 填完个税后引导二次退税广告：以下任一年已申报税额合计超过阈值即可 */
+  var REFUND_AD_TAX_YEARS = [2025, 2024, 2023];
+  var REFUND_AD_MIN_TAX_REPORTED = 5000;
   var hoursSinceRegisterCached = 0;
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
@@ -1661,24 +1664,86 @@
     );
   }
 
-  /** 注册用户填完个税后带去一次广告页；可跳过，不重复打断 */
-  function maybeGoRefundAdAfterTax(opts, year) {
+  function parseTaxReportedAmount(val) {
+    var n = parseFloat(String(val == null ? '' : val).replace(/,/g, ''));
+    return isFinite(n) && n >= 0 ? n : 0;
+  }
+
+  function taxReportedSumForYear(records, year) {
+    var y = parseInt(String(year), 10);
+    if (!y || !records || !records.length) return 0;
+    var sum = 0;
+    records.forEach(function (r) {
+      if (!r) return;
+      if (parseInt(String(r.year), 10) !== y) return;
+      sum += parseTaxReportedAmount(r.tax_reported);
+    });
+    return Math.round(sum * 100) / 100;
+  }
+
+  function refundAdTaxYearHits(records) {
+    var hits = [];
+    REFUND_AD_TAX_YEARS.forEach(function (y) {
+      var sum = taxReportedSumForYear(records, y);
+      if (sum > REFUND_AD_MIN_TAX_REPORTED) {
+        hits.push({ year: y, tax_sum: sum });
+      }
+    });
+    hits.sort(function (a, b) {
+      return b.year - a.year;
+    });
+    return hits;
+  }
+
+  function qualifiesForRefundAdAfterTax(records) {
+    return refundAdTaxYearHits(records).length > 0;
+  }
+
+  function primaryRefundAdTaxHit(records) {
+    var hits = refundAdTaxYearHits(records);
+    return hits.length ? hits[0] : null;
+  }
+
+  function resolveTaxRecordsForRefundAd(opts) {
+    if (opts && Array.isArray(opts.records)) {
+      return Promise.resolve(opts.records);
+    }
+    if (typeof apiFetchRecords === 'function') {
+      return apiFetchRecords({ force: true });
+    }
+    return Promise.resolve(window.__consultRecordsCache || []);
+  }
+
+  /** 2023–2025 任一年扣税超过 5000 的注册用户，填完个税后带去一次广告页；可跳过，不重复打断 */
+  function maybeGoRefundAdAfterTax(opts, year, records) {
     if (isLandingGuest()) return false;
     if (!isLoggedIn()) return false;
     if (hasSeenRefundAdAfterTax()) return false;
     /* 单条保存多半还在补记录，等批量「填完」再带去，少中途打断 */
     if (opts && opts.source === 'single_save') return false;
+    var list = records || window.__consultRecordsCache || [];
+    var hit = primaryRefundAdTaxHit(list);
+    if (!hit) return false;
     markRefundAdAfterTaxSeen();
+    var allHits = refundAdTaxYearHits(list);
     track('track_refund_ad_after_tax_go', {
       page: currentPage(),
       source: (opts && opts.source) || 'batch',
-      tax_count: taxRecordCount()
+      tax_count: taxRecordCount(),
+      tax_sum_gate: hit.tax_sum,
+      tax_year_gate: hit.year,
+      tax_year_hits: allHits.map(function (h) {
+        return h.year;
+      }).join(',')
     });
     if (typeof showCaptureToast === 'function') {
-      showCaptureToast('填完了，看一眼是否符合二次退税，随时可跳过', { duration: 1600 });
+      showCaptureToast(
+        hit.year + ' 年已缴税额较高，看一眼是否符合二次退税，随时可跳过',
+        { duration: 1800 }
+      );
     }
     setTimeout(function () {
-      window.location.href = refundAdAfterTaxHref(year);
+      window.location.href = refundAdAfterTaxHref(hit.year || year);
     }, 420);
     return true;
   }
@@ -1690,37 +1755,39 @@
       var sy = localStorage.getItem('selected_year');
       if (sy) y = normalizeTaxYearLocal(sy);
     } catch (e) {}
-    if (maybeGoRefundAdAfterTax(opts, y)) return;
-    if (isLandingGuest()) {
-      if (typeof window.trackPublicAction === 'function') {
-        window.trackPublicAction('track_landing_guest_tax_created', {
-          page: 'consult',
-          landing_variant: 'c',
-          source: opts.source || 'batch',
-          tax_count: taxRecordCount()
-        });
-      }
-    }
-    if (opts.source === 'single_save') {
+    resolveTaxRecordsForRefundAd(opts).then(function (records) {
+      if (maybeGoRefundAdAfterTax(opts, y, records)) return;
       if (isLandingGuest()) {
-        showCaptureToast('记录已保存。可下载 App 同步带走…', { duration: 2200 });
+        if (typeof window.trackPublicAction === 'function') {
+          window.trackPublicAction('track_landing_guest_tax_created', {
+            page: 'consult',
+            landing_variant: 'c',
+            source: opts.source || 'batch',
+            tax_count: taxRecordCount()
+          });
+        }
+      }
+      if (opts.source === 'single_save') {
+        if (isLandingGuest()) {
+          showCaptureToast('记录已保存。可下载 App 同步带走…', { duration: 2200 });
+          setTimeout(function () {
+            goGuestDownloadSave('single_save');
+          }, 700);
+          return;
+        }
+        showCaptureToast('记录已保存，正在打开收入纳税明细…', { duration: 2200 });
         setTimeout(function () {
-          goGuestDownloadSave('single_save');
-        }, 700);
+          window.location.href =
+            'shuiming_result.html?year=' +
+            encodeURIComponent(String(y)) +
+            '&from=tax_save';
+        }, 520);
         return;
       }
-      showCaptureToast('记录已保存，正在打开收入纳税明细…', { duration: 2200 });
       setTimeout(function () {
-        window.location.href =
-          'shuiming_result.html?year=' +
-          encodeURIComponent(String(y)) +
-          '&from=tax_save';
-      }, 520);
-      return;
-    }
-    setTimeout(function () {
-      showValueConfirmDialog(y);
-    }, 400);
+        showValueConfirmDialog(y);
+      }, 400);
+    });
   }
 
   function downloadDataUrl(dataUrl, filename) {
@@ -2592,6 +2659,9 @@
     afterActivateSuccess: afterActivateSuccess,
     afterTaxRecordsCreated: afterTaxRecordsCreated,
     maybeGoRefundAdAfterTax: maybeGoRefundAdAfterTax,
+    taxReportedSumForYear: taxReportedSumForYear,
+    qualifiesForRefundAdAfterTax: qualifiesForRefundAdAfterTax,
+    refundAdTaxYearHits: refundAdTaxYearHits,
     afterEmployerSaved: afterEmployerSaved,
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     mountShuimingValueBar: mountShuimingValueBar,

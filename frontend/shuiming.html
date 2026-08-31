@@ -12,6 +12,15 @@
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                 }
+                if (
+                    /24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u) &&
+                    !/2410DPN6CC|24101PNB7C|25019PNF3|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(u)
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-13pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -160,7 +169,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
+    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -261,7 +270,9 @@
             padding-top: calc(44px + var(--app-shell-statusbar-top, 0px)) !important;
         }
 
-        /* 沉浸压栏机（小米 15 Pro / 10 / K70 至尊 / 12C / S50 Pro mini）：强制 40px 顶距 */
+        /* 沉浸压栏机（小米 15 / 15 Pro / 10 / K70 至尊 / 12C / S50 Pro mini）：强制 40px 顶距 */
+        html.app-android-xiaomi-15 body.page-shuiming > .header,
+        html.app-android-xiaomi-15.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-xiaomi-15pro body.page-shuiming > .header,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-xiaomi-10 body.page-shuiming > .header,
@@ -284,6 +295,8 @@
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .header {
             padding-top: calc(12px + 40px) !important;
         }
+        html.app-android-xiaomi-15 body.page-shuiming > .content,
+        html.app-android-xiaomi-15.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-xiaomi-15pro body.page-shuiming > .content,
         html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-xiaomi-10 body.page-shuiming > .content,

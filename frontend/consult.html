@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
+    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -12,7 +12,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260829-fillcta">
+    <link rel="stylesheet" href="/css/consult.css?v=20260831-refundconsult">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -253,6 +253,15 @@
         </div>
 
         <div id="panel-records" class="tab-panel active">
+            <div class="card consult-product-card" id="consultRefundAdEntry">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
+                    <span class="consult-product-badge">看是否符合</span>
+                </div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">月薪≥5000、近三年缴过个税的可咨询。加微信备注「二次退税」。</p>
+                <a class="btn btn-primary btn-block" id="btnConsultRefundAd" href="refund_ad.html?from=consult">查看并复制微信</a>
+            </div>
+
             <div class="tax-flow-steps" id="taxFlowSteps" aria-label="税务记录流程">
                 <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">选方式</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
@@ -860,6 +869,14 @@
                 <button type="button" class="btn btn-primary btn-block" id="btnConsultProductsActivate">确认激活</button>
             </div>
             <p class="consult-products-section-label">增值服务</p>
+            <div class="card consult-product-card" id="consultRefundAdProductEntry">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
+                    <span class="consult-product-badge">看是否符合</span>
+                </div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">月薪≥5000、近三年缴过个税的可咨询。加微信备注「二次退税」。</p>
+                <a class="btn btn-primary btn-block" id="btnConsultRefundAdProducts" href="refund_ad.html?from=consult_products">查看并复制微信</a>
+            </div>
             <div class="card consult-product-card" id="lizhiCertEntryCard">
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
                     <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">离职证明生成</div>
@@ -922,9 +939,27 @@
     <script src="/js/watermark.js?v=20260827-cend-sync"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260828-multi-bonus"></script>
+    <script defer src="/js/consult-core.js?v=20260831-renzhiguide"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260829-fillcta"></script>
     <script defer src="/js/consult-records.js?v=20260829-fillcta"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260828-tax-fill"></script>
+    <script>
+    (function () {
+        function bindRefundAdEntry(id, source) {
+            var a = document.getElementById(id);
+            if (!a) return;
+            a.addEventListener('click', function () {
+                if (typeof window.trackUserAction === 'function') {
+                    window.trackUserAction('track_refund_ad_consult_entry', {
+                        page: 'consult',
+                        source: source
+                    });
+                }
+            });
+        }
+        bindRefundAdEntry('btnConsultRefundAd', 'consult_records');
+        bindRefundAdEntry('btnConsultRefundAdProducts', 'consult_products');
+    })();
+    </script>
 </body>
 </html>

@@ -14,6 +14,8 @@ const MONITOR_REQUEST_TIMEOUT_MS = parseInt(process.env.MONITOR_REQUEST_TIMEOUT_
 const MONITOR_NET_RX_ALERT_BPS = parseInt(process.env.MONITOR_NET_RX_ALERT_BPS || String(80 * 1024 * 1024), 10);
 const MONITOR_NET_TX_ALERT_BPS = parseInt(process.env.MONITOR_NET_TX_ALERT_BPS || String(80 * 1024 * 1024), 10);
 const MONITOR_LOAD_ALERT_PERCENT = parseFloat(process.env.MONITOR_LOAD_ALERT_PERCENT || '90');
+const MONITOR_LOAD_ALERT_PERCENT_5 = parseFloat(process.env.MONITOR_LOAD_ALERT_PERCENT_5 || '70');
+const MONITOR_LOAD_ALERT_STREAK = parseInt(process.env.MONITOR_LOAD_ALERT_STREAK || '2', 10);
 const MONITOR_MEMORY_ALERT_PERCENT = parseFloat(process.env.MONITOR_MEMORY_ALERT_PERCENT || '90');
 const MONITOR_DEPLOY_GRACE_MS = parseInt(process.env.MONITOR_DEPLOY_GRACE_MS || '180000', 10);
 const MONITOR_DEPLOY_MARKER =
@@ -74,6 +76,7 @@ var _lastNetSample = null;
 var _intervalId = null;
 var _alertCooldown = {};
 var _serviceDownSince = {};
+var _loadHighStreak = 0;
 
 var _state = {
   updated_at: null,
@@ -109,6 +112,30 @@ function formatBytes(n) {
 function formatBps(bps) {
   if (bps == null || !isFinite(bps)) return '—';
   return formatBytes(bps) + '/s';
+}
+
+/** 辅助函数：toLoadPercent — loadavg / CPU 核数，封顶 100 */
+function toLoadPercent(loadVal, cpus) {
+  var n = Number(loadVal);
+  var c = Number(cpus) || 1;
+  if (!isFinite(n) || n < 0 || !isFinite(c) || c <= 0) return null;
+  return Math.min(100, Math.round((n / c) * 1000) / 10);
+}
+
+/**
+ * 1 分钟负载容易被重启/构建打满；要 5 分钟也高、且连续多轮才发信，避免部署误报。
+ */
+function isSustainedHighLoad(host) {
+  if (!host || MONITOR_LOAD_ALERT_PERCENT <= 0) return false;
+  if (host.load_percent_1 == null || host.load_percent_1 < MONITOR_LOAD_ALERT_PERCENT) {
+    return false;
+  }
+  if (MONITOR_LOAD_ALERT_PERCENT_5 > 0) {
+    if (host.load_percent_5 == null || host.load_percent_5 < MONITOR_LOAD_ALERT_PERCENT_5) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** 辅助函数：readNetBytes */
@@ -474,7 +501,8 @@ async function runMonitorTick() {
     load_1: Math.round(load[0] * 100) / 100,
     load_5: Math.round(load[1] * 100) / 100,
     load_15: Math.round(load[2] * 100) / 100,
-    load_percent_1: Math.min(100, Math.round((load[0] / cpus) * 1000) / 10),
+    load_percent_1: toLoadPercent(load[0], cpus),
+    load_percent_5: toLoadPercent(load[1], cpus),
     memory_total_bytes: totalMem,
     memory_used_bytes: usedMem,
     memory_free_bytes: freeMem,
@@ -535,8 +563,22 @@ async function runMonitorTick() {
   if (netRates.tx_bps != null && MONITOR_NET_TX_ALERT_BPS > 0 && netRates.tx_bps >= MONITOR_NET_TX_ALERT_BPS) {
     await notifyHostMetricAlert('metric:net-tx', '出网带宽', '当前出网 ' + formatBps(netRates.tx_bps), host);
   }
-  if (host.load_percent_1 != null && MONITOR_LOAD_ALERT_PERCENT > 0 && host.load_percent_1 >= MONITOR_LOAD_ALERT_PERCENT) {
-    await notifyHostMetricAlert('metric:load', 'CPU 负载', '1 分钟负载约 ' + host.load_percent_1 + '%', host);
+  if (isSustainedHighLoad(host)) {
+    _loadHighStreak += 1;
+    if (_loadHighStreak >= Math.max(1, MONITOR_LOAD_ALERT_STREAK)) {
+      await notifyHostMetricAlert(
+        'metric:load',
+        'CPU 负载',
+        '1 分钟负载约 ' +
+          host.load_percent_1 +
+          '%（5 分钟约 ' +
+          (host.load_percent_5 != null ? host.load_percent_5 + '%' : '—') +
+          '）',
+        host
+      );
+    }
+  } else {
+    _loadHighStreak = 0;
   }
   if (
     host.memory_used_percent != null &&
@@ -618,6 +660,8 @@ module.exports = {
   runMonitorTick,
   formatBytes,
   formatBps,
+  toLoadPercent,
+  isSustainedHighLoad,
   getDiskUsage,
   getDirectorySizeBytes
 };

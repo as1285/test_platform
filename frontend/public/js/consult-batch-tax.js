@@ -4266,9 +4266,9 @@ function batchAddEmploymentTaxRecords() {
             if (window.ConversionGuide && typeof window.ConversionGuide.refresh === 'function') {
                 window.ConversionGuide.refresh();
             }
-            invokeAfterTaxRecordsCreated({ source: 'batch' });
             return refreshRecordList().then(function (list) {
                 afterBatchTaxWriteSuccess();
+                invokeAfterTaxRecordsCreated({ source: 'batch', records: list });
                 return list;
             });
         })

@@ -72,7 +72,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-nomineguide" defer></script>
+    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -696,9 +696,8 @@
         }
 
         /*
-         * 横向 a6：对照原版截图加大卡面。
-         * 旧 3.35 分栏过碎——标题易折行、「去申报」等底部操作被挤糊；
-         * 改为约 2.75 分栏（首屏约 2 张半 + 第三张大半露出），字号/图标更接近原版。
+         * 横向 a6：对齐正版「约 3 张 + 第四张露出」。
+         * 2.75 / 2.55 分栏会把整块撑得又高又占首屏，这里统一压矮。
          */
         .sy-apk-hscroll {
             width: 100%;
@@ -712,7 +711,7 @@
             scrollbar-width: none;
             /* 与 a3 底 / 轮播顶同色，去掉「厚重白边」感 */
             background: #ebf0f8;
-            padding: 4px 12px 6px;
+            padding: 2px 12px 4px;
             margin-top: -1px;
             box-sizing: border-box;
             line-height: 0;
@@ -721,8 +720,8 @@
         .sy-apk-hscroll::-webkit-scrollbar { display: none; }
 
         .sy-apk-hitem {
-            flex: 0 0 max(118px, calc((100% - 16px) / 2.75));
-            width: max(118px, calc((100% - 16px) / 2.75));
+            flex: 0 0 max(100px, calc((100% - 16px) / 3.2));
+            width: max(100px, calc((100% - 16px) / 3.2));
             aspect-ratio: 374 / 491;
             display: flex;
             align-items: stretch;
@@ -735,13 +734,9 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /*
-         * Android / 窄宽机：再略放大，避免相对原版仍偏碎。
-         * 宽屏/折叠内屏按手机参考宽算，避免相对整屏过大。
-         */
         html.app-android-client .sy-apk-hitem {
-            flex: 0 0 max(124px, calc((100% - 16px) / 2.55));
-            width: max(124px, calc((100% - 16px) / 2.55));
+            flex: 0 0 max(102px, calc((100% - 16px) / 3.15));
+            width: max(102px, calc((100% - 16px) / 3.15));
         }
 
         /*
@@ -803,8 +798,8 @@
         @media (min-width: 520px) {
             .sy-apk-hitem,
             html.app-android-client .sy-apk-hitem {
-                flex: 0 0 calc((min(100%, 430px) - 16px) / 2.85);
-                width: calc((min(100%, 430px) - 16px) / 2.85);
+                flex: 0 0 calc((min(100%, 430px) - 16px) / 3.2);
+                width: calc((min(100%, 430px) - 16px) / 3.2);
             }
             html.app-android-honor-pgt-an20 .sy-apk-hitem,
             html.app-android-honor-pgt-an20.app-android-client .sy-apk-hitem {
@@ -1131,10 +1126,6 @@
         <a href="bancha.html" class="nav-item" data-icon="bc">
             <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
             <span class="nav-text">办&查</span>
-        </a>
-        <a href="refund_ad.html" class="nav-item" data-icon="ts">
-            <div class="nav-icon"><img src="caidan/ts2.png" width="19" height="19" alt="退税"></div>
-            <span class="nav-text">退税</span>
         </a>
         <a href="message.html" class="nav-item" data-icon="xx">
             <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>

@@ -11,7 +11,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-k80pro" defer></script>
+    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>任职受雇</title>
     <style>
@@ -142,6 +142,88 @@
             font-size: 48px;
             margin-bottom: 16px;
         }
+
+        .empty-add-link {
+            display: inline-block;
+            margin-top: 16px;
+            color: #007aff;
+            font-size: 15px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .rz-guide-root {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+        }
+
+        .rz-guide-root.is-open {
+            display: block;
+        }
+
+        .rz-guide-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .rz-guide-panel {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 88px);
+            max-width: 280px;
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            text-align: center;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+        }
+
+        .rz-guide-title {
+            margin: 0;
+            padding: 20px 16px 6px;
+            font-size: 17px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .rz-guide-desc {
+            margin: 0;
+            padding: 0 16px 18px;
+            font-size: 13px;
+            color: #8e8e93;
+            line-height: 1.5;
+        }
+
+        .rz-guide-actions {
+            display: flex;
+            border-top: 0.5px solid #e5e5ea;
+        }
+
+        .rz-guide-btn {
+            flex: 1;
+            padding: 12px 8px;
+            font-size: 17px;
+            line-height: 1.2;
+            background: none;
+            border: none;
+            color: #007aff;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .rz-guide-btn + .rz-guide-btn {
+            border-left: 0.5px solid #e5e5ea;
+        }
+
+        .rz-guide-btn.primary {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="page-renzhi">
@@ -154,6 +236,18 @@
     </div>
 
     <div class="list-container" id="listContainer"></div>
+
+    <div id="renzhiEmptyGuide" class="rz-guide-root" role="dialog" aria-modal="true" aria-labelledby="renzhiEmptyGuideTitle" hidden>
+        <div class="rz-guide-mask" id="renzhiEmptyGuideMask"></div>
+        <div class="rz-guide-panel">
+            <p class="rz-guide-title" id="renzhiEmptyGuideTitle">添加任职受雇</p>
+            <p class="rz-guide-desc">暂无任职受雇信息。先添加一条记录，后续查询和填写会更完整。</p>
+            <div class="rz-guide-actions">
+                <button type="button" class="rz-guide-btn" id="renzhiEmptyGuideLater">稍后再说</button>
+                <button type="button" class="rz-guide-btn primary" id="renzhiEmptyGuideGo">去添加</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         function escAttr(s) {
@@ -237,13 +331,101 @@
             window.location.href = 'renzhi_detail.html?id=' + encodeURIComponent(id);
         }
 
+        function addEmployerHref() {
+            var href = 'consult.html?tab=employers&open=employer';
+            try {
+                var uid = localStorage.getItem('user_id') || '';
+                if (uid) href += '&user_id=' + encodeURIComponent(uid);
+            } catch (e0) {}
+            return href;
+        }
+
+        function emptyGuideStorageKey() {
+            var uid = '';
+            try {
+                uid = localStorage.getItem('user_id') || '';
+            } catch (e0) {}
+            return 'renzhi_empty_guide_v1:' + (uid || 'anon');
+        }
+
+        function hasSeenEmptyGuide() {
+            try {
+                return localStorage.getItem(emptyGuideStorageKey()) === '1';
+            } catch (e0) {
+                return true;
+            }
+        }
+
+        function markEmptyGuideSeen() {
+            try {
+                localStorage.setItem(emptyGuideStorageKey(), '1');
+            } catch (e0) {}
+        }
+
+        function closeEmptyGuide() {
+            var root = document.getElementById('renzhiEmptyGuide');
+            if (!root) return;
+            root.classList.remove('is-open');
+            root.hidden = true;
+        }
+
+        function goAddEmployer() {
+            window.location.href = addEmployerHref();
+        }
+
+        function maybeShowEmptyGuide() {
+            if (hasSeenEmptyGuide()) return;
+            var root = document.getElementById('renzhiEmptyGuide');
+            if (!root || root.classList.contains('is-open')) return;
+            markEmptyGuideSeen();
+            root.hidden = false;
+            root.classList.add('is-open');
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_renzhi_empty_guide_show', { page: 'renzhi' });
+            }
+        }
+
+        function bindEmptyGuide() {
+            var later = document.getElementById('renzhiEmptyGuideLater');
+            var go = document.getElementById('renzhiEmptyGuideGo');
+            var mask = document.getElementById('renzhiEmptyGuideMask');
+            if (later) {
+                later.onclick = function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_renzhi_empty_guide_later', { page: 'renzhi' });
+                    }
+                    closeEmptyGuide();
+                };
+            }
+            if (go) {
+                go.onclick = function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_renzhi_empty_guide_go', { page: 'renzhi' });
+                    }
+                    goAddEmployer();
+                };
+            }
+            if (mask) {
+                mask.onclick = function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_renzhi_empty_guide_later', { page: 'renzhi', via: 'mask' });
+                    }
+                    closeEmptyGuide();
+                };
+            }
+        }
+
         function showEmpty(syncedEmpty) {
             /* 仅在接口确认列表为空时写回 0；加载失败勿清本地角标 */
             if (syncedEmpty) syncMineEmployerCount([]);
             var container = document.getElementById('listContainer');
-            container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div>暂无任职受雇信息</div></div>';
+            container.innerHTML =
+                '<div class="empty-state"><div class="icon">📋</div><div>暂无任职受雇信息</div>' +
+                '<a class="empty-add-link" href="' + escapeHtml(addEmployerHref()) + '">去添加</a></div>';
+            if (syncedEmpty) maybeShowEmptyGuide();
         }
 
+        bindEmptyGuide();
         loadEmployerList();
     </script>
     <script src="/js/watermark.js?v=20260827-cend-sync"></script>

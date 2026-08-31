@@ -56,7 +56,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-nomineguide" defer></script>
+    <script src="/js/auth.js?v=20260831-mi15top" defer></script>
     <script src="/js/app/nav.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ff9a1f">
@@ -81,9 +81,20 @@
             background: #f5f6fa;
         }
         .refund-ad-header {
+            position: relative;
             padding: calc(10px + var(--safe-t)) 16px 10px;
             background: #fff;
             border-bottom: 1px solid #eef1f5;
+        }
+        .refund-ad-back {
+            position: absolute;
+            left: 12px;
+            top: calc(12px + var(--safe-t));
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d6fd8;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .refund-ad-header h1 {
             font-size: 18px;
@@ -243,12 +254,112 @@
             height: auto;
             vertical-align: middle;
         }
+        .refund-ad-lede {
+            margin: 0 2px 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+            font-size: 13px;
+            line-height: 1.55;
+            color: #475569;
+        }
+        .refund-ad-lede strong {
+            color: #9a3412;
+        }
+        .refund-ad-guide {
+            margin-top: 12px;
+            padding: 16px 14px 14px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        }
+        .refund-ad-guide h2 {
+            margin: 0 0 6px;
+            font-size: 17px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .refund-ad-guide-intro {
+            margin: 0 0 14px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #64748b;
+        }
+        .refund-ad-guide-block {
+            margin: 0 0 12px;
+            padding: 12px 12px 10px;
+            border-radius: 12px;
+            background: #fff8eb;
+            border: 1px solid #ffe0a3;
+        }
+        .refund-ad-guide-block.is-white {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
+        .refund-ad-guide-block.is-tip {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+        .refund-ad-guide-block h3 {
+            margin: 0 0 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #9a3412;
+        }
+        .refund-ad-guide-block.is-white h3,
+        .refund-ad-guide-block.is-tip h3 {
+            color: #1e3a5f;
+        }
+        .refund-ad-guide-block ul,
+        .refund-ad-guide-block ol {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .refund-ad-guide-block li {
+            margin: 0 0 6px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #334155;
+        }
+        .refund-ad-guide-block li:last-child { margin-bottom: 0; }
+        .refund-ad-guide-cta {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            min-height: 42px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #1d6fd8;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            line-height: 22px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-guide-cta:active { opacity: 0.92; }
+        .refund-ad-guide-cta.is-ghost {
+            background: #fff;
+            color: #1d6fd8;
+            border: 1px solid #bfdbfe;
+            margin-top: 8px;
+        }
+        .refund-ad-guide-foot {
+            margin: 4px 2px 0;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #94a3b8;
+        }
+        .refund-ad-need-employer[hidden] { display: none; }
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
 <body class="page-refund-ad has-bottom-nav">
     <header class="refund-ad-header">
+        <a href="consult.html" class="refund-ad-back" id="refundAdBackLink">返回咨询</a>
         <h1 id="refundAdTitle">二次退税</h1>
         <p class="refund-ad-header-sub" id="refundAdSub">填完了。看一眼是否符合二次退税，不想看可直接去记录。</p>
     </header>
@@ -264,8 +375,9 @@
             </div>
             <div class="refund-ad-continue" id="refundAdContinue">
                 <button type="button" class="refund-ad-continue-btn" id="btnRefundAdContinue">查看我刚填的记录</button>
-                <p class="refund-ad-continue-note">不强制加微信，随时可从底栏「退税」回来</p>
+                <p class="refund-ad-continue-note">不强制加微信，随时可从「我要咨询」回来</p>
             </div>
+            <p class="refund-ad-lede" id="refundAdLede">先对照下面两条：<strong>月薪大约 5000 元及以上</strong>，且<strong>近三年缴过个税</strong>。符合就复制微信号，备注「二次退税」咨询。</p>
             <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
                 <h2 class="refund-ad-visually-hidden">哪些人可以做二次退税</h2>
                 <img
@@ -283,6 +395,40 @@
                     <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
                 </div>
             </aside>
+            <section class="refund-ad-guide" id="refundAdGuide" aria-labelledby="refundAdGuideTitle">
+                <h2 id="refundAdGuideTitle">怎么判断、怎么咨询</h2>
+                <p class="refund-ad-guide-intro">海报上的条件在手机上容易看不全。按下面对照即可，不用先懂税法。本页只做咨询入口，能不能办、能办多少以沟通结果为准。</p>
+                <div class="refund-ad-guide-block">
+                    <h3>谁可以先问</h3>
+                    <ul>
+                        <li>当前月薪大约 <strong>5000 元及以上</strong>（按税前工资看即可）。</li>
+                        <li>过去三年里<strong>正常缴过个人所得税</strong>：工资条或个税 APP 里能看到已缴税额。</li>
+                        <li>公务员、医生、教师、程序员、设计师、销售、国企员工、高管、主播、自由职业等，各行业都可以先问。</li>
+                    </ul>
+                </div>
+                <div class="refund-ad-guide-block is-white">
+                    <h3>建议按这 3 步</h3>
+                    <ol>
+                        <li>先看自己是否同时符合「月薪」和「近三年缴过个税」。</li>
+                        <li>心里有个数：任职单位、近 1–3 年工资和已缴个税。没有记录的，先在本产品里补一条，顾问对照更快。</li>
+                        <li>点「复制微信号」，打开微信添加，<strong>备注「二次退税」</strong>，把单位和缴税情况发给顾问。</li>
+                    </ol>
+                </div>
+                <div class="refund-ad-guide-block is-tip" id="refundAdNeedEmployer" hidden>
+                    <h3>还没有任职受雇信息</h3>
+                    <p style="margin:0 0 2px;font-size:13px;line-height:1.55;color:#334155;">咨询时顾问通常会先问任职单位。建议先添加一条任职受雇，再回来加微信。</p>
+                    <a class="refund-ad-guide-cta" id="refundAdGoEmployer" href="consult.html?tab=employers&amp;open=employer">去添加任职受雇</a>
+                    <a class="refund-ad-guide-cta is-ghost" id="refundAdGoTax" href="consult.html?tab=records">去补税务记录</a>
+                </div>
+                <div class="refund-ad-wx" style="margin-top:2px;border-radius:12px;box-shadow:none;border:1px solid #e2e8f0;">
+                    <div class="refund-ad-wx-meta">
+                        <span class="refund-ad-wx-label">准备好了就加顾问</span>
+                        <strong class="refund-ad-wx-id" id="refundWechatIdGuide">Tangdong6832</strong>
+                    </div>
+                    <button type="button" class="refund-ad-copy" id="btnCopyRefundWechatGuide">复制微信号</button>
+                </div>
+                <p class="refund-ad-guide-foot">添加时请备注「二次退税」。不强制添加，随时可从「我要咨询」回本页。</p>
+            </section>
         </div>
     </main>
     <div class="refund-ad-toast" id="refundAdToast" role="status" aria-live="polite"></div>
@@ -299,16 +445,12 @@
             <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
             <span class="nav-text">办&查</span>
         </a>
-        <a href="refund_ad.html" class="nav-item active" data-icon="ts">
-            <div class="nav-icon"><img src="caidan/ts1.png" width="19" height="19" alt="退税"></div>
-            <span class="nav-text">退税</span>
-        </a>
         <a href="message.html" class="nav-item" data-icon="xx">
             <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>
             <span class="nav-text">消息</span>
         </a>
-        <a href="mine.html" class="nav-item" data-icon="w">
-            <div class="nav-icon"><img src="caidan/w2.png" width="19" height="19" alt="我的"></div>
+        <a href="mine.html" class="nav-item active" data-icon="w">
+            <div class="nav-icon"><img src="caidan/w1.png" width="19" height="19" alt="我的"></div>
             <span class="nav-text">我的</span>
         </a>
     </div>
@@ -334,7 +476,9 @@
         }
 
         function pageSource() {
-            return fromTaxDone ? 'tax_done' : 'refund_ad_tab';
+            if (fromTaxDone) return 'tax_done';
+            if (fromConsult) return fromConsult;
+            return 'consult';
         }
 
         function track(action, meta) {
@@ -413,11 +557,57 @@
         if (copyBtn) copyBtn.addEventListener('click', copyWechat);
         if (idEl) idEl.addEventListener('click', copyWechat);
 
+        var copyBtnGuide = document.getElementById('btnCopyRefundWechatGuide');
+        var idElGuide = document.getElementById('refundWechatIdGuide');
+        if (copyBtnGuide) copyBtnGuide.addEventListener('click', copyWechat);
+        if (idElGuide) idElGuide.addEventListener('click', copyWechat);
+
+        function consultHref(tab, extra) {
+            var href = 'consult.html?tab=' + encodeURIComponent(tab || 'employers');
+            if (extra) href += '&' + extra;
+            try {
+                var uid = localStorage.getItem('user_id') || '';
+                if (uid) href += '&user_id=' + encodeURIComponent(uid);
+            } catch (eHref) {}
+            return href;
+        }
+
+        function syncNeedEmployerTip() {
+            var tip = document.getElementById('refundAdNeedEmployer');
+            if (!tip) return;
+            var count = '';
+            try {
+                count = String(localStorage.getItem('employer_count') || '').trim();
+            } catch (eCnt) {}
+            var empty = count === '' || count === '0';
+            tip.hidden = !empty;
+            var goEmp = document.getElementById('refundAdGoEmployer');
+            var goTax = document.getElementById('refundAdGoTax');
+            if (goEmp) goEmp.href = consultHref('employers', 'open=employer');
+            if (goTax) goTax.href = consultHref('records');
+            if (goEmp && !goEmp.getAttribute('data-bound')) {
+                goEmp.setAttribute('data-bound', '1');
+                goEmp.addEventListener('click', function () {
+                    track('track_refund_ad_guide_employer', { wechat_id: WECHAT_ID });
+                });
+            }
+            if (goTax && !goTax.getAttribute('data-bound')) {
+                goTax.setAttribute('data-bound', '1');
+                goTax.addEventListener('click', function () {
+                    track('track_refund_ad_guide_tax', { wechat_id: WECHAT_ID });
+                });
+            }
+        }
+        syncNeedEmployerTip();
+
         var fromTaxDone = false;
+        var fromConsult = '';
         var year = '';
         try {
             var qs = new URLSearchParams(window.location.search || '');
-            fromTaxDone = String(qs.get('from') || '') === 'tax_done';
+            var fromRaw = String(qs.get('from') || '').trim();
+            fromTaxDone = fromRaw === 'tax_done';
+            if (fromRaw === 'consult' || fromRaw === 'consult_products') fromConsult = fromRaw;
             year = String(qs.get('year') || '').trim();
         } catch (eFrom) {}
         if (fromTaxDone) {

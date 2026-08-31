@@ -483,6 +483,15 @@
             if (k === 'track_refund_ad_poster_click') {
                 return { button: '点击退税海报', page: '二次退税广告页' };
             }
+            if (k === 'track_refund_ad_guide_employer') {
+                return { button: '广告页去添加任职', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_guide_tax') {
+                return { button: '广告页去补税务', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_consult_entry') {
+                return { button: '咨询页进广告', page: '我要咨询' };
+            }
             if (k === 'track_douyin_yuefu_ad_view') {
                 return { button: '月付广告曝光', page: '抖音月付大额广告页' };
             }
@@ -1424,6 +1433,9 @@
             'track_refund_ad_page_leave',
             'track_refund_ad_nav_click',
             'track_refund_ad_poster_click',
+            'track_refund_ad_consult_entry',
+            'track_refund_ad_guide_employer',
+            'track_refund_ad_guide_tax',
             'track_douyin_yuefu_ad_view',
             'track_douyin_yuefu_ad_copy',
             'track_douyin_yuefu_ad_page_leave',
@@ -1464,6 +1476,9 @@
             track_refund_ad_page_leave: '离开广告',
             track_refund_ad_nav_click: '广告点底栏',
             track_refund_ad_poster_click: '点海报',
+            track_refund_ad_consult_entry: '咨询进广告',
+            track_refund_ad_guide_employer: '去加任职',
+            track_refund_ad_guide_tax: '去补税务',
             track_douyin_yuefu_ad_view: '月付广告',
             track_douyin_yuefu_ad_copy: '月付复制',
             track_douyin_yuefu_ad_page_leave: '离开月付',

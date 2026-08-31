@@ -334,7 +334,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260831-adops', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260831-refundconsult', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -477,10 +477,11 @@ mustInclude(
     'track_refund_ad_page_leave',
     'dwell_seconds',
     'bottom-nav',
-    'refund_ad.html',
-    'page-refund-ad'
+    'page-refund-ad',
+    '返回咨询',
+    'consult.html'
   ],
-  'refund ad tab page with bottom nav'
+  'refund ad page with back to consult'
 );
 mustInclude(
   'frontend/purchase.html',
@@ -499,15 +500,30 @@ mustExclude(
   ['purchaseRefundAdEntry', 'refund_ad.html?from=purchase', '点图咨询微信'],
   'purchase refund ad no longer jumps away'
 );
-mustInclude(
+mustExclude(
   'frontend/shouye.html',
-  ['href="refund_ad.html"', 'nav-text">退税'],
-  'home dock has refund tab'
+  ['nav-text">退税', 'data-icon="ts"'],
+  'home dock has no refund tab'
+);
+mustInclude(
+  'frontend/consult.html',
+  [
+    'id="consultRefundAdEntry"',
+    'refund_ad.html?from=consult',
+    '二次退税咨询',
+    'id="consultRefundAdProductEntry"'
+  ],
+  'consult page has refund ad entry'
 );
 mustInclude(
   'frontend/public/js/app/nav.js',
-  ["'refund_ad.html': 'refund'", 'page-refund-ad'],
-  'bottom nav recognizes refund tab'
+  ["'refund_ad.html': 'mine'", 'page-refund-ad'],
+  'refund ad page highlights mine tab'
+);
+mustExclude(
+  'frontend/refund_ad.html',
+  ['nav-text">退税', '随时可从底栏'],
+  'refund ad page no longer a dock tab'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -671,13 +687,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['PJA110', 'app-android-oneplus-ace2pro', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
+  ['PJA110', 'app-android-oneplus-ace2pro', '20260827-cend-sync', 'PGP110', 'app-android-oneplus-acepro', 'app-android-xiaomi-14pro', '23116PN5', 'V2302A', 'V2301A', 'PHW110', 'app-android-oppo-reno10', '24129PN74', 'app-android-xiaomi-15', 'data-xiaomi15-result-firstpaint', 'app-android-iqoo-neo8', 'color: #000', 'BLK-AL80', 'app-android-huawei-nova13', '2211133', 'app-android-xiaomi-13'],
   'shuiming_result ace 2 pro + ace pro + reno10 + mi14pro + neo8 + mi15 line + nova13'
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isXiaomi15Client', '24129PN74', 'app-android-xiaomi-15'],
-  'xiaomi 15 list line-height detect'
+  ['isXiaomi15Client', '24129PN74', 'app-android-xiaomi-15', 'isXiaomi15Client()', 'html.app-android-xiaomi-15.app-top-safe-shell{--app-shell-statusbar-top:40px'],
+  'xiaomi 15 immersive top + list line-height detect'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  ['24129PN74', 'app-android-xiaomi-15', 'html.app-android-xiaomi-15 body.page-shuiming > .header'],
+  'shuiming xiaomi 15 header inset'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -1384,7 +1405,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-nomineguide'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-mi15top'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1423,14 +1444,14 @@ mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260831-nomineguide" defer',
+    'auth.js?v=20260831-mi15top" defer',
     'ahead.png?v=20260828-android-load',
   ],
   'shouye auth-boot + compressed ahead'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-nomineguide" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-mi15top" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1466,6 +1487,11 @@ mustInclude(
   'frontend/shouye.html',
   ['html.app-android-xiaomi-13 .sy-apk-hitem', 'calc((100% - 16px) / 3.1)', 'max-width: 118px'],
   'xiaomi 13 home a6 card shrink'
+);
+mustInclude(
+  'frontend/shouye.html',
+  ['calc((100% - 16px) / 3.2)', 'calc((100% - 16px) / 3.15)'],
+  'home a6 row compact vs official'
 );
 
 (function testXiaomi13ProUa() {
@@ -1524,8 +1550,8 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['20260831-nomineguide'],
-  'auth conversion-guide cache bust post-activate edit'
+  ['20260831-nomineguide', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
+  'auth conversion-guide cache + xiaomi 15 result header'
 );
 mustInclude(
   'frontend/public/js/conversion-guide.js',
@@ -1536,12 +1562,22 @@ mustInclude(
   'frontend/public/js/conversion-guide.js',
   [
     'REFUND_AD_AFTER_TAX_KEY',
+    'REFUND_AD_TAX_YEARS',
+    'REFUND_AD_MIN_TAX_REPORTED',
+    'qualifiesForRefundAdAfterTax',
+    'refundAdTaxYearHits',
+    'taxReportedSumForYear',
     'maybeGoRefundAdAfterTax',
     'refund_ad.html?from=tax_done',
     'track_refund_ad_after_tax_go',
     "opts.source === 'single_save'"
   ],
-  'after tax fill go to refund ad once'
+  'after tax fill go to refund ad once when 2023-2025 tax over 5000'
+);
+mustInclude(
+  'frontend/public/js/consult-batch-tax.js',
+  ["invokeAfterTaxRecordsCreated({ source: 'batch', records: list })"],
+  'refund ad after batch records refreshed'
 );
 mustInclude(
   'frontend/refund_ad.html',

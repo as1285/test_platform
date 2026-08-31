@@ -9,6 +9,8 @@ const {
   createPricingAb,
   DEFAULT_PRICING_AB,
   shouldOfferGithubEntry,
+  isGithubChannel,
+  applyGithubChannelCatalogPrices,
   prependGithubEntrySku,
   SKU_98_3DAY
 } = require('../../src/legacy/pricingAb');
@@ -257,5 +259,20 @@ describe('GitHub entry SKU', () => {
     expect(once.length).toBe(2);
     const twice = prependGithubEntrySku(once);
     expect(twice.filter((s) => s.id === 'sku_98_3d').length).toBe(1);
+  });
+
+  it('rewrites week/biweek/month amounts for GitHub channel only', () => {
+    expect(isGithubChannel({ register_source_channel: 'github' })).toBe(true);
+    expect(isGithubChannel({ register_source_channel: 'douyin' })).toBe(false);
+    const out = applyGithubChannelCatalogPrices([
+      { id: 'sku_300_7d', amount: '300.00', label: '周卡' },
+      { id: 'sku_348_14d', amount: '398.00', label: '双周卡' },
+      { id: 'sku_398_30d', amount: '498.00', label: '月卡' },
+      { id: 'sku_98_3d', amount: '98.00', label: '体验卡' }
+    ]);
+    expect(out.find((s) => s.id === 'sku_300_7d').amount).toBe('200.00');
+    expect(out.find((s) => s.id === 'sku_348_14d').amount).toBe('300.00');
+    expect(out.find((s) => s.id === 'sku_398_30d').amount).toBe('398.00');
+    expect(out.find((s) => s.id === 'sku_98_3d').amount).toBe('98.00');
   });
 });
