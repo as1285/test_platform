@@ -104,8 +104,16 @@
       kpi('浏览次数', s.views, '含底栏 / 填完 / 开通页') +
       kpi('平均停留', formatDwell(s.avg_dwell_seconds), '中位 ' + formatDwell(s.median_dwell_seconds)) +
       kpi('复制微信', s.copy_visitors, '复制率 ' + (s.copy_rate != null ? s.copy_rate + '%' : '—')) +
-      kpi('填完进入', s.after_tax_views, '跳过回记录 ' + (s.after_tax_continues || 0)) +
-      kpi('开通页看到', s.purchase_views, '开通页复制 ' + (s.purchase_copies || 0));
+      kpi('填完进入', s.after_tax_views, '跳过回记录 ' + (s.after_tax_continues || 0) + ' · 填完跳转 ' + (s.after_tax_go || 0)) +
+      kpi('开通页看到', s.purchase_views, '开通页复制 ' + (s.purchase_copies || 0)) +
+      kpi(
+        '退税合格',
+        s.refund_eligible,
+        '已复制 ' +
+          (s.refund_eligible_copied || 0) +
+          ' · 复制率 ' +
+          (s.refund_eligible_copy_rate != null ? s.refund_eligible_copy_rate + '%' : '—')
+      );
   }
 
   function renderActions(list) {
@@ -272,6 +280,130 @@
     openVisitor = visitor || username || '';
   }
 
+  var refundPage = 1;
+  var refundTotal = 0;
+  var refundLimit = 20;
+
+  function refundReasonLabel(reason) {
+    if (reason === 'both') return '税额+收入';
+    if (reason === 'income') return '年收入≥15万';
+    if (reason === 'tax') return '税额>5000';
+    return reason || '—';
+  }
+
+  function formatMoney(n) {
+    var v = Number(n);
+    if (!isFinite(v)) return '—';
+    if (v >= 10000) return String(Math.round(v / 100) / 100) + '万';
+    return String(Math.round(v * 100) / 100);
+  }
+
+  function refundQueryString() {
+    var qs = [
+      'page=' + encodeURIComponent(String(refundPage)),
+      'limit=20'
+    ];
+    var year = val('opsRefundYear');
+    if (year) qs.push('year=' + encodeURIComponent(year));
+    var reason = val('opsRefundReason');
+    if (reason) qs.push('reason=' + encodeURIComponent(reason));
+    var copied = val('opsRefundCopied');
+    if (copied) qs.push('copied=' + encodeURIComponent(copied));
+    var active = val('opsRefundActive');
+    if (active) qs.push('active=' + encodeURIComponent(active));
+    var q = val('opsRefundQ');
+    if (q) qs.push('q=' + encodeURIComponent(q));
+    return qs.join('&');
+  }
+
+  function renderRefundSummary(data) {
+    var el = document.getElementById('opsRefundSummary');
+    if (!el) return;
+    var s = (data && data.summary) || {};
+    el.innerHTML =
+      kpi('合格人数', s.eligible, '当前筛选') +
+      kpi('仅税额', s.tax_only, '该年税额>5000') +
+      kpi('仅收入', s.income_only, '该年收入≥15万') +
+      kpi('两项都达标', s.both, '优先跟');
+  }
+
+  function renderRefundUsers(data) {
+    var tbody = document.getElementById('opsRefundUserTbody');
+    var info = document.getElementById('opsRefundPageInfo');
+    var prev = document.getElementById('opsRefundPrev');
+    var next = document.getElementById('opsRefundNext');
+    refundTotal = data && data.total != null ? Number(data.total) : 0;
+    refundLimit = data && data.limit != null ? Number(data.limit) : 20;
+    var totalPages = Math.max(1, Math.ceil(refundTotal / refundLimit) || 1);
+    if (info) info.textContent = '第 ' + refundPage + ' / ' + totalPages + ' 页 · 共 ' + refundTotal + ' 人';
+    if (prev) prev.disabled = refundPage <= 1;
+    if (next) next.disabled = refundPage >= totalPages;
+    if (!tbody) return;
+    var users = (data && data.users) || [];
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="10">没有匹配的退税合格用户</td></tr>';
+      return;
+    }
+    tbody.innerHTML = users
+      .map(function (r) {
+        return (
+          '<tr>' +
+          '<td>' +
+          esc(r.username || '—') +
+          '</td>' +
+          '<td>' +
+          esc(r.real_name || '—') +
+          '</td>' +
+          '<td>' +
+          esc(r.account_active ? '已开通' : '未开通') +
+          '</td>' +
+          '<td>' +
+          esc(String(r.hit_year || '—')) +
+          '</td>' +
+          '<td>' +
+          esc(formatMoney(r.tax_sum)) +
+          '</td>' +
+          '<td>' +
+          esc(formatMoney(r.income_sum)) +
+          '</td>' +
+          '<td>' +
+          esc(refundReasonLabel(r.reason)) +
+          '</td>' +
+          '<td>' +
+          esc(r.viewed ? '是' : '否') +
+          '</td>' +
+          '<td>' +
+          esc(String(r.copies || 0)) +
+          '</td>' +
+          '<td>' +
+          esc(formatDt(r.last_at)) +
+          '</td>' +
+          '</tr>'
+        );
+      })
+      .join('');
+  }
+
+  function loadRefundEligible() {
+    var box = document.getElementById('opsRefundSummary');
+    if (box) box.textContent = '加载中…';
+    fetchAdmin('api/admin/ops/refund-eligible?' + refundQueryString())
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j.code !== 200 || !j.data) {
+          if (box) box.textContent = j.msg || '加载失败';
+          return;
+        }
+        renderRefundSummary(j.data);
+        renderRefundUsers(j.data);
+      })
+      .catch(function () {
+        if (box) box.textContent = '加载失败';
+      });
+  }
+
   function loadPageData() {
     var summary = document.getElementById('opsAdSummary');
     if (summary) summary.textContent = '加载中…';
@@ -367,12 +499,51 @@
         loadUserDetail(btn.getAttribute('data-username') || '', btn.getAttribute('data-visitor') || '');
       });
     }
+    function resetRefund() {
+      refundPage = 1;
+      loadRefundEligible();
+    }
+    var refundSearch = document.getElementById('btnOpsRefundSearch');
+    var refundRefresh = document.getElementById('btnOpsRefundRefresh');
+    if (refundSearch) refundSearch.addEventListener('click', resetRefund);
+    if (refundRefresh) refundRefresh.addEventListener('click', loadRefundEligible);
+    ['opsRefundYear', 'opsRefundReason', 'opsRefundCopied', 'opsRefundActive'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', resetRefund);
+    });
+    var refundQ = document.getElementById('opsRefundQ');
+    if (refundQ) {
+      refundQ.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          resetRefund();
+        }
+      });
+    }
+    var refundPrev = document.getElementById('opsRefundPrev');
+    var refundNext = document.getElementById('opsRefundNext');
+    if (refundPrev) {
+      refundPrev.addEventListener('click', function () {
+        if (refundPage > 1) {
+          refundPage -= 1;
+          loadRefundEligible();
+        }
+      });
+    }
+    if (refundNext) {
+      refundNext.addEventListener('click', function () {
+        refundPage += 1;
+        loadRefundEligible();
+      });
+    }
   }
 
   function loadPage() {
     bind();
     page = 1;
+    refundPage = 1;
     loadPageData();
+    loadRefundEligible();
   }
 
   global.AdminModules = global.AdminModules || {};

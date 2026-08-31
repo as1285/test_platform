@@ -2299,7 +2299,83 @@
                 </div>
 
                 <div id="page-ops-ad-analytics" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">看用户在广告页（二次退税 / 抖音月付 / 公积金提取）停了多久、有没有复制微信、从哪进来、离开时做了什么。</p></div>
+                    <div class="page-lede"><p class="page-lede-text">看用户在广告页（二次退税 / 抖音月付 / 公积金提取）停了多久、有没有复制微信、从哪进来、离开时做了什么。退税只圈 23–25 年税额超 5000 或年收入超 15 万的人。</p></div>
+                    <section>
+                        <h2>退税合格名单</h2>
+                        <p class="hint mt-0">2023–2025 任一年已缴税额 &gt; 5000，或任一年收入 ≥ 15 万（不含示例记录）。可按命中原因、是否复制微信筛选，再去站内信群发。</p>
+                        <div class="user-filter-bar">
+                            <div class="user-filter-fields">
+                                <div>
+                                    <label for="opsRefundYear">命中年</label>
+                                    <select id="opsRefundYear" class="filter-select">
+                                        <option value="">全部年份</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2023">2023</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsRefundReason">命中原因</label>
+                                    <select id="opsRefundReason" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="tax">仅税额&gt;5000</option>
+                                        <option value="income">仅收入≥15万</option>
+                                        <option value="both">税额和收入都达标</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsRefundCopied">复制微信</label>
+                                    <select id="opsRefundCopied" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="copied">已复制</option>
+                                        <option value="none">未复制</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsRefundActive">开通</label>
+                                    <select id="opsRefundActive" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="1">已开通</option>
+                                        <option value="0">未开通</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opsRefundQ">账号 / 姓名</label>
+                                    <input type="text" id="opsRefundQ" class="filter-text-wide" placeholder="搜索">
+                                </div>
+                                <div class="flex-actions">
+                                    <button type="button" class="btn-primary" id="btnOpsRefundSearch">查询</button>
+                                    <button type="button" class="btn-page" id="btnOpsRefundRefresh">刷新</button>
+                                    <a class="btn-page" href="#ops-lift" id="btnOpsRefundGotoBulk">去发站内信</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="opsRefundSummary" class="share-kpi-grid" aria-live="polite">进入本页后加载…</div>
+                        <div class="scroll-x">
+                            <table class="users-registry-table">
+                                <thead>
+                                    <tr>
+                                        <th>账号</th>
+                                        <th>姓名</th>
+                                        <th>开通</th>
+                                        <th>命中年</th>
+                                        <th>该年税额</th>
+                                        <th>该年收入</th>
+                                        <th>原因</th>
+                                        <th>看过广告</th>
+                                        <th>复制</th>
+                                        <th>最近活跃</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="opsRefundUserTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button type="button" class="btn-page" id="opsRefundPrev">上一页</button>
+                            <span id="opsRefundPageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="opsRefundNext">下一页</button>
+                        </div>
+                    </section>
                     <section>
                         <h2>广告页数据运营</h2>
                         <div class="user-filter-bar">
@@ -2319,6 +2395,9 @@
                                         <option value="">全部来源</option>
                                         <option value="refund_ad_tab">底栏退税</option>
                                         <option value="tax_done">填完个税</option>
+                                        <option value="consult">填写页</option>
+                                        <option value="shuiming_result">收入明细</option>
+                                        <option value="msg_refund">退税站内信</option>
                                         <option value="purchase_page">开通页</option>
                                         <option value="purchase_yuefu">开通页月付入口</option>
                                         <option value="purchase_gjj">开通页公积金入口</option>
@@ -2424,12 +2503,12 @@
                 </div>
 
                 <div id="page-ops-lift" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">对着高意向未开通跟进：次日回访、高收入、站内信，以及定价和发码。</p></div>
+                    <div class="page-lede"><p class="page-lede-text">对着高意向未开通跟进：次日回访、高收入、退税合格、站内信，以及定价和发码。</p></div>
                     <section>
                         <h2>先做这几件事</h2>
                         <div class="ops-hub-grid mb-12">
                             <a class="ops-hub-card" href="#ops-inactive">去未激活名单</a>
-                            <a class="ops-hub-card" href="#ops-ad-analytics">看广告页停留</a>
+                            <a class="ops-hub-card" href="#ops-ad-analytics">看退税名单 / 广告停留</a>
                             <a class="ops-hub-card" href="#settings">改定价与引导</a>
                             <a class="ops-hub-card" href="#codes">发激活码</a>
                         </div>
@@ -2456,6 +2535,14 @@
                         <div id="analyticsHighIncomeInactive" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
                     </section>
                     <section>
+                        <h2>退税合格跟进</h2>
+                        <p class="hint mt-0">23–25 年税额超 5000 或年收入超 15 万。含已开通用户。去名单看明细，或用下方群发选「退税合格」。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <a class="btn-page btn-page-primary" href="#ops-ad-analytics">打开退税合格名单</a>
+                            <button type="button" class="btn-page" id="btnJumpRefundEligibleBulk">群发退税合格</button>
+                        </div>
+                    </section>
+                    <section>
                         <h2>未激活用户站内信群发</h2>
                         <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>开通类<strong>自动站内信已关闭</strong>（填税后 / 支付页退出 / 注册超 24h 定时推送均不再自动发）。如需手动群发，仍可用下方表单。</p>
                         <div class="form-row form-stack">
@@ -2471,6 +2558,7 @@
                                     <option value="inactive_has_d1">未激活·有注册次日日活</option>
                                     <option value="inactive_d1_only">未激活·仅次日回访（之后未再活跃）</option>
                                     <option value="inactive_high_income">未激活·自己填月收入&gt;1.5万</option>
+                                    <option value="refund_eligible">退税合格（23–25年税额&gt;5000或年收入≥15万，含已开通）</option>
                                 </select>
                             </div>
                             <div class="form-field">

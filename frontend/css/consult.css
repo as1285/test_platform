@@ -605,6 +605,11 @@ html.app-ios-iphone15promax .container {
     border: 1px solid #bfdbfe;
     background: linear-gradient(135deg, #eff6ff, #f8fbff);
 }
+#panel-records #consultRefundAdEntry.is-refund-qualified,
+#panel-products #consultRefundAdProductEntry.is-refund-qualified {
+    border: 1px solid #fecaca;
+    background: linear-gradient(135deg, #fff7f7, #fff);
+}
 #panel-records #consultRefundAdEntry .consult-product-badge,
 #panel-products .consult-purchase-badge,
 #panel-products .consult-product-badge {

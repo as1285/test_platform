@@ -18,9 +18,10 @@
   var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
   var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
   var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
-  /** 填完个税后引导二次退税广告：以下任一年已申报税额合计超过阈值即可 */
+  /** 填完个税后引导二次退税：23/24/25 任一年税额>5000 或年收入≥15万 */
   var REFUND_AD_TAX_YEARS = [2025, 2024, 2023];
   var REFUND_AD_MIN_TAX_REPORTED = 5000;
+  var REFUND_AD_MIN_YEAR_INCOME = 150000;
   var hoursSinceRegisterCached = 0;
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
@@ -1658,10 +1659,11 @@
     } catch (eMark) {}
   }
 
-  function refundAdAfterTaxHref(year) {
-    return (
-      'refund_ad.html?from=tax_done&year=' + encodeURIComponent(String(year || ''))
-    );
+  function refundAdAfterTaxHref(year, reason) {
+    var href =
+      'refund_ad.html?from=tax_done&year=' + encodeURIComponent(String(year || ''));
+    if (reason) href += '&reason=' + encodeURIComponent(String(reason));
+    return href;
   }
 
   function parseTaxReportedAmount(val) {
@@ -1669,25 +1671,71 @@
     return isFinite(n) && n >= 0 ? n : 0;
   }
 
-  function taxReportedSumForYear(records, year) {
-    var y = parseInt(String(year), 10);
-    if (!y || !records || !records.length) return 0;
-    var sum = 0;
-    records.forEach(function (r) {
-      if (!r) return;
-      if (parseInt(String(r.year), 10) !== y) return;
-      sum += parseTaxReportedAmount(r.tax_reported);
-    });
-    return Math.round(sum * 100) / 100;
+  function isExampleCompanyRecord(r) {
+    return String((r && r.company_name) || '').indexOf('示例') >= 0;
   }
 
-  function refundAdTaxYearHits(records) {
+  function recordMonthIncome(r) {
+    var a = parseTaxReportedAmount(r && r.income_this_period);
+    var b = parseTaxReportedAmount(r && r.income);
+    return a > b ? a : b;
+  }
+
+  function taxReportedSumForYear(records, year) {
+    return yearRefundTotals(records, year).tax_sum;
+  }
+
+  function yearIncomeSumForYear(records, year) {
+    return yearRefundTotals(records, year).income_sum;
+  }
+
+  function yearRefundTotals(records, year) {
+    var y = parseInt(String(year), 10);
+    var tax = 0;
+    var income = 0;
+    if (!y || !records || !records.length) {
+      return emptyYearRefundTotals(y);
+    }
+    records.forEach(function (r) {
+      if (!r || isExampleCompanyRecord(r)) return;
+      if (parseInt(String(r.year), 10) !== y) return;
+      tax += parseTaxReportedAmount(r.tax_reported);
+      income += recordMonthIncome(r);
+    });
+    tax = Math.round(tax * 100) / 100;
+    income = Math.round(income * 100) / 100;
+    var taxHit = tax > REFUND_AD_MIN_TAX_REPORTED;
+    var incomeHit = income >= REFUND_AD_MIN_YEAR_INCOME;
+    var reason = '';
+    if (taxHit && incomeHit) reason = 'both';
+    else if (taxHit) reason = 'tax';
+    else if (incomeHit) reason = 'income';
+    return {
+      year: y,
+      tax_sum: tax,
+      income_sum: income,
+      tax_hit: taxHit,
+      income_hit: incomeHit,
+      reason: reason
+    };
+  }
+
+  function emptyYearRefundTotals(year) {
+    return {
+      year: year || 0,
+      tax_sum: 0,
+      income_sum: 0,
+      tax_hit: false,
+      income_hit: false,
+      reason: ''
+    };
+  }
+
+  function refundAdYearHits(records) {
     var hits = [];
     REFUND_AD_TAX_YEARS.forEach(function (y) {
-      var sum = taxReportedSumForYear(records, y);
-      if (sum > REFUND_AD_MIN_TAX_REPORTED) {
-        hits.push({ year: y, tax_sum: sum });
-      }
+      var row = yearRefundTotals(records, y);
+      if (row.reason) hits.push(row);
     });
     hits.sort(function (a, b) {
       return b.year - a.year;
@@ -1695,13 +1743,91 @@
     return hits;
   }
 
+  function refundAdTaxYearHits(records) {
+    return refundAdYearHits(records);
+  }
+
   function qualifiesForRefundAdAfterTax(records) {
-    return refundAdTaxYearHits(records).length > 0;
+    return refundAdYearHits(records).length > 0;
   }
 
   function primaryRefundAdTaxHit(records) {
-    var hits = refundAdTaxYearHits(records);
+    var hits = refundAdYearHits(records);
     return hits.length ? hits[0] : null;
+  }
+
+  function refundAdHitCardCopy(hit) {
+    if (!hit || !hit.year) return '';
+    if (hit.reason === 'income') {
+      return '你 ' + hit.year + ' 年收入已超 15 万，可看是否符合二次退税';
+    }
+    if (hit.reason === 'both') {
+      return '你 ' + hit.year + ' 年缴税和收入都较高，可看是否符合二次退税';
+    }
+    return '你 ' + hit.year + ' 年缴税已超 5000，可看是否符合二次退税';
+  }
+
+  function refundAdHitToastCopy(hit) {
+    if (!hit || !hit.year) return '看一眼是否符合二次退税，随时可跳过';
+    if (hit.reason === 'income') {
+      return hit.year + ' 年收入已超 15 万，看一眼是否符合二次退税，随时可跳过';
+    }
+    if (hit.reason === 'both') {
+      return hit.year + ' 年缴税和收入都较高，看一眼是否符合二次退税，随时可跳过';
+    }
+    return hit.year + ' 年已缴税额较高，看一眼是否符合二次退税，随时可跳过';
+  }
+
+  function refundAdRecommendHref(from, hit) {
+    var href = 'refund_ad.html?from=' + encodeURIComponent(String(from || 'consult'));
+    if (hit && hit.year) href += '&year=' + encodeURIComponent(String(hit.year));
+    if (hit && hit.reason) href += '&reason=' + encodeURIComponent(String(hit.reason));
+    return href;
+  }
+
+  function syncRefundAdRecommendCards(records) {
+    var hit = primaryRefundAdTaxHit(records);
+    var copy = refundAdHitCardCopy(hit);
+    var nodes = [
+      {
+        root: 'consultRefundAdEntry',
+        hint: 'consultRefundAdHint',
+        btn: 'btnConsultRefundAd',
+        badge: 'consultRefundAdBadge',
+        from: 'consult'
+      },
+      {
+        root: 'consultRefundAdProductEntry',
+        hint: 'consultRefundAdProductHint',
+        btn: 'btnConsultRefundAdProducts',
+        badge: 'consultRefundAdProductBadge',
+        from: 'consult_products'
+      },
+      {
+        root: 'smRefundAdCard',
+        hint: 'smRefundAdDesc',
+        btn: 'smRefundAdBtn',
+        badge: '',
+        from: 'shuiming_result'
+      }
+    ];
+    nodes.forEach(function (spec) {
+      var root = document.getElementById(spec.root);
+      if (!root) return;
+      if (!hit) {
+        root.hidden = true;
+        root.classList.remove('is-refund-qualified');
+        return;
+      }
+      root.hidden = false;
+      root.classList.add('is-refund-qualified');
+      var hint = spec.hint ? document.getElementById(spec.hint) : null;
+      if (hint) hint.textContent = copy + '。加微信备注「二次退税」。';
+      var badge = spec.badge ? document.getElementById(spec.badge) : null;
+      if (badge) badge.textContent = '建议咨询';
+      var btn = document.getElementById(spec.btn);
+      if (btn) btn.setAttribute('href', refundAdRecommendHref(spec.from, hit));
+    });
   }
 
   function resolveTaxRecordsForRefundAd(opts) {
@@ -1714,7 +1840,7 @@
     return Promise.resolve(window.__consultRecordsCache || []);
   }
 
-  /** 2023–2025 任一年扣税超过 5000 的注册用户，填完个税后带去一次广告页；可跳过，不重复打断 */
+  /** 2023–2025 任一年税额>5000 或年收入≥15万，填完后带去一次广告页 */
   function maybeGoRefundAdAfterTax(opts, year, records) {
     if (isLandingGuest()) return false;
     if (!isLoggedIn()) return false;
@@ -1725,25 +1851,24 @@
     var hit = primaryRefundAdTaxHit(list);
     if (!hit) return false;
     markRefundAdAfterTaxSeen();
-    var allHits = refundAdTaxYearHits(list);
+    var allHits = refundAdYearHits(list);
     track('track_refund_ad_after_tax_go', {
       page: currentPage(),
       source: (opts && opts.source) || 'batch',
       tax_count: taxRecordCount(),
       tax_sum_gate: hit.tax_sum,
+      income_sum_gate: hit.income_sum,
       tax_year_gate: hit.year,
+      reason: hit.reason,
       tax_year_hits: allHits.map(function (h) {
         return h.year;
       }).join(',')
     });
     if (typeof showCaptureToast === 'function') {
-      showCaptureToast(
-        hit.year + ' 年已缴税额较高，看一眼是否符合二次退税，随时可跳过',
-        { duration: 1800 }
-      );
+      showCaptureToast(refundAdHitToastCopy(hit), { duration: 1800 });
     }
     setTimeout(function () {
-      window.location.href = refundAdAfterTaxHref(hit.year || year);
+      window.location.href = refundAdAfterTaxHref(hit.year || year, hit.reason);
     }, 420);
     return true;
   }
@@ -2433,6 +2558,9 @@
       renderMineTaxStrongPrompt();
       renderConsultTaxStrongPrompt();
       renderShouyeRetentionCard();
+      if (Array.isArray(window.__consultRecordsCache)) {
+        syncRefundAdRecommendCards(window.__consultRecordsCache);
+      }
       /* 无个税时对所有登录用户强提示（含已激活） */
       setTimeout(maybeShowTaxFillNudge, 480);
       bumpIncomeBrowseVisit();
@@ -2660,8 +2788,13 @@
     afterTaxRecordsCreated: afterTaxRecordsCreated,
     maybeGoRefundAdAfterTax: maybeGoRefundAdAfterTax,
     taxReportedSumForYear: taxReportedSumForYear,
+    yearIncomeSumForYear: yearIncomeSumForYear,
+    yearRefundTotals: yearRefundTotals,
     qualifiesForRefundAdAfterTax: qualifiesForRefundAdAfterTax,
     refundAdTaxYearHits: refundAdTaxYearHits,
+    refundAdYearHits: refundAdYearHits,
+    refundAdHitCardCopy: refundAdHitCardCopy,
+    syncRefundAdRecommendCards: syncRefundAdRecommendCards,
     afterEmployerSaved: afterEmployerSaved,
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     mountShuimingValueBar: mountShuimingValueBar,

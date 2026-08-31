@@ -168,6 +168,12 @@ app.get(
   h.handleOpsConversionResearch
 );
 app.get(
+  '/api/admin/ops/refund-eligible',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'ops-lift', 'analytics-conversion']),
+  h.handleOpsRefundEligible
+);
+app.get(
   '/api/admin/analytics/channel-registration-funnel',
   mw.requireAdminAuth,
   mw.requireAdminMenu('channel-analysis'),

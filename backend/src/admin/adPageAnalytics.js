@@ -4,6 +4,7 @@
 'use strict';
 
 const { getPool } = require('../shared/db');
+const { refundYearAggSql } = require('./opsConversion');
 
 var VIEW_KEYS = [
   'track_refund_ad_view',
@@ -53,8 +54,11 @@ var SOURCE_LABELS = {
   purchase: '开通页',
   purchase_page: '开通页',
   consult: '填写页',
+  consult_products: '咨询页增值',
   purchase_yuefu: '开通页月付入口',
   purchase_gjj: '开通页公积金入口',
+  shuiming_result: '收入明细',
+  msg_refund: '退税站内信',
   direct: '直接访问'
 };
 
@@ -340,6 +344,26 @@ async function handleAdminAdPageStats(req, res) {
       var avgDwell = sum.avg_dwell != null ? Math.round(Number(sum.avg_dwell)) : null;
       if (!isFinite(avgDwell)) avgDwell = null;
 
+      var refundEligible = 0;
+      var refundEligibleCopied = 0;
+      try {
+        const [eligRows] = await conn.query(
+          'SELECT COUNT(DISTINCT ry.user_id) AS c FROM (' + refundYearAggSql() + ') ry'
+        );
+        refundEligible = n(eligRows && eligRows[0], 'c');
+        var refundCopyKeys = ['track_refund_ad_copy', 'track_purchase_refund_ad_copy'];
+        const [eligCopyRows] = await conn.query(
+          `SELECT COUNT(DISTINCT e.username) AS c
+           FROM ad_page_track_events e
+           INNER JOIN (${refundYearAggSql()}) ry ON ry.user_id = e.username
+           WHERE e.event_key IN (${inListSql(refundCopyKeys)})`,
+          refundCopyKeys
+        );
+        refundEligibleCopied = n(eligCopyRows && eligCopyRows[0], 'c');
+      } catch (eElig) {
+        console.error('[ad-page-stats] refund eligible funnel', eElig);
+      }
+
       res.json({
         code: 200,
         data: {
@@ -362,7 +386,13 @@ async function handleAdminAdPageStats(req, res) {
             after_tax_continues: n(sum, 'after_tax_continues'),
             after_tax_go: n(sum, 'after_tax_go'),
             purchase_views: n(sum, 'purchase_views'),
-            purchase_copies: n(sum, 'purchase_copies')
+            purchase_copies: n(sum, 'purchase_copies'),
+            refund_eligible: refundEligible,
+            refund_eligible_copied: refundEligibleCopied,
+            refund_eligible_copy_rate:
+              refundEligible > 0
+                ? Math.round((refundEligibleCopied / refundEligible) * 1000) / 10
+                : 0
           },
           actions: (actionRows || []).map(function (r) {
             return {

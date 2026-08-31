@@ -377,7 +377,7 @@
                 <button type="button" class="refund-ad-continue-btn" id="btnRefundAdContinue">查看我刚填的记录</button>
                 <p class="refund-ad-continue-note">不强制加微信，随时可从「我要咨询」回来</p>
             </div>
-            <p class="refund-ad-lede" id="refundAdLede">先对照下面两条：<strong>月薪大约 5000 元及以上</strong>，且<strong>近三年缴过个税</strong>。符合就复制微信号，备注「二次退税」咨询。</p>
+            <p class="refund-ad-lede" id="refundAdLede">先对照：<strong>2023–2025 任一年已缴税额超过 5000 元</strong>，或<strong>任一年收入达到 15 万</strong>。符合就复制微信号，备注「二次退税」咨询。</p>
             <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
                 <h2 class="refund-ad-visually-hidden">哪些人可以做二次退税</h2>
                 <img
@@ -401,15 +401,15 @@
                 <div class="refund-ad-guide-block">
                     <h3>谁可以先问</h3>
                     <ul>
-                        <li>当前月薪大约 <strong>5000 元及以上</strong>（按税前工资看即可）。</li>
-                        <li>过去三年里<strong>正常缴过个人所得税</strong>：工资条或个税 APP 里能看到已缴税额。</li>
+                        <li>2023、2024、2025 任一年<strong>已缴税额超过 5000 元</strong>。</li>
+                        <li>或者这三年里任一年<strong>收入合计达到 15 万</strong>。</li>
                         <li>公务员、医生、教师、程序员、设计师、销售、国企员工、高管、主播、自由职业等，各行业都可以先问。</li>
                     </ul>
                 </div>
                 <div class="refund-ad-guide-block is-white">
                     <h3>建议按这 3 步</h3>
                     <ol>
-                        <li>先看自己是否同时符合「月薪」和「近三年缴过个税」。</li>
+                        <li>先看 2023–2025 是否有一年缴税超 5000，或一年收入达到 15 万。</li>
                         <li>心里有个数：任职单位、近 1–3 年工资和已缴个税。没有记录的，先在本产品里补一条，顾问对照更快。</li>
                         <li>点「复制微信号」，打开微信添加，<strong>备注「二次退税」</strong>，把单位和缴税情况发给顾问。</li>
                     </ol>
@@ -603,13 +603,47 @@
         var fromTaxDone = false;
         var fromConsult = '';
         var year = '';
+        var reason = '';
         try {
             var qs = new URLSearchParams(window.location.search || '');
             var fromRaw = String(qs.get('from') || '').trim();
             fromTaxDone = fromRaw === 'tax_done';
-            if (fromRaw === 'consult' || fromRaw === 'consult_products') fromConsult = fromRaw;
+            if (
+                fromRaw === 'consult' ||
+                fromRaw === 'consult_products' ||
+                fromRaw === 'shuiming_result' ||
+                fromRaw === 'msg_refund'
+            ) {
+                fromConsult = fromRaw;
+            }
             year = String(qs.get('year') || '').trim();
+            reason = String(qs.get('reason') || '').trim();
         } catch (eFrom) {}
+        function applyRefundAdQualifiedLede() {
+            var lede = document.getElementById('refundAdLede');
+            if (!lede || !year) return;
+            if (reason === 'income') {
+                lede.innerHTML =
+                    '根据你填写的记录，<strong>' +
+                    year +
+                    ' 年收入已超过 15 万</strong>。复制微信号，备注「二次退税」咨询。';
+                return;
+            }
+            if (reason === 'both') {
+                lede.innerHTML =
+                    '根据你填写的记录，<strong>' +
+                    year +
+                    ' 年缴税和收入都较高</strong>。复制微信号，备注「二次退税」咨询。';
+                return;
+            }
+            if (reason === 'tax' || fromTaxDone) {
+                lede.innerHTML =
+                    '根据你填写的记录，<strong>' +
+                    year +
+                    ' 年已缴税额超过 5000 元</strong>。复制微信号，备注「二次退税」咨询。';
+            }
+        }
+        applyRefundAdQualifiedLede();
         if (fromTaxDone) {
             document.body.classList.add('is-from-tax-done');
             var titleEl = document.getElementById('refundAdTitle');
@@ -652,9 +686,17 @@
 
         whenTrackReady(function () {
             if (fromTaxDone) {
-                track('track_refund_ad_after_tax_view', { wechat_id: WECHAT_ID, year: year || undefined });
+                track('track_refund_ad_after_tax_view', {
+                    wechat_id: WECHAT_ID,
+                    year: year || undefined,
+                    reason: reason || undefined
+                });
             } else {
-                track('track_refund_ad_view', { wechat_id: WECHAT_ID });
+                track('track_refund_ad_view', {
+                    wechat_id: WECHAT_ID,
+                    year: year || undefined,
+                    reason: reason || undefined
+                });
             }
             bindDwell();
         });

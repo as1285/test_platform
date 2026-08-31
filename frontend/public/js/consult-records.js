@@ -257,6 +257,12 @@ function refreshRecordList(opts) {
         );
         renderListFromArray(list);
         syncTaxPayGuideBanner(list);
+        if (
+            window.ConversionGuide &&
+            typeof window.ConversionGuide.syncRefundAdRecommendCards === 'function'
+        ) {
+            window.ConversionGuide.syncRefundAdRecommendCards(list);
+        }
         syncBatchTaxEmptyState();
         return list;
     });

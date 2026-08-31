@@ -18,7 +18,7 @@
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260828-tax-fill',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260829-opsconv',
-    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-adops'
+    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig'
   };
 
   var PAGE_MODULE = {

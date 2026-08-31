@@ -1550,7 +1550,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['20260831-nomineguide', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
+  ['20260831-refundqual', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
   'auth conversion-guide cache + xiaomi 15 result header'
 );
 mustInclude(
@@ -1564,15 +1564,44 @@ mustInclude(
     'REFUND_AD_AFTER_TAX_KEY',
     'REFUND_AD_TAX_YEARS',
     'REFUND_AD_MIN_TAX_REPORTED',
+    'REFUND_AD_MIN_YEAR_INCOME',
     'qualifiesForRefundAdAfterTax',
-    'refundAdTaxYearHits',
+    'refundAdYearHits',
+    'yearIncomeSumForYear',
+    'syncRefundAdRecommendCards',
     'taxReportedSumForYear',
     'maybeGoRefundAdAfterTax',
     'refund_ad.html?from=tax_done',
+    'reason=',
     'track_refund_ad_after_tax_go',
     "opts.source === 'single_save'"
   ],
-  'after tax fill go to refund ad once when 2023-2025 tax over 5000'
+  'after tax fill go to refund ad when 2023-2025 tax over 5000 or income 150000'
+);
+mustInclude(
+  'frontend/consult.html',
+  ['consultRefundAdEntry" hidden', 'consultRefundAdHint'],
+  'consult refund card hidden until qualified'
+);
+mustInclude(
+  'frontend/public/js/consult-records.js',
+  ['syncRefundAdRecommendCards'],
+  'consult records sync refund qualified card'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['smRefundAdCard', 'syncShuimingRefundAdCard'],
+  'shuiming result refund qualified card'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['opsRefundUserTbody', 'refund_eligible', '退税合格名单'],
+  'admin refund eligible list and bulk audience'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ['/api/admin/ops/refund-eligible', 'handleOpsRefundEligible'],
+  'refund eligible admin route'
 );
 mustInclude(
   'frontend/public/js/consult-batch-tax.js',

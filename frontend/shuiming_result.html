@@ -473,6 +473,41 @@
         }
         .sm-activate-btn:active { opacity: 0.92; transform: scale(0.98); }
 
+        .sm-refund-ad-card {
+            margin: 0 0 10px;
+            padding: 14px 14px 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 55%, #ef4444 100%);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(185, 28, 28, 0.2);
+        }
+        .sm-refund-ad-card[hidden] { display: none !important; }
+        .sm-refund-ad-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .sm-refund-ad-desc {
+            font-size: 12px;
+            line-height: 1.5;
+            opacity: 0.92;
+            margin-bottom: 12px;
+        }
+        .sm-refund-ad-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            border-radius: 10px;
+            background: #fff;
+            color: #b91c1c;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sm-refund-ad-btn:active { opacity: 0.92; transform: scale(0.98); }
+
         .summary-label {
             font-size: 14px;
             color: #000;
@@ -1812,6 +1847,11 @@
                 <span class="summary-label"><span class="summary-label-text">已申报税额合计：</span></span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
+            <div class="sm-refund-ad-card" id="smRefundAdCard" hidden>
+                <p class="sm-refund-ad-title">二次退税咨询</p>
+                <p class="sm-refund-ad-desc" id="smRefundAdDesc">近三年缴税或收入达标的可咨询。</p>
+                <a href="refund_ad.html?from=shuiming_result" class="sm-refund-ad-btn" id="smRefundAdBtn">查看并复制微信</a>
+            </div>
             <div class="sm-activate-card" id="smActivateCard" hidden>
                 <p class="sm-activate-title">开通完整功能</p>
                 <p class="sm-activate-desc">激活后可去水印并体验完税证明；也可先下方「示例填写个税」生成演示数据</p>
@@ -2343,6 +2383,37 @@
                 tax_total: payload && payload.tax_total != null ? payload.tax_total : '0.00'
             });
             renderList(records, year);
+            syncShuimingRefundAdCard();
+        }
+
+        function syncShuimingRefundAdCard() {
+            function apply(list) {
+                if (
+                    window.ConversionGuide &&
+                    typeof window.ConversionGuide.syncRefundAdRecommendCards === 'function'
+                ) {
+                    window.ConversionGuide.syncRefundAdRecommendCards(list);
+                }
+            }
+            if (Array.isArray(window.__consultRecordsCache) && window.__consultRecordsCache.length) {
+                apply(window.__consultRecordsCache);
+                return;
+            }
+            if (typeof window.authFetch !== 'function') return;
+            window
+                .authFetch('api/tax?action=records')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var list =
+                        data && data.code === 200 && data.data && Array.isArray(data.data.records)
+                            ? data.data.records
+                            : [];
+                    window.__consultRecordsCache = list;
+                    apply(list);
+                })
+                .catch(function () {});
         }
 
         function finishShuimingPageLoading() {

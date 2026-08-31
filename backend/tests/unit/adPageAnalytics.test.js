@@ -37,6 +37,8 @@ describe('adPageAnalytics helpers', () => {
     expect(sourceLabel('refund_ad_tab')).toBe('底栏退税');
     expect(sourceLabel('purchase_yuefu')).toBe('开通页月付入口');
     expect(sourceLabel('purchase_gjj')).toBe('开通页公积金入口');
+    expect(sourceLabel('msg_refund')).toBe('退税站内信');
+    expect(sourceLabel('shuiming_result')).toBe('收入明细');
   });
 
   it('summary/daily/user SQL placeholder counts match bind lists', () => {

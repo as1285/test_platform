@@ -7,6 +7,15 @@ const { getPool } = require('../shared/db');
 
 var HIGH_INCOME = 15000;
 var GUEST_PREFIX = '__guest_';
+var REFUND_AD_YEARS = [2025, 2024, 2023];
+var REFUND_AD_MIN_TAX = 5000;
+var REFUND_AD_MIN_INCOME = 150000;
+var REFUND_COPY_KEYS = ['track_refund_ad_copy', 'track_purchase_refund_ad_copy'];
+var REFUND_VIEW_KEYS = [
+  'track_refund_ad_view',
+  'track_refund_ad_after_tax_view',
+  'track_purchase_refund_ad_view'
+];
 
 function monthIncomeSql(alias) {
   var t = alias || 'tr';
@@ -23,6 +32,61 @@ function highIncomeExistsSql(userCol) {
     HIGH_INCOME +
     ')'
   );
+}
+
+function refundYearInSql() {
+  return REFUND_AD_YEARS.join(', ');
+}
+
+function refundYearAggSql() {
+  return (
+    'SELECT tr.user_id, tr.year,' +
+    ' SUM(IFNULL(tr.tax_reported, 0)) AS tax_sum,' +
+    ' SUM(GREATEST(IFNULL(tr.income_this_period, 0), IFNULL(tr.income, 0))) AS income_sum' +
+    ' FROM tax_records tr' +
+    ' WHERE tr.deleted_at IS NULL' +
+    " AND IFNULL(tr.company_name,'') NOT LIKE '%示例%'" +
+    ' AND tr.year IN (' +
+    refundYearInSql() +
+    ')' +
+    ' GROUP BY tr.user_id, tr.year' +
+    ' HAVING SUM(IFNULL(tr.tax_reported, 0)) > ' +
+    REFUND_AD_MIN_TAX +
+    ' OR SUM(GREATEST(IFNULL(tr.income_this_period, 0), IFNULL(tr.income, 0))) >= ' +
+    REFUND_AD_MIN_INCOME
+  );
+}
+
+function refundEligibleSql(userCol) {
+  return (
+    'EXISTS (SELECT 1 FROM (' + refundYearAggSql() + ') ry WHERE ry.user_id = ' + userCol + ')'
+  );
+}
+
+function refundHitReasonExpr(taxCol, incomeCol) {
+  return (
+    'CASE WHEN ' +
+    taxCol +
+    ' > ' +
+    REFUND_AD_MIN_TAX +
+    ' AND ' +
+    incomeCol +
+    ' >= ' +
+    REFUND_AD_MIN_INCOME +
+    " THEN 'both' WHEN " +
+    taxCol +
+    ' > ' +
+    REFUND_AD_MIN_TAX +
+    " THEN 'tax' ELSE 'income' END"
+  );
+}
+
+function refundAdEventInSql(keys) {
+  return keys
+    .map(function () {
+      return '?';
+    })
+    .join(', ');
 }
 
 function hasTaxSql(userCol) {
@@ -623,17 +687,209 @@ function buildResearchInsights(x) {
   return lines;
 }
 
+function refundPrimaryHitSql() {
+  return (
+    'SELECT h.user_id, h.year AS hit_year, h.tax_sum, h.income_sum, ' +
+    refundHitReasonExpr('h.tax_sum', 'h.income_sum') +
+    ' AS hit_reason FROM (' +
+    refundYearAggSql() +
+    ') h INNER JOIN (SELECT user_id, MAX(year) AS hit_year FROM (' +
+    refundYearAggSql() +
+    ') z GROUP BY user_id) p ON p.user_id = h.user_id AND p.hit_year = h.year'
+  );
+}
+
+async function handleOpsRefundEligible(req, res) {
+  try {
+    var page = parseInt(req.query && req.query.page, 10) || 1;
+    var limit = parseInt(req.query && req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var offset = (page - 1) * limit;
+    var q = String((req.query && req.query.q) || '').trim();
+    var reason = String((req.query && req.query.reason) || '')
+      .trim()
+      .toLowerCase();
+    var year = parseInt(req.query && req.query.year, 10);
+    var copied = String((req.query && req.query.copied) || '')
+      .trim()
+      .toLowerCase();
+    var active = String((req.query && req.query.active) || '').trim();
+
+    var where = ['users.list_hidden_at IS NULL', nonGuestSql('users')];
+    var params = [];
+    appendRegisteredScope(where, params, req.admin, 'users.username');
+    if (q) {
+      where.push('(users.username LIKE ? OR users.real_name LIKE ?)');
+      params.push('%' + q + '%', '%' + q + '%');
+    }
+    if (active === '1') {
+      where.push('users.account_active = 1');
+    } else if (active === '0') {
+      where.push('(users.account_active IS NULL OR users.account_active = 0)');
+    }
+    if (copied === 'copied' || copied === '1') {
+      where.push(
+        'EXISTS (SELECT 1 FROM ad_page_track_events e WHERE e.username = users.username AND e.event_key IN (' +
+          refundAdEventInSql(REFUND_COPY_KEYS) +
+          '))'
+      );
+      params.push.apply(params, REFUND_COPY_KEYS);
+    } else if (copied === 'none' || copied === '0') {
+      where.push(
+        'NOT EXISTS (SELECT 1 FROM ad_page_track_events e WHERE e.username = users.username AND e.event_key IN (' +
+          refundAdEventInSql(REFUND_COPY_KEYS) +
+          '))'
+      );
+      params.push.apply(params, REFUND_COPY_KEYS);
+    }
+    if (year === 2023 || year === 2024 || year === 2025) {
+      where.push('hit.hit_year = ?');
+      params.push(year);
+    }
+    if (reason === 'tax' || reason === 'income' || reason === 'both') {
+      where.push('hit.hit_reason = ?');
+      params.push(reason);
+    }
+
+    var fromSql =
+      ' FROM users INNER JOIN (' + refundPrimaryHitSql() + ') hit ON hit.user_id = users.username ';
+    var whereSql = ' WHERE ' + where.join(' AND ');
+    var pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      const [countRows] = await conn.query(
+        'SELECT COUNT(*) AS c' + fromSql + whereSql,
+        params
+      );
+      var total = n(countRows && countRows[0], 'c');
+      const [sumRows] = await conn.query(
+        `SELECT
+            SUM(CASE WHEN hit.hit_reason = 'tax' THEN 1 ELSE 0 END) AS tax_only,
+            SUM(CASE WHEN hit.hit_reason = 'income' THEN 1 ELSE 0 END) AS income_only,
+            SUM(CASE WHEN hit.hit_reason = 'both' THEN 1 ELSE 0 END) AS both_hit
+         ${fromSql} ${whereSql}`,
+        params
+      );
+      const [pageRows] = await conn.query(
+        `SELECT users.username, users.real_name, users.account_active,
+                users.register_source_channel, users.last_login_city,
+                hit.hit_year, hit.tax_sum, hit.income_sum, hit.hit_reason
+         ${fromSql} ${whereSql}
+         ORDER BY hit.hit_year DESC, hit.tax_sum DESC, users.username ASC
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
+      );
+      var names = (pageRows || []).map(function (r) {
+        return String(r.username || '');
+      }).filter(Boolean);
+      var flags = Object.create(null);
+      if (names.length) {
+        var ph = names
+          .map(function () {
+            return '?';
+          })
+          .join(',');
+        const [evRows] = await conn.query(
+          `SELECT username,
+                  SUM(CASE WHEN event_key IN (${refundAdEventInSql(REFUND_VIEW_KEYS)}) THEN 1 ELSE 0 END) AS views,
+                  SUM(CASE WHEN event_key IN (${refundAdEventInSql(REFUND_COPY_KEYS)}) THEN 1 ELSE 0 END) AS copies,
+                  MAX(created_at) AS last_at
+           FROM ad_page_track_events
+           WHERE username IN (${ph})
+           GROUP BY username`,
+          [].concat(REFUND_VIEW_KEYS, REFUND_COPY_KEYS, names)
+        );
+        (evRows || []).forEach(function (row) {
+          flags[String(row.username || '')] = {
+            views: n(row, 'views'),
+            copies: n(row, 'copies'),
+            last_at: row.last_at ? new Date(row.last_at).toISOString() : ''
+          };
+        });
+        const [actRows] = await conn.query(
+          `SELECT username, MAX(created_at) AS last_at
+           FROM user_page_events
+           WHERE username IN (${ph})
+           GROUP BY username`,
+          names
+        );
+        (actRows || []).forEach(function (row) {
+          var u = String(row.username || '');
+          if (!flags[u]) flags[u] = { views: 0, copies: 0, last_at: '' };
+          if (!flags[u].last_at && row.last_at) {
+            flags[u].last_at = new Date(row.last_at).toISOString();
+          }
+        });
+      }
+      var sum = sumRows && sumRows[0] ? sumRows[0] : {};
+      res.json({
+        code: 200,
+        data: {
+          users: (pageRows || []).map(function (r) {
+            var uname = String(r.username || '');
+            var f = flags[uname] || {};
+            return {
+              username: uname,
+              real_name: r.real_name != null ? String(r.real_name) : '',
+              account_active: Number(r.account_active) === 1,
+              channel:
+                r.register_source_channel != null
+                  ? String(r.register_source_channel).trim()
+                  : '',
+              last_login_city: r.last_login_city != null ? String(r.last_login_city).trim() : '',
+              hit_year: Number(r.hit_year) || 0,
+              tax_sum: Math.round((Number(r.tax_sum) || 0) * 100) / 100,
+              income_sum: Math.round((Number(r.income_sum) || 0) * 100) / 100,
+              reason: r.hit_reason != null ? String(r.hit_reason) : '',
+              viewed: n(f, 'views') > 0,
+              copies: n(f, 'copies'),
+              last_at: f.last_at || ''
+            };
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          summary: {
+            eligible: total,
+            tax_only: n(sum, 'tax_only'),
+            income_only: n(sum, 'income_only'),
+            both: n(sum, 'both_hit')
+          },
+          thresholds: {
+            years: REFUND_AD_YEARS.slice(),
+            min_tax: REFUND_AD_MIN_TAX,
+            min_income: REFUND_AD_MIN_INCOME
+          }
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[ops-refund-eligible]', e);
+    res.status(500).json({ code: 500, msg: String(e.message || '加载退税合格名单失败') });
+  }
+}
+
 function getHandlers() {
   return {
     handleOpsInactiveSummary: handleOpsInactiveSummary,
     handleOpsInactiveUsers: handleOpsInactiveUsers,
-    handleOpsConversionResearch: handleOpsConversionResearch
+    handleOpsConversionResearch: handleOpsConversionResearch,
+    handleOpsRefundEligible: handleOpsRefundEligible
   };
 }
 
 module.exports = {
   getHandlers: getHandlers,
   HIGH_INCOME: HIGH_INCOME,
+  REFUND_AD_YEARS: REFUND_AD_YEARS,
+  REFUND_AD_MIN_TAX: REFUND_AD_MIN_TAX,
+  REFUND_AD_MIN_INCOME: REFUND_AD_MIN_INCOME,
+  refundEligibleSql: refundEligibleSql,
+  refundYearAggSql: refundYearAggSql,
   parseSegment: parseSegment,
   parseDays: parseDays
 };

@@ -489,7 +489,8 @@ const BULK_MSG_AUDIENCE_SET = {
   inactive_purchase_no_pay: true,
   inactive_has_d1: true,
   inactive_d1_only: true,
-  inactive_high_income: true
+  inactive_high_income: true,
+  refund_eligible: true
 };
 /** 自己填写的月收入（本期收入/收入）超过该值视为高收入跟进 */
 const HIGH_SELF_INCOME_THRESHOLD = 15000;
@@ -15970,8 +15971,10 @@ function appendD1ReturnActivityFilters(mode, alias, where) {
 
 /** 群发受众 SQL 条件 */
 function appendBulkMsgAudienceFilters(audience, where, params) {
-  where.push('(u.account_active IS NULL OR u.account_active = 0)');
   where.push(nonGuestUsernameSql('u.username'));
+  if (audience !== 'refund_eligible') {
+    where.push('(u.account_active IS NULL OR u.account_active = 0)');
+  }
   if (audience === 'pending_activate_24h') {
     where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
   } else if (audience === 'inactive_has_tax') {
@@ -15999,6 +16002,8 @@ function appendBulkMsgAudienceFilters(audience, where, params) {
     appendD1ReturnActivityFilters('only', 'u', where);
   } else if (audience === 'inactive_high_income') {
     where.push(userHasSelfFilledHighIncomeSql('u.username', HIGH_SELF_INCOME_THRESHOLD));
+  } else if (audience === 'refund_eligible') {
+    where.push(require('../admin/opsConversion').refundEligibleSql('u.username'));
   }
 }
 

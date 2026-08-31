@@ -1897,6 +1897,9 @@
         var SAW_PAY_BULK_TITLE = '开通后即可去掉水印';
         var SAW_PAY_BULK_BODY =
             '您好，看到您看过开通方案但还未付款。开通后去除水印，完整查看收入纳税明细并导出证明。没有免费激活码。点击下方「前往激活」即可开通。';
+        var REFUND_ELIGIBLE_BULK_TITLE = '你近三年缴税较高，可看是否符合二次退税';
+        var REFUND_ELIGIBLE_BULK_BODY =
+            '您好，根据您填写的 2023–2025 年记录，已缴税额或年收入已达到二次退税咨询门槛。可打开页面对照并复制微信号，备注「二次退税」。不强制添加。';
 
         function applyHasTaxBulkDefaultCopy() {
             var titleEl = document.getElementById('bulkMsgTitle');
@@ -1917,6 +1920,32 @@
             var bodyEl = document.getElementById('bulkMsgContent');
             if (titleEl) titleEl.value = HIGH_INCOME_BULK_TITLE;
             if (bodyEl) bodyEl.value = HIGH_INCOME_BULK_BODY;
+        }
+
+        function applyRefundEligibleBulkDefaultCopy() {
+            var titleEl = document.getElementById('bulkMsgTitle');
+            var bodyEl = document.getElementById('bulkMsgContent');
+            var linkEl = document.getElementById('bulkMsgLink');
+            var skipEl = document.getElementById('bulkMsgSkipSent');
+            if (titleEl) titleEl.value = REFUND_ELIGIBLE_BULK_TITLE;
+            if (bodyEl) bodyEl.value = REFUND_ELIGIBLE_BULK_BODY;
+            if (linkEl) linkEl.value = 'refund_ad.html?from=msg_refund';
+            if (skipEl) skipEl.checked = false;
+        }
+
+        function jumpToRefundEligibleBulk() {
+            var aud = document.getElementById('bulkMsgAudience');
+            if (aud) aud.value = 'refund_eligible';
+            applyRefundEligibleBulkDefaultCopy();
+            if (normalizeAdminPage(location.hash) !== 'ops-lift') {
+                location.hash = 'ops-lift';
+            }
+            setTimeout(function () {
+                var box = document.getElementById('bulkMsgAudience');
+                if (box && box.scrollIntoView) {
+                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 80);
         }
 
         function jumpToHighIncomeUsers() {
@@ -9086,6 +9115,12 @@
                 jumpToHighIncomeBulk();
             });
         }
+        var btnJumpRefundEligibleBulk = document.getElementById('btnJumpRefundEligibleBulk');
+        if (btnJumpRefundEligibleBulk) {
+            btnJumpRefundEligibleBulk.addEventListener('click', function () {
+                jumpToRefundEligibleBulk();
+            });
+        }
         var btnRefreshAnalytics = document.getElementById('btnRefreshAnalytics');
         if (btnRefreshAnalytics) {
             btnRefreshAnalytics.addEventListener('click', function () {
@@ -9242,7 +9277,8 @@
                 inactive_purchase_no_pay: '未激活、去过支付页、未支付',
                 inactive_has_d1: '未激活·有注册次日日活',
                 inactive_d1_only: '未激活·仅次日回访（之后未再活跃）',
-                inactive_high_income: '未激活·自己填月收入>1.5万'
+                inactive_high_income: '未激活·自己填月收入>1.5万',
+                refund_eligible: '退税合格'
             };
             return labels[audience] || audience;
         }
@@ -9275,6 +9311,8 @@
                     applyD1BulkDefaultCopy();
                 } else if (v === 'inactive_high_income') {
                     applyHighIncomeBulkDefaultCopy();
+                } else if (v === 'refund_eligible') {
+                    applyRefundEligibleBulkDefaultCopy();
                 } else if (v === 'inactive_has_tax') {
                     applyHasTaxBulkDefaultCopy();
                 } else if (

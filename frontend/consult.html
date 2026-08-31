@@ -253,12 +253,12 @@
         </div>
 
         <div id="panel-records" class="tab-panel active">
-            <div class="card consult-product-card" id="consultRefundAdEntry">
+            <div class="card consult-product-card" id="consultRefundAdEntry" hidden>
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
                     <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
-                    <span class="consult-product-badge">看是否符合</span>
+                    <span class="consult-product-badge" id="consultRefundAdBadge">建议咨询</span>
                 </div>
-                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">月薪≥5000、近三年缴过个税的可咨询。加微信备注「二次退税」。</p>
+                <p class="hint" id="consultRefundAdHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">近三年缴税或收入达标的可咨询。加微信备注「二次退税」。</p>
                 <a class="btn btn-primary btn-block" id="btnConsultRefundAd" href="refund_ad.html?from=consult">查看并复制微信</a>
             </div>
 
@@ -869,12 +869,12 @@
                 <button type="button" class="btn btn-primary btn-block" id="btnConsultProductsActivate">确认激活</button>
             </div>
             <p class="consult-products-section-label">增值服务</p>
-            <div class="card consult-product-card" id="consultRefundAdProductEntry">
+            <div class="card consult-product-card" id="consultRefundAdProductEntry" hidden>
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
                     <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
-                    <span class="consult-product-badge">看是否符合</span>
+                    <span class="consult-product-badge" id="consultRefundAdProductBadge">建议咨询</span>
                 </div>
-                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">月薪≥5000、近三年缴过个税的可咨询。加微信备注「二次退税」。</p>
+                <p class="hint" id="consultRefundAdProductHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">近三年缴税或收入达标的可咨询。加微信备注「二次退税」。</p>
                 <a class="btn btn-primary btn-block" id="btnConsultRefundAdProducts" href="refund_ad.html?from=consult_products">查看并复制微信</a>
             </div>
             <div class="card consult-product-card" id="lizhiCertEntryCard">
@@ -941,7 +941,7 @@
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
     <script defer src="/js/consult-core.js?v=20260831-renzhiguide"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260829-fillcta"></script>
-    <script defer src="/js/consult-records.js?v=20260829-fillcta"></script>
+    <script defer src="/js/consult-records.js?v=20260831-refundqual"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260828-tax-fill"></script>
     <script>
     (function () {

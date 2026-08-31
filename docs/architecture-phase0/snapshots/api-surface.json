@@ -298,6 +298,10 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/ops/refund-eligible"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/ops/inactive-summary"
     },
     {
