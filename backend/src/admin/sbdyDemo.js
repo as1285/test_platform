@@ -3778,7 +3778,7 @@ function renderXmCertHtml(payload, links, opts) {
           escHtml(p.print_date || '') +
           '</span></div>'
         : '') +
-      '<img class="seal" src="/img/sbdy_xm_seal.png" alt="">' +
+      (isFirst ? '<img class="seal" src="/img/sbdy_xm_seal.png?v=20260831-city" alt="">' : '') +
       '<div class="pg">第 ' +
       (i + 1) +
       ' 页 共 ' +
@@ -3802,7 +3802,7 @@ function renderXmCertHtml(payload, links, opts) {
     '.note{margin:14px 0 18px;font-size:13px}' +
     '.sign{display:flex;justify-content:space-between;font-size:13px;margin:8px 24px 0}' +
     '.pg{position:absolute;left:0;right:0;bottom:10mm;text-align:center;font-size:13px}' +
-    '.seal{position:absolute;left:50%;top:86mm;width:42mm;transform:translateX(-50%);opacity:.92;pointer-events:none}' +
+    '.seal{position:absolute;left:50%;top:88mm;width:35.3mm;transform:translateX(-50%);opacity:.95;pointer-events:none}' +
     '</style></head><body>' +
     body +
     '</body></html>'

@@ -13,6 +13,7 @@
 from __future__ import print_function
 
 import json
+import math
 import os
 import sys
 
@@ -46,6 +47,10 @@ WATERMARK = (
     '本文件由全国社保卡服务平台提供，任何第三方机构不得对数据进行二次加工、'
     '处理、解析或以任何形式用于商业用途，否则将追究法律责任。'
 )
+# 真实下载水印按三行折行、-30° 斜向、2 列平铺（对齐样张排版）
+WM_LINE1 = '\u3000\u3000本文件由全国社保卡服务平台提供，任何第三方机构不'
+WM_LINE2 = '得对数据进行二次加工、处理、解析或以任何形式用于商业'
+WM_LINE3_PREFIX = '用途，否则将追究法律责任。'
 NOTE = '注：参保人在相应缴费起止时间内所属的参保地信息参见“参保地经办机构”一栏'
 
 
@@ -241,33 +246,42 @@ def draw_page_no(page, fp, fn, idx, total):
 
 
 def draw_watermark(page, fp, fn, stamp):
-    text = WATERMARK
-    if stamp:
-        text = text + '(%s)' % stamp
-    color = (0.82, 0.82, 0.82)
-    mat = fitz.Matrix(1, 1).prerotate(32)
-    y = 90.0
-    x = 48.0
-    while y < PAGE_H - 20:
-        origin = fitz.Point(x, y)
-        page.insert_text(
-            origin,
-            text,
-            fontname=fn,
-            fontsize=9.0,
-            color=color,
-            morph=(origin, mat),
-        )
-        y += 172.0
-        x = 40.0 if x > 60 else 88.0
+    line3 = WM_LINE3_PREFIX + ('(%s)' % stamp if stamp else '')
+    lines = [WM_LINE1, WM_LINE2, line3]
+    size = 12.0
+    color = (0.8, 0.8, 0.8)
+    ang = -30.0
+    rad = math.radians(ang)
+    # 行间沿文字方向的下法线堆叠（y 向下）
+    perp = (-math.sin(rad), math.cos(rad))
+    line_gap = size * 1.35
+    mat = fitz.Matrix(1, 1).prerotate(ang)
+    # 2 列 × 若干行平铺，间距对齐样张（纵 ~172，横 ~410）
+    col_x = [8.0, 418.0]
+    row_y = [164.0, 336.0, 509.0, 681.0, 854.0]
+    for x0 in col_x:
+        for y0 in row_y:
+            for i, ln in enumerate(lines):
+                ox = x0 + perp[0] * line_gap * i
+                oy = y0 + perp[1] * line_gap * i
+                origin = fitz.Point(ox, oy)
+                page.insert_text(
+                    origin,
+                    ln,
+                    fontname=fn,
+                    fontsize=size,
+                    color=color,
+                    morph=(origin, mat),
+                )
 
 
-def draw_seal(page, y_center=None):
+def draw_seal(page):
     if not os.path.isfile(SEAL_PNG):
         return
+    # 与任职明细表第 1 页盖章位置一致，略大于样张以便压住表心
     size = 118.0
     x = (PAGE_W - size) / 2.0 + 8.0
-    y = 248.0 if y_center is None else (y_center - size / 2.0)
+    y = 248.0
     page.insert_image(fitz.Rect(x, y, x + size, y + size), filename=SEAL_PNG, keep_proportion=True, overlay=True)
 
 
@@ -304,7 +318,8 @@ def render(payload, out_pdf, auth_code=''):
     title_src = ensure_bold_cjk_font() or body_src
     stamp = norm_text(p.get('watermark_id') or '')
     blob = collect_text(p) + str(auth_code or '') + stamp
-    body_path = make_subset_font(body_src, blob + WATERMARK, prefix='sbdy_xm_')
+    wm_blob = WATERMARK + WM_LINE1 + WM_LINE2 + WM_LINE3_PREFIX + '\u3000()（）-'
+    body_path = make_subset_font(body_src, blob + wm_blob, prefix='sbdy_xm_')
     title_path = make_subset_font(title_src, blob + TITLE, prefix='sbdy_xm_b_')
 
     doc = fitz.open()
@@ -338,8 +353,6 @@ def render(payload, out_pdf, auth_code=''):
                 draw_footer_meta(page, body_path, fn, p, y + ROW_H + 13.0)
             if is_first:
                 draw_seal(page)
-            elif not is_last:
-                draw_seal(page, y_center=320.0)
             draw_page_no(page, body_path, fn, i + 1, total)
         os.makedirs(os.path.dirname(out_pdf) or '.', exist_ok=True)
         doc.save(out_pdf, deflate=True, garbage=4)

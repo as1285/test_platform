@@ -682,7 +682,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shouye.html',
-  ['20260827-cend-sync', 'app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
+  ['app-android-oneplus-ace2v', 'app-android-oppo-reno10', 'ALN-AL10', 'PGT-AN20', 'app-android-honor-pgt-an20', 'BVL-AN16', 'app-android-honor-magic6pro', 'min(104px', '1312', '--shouye-status-inset: 8px', 'app-android-xiaomi-13', '2211133'],
   'shouye ace 2v + reno10 + magic5pro cards'
 );
 mustInclude(
@@ -1231,6 +1231,11 @@ if (
 }
 
 mustInclude(
+  'backend/scripts/make_xm_seal.py',
+  ['厦门市社会保险中心', '业务专用章', 'erase_all_text', 'draw_arc_text', 'xm_seal_base.png'],
+  'sbdy Xiamen city-level seal (pristine base + retype)'
+);
+mustInclude(
   'backend/scripts/sbdy_xm_render_pdf.py',
   [
     '基本养老个人历年缴费明细表',
@@ -1442,7 +1447,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-inactiveonly'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-m60home'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1481,14 +1486,17 @@ mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260831-inactiveonly" defer',
+    'auth.js?v=20260831-m60home" defer',
     'ahead.png?v=20260828-android-load',
+    '--shouye-status-inset: 12px',
+    'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead',
+    'margin-top: -8px !important',
   ],
-  'shouye auth-boot + compressed ahead'
+  'shouye auth-boot + mate60 tighter home inset'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-inactiveonly" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-m60home" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1587,8 +1595,33 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['20260831-inactiveonly', 'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn'],
-  'auth conversion-guide cache + xiaomi 15 result header'
+  [
+    'html.app-android-xiaomi-15 body.page-shuiming-result .top-fixed .header .back-btn',
+    'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye',
+    '--shouye-status-inset:12px !important',
+    '.sy-apk-ahead{margin-top:-8px !important;}',
+  ],
+  'auth xiaomi 15 result header + mate60 home tighter inset'
+);
+mustInclude(
+  'frontend/personal_info.html',
+  ['page-personal-info', 'position:relative !important;top:0 !important;', 'padding-top:66px'],
+  'mate60 personal_info header uses relative pad not sticky top'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ["Math.max(vw - br.width, vw - hrW) > 24", "data-ark-fix-l"],
+  'mate60 ark pins narrowed html/body back to viewport width'
+);
+mustInclude(
+  'frontend/public/js/app/core.js',
+  ["Math.max(vw - br.width, vw - hrW) > 24", "data-ark-fix-l"],
+  'core ark width pin mirrors auth version'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['function pinArkPlainHeader', "querySelector('body > .header')", 'padding-top', '66px'],
+  'mate60 ark pins plain header without sticky top'
 );
 mustInclude(
   'frontend/public/js/conversion-guide.js',
@@ -1630,6 +1663,7 @@ mustInclude(
   [
     'isInactiveRefundCardUser',
     'var show = isInactiveRefundCardUser()',
+    '__smAccountActiveConfirmed',
     'consultRefundAdEntry',
     'syncShuimingInactivePrompt',
     '开通后这张卡会消失'
@@ -1643,13 +1677,30 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['smActivateCard', 'smActivateTitle', 'is-refund-prompt', 'syncShuimingInactivePrompt'],
+  [
+    'smActivateCard',
+    'smActivateTitle',
+    'is-refund-prompt',
+    'syncShuimingInactivePrompt',
+    'sm-account-active',
+    '__smAccountActiveConfirmed',
+    'watermark.js?v=20260831-m60home'
+  ],
   'shuiming inactive activate card with refund prompt'
 );
 mustExclude(
   'frontend/shuiming_result.html',
-  ['smRefundAdCard', 'syncShuimingRefundAdCard', 'id="smRefundAdBtn"'],
+  ['id="smRefundAdCard"', 'syncShuimingRefundAdCard', 'id="smRefundAdBtn"'],
   'shuiming result has no wechat refund card'
+);
+mustInclude(
+  'frontend/public/js/conversion-guide.js',
+  [
+    'hideLegacyShuimingRefundWechatCard',
+    "document.getElementById('smRefundAdCard')",
+    'isInactiveRefundCardUser'
+  ],
+  'activated users never keep leftover wechat refund card'
 );
 mustInclude(
   'frontend/admin_panel.html',
