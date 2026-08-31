@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
+    <script src="/js/auth.js?v=20260831-nomineguide" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#b8332a">
+    <title>公积金提取</title>
+    <style>
+        :root {
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+            --gjj-red: #b8332a;
+            --gjj-red-deep: #9a2a22;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        body.page-gjj-extract-ad {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: #f5f6fa;
+        }
+        .gjj-ad-page {
+            padding: calc(12px + var(--safe-t)) 12px calc(20px + var(--safe-b));
+            display: flex;
+            justify-content: center;
+        }
+        .gjj-ad-wrap {
+            width: 100%;
+            max-width: var(--wrap);
+        }
+        .gjj-ad-poster {
+            overflow: hidden;
+            border-radius: 16px;
+            background: var(--gjj-red);
+            box-shadow: 0 10px 24px rgba(154, 42, 34, 0.35);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .gjj-ad-poster-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+        .gjj-ad-poster-fallback {
+            padding: 36px 20px 32px;
+            text-align: center;
+            color: #fff;
+        }
+        .gjj-ad-title {
+            font-size: 38px;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            line-height: 1.15;
+        }
+        .gjj-ad-pill {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+        .gjj-ad-pill.is-white {
+            background: #fff;
+            color: var(--gjj-red);
+        }
+        .gjj-ad-pill.is-yellow {
+            margin-top: 22px;
+            background: #ffd54a;
+            color: var(--gjj-red-deep);
+        }
+        .gjj-ad-slogan {
+            margin-top: 22px;
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+        }
+        .gjj-ad-note {
+            margin-top: 16px;
+            padding: 0 8px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.55;
+            color: rgba(255, 255, 255, 0.95);
+        }
+        .gjj-ad-wx {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        }
+        .gjj-ad-wx-meta { flex: 1; min-width: 0; }
+        .gjj-ad-wx-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+        .gjj-ad-wx-id {
+            display: block;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            color: #111827;
+            word-break: break-all;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .gjj-ad-copy {
+            flex-shrink: 0;
+            min-height: 38px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 9px;
+            background: #07c160;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .gjj-ad-copy:active { opacity: 0.9; }
+        .gjj-ad-back {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            min-height: 44px;
+            border: none;
+            border-radius: 12px;
+            background: #fff;
+            color: #334155;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .gjj-ad-back:active { opacity: 0.92; }
+        .gjj-ad-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(24px + var(--safe-b));
+            transform: translateX(-50%) translateY(12px);
+            max-width: min(90vw, 320px);
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: rgba(17, 24, 39, 0.92);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1000;
+        }
+        .gjj-ad-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .ad-services-top {
+            margin-bottom: 12px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        }
+        .ad-services-top img {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="page-gjj-extract-ad">
+    <main class="gjj-ad-page">
+        <div class="gjj-ad-wrap">
+            <div class="ad-services-top" aria-label="支持平台与服务">
+                <img
+                    src="/img/ad-services-grid.jpg?v=20260831-grid"
+                    width="1080"
+                    height="1350"
+                    alt="支持小红书、拼多多、京东、得物、美团、抖音、快手、淘宝、花呗、公积金等多平台秒到与货到服务"
+                >
+            </div>
+            <aside class="gjj-ad-poster" id="gjjAdPoster" aria-label="公积金提取">
+                <img
+                    class="gjj-ad-poster-img"
+                    src="/img/gjj-extract-ad.jpg?v=20260831-poster"
+                    width="768"
+                    height="1024"
+                    alt="公积金提取：在职离职封存大额小额皆可操作，不成功不收费，当天到账"
+                    onerror="this.style.display='none';var f=document.getElementById('gjjPosterFallback');if(f)f.hidden=false;"
+                >
+                <div class="gjj-ad-poster-fallback" id="gjjPosterFallback" hidden>
+                    <h1 class="gjj-ad-title">公积金提取</h1>
+                    <p class="gjj-ad-pill is-white">在职 / 离职 / 封存 / 大额 / 小额皆可操作</p>
+                    <p class="gjj-ad-slogan">不成功 不收费</p>
+                    <p class="gjj-ad-note">真实过户提取，安全可靠！不影响后续缴纳</p>
+                    <p class="gjj-ad-pill is-yellow">交给我们 当天到账</p>
+                </div>
+            </aside>
+            <div class="gjj-ad-wx">
+                <div class="gjj-ad-wx-meta">
+                    <span class="gjj-ad-wx-label">加微信咨询（备注：公积金提取）</span>
+                    <strong class="gjj-ad-wx-id" id="gjjWechatId">Tangdong6832</strong>
+                </div>
+                <button type="button" class="gjj-ad-copy" id="btnCopyGjjWechat">复制微信号</button>
+            </div>
+            <button type="button" class="gjj-ad-back" id="btnGjjAdBack">返回</button>
+        </div>
+    </main>
+    <div class="gjj-ad-toast" id="gjjAdToast" role="status" aria-live="polite"></div>
+    <script>
+    (function () {
+        var WECHAT_ID = 'Tangdong6832';
+        var copyBtn = document.getElementById('btnCopyGjjWechat');
+        var idEl = document.getElementById('gjjWechatId');
+        var poster = document.getElementById('gjjAdPoster');
+        var backBtn = document.getElementById('btnGjjAdBack');
+        var toastEl = document.getElementById('gjjAdToast');
+        var toastTimer = null;
+        var pageStartMs = Date.now();
+        var copiedThisVisit = 0;
+        var leaveSent = false;
+
+        var pageSource = 'direct';
+        try {
+            var qs = new URLSearchParams(window.location.search || '');
+            pageSource = String(qs.get('from') || 'direct').trim() || 'direct';
+        } catch (eQs) {}
+
+        function showToast(msg) {
+            if (!toastEl) {
+                alert(msg);
+                return;
+            }
+            toastEl.textContent = msg != null ? String(msg) : '';
+            toastEl.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                toastEl.classList.remove('show');
+            }, 2800);
+        }
+
+        function track(action, meta) {
+            var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
+            if (!payload.page) payload.page = 'gjj_extract_ad';
+            if (!payload.source) payload.source = pageSource;
+            var loggedIn = false;
+            try {
+                loggedIn = !!(window.authGetToken && window.authGetToken());
+            } catch (eTok) {}
+            if (loggedIn && typeof window.trackUserAction === 'function') {
+                window.trackUserAction(action, payload);
+                return;
+            }
+            if (typeof window.trackPublicAction === 'function') {
+                window.trackPublicAction(action, payload);
+            }
+        }
+
+        function whenTrackReady(fn) {
+            if (typeof window.trackUserAction === 'function' || typeof window.trackPublicAction === 'function') {
+                fn();
+                return;
+            }
+            var n = 0;
+            var timer = setInterval(function () {
+                n += 1;
+                if (
+                    typeof window.trackUserAction === 'function' ||
+                    typeof window.trackPublicAction === 'function' ||
+                    n > 40
+                ) {
+                    clearInterval(timer);
+                    fn();
+                }
+            }, 50);
+        }
+
+        function copyText(text) {
+            var t = String(text || '');
+            if (!t) return Promise.reject(new Error('empty'));
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                return navigator.clipboard.writeText(t);
+            }
+            return new Promise(function (resolve, reject) {
+                var ta = document.createElement('textarea');
+                ta.value = t;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    if (document.execCommand('copy')) resolve();
+                    else reject(new Error('copy_failed'));
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    document.body.removeChild(ta);
+                }
+            });
+        }
+
+        function copyWechat(source) {
+            copyText(WECHAT_ID)
+                .then(function () {
+                    showToast('已复制微信号 ' + WECHAT_ID);
+                    copiedThisVisit += 1;
+                    track('track_gjj_extract_ad_copy', { wechat_id: WECHAT_ID, copy_from: source || 'wx_block' });
+                })
+                .catch(function () {
+                    showToast('复制失败，请长按微信号手动复制');
+                });
+        }
+
+        if (copyBtn) copyBtn.addEventListener('click', function () { copyWechat('wx_btn'); });
+        if (idEl) idEl.addEventListener('click', function () { copyWechat('wx_id'); });
+        if (poster) {
+            poster.addEventListener('click', function () {
+                track('track_gjj_extract_ad_poster_click', { wechat_id: WECHAT_ID });
+            });
+        }
+        if (backBtn) backBtn.addEventListener('click', function () {
+            track('track_gjj_extract_ad_back', { source: pageSource });
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'shouye.html';
+            }
+        });
+
+        function sendPageLeave() {
+            if (leaveSent) return;
+            leaveSent = true;
+            var sec = Math.max(0, Math.round((Date.now() - pageStartMs) / 1000));
+            if (sec > 86400) sec = 86400;
+            track('track_gjj_extract_ad_page_leave', {
+                wechat_id: WECHAT_ID,
+                dwell_seconds: sec,
+                copied: copiedThisVisit > 0 ? 1 : 0,
+                copy_count: copiedThisVisit
+            });
+        }
+
+        function bindDwell() {
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    sendPageLeave();
+                } else if (document.visibilityState === 'visible') {
+                    leaveSent = false;
+                    pageStartMs = Date.now();
+                }
+            });
+            window.addEventListener('pagehide', sendPageLeave);
+            window.addEventListener('beforeunload', sendPageLeave);
+        }
+
+        whenTrackReady(function () {
+            track('track_gjj_extract_ad_view', { wechat_id: WECHAT_ID });
+            bindDwell();
+        });
+    })();
+    </script>
+</body>
+</html>

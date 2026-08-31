@@ -41,6 +41,13 @@ const PURGE_TARGETS = [
     defaultDays: 180
   },
   {
+    table: 'ad_page_track_events',
+    dateColumn: 'created_at',
+    label: '广告页停留与操作',
+    envVar: 'DB_RETAIN_AD_PAGE_TRACK_EVENTS_DAYS',
+    defaultDays: 180
+  },
+  {
     table: 'admin_operation_logs',
     dateColumn: 'created_at',
     label: '管理操作日志',

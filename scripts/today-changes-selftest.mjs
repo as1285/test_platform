@@ -334,7 +334,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260829-refundad', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260831-adops', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -435,6 +435,16 @@ mustInclude(
   'pricing live catalog 300/348/398（天卡与3天卡已下架）'
 );
 mustInclude(
+  'backend/src/legacy/pricingAb.js',
+  [
+    "sku_300_7d: '200.00'",
+    "sku_348_14d: '300.00'",
+    "sku_398_30d: '398.00'",
+    'applyGithubChannelCatalogPrices'
+  ],
+  'GitHub channel week/biweek/month 200/300/398'
+);
+mustInclude(
   'frontend/purchase.html',
   ['以购买页各套餐显示为准', 'BILIBILI_SHARE_DISCOUNT_HIDDEN = true'],
   'purchase duration copy + hide bili share'
@@ -452,35 +462,52 @@ mustInclude(
   ],
   'purchase conversion first-screen: high-intent + sku grid + trust'
 );
+if (exists('frontend/public/img/refund-ad.jpg')) ok('refund ad poster image');
+else fail('refund ad poster image', 'missing frontend/public/img/refund-ad.jpg');
 mustInclude(
   'frontend/refund_ad.html',
   [
     'refundAd',
     'Tangdong6832',
-    '一手退个人所得税，到账再收费',
-    '优化材料 = 多退',
-    '不懂政策 = 漏退',
+    '/img/refund-ad.jpg',
+    '哪些人可以做二次退税',
     'btnCopyRefundWechat',
     'track_refund_ad_view',
-    'track_refund_ad_copy'
+    'track_refund_ad_copy',
+    'track_refund_ad_page_leave',
+    'dwell_seconds',
+    'bottom-nav',
+    'refund_ad.html',
+    'page-refund-ad'
   ],
-  'standalone tax-refund wechat ad page'
+  'refund ad tab page with bottom nav'
 );
 mustInclude(
   'frontend/purchase.html',
   [
-    'purchaseRefundAdEntry',
-    'refund_ad.html?from=purchase',
-    '一手退个人所得税，到账再收费',
-    'track_purchase_refund_ad_entry_click',
-    'track_purchase_refund_ad_entry_view'
+    'id="purchaseRefundAd"',
+    '/img/refund-ad.jpg',
+    'Tangdong6832',
+    'btnCopyRefundWechat',
+    'track_purchase_refund_ad_view',
+    'track_purchase_refund_ad_copy'
   ],
-  'purchase page entry to refund ad'
+  'purchase page embeds full refund ad'
 );
 mustExclude(
   'frontend/purchase.html',
-  ['id="purchaseRefundAd"', 'Tangdong6832', 'btnCopyRefundWechat'],
-  'full refund ad stays on refund_ad page'
+  ['purchaseRefundAdEntry', 'refund_ad.html?from=purchase', '点图咨询微信'],
+  'purchase refund ad no longer jumps away'
+);
+mustInclude(
+  'frontend/shouye.html',
+  ['href="refund_ad.html"', 'nav-text">退税'],
+  'home dock has refund tab'
+);
+mustInclude(
+  'frontend/public/js/app/nav.js',
+  ["'refund_ad.html': 'refund'", 'page-refund-ad'],
+  'bottom nav recognizes refund tab'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -656,6 +683,22 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['function clientUaBlob', '23116PN5', 'html.app-android-client.app-top-safe-shell.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header .back-btn', 'function paintXiaomi14ProMineE1', 'xiaomi14pro-mine-e1-paint'],
   'auth.js mi14pro inset + back-btn + e1 paint'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'function isXiaomi14LikeClient()',
+    '23127PN0CC|23127PN0CG|23127PN\\b',
+    'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:48px',
+    'html.app-android-xiaomi-14.app-top-safe-shell::before',
+    'background:#000',
+    'xiaomi14PaintedBar',
+    '--safe-top:var(--app-shell-statusbar-top,48px)',
+    "overlays: false",
+    "color: '#000000'",
+    'app-android-xiaomi-14',
+  ],
+  'xiaomi 14 painted black status bar'
 );
 mustInclude(
   'frontend/public/js/auth.js',
@@ -1341,7 +1384,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260830-mi14-bar'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-nomineguide'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1380,14 +1423,14 @@ mustInclude(
   'frontend/shouye.html',
   [
     'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260829-k80pro" defer',
+    'auth.js?v=20260831-nomineguide" defer',
     'ahead.png?v=20260828-android-load',
   ],
   'shouye auth-boot + compressed ahead'
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260829-k80pro" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-nomineguide" defer', 'e1_01@sm.png?v=20260828-android-load'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1481,8 +1524,127 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['20260826-post-activate-edit'],
+  ['20260831-nomineguide'],
   'auth conversion-guide cache bust post-activate edit'
+);
+mustInclude(
+  'frontend/public/js/conversion-guide.js',
+  ['我的页不再展示顶部个税强引导'],
+  'mine page without top tax fill banner'
+);
+mustInclude(
+  'frontend/public/js/conversion-guide.js',
+  [
+    'REFUND_AD_AFTER_TAX_KEY',
+    'maybeGoRefundAdAfterTax',
+    'refund_ad.html?from=tax_done',
+    'track_refund_ad_after_tax_go',
+    "opts.source === 'single_save'"
+  ],
+  'after tax fill go to refund ad once'
+);
+mustInclude(
+  'frontend/refund_ad.html',
+  [
+    'is-from-tax-done',
+    '查看我刚填的记录',
+    'btnRefundAdContinue',
+    'track_refund_ad_after_tax_continue',
+    'track_refund_ad_page_leave',
+    'dwell_seconds'
+  ],
+  'refund ad page skip-friendly after tax fill'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['page-ops-ad-analytics', 'opsAdUserTbody', '广告页数据运营'],
+  'admin ad page ops panel'
+);
+mustInclude(
+  'backend/src/admin/menuRegistry.js',
+  ["page: 'ops-ad-analytics'", '广告页数据运营'],
+  'admin menu ad page ops'
+);
+mustInclude(
+  'frontend/douyin_yuefu_ad.html',
+  [
+    'track_douyin_yuefu_ad_view',
+    'track_douyin_yuefu_ad_copy',
+    'track_douyin_yuefu_ad_page_leave',
+    '抖音月付 · 大额秒到',
+    'Tangdong6832'
+  ],
+  'douyin yuefu ad page'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['purchaseYuefuEntry', 'douyin_yuefu_ad.html?from=purchase_yuefu', 'track_purchase_yuefu_ad_entry_view'],
+  'purchase page yuefu ad entry'
+);
+mustInclude(
+  'backend/src/admin/adPageAnalytics.js',
+  ['track_douyin_yuefu_ad_view', 'track_douyin_yuefu_ad_page_leave'],
+  'ad analytics douyin yuefu events'
+);
+mustInclude(
+  'frontend/gjj_extract_ad.html',
+  [
+    'track_gjj_extract_ad_view',
+    'track_gjj_extract_ad_copy',
+    'track_gjj_extract_ad_page_leave',
+    '公积金提取',
+    '真实过户提取，安全可靠',
+    'Tangdong6832'
+  ],
+  'gjj extract ad page'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['purchaseGjjEntry', 'gjj_extract_ad.html?from=purchase_gjj', 'track_purchase_gjj_ad_entry_view'],
+  'purchase page gjj ad entry'
+);
+if (exists('frontend/public/img/gjj-extract-ad.jpg')) ok('gjj extract ad poster image');
+else fail('gjj extract ad poster image', 'missing frontend/public/img/gjj-extract-ad.jpg');
+if (exists('frontend/public/img/ad-services-grid.jpg')) ok('ad services grid image');
+else fail('ad services grid image', 'missing frontend/public/img/ad-services-grid.jpg');
+mustInclude(
+  'frontend/refund_ad.html',
+  ['/img/ad-services-grid.jpg', 'ad-services-top'],
+  'refund ad services grid banner'
+);
+mustInclude(
+  'frontend/douyin_yuefu_ad.html',
+  ['/img/ad-services-grid.jpg', 'ad-services-top'],
+  'douyin yuefu ad services grid banner'
+);
+mustInclude(
+  'frontend/gjj_extract_ad.html',
+  ['/img/ad-services-grid.jpg', 'ad-services-top'],
+  'gjj extract ad services grid banner'
+);
+mustInclude(
+  'backend/src/admin/adPageAnalytics.js',
+  ['track_gjj_extract_ad_view', 'track_gjj_extract_ad_page_leave'],
+  'ad analytics gjj extract events'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    "act.indexOf('track_refund_ad_') === 0",
+    "act.indexOf('track_douyin_yuefu_ad_') === 0",
+    "act.indexOf('track_gjj_extract_ad_') === 0",
+    'recordAdPageTrackEvent',
+    'ad_page_track_events'
+  ],
+  'retain and store ad page track events'
+);
+mustInclude(
+  'backend/src/admin/adPageAnalytics.js',
+  [
+    'VIEW_KEYS, VIEW_KEYS, COPY_KEYS, COPY_KEYS, LEAVE_KEYS, LEAVE_KEYS, params',
+    'VIEW_KEYS, VIEW_KEYS, COPY_KEYS, LEAVE_KEYS, params'
+  ],
+  'ad stats SQL binds include leave keys'
 );
 
 mustInclude(

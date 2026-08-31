@@ -3240,6 +3240,25 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS ad_page_track_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NULL,
+      client_id VARCHAR(128) NULL,
+      device_fp CHAR(64) NULL,
+      event_key VARCHAR(80) NOT NULL,
+      dwell_seconds INT UNSIGNED NULL,
+      meta_json VARCHAR(1024) NULL,
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+      INDEX idx_created (created_at),
+      INDEX idx_event_created (event_key, created_at),
+      INDEX idx_user_created (username, created_at),
+      INDEX idx_client_created (client_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS sales_channel_attributions (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
       sales_ch VARCHAR(64) NOT NULL,
@@ -7542,7 +7561,10 @@ function isRetainedTrackAction(action) {
     act.indexOf('track_app_') === 0 ||
     act.indexOf('track_guest_') === 0 ||
     act.indexOf('track_wechat_') === 0 ||
-    act.indexOf('track_browser_') === 0
+    act.indexOf('track_browser_') === 0 ||
+    act.indexOf('track_refund_ad_') === 0 ||
+    act.indexOf('track_douyin_yuefu_ad_') === 0 ||
+    act.indexOf('track_gjj_extract_ad_') === 0
   ) {
     return true;
   }
@@ -9283,6 +9305,7 @@ async function handleUserPost(req, res) {
       }
       maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
+      recordAdPageTrackEvent(req, action, body.meta);
       var trackActUser = String(action || '').trim().toLowerCase();
       if (
         userId &&
@@ -10644,6 +10667,64 @@ function recordInstallGuideTrackEvent(req, action, meta) {
     )
     .catch(function (e) {
       console.error('recordInstallGuideTrackEvent', e);
+    });
+}
+
+/** 是否广告页相关埋点（二次退税页 / 开通页内嵌广告 / 抖音月付大额） */
+function isAdPageTrackAction(action) {
+  var act = String(action || '').trim().toLowerCase();
+  return (
+    act.indexOf('track_refund_ad_') === 0 ||
+    act.indexOf('track_purchase_refund_ad_') === 0 ||
+    act.indexOf('track_douyin_yuefu_ad_') === 0 ||
+    act.indexOf('track_gjj_extract_ad_') === 0
+  );
+}
+
+/** 记录：广告页停留与操作 */
+function recordAdPageTrackEvent(req, action, meta) {
+  if (!pool || !isAdPageTrackAction(action)) {
+    return;
+  }
+  var act = String(action || '').trim().toLowerCase();
+  var username = '';
+  try {
+    if (req.authUserId) {
+      username = String(req.authUserId).trim().substring(0, 255);
+    }
+  } catch (e0) {}
+  var cid = '';
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      cid = String(req.clientDevicePayload.client_id).trim().substring(0, 128);
+    }
+  } catch (e1) {}
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var dwell = null;
+  if (meta && meta.dwell_seconds != null) {
+    var ds = parseInt(meta.dwell_seconds, 10);
+    if (isFinite(ds) && ds >= 0 && ds <= 86400) {
+      dwell = ds;
+    }
+  }
+  var metaJson = null;
+  try {
+    var mj = sanitizeAuditObjectTopLevel(meta);
+    if (mj) {
+      metaJson = JSON.stringify(mj).substring(0, 1024);
+    }
+  } catch (e2) {}
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  pool
+    .execute(
+      `INSERT INTO ad_page_track_events
+       (username, client_id, device_fp, event_key, dwell_seconds, meta_json, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [username || null, cid || null, fp || null, act.substring(0, 80), dwell, metaJson, ip || null, ua || null]
+    )
+    .catch(function (e) {
+      console.error('recordAdPageTrackEvent', e);
     });
 }
 
@@ -12802,6 +12883,7 @@ async function handleAuthPost(req, res) {
       }
       maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
+      recordAdPageTrackEvent(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
     if (action === 'admin_issue_code') {

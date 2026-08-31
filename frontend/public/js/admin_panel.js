@@ -465,6 +465,60 @@
             if (k === 'track_purchase_refund_ad_entry_click') {
                 return { button: '退税广告入口点击', page: '购买页 · 二次退税入口' };
             }
+            if (k === 'track_refund_ad_after_tax_go') {
+                return { button: '填完去退税页', page: '咨询 · 填写完成' };
+            }
+            if (k === 'track_refund_ad_after_tax_view') {
+                return { button: '填完退税页曝光', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_after_tax_continue') {
+                return { button: '填完后退回记录', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_page_leave') {
+                return { button: '离开广告页', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_nav_click') {
+                return { button: '广告页点底栏', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_poster_click') {
+                return { button: '点击退税海报', page: '二次退税广告页' };
+            }
+            if (k === 'track_douyin_yuefu_ad_view') {
+                return { button: '月付广告曝光', page: '抖音月付大额广告页' };
+            }
+            if (k === 'track_douyin_yuefu_ad_copy') {
+                return { button: '复制月付微信号', page: '抖音月付大额广告页' };
+            }
+            if (k === 'track_douyin_yuefu_ad_page_leave') {
+                return { button: '离开月付广告页', page: '抖音月付大额广告页' };
+            }
+            if (k === 'track_douyin_yuefu_ad_promo_click') {
+                return { button: '点月付推广', page: '抖音月付大额广告页' };
+            }
+            if (k === 'track_purchase_yuefu_ad_entry_view') {
+                return { button: '月付入口曝光', page: '购买页 · 月付入口' };
+            }
+            if (k === 'track_purchase_yuefu_ad_entry_click') {
+                return { button: '月付入口点击', page: '购买页 · 月付入口' };
+            }
+            if (k === 'track_gjj_extract_ad_view') {
+                return { button: '公积金广告曝光', page: '公积金提取广告页' };
+            }
+            if (k === 'track_gjj_extract_ad_copy') {
+                return { button: '复制公积金微信号', page: '公积金提取广告页' };
+            }
+            if (k === 'track_gjj_extract_ad_page_leave') {
+                return { button: '离开公积金广告页', page: '公积金提取广告页' };
+            }
+            if (k === 'track_gjj_extract_ad_poster_click') {
+                return { button: '点击公积金海报', page: '公积金提取广告页' };
+            }
+            if (k === 'track_purchase_gjj_ad_entry_view') {
+                return { button: '公积金入口曝光', page: '购买页 · 公积金入口' };
+            }
+            if (k === 'track_purchase_gjj_ad_entry_click') {
+                return { button: '公积金入口点击', page: '购买页 · 公积金入口' };
+            }
             return { button: '其他埋点', page: '—' };
         }
 
@@ -972,6 +1026,7 @@
                 'ops-inactive',
                 'ops-research',
                 'ops-lift',
+                'ops-ad-analytics',
                 'analytics-conversion',
                 'analytics-purchase',
                 'settings',
@@ -1085,6 +1140,7 @@
                 'users-deleted': 1,
                 'user-data': 1,
                 'tax-records-edit': 1,
+                'ops-ad-analytics': 1,
                 'analytics-conversion': 1,
                 'analytics-register': 1,
                 'analytics-activity': 1,
@@ -1190,6 +1246,9 @@
             }
             if (pageKey === 'ops-inactive' || pageKey === 'ops-research') {
                 callAdminModuleLoadPage('ops-conversion');
+            }
+            if (pageKey === 'ops-ad-analytics') {
+                callAdminModuleLoadPage('ad-analytics');
             }
             if (pageKey === 'ops-lift') {
                 loadAnalyticsD1ReturnCohort();
@@ -1358,7 +1417,23 @@
             'track_refund_ad_view',
             'track_refund_ad_copy',
             'track_purchase_refund_ad_entry_view',
-            'track_purchase_refund_ad_entry_click'
+            'track_purchase_refund_ad_entry_click',
+            'track_refund_ad_after_tax_go',
+            'track_refund_ad_after_tax_view',
+            'track_refund_ad_after_tax_continue',
+            'track_refund_ad_page_leave',
+            'track_refund_ad_nav_click',
+            'track_refund_ad_poster_click',
+            'track_douyin_yuefu_ad_view',
+            'track_douyin_yuefu_ad_copy',
+            'track_douyin_yuefu_ad_page_leave',
+            'track_purchase_yuefu_ad_entry_view',
+            'track_purchase_yuefu_ad_entry_click',
+            'track_gjj_extract_ad_view',
+            'track_gjj_extract_ad_copy',
+            'track_gjj_extract_ad_page_leave',
+            'track_purchase_gjj_ad_entry_view',
+            'track_purchase_gjj_ad_entry_click'
         ];
         var ACTIVATE_EVENT_SHORT_LABELS = {
             track_purchase_page_view: '页浏览',
@@ -1382,7 +1457,23 @@
             track_refund_ad_view: '退税广告',
             track_refund_ad_copy: '复制微信',
             track_purchase_refund_ad_entry_view: '退税入口',
-            track_purchase_refund_ad_entry_click: '点退税入口'
+            track_purchase_refund_ad_entry_click: '点退税入口',
+            track_refund_ad_after_tax_go: '填完去广告',
+            track_refund_ad_after_tax_view: '填完看广告',
+            track_refund_ad_after_tax_continue: '广告回记录',
+            track_refund_ad_page_leave: '离开广告',
+            track_refund_ad_nav_click: '广告点底栏',
+            track_refund_ad_poster_click: '点海报',
+            track_douyin_yuefu_ad_view: '月付广告',
+            track_douyin_yuefu_ad_copy: '月付复制',
+            track_douyin_yuefu_ad_page_leave: '离开月付',
+            track_purchase_yuefu_ad_entry_view: '月付入口',
+            track_purchase_yuefu_ad_entry_click: '点月付入口',
+            track_gjj_extract_ad_view: '公积金广告',
+            track_gjj_extract_ad_copy: '公积金复制',
+            track_gjj_extract_ad_page_leave: '离开公积金',
+            track_purchase_gjj_ad_entry_view: '公积金入口',
+            track_purchase_gjj_ad_entry_click: '点公积金入口'
         };
         var ACTIVATE_EVENTS_TABLE_COLSPAN = ACTIVATE_EVENT_KEYS.length + 4;
 
@@ -7092,6 +7183,7 @@
             'login-log': '管理登录',
             'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
+            'ops-ad-analytics': '广告页数据运营',
             'analytics-conversion': '转化概览',
             'analytics-purchase': '支付分析',
             'analytics-register': '注册分析',

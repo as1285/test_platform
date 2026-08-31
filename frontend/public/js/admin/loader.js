@@ -17,7 +17,8 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260828-tax-fill',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260829-opsconv'
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260829-opsconv',
+    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-adops'
   };
 
   var PAGE_MODULE = {
@@ -46,6 +47,7 @@
     'ops-inactive': 'ops-conversion',
     'ops-research': 'ops-conversion',
     'ops-lift': 'ops-conversion',
+    'ops-ad-analytics': 'ad-analytics',
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-register': 'analytics',

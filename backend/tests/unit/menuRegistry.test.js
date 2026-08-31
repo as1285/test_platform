@@ -98,8 +98,16 @@ describe('menuRegistry', () => {
     expect(Array.isArray(tree)).toBe(true);
     expect(tree[0].label).toBe('转化运营');
     expect(tree[0].items.map((i) => i.page)).toEqual(
-      expect.arrayContaining(['ops-inactive', 'ops-research', 'ops-lift', 'analytics-conversion'])
+      expect.arrayContaining([
+        'ops-inactive',
+        'ops-research',
+        'ops-lift',
+        'ops-ad-analytics',
+        'analytics-conversion'
+      ])
     );
+    expect(getPageDef('ops-ad-analytics').label).toBe('广告页数据运营');
+    expect(getPageDef('ops-ad-analytics').module).toBe('ad-analytics');
     const settings = tree
       .flatMap((g) => g.items || [])
       .find((i) => i.page === 'settings');
@@ -134,6 +142,12 @@ describe('menuRegistry', () => {
     expect(adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-inactive')).toBe(
       false
     );
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-tracking'] }, 'ops-ad-analytics')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-ad-analytics')
+    ).toBe(false);
   });
 
   it('ADMIN_PAGE_DEFS pages are unique', () => {

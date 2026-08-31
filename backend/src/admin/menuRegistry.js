@@ -58,6 +58,15 @@ const ADMIN_PAGE_DEFS = [
     alias_menus: ['analytics-conversion']
   },
   {
+    page: 'ops-ad-analytics',
+    menu_key: 'ops-ad-analytics',
+    label: '广告页数据运营',
+    group: 'ops-desk',
+    module: 'ad-analytics',
+    order: 35,
+    alias_menus: ['analytics-tracking', 'analytics-conversion']
+  },
+  {
     page: 'analytics-conversion',
     menu_key: 'analytics-conversion',
     label: '转化概览',

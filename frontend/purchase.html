@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
+    <script src="/js/auth.js?v=20260831-nomineguide" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -901,55 +901,148 @@
             line-height: 1.55;
             color: var(--ink-soft);
         }
-        .purchase-refund-ad-entry {
+        .purchase-refund-ad {
+            margin-top: 12px;
+            overflow: hidden;
+            border-radius: 14px;
+            color: #1a1208;
+            background: #ffb020;
+            box-shadow: 0 8px 18px rgba(232, 112, 0, 0.22);
+        }
+        .purchase-refund-ad-poster {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+        .purchase-refund-ad-wx {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 12px 12px 14px;
+            background: rgba(255, 255, 255, 0.96);
+        }
+        .purchase-refund-ad-wx-meta {
+            flex: 1;
+            min-width: 0;
+        }
+        .purchase-refund-ad-wx-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+        .purchase-refund-ad-wx-id {
+            display: block;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            color: #111827;
+            word-break: break-all;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-refund-ad-copy {
+            flex-shrink: 0;
+            min-height: 38px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 9px;
+            background: #07c160;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-refund-ad-copy:active { opacity: 0.9; }
+        .purchase-yuefu-entry {
             display: flex;
             align-items: center;
             gap: 12px;
             margin-top: 12px;
-            padding: 14px 14px 14px 16px;
+            padding: 14px 14px;
             border-radius: 14px;
+            background: linear-gradient(135deg, #fff5f7 0%, #ffe8ee 100%);
+            border: 1px solid #ffd6df;
             text-decoration: none;
-            color: #1a1208;
-            background: linear-gradient(135deg, #ffc85a 0%, #ff9a1f 55%, #ff7a00 100%);
-            box-shadow: 0 8px 18px rgba(232, 112, 0, 0.22);
+            color: inherit;
             -webkit-tap-highlight-color: transparent;
         }
-        .purchase-refund-ad-entry:active { opacity: 0.92; }
-        .purchase-refund-ad-entry-body {
-            flex: 1;
-            min-width: 0;
-        }
-        .purchase-refund-ad-entry-kicker {
-            display: block;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            color: rgba(26, 18, 8, 0.68);
-            margin-bottom: 4px;
-        }
-        .purchase-refund-ad-entry-title {
-            display: block;
-            font-size: 15px;
-            font-weight: 800;
-            line-height: 1.35;
-        }
-        .purchase-refund-ad-entry-sub {
-            display: block;
-            margin-top: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(26, 18, 8, 0.72);
-        }
-        .purchase-refund-ad-entry-go {
+        .purchase-yuefu-entry:active { opacity: 0.92; }
+        .purchase-yuefu-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
-            min-height: 32px;
-            padding: 0 12px;
-            border-radius: 9px;
-            background: rgba(255, 255, 255, 0.92);
-            color: #b45309;
-            font-size: 13px;
+            font-size: 18px;
+        }
+        .purchase-yuefu-body { flex: 1; min-width: 0; }
+        .purchase-yuefu-title {
+            font-size: 15px;
             font-weight: 700;
-            line-height: 32px;
+            color: #fe2c55;
+        }
+        .purchase-yuefu-sub {
+            margin-top: 2px;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .purchase-yuefu-arrow {
+            flex-shrink: 0;
+            font-size: 18px;
+            color: #fe2c55;
+            font-weight: 700;
+        }
+        .purchase-gjj-entry {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            padding: 14px 14px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #b8332a 0%, #9a2a22 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            text-decoration: none;
+            color: #fff;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-gjj-entry:active { opacity: 0.92; }
+        .purchase-gjj-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.16);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .purchase-gjj-body { flex: 1; min-width: 0; }
+        .purchase-gjj-title {
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .purchase-gjj-sub {
+            margin-top: 2px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.82);
+            line-height: 1.4;
+        }
+        .purchase-gjj-arrow {
+            flex-shrink: 0;
+            font-size: 18px;
+            font-weight: 700;
+            opacity: 0.9;
         }
         .purchase-sticky-cta {
             position: fixed;
@@ -1128,14 +1221,40 @@
             </div>
         </section>
 
-        <a class="purchase-refund-ad-entry" id="purchaseRefundAdEntry" href="refund_ad.html?from=purchase" aria-label="二次退税咨询广告页">
-            <span class="purchase-refund-ad-entry-body">
-                <span class="purchase-refund-ad-entry-kicker">二次退税</span>
-                <span class="purchase-refund-ad-entry-title">一手退个人所得税，到账再收费 🌹</span>
-                <span class="purchase-refund-ad-entry-sub">优化材料多退 · 不懂政策易漏退</span>
-            </span>
-            <span class="purchase-refund-ad-entry-go">去看看</span>
+        <a class="purchase-yuefu-entry" id="purchaseYuefuEntry" href="douyin_yuefu_ad.html?from=purchase_yuefu" aria-label="抖音月付大额秒到">
+            <div class="purchase-yuefu-icon" aria-hidden="true">🎵</div>
+            <div class="purchase-yuefu-body">
+                <div class="purchase-yuefu-title">抖音月付 · 大额秒到</div>
+                <div class="purchase-yuefu-sub">单笔最高 5 万，秒级到账，支持分期</div>
+            </div>
+            <span class="purchase-yuefu-arrow" aria-hidden="true">›</span>
         </a>
+
+        <a class="purchase-gjj-entry" id="purchaseGjjEntry" href="gjj_extract_ad.html?from=purchase_gjj" aria-label="公积金提取">
+            <div class="purchase-gjj-icon" aria-hidden="true">公积金</div>
+            <div class="purchase-gjj-body">
+                <div class="purchase-gjj-title">公积金提取 · 当天到账</div>
+                <div class="purchase-gjj-sub">在职/离职/封存/大额/小额皆可 · 不成功不收费</div>
+            </div>
+            <span class="purchase-gjj-arrow" aria-hidden="true">›</span>
+        </a>
+
+        <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询">
+            <img
+                class="purchase-refund-ad-poster"
+                src="/img/refund-ad.jpg?v=20260831-poster"
+                width="768"
+                height="1024"
+                alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
+            >
+            <div class="purchase-refund-ad-wx">
+                <div class="purchase-refund-ad-wx-meta">
+                    <span class="purchase-refund-ad-wx-label">加微信咨询（备注：二次退税）</span>
+                    <strong class="purchase-refund-ad-wx-id" id="purchaseRefundWechatId">Tangdong6832</strong>
+                </div>
+                <button type="button" class="purchase-refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
+            </div>
+        </aside>
 
         <details class="purchase-fold" id="foldActivateCode">
             <summary>
@@ -2279,7 +2398,7 @@
         var cardShebao = document.getElementById('cardShebaoPhoto');
         var faq = document.getElementById('purchaseFaq');
         var faqSub = document.getElementById('purchaseFaqSub');
-        var refundAdEntry = document.getElementById('purchaseRefundAdEntry');
+        var refundAdEntry = document.getElementById('purchaseRefundAd');
         var shareTeaser = document.getElementById('shareInlineTeaser');
         var sticky = document.getElementById('purchaseStickyCta');
         var page = document.querySelector('.page');
@@ -2935,12 +3054,26 @@
         });
     }
 
-    (function initPurchaseRefundAdEntry() {
-        var entry = document.getElementById('purchaseRefundAdEntry');
-        if (!entry) return;
-        entry.addEventListener('click', function () {
-            trackPurchase('track_purchase_refund_ad_entry_click', { target: 'refund_ad.html' });
-        });
+    (function initPurchaseRefundAd() {
+        var WECHAT_ID = 'Tangdong6832';
+        var ad = document.getElementById('purchaseRefundAd');
+        var copyBtn = document.getElementById('btnCopyRefundWechat');
+        var idEl = document.getElementById('purchaseRefundWechatId');
+        if (!ad) return;
+
+        function copyWechat() {
+            copyTextFallback(WECHAT_ID)
+                .then(function () {
+                    showToast('已复制微信号 ' + WECHAT_ID);
+                    trackPurchase('track_purchase_refund_ad_copy', { wechat_id: WECHAT_ID });
+                })
+                .catch(function () {
+                    showToast('复制失败，请长按微信号手动复制');
+                });
+        }
+        if (copyBtn) copyBtn.addEventListener('click', copyWechat);
+        if (idEl) idEl.addEventListener('click', copyWechat);
+
         if (typeof IntersectionObserver === 'function') {
             var seen = false;
             var io = new IntersectionObserver(
@@ -2949,15 +3082,71 @@
                     var hit = entries && entries[0] && entries[0].isIntersecting;
                     if (!hit) return;
                     seen = true;
-                    trackPurchase('track_purchase_refund_ad_entry_view', { target: 'refund_ad.html' });
+                    trackPurchase('track_purchase_refund_ad_view', { wechat_id: WECHAT_ID });
                     try {
                         io.disconnect();
                     } catch (eIo) {}
                 },
-                { threshold: 0.4 }
+                { threshold: 0.35 }
+            );
+            io.observe(ad);
+        } else {
+            trackPurchase('track_purchase_refund_ad_view', { wechat_id: WECHAT_ID });
+        }
+    })();
+
+    (function initPurchaseYuefuEntry() {
+        var entry = document.getElementById('purchaseYuefuEntry');
+        if (!entry) return;
+        if (typeof IntersectionObserver === 'function') {
+            var seen = false;
+            var io = new IntersectionObserver(
+                function (entries) {
+                    if (seen) return;
+                    var hit = entries && entries[0] && entries[0].isIntersecting;
+                    if (!hit) return;
+                    seen = true;
+                    trackPurchase('track_purchase_yuefu_ad_entry_view', {});
+                    try {
+                        io.disconnect();
+                    } catch (eIo) {}
+                },
+                { threshold: 0.35 }
             );
             io.observe(entry);
+        } else {
+            trackPurchase('track_purchase_yuefu_ad_entry_view', {});
         }
+        entry.addEventListener('click', function () {
+            trackPurchase('track_purchase_yuefu_ad_entry_click', {});
+        });
+    })();
+
+    (function initPurchaseGjjEntry() {
+        var entry = document.getElementById('purchaseGjjEntry');
+        if (!entry) return;
+        if (typeof IntersectionObserver === 'function') {
+            var seen = false;
+            var io = new IntersectionObserver(
+                function (entries) {
+                    if (seen) return;
+                    var hit = entries && entries[0] && entries[0].isIntersecting;
+                    if (!hit) return;
+                    seen = true;
+                    trackPurchase('track_purchase_gjj_ad_entry_view', {});
+                    try {
+                        io.disconnect();
+                    } catch (eIo) {}
+                },
+                { threshold: 0.35 }
+            );
+            io.observe(entry);
+        } else {
+            trackPurchase('track_purchase_gjj_ad_entry_view', {});
+        }
+        entry.addEventListener('click', function () {
+            trackPurchase('track_purchase_gjj_ad_entry_click', {});
+        });
     })();
 
     (function initPurchaseConversionUi() {

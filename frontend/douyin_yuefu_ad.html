@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
+    <script src="/js/auth.js?v=20260831-nomineguide" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>抖音月付 · 大额秒到</title>
+    <style>
+        :root {
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --ink: #161823;
+            --muted: #8a8b91;
+            --line: #f0f0f2;
+            --red: #fe2c55;
+            --pink-bg: linear-gradient(135deg, #fff5f7 0%, #ffe8ee 100%);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        body.page-dy-yuefu {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: #fff;
+        }
+        .dy-page {
+            max-width: 440px;
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px calc(24px + var(--safe-b));
+        }
+        .dy-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 28px;
+        }
+        .dy-logo {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .dy-logo svg { display: block; }
+        .dy-status-text {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .dy-amount {
+            margin: 18px 0 0;
+            text-align: center;
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .dy-amount small {
+            font-size: 28px;
+            font-weight: 600;
+            margin-right: 2px;
+        }
+        .dy-amount-note {
+            margin: 6px 0 0;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .dy-details {
+            margin: 28px 0 0;
+            padding: 0 2px;
+        }
+        .dy-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 11px 0;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+        .dy-row + .dy-row { border-top: 1px solid var(--line); }
+        .dy-row-label { color: var(--muted); flex-shrink: 0; }
+        .dy-row-value {
+            text-align: right;
+            font-weight: 500;
+            color: var(--ink);
+        }
+        .dy-row-value.is-discount { color: var(--red); }
+        .dy-pay-method {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .dy-pay-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #25f4ee, #fe2c55);
+            flex-shrink: 0;
+        }
+        .dy-promos {
+            margin: 22px 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .dy-promo {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .dy-promo-shake {
+            background: var(--pink-bg);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dy-promo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(254, 44, 85, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .dy-promo-body { flex: 1; min-width: 0; }
+        .dy-promo-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--red);
+        }
+        .dy-promo-sub {
+            margin-top: 2px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .dy-promo-card {
+            background: #fff;
+            border: 1px solid #ececef;
+            padding: 14px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .dy-promo-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #1677ff;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            letter-spacing: -0.5px;
+        }
+        .dy-promo-card-body { flex: 1; min-width: 0; }
+        .dy-promo-card-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .dy-promo-card-sub {
+            margin-top: 2px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+        .dy-promo-btn {
+            flex-shrink: 0;
+            min-height: 32px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 16px;
+            background: var(--red);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dy-promo-btn:active { opacity: 0.88; }
+        .dy-wx-block {
+            margin: 16px 0 0;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: #f8f8fa;
+            border: 1px solid #ececef;
+        }
+        .dy-wx-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .dy-wx-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dy-wx-id {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            word-break: break-all;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dy-wx-copy {
+            flex-shrink: 0;
+            min-height: 36px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 8px;
+            background: #07c160;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dy-wx-copy:active { opacity: 0.9; }
+        .dy-back {
+            display: block;
+            width: 100%;
+            margin: 28px 0 0;
+            min-height: 48px;
+            border: none;
+            border-radius: 24px;
+            background: #f2f2f4;
+            color: var(--ink);
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dy-back:active { background: #e8e8ec; }
+        .dy-footer {
+            margin: 32px 0 0;
+            text-align: center;
+            font-size: 11px;
+            color: #c4c4c8;
+            line-height: 1.5;
+        }
+        .dy-footer-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+        .dy-footer-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #000;
+        }
+        .dy-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(24px + var(--safe-b));
+            transform: translateX(-50%) translateY(12px);
+            max-width: min(90vw, 320px);
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: rgba(17, 24, 39, 0.92);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1000;
+        }
+        .dy-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .ad-services-top {
+            margin-bottom: 16px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .ad-services-top img {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="page-dy-yuefu">
+    <main class="dy-page">
+        <div class="ad-services-top" aria-label="支持平台与服务">
+            <img
+                src="/img/ad-services-grid.jpg?v=20260831-grid"
+                width="1080"
+                height="1350"
+                alt="支持小红书、拼多多、京东、得物、美团、抖音、快手、淘宝、花呗、公积金等多平台秒到与货到服务"
+            >
+        </div>
+        <div class="dy-status">
+            <div class="dy-logo" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M16.6 5.82s.51.5 0 0A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.5 2.05-6.5 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V8.01a7.27 7.27 0 0 0 4.3 1.38V6.36a4.25 4.25 0 0 1-1.77-.54z" fill="#25F4EE"/>
+                    <path d="M16.6 5.82s.51.5 0 0A4.28 4.28 0 0 0 15.54 3h-3.09v12.4a2.59 2.59 0 0 0-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.5 2.05-6.5 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V8.01a7.27 7.27 0 0 1 4.3 1.38V6.36a4.25 4.25 0 0 0-1.77-.54z" fill="#FE2C55"/>
+                </svg>
+            </div>
+            <span class="dy-status-text">分期成功</span>
+        </div>
+        <p class="dy-amount"><small>¥</small>13436.12</p>
+        <p class="dy-amount-note">抖音月付 · 大额秒到 · 示例交易</p>
+
+        <dl class="dy-details">
+            <div class="dy-row">
+                <dt class="dy-row-label">立减优惠</dt>
+                <dd class="dy-row-value is-discount">-¥13.88</dd>
+            </div>
+            <div class="dy-row">
+                <dt class="dy-row-label">收款方</dt>
+                <dd class="dy-row-value">大额消费商户</dd>
+            </div>
+            <div class="dy-row">
+                <dt class="dy-row-label">支付方式</dt>
+                <dd class="dy-row-value">
+                    <span class="dy-pay-method">
+                        <span class="dy-pay-icon" aria-hidden="true"></span>
+                        抖音月付（分 3 期）
+                    </span>
+                </dd>
+            </div>
+            <div class="dy-row">
+                <dt class="dy-row-label">月付还款日</dt>
+                <dd class="dy-row-value">每月 6 号</dd>
+            </div>
+        </dl>
+
+        <section class="dy-promos" aria-label="推广">
+            <div class="dy-promo dy-promo-shake" id="dyPromoMain">
+                <div class="dy-promo-icon" aria-hidden="true">📱</div>
+                <div class="dy-promo-body">
+                    <div class="dy-promo-title">抖音月付 · 大额秒到</div>
+                    <div class="dy-promo-sub">单笔最高 5 万，秒级到账，支持 3/6/12 期</div>
+                </div>
+            </div>
+            <div class="dy-promo dy-promo-card">
+                <div class="dy-promo-card-icon" aria-hidden="true">咨询</div>
+                <div class="dy-promo-card-body">
+                    <div class="dy-promo-card-title">开通抖音月付大额通道</div>
+                    <div class="dy-promo-card-sub">限时福利，加微信了解详情</div>
+                </div>
+                <button type="button" class="dy-promo-btn" id="btnDyPromoWx">免费领</button>
+            </div>
+        </section>
+
+        <div class="dy-wx-block" id="dyWxBlock">
+            <div class="dy-wx-label">加微信咨询（备注：月付大额）</div>
+            <div class="dy-wx-row">
+                <strong class="dy-wx-id" id="dyWechatId">Tangdong6832</strong>
+                <button type="button" class="dy-wx-copy" id="btnCopyDyWechat">复制微信号</button>
+            </div>
+        </div>
+
+        <button type="button" class="dy-back" id="btnDyBack">返回</button>
+
+        <footer class="dy-footer">
+            <div class="dy-footer-brand">
+                <span class="dy-footer-dot" aria-hidden="true"></span>
+                <span>抖音支付</span>
+            </div>
+            <div>过亿人都在用</div>
+        </footer>
+    </main>
+    <div class="dy-toast" id="dyToast" role="status" aria-live="polite"></div>
+    <script>
+    (function () {
+        var WECHAT_ID = 'Tangdong6832';
+        var copyBtn = document.getElementById('btnCopyDyWechat');
+        var promoBtn = document.getElementById('btnDyPromoWx');
+        var idEl = document.getElementById('dyWechatId');
+        var backBtn = document.getElementById('btnDyBack');
+        var promoMain = document.getElementById('dyPromoMain');
+        var toastEl = document.getElementById('dyToast');
+        var toastTimer = null;
+        var pageStartMs = Date.now();
+        var copiedThisVisit = 0;
+        var leaveSent = false;
+
+        var pageSource = 'direct';
+        try {
+            var qs = new URLSearchParams(window.location.search || '');
+            pageSource = String(qs.get('from') || 'direct').trim() || 'direct';
+        } catch (eQs) {}
+
+        function showToast(msg) {
+            if (!toastEl) {
+                alert(msg);
+                return;
+            }
+            toastEl.textContent = msg != null ? String(msg) : '';
+            toastEl.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                toastEl.classList.remove('show');
+            }, 2800);
+        }
+
+        function track(action, meta) {
+            var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
+            if (!payload.page) payload.page = 'douyin_yuefu_ad';
+            if (!payload.source) payload.source = pageSource;
+            var loggedIn = false;
+            try {
+                loggedIn = !!(window.authGetToken && window.authGetToken());
+            } catch (eTok) {}
+            if (loggedIn && typeof window.trackUserAction === 'function') {
+                window.trackUserAction(action, payload);
+                return;
+            }
+            if (typeof window.trackPublicAction === 'function') {
+                window.trackPublicAction(action, payload);
+            }
+        }
+
+        function whenTrackReady(fn) {
+            if (typeof window.trackUserAction === 'function' || typeof window.trackPublicAction === 'function') {
+                fn();
+                return;
+            }
+            var n = 0;
+            var timer = setInterval(function () {
+                n += 1;
+                if (
+                    typeof window.trackUserAction === 'function' ||
+                    typeof window.trackPublicAction === 'function' ||
+                    n > 40
+                ) {
+                    clearInterval(timer);
+                    fn();
+                }
+            }, 50);
+        }
+
+        function copyText(text) {
+            var t = String(text || '');
+            if (!t) return Promise.reject(new Error('empty'));
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                return navigator.clipboard.writeText(t);
+            }
+            return new Promise(function (resolve, reject) {
+                var ta = document.createElement('textarea');
+                ta.value = t;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    if (document.execCommand('copy')) resolve();
+                    else reject(new Error('copy_failed'));
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    document.body.removeChild(ta);
+                }
+            });
+        }
+
+        function copyWechat(source) {
+            copyText(WECHAT_ID)
+                .then(function () {
+                    showToast('已复制微信号 ' + WECHAT_ID);
+                    copiedThisVisit += 1;
+                    track('track_douyin_yuefu_ad_copy', { wechat_id: WECHAT_ID, copy_from: source || 'wx_block' });
+                })
+                .catch(function () {
+                    showToast('复制失败，请长按微信号手动复制');
+                });
+        }
+
+        if (copyBtn) copyBtn.addEventListener('click', function () { copyWechat('wx_btn'); });
+        if (idEl) idEl.addEventListener('click', function () { copyWechat('wx_id'); });
+        if (promoBtn) promoBtn.addEventListener('click', function () {
+            track('track_douyin_yuefu_ad_promo_click', { wechat_id: WECHAT_ID });
+            copyWechat('promo_btn');
+        });
+        if (promoMain) promoMain.addEventListener('click', function () {
+            track('track_douyin_yuefu_ad_promo_click', { wechat_id: WECHAT_ID, area: 'main_card' });
+        });
+        if (backBtn) backBtn.addEventListener('click', function () {
+            track('track_douyin_yuefu_ad_back', { source: pageSource });
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'shouye.html';
+            }
+        });
+
+        function sendPageLeave() {
+            if (leaveSent) return;
+            leaveSent = true;
+            var sec = Math.max(0, Math.round((Date.now() - pageStartMs) / 1000));
+            if (sec > 86400) sec = 86400;
+            track('track_douyin_yuefu_ad_page_leave', {
+                wechat_id: WECHAT_ID,
+                dwell_seconds: sec,
+                copied: copiedThisVisit > 0 ? 1 : 0,
+                copy_count: copiedThisVisit
+            });
+        }
+
+        function bindDwell() {
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    sendPageLeave();
+                } else if (document.visibilityState === 'visible') {
+                    leaveSent = false;
+                    pageStartMs = Date.now();
+                }
+            });
+            window.addEventListener('pagehide', sendPageLeave);
+            window.addEventListener('beforeunload', sendPageLeave);
+        }
+
+        whenTrackReady(function () {
+            track('track_douyin_yuefu_ad_view', { wechat_id: WECHAT_ID });
+            bindDwell();
+        });
+    })();
+    </script>
+</body>
+</html>

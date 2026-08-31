@@ -16,6 +16,12 @@ describe('dbLogRetention', () => {
     process.env = { ...prev };
   });
 
+  it('includes ad page track events', () => {
+    const t = PURGE_TARGETS.find((x) => x.table === 'ad_page_track_events');
+    expect(t).toBeTruthy();
+    expect(t.envVar).toBe('DB_RETAIN_AD_PAGE_TRACK_EVENTS_DAYS');
+  });
+
   it('uses table defaultDays when set', () => {
     const t = PURGE_TARGETS.find((x) => x.defaultDays != null);
     expect(t).toBeTruthy();

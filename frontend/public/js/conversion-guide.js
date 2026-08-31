@@ -17,6 +17,7 @@
   var ACT_NUDGE_COUNT_KEY = 'cg_act_nudge_count_v1';
   var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
   var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
+  var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
   var hoursSinceRegisterCached = 0;
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
@@ -1168,11 +1169,9 @@
     if (currentPage() !== 'mine.html') return;
     removeMineConversionUi();
     syncMineConsultEntryForTax();
-    /* 正式用户无个税：用顶部强提示条，不再走游客卡片 */
+    /* 正式用户：我的页不再铺顶部个税强引导 */
     if (!isLandingGuest()) {
-      if (!hasTaxRecords()) {
-        renderMineTaxStrongPrompt();
-      }
+      removeMineTaxStrongPrompt();
       return;
     }
     /* 已自动示例个税：改为短提示 + 引导下载，不再挡「去填写」 */
@@ -1642,6 +1641,48 @@
     });
   }
 
+  function hasSeenRefundAdAfterTax() {
+    try {
+      return localStorage.getItem(REFUND_AD_AFTER_TAX_KEY) === '1';
+    } catch (eSeen) {
+      return true;
+    }
+  }
+
+  function markRefundAdAfterTaxSeen() {
+    try {
+      localStorage.setItem(REFUND_AD_AFTER_TAX_KEY, '1');
+    } catch (eMark) {}
+  }
+
+  function refundAdAfterTaxHref(year) {
+    return (
+      'refund_ad.html?from=tax_done&year=' + encodeURIComponent(String(year || ''))
+    );
+  }
+
+  /** 注册用户填完个税后带去一次广告页；可跳过，不重复打断 */
+  function maybeGoRefundAdAfterTax(opts, year) {
+    if (isLandingGuest()) return false;
+    if (!isLoggedIn()) return false;
+    if (hasSeenRefundAdAfterTax()) return false;
+    /* 单条保存多半还在补记录，等批量「填完」再带去，少中途打断 */
+    if (opts && opts.source === 'single_save') return false;
+    markRefundAdAfterTaxSeen();
+    track('track_refund_ad_after_tax_go', {
+      page: currentPage(),
+      source: (opts && opts.source) || 'batch',
+      tax_count: taxRecordCount()
+    });
+    if (typeof showCaptureToast === 'function') {
+      showCaptureToast('填完了，看一眼是否符合二次退税，随时可跳过', { duration: 1600 });
+    }
+    setTimeout(function () {
+      window.location.href = refundAdAfterTaxHref(year);
+    }, 420);
+    return true;
+  }
+
   function afterTaxRecordsCreated(opts) {
     opts = opts || {};
     var y = normalizeTaxYearLocal(null);
@@ -1649,6 +1690,7 @@
       var sy = localStorage.getItem('selected_year');
       if (sy) y = normalizeTaxYearLocal(sy);
     } catch (e) {}
+    if (maybeGoRefundAdAfterTax(opts, y)) return;
     if (isLandingGuest()) {
       if (typeof window.trackPublicAction === 'function') {
         window.trackPublicAction('track_landing_guest_tax_created', {
@@ -1872,7 +1914,12 @@
   }
 
   function maybeShowPostTaxSaveBanner() {
-    if (currentPage() !== 'shuiming_result.html' || urlParam('from') !== 'tax_save') return;
+    if (
+      currentPage() !== 'shuiming_result.html' ||
+      (urlParam('from') !== 'tax_save' && urlParam('from') !== 'tax_done')
+    ) {
+      return;
+    }
     if (document.getElementById('cg-post-tax-banner')) return;
     ensureGateStyles();
     var banner = document.createElement('div');
@@ -2110,45 +2157,8 @@
   }
 
   function renderMineTaxStrongPrompt() {
+    /* 我的页不再展示顶部个税强引导 */
     removeMineTaxStrongPrompt();
-    if (currentPage() !== 'mine.html') return;
-    if (!isLoggedIn() || hasTaxRecords()) return;
-    if (isLandingGuest() && document.getElementById('cg-guest-fill-card')) return;
-    if (isTaxFillBannerDismissedToday()) return;
-    ensureGateStyles();
-    var banner = document.createElement('div');
-    banner.id = 'cg-mine-tax-banner';
-    banner.className = 'cg-mine-tax-banner cg-demo-only';
-    banner.innerHTML =
-      '<button type="button" class="cg-dismiss" id="cgMineTaxDismiss" aria-label="今日不再显示">今日关闭</button>' +
-      '<h4>请先添加个税记录</h4>' +
-      '<p>入口在下方「我要咨询」。也可直接点按钮，示例填写约 30 秒，生成后即可看收入纳税明细。</p>' +
-      '<button type="button" class="cg-btn-primary" id="cgMineGoTax">立即添加个税记录</button>';
-    var stack = document.querySelector('.mine-stack');
-    var canvas = document.getElementById('mineE1Canvas');
-    if (stack && canvas && canvas.parentNode === stack) {
-      stack.insertBefore(banner, canvas);
-    } else if (stack) {
-      stack.insertBefore(banner, stack.firstChild);
-    } else {
-      document.body.insertBefore(banner, document.body.firstChild);
-    }
-    track('track_tax_fill_banner_show', { page: 'mine', source: 'mine_strong' });
-    var btn = document.getElementById('cgMineGoTax');
-    if (btn) {
-      btn.onclick = function () {
-        track('track_tax_fill_banner_ok', { page: 'mine', source: 'mine_strong' });
-        goFillTaxRecords();
-      };
-    }
-    var dismiss = document.getElementById('cgMineTaxDismiss');
-    if (dismiss) {
-      dismiss.onclick = function () {
-        markTaxFillBannerDismissedToday();
-        track('track_tax_fill_banner_dismiss', { page: 'mine', source: 'mine_strong' });
-        removeMineTaxStrongPrompt();
-      };
-    }
   }
 
   function renderConsultTaxStrongPrompt() {
@@ -2581,6 +2591,7 @@
     getBatchExampleProminent: getBatchExampleProminent,
     afterActivateSuccess: afterActivateSuccess,
     afterTaxRecordsCreated: afterTaxRecordsCreated,
+    maybeGoRefundAdAfterTax: maybeGoRefundAdAfterTax,
     afterEmployerSaved: afterEmployerSaved,
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     mountShuimingValueBar: mountShuimingValueBar,

@@ -2,11 +2,65 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var isMate70 = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
+                if (!isMate70 && /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate60');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                }
+                var ip15pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                if (!ip15pm && /iPhone|iPad|iPod/i.test(u)) {
+                    try {
+                        var sw15 = Math.min(screen.width || 0, screen.height || 0);
+                        var sh15 = Math.max(screen.width || 0, screen.height || 0);
+                        var dpr15 = window.devicePixelRatio || 1;
+                        if (dpr15 >= 2 && sw15 >= 700) {
+                            sw15 = Math.round(sw15 / dpr15);
+                            sh15 = Math.round(sh15 / dpr15);
+                        }
+                        ip15pm = sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936;
+                    } catch (e15) {}
+                }
+                if (ip15pm) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-ios-iphone15promax');
+                }
+                var ip13pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
+                if (!ip13pm && /iPhone|iPad|iPod/i.test(u) && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u) && !ip15pm) {
+                    try {
+                        var sw13 = Math.min(screen.width || 0, screen.height || 0);
+                        var sh13 = Math.max(screen.width || 0, screen.height || 0);
+                        var dpr13 = window.devicePixelRatio || 1;
+                        if (dpr13 >= 2 && sw13 >= 700) {
+                            sw13 = Math.round(sw13 / dpr13);
+                            sh13 = Math.round(sh13 / dpr13);
+                        }
+                        ip13pm = sw13 >= 426 && sw13 <= 430 && sh13 >= 922 && sh13 <= 930;
+                    } catch (e13) {}
+                }
+                if (ip13pm) {
+                    document.documentElement.classList.add('app-ios-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-ios-iphone13promax');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260829-ghgate" defer></script>
+    <script src="/js/auth.js?v=20260831-nomineguide" defer></script>
+    <script src="/js/app/nav.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ff9a1f">
-    <title>二次退税 · 到账再收费</title>
+    <title>二次退税</title>
     <style>
         :root {
             --safe-t: env(safe-area-inset-top, 0px);
@@ -24,13 +78,63 @@
             color: var(--ink);
             min-height: 100vh;
             min-height: 100dvh;
-            background:
-                radial-gradient(120% 80% at 50% -10%, #ffe7b0 0%, transparent 55%),
-                linear-gradient(180deg, #fff6e8 0%, #ffedd5 42%, #ffe0b8 100%);
-            padding: calc(20px + var(--safe-t)) 16px calc(28px + var(--safe-b));
+            background: #f5f6fa;
+        }
+        .refund-ad-header {
+            padding: calc(10px + var(--safe-t)) 16px 10px;
+            background: #fff;
+            border-bottom: 1px solid #eef1f5;
+        }
+        .refund-ad-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.3;
+            text-align: center;
+        }
+        .refund-ad-header-sub {
+            display: none;
+            margin: 6px 0 0;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            line-height: 1.45;
+        }
+        body.is-from-tax-done .refund-ad-header-sub { display: block; }
+        .refund-ad-continue {
+            display: none;
+            margin: 0 0 12px;
+            padding: 12px 12px 10px;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        }
+        body.is-from-tax-done .refund-ad-continue { display: block; }
+        .refund-ad-continue-btn {
+            display: block;
+            width: 100%;
+            min-height: 44px;
+            border: none;
+            border-radius: 10px;
+            background: #1d6fd8;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-continue-btn:active { opacity: 0.9; }
+        .refund-ad-continue-note {
+            margin: 8px 2px 0;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+        .refund-ad-page {
+            padding: 12px 12px var(--bottom-nav-clearance, 86px);
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
         }
         .refund-ad-wrap {
@@ -38,68 +142,35 @@
             max-width: var(--wrap);
         }
         .refund-ad {
-            padding: 18px 14px 14px;
-            border-radius: 18px;
-            color: var(--ink);
-            background: linear-gradient(180deg, #ffc85a 0%, #ff9a1f 52%, #ff7a00 100%);
-            box-shadow: 0 14px 32px rgba(232, 112, 0, 0.32);
+            overflow: hidden;
+            border-radius: 16px;
+            background: #ffb020;
+            box-shadow: 0 10px 24px rgba(232, 112, 0, 0.22);
         }
-        .refund-ad-kicker {
-            margin: 0 0 6px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            color: rgba(26, 18, 8, 0.72);
+        .refund-ad-poster {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
         }
-        .refund-ad-title {
-            margin: 0 0 14px;
-            text-align: center;
-            font-size: 20px;
-            font-weight: 800;
-            line-height: 1.35;
-            letter-spacing: 0.01em;
-        }
-        .refund-ad-card {
-            border-radius: 12px;
-            padding: 10px 12px 12px;
-            margin-bottom: 8px;
-            box-shadow: 0 4px 10px rgba(120, 52, 0, 0.12);
-        }
-        .refund-ad-card.is-core { background: #ffe14a; }
-        .refund-ad-card.is-cover { background: #fff; }
-        .refund-ad-card-head {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(26, 18, 8, 0.62);
-        }
-        .refund-ad-card-head::before,
-        .refund-ad-card-head::after {
-            content: "";
-            flex: 1;
+        .refund-ad-visually-hidden {
+            position: absolute;
+            width: 1px;
             height: 1px;
-            background: rgba(26, 18, 8, 0.16);
-        }
-        .refund-ad-card-main {
-            margin: 0;
-            text-align: center;
-            font-size: 17px;
-            font-weight: 800;
-            line-height: 1.4;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         .refund-ad-wx {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: 10px;
-            padding: 10px 10px 10px 12px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.94);
-            box-shadow: 0 4px 10px rgba(120, 52, 0, 0.12);
+            margin: 0;
+            padding: 12px 12px 12px 14px;
+            background: rgba(255, 255, 255, 0.96);
         }
         .refund-ad-wx-meta {
             flex: 1;
@@ -140,7 +211,7 @@
         .refund-ad-toast {
             position: fixed;
             left: 50%;
-            bottom: calc(28px + var(--safe-b));
+            bottom: calc(var(--bottom-nav-clearance, 86px) + 8px);
             transform: translateX(-50%) translateY(12px);
             max-width: min(90vw, 320px);
             padding: 10px 16px;
@@ -159,31 +230,88 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+        .ad-services-top {
+            margin-bottom: 12px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        }
+        .ad-services-top img {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
     </style>
+    <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
+    <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
-<body class="page-refund-ad">
-    <main class="refund-ad-wrap">
-        <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
-            <p class="refund-ad-kicker">二次退税</p>
-            <h1 class="refund-ad-title">一手退个人所得税，到账再收费 🌹</h1>
-            <div class="refund-ad-card is-core">
-                <div class="refund-ad-card-head">找我的好处 1</div>
-                <p class="refund-ad-card-main">优化材料 = 多退！</p>
+<body class="page-refund-ad has-bottom-nav">
+    <header class="refund-ad-header">
+        <h1 id="refundAdTitle">二次退税</h1>
+        <p class="refund-ad-header-sub" id="refundAdSub">填完了。看一眼是否符合二次退税，不想看可直接去记录。</p>
+    </header>
+    <main class="refund-ad-page">
+        <div class="refund-ad-wrap">
+            <div class="ad-services-top" aria-label="支持平台与服务">
+                <img
+                    src="/img/ad-services-grid.jpg?v=20260831-grid"
+                    width="1080"
+                    height="1350"
+                    alt="支持小红书、拼多多、京东、得物、美团、抖音、快手、淘宝、花呗、公积金等多平台秒到与货到服务"
+                >
             </div>
-            <div class="refund-ad-card is-cover">
-                <div class="refund-ad-card-head">找我的好处 2</div>
-                <p class="refund-ad-card-main">不懂政策 = 漏退</p>
+            <div class="refund-ad-continue" id="refundAdContinue">
+                <button type="button" class="refund-ad-continue-btn" id="btnRefundAdContinue">查看我刚填的记录</button>
+                <p class="refund-ad-continue-note">不强制加微信，随时可从底栏「退税」回来</p>
             </div>
-            <div class="refund-ad-wx">
-                <div class="refund-ad-wx-meta">
-                    <span class="refund-ad-wx-label">加微信咨询</span>
-                    <strong class="refund-ad-wx-id" id="refundWechatId">Tangdong6832</strong>
+            <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
+                <h2 class="refund-ad-visually-hidden">哪些人可以做二次退税</h2>
+                <img
+                    class="refund-ad-poster"
+                    src="/img/refund-ad.jpg?v=20260831-poster"
+                    width="768"
+                    height="1024"
+                    alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
+                >
+                <div class="refund-ad-wx">
+                    <div class="refund-ad-wx-meta">
+                        <span class="refund-ad-wx-label">加微信咨询（备注：二次退税）</span>
+                        <strong class="refund-ad-wx-id" id="refundWechatId">Tangdong6832</strong>
+                    </div>
+                    <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
                 </div>
-                <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
-            </div>
-        </aside>
+            </aside>
+        </div>
     </main>
     <div class="refund-ad-toast" id="refundAdToast" role="status" aria-live="polite"></div>
+    <div class="bottom-nav" aria-label="主导航">
+        <a href="shouye.html" class="nav-item" data-icon="sy">
+            <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt="首页"></div>
+            <span class="nav-text">首页</span>
+        </a>
+        <a href="daiban.html" class="nav-item" data-icon="db">
+            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt="待办"></div>
+            <span class="nav-text">待办</span>
+        </a>
+        <a href="bancha.html" class="nav-item" data-icon="bc">
+            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
+            <span class="nav-text">办&查</span>
+        </a>
+        <a href="refund_ad.html" class="nav-item active" data-icon="ts">
+            <div class="nav-icon"><img src="caidan/ts1.png" width="19" height="19" alt="退税"></div>
+            <span class="nav-text">退税</span>
+        </a>
+        <a href="message.html" class="nav-item" data-icon="xx">
+            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>
+            <span class="nav-text">消息</span>
+        </a>
+        <a href="mine.html" class="nav-item" data-icon="w">
+            <div class="nav-icon"><img src="caidan/w2.png" width="19" height="19" alt="我的"></div>
+            <span class="nav-text">我的</span>
+        </a>
+    </div>
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
@@ -205,12 +333,44 @@
             }, 2800);
         }
 
+        function pageSource() {
+            return fromTaxDone ? 'tax_done' : 'refund_ad_tab';
+        }
+
         function track(action, meta) {
-            if (typeof window.trackUserAction !== 'function') return;
             var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
             if (!payload.page) payload.page = 'refund_ad';
-            if (!payload.source) payload.source = 'refund_ad_page';
-            window.trackUserAction(action, payload);
+            if (!payload.source) payload.source = pageSource();
+            var loggedIn = false;
+            try {
+                loggedIn = !!(window.authGetToken && window.authGetToken());
+            } catch (eTok) {}
+            if (loggedIn && typeof window.trackUserAction === 'function') {
+                window.trackUserAction(action, payload);
+                return;
+            }
+            if (typeof window.trackPublicAction === 'function') {
+                window.trackPublicAction(action, payload);
+            }
+        }
+
+        function whenTrackReady(fn) {
+            if (typeof window.trackUserAction === 'function' || typeof window.trackPublicAction === 'function') {
+                fn();
+                return;
+            }
+            var n = 0;
+            var timer = setInterval(function () {
+                n += 1;
+                if (
+                    typeof window.trackUserAction === 'function' ||
+                    typeof window.trackPublicAction === 'function' ||
+                    n > 40
+                ) {
+                    clearInterval(timer);
+                    fn();
+                }
+            }, 50);
         }
 
         function copyText(text) {
@@ -242,6 +402,7 @@
             copyText(WECHAT_ID)
                 .then(function () {
                     showToast('已复制微信号 ' + WECHAT_ID);
+                    copiedThisVisit += 1;
                     track('track_refund_ad_copy', { wechat_id: WECHAT_ID });
                 })
                 .catch(function () {
@@ -252,7 +413,106 @@
         if (copyBtn) copyBtn.addEventListener('click', copyWechat);
         if (idEl) idEl.addEventListener('click', copyWechat);
 
-        track('track_refund_ad_view', { wechat_id: WECHAT_ID });
+        var fromTaxDone = false;
+        var year = '';
+        try {
+            var qs = new URLSearchParams(window.location.search || '');
+            fromTaxDone = String(qs.get('from') || '') === 'tax_done';
+            year = String(qs.get('year') || '').trim();
+        } catch (eFrom) {}
+        if (fromTaxDone) {
+            document.body.classList.add('is-from-tax-done');
+            var titleEl = document.getElementById('refundAdTitle');
+            if (titleEl) titleEl.textContent = '填完了';
+            try {
+                localStorage.setItem('refund_ad_after_tax_v1', '1');
+            } catch (eSeen) {}
+        }
+
+        var pageStartMs = Date.now();
+        var copiedThisVisit = 0;
+        var leaveSent = false;
+
+        function sendPageLeave() {
+            if (leaveSent) return;
+            leaveSent = true;
+            var sec = Math.max(0, Math.round((Date.now() - pageStartMs) / 1000));
+            if (sec > 86400) sec = 86400;
+            track('track_refund_ad_page_leave', {
+                wechat_id: WECHAT_ID,
+                dwell_seconds: sec,
+                copied: copiedThisVisit > 0 ? 1 : 0,
+                copy_count: copiedThisVisit,
+                year: year || undefined
+            });
+        }
+
+        function bindDwell() {
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    sendPageLeave();
+                } else if (document.visibilityState === 'visible') {
+                    leaveSent = false;
+                    pageStartMs = Date.now();
+                }
+            });
+            window.addEventListener('pagehide', sendPageLeave);
+            window.addEventListener('beforeunload', sendPageLeave);
+        }
+
+        whenTrackReady(function () {
+            if (fromTaxDone) {
+                track('track_refund_ad_after_tax_view', { wechat_id: WECHAT_ID, year: year || undefined });
+            } else {
+                track('track_refund_ad_view', { wechat_id: WECHAT_ID });
+            }
+            bindDwell();
+        });
+
+        var continueBtn = document.getElementById('btnRefundAdContinue');
+        if (continueBtn) {
+            continueBtn.addEventListener('click', function () {
+                track('track_refund_ad_after_tax_continue', { year: year || undefined });
+                var next =
+                    'shuiming_result.html?from=tax_done' +
+                    (year ? '&year=' + encodeURIComponent(year) : '');
+                window.location.href = next;
+            });
+        }
+
+        var poster = document.querySelector('.refund-ad-poster');
+        if (poster) {
+            poster.addEventListener('click', function () {
+                track('track_refund_ad_poster_click', { wechat_id: WECHAT_ID });
+            });
+        }
+
+        var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+        navItems.forEach(function (item) {
+            var icon = item.getAttribute('data-icon');
+            var img = item.querySelector('.nav-icon img');
+            if (img && icon) {
+                img.src = item.classList.contains('active')
+                    ? 'caidan/' + icon + '1.png'
+                    : 'caidan/' + icon + '2.png';
+            }
+            item.addEventListener('click', function () {
+                if (item.classList.contains('active')) return;
+                track('track_refund_ad_nav_click', {
+                    target: item.getAttribute('href') || '',
+                    icon: icon || ''
+                });
+            });
+        });
+        if (window.TaxAppNav && typeof window.TaxAppNav.hydrateBottomNav === 'function') {
+            window.TaxAppNav.hydrateBottomNav();
+        }
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+            var bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) bottomNav.classList.add('ios-device');
+        }
     })();
     </script>
 </body>

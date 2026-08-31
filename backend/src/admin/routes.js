@@ -186,6 +186,18 @@ app.get(
   h.handleAdminInstallGuideStats
 );
 app.get(
+  '/api/admin/analytics/ad-page-stats',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  h.handleAdminAdPageStats
+);
+app.get(
+  '/api/admin/analytics/ad-page-stats/user',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  h.handleAdminAdPageUserEvents
+);
+app.get(
   '/api/admin/analytics/install-track-stats',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),

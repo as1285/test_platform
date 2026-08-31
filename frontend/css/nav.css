@@ -35,6 +35,7 @@ html.ios-pwa {
 html body.page-shouye,
 html body.page-daiban,
 html body.page-bancha,
+html body.page-refund-ad,
 html body.page-message,
 html body.page-mine {
     --bottom-nav-bottom: 8px !important;
@@ -49,6 +50,7 @@ html body > .bottom-nav,
 html body.page-shouye > .bottom-nav,
 html body.page-daiban > .bottom-nav,
 html body.page-bancha > .bottom-nav,
+html body.page-refund-ad > .bottom-nav,
 html body.page-message > .bottom-nav,
 html body.page-mine > .bottom-nav,
 html body.tax-app-shell > .bottom-nav,
@@ -94,6 +96,8 @@ html.app-ios-client body.page-shouye,
 html.app-ios-client body.page-mine,
 html.app-ios-client body.page-daiban,
 html.app-ios-client body.page-bancha,
+
+html.app-ios-client body.page-refund-ad,
 html.app-ios-client body.page-message {
     --bottom-nav-bottom: 8px !important;
     --bottom-nav-gap: 8px !important;
@@ -103,8 +107,12 @@ html.app-ios-client body > .bottom-nav,
 html.app-ios-client body > .bottom-nav.ios-device,
 html.app-ios-client body.page-daiban > .bottom-nav,
 html.app-ios-client body.page-bancha > .bottom-nav,
+
+html.app-ios-client body.page-refund-ad > .bottom-nav,
 html.app-ios-client body.page-daiban > .bottom-nav.ios-device,
 html.app-ios-client body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-client body.page-refund-ad > .bottom-nav.ios-device,
 html.app-ios-client body.page-shouye > .bottom-nav,
 html.app-ios-client body.page-message > .bottom-nav,
 html.app-ios-client body.page-mine > .bottom-nav,
@@ -132,7 +140,11 @@ html.app-ios-iphone12pro body.page-shouye > .bottom-nav.ios-device,
 html.app-ios-iphone12pro body.page-daiban > .bottom-nav,
 html.app-ios-iphone12pro body.page-daiban > .bottom-nav.ios-device,
 html.app-ios-iphone12pro body.page-bancha > .bottom-nav,
+
+html.app-ios-iphone12pro body.page-refund-ad > .bottom-nav,
 html.app-ios-iphone12pro body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-iphone12pro body.page-refund-ad > .bottom-nav.ios-device,
 html.app-ios-iphone12pro body.page-message > .bottom-nav,
 html.app-ios-iphone12pro body.page-message > .bottom-nav.ios-device,
 html.app-ios-iphone12pro body.page-mine > .bottom-nav,
@@ -146,7 +158,11 @@ html.app-ios-iphone16pro body.page-shouye > .bottom-nav.ios-device,
 html.app-ios-iphone16pro body.page-daiban > .bottom-nav,
 html.app-ios-iphone16pro body.page-daiban > .bottom-nav.ios-device,
 html.app-ios-iphone16pro body.page-bancha > .bottom-nav,
+
+html.app-ios-iphone16pro body.page-refund-ad > .bottom-nav,
 html.app-ios-iphone16pro body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-iphone16pro body.page-refund-ad > .bottom-nav.ios-device,
 html.app-ios-iphone16pro body.page-message > .bottom-nav,
 html.app-ios-iphone16pro body.page-message > .bottom-nav.ios-device,
 html.app-ios-iphone16pro body.page-mine > .bottom-nav,
@@ -156,7 +172,11 @@ html.app-ios-iphone16promax body.page-shouye > .bottom-nav.ios-device,
 html.app-ios-iphone16promax body.page-daiban > .bottom-nav,
 html.app-ios-iphone16promax body.page-daiban > .bottom-nav.ios-device,
 html.app-ios-iphone16promax body.page-bancha > .bottom-nav,
+
+html.app-ios-iphone16promax body.page-refund-ad > .bottom-nav,
 html.app-ios-iphone16promax body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-iphone16promax body.page-refund-ad > .bottom-nav.ios-device,
 html.app-ios-iphone16promax body.page-message > .bottom-nav,
 html.app-ios-iphone16promax body.page-message > .bottom-nav.ios-device,
 html.app-ios-iphone16promax body.page-mine > .bottom-nav,
@@ -180,11 +200,15 @@ html.app-ios-client.app-ios-iphone13promax {
 html.app-ios-client.app-ios-iphone15promax body.page-shouye,
 html.app-ios-client.app-ios-iphone15promax body.page-daiban,
 html.app-ios-client.app-ios-iphone15promax body.page-bancha,
+
+html.app-ios-client.app-ios-iphone15promax body.page-refund-ad,
 html.app-ios-client.app-ios-iphone15promax body.page-message,
 html.app-ios-client.app-ios-iphone15promax body.page-mine,
 html.app-ios-client.app-ios-iphone13promax body.page-shouye,
 html.app-ios-client.app-ios-iphone13promax body.page-daiban,
 html.app-ios-client.app-ios-iphone13promax body.page-bancha,
+
+html.app-ios-client.app-ios-iphone13promax body.page-refund-ad,
 html.app-ios-client.app-ios-iphone13promax body.page-message,
 html.app-ios-client.app-ios-iphone13promax body.page-mine {
     --bottom-nav-bottom: 0px !important;
@@ -198,7 +222,11 @@ html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav.ios-de
 html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav,
 html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav,
+
+html.app-ios-client.app-ios-iphone15promax body.page-refund-ad > .bottom-nav,
 html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-client.app-ios-iphone15promax body.page-refund-ad > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav,
 html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
@@ -210,7 +238,11 @@ html.app-ios-client.app-ios-iphone13promax body.page-shouye > .bottom-nav.ios-de
 html.app-ios-client.app-ios-iphone13promax body.page-daiban > .bottom-nav,
 html.app-ios-client.app-ios-iphone13promax body.page-daiban > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone13promax body.page-bancha > .bottom-nav,
+
+html.app-ios-client.app-ios-iphone13promax body.page-refund-ad > .bottom-nav,
 html.app-ios-client.app-ios-iphone13promax body.page-bancha > .bottom-nav.ios-device,
+
+html.app-ios-client.app-ios-iphone13promax body.page-refund-ad > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone13promax body.page-message > .bottom-nav,
 html.app-ios-client.app-ios-iphone13promax body.page-message > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav,

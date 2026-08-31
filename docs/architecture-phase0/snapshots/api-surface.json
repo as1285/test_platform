@@ -14,6 +14,7 @@
     "feedback",
     "chat",
     "login-log",
+    "ops-ad-analytics",
     "analytics-conversion",
     "analytics-activity",
     "analytics-register",
@@ -182,6 +183,14 @@
     {
       "method": "GET",
       "path": "/api/admin/analytics/female-age"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ad-page-stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ad-page-stats/user"
     },
     {
       "method": "GET",

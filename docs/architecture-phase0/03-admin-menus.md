@@ -25,6 +25,7 @@
 | `ops-inactive` | 未激活用户 | 收集未开通用户明细（也可凭 `analytics-conversion` / `users` 进入） |
 | `ops-research` | 转化调研 | 未开通漏斗、价格与填写问卷（也可凭转化概览 / 填写调研进入） |
 | `ops-lift` | 提高转化 | 次日回访、高收入跟进、站内信群发 |
+| `ops-ad-analytics` | 广告页数据运营 | 二次退税广告页停留时间与操作（也可凭埋点分析 / 转化概览进入） |
 | `analytics-conversion` | 转化概览 | 支付转化 + 日转化总览 |
 | `codes` | 激活码 | 发码 / 列表 |
 | `settings` | 定价与引导 | `/api/admin/settings` |
