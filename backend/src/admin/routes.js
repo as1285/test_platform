@@ -140,37 +140,43 @@ app.get(
 app.get(
   '/api/admin/analytics/d1-return-cohort',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board']),
   h.handleAdminD1ReturnCohort
 );
 app.get(
   '/api/admin/analytics/high-income-inactive',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board']),
   h.handleAdminHighIncomeInactive
+);
+app.get(
+  '/api/admin/ops/board',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-board', 'ops-inactive', 'analytics-conversion', 'ops-lift', 'ops-research']),
+  h.handleOpsBoard
 );
 app.get(
   '/api/admin/ops/inactive-summary',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users']),
+  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users', 'ops-board']),
   h.handleOpsInactiveSummary
 );
 app.get(
   '/api/admin/ops/inactive-users',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users']),
+  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users', 'ops-board']),
   h.handleOpsInactiveUsers
 );
 app.get(
   '/api/admin/ops/conversion-research',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-research', 'analytics-conversion', 'tax-fill-survey']),
+  mw.requireAdminAnyMenu(['ops-research', 'analytics-conversion', 'tax-fill-survey', 'ops-board']),
   h.handleOpsConversionResearch
 );
 app.get(
   '/api/admin/ops/refund-eligible',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-ad-analytics', 'ops-lift', 'analytics-conversion']),
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'ops-lift', 'analytics-conversion', 'ops-board']),
   h.handleOpsRefundEligible
 );
 app.get(

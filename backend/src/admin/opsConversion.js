@@ -271,7 +271,13 @@ async function handleOpsInactiveSummary(req, res) {
            SUM(${sawPurchaseSql('users.username')}) AS saw_purchase,
            SUM(${sawConsultSql('users.username')}) AS saw_consult,
            SUM(${d1OnlySql('users')}) AS d1_only,
-           SUM(CASE WHEN users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS in_7d
+           SUM(CASE WHEN users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS in_7d,
+           SUM(CASE WHEN ${sawPurchaseSql('users.username')} AND NOT EXISTS (
+             SELECT 1 FROM user_page_events e
+             WHERE e.username = users.username
+               AND (e.route_key LIKE '%track_alipay_payment_success%'
+                 OR e.route_key LIKE '%track_purchase_activate_success%')
+           ) THEN 1 ELSE 0 END) AS purchase_no_pay
          FROM users ${whereSql}`,
         built.params
       );
@@ -290,7 +296,8 @@ async function handleOpsInactiveSummary(req, res) {
             saw_purchase: n(r, 'saw_purchase'),
             saw_consult: n(r, 'saw_consult'),
             d1_only: n(r, 'd1_only'),
-            in_7d: n(r, 'in_7d')
+            in_7d: n(r, 'in_7d'),
+            purchase_no_pay: n(r, 'purchase_no_pay')
           }
         }
       });
@@ -300,6 +307,177 @@ async function handleOpsInactiveSummary(req, res) {
   } catch (e) {
     console.error('[ops-inactive-summary]', e);
     res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/**
+ * 运营看板：今日 KPI + 未激活库存 + 近 7 日转化卡点（一次返回）
+ */
+async function handleOpsBoard(req, res) {
+  try {
+    var researchDays = parseDays(req.query && req.query.days, 7);
+    var pool = getPool();
+    const conn = await pool.getConnection();
+    try {
+      var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+      var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+      var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+      var todayBjSql = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+
+      var userWhere = [
+        'users.list_hidden_at IS NULL',
+        nonGuestSql('users')
+      ];
+      var userParams = [];
+      appendRegisteredScope(userWhere, userParams, req.admin, 'users.username');
+      var userWhereSql = ' WHERE ' + userWhere.join(' AND ');
+
+      const [todayRows] = await conn.query(
+        `SELECT
+           SUM(CASE WHEN ${cnDay} = ${todayBjSql} THEN 1 ELSE 0 END) AS register_today
+         FROM users ${userWhereSql}`,
+        userParams
+      );
+
+      var actWhere = [
+        'ac.last_used_at IS NOT NULL',
+        'ac.used_count > 0',
+        "LEFT(COALESCE(ac.used_by_username,''), " + GUEST_PREFIX.length + ") <> '" + GUEST_PREFIX + "'"
+      ];
+      var actParams = [];
+      if (req.admin && !isFullScope(req.admin)) {
+        var uname = String(req.admin.username || '').trim();
+        if (uname.toLowerCase() === 'admin') {
+          actWhere.push('ac.owner_admin_username = ?');
+          actParams.push(uname);
+        } else if (uname) {
+          actWhere.push('ac.owner_admin_username = ?');
+          actParams.push(uname);
+        }
+      }
+      actWhere.push(cnActDay + ' = ' + todayBjSql);
+      const [actRows] = await conn.query(
+        'SELECT COUNT(DISTINCT ac.used_by_username) AS activate_today FROM activation_codes ac WHERE ' +
+          actWhere.join(' AND '),
+        actParams
+      );
+
+      var payWhere = ["status = 'paid'", cnPaidDay + ' = ' + todayBjSql];
+      var payParams = [];
+      const [payRows] = await conn.query(
+        'SELECT COUNT(*) AS pay_orders, COALESCE(SUM(amount), 0) AS pay_gmv FROM payment_orders WHERE ' +
+          payWhere.join(' AND '),
+        payParams
+      );
+
+      var stockBuilt = baseInactiveWhere(req.admin);
+      var stockSql = ' WHERE ' + stockBuilt.where.join(' AND ');
+      const [stockRows] = await conn.query(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(${hasTaxSql('users.username')}) AS has_tax,
+           SUM(NOT ${hasTaxSql('users.username')}) AS no_tax,
+           SUM(${highIncomeExistsSql('users.username')}) AS high_income,
+           SUM(${sawPurchaseSql('users.username')}) AS saw_purchase,
+           SUM(${sawConsultSql('users.username')}) AS saw_consult,
+           SUM(${d1OnlySql('users')}) AS d1_only,
+           SUM(CASE WHEN users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS in_7d,
+           SUM(CASE WHEN ${sawPurchaseSql('users.username')} AND NOT EXISTS (
+             SELECT 1 FROM user_page_events e
+             WHERE e.username = users.username
+               AND (e.route_key LIKE '%track_alipay_payment_success%'
+                 OR e.route_key LIKE '%track_purchase_activate_success%')
+           ) THEN 1 ELSE 0 END) AS purchase_no_pay
+         FROM users ${stockSql}`,
+        stockBuilt.params
+      );
+
+      var refundWhere = [
+        'users.list_hidden_at IS NULL',
+        nonGuestSql('users'),
+        refundEligibleSql('users.username')
+      ];
+      var refundParams = [];
+      appendRegisteredScope(refundWhere, refundParams, req.admin, 'users.username');
+      const [refundRows] = await conn.query(
+        'SELECT COUNT(*) AS refund_eligible FROM users WHERE ' + refundWhere.join(' AND '),
+        refundParams
+      );
+
+      var researchWhere = [
+        'users.list_hidden_at IS NULL',
+        nonGuestSql('users'),
+        'users.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)'
+      ];
+      var researchParams = [researchDays];
+      appendRegisteredScope(researchWhere, researchParams, req.admin, 'users.username');
+      var researchSql = ' WHERE ' + researchWhere.join(' AND ');
+      const [funnelRows] = await conn.query(
+        `SELECT
+           COUNT(*) AS registered,
+           SUM(users.account_active = 1) AS activated,
+           SUM(users.account_active = 0 OR users.account_active IS NULL) AS unactivated,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${hasTaxSql('users.username')}) AS unact_has_tax,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND NOT ${hasTaxSql('users.username')}) AS unact_no_tax,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${sawPurchaseSql('users.username')}) AS unact_saw_pay,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${highIncomeExistsSql('users.username')}) AS unact_high_income,
+           SUM((users.account_active = 0 OR users.account_active IS NULL) AND ${sawConsultSql('users.username')} AND NOT ${hasTaxSql('users.username')}) AS opened_fill_no_submit
+         FROM users ${researchSql}`,
+        researchParams
+      );
+
+      var f = funnelRows && funnelRows[0] ? funnelRows[0] : {};
+      var s = stockRows && stockRows[0] ? stockRows[0] : {};
+      var t = todayRows && todayRows[0] ? todayRows[0] : {};
+      var a = actRows && actRows[0] ? actRows[0] : {};
+      var p = payRows && payRows[0] ? payRows[0] : {};
+      var rf = refundRows && refundRows[0] ? refundRows[0] : {};
+      var registered = n(f, 'registered');
+      var activated = n(f, 'activated');
+
+      res.json({
+        code: 200,
+        data: {
+          today: {
+            register: n(t, 'register_today'),
+            activate: n(a, 'activate_today'),
+            pay_orders: n(p, 'pay_orders'),
+            pay_gmv: Math.round(Number(p.pay_gmv || 0) * 100) / 100
+          },
+          stock: {
+            total: n(s, 'total'),
+            has_tax: n(s, 'has_tax'),
+            no_tax: n(s, 'no_tax'),
+            high_income: n(s, 'high_income'),
+            saw_purchase: n(s, 'saw_purchase'),
+            saw_consult: n(s, 'saw_consult'),
+            d1_only: n(s, 'd1_only'),
+            in_7d: n(s, 'in_7d'),
+            purchase_no_pay: n(s, 'purchase_no_pay'),
+            refund_eligible: n(rf, 'refund_eligible')
+          },
+          research: {
+            days: researchDays,
+            funnel: {
+              registered: registered,
+              activated: activated,
+              unactivated: n(f, 'unactivated'),
+              activate_pct: pct(activated, registered),
+              unact_has_tax: n(f, 'unact_has_tax'),
+              unact_no_tax: n(f, 'unact_no_tax'),
+              unact_saw_pay: n(f, 'unact_saw_pay'),
+              unact_high_income: n(f, 'unact_high_income'),
+              opened_fill_no_submit: n(f, 'opened_fill_no_submit')
+            }
+          }
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[ops-board]', e);
+    res.status(500).json({ code: 500, msg: String(e.message || '加载运营看板失败') });
   }
 }
 
@@ -875,6 +1053,7 @@ async function handleOpsRefundEligible(req, res) {
 
 function getHandlers() {
   return {
+    handleOpsBoard: handleOpsBoard,
     handleOpsInactiveSummary: handleOpsInactiveSummary,
     handleOpsInactiveUsers: handleOpsInactiveUsers,
     handleOpsConversionResearch: handleOpsConversionResearch,

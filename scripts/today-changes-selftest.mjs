@@ -269,7 +269,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v16-reg-merge-install-stats'],
+  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v17-ops-board'],
   'admin zaizhi-cert hash not bounced'
 );
 mustInclude(
@@ -319,7 +319,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v16-reg-merge-install-stats'],
+  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v17-ops-board'],
   'admin accounts menu selector grouped by sidebar'
 );
 mustInclude(
@@ -339,12 +339,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260901-purchase-admin-act', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260901-opsboard', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['filterD1Return', 'inactive_d1_only', 'analyticsD1ReturnCohort', '注册次日回访未激活'],
+  ['filterD1Return', 'inactive_d1_only', 'analyticsD1ReturnCohort', 'ops-board'],
   'admin D1 return cohort UI'
 );
 mustInclude(
@@ -1797,12 +1797,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['page-ops-ad-analytics', 'opsAdUserTbody', '广告页数据运营'],
+  ['page-ops-ad-analytics', 'opsAdUserTbody', '广告数据'],
   'admin ad page ops panel'
 );
 mustInclude(
   'backend/src/admin/menuRegistry.js',
-  ["page: 'ops-ad-analytics'", '广告页数据运营'],
+  ["page: 'ops-ad-analytics'", '广告数据'],
   'admin menu ad page ops'
 );
 mustInclude(
@@ -2193,22 +2193,34 @@ mustInclude(
 mustInclude(
   'backend/src/admin/routes.js',
   [
+    '/api/admin/ops/board',
     '/api/admin/ops/inactive-summary',
     '/api/admin/ops/inactive-users',
     '/api/admin/ops/conversion-research',
-    'handleOpsConversionResearch'
+    'handleOpsConversionResearch',
+    'handleOpsBoard'
   ],
   'ops conversion routes'
 );
 mustInclude(
   'backend/src/admin/menuRegistry.js',
-  ["module: 'ops-conversion'", "page: 'ops-inactive'", "page: 'ops-research'"],
+  ["page: 'ops-board'", "label: '运营看板'", "page: 'ops-inactive'", 'nav_hidden: true'],
   'ops conversion admin menus'
 );
 mustInclude(
   'frontend/public/js/admin/modules/ops-conversion.js',
-  ["AdminModules['ops-conversion']", 'inactive-summary', 'conversion-research'],
+  ["AdminModules['ops-conversion']", 'inactive-summary', 'api/admin/ops/board', 'loadBoard'],
   'ops conversion admin module'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['id="page-ops-board"', 'opsBoardKpi', 'opsBoardTodo', 'opsBoardBulkAnchor'],
+  'ops board page panel'
+);
+mustInclude(
+  'backend/src/admin/opsConversion.js',
+  ['handleOpsBoard', 'pay_gmv', 'refund_eligible'],
+  'ops board API handler'
 );
 mustInclude(
   'frontend/public/js/najilu.js',

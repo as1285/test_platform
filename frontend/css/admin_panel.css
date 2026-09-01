@@ -2692,6 +2692,110 @@ tr.users-detail-row > td {
     border-color: var(--admin-primary-border);
     color: var(--admin-primary-press);
 }
+.ops-board-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.ops-board-head h2 {
+    margin: 0;
+}
+.ops-board-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.ops-board-kpi-card {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-surface);
+}
+.ops-board-kpi-card .label {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+    margin-bottom: 6px;
+}
+.ops-board-kpi-card .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--admin-heading);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+.ops-board-kpi-card .sub {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--admin-text-secondary);
+}
+.ops-board-todo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.ops-board-todo a {
+    display: block;
+    text-decoration: none;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--admin-border);
+    background: linear-gradient(180deg, var(--admin-surface-tint) 0%, var(--admin-surface) 100%);
+    color: inherit;
+}
+.ops-board-todo a:hover {
+    border-color: var(--admin-primary-border);
+}
+.ops-board-todo .todo-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--admin-heading);
+}
+.ops-board-todo .todo-num {
+    margin-top: 8px;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--admin-primary-press);
+    line-height: 1.1;
+}
+.ops-board-todo .todo-hint {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+.ops-board-research {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.ops-board-research .chip {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-surface);
+}
+.ops-board-research .chip .k {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+.ops-board-research .chip .v {
+    margin-top: 4px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--admin-heading);
+}
+.ops-board-bulk {
+    margin-top: 8px;
+}
+@media (max-width: 900px) {
+    .ops-board-kpi {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
 .ops-summary-card {
     display: block;
     width: 100%;

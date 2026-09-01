@@ -843,128 +843,54 @@
             box-shadow: none;
         }
         .purchase-fold-body .card:first-child { margin-top: 12px; }
-        .purchase-success-cases {
-            margin-top: 12px;
-            border: 1px solid rgba(226, 232, 240, 0.85);
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.055);
-            padding: 14px 14px 10px;
-            overflow: hidden;
-        }
-        .purchase-success-cases-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--ink);
-            margin-bottom: 2px;
-        }
-        .purchase-success-cases-sub {
-            font-size: 12px;
-            color: var(--muted);
-            margin-bottom: 10px;
-            line-height: 1.4;
-        }
-        .purchase-success-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-        .purchase-success-item {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            padding: 10px 2px;
-            border-top: 1px solid var(--line);
-        }
-        .purchase-success-item:first-child {
-            border-top: none;
-            padding-top: 2px;
-        }
-        .purchase-success-avatar {
-            flex: 0 0 32px;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 600;
-            color: #fff;
-            background: linear-gradient(135deg, #3b82f6, #1d6fd8);
-            margin-top: 1px;
-        }
-        .purchase-success-avatar.tone-2 { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
-        .purchase-success-avatar.tone-3 { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-        .purchase-success-avatar.tone-4 { background: linear-gradient(135deg, #14b8a6, #0d9488); }
-        .purchase-success-avatar.tone-5 { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .purchase-success-avatar.tone-6 { background: linear-gradient(135deg, #64748b, #475569); }
-        .purchase-success-body {
-            flex: 1;
-            min-width: 0;
-        }
-        .purchase-success-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 3px;
-        }
-        .purchase-success-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--ink);
-        }
-        .purchase-success-time {
-            flex-shrink: 0;
-            font-size: 11px;
-            color: var(--muted);
-        }
-        .purchase-success-text {
-            font-size: 12px;
-            line-height: 1.55;
-            color: var(--ink-soft);
-        }
-        .purchase-success-text em {
-            font-style: normal;
-            color: var(--accent-deep);
-            font-weight: 600;
-        }
-        .purchase-success-ticker {
+        /* 顶部实时付款滚动条（社会证明，条目少） */
+        .purchase-pay-ticker {
             position: relative;
-            margin: 0 0 10px;
-            height: 34px;
+            margin: 0 0 12px;
+            height: 36px;
             overflow: hidden;
             border-radius: 10px;
-            background: var(--accent-soft);
-            border: 1px solid rgba(29, 111, 216, 0.12);
+            background: linear-gradient(90deg, #f0fdf4 0%, #ecfdf5 55%, #f0f9ff 100%);
+            border: 1px solid rgba(34, 197, 94, 0.18);
         }
-        .purchase-success-ticker-track {
+        .purchase-pay-ticker-track {
             position: absolute;
             left: 0;
             right: 0;
             top: 0;
             transition: transform 0.45s ease;
         }
-        .purchase-success-ticker-row {
-            height: 34px;
+        .purchase-pay-ticker-row {
+            height: 36px;
             padding: 0 12px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             font-size: 12px;
-            color: var(--accent-deep);
+            color: #166534;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .purchase-success-ticker-dot {
+        .purchase-pay-ticker-row strong {
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .purchase-pay-ticker-row em {
+            font-style: normal;
+            font-weight: 700;
+            color: #b45309;
+        }
+        .purchase-pay-ticker-dot {
             flex: 0 0 6px;
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: #22c55e;
             box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .purchase-pay-ticker-track { transition: none; }
         }
         .purchase-faq {
             margin-top: 12px;
@@ -1302,6 +1228,15 @@
         <div class="header-title" id="purchaseHeaderTitle">开通演示</div>
     </div>
     <div class="page">
+        <div
+            class="purchase-pay-ticker"
+            id="purchasePayTicker"
+            aria-label="近期开通动态"
+            aria-live="polite"
+        >
+            <div class="purchase-pay-ticker-track" id="purchasePayTickerTrack"></div>
+        </div>
+
         <div class="hero">
             <div class="brand-line">个人所得税</div>
             <h1 id="purchaseHeroTitle">开通完整演示</h1>
@@ -1381,15 +1316,6 @@
                 </div>
             </div>
         </div>
-
-        <section class="purchase-success-cases" id="purchaseSuccessCases" aria-label="开通用户成功案例">
-            <div class="purchase-success-cases-title">开通用户 · 成功案例</div>
-            <p class="purchase-success-cases-sub">更多激活用户用本 App 准备材料后顺利入职</p>
-            <div class="purchase-success-ticker" id="purchaseSuccessTicker" aria-live="polite">
-                <div class="purchase-success-ticker-track" id="purchaseSuccessTickerTrack"></div>
-            </div>
-            <ul class="purchase-success-list" id="purchaseSuccessList"></ul>
-        </section>
 
         <section class="purchase-faq" id="purchaseFaq" aria-label="支付常见问题">
             <div class="purchase-faq-title">支付常见问题</div>
@@ -3527,155 +3453,69 @@
         }
     })();
 
-    (function initPurchaseSuccessCases() {
-        var root = document.getElementById('purchaseSuccessCases');
-        var listEl = document.getElementById('purchaseSuccessList');
-        var tickerTrack = document.getElementById('purchaseSuccessTickerTrack');
-        if (!root || !listEl) return;
+    (function initPurchasePayTicker() {
+        var root = document.getElementById('purchasePayTicker');
+        var track = document.getElementById('purchasePayTickerTrack');
+        if (!root || !track) return;
 
-        var CASES = [
-            {
-                name: '张女士',
-                initial: '张',
-                tone: '',
-                time: '2 天前开通',
-                text: '通过这个 App 补齐个税明细，成功入职<em>杭州某互联网公司</em>。'
-            },
-            {
-                name: '陈先生',
-                initial: '陈',
-                tone: 'tone-2',
-                time: '昨天开通',
-                text: '用本 App 开具纳税记录，顺利入职<em>深圳某科技公司</em>。'
-            },
-            {
-                name: '刘女士',
-                initial: '刘',
-                tone: 'tone-3',
-                time: '4 天前开通',
-                text: '准备完收入证明材料后，成功入职<em>上海某金融公司</em>。'
-            },
-            {
-                name: '王先生',
-                initial: '王',
-                tone: 'tone-4',
-                time: '今天开通',
-                text: '通过这个 App 整理任职与纳税记录，入职<em>广州某制造企业</em>。'
-            },
-            {
-                name: '赵女士',
-                initial: '赵',
-                tone: 'tone-5',
-                time: '3 天前开通',
-                text: '用演示明细完成入职材料核对，成功入职<em>成都某电商公司</em>。'
-            },
-            {
-                name: '周先生',
-                initial: '周',
-                tone: 'tone-6',
-                time: '5 天前开通',
-                text: '通过这个 App 导出完税证明，成功入职<em>南京某软件公司</em>。'
-            }
+        /* 条目少：顶部轮播「谁支付了多少买了什么套餐」 */
+        var PAYS = [
+            { name: '张女士', amount: '300', sku: '周卡' },
+            { name: '陈先生', amount: '398', sku: '月卡' },
+            { name: '刘女士', amount: '348', sku: '双周卡' },
+            { name: '王先生', amount: '300', sku: '周卡' },
+            { name: '赵女士', amount: '398', sku: '月卡' },
+            { name: '李先生', amount: '300', sku: '周卡' }
         ];
 
-        var TICKER = [
-            '李女士 通过这个 App 成功入职 苏州某外企',
-            '黄先生 用本 App 准备材料后入职 武汉某科技公司',
-            '吴女士 通过这个 App 成功入职 厦门某贸易公司',
-            '郑先生 整理纳税明细后顺利入职 合肥某制造企业',
-            '孙女士 通过这个 App 成功入职 重庆某互联网公司'
-        ];
-
-        listEl.innerHTML = CASES.map(function (item) {
+        function rowHtml(item) {
             return (
-                '<li class="purchase-success-item">' +
-                '<div class="purchase-success-avatar ' +
-                (item.tone || '') +
-                '" aria-hidden="true">' +
-                item.initial +
-                '</div>' +
-                '<div class="purchase-success-body">' +
-                '<div class="purchase-success-meta">' +
-                '<span class="purchase-success-name">' +
+                '<div class="purchase-pay-ticker-row">' +
+                '<span class="purchase-pay-ticker-dot" aria-hidden="true"></span>' +
+                '<span><strong>' +
                 item.name +
-                '</span>' +
-                '<span class="purchase-success-time">' +
-                item.time +
-                '</span>' +
-                '</div>' +
-                '<p class="purchase-success-text">' +
-                item.text +
-                '</p>' +
-                '</div>' +
-                '</li>'
+                '</strong> 支付了 <em>¥' +
+                item.amount +
+                '</em> 购买了<strong>' +
+                item.sku +
+                '</strong></span>' +
+                '</div>'
             );
-        }).join('');
-
-        if (tickerTrack) {
-            var tickerRows = TICKER.concat(TICKER[0] ? [TICKER[0]] : []);
-            tickerTrack.innerHTML = tickerRows
-                .map(function (line) {
-                    return (
-                        '<div class="purchase-success-ticker-row">' +
-                        '<span class="purchase-success-ticker-dot" aria-hidden="true"></span>' +
-                        '<span>' +
-                        line +
-                        '</span>' +
-                        '</div>'
-                    );
-                })
-                .join('');
-
-            var tickerIndex = 0;
-            var tickerCount = TICKER.length;
-            var reducedMotion = false;
-            try {
-                reducedMotion =
-                    window.matchMedia &&
-                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            } catch (eMotion) {}
-
-            if (!reducedMotion && tickerCount > 1) {
-                setInterval(function () {
-                    tickerIndex += 1;
-                    tickerTrack.style.transform =
-                        'translateY(-' + tickerIndex * 34 + 'px)';
-                    if (tickerIndex >= tickerCount) {
-                        setTimeout(function () {
-                            tickerTrack.style.transition = 'none';
-                            tickerTrack.style.transform = 'translateY(0)';
-                            tickerIndex = 0;
-                            void tickerTrack.offsetHeight;
-                            tickerTrack.style.transition = '';
-                        }, 480);
-                    }
-                }, 3200);
-            }
         }
 
-        if (typeof IntersectionObserver === 'function') {
-            var seen = false;
-            var io = new IntersectionObserver(
-                function (entries) {
-                    if (seen) return;
-                    var hit = entries && entries[0] && entries[0].isIntersecting;
-                    if (!hit) return;
-                    seen = true;
-                    trackPurchase('track_purchase_success_cases_view', {
-                        case_count: CASES.length
-                    });
-                    try {
-                        io.disconnect();
-                    } catch (eIo) {}
-                },
-                { threshold: 0.35 }
-            );
-            io.observe(root);
-        } else {
-            trackPurchase('track_purchase_success_cases_view', {
-                case_count: CASES.length
-            });
+        var rows = PAYS.concat(PAYS[0] ? [PAYS[0]] : []);
+        track.innerHTML = rows.map(rowHtml).join('');
+
+        var tickerIndex = 0;
+        var tickerCount = PAYS.length;
+        var rowH = 36;
+        var reducedMotion = false;
+        try {
+            reducedMotion =
+                window.matchMedia &&
+                window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (eMotion) {}
+
+        if (!reducedMotion && tickerCount > 1) {
+            setInterval(function () {
+                tickerIndex += 1;
+                track.style.transform = 'translateY(-' + tickerIndex * rowH + 'px)';
+                if (tickerIndex >= tickerCount) {
+                    setTimeout(function () {
+                        track.style.transition = 'none';
+                        track.style.transform = 'translateY(0)';
+                        tickerIndex = 0;
+                        void track.offsetHeight;
+                        track.style.transition = '';
+                    }, 480);
+                }
+            }, 2800);
         }
+
+        trackPurchase('track_purchase_success_cases_view', {
+            case_count: PAYS.length,
+            placement: 'top_pay_ticker'
+        });
     })();
 
     (function initPurchaseConversionUi() {

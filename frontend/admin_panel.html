@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260829-opsconv">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260901-opsboard">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -2312,6 +2312,81 @@
                     </section>
                 </div>
 
+                <div id="page-ops-board" class="page-panel" role="tabpanel">
+                    <section>
+                        <div class="ops-board-head">
+                            <h2>运营看板</h2>
+                            <button type="button" class="btn-page btn-page-primary" id="btnOpsBoardRefresh">刷新</button>
+                        </div>
+                        <div class="ops-board-kpi" id="opsBoardKpi" aria-live="polite">加载中…</div>
+                    </section>
+                    <section>
+                        <h2>待跟进</h2>
+                        <div class="ops-board-todo" id="opsBoardTodo" aria-live="polite"></div>
+                    </section>
+                    <section>
+                        <h2>快捷入口</h2>
+                        <div class="ops-hub-grid mb-12">
+                            <a class="ops-hub-card" href="#ops-inactive"><strong>未激活名单</strong><span>筛人群、导出、点进用户</span></a>
+                            <a class="ops-hub-card" href="#ops-ad-analytics"><strong>广告数据</strong><span>退税合格、停留与复制微信</span></a>
+                            <a class="ops-hub-card" href="#codes"><strong>发激活码</strong><span>开码、查码</span></a>
+                            <a class="ops-hub-card" href="#settings"><strong>定价与引导</strong><span>套餐价、引导文案</span></a>
+                            <a class="ops-hub-card" href="#analytics-purchase"><strong>支付分析</strong><span>漏斗与 GMV 明细</span></a>
+                            <a class="ops-hub-card" href="#tax-fill-survey"><strong>填写问卷</strong><span>个税填写满意度</span></a>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>近 7 日转化卡点</h2>
+                        <div class="ops-board-research" id="opsBoardResearch" aria-live="polite">加载中…</div>
+                    </section>
+                    <section id="opsBoardBulkAnchor">
+                        <details class="page-hint-details ops-board-bulk" open>
+                            <summary>站内信群发</summary>
+                            <p class="hint mt-8">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。</p>
+                            <div class="form-row form-stack">
+                                <div class="form-field">
+                                    <label for="bulkMsgAudience">发送对象</label>
+                                    <select id="bulkMsgAudience" class="filter-select">
+                                        <option value="pending_activate_24h" selected>注册超 24h 未激活</option>
+                                        <option value="all_inactive">全部未激活</option>
+                                        <option value="inactive_has_tax">未激活且有个税记录</option>
+                                        <option value="inactive_no_tax">未激活且无个税记录</option>
+                                        <option value="inactive_visited_purchase">未激活且去过支付页</option>
+                                        <option value="inactive_purchase_no_pay">未激活、去过支付页、未支付</option>
+                                        <option value="inactive_has_d1">未激活·有注册次日日活</option>
+                                        <option value="inactive_d1_only">未激活·仅次日回访（之后未再活跃）</option>
+                                        <option value="inactive_high_income">未激活·自己填月收入&gt;1.5万</option>
+                                        <option value="refund_eligible">退税合格（23–25年税额&gt;5000或年收入≥15万，含已开通）</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label for="bulkMsgTitle">标题</label>
+                                    <input type="text" id="bulkMsgTitle" maxlength="120" value="开通提醒：激活后去除水印">
+                                </div>
+                                <div class="form-field">
+                                    <label for="bulkMsgContent">正文</label>
+                                    <textarea id="bulkMsgContent" class="textarea-block" rows="4" maxlength="4000">您好，检测到您的账号尚未激活。激活后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击下方「前往激活」即可开通。</textarea>
+                                </div>
+                                <div class="form-field form-field-narrow">
+                                    <label for="bulkMsgLink">跳转页面</label>
+                                    <input type="text" id="bulkMsgLink" maxlength="200" value="purchase.html">
+                                </div>
+                                <div class="form-field">
+                                    <label class="checkbox-inline">
+                                        <input type="checkbox" id="bulkMsgSkipSent" checked>
+                                        跳过已收过自动推广信的用户（推荐）
+                                    </label>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn-page" id="btnBulkMsgPreview">预览人数</button>
+                                    <button type="button" class="btn-primary" id="btnBulkMsgSend">确认群发</button>
+                                    <span class="hint" id="bulkMsgStatus" aria-live="polite"></span>
+                                </div>
+                            </div>
+                        </details>
+                    </section>
+                </div>
+
                 <div id="page-ops-inactive" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">收集还没开通的人：填没填个税、月入多少、有没有看过填写页/开通页、怎么评价价格。</p></div>
                     <section>
@@ -2576,156 +2651,23 @@
                 </div>
 
                 <div id="page-ops-research" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">看未开通的人卡在哪：没填个税、填了不付，还是看过价觉得贵。</p></div>
-                    <section>
-                        <h2>转化调研</h2>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="opsResearchDays">注册区间</label>
-                                <select id="opsResearchDays" class="filter-select">
-                                    <option value="7" selected>最近 7 天</option>
-                                    <option value="14">最近 14 天</option>
-                                    <option value="30">最近 30 天</option>
-                                    <option value="90">最近 90 天</option>
-                                </select>
-                            </div>
-                            <button type="button" class="btn-page btn-page-primary" id="btnOpsResearchRefresh">刷新</button>
-                            <button type="button" class="btn-page" id="btnOpsResearchGotoFillSurvey">个税填写问卷</button>
-                            <button type="button" class="btn-page" id="btnOpsResearchGotoPurchase">支付页问卷</button>
-                        </div>
-                        <div id="opsResearchMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
-                    </section>
+                    <div class="page-lede"><p class="page-lede-text">本页已并入「运营看板」。正在跳转…</p></div>
                 </div>
 
                 <div id="page-ops-lift" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">对着高意向未开通跟进：次日回访、高收入、退税合格、站内信，以及定价和发码。</p></div>
-                    <section>
-                        <h2>先做这几件事</h2>
-                        <div class="ops-hub-grid mb-12">
-                            <a class="ops-hub-card" href="#ops-inactive">去未激活名单</a>
-                            <a class="ops-hub-card" href="#ops-ad-analytics">看退税名单 / 广告停留</a>
-                            <a class="ops-hub-card" href="#settings">改定价与引导</a>
-                            <a class="ops-hub-card" href="#codes">发激活码</a>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>注册次日回访未激活 <span class="d1-focus-tag">重点跟进</span></h2>
-                        <p class="hint mt-0">回访过却没开通：注册次日有日活、目前仍未激活。其中「仅次日回访」次日之后再没来，转化窗口最短，优先群发。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshD1Cohort">刷新这群人</button>
-                            <button type="button" class="btn-page" id="btnJumpD1OnlyUsers">查看仅次日回访名单</button>
-                            <button type="button" class="btn-page" id="btnJumpD1HasUsers">查看有次日日活名单</button>
-                            <button type="button" class="btn-page" id="btnJumpD1OnlyBulk">群发仅次日回访</button>
-                        </div>
-                        <div id="analyticsD1ReturnCohort" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
-                    </section>
-                    <section>
-                        <h2>月收入超过 1.5 万未激活 <span class="d1-focus-tag">重点跟进</span></h2>
-                        <p class="hint mt-0">自己填写过月收入大于 1.5 万（本期收入或收入），目前仍未开通。高收入意向更强，优先跟开通。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshHighIncome">刷新这群人</button>
-                            <button type="button" class="btn-page" id="btnJumpHighIncomeUsers">查看名单</button>
-                            <button type="button" class="btn-page" id="btnJumpHighIncomeBulk">群发这批人</button>
-                        </div>
-                        <div id="analyticsHighIncomeInactive" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
-                    </section>
-                    <section>
-                        <h2>退税合格跟进</h2>
-                        <p class="hint mt-0">23–25 年税额超 5000 或年收入超 15 万。含已开通用户。去名单看明细，或用下方群发选「退税合格」。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <a class="btn-page btn-page-primary" href="#ops-ad-analytics">打开退税合格名单</a>
-                            <button type="button" class="btn-page" id="btnJumpRefundEligibleBulk">群发退税合格</button>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>未激活用户站内信群发</h2>
-                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>开通类<strong>自动站内信已关闭</strong>（填税后 / 支付页退出 / 注册超 24h 定时推送均不再自动发）。如需手动群发，仍可用下方表单。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label for="bulkMsgAudience">发送对象</label>
-                                <select id="bulkMsgAudience" class="filter-select">
-                                    <option value="pending_activate_24h" selected>注册超 24h 未激活</option>
-                                    <option value="all_inactive">全部未激活</option>
-                                    <option value="inactive_has_tax">未激活且有个税记录</option>
-                                    <option value="inactive_no_tax">未激活且无个税记录</option>
-                                    <option value="inactive_visited_purchase">未激活且去过支付页</option>
-                                    <option value="inactive_purchase_no_pay">未激活、去过支付页、未支付</option>
-                                    <option value="inactive_has_d1">未激活·有注册次日日活</option>
-                                    <option value="inactive_d1_only">未激活·仅次日回访（之后未再活跃）</option>
-                                    <option value="inactive_high_income">未激活·自己填月收入&gt;1.5万</option>
-                                    <option value="refund_eligible">退税合格（23–25年税额&gt;5000或年收入≥15万，含已开通）</option>
-                                </select>
-                            </div>
-                            <div class="form-field">
-                                <label for="bulkMsgTitle">标题</label>
-                                <input type="text" id="bulkMsgTitle" maxlength="120" value="开通提醒：激活后去除水印">
-                            </div>
-                            <div class="form-field">
-                                <label for="bulkMsgContent">正文</label>
-                                <textarea id="bulkMsgContent" class="textarea-block" rows="4" maxlength="4000">您好，检测到您的账号尚未激活。激活后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击下方「前往激活」即可开通。</textarea>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bulkMsgLink">跳转页面</label>
-                                <input type="text" id="bulkMsgLink" maxlength="200" value="purchase.html">
-                            </div>
-                            <div class="form-field">
-                                <label class="checkbox-inline">
-                                    <input type="checkbox" id="bulkMsgSkipSent" checked>
-                                    跳过已收过自动推广信的用户（推荐）
-                                </label>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-page" id="btnBulkMsgPreview">预览人数</button>
-                                <button type="button" class="btn-primary" id="btnBulkMsgSend">确认群发</button>
-                                <span class="hint" id="bulkMsgStatus" aria-live="polite"></span>
-                            </div>
-                        </div>
-                    </section>
+                    <div class="page-lede"><p class="page-lede-text">本页已并入「运营看板」。正在跳转…</p></div>
+                    <div id="analyticsD1ReturnCohort" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
+                    <div id="analyticsHighIncomeInactive" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
                 </div>
 
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">运营先看未激活明细、再看转化卡点、再去做跟进。这里保留支付和日转化总览。</p></div>
-                    <section>
-                        <h2>从这三步开始</h2>
-                        <div class="ops-hub-grid mb-12">
-                            <a class="ops-hub-card" href="#ops-inactive">
-                                <strong>未激活用户</strong>
-                                <span>收集谁还没开通、填了什么、有没有看价</span>
-                            </a>
-                            <a class="ops-hub-card" href="#ops-research">
-                                <strong>转化调研</strong>
-                                <span>看卡在填写、看价还是嫌贵</span>
-                            </a>
-                            <a class="ops-hub-card" href="#ops-lift">
-                                <strong>提高转化</strong>
-                                <span>跟次日回访、高收入，发站内信</span>
-                            </a>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>支付转化</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。现售套餐与金额以「定价与引导 → 支付套餐价格」配置为准。全站现为同一套支付页。</p></details>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsPricingAbDays">统计区间</label>
-                                <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新支付转化</button>
-                        </div>
-                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付转化加载中…</div>
-                    </section>
-                    <section>
-                        <h2>注册转化率</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>闲鱼 / 支付宝激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsConversionDays">统计区间</label>
-                                <select id="analyticsConversionDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshConversion">刷新转化率</button>
-                        </div>
-                        <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
-                    </section>
+                    <div class="page-lede"><p class="page-lede-text">本页已并入「运营看板」。支付明细请看「支付分析」。正在跳转…</p></div>
+                    <div id="analyticsPricingAb" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
+                    <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom" hidden aria-hidden="true"></select>
+                    <select id="analyticsConversionDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom" hidden aria-hidden="true"></select>
+                    <div id="analyticsDailyConversion" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
+                    <button type="button" id="btnRefreshPricingAb" hidden aria-hidden="true"></button>
+                    <button type="button" id="btnRefreshConversion" hidden aria-hidden="true"></button>
                 </div>
 
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
@@ -3468,6 +3410,6 @@
     <script src="/js/admin/loader.js?v=20260831-adops"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260901-purchase-admin-act"></script>
+    <script src="/js/admin_panel.js?v=20260901-opsboard"></script>
 </body>
 </html>

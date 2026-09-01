@@ -512,17 +512,157 @@
         global.location.hash = 'analytics-purchase';
       });
     }
+    var boardRefresh = document.getElementById('btnOpsBoardRefresh');
+    if (boardRefresh) boardRefresh.addEventListener('click', loadBoard);
+    var boardTodo = document.getElementById('opsBoardTodo');
+    if (boardTodo) {
+      boardTodo.addEventListener('click', function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest('a[data-ops-seg]') : null;
+        if (!a) return;
+        var seg = a.getAttribute('data-ops-seg') || 'all';
+        try {
+          global.sessionStorage.setItem('ops_inactive_segment', seg);
+        } catch (e0) {}
+      });
+    }
+  }
+
+  function kpiCard(label, value, sub) {
+    return (
+      '<div class="ops-board-kpi-card"><div class="label">' +
+      esc(label) +
+      '</div><div class="value">' +
+      esc(String(value != null ? value : 0)) +
+      '</div>' +
+      (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') +
+      '</div>'
+    );
+  }
+
+  function todoCard(segOrHref, label, num, hint, isAd) {
+    if (isAd) {
+      return (
+        '<a href="#ops-ad-analytics"><div class="todo-label">' +
+        esc(label) +
+        '</div><div class="todo-num">' +
+        esc(String(num != null ? num : 0)) +
+        '</div><div class="todo-hint">' +
+        esc(hint || '') +
+        '</div></a>'
+      );
+    }
+    return (
+      '<a href="#ops-inactive" data-ops-seg="' +
+      esc(segOrHref) +
+      '"><div class="todo-label">' +
+      esc(label) +
+      '</div><div class="todo-num">' +
+      esc(String(num != null ? num : 0)) +
+      '</div><div class="todo-hint">' +
+      esc(hint || '') +
+      '</div></a>'
+    );
+  }
+
+  function researchChip(label, value) {
+    return (
+      '<div class="chip"><div class="k">' +
+      esc(label) +
+      '</div><div class="v">' +
+      esc(String(value != null ? value : 0)) +
+      '</div></div>'
+    );
+  }
+
+  function renderBoard(data) {
+    var today = (data && data.today) || {};
+    var stock = (data && data.stock) || {};
+    var funnel = ((data && data.research) || {}).funnel || {};
+    var kpi = document.getElementById('opsBoardKpi');
+    if (kpi) {
+      kpi.innerHTML =
+        kpiCard('今日注册', today.register) +
+        kpiCard('今日激活', today.activate) +
+        kpiCard('今日付费单', today.pay_orders) +
+        kpiCard('今日 GMV', '¥' + (today.pay_gmv != null ? today.pay_gmv : 0));
+    }
+    var todo = document.getElementById('opsBoardTodo');
+    if (todo) {
+      todo.innerHTML =
+        todoCard('d1_only', '仅次日回访', stock.d1_only, '未激活 · 优先群发') +
+        todoCard('high_income', '月入>1.5万', stock.high_income, '未激活高意向') +
+        todoCard('purchase_no_pay', '看过开通未付', stock.purchase_no_pay, '临门一脚') +
+        todoCard('', '退税合格', stock.refund_eligible, '含已开通', true);
+    }
+    var research = document.getElementById('opsBoardResearch');
+    if (research) {
+      research.innerHTML =
+        researchChip('注册', funnel.registered) +
+        researchChip('已激活', funnel.activated) +
+        researchChip('激活率', (funnel.activate_pct != null ? funnel.activate_pct : 0) + '%') +
+        researchChip('未激活有税', funnel.unact_has_tax) +
+        researchChip('未激活无税', funnel.unact_no_tax) +
+        researchChip('看过开通', funnel.unact_saw_pay) +
+        researchChip('高收入未开', funnel.unact_high_income) +
+        researchChip('打开填写未交', funnel.opened_fill_no_submit);
+    }
+  }
+
+  function loadBoard() {
+    var kpi = document.getElementById('opsBoardKpi');
+    var todo = document.getElementById('opsBoardTodo');
+    var research = document.getElementById('opsBoardResearch');
+    if (kpi) kpi.textContent = '加载中…';
+    if (todo) todo.innerHTML = '';
+    if (research) research.textContent = '加载中…';
+    fetchAdmin('api/admin/ops/board?days=7')
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          if (kpi) kpi.textContent = (j && j.msg) || '加载失败';
+          if (research) research.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderBoard(j.data);
+      })
+      .catch(function () {
+        if (kpi) kpi.textContent = '加载失败';
+        if (research) research.textContent = '加载失败';
+      });
   }
 
   function loadPage() {
     bind();
     var hash = currentHash();
-    if (hash === 'ops-research') {
-      loadResearch();
+    if (
+      hash === 'ops-research' ||
+      hash === 'ops-lift' ||
+      hash === 'analytics-conversion' ||
+      hash === 'analytics'
+    ) {
+      try {
+        global.location.replace('#ops-board');
+      } catch (e0) {
+        global.location.hash = 'ops-board';
+      }
+      return;
+    }
+    if (hash === 'ops-board') {
+      loadBoard();
       return;
     }
     if (hash === 'ops-inactive') {
       page = 1;
+      try {
+        var seg = global.sessionStorage.getItem('ops_inactive_segment');
+        if (seg) {
+          var sel = document.getElementById('opsInactiveSegment');
+          if (sel) sel.value = seg;
+          global.sessionStorage.removeItem('ops_inactive_segment');
+        }
+      } catch (eSeg) {}
       loadInactivePage();
     }
   }

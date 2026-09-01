@@ -29,7 +29,16 @@ const ADMIN_MENU_GROUPS = [
 
 /** @type {AdminPageDef[]} */
 const ADMIN_PAGE_DEFS = [
-  /* —— 转化运营：收集未激活数据 → 调研转化 → 提高转化 —— */
+  /* —— 转化运营：统一看板 + 名单/广告/发码 —— */
+  {
+    page: 'ops-board',
+    menu_key: 'ops-board',
+    label: '运营看板',
+    group: 'ops-desk',
+    module: 'ops-conversion',
+    order: 5,
+    alias_menus: ['ops-inactive', 'analytics-conversion', 'ops-lift', 'ops-research']
+  },
   {
     page: 'ops-inactive',
     menu_key: 'ops-inactive',
@@ -37,7 +46,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 10,
-    alias_menus: ['analytics-conversion', 'users']
+    alias_menus: ['analytics-conversion', 'users', 'ops-board']
   },
   {
     page: 'ops-research',
@@ -46,7 +55,9 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 20,
-    alias_menus: ['analytics-conversion', 'tax-fill-survey']
+    alias_menus: ['analytics-conversion', 'tax-fill-survey', 'ops-board'],
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'ops-lift',
@@ -55,16 +66,18 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 30,
-    alias_menus: ['analytics-conversion']
+    alias_menus: ['analytics-conversion', 'ops-board'],
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'ops-ad-analytics',
     menu_key: 'ops-ad-analytics',
-    label: '广告页数据运营',
+    label: '广告数据',
     group: 'ops-desk',
     module: 'ad-analytics',
     order: 35,
-    alias_menus: ['analytics-tracking', 'analytics-conversion']
+    alias_menus: ['analytics-tracking', 'analytics-conversion', 'ops-board']
   },
   {
     page: 'analytics-conversion',
@@ -72,7 +85,9 @@ const ADMIN_PAGE_DEFS = [
     label: '转化概览',
     group: 'ops-desk',
     module: 'analytics',
-    order: 40
+    order: 40,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'analytics-purchase',
@@ -310,12 +325,11 @@ const ADMIN_PAGE_DEFS = [
 
 /** 登录后优先进入的运营页（有权限则取第一个） */
 const ADMIN_PREFERRED_FIRST_PAGES = [
+  'ops-board',
   'ops-inactive',
-  'ops-research',
-  'ops-lift',
-  'analytics-conversion',
-  'settings',
+  'ops-ad-analytics',
   'codes',
+  'settings',
   'channel-analysis',
   'users'
 ];
@@ -384,7 +398,9 @@ function resolveMenuKeyForPage(page) {
     .toLowerCase();
   if (p === 'system' || p === 'setting') p = 'settings';
   if (p === 'install' || p === 'guide') p = 'install-guide';
-  if (p === 'analytics') p = 'analytics-conversion';
+  if (p === 'analytics') p = 'ops-board';
+  if (p === 'analytics-conversion') p = 'ops-board';
+  if (p === 'ops-research' || p === 'ops-lift') p = 'ops-board';
   if (p === 'analytics-register') p = 'install-guide-stats';
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i].menu_key;
@@ -400,7 +416,7 @@ function getPageDef(page) {
     .toLowerCase();
   if (p === 'system' || p === 'setting') p = 'settings';
   if (p === 'install' || p === 'guide') p = 'install-guide';
-  if (p === 'analytics') p = 'analytics-conversion';
+  if (p === 'analytics') p = 'ops-board';
   if (p === 'analytics-register') p = 'install-guide-stats';
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i];
@@ -450,6 +466,7 @@ function buildMenuTreeForAdmin(admin) {
       super_only: !!d.super_only
     };
     pages.push(item);
+    if (d.nav_hidden) continue;
     if (groupMap[d.group]) {
       groupMap[d.group].items.push(item);
     }
@@ -483,7 +500,7 @@ function firstAllowedPage(admin) {
     return built.menu_tree[0].items[0].page;
   }
   if (built.pages.length) return built.pages[0].page;
-  return 'analytics-conversion';
+  return 'ops-board';
 }
 
 /** 构建：AdminSessionPayload */

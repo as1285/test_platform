@@ -1041,14 +1041,15 @@
                 if (items.length && items[0].page) return items[0].page;
             }
             var order = [
+                'ops-board',
                 'ops-inactive',
+                'ops-ad-analytics',
+                'codes',
                 'ops-research',
                 'ops-lift',
-                'ops-ad-analytics',
                 'analytics-conversion',
                 'analytics-purchase',
                 'settings',
-                'codes',
                 'channel-analysis',
                 'install-guide',
                 'install-guide-stats',
@@ -1157,7 +1158,8 @@
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
             if (k === 'system' || k === 'setting') k = 'settings';
             if (k === 'install' || k === 'guide') k = 'install-guide';
-            if (k === 'analytics') k = 'analytics-conversion';
+            if (k === 'analytics' || k === 'analytics-conversion') k = 'ops-board';
+            if (k === 'ops-research' || k === 'ops-lift') k = 'ops-board';
             if (k === 'analytics-register') k = 'install-guide-stats';
             var ok = {
                 settings: 1,
@@ -1172,6 +1174,8 @@
                 'users-deleted': 1,
                 'user-data': 1,
                 'tax-records-edit': 1,
+                'ops-board': 1,
+                'ops-inactive': 1,
                 'ops-ad-analytics': 1,
                 'analytics-conversion': 1,
                 'analytics-activity': 1,
@@ -1275,15 +1279,14 @@
             if (pageKey === 'analytics-conversion') {
                 loadAnalyticsConversionPage();
             }
-            if (pageKey === 'ops-inactive' || pageKey === 'ops-research') {
+            if (pageKey === 'ops-board' || pageKey === 'ops-inactive' || pageKey === 'ops-research') {
                 callAdminModuleLoadPage('ops-conversion');
             }
             if (pageKey === 'ops-ad-analytics') {
                 callAdminModuleLoadPage('ad-analytics');
             }
             if (pageKey === 'ops-lift') {
-                loadAnalyticsD1ReturnCohort();
-                loadAnalyticsHighIncomeInactive();
+                /* 已并入运营看板；保留空载避免旧入口报错 */
             }
             if (pageKey === 'tax-fill-survey') {
                 callAdminModuleLoadPage('tax-fill-survey');
@@ -1904,8 +1907,8 @@
             var aud = document.getElementById('bulkMsgAudience');
             if (aud) aud.value = 'inactive_d1_only';
             applyD1BulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'ops-lift') {
-                location.hash = 'ops-lift';
+            if (normalizeAdminPage(location.hash) !== 'ops-board') {
+                location.hash = 'ops-board';
             }
             setTimeout(function () {
                 var box = document.getElementById('bulkMsgAudience');
@@ -1964,8 +1967,8 @@
             var aud = document.getElementById('bulkMsgAudience');
             if (aud) aud.value = 'refund_eligible';
             applyRefundEligibleBulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'ops-lift') {
-                location.hash = 'ops-lift';
+            if (normalizeAdminPage(location.hash) !== 'ops-board') {
+                location.hash = 'ops-board';
             }
             setTimeout(function () {
                 var box = document.getElementById('bulkMsgAudience');
@@ -2019,8 +2022,8 @@
             var aud = document.getElementById('bulkMsgAudience');
             if (aud) aud.value = 'inactive_high_income';
             applyHighIncomeBulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'ops-lift') {
-                location.hash = 'ops-lift';
+            if (normalizeAdminPage(location.hash) !== 'ops-board') {
+                location.hash = 'ops-board';
             }
             setTimeout(function () {
                 var box = document.getElementById('bulkMsgAudience');
@@ -7398,7 +7401,9 @@
             'login-log': '管理登录',
             'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
-            'ops-ad-analytics': '广告页数据运营',
+            'ops-board': '运营看板',
+            'ops-inactive': '未激活用户',
+            'ops-ad-analytics': '广告数据',
             'analytics-conversion': '转化概览',
             'analytics-purchase': '支付分析',
             'analytics-activity': '用户活跃',
@@ -10088,7 +10093,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v16-reg-merge-install-stats';
+                var MENU_TREE_VER = 'ops-ia-v17-ops-board';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);
