@@ -3120,12 +3120,59 @@
   }
 
   /**
+   * Tab 壳 iframe：宿主已有底栏。iOS WKWebView 常无 frameElement，须用 tab_embed / 父页标记兜底。
+   */
+  function isInsideTabShellEmbed() {
+    try {
+      if (document.documentElement.classList.contains('tab-embed-mode')) return true;
+    } catch (e0) {}
+    try {
+      if (new URLSearchParams(window.location.search).get('tab_embed') === '1') return true;
+    } catch (e1) {}
+    try {
+      var fe = window.frameElement;
+      if (fe && fe.classList && fe.classList.contains('tab-shell-iframe')) return true;
+    } catch (e2) {}
+    try {
+      if (window.parent && window.parent !== window) {
+        var pdoc = window.parent.document;
+        if (pdoc && pdoc.documentElement.getAttribute('data-tab-shell') === '1') return true;
+      }
+    } catch (e3) {}
+    return false;
+  }
+
+  function stripTabEmbedBottomNavNodes() {
+    try {
+      document.documentElement.classList.add('tab-embed-mode');
+      var nodes = document.querySelectorAll('.bottom-nav');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (!el) continue;
+        try {
+          el.style.setProperty('display', 'none', 'important');
+          el.style.setProperty('visibility', 'hidden', 'important');
+          el.style.setProperty('height', '0', 'important');
+          el.style.setProperty('opacity', '0', 'important');
+          el.style.setProperty('pointer-events', 'none', 'important');
+        } catch (eStyle) {}
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }
+    } catch (e0) {}
+  }
+
+  /**
    * 底栏位置锁：Android / iOS 默认 8px 浮起（iOS 勿再叠 safe-area）；Cordova 2410=24px。
+   * 须在末尾再盖一层 embed 隐藏：否则 iPhone 16 Pro 的 lock 与机型规则会把子页底栏高度/pointer 抢回来。
    */
   function ensureBottomNavLockStyle(opts) {
     opts = opts || {};
     var iosClient = !!opts.iosClient;
     var bottom = opts.cordovaXiaomi2410 ? '24px' : '8px';
+    var embed = false;
+    try {
+      embed = isInsideTabShellEmbed();
+    } catch (eEmb) {}
     try {
       document.documentElement.style.setProperty('--bottom-nav-bottom', bottom);
       document.documentElement.style.setProperty('--bottom-nav-gap', bottom);
@@ -3172,6 +3219,41 @@
       'background:#fff!important;box-shadow:0 -1px 0 rgba(0,0,0,0.06)!important;' +
       '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;' +
       '}';
+    var embedHide =
+      'html.tab-embed-mode .bottom-nav,html.tab-embed-mode body > .bottom-nav,' +
+      'html.tab-embed-mode body.page-shouye > .bottom-nav,html.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.tab-embed-mode body.page-bancha > .bottom-nav,html.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.tab-embed-mode body.page-mine > .bottom-nav,html.tab-embed-mode body .bottom-nav.ios-device,' +
+      'html.app-ios-client.tab-embed-mode .bottom-nav,html.app-ios-client.tab-embed-mode body > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-shouye > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-mine > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-shouye > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-mine > .bottom-nav,' +
+      'html.app-ios-iphone16promax.tab-embed-mode .bottom-nav,' +
+      'html.app-ios-iphone16promax.tab-embed-mode body > .bottom-nav,' +
+      'html.app-ios-iphone16promax.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.app-ios-iphone16promax.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.app-ios-iphone16promax.tab-embed-mode body.page-message > .bottom-nav{' +
+      'display:none!important;visibility:hidden!important;pointer-events:none!important;' +
+      'height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;' +
+      'opacity:0!important;z-index:-1!important;}';
+    if (embed) {
+      try {
+        document.documentElement.classList.add('tab-embed-mode');
+      } catch (eCls) {}
+      st.textContent = embedHide;
+      (document.head || document.documentElement).appendChild(st);
+      stripTabEmbedBottomNavNodes();
+      return;
+    }
     st.textContent =
       'html{--bottom-nav-bottom:' +
       bottom +
@@ -3204,7 +3286,8 @@
       'transform:none!important;-webkit-transform:none!important;translate:none!important;' +
       'view-transition-name:none!important;pointer-events:auto!important;}' +
       iosPad +
-      'html.app-ios-client,html.app-ios-client body{overflow-x:visible!important;}';
+      'html.app-ios-client,html.app-ios-client body{overflow-x:visible!important;}' +
+      embedHide;
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -3216,32 +3299,15 @@
    * 禁止 translateY / visualViewport.scroll 纠偏——iOS 滚动时会把胶囊顶到页面中间或移出屏外。
    * iOS 勿把 safe-area 加进 bottom/padding，否则会整条上移留下大块灰底。
    */
-  function isInsideTabShellEmbed() {
-    try {
-      if (document.documentElement.classList.contains('tab-embed-mode')) return true;
-    } catch (e0) {}
-    try {
-      if (new URLSearchParams(window.location.search).get('tab_embed') === '1') return true;
-    } catch (e1) {}
-    try {
-      var fe = window.frameElement;
-      if (fe && fe.classList && fe.classList.contains('tab-shell-iframe')) return true;
-    } catch (e2) {}
-    try {
-      if (window.parent && window.parent !== window) {
-        var pdoc = window.parent.document;
-        if (pdoc && pdoc.documentElement.getAttribute('data-tab-shell') === '1') return true;
-      }
-    } catch (e3) {}
-    return false;
-  }
-
   function pinTabBottomNav() {
     if (typeof document === 'undefined' || !document.body) {
       return;
     }
-    /* Tab 壳 iframe 内由宿主底栏统一展示，禁止再钉一条（含 iOS frameElement=null） */
-    if (isInsideTabShellEmbed()) return;
+    /* Tab 壳 iframe 内：移除子页底栏（勿只 return，否则 iOS 机型锁已钉上的条会残留） */
+    if (isInsideTabShellEmbed()) {
+      stripTabEmbedBottomNavNodes();
+      return;
+    }
     var nav = document.querySelector('.bottom-nav');
     if (!nav) {
       return;
@@ -7998,7 +8064,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260901-android-all-perf';
+    s.src = '/js/tab-shell.js?v=20260901-ios16pro-tabembed';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);

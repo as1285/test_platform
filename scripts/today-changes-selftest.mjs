@@ -646,12 +646,12 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-android-all-perf', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-ios16pro-tabembed', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-android-all-perf'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-ios16pro-tabembed'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -1310,7 +1310,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260901-android-all-perf', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260901-ios16pro-tabembed', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 mustInclude(
@@ -1320,7 +1320,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260901-android-all-perf'],
+  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260901-ios16pro-tabembed'],
   'shuiming_result vivo X90 first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1477,7 +1477,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260901-android-all-perf', 'auth.js?v=20260901-android-all-perf'],
+  ['auth-boot.js?v=20260901-ios16pro-tabembed', 'auth.js?v=20260901-ios16pro-tabembed'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1515,8 +1515,8 @@ mustInclude(
 mustInclude(
   'frontend/shouye.html',
   [
-    'auth-boot.js?v=20260901-android-all-perf',
-    'auth.js?v=20260901-android-all-perf" defer',
+    'auth-boot.js?v=20260901-ios16pro-tabembed',
+    'auth.js?v=20260901-ios16pro-tabembed" defer',
     'ahead.png?v=20260828-android-load',
     '--shouye-status-inset: 12px',
     'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead',
@@ -1526,7 +1526,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260901-android-all-perf', 'auth.js?v=20260901-android-all-perf" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  ['auth-boot.js?v=20260901-ios16pro-tabembed', 'auth.js?v=20260901-ios16pro-tabembed" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -2239,7 +2239,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['injectTabShell', '/js/tab-shell.js?v=20260901-android-all-perf', "get('tab_embed') === '1'"],
+  ['injectTabShell', '/js/tab-shell.js?v=20260901-ios16pro-tabembed', "get('tab_embed') === '1'"],
   'auth injects tab-shell and skips CG in embed'
 );
 mustInclude(

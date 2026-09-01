@@ -342,7 +342,10 @@
       'html.app-ios-client.tab-embed-mode body.page-message > .bottom-nav,' +
       'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,' +
       'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,' +
-      'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav{' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav.ios-device,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav.ios-device,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav.ios-device{' +
       'display:none!important;visibility:hidden!important;pointer-events:none!important;' +
       'height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;' +
       'opacity:0!important;z-index:-1!important;}' +
@@ -358,7 +361,16 @@
       try {
         var nodes = document.querySelectorAll('.bottom-nav');
         for (var i = 0; i < nodes.length; i++) {
-          if (nodes[i] && nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+          var el = nodes[i];
+          if (!el) continue;
+          try {
+            el.style.setProperty('display', 'none', 'important');
+            el.style.setProperty('visibility', 'hidden', 'important');
+            el.style.setProperty('height', '0', 'important');
+            el.style.setProperty('opacity', '0', 'important');
+            el.style.setProperty('pointer-events', 'none', 'important');
+          } catch (eInline) {}
+          if (el.parentNode) el.parentNode.removeChild(el);
         }
       } catch (e3) {}
     }
@@ -367,13 +379,30 @@
     } else {
       stripEmbedBottomNav();
     }
-    /* iOS：后续脚本可能再钉底栏，短时复检移除 */
+    /* iOS 16 Pro：auth.js 机型锁可能晚于首次 strip 再钉底栏，拉长复检 + MutationObserver */
     var n = 0;
     var timer = setInterval(function () {
       stripEmbedBottomNav();
       n += 1;
-      if (n >= 20) clearInterval(timer);
+      if (n >= 40) clearInterval(timer);
     }, 250);
+    try {
+      var mo = new MutationObserver(function () {
+        stripEmbedBottomNav();
+      });
+      var startMo = function () {
+        if (!document.body) return;
+        mo.observe(document.body, { childList: true, subtree: true });
+        stripEmbedBottomNav();
+      };
+      if (document.body) startMo();
+      else document.addEventListener('DOMContentLoaded', startMo);
+      setTimeout(function () {
+        try {
+          mo.disconnect();
+        } catch (eMo) {}
+      }, 15000);
+    } catch (eObs) {}
   })();
 
   markViewportChromeClasses();
