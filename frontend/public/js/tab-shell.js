@@ -56,7 +56,8 @@
   }
 
   function scrubIframeBottomNav(iframe) {
-    if (!iframe) return;
+    if (!iframe || iframe.__tabEmbedScrubbing) return;
+    iframe.__tabEmbedScrubbing = true;
     try {
       var doc = iframe.contentDocument;
       if (!doc) return;
@@ -70,16 +71,51 @@
           'html.tab-embed-mode .bottom-nav,html.tab-embed-mode body > .bottom-nav,' +
           'html.tab-embed-mode body.page-shouye > .bottom-nav,html.tab-embed-mode body.page-daiban > .bottom-nav,' +
           'html.tab-embed-mode body.page-bancha > .bottom-nav,html.tab-embed-mode body.page-message > .bottom-nav,' +
-          'html.tab-embed-mode body.page-mine > .bottom-nav,html.tab-embed-mode body .bottom-nav.ios-device{' +
+          'html.tab-embed-mode body.page-mine > .bottom-nav,html.tab-embed-mode body .bottom-nav.ios-device,' +
+          'html.app-ios-client.tab-embed-mode .bottom-nav,html.app-ios-iphone16pro.tab-embed-mode .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav.ios-device,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav.ios-device,' +
+          'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav.ios-device{' +
           'display:none!important;visibility:hidden!important;pointer-events:none!important;' +
-          'height:0!important;min-height:0!important;max-height:0!important;opacity:0!important;}';
+          'height:0!important;min-height:0!important;max-height:0!important;opacity:0!important;z-index:-1!important;}';
         (doc.head || doc.documentElement).appendChild(st);
       }
       var nodes = doc.querySelectorAll('.bottom-nav');
       for (var i = 0; i < nodes.length; i++) {
-        if (nodes[i] && nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+        var el = nodes[i];
+        if (!el) continue;
+        try {
+          el.style.setProperty('display', 'none', 'important');
+          el.style.setProperty('visibility', 'hidden', 'important');
+          el.style.setProperty('height', '0', 'important');
+          el.style.setProperty('opacity', '0', 'important');
+          el.style.setProperty('pointer-events', 'none', 'important');
+        } catch (eInline) {}
+        if (el.parentNode) el.parentNode.removeChild(el);
       }
-    } catch (e0) {}
+      if (iframe.getAttribute('data-tab-embed-mo') !== '1') {
+        iframe.setAttribute('data-tab-embed-mo', '1');
+        try {
+          if (doc.body && typeof MutationObserver !== 'undefined') {
+            var mo = new MutationObserver(function () {
+              scrubIframeBottomNav(iframe);
+            });
+            mo.observe(doc.body, { childList: true, subtree: true });
+            global.setTimeout(function () {
+              try {
+                mo.disconnect();
+              } catch (eD) {}
+            }, 15000);
+          }
+        } catch (eMo) {}
+      }
+    } catch (e0) {
+    } finally {
+      iframe.__tabEmbedScrubbing = false;
+    }
   }
 
   function scrubAllIframeBottomNavs() {
@@ -381,6 +417,17 @@
     refreshNavIcons();
 
     global.setTimeout(warmOtherTabs, isAndroidLike() ? 2200 : 1200);
+    /* iOS：切 Tab 后子页 auth 机型锁可能晚于 load 事件再钉底栏，宿主侧持续清 */
+    var scrubTicks = 0;
+    var scrubTimer = global.setInterval(function () {
+      scrubTicks += 1;
+      scrubAllIframeBottomNavs();
+      if (scrubTicks >= 60) {
+        try {
+          global.clearInterval(scrubTimer);
+        } catch (eClr) {}
+      }
+    }, 500);
   }
 
   global.TaxAppTabShell = {

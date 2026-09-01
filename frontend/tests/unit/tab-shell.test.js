@@ -51,18 +51,21 @@ describe('tab shell (bottom nav cache)', () => {
     expect(authBoot).toContain('stripEmbedBottomNav');
     expect(authBoot).toContain('parentIsTabShellHost');
     expect(authBoot).toContain('app-ios-iphone16pro');
+    expect(authBoot).toContain('MutationObserver');
   });
 
   it('auth.js skips pin/inject when inside tab-shell iframe', () => {
     expect(auth).toContain('tab-shell-iframe');
     expect(auth).toContain('tab-embed-mode');
     expect(auth).toContain('isInsideTabShellEmbed');
+    expect(auth).toContain('stripTabEmbedBottomNavNodes');
   });
 
   it('tab-shell host scrubs iframe bottom nav (iOS frameElement null)', () => {
     expect(tabShell).toContain('scrubIframeBottomNav');
     expect(tabShell).toContain('scrubAllIframeBottomNavs');
     expect(tabShell).toContain('data-tab-embed-host-scrub');
+    expect(tabShell).toContain('app-ios-iphone16pro');
   });
 
   it('nav.js supports hydrateBottomNavByKey for shell', () => {
