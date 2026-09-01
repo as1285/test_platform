@@ -2768,7 +2768,8 @@
             mask.hidden = true;
         }
         btnOpen.addEventListener('click', function () {
-            var sku = findSkuById(alipayPricing.selectedSkuId);
+            var sku =
+                typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;
             if (subEl) {
                 subEl.textContent = sku
                     ? '当前套餐：' + (sku.label || '') + '（现价 ¥' + sku.amount + '）'

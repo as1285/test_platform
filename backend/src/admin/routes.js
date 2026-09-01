@@ -299,19 +299,19 @@ app.post(
 app.get(
   '/api/admin/price-bids',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
+  mw.requireAdminAnyMenu(['settings', 'users']),
   h.handleAdminPriceBidsList
 );
 app.post(
   '/api/admin/price-bids/review',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
+  mw.requireAdminAnyMenu(['settings', 'users']),
   h.handleAdminPriceBidsReview
 );
 app.post(
   '/api/admin/price-bids/config',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
+  mw.requireAdminAnyMenu(['settings', 'users']),
   h.handleAdminPriceBidsConfigSet
 );
 app.post(
