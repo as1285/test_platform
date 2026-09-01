@@ -474,6 +474,15 @@
             if (k === 'track_refund_ad_after_tax_continue') {
                 return { button: '填完后退回记录', page: '二次退税广告页' };
             }
+            if (k === 'track_refund_ad_income_recommend_show') {
+                return { button: '年收入推荐展示', page: '咨询 · 填写完成' };
+            }
+            if (k === 'track_refund_ad_income_recommend_click') {
+                return { button: '年收入推荐点击', page: '咨询/明细 · 去广告页' };
+            }
+            if (k === 'track_refund_ad_income_recommend_dismiss') {
+                return { button: '年收入推荐跳过', page: '咨询 · 填写完成' };
+            }
             if (k === 'track_refund_ad_page_leave') {
                 return { button: '离开广告页', page: '二次退税广告页' };
             }
@@ -1049,7 +1058,6 @@
                 'users-deleted',
                 'user-data',
                 'tax-records-edit',
-                'analytics-register',
                 'analytics-activity',
                 'tax-fill-survey',
                 'analytics-devices',
@@ -1067,6 +1075,20 @@
             return 'analytics-conversion';
         }
 
+        function sanitizeAdminMenus(menus) {
+            if (!Array.isArray(menus)) return [];
+            var out = [];
+            menus.forEach(function (m) {
+                var key = String(m || '');
+                if (!key) return;
+                if (key === 'analytics-register') {
+                    key = 'install-guide-stats';
+                }
+                if (out.indexOf(key) < 0) out.push(key);
+            });
+            return out;
+        }
+
         function readAdminProfileCache() {
             try {
                 var raw = localStorage.getItem('admin_profile');
@@ -1077,7 +1099,7 @@
                     username: parsed.username ? String(parsed.username) : '',
                     full_name: parsed.full_name ? String(parsed.full_name) : '',
                     is_super: !!parsed.is_super,
-                    menus: Array.isArray(parsed.menus) ? parsed.menus.map(function (m) { return String(m); }) : []
+                    menus: sanitizeAdminMenus(parsed.menus)
                 };
             } catch (e) {}
         }
@@ -1136,6 +1158,7 @@
             if (k === 'system' || k === 'setting') k = 'settings';
             if (k === 'install' || k === 'guide') k = 'install-guide';
             if (k === 'analytics') k = 'analytics-conversion';
+            if (k === 'analytics-register') k = 'install-guide-stats';
             var ok = {
                 settings: 1,
                 'install-guide': 1,
@@ -1151,7 +1174,6 @@
                 'tax-records-edit': 1,
                 'ops-ad-analytics': 1,
                 'analytics-conversion': 1,
-                'analytics-register': 1,
                 'analytics-activity': 1,
                 'tax-fill-survey': 1,
                 'analytics-devices': 1,
@@ -1262,9 +1284,6 @@
             if (pageKey === 'ops-lift') {
                 loadAnalyticsD1ReturnCohort();
                 loadAnalyticsHighIncomeInactive();
-            }
-            if (pageKey === 'analytics-register') {
-                loadAnalyticsRegisterPage();
             }
             if (pageKey === 'tax-fill-survey') {
                 callAdminModuleLoadPage('tax-fill-survey');
@@ -1418,6 +1437,7 @@
             'track_alipay_open_click',
             'track_alipay_payment_success',
             'track_purchase_faq_expand',
+            'track_purchase_success_cases_view',
             'track_kufaka_purchase_click',
             'track_qq_add_click',
             'track_purchase_back_click',
@@ -1430,6 +1450,9 @@
             'track_refund_ad_after_tax_go',
             'track_refund_ad_after_tax_view',
             'track_refund_ad_after_tax_continue',
+            'track_refund_ad_income_recommend_show',
+            'track_refund_ad_income_recommend_click',
+            'track_refund_ad_income_recommend_dismiss',
             'track_refund_ad_page_leave',
             'track_refund_ad_nav_click',
             'track_refund_ad_poster_click',
@@ -1461,6 +1484,7 @@
             track_alipay_open_click: '打开支付宝',
             track_alipay_payment_success: '支付宝成',
             track_purchase_faq_expand: 'FAQ展开',
+            track_purchase_success_cases_view: '成功案例',
             track_kufaka_purchase_click: '酷发卡',
             track_qq_add_click: '加QQ',
             track_purchase_back_click: '返回',
@@ -1473,6 +1497,9 @@
             track_refund_ad_after_tax_go: '填完去广告',
             track_refund_ad_after_tax_view: '填完看广告',
             track_refund_ad_after_tax_continue: '广告回记录',
+            track_refund_ad_income_recommend_show: '收入推荐展示',
+            track_refund_ad_income_recommend_click: '收入推荐点击',
+            track_refund_ad_income_recommend_dismiss: '收入推荐跳过',
             track_refund_ad_page_leave: '离开广告',
             track_refund_ad_nav_click: '广告点底栏',
             track_refund_ad_poster_click: '点海报',
@@ -2083,7 +2110,7 @@
                 });
         }
 
-        function loadAnalyticsRegisterPage() {
+        function loadInstallRegisterAnalysis() {
             loadAnalyticsRegisterPlatform();
             loadAnalyticsRegisterTime();
         }
@@ -2424,7 +2451,7 @@
             if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
             if (productTbody) productTbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="14">加载中…</td></tr>';
+            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="15">加载中…</td></tr>';
             if (surveySentimentTbody) {
                 surveySentimentTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             }
@@ -2448,7 +2475,7 @@
                             summaryTbody.innerHTML = '<tr><td colspan="3">' + esc(msg) + '</td></tr>';
                         }
                         if (dailyTbody) {
-                            dailyTbody.innerHTML = '<tr><td colspan="14">' + esc(msg) + '</td></tr>';
+                            dailyTbody.innerHTML = '<tr><td colspan="15">' + esc(msg) + '</td></tr>';
                         }
                         if (surveySentimentTbody) {
                             surveySentimentTbody.innerHTML =
@@ -2465,6 +2492,17 @@
                     var data = res.data;
                     var funnel = data.funnel || {};
                     var pay = data.payments || {};
+                    var adminAct = pay.admin_activation || {};
+                    var adminActRows = Array.isArray(adminAct.by_admin) ? adminAct.by_admin : [];
+                    var combinedGmv =
+                        pay.combined_gmv != null
+                            ? pay.combined_gmv
+                            : (Number(pay.gmv) || 0) + (Number(pay.admin_activation_gmv) || 0);
+                    var combinedActivationGmv =
+                        pay.combined_activation_gmv != null
+                            ? pay.combined_activation_gmv
+                            : (Number(pay.activation_gmv) || 0) +
+                              (Number(pay.admin_activation_gmv) || 0);
                     var survey = data.price_survey || {};
                     function surveySentimentLabel(key) {
                         var k = String(key || '').toLowerCase();
@@ -2655,9 +2693,15 @@
                             esc(String(survey.with_expected_price || 0)) +
                             ' 人填了价）；已付订单 <strong>' +
                             esc(String(pay.paid_orders || 0)) +
-                            '</strong>，总 GMV ¥' +
+                            '</strong>，线上 GMV ¥' +
                             esc(String(pay.gmv != null ? pay.gmv : 0)) +
-                            '。';
+                            '；管理员激活 <strong>' +
+                            esc(String(pay.admin_activation_orders || 0)) +
+                            '</strong> 单 / ¥' +
+                            esc(String(pay.admin_activation_gmv != null ? pay.admin_activation_gmv : 0)) +
+                            '；合计 GMV <strong>¥' +
+                            esc(String(combinedGmv)) +
+                            '</strong>。';
                     }
                     if (cardsEl) {
                         var cards = [
@@ -2676,7 +2720,10 @@
                             ['浏览→FAQ', (funnel.view_to_faq_pct != null ? funnel.view_to_faq_pct : 0) + '%'],
                             ['调研偏贵%', (survey.expensive_pct != null ? survey.expensive_pct : 0) + '%'],
                             ['已付订单', pay.paid_orders || 0],
-                            ['总 GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)]
+                            ['线上 GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)],
+                            ['管理员激活', (pay.admin_activation_orders || 0) + ' 单'],
+                            ['管理员激活 GMV', '¥' + (pay.admin_activation_gmv != null ? pay.admin_activation_gmv : 0)],
+                            ['合计 GMV', '¥' + combinedGmv]
                         ];
                         var ch = '';
                         cards.forEach(function (c) {
@@ -2692,11 +2739,32 @@
                     if (productTbody) {
                         var productRows = [
                             [
-                                '开通套餐',
+                                '开通套餐（线上支付）',
                                 pay.activation_orders || 0,
                                 '—',
                                 pay.activation_gmv != null ? pay.activation_gmv : 0
-                            ],
+                            ]
+                        ];
+                        adminActRows.forEach(function (row) {
+                            if (!row) return;
+                            var labelNote =
+                                row.label_note && String(row.label_note).trim()
+                                    ? ' · ' + String(row.label_note).trim()
+                                    : '';
+                            productRows.push([
+                                '管理员激活（' +
+                                    (row.admin_username || '—') +
+                                    ' · ¥' +
+                                    (row.unit_amount != null ? row.unit_amount : 0) +
+                                    '/单' +
+                                    labelNote +
+                                    '）',
+                                row.orders || 0,
+                                '—',
+                                row.gmv != null ? row.gmv : 0
+                            ]);
+                        });
+                        productRows.push(
                             [
                                 '离职证明',
                                 pay.lizhi_orders || 0,
@@ -2710,12 +2778,21 @@
                                 pay.rename_gmv != null ? pay.rename_gmv : 0
                             ],
                             [
-                                '合计',
+                                '开通合计（含管理员激活）',
+                                pay.combined_activation_orders != null
+                                    ? pay.combined_activation_orders
+                                    : (pay.activation_orders || 0) +
+                                      (pay.admin_activation_orders || 0),
+                                '—',
+                                combinedActivationGmv
+                            ],
+                            [
+                                '合计（含管理员激活）',
                                 pay.paid_orders || 0,
                                 pay.paid_users != null ? pay.paid_users : 0,
-                                pay.gmv != null ? pay.gmv : 0
+                                combinedGmv
                             ]
-                        ];
+                        );
                         var ph = '';
                         productRows.forEach(function (row) {
                             ph +=
@@ -2802,11 +2879,21 @@
                     }
                     if (dailyTbody) {
                         if (!byDay.length) {
-                            dailyTbody.innerHTML = '<tr><td colspan="14">暂无每日数据</td></tr>';
+                            dailyTbody.innerHTML = '<tr><td colspan="15">暂无每日数据</td></tr>';
                         } else {
                             var dh = '';
                             byDay.forEach(function (row) {
                                 var dk = purchaseDateDomKey(row.date);
+                                var rowCombinedGmv =
+                                    row.combined_gmv != null
+                                        ? row.combined_gmv
+                                        : (Number(row.gmv) || 0) +
+                                          (Number(row.admin_activation_gmv) || 0);
+                                var rowCombinedActivationGmv =
+                                    row.combined_activation_gmv != null
+                                        ? row.combined_activation_gmv
+                                        : (Number(row.activation_gmv) || 0) +
+                                          (Number(row.admin_activation_gmv) || 0);
                                 dh += '<tr class="purchase-summary-row">';
                                 dh += '<td>' + esc(row.date || '—') + '</td>';
                                 dh += '<td>' + esc(String(row.view_uv || 0)) + '</td>';
@@ -2820,10 +2907,13 @@
                                 dh += '<td>' + esc(String(row.activate_ok_uv || 0)) + '</td>';
                                 dh += '<td>' + esc(String(row.activate_fail_uv || 0)) + '</td>';
                                 dh += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
-                                dh += '<td>¥' + esc(String(row.gmv != null ? row.gmv : 0)) + '</td>';
+                                dh += '<td>¥' + esc(String(rowCombinedGmv)) + '</td>';
+                                dh += '<td>¥' + esc(String(rowCombinedActivationGmv)) + '</td>';
                                 dh +=
-                                    '<td>¥' +
-                                    esc(String(row.activation_gmv != null ? row.activation_gmv : 0)) +
+                                    '<td>' +
+                                    esc(String(row.admin_activation_orders || 0)) +
+                                    ' / ¥' +
+                                    esc(String(row.admin_activation_gmv != null ? row.admin_activation_gmv : 0)) +
                                     '</td>';
                                 dh += '<td>' + esc(String(row.lizhi_orders || 0)) + '</td>';
                                 dh +=
@@ -2838,7 +2928,7 @@
                                 dh +=
                                     '<tr id="purchase_users_row_' +
                                     dk +
-                                    '" class="purchase-users-detail-row" style="display:none;"><td colspan="14"><div id="purchase_users_box_' +
+                                    '" class="purchase-users-detail-row" style="display:none;"><td colspan="15"><div id="purchase_users_box_' +
                                     dk +
                                     '" class="activate-users-box">点击「查看用户」加载列表…</div></td></tr>';
                             });
@@ -2851,7 +2941,7 @@
                     if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
                     if (productTbody) productTbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                     if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
-                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="14">网络错误</td></tr>';
+                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="15">网络错误</td></tr>';
                     if (surveyCardsEl) surveyCardsEl.innerHTML = '';
                     if (surveySentimentTbody) {
                         surveySentimentTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
@@ -2865,8 +2955,86 @@
                 });
         }
 
+        /* ========== Analytics — Page Load Perf ========== */
+        function loadPageLoadPerfStats() {
+            var el = document.getElementById('analyticsPageLoadPerf');
+            if (!el) return;
+            var days = analyticsPeriodVal(document.getElementById('analyticsPagePerfDays'));
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/page-load-perf?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (!j || j.code !== 200 || !j.data) {
+                        el.textContent = (j && j.msg) || '加载失败';
+                        return;
+                    }
+                    var data = j.data;
+                    var summary = Array.isArray(data.summary) ? data.summary : [];
+                    var byPlatform = Array.isArray(data.by_platform) ? data.by_platform : [];
+                    var recent = Array.isArray(data.recent) ? data.recent : [];
+                    var html = '';
+                    html += '<p class="stat">区间合计 ' + summary.length + ' 个页面有采样。</p>';
+                    html += '<div class="scroll-x"><table><thead><tr>';
+                    html += '<th>页面</th><th>样本</th><th>Android</th><th>iOS</th><th>App壳</th>';
+                    html += '<th>DOM Ready 中位</th><th>FCP 中位</th><th>Load 中位</th>';
+                    html += '</tr></thead><tbody>';
+                    if (!summary.length) {
+                        html += '<tr><td colspan="8">暂无性能采样（需用户打开 C 端页面后才会上报）</td></tr>';
+                    } else {
+                        summary.forEach(function (row) {
+                            html += '<tr>';
+                            html += '<td><code>' + esc(row.page || '—') + '</code></td>';
+                            html += '<td>' + esc(String(row.samples || 0)) + '</td>';
+                            html += '<td>' + esc(String(row.android || 0)) + '</td>';
+                            html += '<td>' + esc(String(row.ios || 0)) + '</td>';
+                            html += '<td>' + esc(String(row.cordova || 0)) + '</td>';
+                            html += '<td>' + esc((row.dom_ready && row.dom_ready.median_label) || '—') + '</td>';
+                            html += '<td>' + esc((row.fcp && row.fcp.median_label) || '—') + '</td>';
+                            html += '<td>' + esc((row.load && row.load.median_label) || '—') + '</td>';
+                            html += '</tr>';
+                        });
+                    }
+                    html += '</tbody></table></div>';
+                    if (byPlatform.length) {
+                        html += '<p class="stat mt-12">按页面 × 平台（DOM Ready 中位）</p>';
+                        html += '<div class="scroll-x"><table><thead><tr><th>页面</th><th>平台</th><th>样本</th><th>DOM 中位</th><th>DOM 均值</th></tr></thead><tbody>';
+                        byPlatform.forEach(function (row) {
+                            html += '<tr><td><code>' + esc(row.page || '—') + '</code></td>';
+                            html += '<td>' + esc(row.platform || '—') + '</td>';
+                            html += '<td>' + esc(String(row.samples || 0)) + '</td>';
+                            html += '<td>' + esc((row.dom_ready && row.dom_ready.median_label) || '—') + '</td>';
+                            html += '<td>' + esc((row.dom_ready && row.dom_ready.avg_label) || '—') + '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                    }
+                    html += '<p class="stat mt-12">最近采样（最多 40 条）</p>';
+                    html += '<div class="scroll-x"><table><thead><tr><th>时间</th><th>页面</th><th>平台</th><th>机型</th><th>耗时</th></tr></thead><tbody>';
+                    if (!recent.length) {
+                        html += '<tr><td colspan="5">暂无</td></tr>';
+                    } else {
+                        recent.forEach(function (row) {
+                            html += '<tr>';
+                            html += '<td>' + esc(formatIsoToCnShort(row.at)) + '</td>';
+                            html += '<td><code>' + esc(row.page || '—') + '</code></td>';
+                            html += '<td>' + esc(row.platform || '—') + (row.cordova ? ' · App' : '') + '</td>';
+                            html += '<td class="cell-break">' + esc(row.device_model || '—') + '</td>';
+                            html += '<td>' + esc(row.load_label || '—') + '</td>';
+                            html += '</tr>';
+                        });
+                    }
+                    html += '</tbody></table></div>';
+                    el.innerHTML = html;
+                })
+                .catch(function () {
+                    el.textContent = '页面性能加载失败（网络错误）';
+                });
+        }
+
         /* ========== Analytics — Tracking / Activate Events ========== */
         function loadAnalyticsTrackingPage() {
+            loadPageLoadPerfStats();
             loadInstallTrackStats();
             syncActivateEventsTableHead();
             var daysT = analyticsPeriodVal(document.getElementById('analyticsTrackingDays'));
@@ -3316,6 +3484,7 @@
         var USER_LOGIN_REASON_FILTER_OPTIONS = [
             { key: 'ok', label: '成功' },
             { key: 'invalid_credentials', label: '账号或密码错误' },
+            { key: 'account_not_found', label: '账号不存在' },
             { key: 'empty_password', label: '密码为空' },
             { key: 'account_banned', label: '账号已封禁' },
             { key: 'invalid_username', label: '账号格式错误' },
@@ -4422,12 +4591,14 @@
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         el.textContent = j.msg || '加载失败';
-                        return;
+                    } else {
+                        renderInstallGuideStats(j.data);
                     }
-                    renderInstallGuideStats(j.data);
+                    loadInstallRegisterAnalysis();
                 })
                 .catch(function () {
                     el.textContent = '加载失败';
+                    loadInstallRegisterAnalysis();
                 });
         }
 
@@ -7230,7 +7401,6 @@
             'ops-ad-analytics': '广告页数据运营',
             'analytics-conversion': '转化概览',
             'analytics-purchase': '支付分析',
-            'analytics-register': '注册分析',
             'analytics-activity': '用户活跃',
             'tax-fill-survey': '填写调研',
             'analytics-devices': '机型',
@@ -9418,6 +9588,18 @@
                 loadActivationChannelFunnel();
             });
         }
+        var btnRefreshPageLoadPerf = document.getElementById('btnRefreshPageLoadPerf');
+        if (btnRefreshPageLoadPerf) {
+            btnRefreshPageLoadPerf.onclick = function () {
+                loadPageLoadPerfStats();
+            };
+        }
+        var analyticsPagePerfDays = document.getElementById('analyticsPagePerfDays');
+        if (analyticsPagePerfDays) {
+            analyticsPagePerfDays.addEventListener('change', function () {
+                loadPageLoadPerfStats();
+            });
+        }
         var btnRefreshAnalyticsTracking = document.getElementById('btnRefreshAnalyticsTracking');
         if (btnRefreshAnalyticsTracking) {
             btnRefreshAnalyticsTracking.addEventListener('click', function () {
@@ -9614,30 +9796,6 @@
             });
         }
 
-        var btnRefreshRegisterTime = document.getElementById('btnRefreshRegisterTime');
-        if (btnRefreshRegisterTime) {
-            btnRefreshRegisterTime.addEventListener('click', function () {
-                loadAnalyticsRegisterTime();
-            });
-        }
-        var analyticsRegisterTimeDays = document.getElementById('analyticsRegisterTimeDays');
-        if (analyticsRegisterTimeDays) {
-            analyticsRegisterTimeDays.addEventListener('change', function () {
-                loadAnalyticsRegisterTime();
-            });
-        }
-        var btnRefreshRegisterPlatform = document.getElementById('btnRefreshRegisterPlatform');
-        if (btnRefreshRegisterPlatform) {
-            btnRefreshRegisterPlatform.addEventListener('click', function () {
-                loadAnalyticsRegisterPlatform();
-            });
-        }
-        var analyticsRegisterPlatformDays = document.getElementById('analyticsRegisterPlatformDays');
-        if (analyticsRegisterPlatformDays) {
-            analyticsRegisterPlatformDays.addEventListener('change', function () {
-                loadAnalyticsRegisterPlatform();
-            });
-        }
         var btnRefreshChannelAnalysis = document.getElementById('btnRefreshChannelAnalysis');
         if (btnRefreshChannelAnalysis) {
             btnRefreshChannelAnalysis.addEventListener('click', function () {
@@ -9907,7 +10065,7 @@
                 username: a.username ? String(a.username) : '',
                 full_name: a.full_name ? String(a.full_name) : '',
                 is_super: !!a.is_super,
-                menus: Array.isArray(a.menus) ? a.menus.map(function (m) { return String(m); }) : []
+                menus: sanitizeAdminMenus(a.menus)
             };
             if (window.AdminNav && typeof AdminNav.applyAdminIdentity === 'function') {
                 AdminNav.applyAdminIdentity(currentAdminProfile);
@@ -9930,7 +10088,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v15-assignable-sidebar';
+                var MENU_TREE_VER = 'ops-ia-v16-reg-merge-install-stats';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

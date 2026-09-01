@@ -610,6 +610,34 @@ html.app-ios-iphone15promax .container {
     border: 1px solid #fecaca;
     background: linear-gradient(135deg, #fff7f7, #fff);
 }
+/* 年收入≥15万：青绿推荐卡（从收入纳税明细移至咨询填写区） */
+#panel-records #consultRefundAdEntry.is-income-browse,
+#panel-products #consultRefundAdProductEntry.is-income-browse {
+    border: none;
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(13, 148, 136, 0.22);
+    position: relative;
+    overflow: hidden;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .card-title,
+#panel-products #consultRefundAdProductEntry.is-income-browse .card-title {
+    color: #fff !important;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .hint,
+#panel-products #consultRefundAdProductEntry.is-income-browse .hint {
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .btn,
+#panel-products #consultRefundAdProductEntry.is-income-browse .btn {
+    background: #fff !important;
+    color: #0f766e !important;
+    border-color: #fff !important;
+}
+#panel-records #consultRefundAdEntry.is-income-browse .consult-product-badge,
+#panel-products #consultRefundAdProductEntry.is-income-browse .consult-product-badge {
+    display: none !important;
+}
 #panel-records #consultRefundAdEntry .consult-product-badge,
 #panel-products .consult-purchase-badge,
 #panel-products .consult-product-badge {

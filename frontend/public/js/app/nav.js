@@ -33,11 +33,10 @@
     return '';
   }
 
-  /** 根据当前页给 .bottom-nav .nav-item 打 active */
-  function hydrateBottomNav(root) {
+  /** 按 tab key 给 .bottom-nav .nav-item 打 active（单页壳切换时用） */
+  function hydrateBottomNavByKey(root, key) {
     var nav = root || document.querySelector('.bottom-nav');
     if (!nav) return;
-    var key = activeKey();
     var items = nav.querySelectorAll('.nav-item');
     for (var i = 0; i < items.length; i++) {
       var a = items[i];
@@ -50,8 +49,14 @@
     }
   }
 
+  /** 根据当前页给 .bottom-nav .nav-item 打 active */
+  function hydrateBottomNav(root) {
+    hydrateBottomNavByKey(root, activeKey());
+  }
+
   global.TaxAppNav = {
     hydrateBottomNav: hydrateBottomNav,
+    hydrateBottomNavByKey: hydrateBottomNavByKey,
     activeKey: activeKey,
     currentPageName: currentPageName
   };

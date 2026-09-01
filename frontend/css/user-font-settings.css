@@ -349,4 +349,6 @@ html.user-font-custom.platform-android [data-ufs-target] .top-fixed .summary .su
     min-height: 15px !important;
     font-size: 10px !important;
     font-weight: 600 !important;
+    color: #6aabf8 !important;
+    border-color: #6aabf8 !important;
 }

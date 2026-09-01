@@ -13,8 +13,22 @@
       .replace(/"/g, '&quot;');
   }
 
+  function sanitizeMenuTree(tree) {
+    if (!Array.isArray(tree)) return [];
+    return tree
+      .map(function (g) {
+        var items = (Array.isArray(g.items) ? g.items : []).filter(function (it) {
+          return it && String(it.page || '') !== 'analytics-register';
+        });
+        return Object.assign({}, g, { items: items });
+      })
+      .filter(function (g) {
+        return g.items && g.items.length;
+      });
+  }
+
   function setMenuTree(tree) {
-    cachedTree = Array.isArray(tree) ? tree : [];
+    cachedTree = sanitizeMenuTree(tree);
     if (isCommandOpen()) renderCommandResults();
   }
 

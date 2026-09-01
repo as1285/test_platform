@@ -204,6 +204,12 @@ app.get(
   h.handleAdminAdPageUserEvents
 );
 app.get(
+  '/api/admin/analytics/page-load-perf',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  h.handleAdminPageLoadPerfStats
+);
+app.get(
   '/api/admin/analytics/install-track-stats',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
@@ -218,7 +224,7 @@ app.post(
 app.get(
   '/api/admin/analytics/register-time',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-register', 'analytics']),
+  mw.requireAdminAnyMenu(['install-guide-stats', 'analytics-register', 'analytics']),
   h.handleAdminRegisterTimeDistribution
 );
 app.get(

@@ -3,7 +3,7 @@
   "title": "个税记录填写",
   "page": "consult.html?tab=records",
   "phase": 1,
-  "status": "live_partial",
+  "status": "live",
   "admin": "tax-fill-survey",
   "trigger": {
     "type": "both",
@@ -30,7 +30,9 @@
       { "id": "ok", "label": "一般" },
       { "id": "bad", "label": "不满意" }
     ],
-    "improve_question": "最想优化",
+    "improve_question": "哪里不满意 / 哪里一般",
+    "improve_required_when": ["ok", "bad"],
+    "improve_multi": true,
     "improve": [
       { "id": "start", "label": "开始方式" },
       { "id": "paste", "label": "粘贴导入" },

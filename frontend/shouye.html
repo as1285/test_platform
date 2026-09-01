@@ -71,13 +71,13 @@
             } catch (e0) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-m60home" defer></script>
+    <script src="/js/auth-boot.js?v=20260901-android-all-perf"></script>
+    <script src="/js/auth.js?v=20260901-android-all-perf" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
-    <script src="/js/app/ui.js"></script>
-    <script src="/js/app/nav.js"></script>
-    <script src="/js/app/core.js"></script>
+    <script src="/js/app/ui.js" defer></script>
+    <script src="/js/app/nav.js" defer></script>
+    <script src="/js/app/core.js" defer></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#4f90f3">
@@ -410,6 +410,16 @@
             display: inline-block;
             padding-left: 100%;
             animation: sy-marquee 18s linear infinite;
+        }
+
+        /* Android / 鸿蒙：跑马灯改为静态，避免持续合成层占用 */
+        html.app-android-client .sy-apk-marquee span,
+        html.app-harmony-client .sy-apk-marquee span {
+            padding-left: 0;
+            animation: none;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         @keyframes sy-marquee {
@@ -992,7 +1002,7 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
+    <link rel="stylesheet" href="css/nav.css?v=20260901-embed-nav-fix">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
@@ -1031,7 +1041,7 @@
                       if (!img) return;
                       var logged = false;
                       try { logged = !!String(localStorage.getItem('token') || '').trim(); } catch (e0) {}
-                      img.src = '/img/home/' + (logged ? 'a33' : 'a32') + '.png?v=20260802-home';
+                      img.src = '/img/home/' + (logged ? 'a33' : 'a32') + '.png?v=20260901-home-compress';
                       img.height = logged ? 613 : 610;
                     })();
                     </script>
@@ -1042,7 +1052,7 @@
 
             <!-- 未填报：原 a3 切片；已填报：动态白卡（a3 常在首屏下，lazy） -->
             <div class="sy-apk-block" id="syZxkEmptyWrap">
-                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260802-home" alt="重点服务推荐" width="1284" height="805" loading="lazy" decoding="async">
+                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260901-home-compress" alt="重点服务推荐" width="1284" height="805" loading="lazy" decoding="async">
                 <a href="zxk_zhengce.html" class="sy-apk-hit sy-hit-policy" aria-label="相关政策"></a>
                 <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
             </div>
@@ -1090,31 +1100,31 @@
 
             <!-- a6 横向入口 -->
             <div class="sy-apk-hscroll" id="syHScroll">
-                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260802-home" alt=""></a>
-                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260802-home" alt=""></a>
-                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260802-home" alt=""></a>
-                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260802-home" alt=""></a>
+                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260901-home-compress" alt=""></a>
+                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260901-home-compress" alt=""></a>
+                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260901-home-compress" alt=""></a>
+                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260901-home-compress" alt=""></a>
             </div>
 
             <!-- 轮播 a4_*：整块常在首屏下，全部 lazy -->
             <div class="sy-apk-swiper-wrap" id="sySwiper" aria-label="首页轮播">
                 <div class="sy-apk-swiper-track" id="sySwiperTrack">
-                    <img src="/img/home/a4_1_2.png?v=20260802-home" alt="" loading="lazy" decoding="async">
-                    <img src="/img/home/a4_4_2.png?v=20260802-home" alt="" loading="lazy" decoding="async">
-                    <img src="/img/home/a4_2.png?v=20260802-home" alt="" loading="lazy" decoding="async">
-                    <img src="/img/home/a4_3.png?v=20260802-home" alt="" loading="lazy" decoding="async">
-                    <img src="/img/home/a4_4.png?v=20260802-home" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_1_2.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_4_2.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_2.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_3.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
+                    <img src="/img/home/a4_4.png?v=20260901-home-compress" alt="" loading="lazy" decoding="async">
                 </div>
                 <div class="sy-apk-swiper-dots" id="sySwiperDots" aria-hidden="true"></div>
             </div>
 
             <!-- a4 / a5 资讯与查看更多（首屏以下，lazy） -->
             <div class="sy-apk-block">
-                <img class="sy-apk-slice" src="/img/home/a4.png?v=20260802-home" alt="资讯" width="1284" height="1814" loading="lazy" decoding="async">
+                <img class="sy-apk-slice" src="/img/home/a4.png?v=20260901-home-compress" alt="资讯" width="1284" height="1814" loading="lazy" decoding="async">
                 <a href="help_center.html" class="sy-apk-hit" style="inset:0;z-index:5" aria-label="查看资讯"></a>
             </div>
             <div class="sy-apk-block">
-                <img class="sy-apk-slice" src="/img/home/a5.png?v=20260802-home" alt="" width="1284" height="678" loading="lazy" decoding="async">
+                <img class="sy-apk-slice" src="/img/home/a5.png?v=20260901-home-compress" alt="" width="1284" height="678" loading="lazy" decoding="async">
                 <a href="help_center.html" class="sy-apk-hit sy-hit-more" aria-label="查看更多"></a>
             </div>
         </div>
@@ -1157,7 +1167,7 @@
 
     <script>
         (function () {
-            var ASSET_V = '?v=20260802-home';
+            var ASSET_V = '?v=20260901-home-compress';
             var searchWrapper = document.getElementById('syAheadWrap') || document.querySelector('.search-bar-wrapper');
             var page = document.querySelector('.shouye-page');
             var declareImg = document.getElementById('syDeclareImg');
@@ -1319,7 +1329,7 @@
                 });
             }
 
-            /* 简易轮播 */
+            /* 简易轮播：Android 延后启动，减轻首屏主线程压力 */
             (function initSwiper() {
                 var track = document.getElementById('sySwiperTrack');
                 var dots = document.getElementById('sySwiperDots');
@@ -1341,7 +1351,24 @@
                         dotNodes[k].className = k === i ? 'is-on' : '';
                     }
                 }
-                setInterval(function () { go(i + 1); }, 3500);
+                var androidLike = false;
+                try {
+                    androidLike = /Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(
+                        String(navigator.userAgent || '')
+                    ) || document.documentElement.classList.contains('app-android-client');
+                } catch (eUa) {}
+                function startAuto() {
+                    setInterval(function () { go(i + 1); }, androidLike ? 4500 : 3500);
+                }
+                if (androidLike) {
+                    if (typeof requestIdleCallback === 'function') {
+                        requestIdleCallback(startAuto, { timeout: 6000 });
+                    } else {
+                        setTimeout(startAuto, 3500);
+                    }
+                } else {
+                    startAuto();
+                }
             })();
 
             function updateNavIcons() {
@@ -1525,6 +1552,5 @@
             })();
         })();
     </script>
-    <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

@@ -14,6 +14,26 @@
                 var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
                 try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
                 try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/21091116|22041216|Redmi\s*Note\s*11(?![\s_-]*(?:Pro|T|SE|4G))/i.test(u)) {
+                    document.documentElement.classList.add('app-android-redmi-note11-5g');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '70px');
+                    document.documentElement.style.setProperty('--android-status-inset', '70px');
+                    document.documentElement.style.setProperty('--safe-top', '70px');
+                    if (!document.querySelector('style[data-redmi-note11-result-firstpaint]')) {
+                        var rn11St = document.createElement('style');
+                        rn11St.setAttribute('data-redmi-note11-result-firstpaint', '1');
+                        rn11St.textContent =
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .page-root{--safe-top:70px !important;--app-shell-statusbar-top:70px !important;--android-status-inset:70px !important;}' +
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 70px) !important;min-height:calc(var(--header-height,48px) + 70px) !important;padding:70px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;}' +
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .header-right{top:70px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .header-title{position:relative !important;z-index:2 !important;display:block !important;visibility:visible !important;opacity:1 !important;color:#000 !important;line-height:var(--header-height,48px) !important;height:var(--header-height,48px) !important;}' +
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 70px) !important;}' +
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 70px) !important;}' +
+                            'html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .summary{z-index:125 !important;}';
+                        (document.head || document.documentElement).appendChild(rn11St);
+                    }
+                }
                 if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
@@ -248,14 +268,20 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-m60home" defer></script>
-    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
+    <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
+    <script src="/js/auth-boot.js?v=20260901-android-all-perf"></script>
+    <script src="/js/auth.js?v=20260901-android-all-perf" defer></script>
+    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
+        /* 明细子页不展示底栏 Tab（含 tab-shell 残留） */
+        body.page-shuiming-result .bottom-nav,
+        body.page-shuiming-result > .bottom-nav {
+            display: none !important;
+        }
         /* 旧版 conversion-guide 缓存可能仍注入「去除水印」浮钮；页面侧强制隐藏并移除 */
         #cg-wm-pay-chip {
             display: none !important;
@@ -301,6 +327,7 @@
         .page-root {
             --safe-top: env(safe-area-inset-top, 0px);
             --header-height: 48px;
+            --shuiming-chrome-top: var(--app-shell-statusbar-top, var(--safe-top, 0px));
             --list-summary-pad: 102px;
             position: relative;
             z-index: 1;
@@ -357,6 +384,7 @@
             font-size: 17px;
             font-weight: 500;
             color: #000;
+            line-height: 1.25;
         }
 
         .header-right {
@@ -364,7 +392,14 @@
             right: 16px;
             color: #1e6fff;
             font-size: 15px;
+            font-weight: 400;
+            line-height: 1.25;
             text-decoration: none;
+        }
+
+        body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, 0px)) !important;
+            z-index: 125;
         }
 
         .summary {
@@ -433,12 +468,28 @@
             position: relative;
             overflow: hidden;
         }
-        .sm-activate-card[hidden] { display: none !important; }
+        .sm-activate-card[hidden],
+        .sm-refund-browse-card[hidden] { display: none !important; }
         html.sm-account-active #smActivateCard,
-        html.sm-account-active .sm-activate-card,
         html.sm-account-active #__wm_layer__,
         html.sm-account-active .test-account-watermark-layer {
             display: none !important;
+        }
+        .sm-refund-browse-card {
+            margin: 4px 0 10px;
+            padding: 14px 14px 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(13, 148, 136, 0.22);
+            position: relative;
+            overflow: hidden;
+        }
+        .sm-refund-browse-card .sm-activate-title { color: #fff; }
+        .sm-refund-browse-card .sm-activate-desc { color: rgba(255, 255, 255, 0.88); }
+        .sm-refund-browse-card .sm-activate-btn {
+            background: #fff;
+            color: #0f766e;
         }
         .sm-activate-card::before {
             content: "";
@@ -541,6 +592,8 @@
             border-width: 1.25px;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-synthesis: none;
+            color: #6aabf8;
+            border-color: #6aabf8;
         }
 
         html.platform-android body.page-shuiming-result .summary-label .icon::after {
@@ -630,6 +683,10 @@
         /* 首条卡片不要再叠一层顶距（避免加载节点替换后 :first-child 失效） */
         html.platform-android body.page-shuiming-result .list > .list-item:first-of-type {
             margin-top: 0;
+        }
+
+        body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, 0px)) !important;
         }
 
         /* 列表顶部留白：避开固定汇总区（高度用 JS 实测写入 --list-summary-pad） */
@@ -802,7 +859,7 @@
             font-size: 16px;
             font-weight: 400;
             color: #333;
-            line-height: 1.25;
+            line-height: 1.18;
             margin-right: 25px;
         }
 
@@ -911,19 +968,6 @@
             font-size: 10px;
             font-weight: 600;
             border-width: 1.25px;
-        }
-
-        /* 红米 K70 / 至尊：高分屏上再略放大，贴近汇总字高 */
-        html.app-android-redmi-k70 body.page-shuiming-result .summary-label .icon,
-        html.app-android-mi-family body.page-shuiming-result .summary-label .icon {
-            width: 16px;
-            height: 16px;
-            min-width: 16px;
-            min-height: 16px;
-            font-size: 11px;
-            font-weight: 600;
-            border-width: 1.5px;
-            line-height: 1;
         }
 
         html.app-android-redmi-k70 body.page-shuiming-result .summary-help-with-colon,
@@ -1305,6 +1349,7 @@
         html.app-android-redmi-k70-ultra body.page-shuiming-result .page-root,
         html.app-android-redmi-k80pro body.page-shuiming-result .page-root,
         html.app-android-redmi-12c body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .page-root,
         html.app-android-immersive-white-top body.page-shuiming-result .page-root,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-huawei-mate60 body.page-shuiming-result .page-root,
@@ -1348,6 +1393,7 @@
         html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-k80pro body.page-shuiming-result .top-fixed .header,
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header,
         html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header,
@@ -1408,6 +1454,8 @@
         html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1474,6 +1522,7 @@
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-redmi-k70-ultra body.page-shuiming-result .top-fixed .summary,
         html.app-android-redmi-12c body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .summary,
         html.app-android-immersive-white-top body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate60 body.page-shuiming-result .top-fixed .summary,
         html.app-android-huawei-mate70 body.page-shuiming-result .top-fixed .summary,
@@ -1502,6 +1551,7 @@
         html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-redmi-k70-ultra body.page-shuiming-result .list,
         html.app-android-redmi-12c body.page-shuiming-result .list,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .list,
         html.app-android-immersive-white-top body.page-shuiming-result .list,
         html.app-android-huawei-mate60 body.page-shuiming-result .list,
         html.app-android-huawei-mate70 body.page-shuiming-result .list,
@@ -1748,6 +1798,69 @@
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
+        /* Redmi Note 11 5G：HyperOS Cordova 压状态栏，顶栏整行（返回/标题/批量申诉）再下移约一行（70px） */
+        html.app-android-redmi-note11-5g body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root {
+            --app-shell-statusbar-top: 70px !important;
+            --safe-top: 70px !important;
+            --android-status-inset: 70px !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header {
+            top: 0 !important;
+            height: calc(var(--header-height, 48px) + 70px) !important;
+            min-height: calc(var(--header-height, 48px) + 70px) !important;
+            padding: 70px 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            overflow: visible !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .top-fixed .header .header-right {
+            top: 70px !important;
+            height: var(--header-height, 48px) !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title {
+            position: relative !important;
+            z-index: 2 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #000 !important;
+            line-height: var(--header-height, 48px) !important;
+            height: var(--header-height, 48px) !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + 70px) !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .list,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + 70px) !important;
+        }
+
         /* vivo X300 Pro / S50 Pro mini：压过 cordova white-page-outer / vivo-family 清零顶距 */
         html.app-android-vivo-x300pro.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro.app-android-client.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .page-root,
@@ -1806,6 +1919,40 @@
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
+        /* Redmi Note 11 5G：顶栏操作行再下移 6px，避免与状态栏过紧 */
+        html.app-android-redmi-note11-5g body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root {
+            --safe-top: 70px !important;
+            --app-shell-statusbar-top: 70px !important;
+            --android-status-inset: 70px !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            padding-top: 70px !important;
+            height: calc(var(--header-height, 48px) + 70px) !important;
+            min-height: calc(var(--header-height, 48px) + 70px) !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            top: 70px !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 48px) + 70px) !important;
+        }
+        html.app-android-redmi-note11-5g body.page-shuiming-result .list,
+        html.app-android-redmi-note11-5g.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-redmi-note11-5g.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 48px) + 70px) !important;
+        }
+
     </style>
 </head>
 <body class="page-shuiming-result">
@@ -1836,6 +1983,8 @@
                 <p class="sm-activate-desc" id="smActivateDesc">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
                 <a href="purchase.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">去开通</a>
             </div>
+            <!-- 15万推荐卡已移至 consult.html「我要咨询 / 填写个税」；保留空壳避免旧缓存脚本报错 -->
+            <div class="sm-refund-browse-card" id="smRefundBrowseCard" hidden aria-hidden="true"></div>
         </div>
     </div>
 
@@ -1856,6 +2005,54 @@
             var summary = document.querySelector('.summary');
             var list = document.getElementById('recordList');
             var root = document.querySelector('.page-root');
+            var header = document.querySelector('.top-fixed .header');
+
+            function syncChromeBelowHeader() {
+                if (!header || !summary) return null;
+                /* Note11：auth 晚注入 40px 会盖掉页面 CSS；用内联 !important 强制再下移一行 */
+                try {
+                    var rootEl = document.documentElement;
+                    var uaBlob = String(navigator.userAgent || '');
+                    try { uaBlob += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eM) {}
+                    try { uaBlob += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eU) {}
+                    var isNote11 =
+                        rootEl.classList.contains('app-android-redmi-note11-5g') ||
+                        /21091116|22041216|Redmi\s*Note\s*11(?![\s_-]*(?:Pro|T|SE|4G))/i.test(uaBlob);
+                    if (isNote11) {
+                        rootEl.classList.add('app-android-redmi-note11-5g');
+                        var inset = 70;
+                        var barH = 48;
+                        header.style.setProperty('padding-top', inset + 'px', 'important');
+                        header.style.setProperty('height', barH + inset + 'px', 'important');
+                        header.style.setProperty('min-height', barH + inset + 'px', 'important');
+                        header.style.setProperty('box-sizing', 'border-box', 'important');
+                        var back = header.querySelector('.back-btn');
+                        var right = header.querySelector('.header-right');
+                        if (back) {
+                            back.style.setProperty('top', inset + 'px', 'important');
+                            back.style.setProperty('height', barH + 'px', 'important');
+                        }
+                        if (right) {
+                            right.style.setProperty('top', inset + 'px', 'important');
+                            right.style.setProperty('height', barH + 'px', 'important');
+                        }
+                        rootEl.style.setProperty('--app-shell-statusbar-top', inset + 'px');
+                        rootEl.style.setProperty('--android-status-inset', inset + 'px');
+                        rootEl.style.setProperty('--safe-top', inset + 'px');
+                        if (root) {
+                            root.style.setProperty('--app-shell-statusbar-top', inset + 'px');
+                            root.style.setProperty('--safe-top', inset + 'px');
+                        }
+                    }
+                } catch (eForce) {}
+                var headerBottom = Math.ceil(header.getBoundingClientRect().bottom || 0);
+                if (headerBottom <= 0) return null;
+                summary.style.setProperty('top', headerBottom + 'px', 'important');
+                if (list) {
+                    list.style.setProperty('margin-top', headerBottom + 'px', 'important');
+                }
+                return headerBottom;
+            }
             function summaryContentBottom(summaryEl, summaryRect) {
                 var contentBottom = 0;
                 var items = summaryEl.querySelectorAll('.summary-item');
@@ -1882,6 +2079,7 @@
                 return contentBottom;
             }
             function measureAndApply() {
+                syncChromeBelowHeader();
                 var isAndroid = false;
                 try {
                     isAndroid =
@@ -1901,17 +2099,7 @@
                         var gap = isAndroid ? 8 : 2;
                         var aligned = Math.ceil(contentBottom - listRect.top + gap);
                         if (aligned > 0) {
-                            pad = Math.max(isAndroid ? 52 : 48, aligned);
-                        }
-                        /* 列表被其它节点顶下去时，aligned 会偏小却仍留出大缝：改用汇总自身高度 */
-                        var boxH = Math.ceil(summaryRect.height || 0);
-                        if (isAndroid && boxH > 0) {
-                            var maxPad = boxH + 4;
-                            if (pad > maxPad) pad = maxPad;
-                            /* list.top 明显低于 summary.top：说明上方被撑高，用盒子高度兜底 */
-                            if (listRect.top > summaryRect.top + 8) {
-                                pad = Math.min(pad, Math.max(52, boxH));
-                            }
+                            pad = Math.max(isAndroid ? 56 : 48, aligned);
                         }
                     }
                 }
@@ -1930,10 +2118,10 @@
                         var fr = firstItem.getBoundingClientRect();
                         var visualGap = fr.top - cb;
                         var curPad = parseFloat(root.style.getPropertyValue('--list-summary-pad')) || pad;
-                        var minPad = isAndroid ? 52 : 48;
+                        var minPad = isAndroid ? 56 : 48;
                         if (visualGap > 18) {
                             var nextPad = Math.max(minPad, Math.ceil(curPad - (visualGap - 10)));
-                            if (nextPad < curPad) {
+                            if (nextPad < curPad && nextPad >= minPad) {
                                 root.style.setProperty('--list-summary-pad', nextPad + 'px');
                             }
                         } else if (visualGap < 8) {
@@ -1954,11 +2142,13 @@
 
         function initTopFixedHeightObserver() {
             var summary = document.querySelector('.summary');
-            if (!summary || typeof ResizeObserver === 'undefined') return;
+            var header = document.querySelector('.top-fixed .header');
+            if (typeof ResizeObserver === 'undefined') return;
             var ro = new ResizeObserver(function () {
                 syncTopFixedHeight();
             });
-            ro.observe(summary);
+            if (summary) ro.observe(summary);
+            if (header) ro.observe(header);
         }
 
         function getUrlParam(name) {
@@ -2513,6 +2703,11 @@
             function applyPrompt(list) {
                 if (
                     window.ConversionGuide &&
+                    typeof window.ConversionGuide.syncRefundAdRecommendCards === 'function'
+                ) {
+                    window.ConversionGuide.syncRefundAdRecommendCards(list);
+                } else if (
+                    window.ConversionGuide &&
                     typeof window.ConversionGuide.syncShuimingInactivePrompt === 'function'
                 ) {
                     window.ConversionGuide.syncShuimingInactivePrompt(list);
@@ -2520,7 +2715,11 @@
             }
             if (Array.isArray(window.__consultRecordsCache)) {
                 applyPrompt(window.__consultRecordsCache);
-            } else if (typeof window.authFetch === 'function' && confirmedInactive && !guest) {
+            } else if (
+                typeof window.authFetch === 'function' &&
+                !guest &&
+                (confirmedInactive || confirmedActive)
+            ) {
                 window
                     .authFetch('api/tax?action=records')
                     .then(function (r) {
@@ -2578,6 +2777,11 @@
 
         initTopFixedHeightObserver();
         syncTopFixedHeight();
+        /* auth.js defer 注入晚于首屏；多拍几次确保 Note11 顶栏下移生效 */
+        setTimeout(syncTopFixedHeight, 0);
+        setTimeout(syncTopFixedHeight, 120);
+        setTimeout(syncTopFixedHeight, 400);
+        setTimeout(syncTopFixedHeight, 1000);
         if (document.fonts && document.fonts.ready) {
             document.fonts.ready.then(function () {
                 syncTopFixedHeight();

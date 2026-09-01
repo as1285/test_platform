@@ -189,12 +189,17 @@ mustExclude(
   ['bindTaxRecycleBinModal'],
   'recycle bin bind removed from consult-batch-tax'
 );
-mustInclude('frontend/consult.html', ['consult-records.js?v=20260827-tax-edit-fee'], 'consult recycle-bind cache');
+mustInclude('frontend/consult.html', ['consult-records.js?v=20260831-refundqual'], 'consult recycle-bind cache');
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
-  ['.preview.png', 'SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.82', 'place_seal', 'x_scale = 0.68', 'inner_w = max(6'],
-  'lizhi render png + SealUtil-style double-ring seal'
+  ['.preview.png', 'from company_seal import', 'place_seal', 'SEAL_PT', 'SEAL_RED'],
+  'lizhi render png uses shared company_seal'
+);
+mustInclude(
+  'backend/scripts/company_seal.py',
+  ['SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.82', 'x_scale = 0.68', 'inner_w = max(6'],
+  'company_seal SealUtil-style double-ring seal'
 );
 mustExclude(
   'backend/scripts/lizhi_render_pdf.py',
@@ -206,7 +211,7 @@ mustInclude(
   ['place_seal', 'SEAL_PT'],
   'zaizhi uses shared vermilion seal'
 );
-mustInclude('frontend/lizhi_cert.html', ['lizhiPdfPreview', 'preview_png_base64', 'btnLizhiQuick', '一键生成最后一家公司'], 'lizhi cert img preview + quick generate');
+mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'"], 'lizhi cert shared page + quick generate');
 mustInclude(
   'backend/src/user/lizhiCertUser.js',
   ['pickLastCompany', 'last_company', 'ORDER BY year DESC, month DESC'],
@@ -249,7 +254,7 @@ if (exists('frontend/public/img/najilu_ln_seal.png')) ok('liaoning najilu seal i
 else fail('liaoning najilu seal image exists', 'missing frontend/public/img/najilu_ln_seal.png');
 mustInclude(
   'frontend/zaizhi_cert.html',
-  ['/api/zaizhi-cert/generate', 'lzGender', '工作证明.pdf'],
+  ["apiPrefix: '/api/zaizhi-cert'", 'lzGender', '工作证明.pdf', 'employment-cert-page.js'],
   'zaizhi cert c-end page'
 );
 mustInclude(
@@ -264,7 +269,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v15-assignable-sidebar'],
+  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v16-reg-merge-install-stats'],
   'admin zaizhi-cert hash not bounced'
 );
 mustInclude(
@@ -314,7 +319,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v15-assignable-sidebar'],
+  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v16-reg-merge-install-stats'],
   'admin accounts menu selector grouped by sidebar'
 );
 mustInclude(
@@ -334,7 +339,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260831-refundconsult', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260901-purchase-admin-act', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -606,12 +611,12 @@ mustExclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', '?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
   'mine.html e1 self-heal + 14 Pro CSS paint'
 );
 mustInclude(
   'frontend/mine_v2.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', 'e1_01.png?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
+  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', '?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
   'mine_v2.html e1 self-heal + fresh cache stamp'
 );
 mustInclude(
@@ -641,12 +646,12 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260828-android-load', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-android-all-perf', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260826-iphone13pm'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-android-all-perf'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -1000,7 +1005,7 @@ mustInclude(
 mustInclude('frontend/consult.html', ['>激活页面<'], 'consult tab 激活页面');
 mustInclude(
   'frontend/consult.html',
-  ['id="cardShebaoPhoto" hidden', '20260828-multi-bonus'],
+  ['id="cardShebaoPhoto" hidden', '20260829-fillcta'],
   'consult shebao upload entry hidden'
 );
 mustInclude(
@@ -1040,8 +1045,33 @@ mustInclude(
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
-  ['handleAdminUserLizhiCertUnlock', 'handleAdminUserZaizhiCertUnlock'],
-  'admin cert unlock apis'
+  [
+    'purchaseAnalyticsAdminActivationCreditRules',
+    "'18933137956', unit_amount: 100",
+    "'19106014552', unit_amount: 60",
+    "COALESCE(NULLIF(TRIM(u.activation_source_channel), ''), '__none__') <> ?",
+    'label_note: \'非支付宝\'',
+    'exclude_alipay: true',
+    'queryPurchaseAnalyticsAdminActivationCredits',
+    'admin_activation_gmv',
+    'combined_gmv'
+  ],
+  'purchase analytics admin activation credit'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  [
+    '管理员激活（',
+    'combined_gmv',
+    'admin_activation_orders',
+    '合计（含管理员激活）'
+  ],
+  'purchase analytics admin activation ui'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['18933137956', '19106014552', 'admin', '除支付宝激活外', '管理员激活'],
+  'purchase analytics admin activation hint'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -1121,7 +1151,7 @@ mustInclude(
 /* loader cache must point at the latest sbdy-demo bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260828-list-del'],
+  ['20260831-xiamen'],
   'sbdy-demo loader cache for Beijing layout'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
@@ -1201,7 +1231,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionBj', '20260828-list-del'],
+  ['sbdyRegionBj', '20260831-xiamen'],
   'sbdy Beijing C-end radio + cache'
 );
 mustInclude(
@@ -1280,7 +1310,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260828-android-load', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', '20260901-android-all-perf', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 mustInclude(
@@ -1290,7 +1320,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260828-android-load'],
+  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260901-android-all-perf'],
   'shuiming_result vivo X90 first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1395,7 +1425,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['20260828-multi-bonus', 'consult-batch-tax.js?v=20260828-multi-bonus', '再加一笔年终奖', 'batchEmpBonusItemTpl'],
+  ['20260829-fillcta', 'consult-batch-tax.js?v=20260829-fillcta', '再加一笔年终奖', 'batchEmpBonusItemTpl'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -1447,7 +1477,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-m60home'],
+  ['auth-boot.js?v=20260901-android-all-perf', 'auth.js?v=20260901-android-all-perf'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1485,8 +1515,8 @@ mustInclude(
 mustInclude(
   'frontend/shouye.html',
   [
-    'auth-boot.js?v=20260828-android-load',
-    'auth.js?v=20260831-m60home" defer',
+    'auth-boot.js?v=20260901-android-all-perf',
+    'auth.js?v=20260901-android-all-perf" defer',
     'ahead.png?v=20260828-android-load',
     '--shouye-status-inset: 12px',
     'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead',
@@ -1496,15 +1526,15 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260828-android-load', 'auth.js?v=20260831-m60home" defer', 'e1_01@sm.png?v=20260828-android-load'],
+  ['auth-boot.js?v=20260901-android-all-perf', 'auth.js?v=20260901-android-all-perf" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
   'frontend/shouye.html',
   [
-    'a4.png?v=20260802-home" alt="资讯" width="1284" height="1814" loading="lazy"',
-    'a5.png?v=20260802-home" alt="" width="1284" height="678" loading="lazy"',
-    'a3.png?v=20260802-home" alt="重点服务推荐" width="1284" height="805" loading="lazy"',
+    'a4.png?v=20260901-home-compress" alt="资讯" width="1284" height="1814" loading="lazy"',
+    'a5.png?v=20260901-home-compress" alt="" width="1284" height="678" loading="lazy"',
+    'a3.png?v=20260901-home-compress" alt="重点服务推荐" width="1284" height="805" loading="lazy"',
     "localStorage.getItem('token')",
   ],
   'shouye below-fold images lazy'
@@ -1662,7 +1692,7 @@ mustInclude(
   'frontend/public/js/conversion-guide.js',
   [
     'isInactiveRefundCardUser',
-    'var show = isInactiveRefundCardUser()',
+    'var show = showInactive || showActiveBrowse',
     '__smAccountActiveConfirmed',
     'consultRefundAdEntry',
     'syncShuimingInactivePrompt',
@@ -2199,6 +2229,31 @@ mustInclude(
   'backend/src/user/lizhiCertUser.js',
   ['pickLastCompany', 'ORDER BY year DESC, month DESC'],
   'lizhi prefill prefers latest tax employer'
+);
+
+/* —— 2026-09-01 全安卓卡顿优化（对照小米）—— */
+mustInclude(
+  'frontend/public/js/tab-shell.js',
+  ['TaxAppTabShell', 'tab_embed=1', 'warmOtherTabs', 'isAndroidLike', 'baseDelay'],
+  'tab-shell iframe cache + android warm delay'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['injectTabShell', '/js/tab-shell.js?v=20260901-android-all-perf', "get('tab_embed') === '1'"],
+  'auth injects tab-shell and skips CG in embed'
+);
+mustInclude(
+  'frontend/public/js/auth-boot.js',
+  ['primeAndroidMineE1SmFirstPaint', 'app-android-mine-e1-sm', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  'auth-boot android mine @sm first paint'
+);
+mustExclude('frontend/shouye.html', ['watermark.js'], 'home without watermark');
+mustExclude('frontend/mine.html', ['watermark.js'], 'mine without watermark');
+mustExclude('frontend/daiban.html', ['watermark.js'], 'daiban without watermark');
+mustInclude(
+  'frontend/shouye.html',
+  ['html.app-android-client .sy-apk-marquee span', 'animation: none', 'requestIdleCallback(startAuto'],
+  'android home softens marquee and defers swiper'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

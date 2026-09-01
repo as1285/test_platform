@@ -52,6 +52,29 @@
                         document.head.appendChild(mi14Fp);
                     }
                 }
+                if (
+                    (/24129PN74|(?:Xiaomi|Mi|小米)[\s_-]*15(?![\s_-]*(?:Pro|Ultra|S))/i.test(u)) &&
+                    !/2410DPN6CC|24101PNB7C|25019PNF3|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro|Xiaomi\s*15\s*Ultra|Mi\s*15\s*Ultra/i.test(u)
+                ) {
+                    document.documentElement.classList.add('app-android-xiaomi-15');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.remove('app-android-mi-family');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                    window.__mineE1ForceSm = true;
+                    if (!document.getElementById('xiaomi15MineFirstPaint')) {
+                        var mi15Fp = document.createElement('style');
+                        mi15Fp.id = 'xiaomi15MineFirstPaint';
+                        mi15Fp.setAttribute('data-xiaomi15-mine-firstpaint', '1');
+                        mi15Fp.setAttribute('data-xiaomi15-mine-e1-paint', '1');
+                        mi15Fp.textContent =
+                            'html.app-android-xiaomi-15 body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;background-color:#f5f6fa!important;background-image:none!important;}' +
+                            'html.app-android-xiaomi-15 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:visible!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260828-android-load)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;aspect-ratio:1284/2127!important;container-type:normal!important;width:100%!important;}' +
+                            'html.app-android-xiaomi-15 body.page-mine .mine-e1-canvas>img,html.app-android-xiaomi-15 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:fill!important;position:relative!important;top:auto!important;transform:none!important;opacity:0!important;}' +
+                            'html.app-android-xiaomi-15 body.page-mine .mine-e1-layer{top:0!important;}';
+                        document.head.appendChild(mi15Fp);
+                    }
+                }
                 var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
                 var isMate60Mine = /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u) && !isMate70Mine;
                 if (isMate60Mine) {
@@ -112,8 +135,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-m60home" defer></script>
+    <script src="/js/auth-boot.js?v=20260901-android-all-perf"></script>
+    <script src="/js/auth.js?v=20260901-android-all-perf" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -1976,7 +1999,7 @@
             <img
                 id="headerImg"
                 class="mine-e1-img"
-                src="/img/mine/e1_01.png?v=20260827-e1r3"
+                src="/img/mine/e1_01@sm.png?v=20260901-android-mine-sm"
                 alt="个人中心"
                 width="1284"
                 height="2127"
@@ -1988,7 +2011,11 @@
                     var v = '?v=20260827-e1r3';
                     var sm = false;
                     try {
-                        sm = !!(window.__mineE1ForceSm || document.documentElement.classList.contains('app-android-xiaomi-14pro'));
+                        sm = !!(window.__mineE1ForceSm ||
+                            document.documentElement.classList.contains('app-android-mine-e1-sm') ||
+                            document.documentElement.classList.contains('app-android-xiaomi-14pro') ||
+                            document.documentElement.classList.contains('app-android-xiaomi-15') ||
+                            document.documentElement.classList.contains('app-android-xiaomi-15pro'));
                     } catch (eSm) {}
                     if (sm) window.__mineE1ForceSm = true;
                     try {
@@ -2015,6 +2042,7 @@
             </script>
             <script data-mine-e1-selfheal="1">
                 (function () {
+                    if (window.__mineE1ForceSm) return;
                     /*
                      * e1 大底图自愈：小米 14 Pro HyperOS 2 等机型会把这张 1284×2127 大图
                      * 缓存成坏档或解码失败（小图正常、整片只剩底色）。失败时换参重拉，
@@ -2261,7 +2289,6 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/watermark.js?v=20260831-m60home"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script>
         (function () {
@@ -2290,7 +2317,12 @@
                 if (fam) base += 'r';
                 /* 小米 14 Pro / 自愈失败：后续切换直接用 750px 副本，并刷 CSS 背景 */
                 try {
-                    if (document.documentElement.classList.contains('app-android-xiaomi-14pro')) {
+                    if (
+                        document.documentElement.classList.contains('app-android-mine-e1-sm') ||
+                        document.documentElement.classList.contains('app-android-xiaomi-14pro') ||
+                        document.documentElement.classList.contains('app-android-xiaomi-15') ||
+                        document.documentElement.classList.contains('app-android-xiaomi-15pro')
+                    ) {
                         window.__mineE1ForceSm = true;
                     }
                 } catch (e14) {}

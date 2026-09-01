@@ -1,10 +1,13 @@
 /**
- * C 端个税记录填写页 · 体验满意度 + 优化建议
+ * C 端个税记录填写页 · 体验满意度 + 不满意点 + 优化建议
  *
  * 规则：
- * - 正式提交：必须选 satisfaction（good/ok/bad）；improve_topic / suggestion 可选
+ * - 正式提交：必须选 satisfaction（good/ok/bad）
+ * - satisfaction 为 ok/bad 时：必须至少选 1 个 improve topic（可多选）
+ * - good：improve / suggestion 可选
  * - 显式跳过：skipped=1，satisfaction 记为 skipped（不计入「满意」）
  * - 每账号最多 1 条
+ * - improve_topic 存逗号分隔排序后的 topic keys
  */
 const { getPool } = require('../shared/db');
 
@@ -18,6 +21,7 @@ var IMPROVE_TOPICS = {
   calc: 1,
   other: 1
 };
+var IMPROVE_TOPIC_ORDER = ['start', 'paste', 'manual', 'generate', 'list', 'calc', 'other'];
 var SKIP_SATISFACTION = 'skipped';
 var SUGGESTION_MAX = 500;
 
@@ -35,6 +39,42 @@ function normalizeImproveTopic(v) {
   return IMPROVE_TOPICS[s] ? s : '';
 }
 
+/** 解析单值 / 数组 / 逗号串 → 去重排序后的合法 topic 列表 */
+function normalizeImproveTopics(raw) {
+  var parts = [];
+  if (Array.isArray(raw)) {
+    parts = raw;
+  } else if (raw != null && typeof raw === 'object' && Array.isArray(raw.topics)) {
+    parts = raw.topics;
+  } else if (typeof raw === 'string') {
+    parts = raw.split(/[,，\s]+/);
+  } else if (raw != null && raw !== '') {
+    parts = [raw];
+  }
+  var seen = {};
+  var out = [];
+  parts.forEach(function (p) {
+    var k = normalizeImproveTopic(p);
+    if (k && !seen[k]) {
+      seen[k] = 1;
+      out.push(k);
+    }
+  });
+  out.sort(function (a, b) {
+    return IMPROVE_TOPIC_ORDER.indexOf(a) - IMPROVE_TOPIC_ORDER.indexOf(b);
+  });
+  return out;
+}
+
+function serializeImproveTopics(topics) {
+  var list = normalizeImproveTopics(topics);
+  return list.length ? list.join(',') : null;
+}
+
+function parseImproveTopicsStored(raw) {
+  return normalizeImproveTopics(raw);
+}
+
 function normalizeSuggestion(v) {
   var s = clean(v).replace(/\s+/g, ' ');
   if (!s) return null;
@@ -48,25 +88,33 @@ function pctRate(part, total) {
   return Math.round(((Number(part) || 0) / t) * 1000) / 10;
 }
 
+function emptyImproveCounts() {
+  return {
+    start: 0,
+    paste: 0,
+    manual: 0,
+    generate: 0,
+    list: 0,
+    calc: 0,
+    other: 0
+  };
+}
+
 function emptySurveySummary() {
   return {
     total: 0,
     submitted: 0,
     skipped: 0,
     with_suggestion: 0,
+    with_improve: 0,
+    unhappy: 0,
+    unhappy_with_improve: 0,
     satisfaction: { good: 0, ok: 0, bad: 0 },
     good_pct: 0,
     ok_pct: 0,
     bad_pct: 0,
-    improve: {
-      start: 0,
-      paste: 0,
-      manual: 0,
-      generate: 0,
-      list: 0,
-      calc: 0,
-      other: 0
-    },
+    improve: emptyImproveCounts(),
+    improve_unhappy: emptyImproveCounts(),
     recent: []
   };
 }
@@ -75,7 +123,9 @@ function normalizeSubmitBody(b) {
   b = b || {};
   var skipped = b.skipped === true || b.skipped === 1 || b.skipped === '1';
   var satisfaction = normalizeSatisfaction(b.satisfaction);
-  var improveTopic = normalizeImproveTopic(b.improve_topic) || null;
+  var topics = normalizeImproveTopics(
+    b.improve_topics != null ? b.improve_topics : b.improve_topic
+  );
   var suggestion = normalizeSuggestion(b.suggestion);
   var clientId = clean(b.client_id).slice(0, 64) || null;
 
@@ -83,15 +133,21 @@ function normalizeSubmitBody(b) {
     if (!satisfaction) {
       return { error: '请选择体验满意度' };
     }
+    if ((satisfaction === 'ok' || satisfaction === 'bad') && !topics.length) {
+      return {
+        error: satisfaction === 'bad' ? '请选择哪里不满意（可多选）' : '请选择哪里一般（可多选）'
+      };
+    }
   } else {
     satisfaction = SKIP_SATISFACTION;
-    improveTopic = null;
+    topics = [];
     suggestion = null;
   }
 
   return {
     satisfaction: satisfaction || SKIP_SATISFACTION,
-    improve_topic: improveTopic,
+    improve_topic: serializeImproveTopics(topics),
+    improve_topics: topics,
     suggestion: suggestion,
     skipped: skipped ? 1 : 0,
     client_id: clientId
@@ -163,6 +219,12 @@ function parseDays(raw) {
   return n;
 }
 
+function bumpImproveCounts(bucket, topics, c) {
+  (topics || []).forEach(function (t) {
+    if (bucket[t] != null) bucket[t] += c;
+  });
+}
+
 async function summarizeTaxFillSurvey(conn, days) {
   var out = emptySurveySummary();
   if (!conn) return out;
@@ -191,8 +253,18 @@ async function summarizeTaxFillSurvey(conn, days) {
       out.submitted += c;
       var sat = String(r.satisfaction || '').toLowerCase();
       if (out.satisfaction[sat] != null) out.satisfaction[sat] += c;
-      var imp = String(r.improve_topic || '').toLowerCase();
-      if (out.improve[imp] != null) out.improve[imp] += c;
+      var topics = parseImproveTopicsStored(r.improve_topic);
+      if (topics.length) {
+        out.with_improve += c;
+        bumpImproveCounts(out.improve, topics, c);
+      }
+      if (sat === 'ok' || sat === 'bad') {
+        out.unhappy += c;
+        if (topics.length) {
+          out.unhappy_with_improve += c;
+          bumpImproveCounts(out.improve_unhappy, topics, c);
+        }
+      }
     });
     out.good_pct = pctRate(out.satisfaction.good, out.submitted);
     out.ok_pct = pctRate(out.satisfaction.ok, out.submitted);
@@ -211,11 +283,13 @@ async function summarizeTaxFillSurvey(conn, days) {
       [nDays]
     );
     out.recent = (recentRows || []).map(function (r) {
+      var topics = parseImproveTopicsStored(r.improve_topic);
       return {
         username: r.username != null ? String(r.username) : '',
         real_name: r.real_name != null ? String(r.real_name) : '',
         satisfaction: r.satisfaction != null ? String(r.satisfaction) : '',
-        improve_topic: r.improve_topic != null ? String(r.improve_topic) : '',
+        improve_topic: topics.length ? topics.join(',') : '',
+        improve_topics: topics,
         suggestion: r.suggestion != null ? String(r.suggestion) : '',
         skipped: Number(r.skipped) === 1,
         created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
@@ -242,7 +316,8 @@ async function handleAdminTaxFillSurveyStats(req, res) {
             label: '最近 ' + days + ' 天',
             period_key: String(days)
           },
-          note: 'C 端税务记录填写页问卷：体验满意度 + 优化建议。每账号最多 1 条。',
+          note:
+            'C 端税务记录填写页问卷：满意度 + 不满意点（一般/不满意必选，可多选）+ 文字建议。每账号最多 1 条。',
           survey: survey
         }
       });
@@ -269,10 +344,14 @@ module.exports = {
   emptySurveySummary: emptySurveySummary,
   normalizeSatisfaction: normalizeSatisfaction,
   normalizeImproveTopic: normalizeImproveTopic,
+  normalizeImproveTopics: normalizeImproveTopics,
+  parseImproveTopicsStored: parseImproveTopicsStored,
+  serializeImproveTopics: serializeImproveTopics,
   normalizeSuggestion: normalizeSuggestion,
   normalizeSubmitBody: normalizeSubmitBody,
   SATISFACTIONS: SATISFACTIONS,
   IMPROVE_TOPICS: IMPROVE_TOPICS,
+  IMPROVE_TOPIC_ORDER: IMPROVE_TOPIC_ORDER,
   SKIP_SATISFACTION: SKIP_SATISFACTION,
   SUGGESTION_MAX: SUGGESTION_MAX
 };

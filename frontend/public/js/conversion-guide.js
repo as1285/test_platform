@@ -18,6 +18,8 @@
   var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
   var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
   var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
+  /** 年收入≥15万：软推荐去广告页浏览（可跳过；与填完强制跳转互补） */
+  var REFUND_AD_INCOME_RECOMMEND_KEY = 'refund_ad_income_recommend_v1';
   /** 填完个税后引导二次退税：23/24/25 任一年税额>5000 或年收入≥15万 */
   var REFUND_AD_TAX_YEARS = [2025, 2024, 2023];
   var REFUND_AD_MIN_TAX_REPORTED = 5000;
@@ -1814,6 +1816,17 @@
     return hits.length ? hits[0] : null;
   }
 
+  /** 优先取「年收入≥15万」命中（含 both），用于推荐去广告页浏览 */
+  function primaryIncomeRefundHit(records) {
+    var hits = refundAdYearHits(records || []);
+    for (var i = 0; i < hits.length; i++) {
+      if (hits[i] && (hits[i].reason === 'income' || hits[i].reason === 'both')) {
+        return hits[i];
+      }
+    }
+    return null;
+  }
+
   function refundAdHitCardCopy(hit) {
     if (!hit || !hit.year) return '';
     if (hit.reason === 'income') {
@@ -1823,6 +1836,17 @@
       return '你 ' + hit.year + ' 年缴税和收入都较高，可看是否符合二次退税';
     }
     return '你 ' + hit.year + ' 年缴税已超 5000，可看是否符合二次退税';
+  }
+
+  function refundAdIncomeBrowseCopy(hit) {
+    if (hit && hit.year) {
+      return (
+        '根据你填写的记录，' +
+        hit.year +
+        ' 年收入已超过 15 万。建议去广告页了解是否符合二次退税，可随时返回。'
+      );
+    }
+    return '根据你填写的记录，年收入已超过 15 万。建议去广告页了解是否符合二次退税，可随时返回。';
   }
 
   function refundAdHitToastCopy(hit) {
@@ -1841,6 +1865,20 @@
     if (hit && hit.year) href += '&year=' + encodeURIComponent(String(hit.year));
     if (hit && hit.reason) href += '&reason=' + encodeURIComponent(String(hit.reason));
     return href;
+  }
+
+  function hasDismissedIncomeRefundRecommend() {
+    try {
+      return localStorage.getItem(REFUND_AD_INCOME_RECOMMEND_KEY) === '1';
+    } catch (eSeen) {
+      return true;
+    }
+  }
+
+  function markIncomeRefundRecommendDismissed() {
+    try {
+      localStorage.setItem(REFUND_AD_INCOME_RECOMMEND_KEY, '1');
+    } catch (eMark) {}
   }
 
   function isInactiveRefundCardUser() {
@@ -1883,16 +1921,34 @@
     }
   }
 
+  /** 已开通且年收入≥15万：明细页不再展示，改在「我要咨询」填写区推荐 */
+  function syncShuimingIncomeBrowseCard(records) {
+    var card = document.getElementById('smRefundBrowseCard');
+    if (!card) return;
+    card.hidden = true;
+    card.setAttribute('hidden', '');
+  }
+
   function syncRefundAdRecommendCards(records) {
     hideLegacyShuimingRefundWechatCard();
     syncShuimingInactivePrompt(records);
+    syncShuimingIncomeBrowseCard(records);
     var hit = primaryRefundAdTaxHit(records);
-    var copy = refundAdInactivePromptCopy(hit);
-    /* 未激活才出这张卡；激活后两处都消失 */
-    var show = isInactiveRefundCardUser();
+    var incomeHit = primaryIncomeRefundHit(records);
+    var inactive = isInactiveRefundCardUser();
+    var loggedIn = isLoggedIn() && !isLandingGuest();
+    /* 未激活：仍推开通；已开通且年收入≥15万：推广告页浏览（展示在咨询填写区） */
+    var showInactive = inactive && !!hit;
+    var showActiveBrowse = loggedIn && !inactive && !!incomeHit;
+    var show = showInactive || showActiveBrowse;
+    var browseHit = incomeHit || hit;
+    var copy = showActiveBrowse
+      ? refundAdIncomeBrowseCopy(incomeHit)
+      : refundAdInactivePromptCopy(hit);
     var nodes = [
       {
         root: 'consultRefundAdEntry',
+        title: 'consultRefundAdTitle',
         hint: 'consultRefundAdHint',
         btn: 'btnConsultRefundAd',
         badge: 'consultRefundAdBadge',
@@ -1900,6 +1956,7 @@
       },
       {
         root: 'consultRefundAdProductEntry',
+        title: 'consultRefundAdProductTitle',
         hint: 'consultRefundAdProductHint',
         btn: 'btnConsultRefundAdProducts',
         badge: 'consultRefundAdProductBadge',
@@ -1911,21 +1968,64 @@
       if (!root) return;
       if (!show) {
         root.hidden = true;
-        root.classList.remove('is-refund-qualified');
+        root.classList.remove('is-refund-qualified', 'is-income-browse');
         return;
       }
       root.hidden = false;
       root.classList.add('is-refund-qualified');
+      root.classList.toggle('is-income-browse', !!showActiveBrowse);
+      var titleEl = spec.title ? document.getElementById(spec.title) : null;
+      if (titleEl) {
+        if (showActiveBrowse) {
+          titleEl.textContent =
+            incomeHit && incomeHit.year
+              ? incomeHit.year + ' 年收入已超 15 万'
+              : '年收入已超 15 万';
+        } else {
+          titleEl.textContent = '二次退税咨询';
+        }
+      }
       var hint = spec.hint ? document.getElementById(spec.hint) : null;
       if (hint) hint.textContent = copy;
       var badge = spec.badge ? document.getElementById(spec.badge) : null;
-      if (badge) badge.textContent = '开通后消失';
+      if (badge) {
+        badge.textContent = showActiveBrowse ? '建议浏览' : '开通后消失';
+        badge.hidden = !!showActiveBrowse;
+      }
       var btn = document.getElementById(spec.btn);
       if (btn) {
-        btn.textContent = '去开通';
-        btn.setAttribute('href', 'purchase.html?from=' + encodeURIComponent(spec.from));
+        if (showActiveBrowse) {
+          btn.textContent = '去广告页看看';
+          btn.setAttribute('href', refundAdRecommendHref(spec.from, browseHit));
+          if (!btn.getAttribute('data-income-browse-bound')) {
+            btn.setAttribute('data-income-browse-bound', '1');
+            btn.addEventListener('click', function () {
+              track('track_refund_ad_income_recommend_click', {
+                page: currentPage(),
+                source: 'consult_card',
+                from: spec.from,
+                tax_year_gate: incomeHit && incomeHit.year,
+                income_sum_gate: incomeHit && incomeHit.income_sum,
+                reason: incomeHit && incomeHit.reason
+              });
+            });
+          }
+        } else {
+          btn.textContent = '去开通';
+          btn.setAttribute('href', 'purchase.html?from=' + encodeURIComponent(spec.from));
+        }
       }
     });
+    if (showActiveBrowse && !window.__refundAdIncomeConsultShowTracked) {
+      window.__refundAdIncomeConsultShowTracked = true;
+      track('track_refund_ad_income_recommend_show', {
+        page: currentPage(),
+        source: 'consult_card',
+        tax_year_gate: incomeHit && incomeHit.year,
+        income_sum_gate: incomeHit && incomeHit.income_sum,
+        reason: incomeHit && incomeHit.reason
+      });
+    }
   }
 
   function resolveTaxRecordsForRefundAd(opts) {
@@ -1936,6 +2036,92 @@
       return apiFetchRecords({ force: true });
     }
     return Promise.resolve(window.__consultRecordsCache || []);
+  }
+
+  function showIncomeRefundAdRecommendDialog(hit, opts) {
+    opts = opts || {};
+    if (document.getElementById('cg-income-refund-overlay')) return false;
+    ensureGateStyles();
+    var ov = document.createElement('div');
+    ov.id = 'cg-income-refund-overlay';
+    ov.className = 'cg-value-overlay';
+    ov.innerHTML =
+      '<div class="cg-value-panel" role="dialog" aria-labelledby="cgIncomeRefundTitle">' +
+      '<h3 id="cgIncomeRefundTitle">年收入已超 15 万</h3>' +
+      '<p>' +
+      refundAdIncomeBrowseCopy(hit) +
+      '</p>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgIncomeRefundGo">去广告页看看</button>' +
+      '<button type="button" class="cg-btn cg-btn-ghost" id="cgIncomeRefundLater">稍后再说</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+    track('track_refund_ad_income_recommend_show', {
+      page: currentPage(),
+      source: opts.source || 'after_tax',
+      tax_year_gate: hit && hit.year,
+      income_sum_gate: hit && hit.income_sum,
+      reason: hit && hit.reason
+    });
+    function closeOv(action) {
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      if (typeof opts.onClose === 'function') opts.onClose(action);
+    }
+    document.getElementById('cgIncomeRefundGo').onclick = function () {
+      markIncomeRefundRecommendDismissed();
+      track('track_refund_ad_income_recommend_click', {
+        page: currentPage(),
+        source: opts.source || 'after_tax_dialog',
+        tax_year_gate: hit && hit.year,
+        income_sum_gate: hit && hit.income_sum,
+        reason: hit && hit.reason
+      });
+      closeOv('go');
+      window.location.href = refundAdRecommendHref(opts.from || 'tax_done', hit);
+    };
+    document.getElementById('cgIncomeRefundLater').onclick = function () {
+      markIncomeRefundRecommendDismissed();
+      track('track_refund_ad_income_recommend_dismiss', {
+        page: currentPage(),
+        source: opts.source || 'after_tax_dialog'
+      });
+      closeOv('later');
+    };
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) {
+        markIncomeRefundRecommendDismissed();
+        closeOv('dismiss');
+      }
+    });
+    return true;
+  }
+
+  /**
+   * 年收入≥15万：推荐去广告页浏览。
+   * 填完强制跳转未触发时（已看过 / 单条保存累计达标）出软弹窗。
+   */
+  function maybeRecommendIncomeRefundAd(opts, records, cont) {
+    if (isLandingGuest() || !isLoggedIn()) {
+      if (typeof cont === 'function') cont();
+      return false;
+    }
+    if (hasDismissedIncomeRefundRecommend()) {
+      if (typeof cont === 'function') cont();
+      return false;
+    }
+    var list = records || window.__consultRecordsCache || [];
+    var hit = primaryIncomeRefundHit(list);
+    if (!hit) {
+      if (typeof cont === 'function') cont();
+      return false;
+    }
+    return showIncomeRefundAdRecommendDialog(hit, {
+      source: (opts && opts.source) || 'after_tax',
+      from: 'tax_done',
+      onClose: function (action) {
+        if (action === 'go') return;
+        if (typeof cont === 'function') cont();
+      }
+    });
   }
 
   /** 2023–2025 任一年税额>5000 或年收入≥15万，填完后带去一次广告页 */
@@ -1949,6 +2135,7 @@
     var hit = primaryRefundAdTaxHit(list);
     if (!hit) return false;
     markRefundAdAfterTaxSeen();
+    markIncomeRefundRecommendDismissed();
     var allHits = refundAdYearHits(list);
     track('track_refund_ad_after_tax_go', {
       page: currentPage(),
@@ -1979,37 +2166,42 @@
       if (sy) y = normalizeTaxYearLocal(sy);
     } catch (e) {}
     resolveTaxRecordsForRefundAd(opts).then(function (records) {
+      syncRefundAdRecommendCards(records || []);
       if (maybeGoRefundAdAfterTax(opts, y, records)) return;
-      if (isLandingGuest()) {
-        if (typeof window.trackPublicAction === 'function') {
-          window.trackPublicAction('track_landing_guest_tax_created', {
-            page: 'consult',
-            landing_variant: 'c',
-            source: opts.source || 'batch',
-            tax_count: taxRecordCount()
-          });
-        }
-      }
-      if (opts.source === 'single_save') {
+      function continueAfterTax() {
         if (isLandingGuest()) {
-          showCaptureToast('记录已保存。可下载 App 同步带走…', { duration: 2200 });
+          if (typeof window.trackPublicAction === 'function') {
+            window.trackPublicAction('track_landing_guest_tax_created', {
+              page: 'consult',
+              landing_variant: 'c',
+              source: opts.source || 'batch',
+              tax_count: taxRecordCount()
+            });
+          }
+        }
+        if (opts.source === 'single_save') {
+          if (isLandingGuest()) {
+            showCaptureToast('记录已保存。可下载 App 同步带走…', { duration: 2200 });
+            setTimeout(function () {
+              goGuestDownloadSave('single_save');
+            }, 700);
+            return;
+          }
+          showCaptureToast('记录已保存，正在打开收入纳税明细…', { duration: 2200 });
           setTimeout(function () {
-            goGuestDownloadSave('single_save');
-          }, 700);
+            window.location.href =
+              'shuiming_result.html?year=' +
+              encodeURIComponent(String(y)) +
+              '&from=tax_save';
+          }, 520);
           return;
         }
-        showCaptureToast('记录已保存，正在打开收入纳税明细…', { duration: 2200 });
         setTimeout(function () {
-          window.location.href =
-            'shuiming_result.html?year=' +
-            encodeURIComponent(String(y)) +
-            '&from=tax_save';
-        }, 520);
-        return;
+          showValueConfirmDialog(y);
+        }, 400);
       }
-      setTimeout(function () {
-        showValueConfirmDialog(y);
-      }, 400);
+      if (maybeRecommendIncomeRefundAd(opts, records, continueAfterTax)) return;
+      continueAfterTax();
     });
   }
 
@@ -2885,6 +3077,8 @@
     afterActivateSuccess: afterActivateSuccess,
     afterTaxRecordsCreated: afterTaxRecordsCreated,
     maybeGoRefundAdAfterTax: maybeGoRefundAdAfterTax,
+    maybeRecommendIncomeRefundAd: maybeRecommendIncomeRefundAd,
+    primaryIncomeRefundHit: primaryIncomeRefundHit,
     taxReportedSumForYear: taxReportedSumForYear,
     yearIncomeSumForYear: yearIncomeSumForYear,
     yearRefundTotals: yearRefundTotals,
@@ -2894,6 +3088,7 @@
     refundAdHitCardCopy: refundAdHitCardCopy,
     syncRefundAdRecommendCards: syncRefundAdRecommendCards,
     syncShuimingInactivePrompt: syncShuimingInactivePrompt,
+    syncShuimingIncomeBrowseCard: syncShuimingIncomeBrowseCard,
     afterEmployerSaved: afterEmployerSaved,
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     mountShuimingValueBar: mountShuimingValueBar,

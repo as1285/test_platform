@@ -46,8 +46,8 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-m60home" defer></script>
+    <script src="/js/auth-boot.js?v=20260901-android-all-perf"></script>
+    <script src="/js/auth.js?v=20260901-android-all-perf" defer></script>
     <script src="/js/browser-install-prompt.js?v=20260827-cend-sync" defer></script>
     <title>登录</title>
     <style>
@@ -992,6 +992,10 @@
         }
         function showLoginErrorModal(msg) {
             var text = String(msg || '登录失败');
+            if (text.indexOf('账号不存在') >= 0) {
+                showLoginFormTip(text);
+                return;
+            }
             var isCredFail =
                 text.indexOf('密码错误') >= 0 || text.indexOf('账号或密码错误') >= 0;
             if (!isCredFail) {

@@ -1820,6 +1820,27 @@ tr.users-detail-row > td {
     padding-top: 0;
 }
 
+.analytics-section-details {
+    margin: 0 0 12px;
+}
+.analytics-section-details summary {
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--admin-text);
+    list-style: none;
+    padding: 2px 0 6px;
+}
+.analytics-section-details summary::-webkit-details-marker { display: none; }
+.analytics-section-details summary::before {
+    content: '▸ ';
+    font-size: 11px;
+    opacity: 0.65;
+}
+.analytics-section-details[open] summary::before {
+    content: '▾ ';
+}
+
 /* 表单布局工具类 */
 .form-stack {
     flex-direction: column;

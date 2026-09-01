@@ -33,6 +33,8 @@ const OBFUSCATE_REL = new Set([
   'js/theme-loader.js',
   'js/page-loading.js',
   'js/fast-nav.js',
+  'js/tab-shell.js',
+  'js/tab-shell-escape.js',
   'js/watermark.js',
   'js/forensic-mark.js',
   'js/browser-install-prompt.js',

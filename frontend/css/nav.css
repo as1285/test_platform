@@ -265,6 +265,37 @@ html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav.ios-devi
     backdrop-filter: none !important;
 }
 
+/* Tab 壳 iframe：只保留宿主底栏，子页底栏一律隐藏（含 iPhone 16 Pro 等 iOS 机型选择器） */
+html.tab-embed-mode .bottom-nav,
+html.tab-embed-mode body > .bottom-nav,
+html.tab-embed-mode body.page-shouye > .bottom-nav,
+html.tab-embed-mode body.page-daiban > .bottom-nav,
+html.tab-embed-mode body.page-bancha > .bottom-nav,
+html.tab-embed-mode body.page-message > .bottom-nav,
+html.tab-embed-mode body.page-mine > .bottom-nav,
+html.tab-embed-mode body .bottom-nav.ios-device,
+html.app-ios-client.tab-embed-mode .bottom-nav,
+html.app-ios-client.tab-embed-mode body > .bottom-nav,
+html.app-ios-client.tab-embed-mode body.page-daiban > .bottom-nav,
+html.app-ios-client.tab-embed-mode body.page-bancha > .bottom-nav,
+html.app-ios-client.tab-embed-mode body.page-message > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,
+html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav,
+html.app-ios-iphone16promax.tab-embed-mode .bottom-nav,
+html.app-ios-iphone16promax.tab-embed-mode body > .bottom-nav {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+}
+
 .bottom-nav {
     display: flex;
     align-items: center;

@@ -7,7 +7,7 @@
 
   /* 空壳模块（仅 ready:true）已删除；PAGE_MODULE 仍映射以便按页拉 Chart/QR 等依赖 */
   var MODULE_SRC = {
-    charts: '/js/admin/modules/charts.js?v=20260808-deadcode',
+    charts: '/js/admin/modules/charts.js?v=20260901-reg-merge',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260831-xiamen',
     'gjj-demo': '/js/admin/modules/gjj-demo.js?v=20260826-deadcode',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260828-cert-survey',
@@ -16,7 +16,7 @@
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-expense-sum',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
-    'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260828-tax-fill',
+    'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260829-opsconv',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig'
   };
@@ -50,7 +50,6 @@
     'ops-ad-analytics': 'ad-analytics',
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
-    'analytics-register': 'analytics',
     'analytics-purchase': 'analytics',
     'analytics-tracking': 'analytics',
     'analytics-devices': 'devices',

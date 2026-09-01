@@ -188,7 +188,7 @@ def render_page_image(payload):
     date_size = sign_size
     date_f = body_font(date_size)
     date_y = company_top + len(company_lines) * line_gap + int(14 * SCALE)
-    dx = sign_x0
+    dx = painter.draw_run(sign_x0, date_y, "日期：", date_f)
     issue_ymd = parse_ymd(issue_date)
     if issue_ymd:
         for text, ul in [

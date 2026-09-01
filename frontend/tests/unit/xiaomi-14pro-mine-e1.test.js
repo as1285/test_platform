@@ -25,13 +25,16 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
     expect(MODEL_RE.test('23127PN0CC')).toBe(false);
   });
 
-  it('auth.js locks mine e1 and excludes 14 Pro from chrome clip', () => {
+  it('auth.js locks mine e1 for HyperOS 2 including Xiaomi 15', () => {
     expect(auth).toContain('function isXiaomi14ProClient()');
+    expect(auth).toContain('function isXiaomi15Client()');
+    expect(auth).toContain('HYPEROS2_MINE_E1_SM_CLASSES');
+    expect(auth).toContain('app-android-xiaomi-15');
     expect(auth).toContain('function xiaomi14ProMineE1LockCss()');
     expect(auth).toContain('function pinXiaomi14ProMineE1Layout()');
     expect(auth).toContain('function paintXiaomi14ProMineE1');
     expect(auth).toContain('xiaomi14pro-mine-e1-paint');
-    expect(auth).toContain(':not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas');
+    expect(auth).toContain(':not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15)');
     expect(auth).toContain('overflow:visible !important');
     expect(auth).toContain('data-xiaomi14pro-mine-e1-lock');
     expect(auth).toContain('opacity:0 !important');
@@ -41,9 +44,12 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
   it('mine pages first-paint the lock so HyperOS 2 does not flash a blue empty card', () => {
     [mine, mineV2].forEach((html) => {
       expect(html).toContain('app-android-xiaomi-14pro');
+      expect(html).toContain('app-android-xiaomi-15');
       expect(html).toContain('data-xiaomi14pro-mine-firstpaint');
+      expect(html).toContain('data-xiaomi15-mine-firstpaint');
       expect(html).toContain('data-xiaomi14pro-mine-e1-paint');
       expect(html).toContain('23116PN5');
+      expect(html).toContain('24129PN74');
       expect(html).toContain('overflow:visible!important');
       expect(html).toContain('e1_01@sm.png');
       expect(html).toContain('opacity:0!important');
@@ -58,8 +64,8 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
       expect(html).toContain('@sm.png');
       expect(html).toContain('__mineE1ForceSm');
       expect(html).toContain('?v=20260827-e1r3');
-      expect(html).toContain('auth-boot.js?v=20260828-android-load');
-      expect(html).toContain('auth.js?v=20260831-m60home');
+      expect(html).toMatch(/auth-boot\.js\?v=20260901-/);
+      expect(html).toMatch(/auth\.js\?v=20260901-/);
       expect(html).not.toContain('20260802-e1fix');
     });
   });

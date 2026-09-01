@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js?v=20260814-ace2pro"></script>
+    <script src="/js/admin_auth.js?v=20260901-android-all-perf"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
@@ -1515,16 +1515,62 @@
 
                 <div id="page-install-guide-stats" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>安装页访问统计</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>、<strong>页面加载耗时</strong>（DOM 就绪 + 安装包接口网络/渲染）及按钮/视频等行为。另含<strong>下载→打开→注册漏斗</strong>（A 落地 / B 下载 / C App 首次打开 / D 注册弹窗 / E 稍后或去注册 / F 注册成功，按 <code>client_id</code>、北京时间）与<strong>已打开未注册</strong>队列。下方<strong>访问→注册曲线</strong>按日对比独立访客与注册数；另有<strong>访客时段分布</strong>（北京时间：凌晨/上午/下午/晚上 + 24 小时柱状图）。<strong>注册率</strong> = 归因注册 ÷ 当日独立访客。归因含<strong>同日设备匹配</strong>（<code>client_id</code> / 设备指纹）与注册时客户端上报的<strong>安装页引流</strong>（7 日内访问过安装页或从安装页跳转注册，App/WebView 内注册成功时回传）。页面浏览/UV/下载/漏斗按<strong>同一 IP 去重</strong>（无 IP 再退回 <code>client_id</code>）；未登录事件仍上报 <code>client_id</code>；离开页面时上报停留秒数；打开页面后上报加载耗时。</p></details>
+                        <h2>安装统计</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a> 浏览/UV/停留/加载、下载→打开→注册漏斗、访客时段；下方含注册平台占比与注册时段。浏览/UV/漏斗按同一 IP 去重（无 IP 用 <code>client_id</code>）。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="installGuideStatsDays">统计区间</label>
-                                <select id="installGuideStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
+                                <select id="installGuideStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
                             </div>
-                            <button type="button" class="btn-page" id="btnRefreshInstallGuideStats">刷新统计</button>
+                            <button type="button" class="btn-page" id="btnRefreshInstallGuideStats">刷新</button>
                         </div>
                         <div id="installGuideStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                    </section>
+                    <section class="mt-16">
+                        <h2>注册分析</h2>
+                        <p class="hint mt-0">与上方共用统计区间。系统按用户最早设备 UA 区分安卓/苹果；时段按注册时间（北京时间）统计。</p>
+                        <div id="registerPlatformAnalysisWrap" class="analytics-conv-wrap mt-8" aria-live="polite">
+                            <h3 class="stat" style="margin:0 0 8px;">平台占比</h3>
+                            <p id="registerPlatformSummary" class="hint mt-0 mb-8">—</p>
+                            <div id="registerPlatformCards" class="user-data-stats mb-8"></div>
+                            <details class="page-hint-details">
+                                <summary>每日明细</summary>
+                                <div class="scroll-x mt-8">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>日期</th>
+                                                <th>注册</th>
+                                                <th>安卓率</th>
+                                                <th>苹果率</th>
+                                                <th>安卓</th>
+                                                <th>苹果</th>
+                                                <th>其他</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="registerPlatformDailyTbody"><tr><td colspan="7">—</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        </div>
+                        <div id="registerTimeAnalysisWrap" class="register-time-analysis-wrap mt-14" aria-live="polite">
+                            <h3 class="stat" style="margin:0 0 8px;">注册时段</h3>
+                            <p id="registerTimeSummary" class="hint mt-0 mb-8">—</p>
+                            <div id="registerTimePeriodCards" class="register-time-period-cards"></div>
+                            <div id="registerTimeChartsWrap" class="device-stats-charts-wrap register-time-charts-wrap mt-12" style="display:none;">
+                                <p id="registerTimeChartsEmpty" class="hint" style="display:none;">暂无足够数据</p>
+                                <div class="device-stats-charts register-time-charts-grid">
+                                    <div class="device-stats-chart-card">
+                                        <h4>四时段</h4>
+                                        <div class="chart-canvas-wrap"><canvas id="registerTimeChartPeriods"></canvas></div>
+                                    </div>
+                                    <div class="device-stats-chart-card chart-card-wide">
+                                        <h4>24 小时</h4>
+                                        <div class="chart-canvas-wrap"><canvas id="registerTimeChartHourly"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
                 </div>
 
@@ -2686,7 +2732,7 @@
                     <div class="page-lede"><p class="page-lede-text">购买链路、支付宝漏斗与收入表现</p></div>
                     <section>
                         <h2>支付分析</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付），并按产品拆分：开通套餐、离职证明（¥50）、改名费。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付），并按产品拆分：开通套餐、离职证明（¥50）、改名费。另计管理员名下激活码开通：<code>18933137956</code> 按 ¥100/单、<code>19106014552</code> 按 ¥60/单；<code>admin</code> 名下<strong>除支付宝激活外</strong>的剩余激活按 ¥100/单（支付宝激活已在上方线上 GMV 中，避免重复）。不含已退款/已删除/游客，并入合计 GMV 与开通 GMV。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPurchaseDays">统计区间</label>
@@ -2777,19 +2823,21 @@
                                     <tbody id="analyticsPurchaseSurveyRecentTbody"><tr><td colspan="5">加载中…</td></tr></tbody>
                                 </table>
                             </div>
-                            <h3>事件汇总</h3>
-                            <div class="scroll-x mb-12">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>事件</th>
-                                            <th>次数</th>
-                                            <th>去重用户</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="analyticsPurchaseSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
+                            <details class="analytics-section-details mb-12">
+                                <summary>事件汇总</summary>
+                                <div class="scroll-x mt-8">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>事件</th>
+                                                <th>次数</th>
+                                                <th>去重用户</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="analyticsPurchaseSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </details>
                             <h3>每日明细</h3>
                             <p id="analyticsPurchaseDailyHint" class="hint mt-0 mb-8">—</p>
                             <div class="scroll-x">
@@ -2807,6 +2855,7 @@
                                             <th>已付订单</th>
                                             <th>总GMV</th>
                                             <th>开通GMV</th>
+                                            <th>管理员激活</th>
                                             <th>离职证明</th>
                                             <th>离职GMV</th>
                                             <th>操作</th>
@@ -2965,82 +3014,19 @@
                     </section>
                 </div>
 
-                <div id="page-analytics-register" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>每日注册 · 安卓 / 苹果占比</h2>
-                        <p class="hint mt-0">按<strong>北京时间</strong>注册日统计；手机系统取该用户最早一条设备 UA。安卓率 / 苹果率 = 当日对应系统注册数 ÷ 当日注册总数；其余为 PC 或未知设备。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsRegisterPlatformDays">统计区间</label>
-                                <select id="analyticsRegisterPlatformDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshRegisterPlatform">刷新平台占比</button>
-                        </div>
-                        <div id="registerPlatformAnalysisWrap" class="analytics-conv-wrap" aria-live="polite">
-                            <p id="registerPlatformSummary" class="stat">加载中…</p>
-                            <div id="registerPlatformCards" class="user-data-stats mb-12"></div>
-                            <div class="scroll-x">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>日期</th>
-                                            <th>注册</th>
-                                            <th>安卓率</th>
-                                            <th>苹果率</th>
-                                            <th>安卓人数</th>
-                                            <th>苹果人数</th>
-                                            <th>其他/未知</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="registerPlatformDailyTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>注册时段分析</h2>
-                        <p class="hint mt-0">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比凌晨 / 上午 / 下午 / 晚上四个时段哪个注册人数最多；柱状图另含 24 小时分布。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsRegisterTimeDays">统计区间</label>
-                                <select id="analyticsRegisterTimeDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshRegisterTime">刷新时段分析</button>
-                        </div>
-                        <div id="registerTimeAnalysisWrap" class="register-time-analysis-wrap" aria-live="polite">
-                            <p id="registerTimeSummary" class="stat">加载中…</p>
-                            <div id="registerTimePeriodCards" class="register-time-period-cards"></div>
-                            <div class="scroll-x mt-12">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>时段</th>
-                                            <th>时间范围</th>
-                                            <th>注册人数</th>
-                                            <th>占比</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="registerTimeDetailTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div id="registerTimeChartsWrap" class="device-stats-charts-wrap register-time-charts-wrap mt-14" style="display:none;">
-                                <p id="registerTimeChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
-                                <div class="device-stats-charts register-time-charts-grid">
-                                    <div class="device-stats-chart-card">
-                                        <h4>凌晨 / 上午 / 下午 / 晚上</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="registerTimeChartPeriods"></canvas></div>
-                                    </div>
-                                    <div class="device-stats-chart-card chart-card-wide">
-                                        <h4>按小时（北京时间）</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="registerTimeChartHourly"></canvas></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-analytics-tracking" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>页面加载性能</h2>
+                        <p class="hint mt-0">C 端自动上报 <code>track_page_load_perf</code>：DOM Ready / FCP / Load，可按页面与 Android/iOS 对比。数据来自 App / 浏览器 WebView 真实采样。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="analyticsPagePerfDays">统计区间</label>
+                                <select id="analyticsPagePerfDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30" data-default="custom"></select>
+                            </div>
+                            <button type="button" class="btn-page" id="btnRefreshPageLoadPerf">刷新性能数据</button>
+                        </div>
+                        <div id="analyticsPageLoadPerf" class="analytics-conv-wrap" aria-live="polite">页面性能加载中…</div>
+                    </section>
                     <section>
                         <h2>安装页埋点汇总</h2>
                         <p class="hint mt-0">来自 <code>analytics_api_daily</code>：安装包点击、视频播放与注册成功事件（公开页 <code>track_install_*</code>）。安装页 PV/停留详见侧栏「安装页统计」。</p>
@@ -3480,8 +3466,8 @@
     </div>
 
     <script src="/js/admin/loader.js?v=20260831-adops"></script>
-    <script src="/js/admin/nav.js?v=20260813-page-refresh"></script>
+    <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260831-refundconsult"></script>
+    <script src="/js/admin_panel.js?v=20260901-purchase-admin-act"></script>
 </body>
 </html>

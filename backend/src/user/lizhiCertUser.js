@@ -4,6 +4,7 @@
 const crypto = require('crypto');
 const { getPool } = require('../shared/db');
 const { renderLizhiPdfArtifacts } = require('../admin/lizhiCert');
+const { clean, pickLastCompany } = require('./employmentCertShared');
 
 var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
 var LIZHI_CERT_AMOUNT = '50.00';
@@ -13,109 +14,6 @@ var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
 var TEMP_SHARE_TTL_MS = 30 * 60 * 1000;
 var TEMP_SHARE_MAX = 300;
 var tempShareStore = new Map();
-
-function clean(s) {
-  return String(s == null ? '' : s).trim();
-}
-
-function dateKey(raw) {
-  var s = clean(raw);
-  var m = s.match(/(\d{4})\D+(\d{1,2})(?:\D+(\d{1,2}))?/);
-  if (!m) return 0;
-  return Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3] || 1);
-}
-
-function ymKey(year, month) {
-  var y = Number(year);
-  var mo = Number(month);
-  if (!y || !mo) return 0;
-  return y * 100 + mo;
-}
-
-function formatYmDay(year, month, day) {
-  return String(year) + '/' + String(Number(month)) + '/' + String(Number(day));
-}
-
-function lastDayOfMonth(year, month) {
-  return new Date(Number(year), Number(month), 0).getDate();
-}
-
-function employerIsCurrent(row) {
-  var st = row && row.status;
-  if (st === 1 || st === '1' || st === '在职') return true;
-  return !clean(row && row.leave_date);
-}
-
-function employerRecency(row) {
-  var leave = dateKey(row && row.leave_date);
-  var hire = dateKey(row && row.hire_date);
-  var current = employerIsCurrent(row) ? 100000000 : 0;
-  return current + Math.max(leave, hire);
-}
-
-/** 当前最后一家公司：优先个税最近月份对应单位，否则取任职里最近一段。 */
-function pickLastCompany(employers, taxRecords) {
-  var list = Array.isArray(employers) ? employers : [];
-  var taxes = Array.isArray(taxRecords) ? taxRecords : [];
-  var company = '';
-  var firstYm = 0;
-  var lastYm = 0;
-  var i;
-  for (i = 0; i < taxes.length; i++) {
-    var cn = clean(taxes[i] && taxes[i].company_name);
-    var k = ymKey(taxes[i] && taxes[i].year, taxes[i] && taxes[i].month);
-    if (!cn || !k) continue;
-    if (!company) {
-      company = cn;
-      firstYm = k;
-      lastYm = k;
-      continue;
-    }
-    if (cn !== company) continue;
-    if (k < firstYm) firstYm = k;
-    if (k > lastYm) lastYm = k;
-  }
-
-  var match = null;
-  if (company) {
-    for (i = 0; i < list.length; i++) {
-      if (clean(list[i] && list[i].company_name) === company) {
-        match = list[i];
-        break;
-      }
-    }
-  }
-  if (!match && list.length) {
-    match = list.slice().sort(function (a, b) {
-      return employerRecency(b) - employerRecency(a);
-    })[0];
-    company = clean(match && match.company_name);
-  }
-
-  var hire = '';
-  var leave = '';
-  if (firstYm) {
-    hire = formatYmDay(Math.floor(firstYm / 100), firstYm % 100, 1);
-  }
-  if (lastYm) {
-    var ly = Math.floor(lastYm / 100);
-    var lm = lastYm % 100;
-    leave = formatYmDay(ly, lm, lastDayOfMonth(ly, lm));
-  }
-  if (match) {
-    if (!company) company = clean(match.company_name);
-    if (clean(match.hire_date)) hire = clean(match.hire_date);
-    if (clean(match.leave_date)) leave = clean(match.leave_date);
-    else if (employerIsCurrent(match)) leave = '';
-  }
-
-  return {
-    company_name: company,
-    position: match ? clean(match.position) : '',
-    hire_date: hire,
-    leave_date: leave
-  };
-}
 
 function purgeTempShares() {
   var now = Date.now();
@@ -301,8 +199,10 @@ async function handleLizhiCertGenerate(req, res) {
     if (!payload.company_name) {
       return res.status(400).json({ code: 400, msg: '请填写公司全称' });
     }
+    var isQuick = b.quick === true || b.quick === 1 || b.quick === '1';
     if (!payload.position) {
-      return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
+      if (isQuick) payload.position = '职员';
+      else return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
     var art = await renderLizhiPdfArtifacts(payload);
     var buf = art.pdf;

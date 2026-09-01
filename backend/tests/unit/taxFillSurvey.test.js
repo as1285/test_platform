@@ -10,6 +10,12 @@ describe('taxFillSurvey helpers', () => {
     expect(survey.normalizeImproveTopic('unknown')).toBe('');
   });
 
+  it('normalizes multi improve topics', () => {
+    expect(survey.normalizeImproveTopics('paste,manual,paste')).toEqual(['paste', 'manual']);
+    expect(survey.normalizeImproveTopics(['generate', 'calc'])).toEqual(['generate', 'calc']);
+    expect(survey.serializeImproveTopics(['manual', 'paste'])).toBe('paste,manual');
+  });
+
   it('trims and clamps suggestion', () => {
     expect(survey.normalizeSuggestion('  想改工资  ')).toBe('想改工资');
     expect(survey.normalizeSuggestion('')).toBe(null);
@@ -26,17 +32,29 @@ describe('taxFillSurvey helpers', () => {
     expect(survey.normalizeSubmitBody({}).error).toMatch(/满意度/);
   });
 
-  it('accepts complete submit', () => {
+  it('rejects ok/bad without improve topics', () => {
+    expect(survey.normalizeSubmitBody({ satisfaction: 'bad' }).error).toMatch(/不满意/);
+    expect(survey.normalizeSubmitBody({ satisfaction: 'ok' }).error).toMatch(/一般/);
+  });
+
+  it('accepts complete submit with multi topics', () => {
     const row = survey.normalizeSubmitBody({
       satisfaction: 'ok',
-      improve_topic: 'paste',
+      improve_topics: ['paste', 'list'],
       suggestion: '粘贴导入经常失败'
     });
     expect(row.error).toBeUndefined();
     expect(row.satisfaction).toBe('ok');
-    expect(row.improve_topic).toBe('paste');
+    expect(row.improve_topic).toBe('paste,list');
+    expect(row.improve_topics).toEqual(['paste', 'list']);
     expect(row.suggestion).toBe('粘贴导入经常失败');
     expect(row.skipped).toBe(0);
+  });
+
+  it('allows good without improve topics', () => {
+    const row = survey.normalizeSubmitBody({ satisfaction: 'good' });
+    expect(row.error).toBeUndefined();
+    expect(row.improve_topic).toBe(null);
   });
 
   it('clears optional fields when skipped', () => {
@@ -56,6 +74,15 @@ describe('taxFillSurvey helpers', () => {
     const empty = await survey.summarizeTaxFillSurvey(null, 7);
     expect(empty.total).toBe(0);
     expect(empty.satisfaction).toEqual({ good: 0, ok: 0, bad: 0 });
+    expect(empty.improve_unhappy).toEqual({
+      start: 0,
+      paste: 0,
+      manual: 0,
+      generate: 0,
+      list: 0,
+      calc: 0,
+      other: 0
+    });
     expect(empty.recent).toEqual([]);
   });
 });

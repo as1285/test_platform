@@ -4,6 +4,11 @@
 const crypto = require('crypto');
 const { getPool } = require('../shared/db');
 const { renderZaizhiPdfArtifacts } = require('../admin/zaizhiCert');
+const {
+  clean,
+  pickZaizhiCompany,
+  genderFromIdNumber
+} = require('./employmentCertShared');
 
 var ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
 var ZAIZHI_CERT_AMOUNT = '50.00';
@@ -13,20 +18,6 @@ var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
 var TEMP_SHARE_TTL_MS = 30 * 60 * 1000;
 var TEMP_SHARE_MAX = 300;
 var tempShareStore = new Map();
-
-function clean(s) {
-  return String(s == null ? '' : s).trim();
-}
-
-
-function genderFromIdNumber(idNumber) {
-  var s = String(idNumber || '').replace(/[^0-9Xx]/g, '');
-  var d = '';
-  if (s.length >= 18) d = s.charAt(16);
-  else if (s.length === 15) d = s.charAt(14);
-  if (!d || !/\d/.test(d)) return '';
-  return Number(d) % 2 === 1 ? '男' : '女';
-}
 
 function purgeTempShares() {
   var now = Date.now();
@@ -142,32 +133,45 @@ async function handleZaizhiCertPrefill(req, res) {
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
     var u = urows[0];
-    var company = '';
-    var position = '';
-    var hire = '';
+    var employers = [];
+    var taxRecords = [];
     try {
       const [erows] = await pool.execute(
-        `SELECT company_name, position, hire_date
-         FROM employers WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1`,
+        `SELECT company_name, position, hire_date, leave_date, status
+         FROM employers WHERE user_id = ?`,
         [uname]
       );
-      if (erows.length) {
-        company = clean(erows[0].company_name);
-        position = clean(erows[0].position);
-        hire = clean(erows[0].hire_date);
-      }
+      employers = erows || [];
     } catch (eEmp) {
       /* ignore */
     }
+    try {
+      const [trows] = await pool.execute(
+        `SELECT company_name, year, month
+         FROM tax_records
+         WHERE user_id = ? AND deleted_at IS NULL
+           AND TRIM(IFNULL(company_name,'')) <> ''
+         ORDER BY year DESC, month DESC, id DESC
+         LIMIT 240`,
+        [uname]
+      );
+      taxRecords = trows || [];
+    } catch (eTax) {
+      /* ignore */
+    }
+    var last = pickZaizhiCompany(employers, taxRecords);
+    var idNumber = clean(u.tax_id);
     return res.json({
       code: 200,
       data: {
         name: clean(u.real_name),
-        id_number: clean(u.tax_id),
-        company_name: company,
-        position: position,
-        hire_date: hire,
-        gender: genderFromIdNumber(clean(u.tax_id))
+        id_number: idNumber,
+        company_name: last.company_name,
+        department: '',
+        position: last.position,
+        hire_date: last.hire_date,
+        gender: genderFromIdNumber(idNumber),
+        last_company: true
       }
     });
   } catch (e) {
@@ -200,8 +204,10 @@ async function handleZaizhiCertGenerate(req, res) {
     if (!payload.company_name) {
       return res.status(400).json({ code: 400, msg: '请填写公司全称' });
     }
+    var isQuick = b.quick === true || b.quick === 1 || b.quick === '1';
     if (!payload.position) {
-      return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
+      if (isQuick) payload.position = '职员';
+      else return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
     if (!payload.gender) {
       payload.gender = genderFromIdNumber(payload.id_number);

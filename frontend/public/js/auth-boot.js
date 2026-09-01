@@ -238,6 +238,39 @@
     } catch (eMark) {}
   }
 
+  /** Android「我的」：不依赖机型 UA，首屏即走 750px @sm 底图（HyperOS WebView 大图合成极慢） */
+  function primeAndroidMineE1SmFirstPaint() {
+    try {
+      if (currentPageName() !== 'mine.html') {
+        return;
+      }
+      var ua = '';
+      try {
+        ua = String(navigator.userAgent || '');
+      } catch (eUa) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      if (!/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(ua)) {
+        return;
+      }
+      window.__mineE1ForceSm = true;
+      document.documentElement.classList.add('app-android-mine-e1-sm');
+      if (document.getElementById('androidMineSmFirstPaint')) {
+        return;
+      }
+      var st = document.createElement('style');
+      st.id = 'androidMineSmFirstPaint';
+      st.setAttribute('data-android-mine-e1-sm-firstpaint', '1');
+      st.textContent =
+        'html.app-android-mine-e1-sm body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;background-color:#f5f6fa!important;background-image:none!important;}' +
+        'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:visible!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;aspect-ratio:1284/2127!important;container-type:normal!important;width:100%!important;}' +
+        'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img,html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:fill!important;position:relative!important;top:auto!important;transform:none!important;opacity:0!important;}' +
+        'html.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;}';
+      document.head.appendChild(st);
+    } catch (ePrime) {}
+  }
+
   try {
     if (typeof window.authFetch !== 'function') {
       window.authFetch = bearerTokenFetch;
@@ -267,7 +300,84 @@
     };
   }
 
+  (function tabEmbedEarlyChrome() {
+    function parentIsTabShellHost() {
+      try {
+        if (!window.parent || window.parent === window) return false;
+        var pdoc = window.parent.document;
+        return !!(pdoc && pdoc.documentElement.getAttribute('data-tab-shell') === '1');
+      } catch (e0) {
+        return false;
+      }
+    }
+    var embed = false;
+    try {
+      if (new URLSearchParams(window.location.search).get('tab_embed') === '1') embed = true;
+    } catch (e1) {}
+    try {
+      var fe = window.frameElement;
+      if (fe && fe.classList && fe.classList.contains('tab-shell-iframe')) embed = true;
+    } catch (e2) {}
+    if (!embed && parentIsTabShellHost()) embed = true;
+    if (!embed) return;
+    document.documentElement.classList.add('tab-embed-mode');
+    var st = document.createElement('style');
+    st.setAttribute('data-tab-embed-boot', '1');
+    /* 盖过各页 html body.page-* > .bottom-nav 的高优先级锁，避免 iframe 子页再冒出一条底栏 */
+    st.textContent =
+      'html.tab-embed-mode .bottom-nav,' +
+      'html.tab-embed-mode body > .bottom-nav,' +
+      'html.tab-embed-mode body.page-shouye > .bottom-nav,' +
+      'html.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.tab-embed-mode body.page-mine > .bottom-nav,' +
+      'html.tab-embed-mode body .bottom-nav.ios-device,' +
+      'html.app-ios-client.tab-embed-mode .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode .bottom-nav,' +
+      'html.app-ios-iphone16promax.tab-embed-mode .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.app-ios-client.tab-embed-mode body.page-message > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-daiban > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-bancha > .bottom-nav,' +
+      'html.app-ios-iphone16pro.tab-embed-mode body.page-message > .bottom-nav{' +
+      'display:none!important;visibility:hidden!important;pointer-events:none!important;' +
+      'height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;' +
+      'opacity:0!important;z-index:-1!important;}' +
+      'html.tab-embed-mode body.has-bottom-nav,' +
+      'html.tab-embed-mode body.page-daiban,' +
+      'html.tab-embed-mode body.page-bancha,' +
+      'html.tab-embed-mode body.page-message,' +
+      'html.tab-embed-mode body.page-shouye,' +
+      'html.tab-embed-mode body.page-mine{' +
+      '--bottom-nav-clearance:0px!important;padding-bottom:0!important;}';
+    (document.head || document.documentElement).appendChild(st);
+    function stripEmbedBottomNav() {
+      try {
+        var nodes = document.querySelectorAll('.bottom-nav');
+        for (var i = 0; i < nodes.length; i++) {
+          if (nodes[i] && nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+        }
+      } catch (e3) {}
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', stripEmbedBottomNav);
+    } else {
+      stripEmbedBottomNav();
+    }
+    /* iOS：后续脚本可能再钉底栏，短时复检移除 */
+    var n = 0;
+    var timer = setInterval(function () {
+      stripEmbedBottomNav();
+      n += 1;
+      if (n >= 20) clearInterval(timer);
+    }, 250);
+  })();
+
   markViewportChromeClasses();
+  primeAndroidMineE1SmFirstPaint();
 
   if (!isPublicPage()) {
     if (!getToken()) {

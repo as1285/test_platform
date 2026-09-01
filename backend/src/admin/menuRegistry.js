@@ -222,14 +222,6 @@ const ADMIN_PAGE_DEFS = [
 
   /* —— 数据 —— */
   {
-    page: 'analytics-register',
-    menu_key: 'analytics-register',
-    label: '注册分析',
-    group: 'insights',
-    module: 'analytics',
-    order: 10
-  },
-  {
     page: 'analytics-activity',
     menu_key: 'analytics-activity',
     label: '用户活跃',
@@ -393,6 +385,7 @@ function resolveMenuKeyForPage(page) {
   if (p === 'system' || p === 'setting') p = 'settings';
   if (p === 'install' || p === 'guide') p = 'install-guide';
   if (p === 'analytics') p = 'analytics-conversion';
+  if (p === 'analytics-register') p = 'install-guide-stats';
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i].menu_key;
   }
@@ -408,6 +401,7 @@ function getPageDef(page) {
   if (p === 'system' || p === 'setting') p = 'settings';
   if (p === 'install' || p === 'guide') p = 'install-guide';
   if (p === 'analytics') p = 'analytics-conversion';
+  if (p === 'analytics-register') p = 'install-guide-stats';
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i];
   }

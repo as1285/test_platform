@@ -3479,7 +3479,6 @@ async function createTables() {
 
   var analyticsSplitMenus = [
     'analytics-conversion',
-    'analytics-register',
     'analytics-purchase',
     'analytics-tracking'
   ];
@@ -3496,6 +3495,14 @@ async function createTables() {
      SELECT admin_id, 'analytics-purchase' FROM admin_account_menus
      WHERE menu_key IN ('analytics-conversion', 'analytics-tracking', 'analytics')`
   );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'install-guide-stats' FROM admin_account_menus
+     WHERE menu_key = 'analytics-register'`
+  );
+
+  await conn.execute(`DELETE FROM admin_account_menus WHERE menu_key = 'analytics-register'`);
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
@@ -7636,6 +7643,8 @@ function isRetainedTrackAction(action) {
     act.indexOf('track_register_') === 0 ||
     act.indexOf('track_share_') === 0 ||
     act.indexOf('track_mine_share_') === 0 ||
+    act.indexOf('track_page_load_') === 0 ||
+    act.indexOf('track_tab_shell_') === 0 ||
     act.indexOf('track_install_') === 0 ||
     act.indexOf('track_landing_') === 0 ||
     act.indexOf('track_app_') === 0 ||
@@ -8728,7 +8737,7 @@ async function loginUser(username, password) {
   
   if (rows.length === 0) {
     conn.release();
-    throw new Error('账号或密码错误，可以使用激活码找回账号密码');
+    throw new Error('账号不存在 请注册');
   }
   
   const rec = rows[0];
@@ -10578,6 +10587,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_page_view: '页面浏览',
   track_install_page_leave: '离开页面',
   track_install_page_perf: '页面加载耗时',
+  track_page_load_perf: '页面加载性能',
   track_install_apk_click: 'Android 安装包点击',
   track_install_ios_click: 'iOS 描述文件点击',
   track_install_step_advance: '下载后进入安装步骤',
@@ -10704,6 +10714,7 @@ function recordInstallGuideTrackEvent(req, action, meta) {
   }
   if (
     !isInstallGuideTrackContext(req, meta) &&
+    !/^track_page_load_/i.test(act) &&
     !/^track_install_/i.test(act) &&
     !/^track_landing_/i.test(act) &&
     !/^track_app_/i.test(act) &&
@@ -10976,6 +10987,77 @@ function parseInstallGuidePerfMeta(metaJson) {
     return null;
   }
   return out;
+}
+
+/** 解析：C 端页面加载性能 meta（track_page_load_perf） */
+function parsePageLoadPerfMeta(metaJson) {
+  var m = null;
+  try {
+    if (metaJson == null) {
+      return null;
+    }
+    if (typeof metaJson === 'object' && !Array.isArray(metaJson)) {
+      m = metaJson;
+    } else {
+      m = JSON.parse(String(metaJson));
+    }
+  } catch (e0) {
+    return null;
+  }
+  if (!m || typeof m !== 'object') {
+    return null;
+  }
+  function num(key) {
+    var n = parseInt(m[key], 10);
+    if (!isFinite(n) || n < 0 || n > 120000) {
+      return null;
+    }
+    return n;
+  }
+  var page = String(m.page || '').trim();
+  if (page.length > 64) {
+    page = page.substring(0, 64);
+  }
+  var out = {
+    page: page || null,
+    dom_ready_ms: num('dom_ready_ms'),
+    load_ms: num('load_ms'),
+    fcp_ms: num('fcp_ms'),
+    ttfb_ms: num('ttfb_ms'),
+    platform: String(m.platform || '').trim().substring(0, 16) || null,
+    device_model: String(m.device_model || '').trim().substring(0, 48) || null,
+    cordova: m.cordova === 1 || m.cordova === '1' ? 1 : 0,
+    vw: num('vw'),
+    trigger: String(m.trigger || '').trim().substring(0, 24) || null,
+    username: String(m.username || '').trim().substring(0, 32) || null
+  };
+  if (
+    !out.page &&
+    out.dom_ready_ms == null &&
+    out.load_ms == null &&
+    out.fcp_ms == null &&
+    out.ttfb_ms == null
+  ) {
+    return null;
+  }
+  return out;
+}
+
+function formatPageLoadPerfLabel(perf) {
+  if (!perf || typeof perf !== 'object') {
+    return '—';
+  }
+  var parts = [];
+  if (perf.dom_ready_ms != null) {
+    parts.push('DOM ' + formatLatencyMsLabel(perf.dom_ready_ms));
+  }
+  if (perf.fcp_ms != null) {
+    parts.push('FCP ' + formatLatencyMsLabel(perf.fcp_ms));
+  }
+  if (perf.load_ms != null) {
+    parts.push('Load ' + formatLatencyMsLabel(perf.load_ms));
+  }
+  return parts.length ? parts.join(' · ') : '—';
 }
 
 /** aggregate ms stats */
@@ -11398,6 +11480,7 @@ function normalizeUserLoginFailReason(rawMsg) {
   if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
   if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
   if (msg.indexOf('密码错误') >= 0) return 'wrong_password';
+  if (msg.indexOf('账号不存在') >= 0) return 'account_not_found';
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
   if (msg.indexOf('已注册') >= 0 || msg.indexOf('账号已存在') >= 0) return 'register_fail:duplicate';
   if (msg.indexOf('请求过于频繁') >= 0 || msg.indexOf('rate_limited') >= 0) return 'rate_limited';
@@ -11490,6 +11573,7 @@ const USER_LOGIN_REASON_LABELS = {
   empty_password: '密码为空',
   account_banned: '账号已封禁',
   invalid_credentials: '账号或密码错误',
+  account_not_found: '账号不存在',
   wrong_password: '密码错误',
   invalid_username: '账号格式错误',
   ip_denied: 'IP 已封禁',
@@ -15787,6 +15871,147 @@ async function handleAdminInstallTrackStats(req, res) {
       res.json({
         code: 200,
         data: Object.assign({ items: items }, conversionAnalyticsPeriodMeta(period))
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** C 端页面加载性能（track_page_load_perf） */
+async function handleAdminPageLoadPerfStats(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 14);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        `SELECT meta_json, user_agent, ${cnDay} AS d, created_at
+         FROM install_guide_track_events
+         WHERE event_key = 'track_page_load_perf'
+           AND ${pf.sql}
+         ORDER BY created_at DESC
+         LIMIT 8000`,
+        pf.params
+      );
+      var byPage = {};
+      var byPlatformPage = {};
+      var recent = [];
+      (rows || []).forEach(function (row) {
+        var perf = parsePageLoadPerfMeta(row.meta_json);
+        if (!perf) {
+          return;
+        }
+        var pg = perf.page || 'unknown';
+        if (!byPage[pg]) {
+          byPage[pg] = {
+            page: pg,
+            total: 0,
+            android: 0,
+            ios: 0,
+            cordova: 0,
+            dom: [],
+            load: [],
+            fcp: [],
+            ttfb: []
+          };
+        }
+        var bucket = byPage[pg];
+        bucket.total += 1;
+        if (perf.platform === 'android') {
+          bucket.android += 1;
+        } else if (perf.platform === 'ios') {
+          bucket.ios += 1;
+        }
+        if (perf.cordova) {
+          bucket.cordova += 1;
+        }
+        if (perf.dom_ready_ms != null) {
+          bucket.dom.push(perf.dom_ready_ms);
+        }
+        if (perf.load_ms != null) {
+          bucket.load.push(perf.load_ms);
+        }
+        if (perf.fcp_ms != null) {
+          bucket.fcp.push(perf.fcp_ms);
+        }
+        if (perf.ttfb_ms != null) {
+          bucket.ttfb.push(perf.ttfb_ms);
+        }
+        var platKey = pg + '|' + (perf.platform || 'other');
+        if (!byPlatformPage[platKey]) {
+          byPlatformPage[platKey] = {
+            page: pg,
+            platform: perf.platform || 'other',
+            dom: []
+          };
+        }
+        if (perf.dom_ready_ms != null) {
+          byPlatformPage[platKey].dom.push(perf.dom_ready_ms);
+        }
+        if (recent.length < 40) {
+          recent.push({
+            page: pg,
+            platform: perf.platform || 'other',
+            device_model: perf.device_model || '',
+            cordova: perf.cordova ? 1 : 0,
+            dom_ready_ms: perf.dom_ready_ms,
+            fcp_ms: perf.fcp_ms,
+            load_ms: perf.load_ms,
+            load_label: formatPageLoadPerfLabel(perf),
+            at: row.created_at,
+            user_agent: row.user_agent || ''
+          });
+        }
+      });
+      var summary = Object.keys(byPage)
+        .map(function (k) {
+          var b = byPage[k];
+          return {
+            page: b.page,
+            samples: b.total,
+            android: b.android,
+            ios: b.ios,
+            cordova: b.cordova,
+            dom_ready: aggregateMsStats(b.dom),
+            load: aggregateMsStats(b.load),
+            fcp: aggregateMsStats(b.fcp),
+            ttfb: aggregateMsStats(b.ttfb)
+          };
+        })
+        .sort(function (a, b) {
+          return b.samples - a.samples || String(a.page).localeCompare(String(b.page));
+        });
+      var byPlatform = Object.keys(byPlatformPage)
+        .map(function (k) {
+          var b = byPlatformPage[k];
+          return {
+            page: b.page,
+            platform: b.platform,
+            samples: b.dom.length,
+            dom_ready: aggregateMsStats(b.dom)
+          };
+        })
+        .filter(function (row) {
+          return row.samples > 0;
+        })
+        .sort(function (a, b) {
+          return b.samples - a.samples || String(a.page).localeCompare(String(b.page));
+        });
+      res.json({
+        code: 200,
+        data: Object.assign(
+          {
+            summary: summary,
+            by_platform: byPlatform,
+            recent: recent
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -20787,6 +21012,7 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_alipay_open_click',
   'track_alipay_payment_success',
   'track_purchase_faq_expand',
+  'track_purchase_success_cases_view',
   'track_purchase_fold_expand',
   'track_purchase_share_teaser_click',
   'track_purchase_price_survey_open',
@@ -20842,6 +21068,7 @@ function purchasePageTrackEventLabel(eventKey) {
     track_alipay_open_click: '打开支付宝',
     track_alipay_payment_success: '支付宝支付成功',
     track_purchase_faq_expand: '支付FAQ展开',
+    track_purchase_success_cases_view: '成功案例曝光',
     track_purchase_fold_expand: '折叠区展开',
     track_purchase_share_teaser_click: '分享优惠入口点击',
     track_purchase_price_survey_open: '离开调研打开',
@@ -20862,6 +21089,165 @@ function purchasePageTrackEventLabel(eventKey) {
     track_purchase_page_leave: '购买页离开'
   };
   return labels[eventKey] || eventKey;
+}
+
+/** 支付分析：指定管理员名下激活码开通，按固定单价计入 GMV */
+function purchaseAnalyticsAdminActivationCreditRules() {
+  var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+  return [
+    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '' },
+    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '' },
+    {
+      admin_username: rootAdmin,
+      unit_amount: 100,
+      exclude_alipay: true,
+      label_note: '非支付宝'
+    }
+  ];
+}
+
+function purchaseAnalyticsAdminActivationCreditList() {
+  return purchaseAnalyticsAdminActivationCreditRules().map(function (rule) {
+    return {
+      admin_username: rule.admin_username,
+      unit_amount: rule.unit_amount,
+      label_note: rule.label_note || ''
+    };
+  });
+}
+
+function emptyPurchaseAnalyticsAdminActivationCredit() {
+  return {
+    by_admin: purchaseAnalyticsAdminActivationCreditList().map(function (row) {
+      return {
+        admin_username: row.admin_username,
+        unit_amount: row.unit_amount,
+        label_note: row.label_note || '',
+        orders: 0,
+        gmv: 0
+      };
+    }),
+    total_orders: 0,
+    total_gmv: 0
+  };
+}
+
+function purchaseAnalyticsAdminActivationOwnerFilter(rule) {
+  var sql = 'ac.owner_admin_username = ?';
+  var params = [rule.admin_username];
+  if (rule.exclude_alipay) {
+    sql +=
+      " AND (COALESCE(NULLIF(TRIM(u.activation_source_channel), ''), '__none__') <> ?" +
+      ' AND NOT (' +
+      'ac.note IS NOT NULL AND ac.note LIKE ?))';
+    params = params.concat(['alipay', '%支付宝%']);
+  }
+  return { sql: sql, params: params };
+}
+
+async function queryPurchaseAnalyticsAdminActivationCredits(conn, period) {
+  var rules = purchaseAnalyticsAdminActivationCreditRules();
+  var out = emptyPurchaseAnalyticsAdminActivationCredit();
+  if (!rules.length) {
+    return { summary: out, dailyMap: {} };
+  }
+  var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+  var actPf = analyticsPeriodCnDateFilter(cnActDay, period);
+  var byAdminMap = {};
+  out.by_admin.forEach(function (row) {
+    byAdminMap[row.admin_username] = row;
+  });
+  var dailyMap = {};
+  try {
+    for (var ri = 0; ri < rules.length; ri++) {
+      var rule = rules[ri];
+      var ownerFilter = purchaseAnalyticsAdminActivationOwnerFilter(rule);
+      var baseWhere =
+        'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ac.used_by_username IS NOT NULL AND TRIM(ac.used_by_username) <> \'\' AND ' +
+        ownerFilter.sql +
+        ' AND ' +
+        actPf.sql +
+        ' AND ' +
+        userActivationStatsEligibleSql('u.username');
+      var baseParams = ownerFilter.params.concat(actPf.params);
+
+      const [summaryRows] = await conn.execute(
+        'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere,
+        baseParams
+      );
+      var orders = Number((summaryRows[0] || {}).cnt) || 0;
+      if (orders > 0) {
+        var gmv = Math.round(orders * rule.unit_amount * 100) / 100;
+        var summaryRow = byAdminMap[rule.admin_username];
+        if (!summaryRow) {
+          summaryRow = {
+            admin_username: rule.admin_username,
+            unit_amount: rule.unit_amount,
+            label_note: rule.label_note || '',
+            orders: 0,
+            gmv: 0
+          };
+          byAdminMap[rule.admin_username] = summaryRow;
+          out.by_admin.push(summaryRow);
+        }
+        summaryRow.orders = orders;
+        summaryRow.gmv = gmv;
+        out.total_orders += orders;
+        out.total_gmv += gmv;
+      }
+
+      const [dailyRows] = await conn.execute(
+        'SELECT ' +
+          cnActDay +
+          ' AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY ' +
+          cnActDay +
+          ' ORDER BY d DESC',
+        baseParams
+      );
+      (dailyRows || []).forEach(function (r) {
+        var dk = formatDateKey(r.d);
+        var dayOrders = Number(r.cnt) || 0;
+        if (!dk || dayOrders <= 0) return;
+        if (!dailyMap[dk]) {
+          dailyMap[dk] = {
+            admin_activation_orders: 0,
+            admin_activation_gmv: 0,
+            by_admin: {}
+          };
+        }
+        var dayGmv = Math.round(dayOrders * rule.unit_amount * 100) / 100;
+        dailyMap[dk].admin_activation_orders += dayOrders;
+        dailyMap[dk].admin_activation_gmv += dayGmv;
+        dailyMap[dk].by_admin[rule.admin_username] = {
+          admin_username: rule.admin_username,
+          unit_amount: rule.unit_amount,
+          label_note: rule.label_note || '',
+          orders: dayOrders,
+          gmv: dayGmv
+        };
+      });
+    }
+    out.total_gmv = Math.round(out.total_gmv * 100) / 100;
+    out.by_admin.sort(function (a, b) {
+      return String(a.admin_username).localeCompare(String(b.admin_username));
+    });
+    Object.keys(dailyMap).forEach(function (dk) {
+      dailyMap[dk].admin_activation_gmv = Math.round(dailyMap[dk].admin_activation_gmv * 100) / 100;
+    });
+    return { summary: out, dailyMap: dailyMap };
+  } catch (eAdminAct) {
+    console.error('[admin purchase-events] admin_activation_credit', eAdminAct && eAdminAct.message);
+    return { summary: out, dailyMap: {} };
+  }
 }
 
 /**
@@ -21256,10 +21642,30 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         console.error('[admin purchase-events] payment_orders', ePay && ePay.message);
       }
 
+      var adminActivationCredit = await queryPurchaseAnalyticsAdminActivationCredits(conn, period);
+      var adminActSummary = adminActivationCredit.summary || emptyPurchaseAnalyticsAdminActivationCredit();
+      var adminActDailyMap = adminActivationCredit.dailyMap || {};
+      paidSummary.admin_activation = adminActSummary;
+      paidSummary.admin_activation_orders = adminActSummary.total_orders || 0;
+      paidSummary.admin_activation_gmv = adminActSummary.total_gmv || 0;
+      paidSummary.combined_gmv =
+        Math.round(((paidSummary.gmv || 0) + (paidSummary.admin_activation_gmv || 0)) * 100) / 100;
+      paidSummary.combined_activation_orders =
+        (paidSummary.activation_orders || 0) + (paidSummary.admin_activation_orders || 0);
+      paidSummary.combined_activation_gmv =
+        Math.round(
+          ((paidSummary.activation_gmv || 0) + (paidSummary.admin_activation_gmv || 0)) * 100
+        ) / 100;
+
       var byDay = Object.keys(dayMap)
         .concat(
           Object.keys(paidDailyMap).filter(function (dk) {
             return !dayMap[dk];
+          })
+        )
+        .concat(
+          Object.keys(adminActDailyMap).filter(function (dk) {
+            return !dayMap[dk] && !paidDailyMap[dk];
           })
         )
         .filter(function (v, i, a) {
@@ -21311,6 +21717,17 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             rename_orders: 0,
             rename_gmv: 0
           };
+          var adminActDay = adminActDailyMap[d] || {
+            admin_activation_orders: 0,
+            admin_activation_gmv: 0,
+            by_admin: {}
+          };
+          var combinedGmv =
+            Math.round(((pay.gmv || 0) + (adminActDay.admin_activation_gmv || 0)) * 100) / 100;
+          var combinedActivationGmv =
+            Math.round(
+              ((pay.activation_gmv || 0) + (adminActDay.admin_activation_gmv || 0)) * 100
+            ) / 100;
           return {
             date: d,
             events: o.events,
@@ -21339,6 +21756,11 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             gmv: pay.gmv,
             activation_orders: pay.activation_orders,
             activation_gmv: pay.activation_gmv,
+            admin_activation_orders: adminActDay.admin_activation_orders || 0,
+            admin_activation_gmv: adminActDay.admin_activation_gmv || 0,
+            admin_activation_by_admin: adminActDay.by_admin || {},
+            combined_gmv: combinedGmv,
+            combined_activation_gmv: combinedActivationGmv,
             lizhi_orders: pay.lizhi_orders,
             lizhi_users: pay.lizhi_users,
             lizhi_gmv: pay.lizhi_gmv,
@@ -21489,6 +21911,7 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_alipay_open_click',
   'track_alipay_payment_success',
   'track_purchase_faq_expand',
+  'track_purchase_success_cases_view',
   'track_purchase_fold_expand',
   'track_purchase_share_teaser_click',
   'track_purchase_price_survey_open',
@@ -21548,6 +21971,7 @@ function activateTrackEventLabel(eventKey) {
     track_alipay_open_click: '打开支付宝付款',
     track_alipay_payment_success: '支付宝付款开通成功',
     track_purchase_faq_expand: '支付FAQ展开',
+    track_purchase_success_cases_view: '成功案例曝光',
     track_purchase_fold_expand: '折叠区展开',
     track_purchase_share_teaser_click: '分享优惠入口点击',
     track_purchase_price_survey_open: '离开调研打开',
@@ -22402,6 +22826,7 @@ function getHandlers() {
     handleAdminAnalyticsPurchaseEventUsers,
     handleAdminInstallGuideStats,
     handleAdminInstallTrackStats,
+    handleAdminPageLoadPerfStats,
     handleAdminAnalyticsOverview,
     handleAdminAnalyticsDauUsers,
     handleAdminMessagesBulk,

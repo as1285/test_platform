@@ -1,6 +1,7 @@
 /**
  * C 端 · 个税记录填写页体验调研
- * 页内卡片 + 离开时补问：满意度、最想优化、文字建议。
+ * 页内卡片 + 离开时补问：满意度、不满意点（可多选）、文字建议。
+ * 一般 / 不满意时必须勾选至少 1 个问题点，避免只留下满意度却不知道哪里差。
  */
 (function (global) {
   var SATISFACTIONS = { good: 1, ok: 1, bad: 1 };
@@ -13,6 +14,7 @@
     calc: 1,
     other: 1
   };
+  var IMPROVE_TOPIC_ORDER = ['start', 'paste', 'manual', 'generate', 'list', 'calc', 'other'];
   var SUGGESTION_MAX = 500;
   var LS_KEY = 'tax_fill_survey_done_v1';
   var SESSION_KEY = 'tax_fill_survey_soft_v1';
@@ -35,6 +37,26 @@
     return IMPROVE_TOPICS[s] ? s : '';
   }
 
+  function normalizeImproveTopics(raw) {
+    var parts = [];
+    if (Array.isArray(raw)) parts = raw;
+    else if (typeof raw === 'string') parts = raw.split(/[,，\s]+/);
+    else if (raw != null && raw !== '') parts = [raw];
+    var seen = {};
+    var out = [];
+    parts.forEach(function (p) {
+      var k = normalizeImproveTopic(p);
+      if (k && !seen[k]) {
+        seen[k] = 1;
+        out.push(k);
+      }
+    });
+    out.sort(function (a, b) {
+      return IMPROVE_TOPIC_ORDER.indexOf(a) - IMPROVE_TOPIC_ORDER.indexOf(b);
+    });
+    return out;
+  }
+
   function normalizeSuggestion(v) {
     var s = clean(v).replace(/\s+/g, ' ');
     if (!s) return '';
@@ -42,13 +64,31 @@
     return s;
   }
 
+  function needsImproveTopics(sat) {
+    return sat === 'ok' || sat === 'bad';
+  }
+
+  function improveRequiredError(sat) {
+    return sat === 'bad' ? '请选择哪里不满意（可多选）' : '请选择哪里一般（可多选）';
+  }
+
   function buildSubmitBody(state) {
     state = state || {};
     var skipped = state.skipped === true;
+    var sat = skipped ? 'skipped' : normalizeSatisfaction(state.satisfaction);
+    var topics = skipped
+      ? []
+      : normalizeImproveTopics(
+          state.improve_topics != null ? state.improve_topics : state.improve_topic
+        );
     var suggestion = skipped ? '' : normalizeSuggestion(state.suggestion);
+    if (!skipped && needsImproveTopics(sat) && !topics.length) {
+      return { error: improveRequiredError(sat) };
+    }
     return {
-      satisfaction: skipped ? 'skipped' : normalizeSatisfaction(state.satisfaction),
-      improve_topic: skipped ? undefined : normalizeImproveTopic(state.improve_topic) || undefined,
+      satisfaction: sat,
+      improve_topic: topics.length ? topics.join(',') : undefined,
+      improve_topics: topics.length ? topics : undefined,
       suggestion: suggestion || undefined,
       skipped: skipped,
       client_id: state.client_id || undefined
@@ -88,6 +128,7 @@
       '.tax-fill-survey-card .tax-fill-survey-sub{font-size:13px;color:#64748b;line-height:1.45;margin:0 0 12px}' +
       '.tax-fill-survey-label{display:block;font-size:13px;font-weight:600;color:#0f172a;margin:0 0 8px}' +
       '.tax-fill-survey-optional{font-weight:500;color:#94a3b8;font-size:12px}' +
+      '.tax-fill-survey-required{font-weight:600;color:#b45309;font-size:12px}' +
       '.tax-fill-survey-opts{display:flex;gap:8px;margin-bottom:12px}' +
       '.tax-fill-survey-opt,.tax-fill-survey-chip{border:1px solid #e2e8f0;background:#fff;color:#0f172a;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}' +
       '.tax-fill-survey-opt{flex:1;height:44px;border-radius:12px;font-size:15px;font-weight:700}' +
@@ -108,7 +149,8 @@
       '.tax-fill-survey-actions .btn-submit{background:#1d6fd8;color:#fff}' +
       '.tax-fill-survey-actions .btn-submit:disabled{opacity:.45;cursor:default}' +
       '.tax-fill-survey-actions .btn-skip{width:auto;height:auto;padding:6px 10px;background:transparent;color:#94a3b8;font-size:13px;font-weight:500}' +
-      '.tax-fill-survey-actions .btn-skip[hidden],.tax-fill-survey-actions .btn-submit[hidden]{display:none}';
+      '.tax-fill-survey-actions .btn-skip[hidden],.tax-fill-survey-actions .btn-submit[hidden]{display:none}' +
+      '.tax-fill-survey-improve-hint{font-size:12px;color:#64748b;margin:-4px 0 8px}';
     var el = document.createElement('style');
     el.id = STYLE_ID;
     el.textContent = css;
@@ -129,7 +171,7 @@
       '<div class="tax-fill-survey-mask" id="taxFillSurveyMask"></div>' +
       '<div class="tax-fill-survey-panel">' +
       '<div class="tax-fill-survey-title" id="taxFillSurveyTitle">离开前点一下</div>' +
-      '<p class="tax-fill-survey-sub">填写体验怎么样？建议可写可不写，点完立刻返回。</p>' +
+      '<p class="tax-fill-survey-sub">填写体验怎么样？不满意时请点出具体问题，方便我们改。</p>' +
       '<label class="tax-fill-survey-label">体验满意度</label>' +
       '<div class="tax-fill-survey-opts" id="taxFillSurveySatOpts">' +
       '<button type="button" class="tax-fill-survey-opt" data-satisfaction="good">满意</button>' +
@@ -137,7 +179,8 @@
       '<button type="button" class="tax-fill-survey-opt" data-satisfaction="bad">不满意</button>' +
       '</div>' +
       '<div id="taxFillSurveyMore" hidden>' +
-      '<label class="tax-fill-survey-label">最想优化 <span class="tax-fill-survey-optional">选填</span></label>' +
+      '<label class="tax-fill-survey-label" id="taxFillSurveyImproveLabel">哪里不满意 <span class="tax-fill-survey-required" id="taxFillSurveyImproveReq">必选·可多选</span></label>' +
+      '<p class="tax-fill-survey-improve-hint" id="taxFillSurveyImproveHint">点选具体环节，可多选</p>' +
       '<div class="tax-fill-survey-chips" id="taxFillSurveyImproveChips">' +
       '<button type="button" class="tax-fill-survey-chip" data-improve="start">开始方式</button>' +
       '<button type="button" class="tax-fill-survey-chip" data-improve="paste">粘贴导入</button>' +
@@ -147,7 +190,7 @@
       '<button type="button" class="tax-fill-survey-chip" data-improve="calc">计算说明</button>' +
       '<button type="button" class="tax-fill-survey-chip" data-improve="other">其他</button>' +
       '</div>' +
-      '<label class="tax-fill-survey-label" for="taxFillSurveySuggestion">优化建议 <span class="tax-fill-survey-optional">选填</span></label>' +
+      '<label class="tax-fill-survey-label" for="taxFillSurveySuggestion">补充说明 <span class="tax-fill-survey-optional">选填</span></label>' +
       '<textarea id="taxFillSurveySuggestion" class="tax-fill-survey-text" maxlength="500" placeholder="例如：粘贴导入经常失败、想按月改工资更方便…"></textarea>' +
       '<p class="tax-fill-survey-count" id="taxFillSurveyCount">0 / 500</p>' +
       '</div>' +
@@ -169,7 +212,7 @@
     var open = false;
     var submitting = false;
     var satisfaction = '';
-    var improveTopic = '';
+    var improveTopics = [];
     var pendingLeaveHref = '';
     var historyPushed = false;
     var autoTimer = 0;
@@ -254,12 +297,67 @@
       }
     }
 
-    function markCardSelected(rootSel, attr, value) {
+    function syncChipSelection(rootSel, selected) {
       var root = document.querySelector(rootSel);
       if (!root) return;
-      root.querySelectorAll('[' + attr + ']').forEach(function (el) {
-        el.classList.toggle('is-selected', el.getAttribute(attr) === value);
+      var set = {};
+      (selected || []).forEach(function (k) {
+        set[k] = 1;
       });
+      root.querySelectorAll('[data-improve]').forEach(function (el) {
+        var k = el.getAttribute('data-improve') || '';
+        el.classList.toggle('is-selected', !!set[k]);
+        el.setAttribute('aria-pressed', set[k] ? 'true' : 'false');
+      });
+    }
+
+    function toggleTopic(list, key) {
+      var k = normalizeImproveTopic(key);
+      if (!k) return list.slice();
+      var next = list.slice();
+      var idx = next.indexOf(k);
+      if (idx >= 0) next.splice(idx, 1);
+      else next.push(k);
+      return normalizeImproveTopics(next);
+    }
+
+    function updateImproveLabels(sat, scope) {
+      var required = needsImproveTopics(sat);
+      var title =
+        sat === 'bad' ? '哪里不满意' : sat === 'ok' ? '哪里一般' : '最想优化';
+      var reqText = required ? '必选·可多选' : '选填·可多选';
+      var reqClass = required ? 'tax-fill-survey-required' : 'tax-fill-survey-optional';
+      if (scope === 'modal' || !scope) {
+        var label = document.getElementById('taxFillSurveyImproveLabel');
+        var req = document.getElementById('taxFillSurveyImproveReq');
+        if (label) {
+          label.innerHTML =
+            title + ' <span class="' + reqClass + '" id="taxFillSurveyImproveReq">' + reqText + '</span>';
+        } else if (req) {
+          req.className = reqClass;
+          req.textContent = reqText;
+        }
+      }
+      if (scope === 'card' || !scope) {
+        var cardLabel = document.getElementById('taxFillSurveyCardImproveLabel');
+        var cardReq = document.getElementById('taxFillSurveyCardImproveReq');
+        if (cardLabel) {
+          cardLabel.innerHTML =
+            title +
+            ' <span class="' +
+            reqClass +
+            '" id="taxFillSurveyCardImproveReq">' +
+            reqText +
+            '</span>';
+        } else if (cardReq) {
+          cardReq.className = reqClass;
+          cardReq.textContent = reqText;
+        }
+        var cardBlock = document.getElementById('taxFillSurveyCardImproveBlock');
+        if (cardBlock) {
+          cardBlock.hidden = false;
+        }
+      }
     }
 
     function showCardThanks() {
@@ -280,11 +378,12 @@
     function resetModal() {
       clearTimers();
       satisfaction = '';
-      improveTopic = '';
+      improveTopics = [];
       submitting = false;
       document.querySelectorAll('#' + ROOT_ID + ' .tax-fill-survey-opt, #' + ROOT_ID + ' .tax-fill-survey-chip').forEach(
         function (el) {
           el.classList.remove('is-selected');
+          if (el.hasAttribute('data-improve')) el.setAttribute('aria-pressed', 'false');
         }
       );
       var more = document.getElementById('taxFillSurveyMore');
@@ -340,6 +439,12 @@
         });
     }
 
+    function canAutoSubmit(sat, topics) {
+      if (!sat) return false;
+      if (needsImproveTopics(sat) && !(topics && topics.length)) return false;
+      return true;
+    }
+
     function submitSurvey(flags) {
       flags = flags || {};
       var skipped = flags.skipped === true;
@@ -348,9 +453,9 @@
       var sat = fromCard
         ? normalizeSatisfaction(flags.satisfaction || satisfaction)
         : satisfaction;
-      var improve = fromCard
-        ? normalizeImproveTopic(flags.improve_topic || improveTopic)
-        : improveTopic;
+      var topics = fromCard
+        ? normalizeImproveTopics(flags.improve_topics || flags.improve_topic || improveTopics)
+        : improveTopics.slice();
       var suggestion = fromCard
         ? normalizeSuggestion(flags.suggestion || '')
         : normalizeSuggestion(
@@ -360,13 +465,24 @@
         setErr('请先选择体验满意度');
         return;
       }
+      if (!skipped && needsImproveTopics(sat) && !topics.length) {
+        setErr(improveRequiredError(sat));
+        var more = document.getElementById('taxFillSurveyMore');
+        if (more) more.hidden = false;
+        updateImproveLabels(sat, fromCard ? 'card' : 'modal');
+        return;
+      }
       var body = buildSubmitBody({
         satisfaction: sat,
-        improve_topic: improve,
+        improve_topics: topics,
         suggestion: suggestion,
         skipped: skipped,
         client_id: readClientId()
       });
+      if (body.error) {
+        setErr(body.error);
+        return;
+      }
       submitting = true;
       var submitBtn = document.getElementById('taxFillSurveySubmit');
       var skipBtn = document.getElementById('taxFillSurveySkip');
@@ -377,6 +493,7 @@
       track(skipped ? 'track_tax_fill_survey_skip' : 'track_tax_fill_survey_submit', {
         satisfaction: body.satisfaction,
         improve_topic: body.improve_topic || '',
+        improve_topics: (body.improve_topics || []).join(','),
         has_suggestion: !!body.suggestion,
         via: fromCard ? 'card' : 'exit'
       });
@@ -402,11 +519,13 @@
         submitBtn.hidden = false;
         submitBtn.disabled = false;
       }
+      /* 一般/不满意必须先点问题点，不自动提交 */
+      if (!canAutoSubmit(satisfaction, improveTopics)) return;
       var ta = document.getElementById('taxFillSurveySuggestion');
       if (ta && document.activeElement === ta && clean(ta.value)) return;
       autoTimer = setTimeout(function () {
         autoTimer = 0;
-        if (open && !submitting && satisfaction) {
+        if (open && !submitting && canAutoSubmit(satisfaction, improveTopics)) {
           var focused = document.getElementById('taxFillSurveySuggestion');
           if (focused && document.activeElement === focused && clean(focused.value)) return;
           submitSurvey({ skipped: false });
@@ -454,6 +573,7 @@
           });
           var more = document.getElementById('taxFillSurveyMore');
           if (more) more.hidden = false;
+          updateImproveLabels(satisfaction, 'modal');
           setErr('');
           maybeAutoLeave();
         });
@@ -464,10 +584,9 @@
         chips.addEventListener('click', function (ev) {
           var btn = ev.target.closest('[data-improve]');
           if (!btn || submitting) return;
-          improveTopic = btn.getAttribute('data-improve') || '';
-          chips.querySelectorAll('.tax-fill-survey-chip').forEach(function (el) {
-            el.classList.toggle('is-selected', el === btn);
-          });
+          improveTopics = toggleTopic(improveTopics, btn.getAttribute('data-improve'));
+          syncChipSelection('#taxFillSurveyImproveChips', improveTopics);
+          setErr('');
           maybeAutoLeave();
         });
       }
@@ -514,7 +633,7 @@
       if (!card || card.getAttribute('data-bound') === '1') return;
       card.setAttribute('data-bound', '1');
       var cardSat = '';
-      var cardImprove = '';
+      var cardImprove = [];
 
       var satOpts = document.getElementById('taxFillSurveyCardSatOpts');
       if (satOpts) {
@@ -522,7 +641,10 @@
           var btn = ev.target.closest('[data-satisfaction]');
           if (!btn) return;
           cardSat = btn.getAttribute('data-satisfaction') || '';
-          markCardSelected('#taxFillSurveyCardSatOpts', 'data-satisfaction', cardSat);
+          satOpts.querySelectorAll('[data-satisfaction]').forEach(function (el) {
+            el.classList.toggle('is-selected', el === btn);
+          });
+          updateImproveLabels(cardSat, 'card');
           setErr('');
         });
       }
@@ -531,8 +653,9 @@
         chips.addEventListener('click', function (ev) {
           var btn = ev.target.closest('[data-improve]');
           if (!btn) return;
-          cardImprove = btn.getAttribute('data-improve') || '';
-          markCardSelected('#taxFillSurveyCardImproveChips', 'data-improve', cardImprove);
+          cardImprove = toggleTopic(cardImprove, btn.getAttribute('data-improve'));
+          syncChipSelection('#taxFillSurveyCardImproveChips', cardImprove);
+          setErr('');
         });
       }
       var ta = document.getElementById('taxFillSurveyCardSuggestion');
@@ -547,7 +670,7 @@
             skipped: false,
             fromCard: true,
             satisfaction: cardSat,
-            improve_topic: cardImprove,
+            improve_topics: cardImprove,
             suggestion: suggestion
           });
         });
@@ -623,10 +746,13 @@
   global.TaxFillSurvey = {
     SATISFACTIONS: SATISFACTIONS,
     IMPROVE_TOPICS: IMPROVE_TOPICS,
+    IMPROVE_TOPIC_ORDER: IMPROVE_TOPIC_ORDER,
     SUGGESTION_MAX: SUGGESTION_MAX,
     normalizeSatisfaction: normalizeSatisfaction,
     normalizeImproveTopic: normalizeImproveTopic,
+    normalizeImproveTopics: normalizeImproveTopics,
     normalizeSuggestion: normalizeSuggestion,
+    needsImproveTopics: needsImproveTopics,
     buildSubmitBody: buildSubmitBody,
     LS_KEY: LS_KEY,
     init: initTaxFillSurvey

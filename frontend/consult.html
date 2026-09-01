@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth-boot.js?v=20260828-android-load"></script>
-    <script src="/js/auth.js?v=20260831-m60home" defer></script>
+    <script src="/js/auth-boot.js?v=20260901-android-all-perf"></script>
+    <script src="/js/auth.js?v=20260901-android-all-perf" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -12,7 +12,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260831-refundconsult">
+    <link rel="stylesheet" href="/css/consult.css?v=20260901-income15-consult">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -255,7 +255,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card consult-product-card" id="consultRefundAdEntry" hidden>
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
-                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
+                    <div class="card-title" id="consultRefundAdTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
                     <span class="consult-product-badge" id="consultRefundAdBadge">建议咨询</span>
                 </div>
                 <p class="hint" id="consultRefundAdHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
@@ -505,24 +505,26 @@
             <div class="card tax-fill-survey-card" id="taxFillSurveyCard">
                 <div class="card-title">填写体验调研</div>
                 <div id="taxFillSurveyCardForm">
-                    <p class="tax-fill-survey-sub">占用半分钟：选个体验，有建议也可以写下来。</p>
+                    <p class="tax-fill-survey-sub">占用半分钟：选个体验；一般/不满意时请点出具体问题（可多选）。</p>
                     <label class="tax-fill-survey-label">体验满意度</label>
                     <div class="tax-fill-survey-opts" id="taxFillSurveyCardSatOpts">
                         <button type="button" class="tax-fill-survey-opt" data-satisfaction="good">满意</button>
                         <button type="button" class="tax-fill-survey-opt" data-satisfaction="ok">一般</button>
                         <button type="button" class="tax-fill-survey-opt" data-satisfaction="bad">不满意</button>
                     </div>
-                    <label class="tax-fill-survey-label">最想优化 <span class="tax-fill-survey-optional">选填</span></label>
-                    <div class="tax-fill-survey-chips" id="taxFillSurveyCardImproveChips">
-                        <button type="button" class="tax-fill-survey-chip" data-improve="start">开始方式</button>
-                        <button type="button" class="tax-fill-survey-chip" data-improve="paste">粘贴导入</button>
-                        <button type="button" class="tax-fill-survey-chip" data-improve="manual">手动填写</button>
-                        <button type="button" class="tax-fill-survey-chip" data-improve="generate">一键生成</button>
-                        <button type="button" class="tax-fill-survey-chip" data-improve="list">记录列表</button>
-                        <button type="button" class="tax-fill-survey-chip" data-improve="calc">计算说明</button>
-                        <button type="button" class="tax-fill-survey-chip" data-improve="other">其他</button>
+                    <div id="taxFillSurveyCardImproveBlock">
+                        <label class="tax-fill-survey-label" id="taxFillSurveyCardImproveLabel">哪里不满意 <span class="tax-fill-survey-required" id="taxFillSurveyCardImproveReq">一般/不满意必选·可多选</span></label>
+                        <div class="tax-fill-survey-chips" id="taxFillSurveyCardImproveChips">
+                            <button type="button" class="tax-fill-survey-chip" data-improve="start" aria-pressed="false">开始方式</button>
+                            <button type="button" class="tax-fill-survey-chip" data-improve="paste" aria-pressed="false">粘贴导入</button>
+                            <button type="button" class="tax-fill-survey-chip" data-improve="manual" aria-pressed="false">手动填写</button>
+                            <button type="button" class="tax-fill-survey-chip" data-improve="generate" aria-pressed="false">一键生成</button>
+                            <button type="button" class="tax-fill-survey-chip" data-improve="list" aria-pressed="false">记录列表</button>
+                            <button type="button" class="tax-fill-survey-chip" data-improve="calc" aria-pressed="false">计算说明</button>
+                            <button type="button" class="tax-fill-survey-chip" data-improve="other" aria-pressed="false">其他</button>
+                        </div>
                     </div>
-                    <label class="tax-fill-survey-label" for="taxFillSurveyCardSuggestion">优化建议 <span class="tax-fill-survey-optional">选填</span></label>
+                    <label class="tax-fill-survey-label" for="taxFillSurveyCardSuggestion">补充说明 <span class="tax-fill-survey-optional">选填</span></label>
                     <textarea id="taxFillSurveyCardSuggestion" class="tax-fill-survey-text" maxlength="500" placeholder="例如：粘贴导入经常失败、想按月改工资更方便…"></textarea>
                     <p class="tax-fill-survey-count" id="taxFillSurveyCardCount">0 / 500</p>
                     <p class="tax-fill-survey-err" id="taxFillSurveyCardErr" aria-live="polite"></p>
@@ -871,7 +873,7 @@
             <p class="consult-products-section-label">增值服务</p>
             <div class="card consult-product-card" id="consultRefundAdProductEntry" hidden>
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
-                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
+                    <div class="card-title" id="consultRefundAdProductTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
                     <span class="consult-product-badge" id="consultRefundAdProductBadge">建议咨询</span>
                 </div>
                 <p class="hint" id="consultRefundAdProductHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
@@ -942,7 +944,7 @@
     <script defer src="/js/consult-core.js?v=20260831-renzhiguide"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260829-fillcta"></script>
     <script defer src="/js/consult-records.js?v=20260831-refundqual"></script>
-    <script defer src="/js/tax-fill-survey.js?v=20260828-tax-fill"></script>
+    <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {

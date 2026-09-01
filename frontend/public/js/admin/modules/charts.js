@@ -456,7 +456,7 @@
             var tbody = document.getElementById('registerTimeDetailTbody');
             var chartsWrap = document.getElementById('registerTimeChartsWrap');
             var chartsEmpty = document.getElementById('registerTimeChartsEmpty');
-            if (!summaryEl || !cardsEl || !tbody) return;
+            if (!summaryEl || !cardsEl) return;
 
             destroyRegisterTimeCharts();
             if (chartsWrap) chartsWrap.style.display = 'none';
@@ -481,7 +481,7 @@
             if (!total) {
                 summaryEl.textContent = daysHint + '内暂无注册用户。';
                 cardsEl.innerHTML = '';
-                tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
                 if (chartsWrap) {
                     chartsWrap.style.display = 'block';
                     if (chartsEmpty) {
@@ -532,21 +532,23 @@
             });
             cardsEl.innerHTML = cardsHtml;
 
-            tbody.innerHTML = detail
-                .map(function (b) {
-                    return (
-                        '<tr><td>' +
-                        esc(b.label) +
-                        '</td><td>' +
-                        esc(b.range || '') +
-                        '</td><td>' +
-                        esc(String(b.count)) +
-                        '</td><td>' +
-                        esc(b.pct_text || '—') +
-                        '</td></tr>'
-                    );
-                })
-                .join('');
+            if (tbody) {
+                tbody.innerHTML = detail
+                    .map(function (b) {
+                        return (
+                            '<tr><td>' +
+                            esc(b.label) +
+                            '</td><td>' +
+                            esc(b.range || '') +
+                            '</td><td>' +
+                            esc(String(b.count)) +
+                            '</td><td>' +
+                            esc(b.pct_text || '—') +
+                            '</td></tr>'
+                        );
+                    })
+                    .join('');
+            }
 
             if (typeof Chart === 'undefined') {
                 if (chartsWrap) {
@@ -680,12 +682,13 @@
             }
 
             summaryEl.textContent =
-                daysHint +
-                '注册中，安卓约占 ' +
+                '安卓 ' +
                 (platformSummary.android_pct_text || '—') +
-                '、苹果约占 ' +
+                ' · 苹果 ' +
                 (platformSummary.ios_pct_text || '—') +
-                '（其余为 PC 或未知）。口径：按注册日（北京时间）；系统取该用户最早一条设备 UA。';
+                ' · 共 ' +
+                String(platformSummary.total != null ? platformSummary.total : 0) +
+                ' 人';
 
             cardsEl.innerHTML =
                 '<div class="user-data-stat-card"><div class="ud-label">安卓率</div><div class="ud-val">' +
@@ -732,11 +735,15 @@
                 .join('');
         }
 
+        function installGuideStatsDaysEl() {
+            return document.getElementById('installGuideStatsDays');
+        }
+
         function loadAnalyticsRegisterPlatform() {
             var summaryEl = document.getElementById('registerPlatformSummary');
             var cardsEl = document.getElementById('registerPlatformCards');
             var tbody = document.getElementById('registerPlatformDailyTbody');
-            var daysEl = document.getElementById('analyticsRegisterPlatformDays');
+            var daysEl = installGuideStatsDaysEl();
             var days = analyticsPeriodVal(daysEl);
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (cardsEl) cardsEl.innerHTML = '';
@@ -763,7 +770,7 @@
             var summaryEl = document.getElementById('registerTimeSummary');
             var tbody = document.getElementById('registerTimeDetailTbody');
             var cardsEl = document.getElementById('registerTimePeriodCards');
-            var daysEl = document.getElementById('analyticsRegisterTimeDays');
+            var daysEl = installGuideStatsDaysEl();
             var days = analyticsPeriodVal(daysEl);
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';

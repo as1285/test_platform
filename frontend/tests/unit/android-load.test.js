@@ -26,7 +26,22 @@ describe('android first-paint load', () => {
     expect(auth).toContain("androidLike && primaryTabs[currentPageName()]");
     expect(auth).toContain("'mine.html': true");
     expect(auth).toContain("'daiban.html': true");
+    expect(auth).toContain("get('tab_embed') === '1'");
     expect(auth.indexOf('markViewportChromeClasses()')).toBeLessThan(auth.indexOf('setupMobileStatusBar();'));
+  });
+
+  it('android home softens continuous animations', () => {
+    const shouye = readFileSync(join(frontend, 'shouye.html'), 'utf8');
+    expect(shouye).toContain('html.app-android-client .sy-apk-marquee span');
+    expect(shouye).toContain('animation: none');
+    expect(shouye).toContain('requestIdleCallback(startAuto');
+  });
+
+  it('primary tabs drop watermark.js (tab-shell warm pages)', () => {
+    ['shouye.html', 'mine.html', 'daiban.html', 'bancha.html', 'message.html'].forEach((name) => {
+      const html = readFileSync(join(frontend, name), 'utf8');
+      expect(html, name).not.toContain('watermark.js');
+    });
   });
 
   it('skips android idle prefetch but keeps press prefetch', () => {
@@ -46,6 +61,8 @@ describe('android first-paint load', () => {
     expect(boot).toContain('window.authFetch');
     expect(boot).toContain('window.buildLoginPageUrl');
     expect(boot).toContain('markViewportChromeClasses()');
+    expect(boot).toContain('primeAndroidMineE1SmFirstPaint');
+    expect(boot).toContain('app-android-mine-e1-sm');
     expect(boot).not.toContain('setupMobileStatusBar');
     expect(boot).not.toContain('conversion-guide.js');
     expect(assemble).toContain('auth-boot.js');
@@ -62,10 +79,10 @@ describe('android first-paint load', () => {
     expect(pages.length).toBeGreaterThan(40);
     pages.forEach((name) => {
       const html = readFileSync(join(frontend, name), 'utf8');
-      expect(html, name).toContain('auth-boot.js?v=20260828-android-load');
-      expect(html, name).toMatch(/auth\.js\?v=202608\d{2}-[\w-]+" defer/);
+      expect(html, name).toMatch(/auth-boot\.js\?v=20260[\w-]+/);
+      expect(html, name).toMatch(/auth\.js\?v=20260[\d]{3}-[\w-]+" defer/);
       const bootAt = html.indexOf('auth-boot.js');
-      const authAt = html.search(/auth\.js\?v=202608/);
+      const authAt = html.search(/auth\.js\?v=20260/);
       expect(bootAt, name).toBeGreaterThan(-1);
       expect(authAt, name).toBeGreaterThan(bootAt);
     });
