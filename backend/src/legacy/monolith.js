@@ -19611,7 +19611,6 @@ async function handleAdminSettingsPost(req, res) {
       hasTaxEditFee ||
       hasRenameFee ||
       hasLizhiCertFee ||
-      hasInvite ||
       hasActivationNudge
     ) {
       return res.status(403).json({
