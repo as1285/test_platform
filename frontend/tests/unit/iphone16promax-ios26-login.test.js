@@ -16,7 +16,9 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
     expect(auth).toMatch(/function isIPhone17ProMaxClient\(\)/);
     expect(auth).toContain('function isIPhoneLargePromaxWidthViewport');
     expect(auth).toContain('function markIosPromaxWideLayout');
+    expect(auth).toContain('function injectIosLargeViewportWidthCss');
     expect(auth).toContain('app-ios-promax-wide');
+    expect(auth).toContain('@media screen and (min-width:414px)');
   });
 
   it('does not steal 16 Pro via iOS 26 + 402×874 heuristic', () => {
@@ -41,9 +43,10 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
     expect(shuimingResult).toContain('app-ios-iphone16promax');
     expect(shuimingResult).toContain('app-ios-promax-wide');
     expect(shuimingResult).toContain('tax_ios_promax_wide_v1');
-    expect(shuimingResult).toContain('20260902-ip16pm-wide2');
+    expect(shuimingResult).toContain('20260902-ip16pm-mq');
     expect(shuimingResult).toContain('tax_device_model_v1');
     expect(shuimingResult).toMatch(/short16 >= 428/);
+    expect(shuimingResult).toContain('@media screen and (min-width: 414px)');
     expect(shuimingResult).toMatch(
       /html\.app-ios-promax-wide body\.page-shuiming-result \.list[^}]*padding-left:\s*20px/
     );

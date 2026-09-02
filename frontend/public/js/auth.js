@@ -1136,6 +1136,32 @@
     } catch (eWide) {}
   }
 
+  /**
+   * 大屏宽度一次性方案：不依赖机型 class。
+   * 视口/设备逻辑宽 ≥414（含 16 Pro Max 标准 440 与放大 430）即加左右留白。
+   */
+  function injectIosLargeViewportWidthCss() {
+    if (document.querySelector('style[data-ios-large-viewport-width]')) {
+      return;
+    }
+    var st = document.createElement('style');
+    st.setAttribute('data-ios-large-viewport-width', '1');
+    st.textContent =
+      '@media screen and (min-width:414px),screen and (min-device-width:414px){' +
+      'body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
+      'body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
+      'body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
+      'body.page-shuiming-result .top-fixed .header{padding-left:20px !important;padding-right:20px !important;}' +
+      'body.page-shuiming-result .back-btn{left:20px !important;}' +
+      'body.page-shuiming-result .header-right{right:20px !important;}' +
+      'body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
+      'body.page-shuiming-result .sm-activate-card,body.page-shuiming-result .sm-refund-browse-card{margin-left:20px !important;margin-right:20px !important;}' +
+      'body.page-shuiming > .header{padding-left:20px !important;padding-right:20px !important;}' +
+      'body.page-shuiming > .content{padding-left:8px !important;padding-right:8px !important;}' +
+      '}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
   /** iPhone 17 / 17 Pro / 17 Air 等 6.3 寸档逻辑屏约 402×874（容差）。 */
   function isIPhone402x874Viewport() {
     try {
@@ -3718,6 +3744,7 @@
         !redmiNote115GClient;
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       lockAppSafeBottomInset({ cordovaXiaomi2410: cordovaXiaomi2410, iosClient: iosClient });
+      injectIosLargeViewportWidthCss();
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
       var vivoX200ProClient = androidClient && isVivoX200ProLikeClient();
       var cordovaVivoX200Pro = cordovaShell && vivoX200ProClient;
@@ -8086,7 +8113,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260902-ip16pm-wide2';
+      s.src = '/js/conversion-guide.js?v=20260902-ip16pm-mq';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
