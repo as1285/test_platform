@@ -408,6 +408,11 @@
                         sessionStorage.setItem('reg_next_download_v1', '1');
                     } catch (eNd) {}
                 }
+                var loginAccount = String(q.get('account') || q.get('u') || '').trim();
+                var usernameEl = document.getElementById('username');
+                if (loginAccount && usernameEl && !String(usernameEl.value || '').trim()) {
+                    usernameEl.value = loginAccount.slice(0, 32);
+                }
                 var goDownloadCta = false;
                 try {
                     goDownloadCta = sessionStorage.getItem('reg_next_download_v1') === '1';

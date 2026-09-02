@@ -589,6 +589,33 @@
             opacity: 0.75;
         }
 
+        .login-error-register-btn {
+            display: none;
+            flex: 1;
+            min-width: 0;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: #4285f4;
+            color: #fff;
+            font-size: 16px;
+            text-decoration: none;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-welcome-modal.is-not-found .login-error-register-btn {
+            display: flex;
+        }
+        .login-welcome-modal.is-not-found .login-error-recover-link {
+            display: none;
+        }
+        .login-welcome-modal.is-not-found .login-welcome-modal-btn {
+            background: #fff;
+            color: #4285f4;
+            border: 1px solid #4285f4;
+        }
         .login-error-modal-actions .login-welcome-modal-btn {
             flex: 0 0 auto;
             width: auto;
@@ -720,9 +747,11 @@
     <div id="loginErrorModal" class="login-welcome-modal" role="alertdialog" aria-modal="true" aria-labelledby="loginErrorModalBody">
         <div class="login-welcome-modal-mask" id="loginErrorModalMask"></div>
         <div class="login-welcome-modal-panel">
+            <p class="login-welcome-modal-title" id="loginErrorModalTitle" hidden>提示</p>
             <p class="login-welcome-modal-body" id="loginErrorModalBody" style="margin-bottom:0;">账号或密码错误</p>
             <div class="login-error-modal-actions">
                 <a href="zhzh_jhm.html" class="login-error-recover-link" id="loginErrorRecoverLink">找回账号密码（激活码）</a>
+                <a href="register.html" class="login-error-register-btn" id="loginErrorRegisterBtn">去注册</a>
                 <button type="button" class="login-welcome-modal-btn" id="loginErrorModalOk">确定</button>
             </div>
         </div>
@@ -990,31 +1019,96 @@
                 alert('扫脸登录功能暂未开放，请使用账号密码登录。');
             });
         }
+        function buildRegisterPageUrl(account) {
+            var href = 'register.html';
+            try {
+                var u = new URL('register.html', window.location.href);
+                var acc = String(account || '').trim();
+                if (acc) {
+                    u.searchParams.set('account', acc);
+                }
+                href = (u.pathname || '/register.html').replace(/^\//, '') + u.search;
+            } catch (eUrl) {
+                var acc2 = String(account || '').trim();
+                href = acc2 ? 'register.html?account=' + encodeURIComponent(acc2) : 'register.html';
+            }
+            try {
+                if (typeof window.appendSalesChannelToUrl === 'function') {
+                    href = window.appendSalesChannelToUrl(href);
+                }
+            } catch (eCh) {}
+            return href;
+        }
+
+        function isLoginRegisterDisabled() {
+            try {
+                if (typeof window.isInAppRegisterDisabled === 'function' && window.isInAppRegisterDisabled()) {
+                    return true;
+                }
+            } catch (eFn) {}
+            var btn = document.querySelector('a.register-btn');
+            return !!(btn && btn.style.display === 'none');
+        }
+
         function showLoginErrorModal(msg) {
             var text = String(msg || '登录失败');
-            if (text.indexOf('账号不存在') >= 0) {
-                showLoginFormTip(text);
-                return;
-            }
+            var isNotFound = text.indexOf('账号不存在') >= 0;
             var isCredFail =
                 text.indexOf('密码错误') >= 0 || text.indexOf('账号或密码错误') >= 0;
-            if (!isCredFail) {
+            if (!isNotFound && !isCredFail) {
                 alert(text);
                 return;
             }
             var root = document.getElementById('loginErrorModal');
             var body = document.getElementById('loginErrorModalBody');
+            var title = document.getElementById('loginErrorModalTitle');
+            var ok = document.getElementById('loginErrorModalOk');
+            var goReg = document.getElementById('loginErrorRegisterBtn');
             if (!root || !body) {
+                if (isNotFound && !isLoginRegisterDisabled()) {
+                    if (window.confirm('该账号尚未注册，是否前往注册？')) {
+                        window.location.href = buildRegisterPageUrl(
+                            (document.getElementById('loginUsername') || {}).value
+                        );
+                    }
+                    return;
+                }
                 alert(text);
                 return;
             }
-            body.textContent = '账号或密码错误，可以使用激活码找回账号密码';
+            root.classList.toggle('is-not-found', isNotFound);
+            if (title) {
+                title.hidden = !isNotFound;
+                title.textContent = isNotFound ? '账号尚未注册' : '提示';
+            }
+            if (isNotFound) {
+                body.textContent = '该账号不存在，请先注册后再登录。';
+                if (ok) ok.textContent = '取消';
+                if (goReg) {
+                    if (isLoginRegisterDisabled()) {
+                        goReg.style.display = 'none';
+                        if (ok) ok.textContent = '确定';
+                    } else {
+                        goReg.href = buildRegisterPageUrl(
+                            (document.getElementById('loginUsername') || {}).value
+                        );
+                        goReg.style.display = '';
+                    }
+                }
+            } else {
+                body.textContent = '账号或密码错误，可以使用激活码找回账号密码';
+                if (ok) ok.textContent = '确定';
+                if (goReg) goReg.style.display = 'none';
+            }
             root.classList.add('is-open');
         }
 
         function closeLoginErrorModal() {
             var root = document.getElementById('loginErrorModal');
-            if (root) root.classList.remove('is-open');
+            if (root) {
+                root.classList.remove('is-open');
+                root.classList.remove('is-not-found');
+            }
         }
 
         (function bindLoginErrorModal() {
