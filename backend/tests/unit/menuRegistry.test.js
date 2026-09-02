@@ -158,26 +158,23 @@ describe('menuRegistry', () => {
   it('sidebar child pages are independently assignable', () => {
     const assignable = getAssignableMenuDefs().map((d) => d.key);
     expect(assignable).toEqual(
-      expect.arrayContaining([
-        'peer-accounts',
-        'rename-tax-daily',
-        'users-deleted',
-        'user-login-log'
-      ])
+      expect.arrayContaining(['rename-tax-daily', 'users-deleted', 'user-login-log'])
     );
-    expect(getPageDef('peer-accounts').menu_key).toBe('peer-accounts');
+    expect(assignable).not.toContain('peer-accounts');
     expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
+    expect(getPageDef('rename-tax-daily').label).toBe('同行 · 高频改名');
+    expect(getPageDef('peer-accounts')).toEqual(getPageDef('rename-tax-daily'));
     expect(getPageDef('users-deleted').menu_key).toBe('users-deleted');
     expect(getPageDef('user-login-log').menu_key).toBe('user-login-log');
-    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'peer-accounts')).toBe(
+    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'rename-tax-daily')).toBe(
       false
     );
     expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['peer-accounts'] }, 'peer-accounts')
+      adminProfileCanAccessPage({ is_super: false, menus: ['peer-accounts'] }, 'rename-tax-daily')
     ).toBe(true);
     expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'rename-tax-daily')
-    ).toBe(false);
+      adminProfileCanAccessPage({ is_super: false, menus: ['peer-accounts'] }, 'peer-accounts')
+    ).toBe(true);
     expect(
       adminProfileCanAccessPage(
         { is_super: false, menus: ['rename-tax-daily'] },
@@ -196,9 +193,10 @@ describe('menuRegistry', () => {
     const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const usersGroup = tree.menu_tree.find((g) => g.id === 'users');
     expect(usersGroup.items.map((i) => i.page)).toEqual(
-      expect.arrayContaining(['users', 'peer-accounts', 'rename-tax-daily', 'users-deleted'])
+      expect.arrayContaining(['users', 'rename-tax-daily', 'users-deleted'])
     );
-    const peerDef = getAssignableMenuDefs().find((d) => d.key === 'peer-accounts');
-    expect(peerDef.group_label).toBe('用户管理');
+    expect(usersGroup.items.map((i) => i.page)).not.toContain('peer-accounts');
+    const renameDef = getAssignableMenuDefs().find((d) => d.key === 'rename-tax-daily');
+    expect(renameDef.group_label).toBe('用户管理');
   });
 });

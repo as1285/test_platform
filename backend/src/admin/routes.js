@@ -46,14 +46,14 @@ app.post(
 function requireAdminUsersListMenu(req, res, next) {
   var peer = String((req.query && req.query.peer) || '').trim().toLowerCase();
   var isPeer = peer === '1' || peer === 'exempt';
-  return mw.requireAdminAnyMenu(isPeer ? ['peer-accounts'] : ['users'])(req, res, next);
+  return mw.requireAdminAnyMenu(isPeer ? ['peer-accounts', 'rename-tax-daily'])(req, res, next);
 }
 
 app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users-deleted'), h.handleAdminDeletedUsers);
 app.get(
   '/api/admin/rename-tax-daily',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('rename-tax-daily'),
+  mw.requireAdminAnyMenu(['rename-tax-daily', 'peer-accounts']),
   h.handleAdminRenameTaxDaily
 );
 app.get('/api/admin/users', mw.requireAdminAuth, requireAdminUsersListMenu, h.handleAdminUsers);
@@ -329,7 +329,7 @@ app.post(
 app.post(
   '/api/admin/user-rename-fee-exempt',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['users', 'peer-accounts']),
+  mw.requireAdminAnyMenu(['users', 'peer-accounts', 'rename-tax-daily']),
   h.handleAdminUserRenameFeeExempt
 );
 app.post(
@@ -345,7 +345,7 @@ app.post(
   h.handleAdminUserLizhiCertUnlock
 );
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
-app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'peer-accounts']), h.handleAdminBan);
+app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'peer-accounts', 'rename-tax-daily']), h.handleAdminBan);
 app.post(
   '/api/admin/block-ip',
   mw.requireAdminAuth,

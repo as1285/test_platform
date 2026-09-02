@@ -36,7 +36,6 @@
     'admin-accounts': 'accounts',
     'downline-admins': 'accounts',
     users: 'users',
-    'peer-accounts': 'users',
     'rename-tax-daily': 'users',
     'users-deleted': 'users',
     'user-data': 'user-data',

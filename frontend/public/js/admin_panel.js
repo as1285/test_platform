@@ -1004,12 +1004,35 @@
         var _adminDataHash = '';
         var _channelAnalysisChartInstances = [];
 
+        var _renamePeerActiveTab = 'daily';
+
+        function setRenamePeerTab(tab, opts) {
+            opts = opts || {};
+            var next = tab === 'peer' ? 'peer' : 'daily';
+            _renamePeerActiveTab = next;
+            var dailyPanel = document.getElementById('renamePeerTabDaily');
+            var peerPanel = document.getElementById('renamePeerTabPeer');
+            document.querySelectorAll('.rename-peer-tab').forEach(function (btn) {
+                var on = btn.getAttribute('data-tab') === next;
+                btn.classList.toggle('is-active', on);
+                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            if (dailyPanel) dailyPanel.hidden = next !== 'daily';
+            if (peerPanel) peerPanel.hidden = next !== 'peer';
+            if (opts.load !== false) {
+                if (next === 'peer') loadPeerAccounts();
+                else loadRenameTaxDaily();
+            }
+        }
+
         function adminHasMenu(menuKey) {
             menuKey = String(menuKey || '');
+            if (menuKey === 'peer-accounts') menuKey = 'rename-tax-daily';
             if (!menuKey) return false;
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
             if (menus.indexOf(menuKey) >= 0) return true;
+            if (menuKey === 'rename-tax-daily' && menus.indexOf('peer-accounts') >= 0) return true;
             if (menuKey.indexOf('analytics-') === 0 && menus.indexOf('analytics') >= 0) return true;
             /* 侧栏已渲染的页应可进入（避免 menus 缓存落后于 menu_tree） */
             try {
@@ -1156,6 +1179,10 @@
 
         function normalizeAdminPage(raw) {
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
+            if (k === 'peer-accounts') {
+                _renamePeerActiveTab = 'peer';
+                k = 'rename-tax-daily';
+            }
             if (k === 'system' || k === 'setting') k = 'settings';
             if (k === 'install' || k === 'guide') k = 'install-guide';
             if (k === 'analytics' || k === 'analytics-conversion') k = 'ops-board';
@@ -1209,6 +1236,7 @@
 
         function adminPagePanelId(pageKey) {
             if (pageKey === 'downline-admins') return 'page-admin-accounts';
+            if (pageKey === 'peer-accounts') return 'page-rename-tax-daily';
             return 'page-' + pageKey;
         }
 
@@ -1218,6 +1246,7 @@
 
         function applyAdminRouteChrome(pageKey) {
             var panelId = adminPagePanelId(pageKey);
+            var navPageKey = pageKey === 'peer-accounts' ? 'rename-tax-daily' : pageKey;
             document.querySelectorAll('.page-panel').forEach(function (el) {
                 var on = el.id === panelId;
                 el.classList.toggle('active', on);
@@ -1225,12 +1254,12 @@
                 else el.setAttribute('hidden', '');
             });
             document.querySelectorAll('.nav-item').forEach(function (btn) {
-                btn.classList.toggle('active', btn.getAttribute('data-page') === pageKey);
+                btn.classList.toggle('active', btn.getAttribute('data-page') === navPageKey);
             });
             if (window.AdminNav && typeof AdminNav.setActivePage === 'function') {
-                AdminNav.setActivePage(pageKey);
+                AdminNav.setActivePage(navPageKey);
             }
-            var navBtn = document.querySelector('.nav-item[data-page="' + pageKey + '"]');
+            var navBtn = document.querySelector('.nav-item[data-page="' + navPageKey + '"]');
             var titleEl = document.getElementById('pageTitle');
             if (titleEl && navBtn) {
                 titleEl.textContent = navBtn.getAttribute('data-title') || '管理控制台';
@@ -1255,11 +1284,8 @@
             if (pageKey === 'users') {
                 loadUsers();
             }
-            if (pageKey === 'peer-accounts') {
-                loadPeerAccounts();
-            }
             if (pageKey === 'rename-tax-daily') {
-                loadRenameTaxDaily();
+                setRenamePeerTab(_renamePeerActiveTab);
             }
             if (pageKey === 'users-deleted') {
                 loadDeletedUsers();
@@ -7398,8 +7424,7 @@
             appearance: '外观',
             codes: '激活码',
             users: '注册用户',
-            'peer-accounts': '同行账号',
-            'rename-tax-daily': '高频改名',
+            'rename-tax-daily': '同行 · 高频改名',
             'users-deleted': '已删除',
             'user-data': '用户数据',
             'tax-records-edit': '个税维护',
@@ -7868,6 +7893,11 @@
                 loadRenameTaxDaily();
             };
         }
+        document.querySelectorAll('.rename-peer-tab').forEach(function (btn) {
+            btn.onclick = function () {
+                setRenamePeerTab(btn.getAttribute('data-tab'));
+            };
+        });
         var renameTaxDailyDays = document.getElementById('renameTaxDailyDays');
         if (renameTaxDailyDays) {
             renameTaxDailyDays.addEventListener('analytics-period-change', function () {
@@ -10098,7 +10128,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v17-ops-board';
+                var MENU_TREE_VER = 'ops-ia-v18-rename-peer-merge';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

@@ -144,20 +144,13 @@ const ADMIN_PAGE_DEFS = [
   /* —— 用户 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
   {
-    page: 'peer-accounts',
-    menu_key: 'peer-accounts',
-    label: '同行账号',
-    group: 'users',
-    module: 'users',
-    order: 15
-  },
-  {
     page: 'rename-tax-daily',
     menu_key: 'rename-tax-daily',
-    label: '高频改名',
+    label: '同行 · 高频改名',
     group: 'users',
     module: 'users',
-    order: 20
+    order: 15,
+    alias_menus: ['peer-accounts']
   },
   {
     page: 'users-deleted',
@@ -390,8 +383,12 @@ function getAssignableMenuDefs() {
   return out;
 }
 
-/** 辅助函数：resolveMenuKeyForPage */
-function resolveMenuKeyForPage(page) {
+/** 已合并侧栏页：旧 hash 仍指向同一面板 */
+var ADMIN_PAGE_ALIASES = {
+  'peer-accounts': 'rename-tax-daily'
+};
+
+function normalizeAdminPageKey(page) {
   var p = String(page || '')
     .replace(/^#/, '')
     .trim()
@@ -402,6 +399,13 @@ function resolveMenuKeyForPage(page) {
   if (p === 'analytics-conversion') p = 'ops-board';
   if (p === 'ops-research' || p === 'ops-lift') p = 'ops-board';
   if (p === 'analytics-register') p = 'install-guide-stats';
+  if (ADMIN_PAGE_ALIASES[p]) p = ADMIN_PAGE_ALIASES[p];
+  return p;
+}
+
+/** 辅助函数：resolveMenuKeyForPage */
+function resolveMenuKeyForPage(page) {
+  var p = normalizeAdminPageKey(page);
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i].menu_key;
   }
@@ -410,14 +414,7 @@ function resolveMenuKeyForPage(page) {
 
 /** 获取：PageDef */
 function getPageDef(page) {
-  var p = String(page || '')
-    .replace(/^#/, '')
-    .trim()
-    .toLowerCase();
-  if (p === 'system' || p === 'setting') p = 'settings';
-  if (p === 'install' || p === 'guide') p = 'install-guide';
-  if (p === 'analytics') p = 'ops-board';
-  if (p === 'analytics-register') p = 'install-guide-stats';
+  var p = normalizeAdminPageKey(page);
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i];
   }

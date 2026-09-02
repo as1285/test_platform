@@ -3554,11 +3554,7 @@ async function createTables() {
   /* 侧栏子页独立授权：原挂在「注册用户 / 管理登录」下的入口补权，避免已有账号丢菜单 */
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT DISTINCT admin_id, 'peer-accounts' FROM admin_account_menus WHERE menu_key = 'users'`
-  );
-  await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT DISTINCT admin_id, 'rename-tax-daily' FROM admin_account_menus WHERE menu_key = 'users'`
+     SELECT DISTINCT admin_id, 'rename-tax-daily' FROM admin_account_menus WHERE menu_key IN ('users', 'peer-accounts')`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)

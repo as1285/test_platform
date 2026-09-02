@@ -2545,6 +2545,20 @@ tr.users-detail-row > td {
 .page-hint-details summary {
     color: var(--admin-slate);
 }
+.rename-peer-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 16px;
+}
+.rename-peer-tab.is-active {
+    background: var(--admin-primary);
+    border-color: var(--admin-primary);
+    color: var(--admin-on-primary);
+}
+.rename-peer-tab-panel[hidden] {
+    display: none !important;
+}
 .rename-tax-daily-table {
     border-collapse: collapse;
     font-size: 12px;
