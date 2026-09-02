@@ -126,12 +126,20 @@
       }
     }
 
-    function isLikelyMobileAppShell() {
+    function inCordovaApp() {
       try {
-        if (typeof global.isCordovaTaxAppShell === 'function' && global.isCordovaTaxAppShell()) {
+        if (/TaxPlatformCordovaApp/i.test(navigator.userAgent || '')) return true;
+      } catch (e0) {}
+      try {
+        if (global.TaxNativeSave && typeof global.TaxNativeSave.saveBase64 === 'function') {
           return true;
         }
       } catch (e1) {}
+      return false;
+    }
+
+    function isLikelyMobileAppShell() {
+      if (inCordovaApp()) return true;
       try {
         if (global.navigator.standalone === true) return true;
       } catch (e2) {}
@@ -140,12 +148,80 @@
           return true;
         }
       } catch (e3) {}
-      var ua = navigator.userAgent || '';
-      return /iPhone|iPad|iPod|Android/i.test(ua);
+      return false;
     }
 
     function isAndroidLike() {
       return /Android/i.test(navigator.userAgent || '');
+    }
+
+    function forceDownloadUrl(url) {
+      var u = String(url || '').trim();
+      if (!u) return '';
+      return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'dl=1';
+    }
+
+    function triggerInPageDownload(url, filename) {
+      var u = String(url || '').trim();
+      if (!u) return false;
+      try {
+        var a = document.createElement('a');
+        a.href = u;
+        a.download = filename || defaultFilename;
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        if (a.parentNode) a.parentNode.removeChild(a);
+        return true;
+      } catch (e0) {}
+      try {
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.src = u;
+        document.body.appendChild(iframe);
+        setTimeout(function () {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 60000);
+        return true;
+      } catch (e1) {
+        return false;
+      }
+    }
+
+    function blobToBase64(blob) {
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          var s = String(reader.result || '');
+          var i = s.indexOf(',');
+          resolve(i >= 0 ? s.slice(i + 1) : s);
+        };
+        reader.onerror = function () {
+          reject(new Error('read_fail'));
+        };
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function hasNativeSave() {
+      try {
+        return !!(global.TaxNativeSave && typeof global.TaxNativeSave.saveBase64 === 'function');
+      } catch (e0) {
+        return false;
+      }
+    }
+
+    function nativeSaveBlob(blob, filename, mime) {
+      if (!blob) return Promise.reject(new Error('no_blob'));
+      if (!hasNativeSave()) return Promise.reject(new Error('no_native'));
+      if (blob.size > 650000) return Promise.reject(new Error('too_large'));
+      return blobToBase64(blob).then(function (b64) {
+        var r = String(global.TaxNativeSave.saveBase64(filename, mime, b64) || '');
+        if (r.indexOf('ok') === 0) return 'native';
+        throw new Error(r || 'native_fail');
+      });
     }
 
     function canShareFiles(files) {
@@ -311,47 +387,74 @@
       }, 2000);
     }
 
-    function androidBrowserSave() {
-      var url = lastPreviewShareUrl || lastPdfShareUrl;
-      var kind = lastPreviewShareUrl ? 'png' : 'pdf';
-      if (url) {
-        var opened = openExternalUrl(url);
-        if (opened) {
-          return Promise.resolve('browser_' + kind);
+    function androidSaveLocal(blob, filename) {
+      var pngName = String(filename || lastPdfName || defaultFilename).replace(/\.pdf$/i, '') + '.png';
+      var pdfName = filename || lastPdfName || defaultFilename;
+      var steps = [];
+
+      function tryNative(nextBlob, name, mime) {
+        if (!nextBlob) return Promise.reject(new Error('no_blob'));
+        return nativeSaveBlob(nextBlob, name, mime);
+      }
+
+      if (inCordovaApp()) {
+        function enqueueUrlDownload() {
+          steps.push(function () {
+            var url = forceDownloadUrl(lastPdfShareUrl || lastPreviewShareUrl);
+            var name = lastPdfShareUrl ? pdfName : pngName;
+            if (!url || !triggerInPageDownload(url, name)) {
+              return Promise.reject(new Error('no_share_url'));
+            }
+            return 'webview_dl';
+          });
         }
-        try {
-          var a = document.createElement('a');
-          a.href = url;
-          a.download =
-            kind === 'png'
-              ? String(lastPdfName || defaultFilename).replace(/\.pdf$/i, '') + '.png'
-              : lastPdfName || defaultFilename;
-          a.target = '_blank';
-          a.rel = 'noopener';
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          if (a.parentNode) a.parentNode.removeChild(a);
-          return Promise.resolve('anchor_link_' + kind);
-        } catch (eDl) {}
+        if (hasNativeSave()) {
+          if (lastPreviewBlob) {
+            steps.push(function () {
+              return tryNative(lastPreviewBlob, pngName, 'image/png');
+            });
+          }
+          if (blob || lastPdfBlob) {
+            steps.push(function () {
+              return tryNative(blob || lastPdfBlob, pdfName, 'application/pdf');
+            });
+          }
+          enqueueUrlDownload();
+        } else {
+          steps.push(function () {
+            return sharePdfBlob(blob || lastPdfBlob, pdfName).then(function () {
+              return 'shared';
+            });
+          });
+          enqueueUrlDownload();
+        }
+      } else {
+        if (blob || lastPdfBlob) {
+          triggerAnchorDownload(blob || lastPdfBlob, pdfName);
+          return Promise.resolve('chrome_pdf');
+        }
+        if (lastPreviewBlob) {
+          triggerAnchorDownload(lastPreviewBlob, pngName);
+          return Promise.resolve('chrome_png');
+        }
+        return Promise.reject(new Error('no_blob'));
       }
-      if (lastPreviewBlob) {
-        var pngName = String(lastPdfName || defaultFilename).replace(/\.pdf$/i, '') + '.png';
-        triggerAnchorDownload(lastPreviewBlob, pngName);
-        return Promise.resolve('anchor_png');
+
+      function run(i) {
+        if (i >= steps.length) return Promise.reject(new Error('android_save_fail'));
+        return Promise.resolve()
+          .then(steps[i])
+          .catch(function (err) {
+            if (err && err.name === 'AbortError') throw err;
+            return run(i + 1);
+          });
       }
-      if (lastPdfBlob) {
-        triggerAnchorDownload(lastPdfBlob, lastPdfName);
-        return Promise.resolve('anchor_pdf');
-      }
-      return Promise.reject(new Error('no_share_url'));
+      return run(0);
     }
 
     function saveOrSharePdf(blob, filename) {
       if (isAndroidLike()) {
-        return androidBrowserSave().then(function (mode) {
-          return mode || 'android_fallback';
-        });
+        return androidSaveLocal(blob, filename);
       }
       return sharePdfBlob(blob, filename)
         .then(function () {
@@ -360,9 +463,7 @@
         .catch(function (err) {
           if (err && err.name === 'AbortError') throw err;
           if (isLikelyMobileAppShell()) {
-            return androidBrowserSave().then(function (mode) {
-              return mode || 'android_fallback';
-            });
+            return androidSaveLocal(blob, filename);
           }
           throw err;
         });
@@ -383,8 +484,9 @@
 
       var mobile = isLikelyMobileAppShell() || isAndroidLike();
       var android = isAndroidLike();
+      var androidApp = android && inCordovaApp();
       if (btnShare) {
-        btnShare.textContent = android ? '系统浏览器下载图片' : '系统分享保存';
+        btnShare.textContent = androidApp ? '保存到手机' : android ? '下载到手机' : '系统分享保存';
       }
       if (pdfPreview) {
         if (lastPreviewUrl) {
@@ -407,24 +509,28 @@
       if (pdfPreviewFallback) {
         pdfPreviewFallback.hidden = !!(lastPreviewUrl || (!mobile && lastPdfUrl));
         if (!pdfPreviewFallback.hidden) {
-          pdfPreviewFallback.textContent = android
-            ? '预览暂不可用，请直接点「系统浏览器下载图片」或「浏览器下载 PDF」'
-            : '预览暂不可用，请直接点「系统分享保存」或「浏览器下载 PDF」';
+          pdfPreviewFallback.textContent = androidApp
+            ? '预览暂不可用，请直接点「保存到手机」或「浏览器下载 PDF」'
+            : android
+              ? '预览暂不可用，请直接点「下载到手机」或「浏览器下载 PDF」'
+              : '预览暂不可用，请直接点「系统分享保存」或「浏览器下载 PDF」';
         }
       }
       if (longPressTip) {
         longPressTip.hidden = !lastPreviewUrl;
       }
       if (pdfTip) {
-        pdfTip.textContent = android
+        pdfTip.textContent = androidApp
           ? lastPreviewUrl
-            ? '安卓请点「系统浏览器下载图片」：将拉起系统浏览器下载预览图，可存相册/文件。也可长按上方图片保存。需要 PDF 时点「浏览器下载 PDF」。'
-            : '安卓请点「系统浏览器下载图片」或「浏览器下载 PDF」，将拉起系统浏览器下载。'
-          : mobile
-            ? lastPreviewUrl
-              ? '请点「系统分享保存」把预览图存到相册/文件；也可长按上方图片保存。需要 PDF 文件时可用下方「浏览器下载 PDF」。'
-              : '请点「系统分享保存」。若分享不可用，请改用「浏览器下载 PDF」。'
-            : '可在下方预览；电脑端可直接下载 PDF。';
+            ? '点「保存到手机」会写入系统下载/相册。也可长按上方图片保存。需要 PDF 时点「浏览器下载 PDF」。'
+            : '点「保存到手机」写入系统下载目录；也可点「浏览器下载 PDF」。'
+          : android
+            ? '点「下载到手机」即可保存到本机下载。也可长按预览图保存。'
+            : mobile
+              ? lastPreviewUrl
+                ? '请点「系统分享保存」把预览图存到相册/文件；也可长按上方图片保存。需要 PDF 文件时可用下方「浏览器下载 PDF」。'
+                : '请点「系统分享保存」。若分享不可用，请改用「浏览器下载 PDF」。'
+              : '可在下方预览；电脑端可直接下载 PDF。';
       }
       if (cardPdfSave) {
         cardPdfSave.hidden = false;
@@ -462,6 +568,9 @@
             return mode;
           }
           if (
+            String(mode).indexOf('native') === 0 ||
+            String(mode).indexOf('webview_dl') === 0 ||
+            String(mode).indexOf('chrome_') === 0 ||
             String(mode).indexOf('browser_') === 0 ||
             String(mode).indexOf('anchor') === 0 ||
             mode === 'android_fallback'
@@ -469,12 +578,18 @@
             setStatus(
               genStatus,
               isAndroidLike()
-                ? '已拉起系统浏览器下载；若未开始请再点「系统浏览器下载图片」或长按预览图'
+                ? mode.indexOf('native') === 0
+                  ? '已保存到手机（下载或相册），可在系统文件管理里查看'
+                  : '已开始保存到手机；若未出现文件请再点「保存到手机」或长按预览图'
                 : '已尝试下载；也可长按预览图保存'
             );
             setStatus(
               saveStatus,
-              isAndroidLike() ? '已打开系统浏览器下载' : '已尝试下载保存'
+              isAndroidLike()
+                ? mode.indexOf('native') === 0
+                  ? '已写入手机本地'
+                  : '已开始下载到本地'
+                : '已尝试下载保存'
             );
             return mode;
           }
@@ -487,7 +602,7 @@
             setStatus(
               genStatus,
               isAndroidLike()
-                ? '已取消。可再点「系统浏览器下载图片」'
+                ? '已取消。可再点「保存到手机」'
                 : '已取消分享。可再点下方「系统分享保存」'
             );
             return 'aborted';
@@ -823,7 +938,7 @@
         }
         setStatus(
           saveStatus,
-          isAndroidLike() ? '正在拉起系统浏览器…' : '正在调起系统分享…'
+          isAndroidLike() ? '正在保存到手机…' : '正在调起系统分享…'
         );
         saveOrSharePdf(lastPdfBlob, lastPdfName)
           .then(function (mode) {
@@ -834,7 +949,9 @@
             setStatus(
               saveStatus,
               isAndroidLike()
-                ? '已拉起系统浏览器下载；若未开始请长按上方图片保存'
+                ? String(mode).indexOf('native') === 0
+                  ? '已保存到手机本地'
+                  : '已开始保存到手机；若未看到文件请长按预览图'
                 : '已尝试下载保存'
             );
           })
@@ -871,7 +988,7 @@
             saveStatus,
             lastPreviewUrl
               ? isAndroidLike()
-                ? '请查看上方预览图；可长按保存或点「系统浏览器下载图片」'
+                ? '请查看上方预览图；可长按保存或点「保存到手机」'
                 : '请查看上方预览图；可长按保存或点「系统分享保存」'
               : '已在上方预览；请用下方按钮保存',
             true
@@ -890,13 +1007,15 @@
           return;
         }
         if (isAndroidLike() && lastPdfShareUrl) {
-          var opened = openExternalUrl(lastPdfShareUrl);
+          var url = forceDownloadUrl(lastPdfShareUrl);
+          var started = triggerInPageDownload(url, lastPdfName);
+          if (!started) {
+            started = openExternalUrl(url);
+          }
           setStatus(
             saveStatus,
-            opened
-              ? '已用系统浏览器下载 PDF'
-              : '请在弹出的浏览器中保存 PDF；若无反应可再试一次',
-            !opened
+            started ? '已开始下载 PDF 到手机' : '下载未开始，请再试一次或长按预览图',
+            !started
           );
           return;
         }
@@ -906,7 +1025,7 @@
         setStatus(
           saveStatus,
           isAndroidLike()
-            ? '若未开始下载，请改用「系统浏览器下载图片」'
+            ? '若未开始下载，请改用「保存到手机」'
             : '若未开始下载，请改用「系统分享保存」'
         );
       });

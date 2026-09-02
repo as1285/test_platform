@@ -8896,17 +8896,13 @@ async function listEmployersForUser(userId) {
   }
 }
 
-/** 在职任职数（我的页角标；离职后不计，对齐官方「暂无」） */
+/** 任职记录数（我的页角标：加过单位即计数，含已离职） */
 async function countActiveEmployersForUser(conn, userId) {
   if (!conn || userId == null || String(userId).trim() === '') {
     return 0;
   }
   const [rows] = await conn.execute(
-    `SELECT COUNT(*) AS count FROM employers
-     WHERE user_id = ?
-       AND (
-         status = 1 OR status = '1' OR status = '在职'
-       )`,
+    'SELECT COUNT(*) AS count FROM employers WHERE user_id = ?',
     [String(userId).trim()]
   );
   return rows && rows[0] ? Number(rows[0].count) || 0 : 0;
@@ -9439,9 +9435,7 @@ async function handleUserPost(req, res) {
       ]);
       
       const [employerCount] = await conn.execute(
-        `SELECT COUNT(*) as count FROM employers
-         WHERE user_id = ?
-           AND (status = 1 OR status = '1' OR status = '在职')`,
+        'SELECT COUNT(*) as count FROM employers WHERE user_id = ?',
         [userId]
       );
       await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);

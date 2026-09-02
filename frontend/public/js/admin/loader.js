@@ -17,7 +17,7 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260902-adminclean',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260902-regip',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig'
   };
 
@@ -123,7 +123,7 @@
    *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260831-renzhiguide',
+      '/js/consult-core.js?v=20260902-emp-count',
       '/js/consult-batch-tax.js?v=20260829-fillcta',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];

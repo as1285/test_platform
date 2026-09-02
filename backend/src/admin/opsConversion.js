@@ -365,10 +365,21 @@ async function handleOpsBoard(req, res) {
       appendRegisteredScope(userWhere, userParams, req.admin, 'users.username');
       var userWhereSql = ' WHERE ' + userWhere.join(' AND ');
 
+      /* 今日注册按注册 IP 去重：同 IP 多账号只计 1；无注册 IP 的账号按用户名各计 1 */
       const [todayRows] = await conn.query(
-        `SELECT
-           SUM(CASE WHEN ${cnDay} = ${todayBjSql} THEN 1 ELSE 0 END) AS register_today
-         FROM users ${userWhereSql}`,
+        `SELECT COUNT(DISTINCT COALESCE(
+           NULLIF(TRIM((
+             SELECT ule.ip FROM user_login_events ule
+             WHERE ule.username = users.username
+               AND ule.reason = 'register_ok'
+               AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> ''
+             ORDER BY ule.created_at ASC, ule.id ASC
+             LIMIT 1
+           )), ''),
+           CONCAT('__nouip:', users.username)
+         )) AS register_today
+         FROM users ${userWhereSql}
+           AND ${cnDay} = ${todayBjSql}`,
         userParams
       );
 

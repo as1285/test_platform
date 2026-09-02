@@ -264,10 +264,17 @@ async function handleLizhiCertTempShareGet(req, res) {
       if (item) tempShareStore.delete(token);
       return res.status(404).json({ code: 404, msg: '链接无效或已过期，请回到 App 重新生成' });
     }
-    res.setHeader('Content-Type', item.mime || 'application/octet-stream');
+    var forceDl = String((req.query && req.query.dl) || '') === '1';
+    res.setHeader(
+      'Content-Type',
+      forceDl ? 'application/octet-stream' : item.mime || 'application/octet-stream'
+    );
     res.setHeader('Content-Disposition', contentDispositionAttachment(item.filename));
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (item.buf && item.buf.length) {
+      res.setHeader('Content-Length', String(item.buf.length));
+    }
     return res.status(200).send(item.buf);
   } catch (e) {
     console.error('[lizhi-cert] temp-share get', e);

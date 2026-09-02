@@ -2778,7 +2778,7 @@
                     if (mineRenderTaxIdFn) mineRenderTaxIdFn();
                     closeMineProfileEditModal();
                     try {
-                        sessionStorage.removeItem('mine_summary_cache_v1');
+                        sessionStorage.removeItem('mine_summary_cache_v2');
                     } catch (eClr) {}
                 }
 
@@ -3021,7 +3021,7 @@
                                 applyAvatarGender(payload.gender);
                             }
                             if (mineRenderTaxIdFn) mineRenderTaxIdFn();
-                            sessionStorage.removeItem('mine_summary_cache_v1');
+                            sessionStorage.removeItem('mine_summary_cache_v2');
                         } catch (eOk) {}
                         closeMineProfileEditModal();
                         closeMineRenamePayModal();
@@ -3136,7 +3136,7 @@
                     return;
                 }
                 try {
-                    sessionStorage.removeItem('mine_summary_cache_v1');
+                    sessionStorage.removeItem('mine_summary_cache_v2');
                 } catch (ePs) {}
                 if (typeof loadUserInfo === 'function') {
                     loadUserInfo({ force: true });
@@ -3744,7 +3744,7 @@
 
                 function readMineSummarySessionCache() {
                     try {
-                        var raw = sessionStorage.getItem('mine_summary_cache_v1');
+                        var raw = sessionStorage.getItem('mine_summary_cache_v2');
                         if (!raw) return null;
                         var parsed = JSON.parse(raw);
                         var scope = currentMineUserScope();
@@ -3758,7 +3758,7 @@
                             return parsed.data;
                         }
                         if (parsed && String(parsed.userId || '') !== scope) {
-                            sessionStorage.removeItem('mine_summary_cache_v1');
+                            sessionStorage.removeItem('mine_summary_cache_v2');
                         }
                     } catch (e) {}
                     return null;
@@ -3767,7 +3767,7 @@
                 function writeMineSummarySessionCache(data) {
                     try {
                         sessionStorage.setItem(
-                            'mine_summary_cache_v1',
+                            'mine_summary_cache_v2',
                             JSON.stringify({
                                 t: Date.now(),
                                 userId: currentMineUserScope(),
@@ -3779,7 +3779,7 @@
 
                 function clearMineSummarySessionCache() {
                     try {
-                        sessionStorage.removeItem('mine_summary_cache_v1');
+                        sessionStorage.removeItem('mine_summary_cache_v2');
                     } catch (e) {}
                 }
 

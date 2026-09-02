@@ -72,6 +72,10 @@ describe('employment-cert frontend shell', () => {
     expect(js).toContain('function initEmploymentCertPage');
     expect(js).toContain('quickGenerate');
     expect(js).toContain('payload.quick = true');
+    expect(js).toContain('androidSaveLocal');
+    expect(js).toContain('TaxNativeSave');
+    expect(js).toContain('dl=1');
+    expect(js).toContain('保存到手机');
 
     const lizhi = readFileSync(resolve(__dirname, '../../lizhi_cert.html'), 'utf8');
     const zaizhi = readFileSync(resolve(__dirname, '../../zaizhi_cert.html'), 'utf8');

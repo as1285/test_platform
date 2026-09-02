@@ -211,7 +211,17 @@ mustInclude(
   ['place_seal', 'SEAL_PT'],
   'zaizhi uses shared vermilion seal'
 );
-mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'"], 'lizhi cert shared page + quick generate');
+mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'", '20260902-android-save'], 'lizhi cert shared page + quick generate');
+mustInclude(
+  'frontend/public/js/employment-cert-page.js',
+  ['androidSaveLocal', 'TaxNativeSave', 'forceDownloadUrl', '保存到手机'],
+  'android cert save to local'
+);
+mustInclude(
+  'backend/src/user/lizhiCertUser.js',
+  ["req.query.dl", 'application/octet-stream'],
+  'lizhi temp-share force download'
+);
 mustInclude(
   'backend/src/user/lizhiCertUser.js',
   ['pickLastCompany', 'last_company', 'ORDER BY year DESC, month DESC'],

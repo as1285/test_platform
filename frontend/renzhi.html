@@ -288,13 +288,13 @@
             var n = 0;
             (list || []).forEach(function (e) {
                 if (!e) return;
-                if (e.status == '1' || e.status === 1 || e.status === '在职') n += 1;
+                n += 1;
             });
             try {
                 localStorage.setItem('employer_count', String(n));
             } catch (e0) {}
             try {
-                sessionStorage.removeItem('mine_summary_cache_v1');
+                sessionStorage.removeItem('mine_summary_cache_v2');
             } catch (e1) {}
         }
 

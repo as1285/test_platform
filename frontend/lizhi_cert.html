@@ -228,7 +228,7 @@
         <div class="card" id="cardForm">
             <span class="badge" id="lizhiUnlockBadge">未开通 · PDF 含演示水印</span>
             <div class="card-title">填写并生成</div>
-            <p class="card-hint">可一键用账号里最后一家公司生成，也可改表单后再生成。App 内请用系统分享「存储到文件」。</p>
+            <p class="card-hint">可一键用账号里最后一家公司生成，也可改表单后再生成。安卓生成后点「保存到手机」即可写入本机。</p>
             <div class="quick-box">
                 <button type="button" class="btn" id="btnLizhiQuick">一键生成最后一家公司</button>
                 <p class="quick-company" id="lizhiQuickCompany"></p>
@@ -259,7 +259,7 @@
         <div class="card pdf-save-card" id="cardPdfSave" hidden>
             <div class="card-title">PDF 已生成</div>
             <p class="pdf-save-tip" id="lizhiPdfTip">
-                App 内无法直接写入「下载」目录。请点「系统分享保存」，在弹出面板里选择「存储到文件」或「保存到下载」。
+                安卓请点「保存到手机」写入下载/相册；也可长按预览图保存。
             </p>
             <div class="pdf-frame-wrap">
                 <img id="lizhiPdfPreview" class="pdf-preview-img" alt="离职证明预览" hidden>
@@ -274,7 +274,7 @@
         </div>
     </div>
 
-        <script src="/js/employment-cert-page.js?v=20260901-emp-cert"></script>
+        <script src="/js/employment-cert-page.js?v=20260902-android-save"></script>
     <script>
 (function () {
     window.initEmploymentCertPage({

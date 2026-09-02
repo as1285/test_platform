@@ -628,7 +628,7 @@
               ) / 100
             );
       kpi.innerHTML =
-        kpiCard('今日注册', today.register) +
+        kpiCard('今日注册', today.register, '按注册IP去重') +
         kpiCard('今日激活', today.activate) +
         kpiCard('今日付费单', today.pay_orders) +
         kpiGmvCard(today.gmv_by_sku, payOrdersGmv, today.tax_edit_gmv, today.pay_gmv);

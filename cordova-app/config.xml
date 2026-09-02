@@ -41,6 +41,7 @@
     <preference name="AppendUserAgent" value=" TaxPlatformCordovaApp/1" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
     <hook type="after_prepare" src="hooks/after_prepare/10-fullscreen-splash.js" />
+    <hook type="after_prepare" src="hooks/after_prepare/20-tax-file-bridge.js" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
         <!-- 桌面图标：按密度使用真实尺寸，避免全密度塞入 1024 导致包体过大 / 系统缩放发虚 -->
@@ -54,6 +55,9 @@
             <application android:usesCleartextTraffic="true" />
         </edit-config>
         <!-- Android 11+ / 华为：声明可查询支付宝，否则系统认为未安装并提示下载 -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+        </config-file>
         <config-file target="AndroidManifest.xml" parent="/*">
             <queries>
                 <package android:name="com.eg.android.AlipayGphone" />

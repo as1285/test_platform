@@ -240,11 +240,56 @@
             }
             window.openTaxPlatformExternal = openTaxPlatformExternal;
 
+            function replySaveLocal(id, ok, detail) {
+                var f = document.getElementById('app-frame');
+                try {
+                    if (f && f.contentWindow) {
+                        f.contentWindow.postMessage(
+                            {
+                                source: 'tax-shell',
+                                type: 'save-local-file-result',
+                                id: id,
+                                ok: !!ok,
+                                detail: detail || ''
+                            },
+                            '*'
+                        );
+                    }
+                } catch (eReply) {}
+            }
+
+            function saveLocalFileFromH5(data) {
+                var id = data && data.id;
+                try {
+                    if (window.TaxNativeSave && typeof window.TaxNativeSave.saveBase64 === 'function') {
+                        var r = String(
+                            window.TaxNativeSave.saveBase64(
+                                (data && data.filename) || 'file.bin',
+                                (data && data.mime) || 'application/octet-stream',
+                                (data && data.base64) || ''
+                            ) || ''
+                        );
+                        replySaveLocal(id, r.indexOf('ok') === 0, r);
+                        return;
+                    }
+                } catch (eSave) {
+                    replySaveLocal(id, false, String((eSave && eSave.message) || eSave));
+                    return;
+                }
+                replySaveLocal(id, false, 'no_native');
+            }
+
             window.addEventListener('message', function (ev) {
                 var data = ev && ev.data;
-                if (!data || data.type !== 'open-external') return;
+                if (!data) return;
                 if (data.source && data.source !== 'tax-platform-h5') return;
-                openTaxPlatformExternal(data.url);
+                if (data.type === 'open-external') {
+                    openTaxPlatformExternal(data.url);
+                    return;
+                }
+                if (data.type === 'save-local-file') {
+                    saveLocalFileFromH5(data);
+                }
             });
 
             /** 支付等外链若误把 iframe 跳走，从支付宝回到 App 时恢复，避免白屏 */

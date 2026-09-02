@@ -2188,18 +2188,18 @@ function onSubmitEmployer(e) {
         });
 }
 
-/** 在职数写入本地，并清掉「我的」汇总缓存，避免删光后仍显示「1家」 */
+/** 任职记录数写入本地，并清掉「我的」汇总缓存（含已离职，避免加了单位仍显示「暂无」） */
 function syncLocalEmployerCountFromList(list) {
     var n = 0;
     (list || []).forEach(function (e) {
         if (!e) return;
-        if (e.status == '1' || e.status === 1 || e.status === '在职') n += 1;
+        n += 1;
     });
     try {
         localStorage.setItem('employer_count', String(n));
     } catch (e0) {}
     try {
-        sessionStorage.removeItem('mine_summary_cache_v1');
+        sessionStorage.removeItem('mine_summary_cache_v2');
     } catch (e1) {}
     return n;
 }
@@ -2310,7 +2310,7 @@ function deleteEmployer(id) {
                             'employer_count',
                             String(Number(data.data.employer_count) || 0)
                         );
-                        sessionStorage.removeItem('mine_summary_cache_v1');
+                        sessionStorage.removeItem('mine_summary_cache_v2');
                     } catch (eDel) {}
                 }
                 showMsg('已删除', true);
