@@ -34,6 +34,15 @@ describe('Huawei Mate 30 status-bar inset', () => {
     expect(MODEL_RE.test('PLA-AL10')).toBe(false);
   });
 
+  it('auth still excludes LIO / 30E Pro from the TAS Mate 30 detector', () => {
+    const mate30Fn = auth.slice(
+      auth.indexOf('function isHuaweiMate30Client()'),
+      auth.indexOf('function isHuaweiLioAn00Client()')
+    );
+    expect(mate30Fn).toMatch(/Mate\\s\*30E\?\\s\*Pro/);
+    expect(mate30Fn).toContain('isHuaweiLioAn00Client()');
+  });
+
   it('wires detector into immersive white-top and keeps 40px inset', () => {
     expect(auth).toContain('function isHuaweiMate30Client()');
     expect(auth).toMatch(/isHuaweiWhitePageImmersiveClient\(\)[\s\S]*isHuaweiMate30Client\(\)/);

@@ -140,6 +140,14 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/LIO-|Mate\s*30E?\s*Pro|Mate\s*30\s*E\s*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-huawei-mate30pro');
+                    document.documentElement.classList.add('app-android-huawei-lio-an00');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
@@ -175,8 +183,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260902-iqoo13fix"></script>
-    <script src="/js/auth.js?v=20260902-iqoo13fix" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-mate30epro"></script>
+    <script src="/js/auth.js?v=20260902-mate30epro" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
