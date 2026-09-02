@@ -16027,7 +16027,8 @@ async function handleAdminPageLoadPerfStats(req, res) {
 function sanitizeInAppMessageLink(raw) {
   var s = raw != null ? String(raw).trim() : '';
   if (!s) return 'purchase.html';
-  if (/^[a-zA-Z0-9_./?-]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
+  /* 允许站内相对路径带 query（如 refund_ad.html?from=msg_refund） */
+  if (/^[a-zA-Z0-9_./?=&\-%]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
     return s.substring(0, 200);
   }
   if (/^https:\/\/(www\.)?geshui\.vip(\/|$)/i.test(s)) {

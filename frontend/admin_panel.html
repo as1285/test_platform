@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-gmvsum2">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-adminclean">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -2560,7 +2560,7 @@
                                 <div class="flex-actions">
                                     <button type="button" class="btn-primary" id="btnOpsRefundSearch">查询</button>
                                     <button type="button" class="btn-page" id="btnOpsRefundRefresh">刷新</button>
-                                    <a class="btn-page" href="#ops-lift" id="btnOpsRefundGotoBulk">去发站内信</a>
+                                    <a class="btn-page" href="#ops-board" id="btnOpsRefundGotoBulk">去发站内信</a>
                                 </div>
                             </div>
                         </div>
@@ -2698,26 +2698,6 @@
                             <div id="opsAdUserDetail" class="mt-16" hidden></div>
                         </details>
                     </section>
-                </div>
-
-                <div id="page-ops-research" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">本页已并入「运营看板」。正在跳转…</p></div>
-                </div>
-
-                <div id="page-ops-lift" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">本页已并入「运营看板」。正在跳转…</p></div>
-                    <div id="analyticsD1ReturnCohort" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
-                    <div id="analyticsHighIncomeInactive" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
-                </div>
-
-                <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">本页已并入「运营看板」。支付明细请看「支付分析」。正在跳转…</p></div>
-                    <div id="analyticsPricingAb" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
-                    <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom" hidden aria-hidden="true"></select>
-                    <select id="analyticsConversionDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom" hidden aria-hidden="true"></select>
-                    <div id="analyticsDailyConversion" class="analytics-conv-wrap" hidden aria-hidden="true"></div>
-                    <button type="button" id="btnRefreshPricingAb" hidden aria-hidden="true"></button>
-                    <button type="button" id="btnRefreshConversion" hidden aria-hidden="true"></button>
                 </div>
 
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
@@ -3523,9 +3503,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260902-gmvsum2"></script>
+    <script src="/js/admin/loader.js?v=20260902-adminclean"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260902-activedur"></script>
+    <script src="/js/admin_panel.js?v=20260902-actions-collapse"></script>
 </body>
 </html>

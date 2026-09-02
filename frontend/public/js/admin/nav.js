@@ -176,14 +176,7 @@
   }
 
   function enhanceSectionDensity(page, sections) {
-    /* 转化概览页不再自动折叠后续区块，避免支付 A/B 与注册转化率之间出现大块空白 */
-    if (page !== 'analytics-conversion') return;
-    (sections || []).forEach(function (section) {
-      section.classList.remove('admin-section-collapsible', 'is-section-collapsed');
-      section.removeAttribute('data-density-ready');
-      var toggle = section.querySelector('.section-collapse-toggle');
-      if (toggle && toggle.parentNode) toggle.parentNode.removeChild(toggle);
-    });
+    /* 旧「转化概览」页已并入运营看板；密度折叠逻辑不再需要 */
   }
 
   function isCommandOpen() {

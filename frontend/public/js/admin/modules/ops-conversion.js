@@ -329,105 +329,6 @@
     }, 800);
   }
 
-  function card(label, val) {
-    return (
-      '<div class="user-data-stat-card"><div class="ud-label">' +
-      esc(label) +
-      '</div><div class="ud-val">' +
-      esc(String(val != null ? val : 0)) +
-      '</div></div>'
-    );
-  }
-
-  function renderResearch(data) {
-    var el = document.getElementById('opsResearchMount');
-    if (!el) return;
-    var f = (data && data.funnel) || {};
-    var html = '';
-    if (data && data.insights && data.insights.length) {
-      html += '<div class="ops-insight-box"><h3>先看这些</h3><ul>';
-      data.insights.forEach(function (line) {
-        html += '<li>' + esc(line) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    html += '<div class="user-data-stats">';
-    html += card('注册', f.registered);
-    html += card('已开通', f.activated);
-    html += card('开通率', f.activate_pct || '—');
-    html += card('未开通', f.unactivated);
-    html += card('未开通有个税', f.unact_has_tax);
-    html += card('未开通无个税', f.unact_no_tax);
-    html += card('看过开通页未付', f.unact_saw_pay);
-    html += card('高收入未开通', f.unact_high_income);
-    html += card('进填写页未提交', f.opened_fill_no_submit);
-    html += '</div>';
-    var price = (data && data.price_survey) || {};
-    html += '<h3 class="mt-12">未开通用户怎么看价格</h3>';
-    html += '<div class="user-data-stats">';
-    html += card('觉得贵', price.expensive);
-    html += card('合理', price.fair);
-    html += card('便宜', price.cheap);
-    html += card('跳过', price.skipped);
-    html += card('心理价均值', price.avg_expected_price != null ? price.avg_expected_price : '—');
-    html += card('填了心理价', price.expected_samples);
-    html += '</div>';
-    var tf = (data && data.tax_fill_survey) || {};
-    html += '<h3 class="mt-12">填写体验</h3>';
-    html += '<div class="user-data-stats">';
-    html += card('满意', tf.good);
-    html += card('一般', tf.ok);
-    html += card('不满意', tf.bad);
-    html += card('跳过', tf.skipped);
-    html += '</div>';
-    var channels = (data && data.channels) || [];
-    html += '<h3 class="mt-12">渠道开通率</h3>';
-    html += '<div class="scroll-x"><table><thead><tr><th>渠道</th><th>注册</th><th>开通</th><th>有个税</th><th>开通率</th></tr></thead><tbody>';
-    if (!channels.length) {
-      html += '<tr><td colspan="5">暂无</td></tr>';
-    } else {
-      channels.forEach(function (c) {
-        html +=
-          '<tr><td>' +
-          esc(channelLabel(c.channel)) +
-          '</td><td>' +
-          esc(c.registered) +
-          '</td><td>' +
-          esc(c.activated) +
-          '</td><td>' +
-          esc(c.has_tax) +
-          '</td><td>' +
-          esc(c.activate_pct || '—') +
-          '</td></tr>';
-      });
-    }
-    html += '</tbody></table></div>';
-    html +=
-      '<p class="hint">高收入未开通、看过开通页未付，去「提高转化」跟进；要看单人细节去「未激活用户」。</p>';
-    el.innerHTML = html;
-  }
-
-  function loadResearch() {
-    var el = document.getElementById('opsResearchMount');
-    if (!el) return;
-    el.textContent = '加载中…';
-    var days = val('opsResearchDays') || '7';
-    fetchAdmin('api/admin/ops/conversion-research?days=' + encodeURIComponent(days))
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (j) {
-        if (!j || j.code !== 200 || !j.data) {
-          el.textContent = (j && j.msg) || '加载失败';
-          return;
-        }
-        renderResearch(j.data);
-      })
-      .catch(function () {
-        el.textContent = '加载失败';
-      });
-  }
-
   function bind() {
     if (bound) return;
     bound = true;
@@ -494,22 +395,6 @@
         var btn = ev.target && ev.target.closest ? ev.target.closest('.js-ops-open-user') : null;
         if (!btn) return;
         jumpToUser(btn.getAttribute('data-u'));
-      });
-    }
-    var refresh = document.getElementById('btnOpsResearchRefresh');
-    if (refresh) refresh.addEventListener('click', loadResearch);
-    var daysEl = document.getElementById('opsResearchDays');
-    if (daysEl) daysEl.addEventListener('change', loadResearch);
-    var gotoFill = document.getElementById('btnOpsResearchGotoFillSurvey');
-    if (gotoFill) {
-      gotoFill.addEventListener('click', function () {
-        global.location.hash = 'tax-fill-survey';
-      });
-    }
-    var gotoPay = document.getElementById('btnOpsResearchGotoPurchase');
-    if (gotoPay) {
-      gotoPay.addEventListener('click', function () {
-        global.location.hash = 'analytics-purchase';
       });
     }
     var boardRefresh = document.getElementById('btnOpsBoardRefresh');

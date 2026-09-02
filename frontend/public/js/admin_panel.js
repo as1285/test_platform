@@ -1302,17 +1302,11 @@
             if (pageKey === 'admin-accounts' || pageKey === 'downline-admins') {
                 loadAdminAccounts();
             }
-            if (pageKey === 'analytics-conversion') {
-                loadAnalyticsConversionPage();
-            }
-            if (pageKey === 'ops-board' || pageKey === 'ops-inactive' || pageKey === 'ops-research') {
+            if (pageKey === 'ops-board' || pageKey === 'ops-inactive') {
                 callAdminModuleLoadPage('ops-conversion');
             }
             if (pageKey === 'ops-ad-analytics') {
                 callAdminModuleLoadPage('ad-analytics');
-            }
-            if (pageKey === 'ops-lift') {
-                /* 已并入运营看板；保留空载避免旧入口报错 */
             }
             if (pageKey === 'tax-fill-survey') {
                 callAdminModuleLoadPage('tax-fill-survey');
@@ -1733,191 +1727,6 @@
                 dh || '<tr><td colspan="' + ACTIVATE_EVENTS_TABLE_COLSPAN + '">暂无数据</td></tr>';
         }
 
-        /* ========== Analytics — Pricing A/B ========== */
-        function loadAnalyticsConversionPage() {
-            loadAnalyticsPricingAb();
-            loadAnalyticsDailyConversion();
-        }
-
-        function loadAnalyticsD1ReturnCohort() {
-            var el = document.getElementById('analyticsD1ReturnCohort');
-            if (!el) return;
-            el.textContent = '加载中…';
-            adminFetch('api/admin/analytics/d1-return-cohort')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (!j || j.code !== 200 || !j.data) {
-                        el.textContent = (j && j.msg) || '加载失败';
-                        return;
-                    }
-                    renderAnalyticsD1ReturnCohort(j.data);
-                })
-                .catch(function () {
-                    el.textContent = '加载失败';
-                });
-        }
-
-        function renderAnalyticsD1ReturnCohort(data) {
-            var el = document.getElementById('analyticsD1ReturnCohort');
-            if (!el) return;
-            var h = (data && data.historical) || {};
-            var s = (data && data.stock) || {};
-            function card(label, val, extraClass) {
-                return (
-                    '<div class="user-data-stat-card' +
-                    (extraClass ? ' ' + extraClass : '') +
-                    '"><div class="ud-label">' +
-                    label +
-                    '</div><div class="ud-val">' +
-                    esc(String(val != null ? val : 0)) +
-                    '</div></div>'
-                );
-            }
-            function row(label, val) {
-                return '<tr><td>' + label + '</td><td>' + esc(String(val != null ? val : 0)) + '</td></tr>';
-            }
-            var html = '<div class="user-data-stats">';
-            html += card('仅次日回访未激活', s.inactive_d1_only, 'd1-focus-card');
-            html += card('有次日日活仍未激活', s.inactive_has_d1);
-            html += card('次日回访后还来过', s.inactive_d1_later);
-            html += card('次日回访历史转化', h.has_d1_rate_pct || '—');
-            html += card('无次日回访转化', h.no_d1_rate_pct || '—');
-            html += '</div>';
-            html +=
-                '<p class="hint">有次日日活 ' +
-                esc(h.has_d1) +
-                ' 人中已激活 ' +
-                esc(h.has_d1_activated) +
-                '（' +
-                esc(h.has_d1_rate_pct || '—') +
-                '）；无次日日活 ' +
-                esc(h.no_d1) +
-                ' 人中已激活 ' +
-                esc(h.no_d1_activated) +
-                '（' +
-                esc(h.no_d1_rate_pct || '—') +
-                '）。仅次日回访是当前最该跟的存量。</p>';
-            html += '<div class="scroll-x"><table><thead><tr><th>仅次日回访拆解</th><th>人数</th></tr></thead><tbody>';
-            html += row('有个税', s.d1_only_tax);
-            html += row('无个税', s.d1_only_no_tax);
-            html += row('去过支付页', s.d1_only_pay);
-            html += row('未去支付页', s.d1_only_no_pay);
-            html += row('有个税且去过支付', s.d1_only_tax_pay);
-            html += row('只登录（无税未去支付）', s.d1_only_login);
-            html += row('近 7 天注册', s.d1_only_7d);
-            html += row('注册 8–30 天', s.d1_only_8_30);
-            html += row('注册超过 30 天', s.d1_only_gt30);
-            html += '</tbody></table></div>';
-            if (data && data.definition) {
-                html += '<p class="hint">' + esc(data.definition) + '</p>';
-            }
-            el.innerHTML = html;
-        }
-
-        function loadAnalyticsHighIncomeInactive() {
-            var el = document.getElementById('analyticsHighIncomeInactive');
-            if (!el) return;
-            el.textContent = '加载中…';
-            adminFetch('api/admin/analytics/high-income-inactive')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (!j || j.code !== 200 || !j.data) {
-                        el.textContent = (j && j.msg) || '加载失败';
-                        return;
-                    }
-                    renderAnalyticsHighIncomeInactive(j.data);
-                })
-                .catch(function () {
-                    el.textContent = '加载失败';
-                });
-        }
-
-        function renderAnalyticsHighIncomeInactive(data) {
-            var el = document.getElementById('analyticsHighIncomeInactive');
-            if (!el) return;
-            var s = (data && data.stock) || {};
-            function card(label, val, extraClass) {
-                return (
-                    '<div class="user-data-stat-card' +
-                    (extraClass ? ' ' + extraClass : '') +
-                    '"><div class="ud-label">' +
-                    label +
-                    '</div><div class="ud-val">' +
-                    esc(String(val != null ? val : 0)) +
-                    '</div></div>'
-                );
-            }
-            function row(label, val) {
-                return '<tr><td>' + label + '</td><td>' + esc(String(val != null ? val : 0)) + '</td></tr>';
-            }
-            var html = '<div class="user-data-stats">';
-            html += card('月入>1.5万未激活', s.inactive_high_income, 'high-income-focus-card');
-            html += card('去过支付页', s.visited_pay);
-            html += card('未去支付页', s.no_pay);
-            html += card('近 7 天注册', s.in_7d);
-            html += card('注册 8–30 天', s.in_8_30);
-            html += card('注册超过 30 天', s.gt_30);
-            html += '</div>';
-            html +=
-                '<p class="hint">月收入按自己填写的个税「本期收入 / 收入」取较大值，大于 1.5 万；公司名含「示例」不计入。这是当前该跟开通的高收入存量。</p>';
-            html += '<div class="scroll-x"><table><thead><tr><th>拆解</th><th>人数</th></tr></thead><tbody>';
-            html += row('去过支付页', s.visited_pay);
-            html += row('未去支付页', s.no_pay);
-            html += row('近 7 天注册', s.in_7d);
-            html += row('注册 8–30 天', s.in_8_30);
-            html += row('注册超过 30 天', s.gt_30);
-            html += '</tbody></table></div>';
-            if (data && data.definition) {
-                html += '<p class="hint">' + esc(data.definition) + '</p>';
-            }
-            el.innerHTML = html;
-        }
-
-        function jumpToD1ReturnUsers(mode) {
-            var m = mode === 'has' ? 'has' : 'only';
-            var usernameEl = document.getElementById('filterUsername');
-            var realNameEl = document.getElementById('filterRealName');
-            var exactEl = document.getElementById('filterExact');
-            var riskEl = document.getElementById('filterRisk');
-            var activeEl = document.getElementById('filterActive');
-            var bannedEl = document.getElementById('filterBanned');
-            var taxModEl = document.getElementById('filterTaxModifiedToday');
-            var loginInactiveEl = document.getElementById('filterLoginInactive');
-            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
-            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
-            var peerEl = document.getElementById('filterPeerAccount');
-            var whitelistEl = document.getElementById('filterWhitelist');
-            var agentEl = document.getElementById('filterAgent');
-            var d1El = document.getElementById('filterD1Return');
-            var highIncomeEl = document.getElementById('filterHighIncome');
-            if (usernameEl) usernameEl.value = '';
-            if (realNameEl) realNameEl.value = '';
-            if (exactEl) exactEl.checked = false;
-            setFilterSameRegisterIp(false);
-            if (riskEl) riskEl.value = '';
-            if (activeEl) activeEl.value = '0';
-            if (bannedEl) bannedEl.value = '0';
-            if (taxModEl) taxModEl.value = '';
-            if (loginInactiveEl) loginInactiveEl.value = '';
-            if (nameChangesGtEl) nameChangesGtEl.value = '';
-            if (taxModDaysGtEl) taxModDaysGtEl.value = '';
-            if (peerEl) peerEl.value = '';
-            if (whitelistEl) whitelistEl.value = '';
-            if (agentEl) agentEl.value = '';
-            if (d1El) d1El.value = m;
-            if (highIncomeEl) highIncomeEl.value = '';
-            userPage = 1;
-            var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
-            if (alreadyUsers) {
-                applyAdminRoute({ force: true });
-            } else {
-                location.hash = 'users';
-            }
-        }
 
         var D1_BULK_TITLE = '昨天回来过，开通后可完整使用';
         var D1_BULK_BODY =
@@ -1930,20 +1739,6 @@
             if (bodyEl) bodyEl.value = D1_BULK_BODY;
         }
 
-        function jumpToD1OnlyBulk() {
-            var aud = document.getElementById('bulkMsgAudience');
-            if (aud) aud.value = 'inactive_d1_only';
-            applyD1BulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'ops-board') {
-                location.hash = 'ops-board';
-            }
-            setTimeout(function () {
-                var box = document.getElementById('bulkMsgAudience');
-                if (box && box.scrollIntoView) {
-                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 80);
-        }
 
         var HIGH_INCOME_BULK_TITLE = '您填写的收入明细开通后可完整查看';
         var HIGH_INCOME_BULK_BODY =
@@ -1990,156 +1785,7 @@
             if (skipEl) skipEl.checked = false;
         }
 
-        function jumpToRefundEligibleBulk() {
-            var aud = document.getElementById('bulkMsgAudience');
-            if (aud) aud.value = 'refund_eligible';
-            applyRefundEligibleBulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'ops-board') {
-                location.hash = 'ops-board';
-            }
-            setTimeout(function () {
-                var box = document.getElementById('bulkMsgAudience');
-                if (box && box.scrollIntoView) {
-                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 80);
-        }
 
-        function jumpToHighIncomeUsers() {
-            var usernameEl = document.getElementById('filterUsername');
-            var realNameEl = document.getElementById('filterRealName');
-            var exactEl = document.getElementById('filterExact');
-            var riskEl = document.getElementById('filterRisk');
-            var activeEl = document.getElementById('filterActive');
-            var bannedEl = document.getElementById('filterBanned');
-            var taxModEl = document.getElementById('filterTaxModifiedToday');
-            var loginInactiveEl = document.getElementById('filterLoginInactive');
-            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
-            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
-            var peerEl = document.getElementById('filterPeerAccount');
-            var whitelistEl = document.getElementById('filterWhitelist');
-            var agentEl = document.getElementById('filterAgent');
-            var d1El = document.getElementById('filterD1Return');
-            var highIncomeEl = document.getElementById('filterHighIncome');
-            if (usernameEl) usernameEl.value = '';
-            if (realNameEl) realNameEl.value = '';
-            if (exactEl) exactEl.checked = false;
-            setFilterSameRegisterIp(false);
-            if (riskEl) riskEl.value = '';
-            if (activeEl) activeEl.value = '0';
-            if (bannedEl) bannedEl.value = '0';
-            if (taxModEl) taxModEl.value = '';
-            if (loginInactiveEl) loginInactiveEl.value = '';
-            if (nameChangesGtEl) nameChangesGtEl.value = '';
-            if (taxModDaysGtEl) taxModDaysGtEl.value = '';
-            if (peerEl) peerEl.value = '';
-            if (whitelistEl) whitelistEl.value = '';
-            if (agentEl) agentEl.value = '';
-            if (d1El) d1El.value = '';
-            if (highIncomeEl) highIncomeEl.value = '1';
-            userPage = 1;
-            var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
-            if (alreadyUsers) {
-                applyAdminRoute({ force: true });
-            } else {
-                location.hash = 'users';
-            }
-        }
-
-        function jumpToHighIncomeBulk() {
-            var aud = document.getElementById('bulkMsgAudience');
-            if (aud) aud.value = 'inactive_high_income';
-            applyHighIncomeBulkDefaultCopy();
-            if (normalizeAdminPage(location.hash) !== 'ops-board') {
-                location.hash = 'ops-board';
-            }
-            setTimeout(function () {
-                var box = document.getElementById('bulkMsgAudience');
-                if (box && box.scrollIntoView) {
-                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 80);
-        }
-
-        /* ========== Analytics — Register Stats ========== */
-        function loadAnalyticsPricingAb() {
-            var box = document.getElementById('analyticsPricingAb');
-            if (!box) return;
-            var days = analyticsPeriodVal(document.getElementById('analyticsPricingAbDays'));
-            box.innerHTML = '加载中…';
-            adminFetch('api/admin/analytics/pricing-ab?days=' + encodeURIComponent(days))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (body) {
-                    if (!body || body.code !== 200 || !body.data) {
-                        box.innerHTML = esc((body && body.msg) || '加载失败');
-                        return;
-                    }
-                    var d = body.data;
-                    var html = analyticsPeriodHintHtml(d);
-                    html +=
-                        '<p class="hint">全站同一套支付页 · 主指标：' +
-                        esc(d.primary_metric_label || 'ARPU') +
-                        '</p>';
-                    html +=
-                        '<div class="scroll-x"><table><thead><tr>' +
-                        '<th>分组</th><th>曝光人数</th><th>支付人数</th><th>支付笔数</th><th>GMV</th>' +
-                        '<th>人均支付(主指标)</th><th>支付转化%</th></tr></thead><tbody>';
-                    (d.arms || []).forEach(function (a) {
-                        if (a.variant === 'unknown' && !a.exposed_users && !a.paid_orders) return;
-                        var armLabel =
-                            a.variant === 'control'
-                                ? 'A·对照'
-                                : a.variant === 'treatment'
-                                  ? 'B·三档'
-                                  : a.variant === 'b'
-                                    ? 'C·激活码'
-                                    : a.variant;
-                        html +=
-                            '<tr><td>' +
-                            esc(armLabel) +
-                            '</td><td>' +
-                            esc(String(a.exposed_users)) +
-                            '</td><td>' +
-                            esc(String(a.paid_users)) +
-                            '</td><td>' +
-                            esc(String(a.paid_orders)) +
-                            '</td><td>' +
-                            esc(String(a.gmv)) +
-                            '</td><td><strong>' +
-                            esc(String(a.arpu_exposed)) +
-                            '</strong></td><td>' +
-                            esc(String(a.pay_cvr)) +
-                            '</td></tr>';
-                    });
-                    html += '</tbody></table></div>';
-                    if (d.sku_breakdown && d.sku_breakdown.length) {
-                        html +=
-                            '<p class="stat mt-12">SKU 拆分</p><div class="scroll-x"><table><thead><tr>' +
-                            '<th>分组</th><th>SKU</th><th>笔数</th><th>人数</th><th>GMV</th></tr></thead><tbody>';
-                        d.sku_breakdown.forEach(function (s) {
-                            html +=
-                                '<tr><td>' +
-                                esc(s.variant) +
-                                '</td><td>' +
-                                esc(s.sku_id) +
-                                '</td><td>' +
-                                esc(String(s.paid_orders)) +
-                                '</td><td>' +
-                                esc(String(s.paid_users)) +
-                                '</td><td>' +
-                                esc(String(s.gmv)) +
-                                '</td></tr>';
-                        });
-                        html += '</tbody></table></div>';
-                    }
-                    box.innerHTML = html;
-                })
-                .catch(function () {
-                    box.innerHTML = '网络错误';
-                });
-        }
 
         function loadInstallRegisterAnalysis() {
             loadAnalyticsRegisterPlatform();
@@ -3716,7 +3362,6 @@
             });
         }
 
-        var analyticsConvCache = null;
 
         function analyticsPeriodHintHtml(data) {
             if (window.AdminAnalyticsPeriod && AdminAnalyticsPeriod.hintHtml) {
@@ -3733,201 +3378,6 @@
             return '<p class="hint" style="margin:0 0 12px;">' + esc(hint) + '</p>';
         }
 
-        function renderDailyConversionPeriodOverview(data) {
-            var own = data && data.segments && data.segments.own;
-            var pt = own && own.period_total;
-            if (!pt) return '';
-            var label = (data && data.period_label) || '统计区间';
-            var registered = Number(pt.registered) || 0;
-            var activated = Number(pt.activated) || 0;
-            var ratePct =
-                pt.rate_pct != null ? pt.rate_pct : registered > 0 ? '0.0%' : '—';
-            var alipayPt =
-                data.segments.alipay && data.segments.alipay.period_total
-                    ? data.segments.alipay.period_total
-                    : null;
-            var alipayAct = alipayPt ? Number(alipayPt.activated) || 0 : null;
-            var html = '<div class="analytics-segment-block analytics-conv-overview">';
-            html += '<h3 class="analytics-segment-title">区间汇总（' + esc(label) + '）</h3>';
-            html += '<div class="user-data-stats analytics-conv-overview-stats">';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">注册</div><div class="ud-val">' +
-                esc(String(registered)) +
-                '</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">激活</div><div class="ud-val">' +
-                esc(String(activated)) +
-                '</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">转化率</div><div class="ud-val" style="color:var(--admin-primary);">' +
-                esc(String(ratePct)) +
-                '</div></div>';
-            if (alipayAct != null) {
-                html +=
-                    '<div class="user-data-stat-card"><div class="ud-label">支付宝激活</div><div class="ud-val">' +
-                    esc(String(alipayAct)) +
-                    '</div></div>';
-            }
-            html += '</div>';
-            html +=
-                '<p class="hint" style="margin:0 0 4px;">按所选统计区间汇总自有流量注册与激活（激活 ÷ 注册）；下方为分日明细。</p>';
-            html += '</div>';
-            return html;
-        }
-
-        function renderDailyConversionSegmentBlock(title, segmentData, pageData, options) {
-            options = options || {};
-            var activationOnly = !!options.activationOnly;
-            var channelLabel = String(options.channelLabel || '').trim() || '渠道';
-            var collapsed = !!options.collapsed;
-            var wrapStart = collapsed
-                ? '<details class="analytics-segment-block analytics-segment-collapsible">'
-                : '<div class="analytics-segment-block">';
-            var titleHtml = collapsed
-                ? '<summary class="analytics-segment-title">' + esc(title) + '</summary>'
-                : '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
-            var html = wrapStart + titleHtml;
-            if (!segmentData || !segmentData.today) {
-                html += '<p class="hint">暂无数据</p>' + (collapsed ? '</details>' : '</div>');
-                return html;
-            }
-            var pt = segmentData.period_total;
-            /* 最近 N 天 / 自定义区间均展示区间合计（不再要求 period_start） */
-            if (pageData && pt && (pageData.period_label || pageData.period_start || pageData.days)) {
-                html += '<div class="analytics-conv-summary analytics-conv-period-total">';
-                html +=
-                    '<div class="conv-label">区间合计（' +
-                    esc(pageData.period_label || '') +
-                    '）</div>';
-                if (activationOnly) {
-                    html += '<div class="conv-today">' + esc(String(pt.activated != null ? pt.activated : 0)) + '</div>';
-                    html += '<div class="conv-sub">' + esc(channelLabel) + '激活</div>';
-                } else {
-                    var periodRate =
-                        pt.rate_pct != null ? pt.rate_pct : pt.registered > 0 ? '0.0%' : '—';
-                    html += '<div class="conv-today">' + esc(periodRate) + '</div>';
-                    html +=
-                        '<div class="conv-sub">注册 ' +
-                        esc(String(pt.registered)) +
-                        ' · 激活 ' +
-                        esc(String(pt.activated)) +
-                        '</div>';
-                }
-                html += '</div>';
-            }
-            var today = segmentData.today;
-            var todayKey = today.date || '';
-            var summaryTitle = segmentData.today_is_current === false ? '末日' : '今日';
-            html += '<div class="analytics-conv-summary">';
-            if (activationOnly) {
-                html +=
-                    '<div class="conv-label">' +
-                    summaryTitle +
-                    esc(channelLabel) +
-                    '激活（' +
-                    esc(todayKey) +
-                    '）</div>';
-                html += '<div class="conv-today">' + esc(String(today.activated != null ? today.activated : 0)) + '</div>';
-                html +=
-                    '<div class="conv-sub">仅统计 admin 名下通过' +
-                    esc(channelLabel) +
-                    '码/渠道激活的用户</div>';
-            } else {
-                var rateText = today.rate_pct != null ? today.rate_pct : today.registered > 0 ? '0.0%' : '—';
-                html += '<div class="conv-label">' + summaryTitle + '转化率（' + esc(todayKey) + '）</div>';
-                html += '<div class="conv-today">' + esc(rateText) + '</div>';
-                html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
-            }
-            html += '</div>';
-
-            var series = Array.isArray(segmentData.series) ? segmentData.series.slice().reverse() : [];
-            html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
-            html += '<th>日期</th>';
-            if (!activationOnly) {
-                html += '<th>注册数</th>';
-            }
-            html += '<th>激活数</th>';
-            if (!activationOnly) {
-                html += '<th>转化率</th>';
-            }
-            html += '</tr></thead><tbody>';
-            if (!series.length) {
-                html += '<tr><td colspan="' + (activationOnly ? 2 : 4) + '">暂无数据</td></tr>';
-            } else {
-                series.forEach(function (row) {
-                    if (!row || !row.date) return;
-                    var isToday = row.date === todayKey;
-                    html += '<tr' + (isToday ? ' class="conv-row-today"' : '') + '>';
-                    html += '<td>' + esc(row.date) + (isToday ? ' <span style="color:#1677ff;font-size:12px;">今日</span>' : '') + '</td>';
-                    if (!activationOnly) {
-                        html += '<td>' + esc(String(row.registered != null ? row.registered : 0)) + '</td>';
-                    }
-                    html += '<td>' + esc(String(row.activated != null ? row.activated : 0)) + '</td>';
-                    if (!activationOnly) {
-                        var pct = row.rate_pct != null ? row.rate_pct : row.registered > 0 ? '0.0%' : '—';
-                        html += '<td class="conv-rate-cell">' + esc(pct) + '</td>';
-                    }
-                    html += '</tr>';
-                });
-            }
-            html += '</tbody></table></div>' + (collapsed ? '</details>' : '</div>');
-            return html;
-        }
-
-        function loadAnalyticsDailyConversion() {
-            var el = document.getElementById('analyticsDailyConversion');
-            if (!el) return;
-            var daysEl = document.getElementById('analyticsConversionDays');
-            var periodVal = analyticsPeriodVal(daysEl);
-            el.textContent = '转化率加载中…';
-            adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(periodVal))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        analyticsConvCache = null;
-                        el.textContent = j.msg || '转化率加载失败';
-                        return;
-                    }
-                    renderAnalyticsDailyConversion(j.data);
-                })
-                .catch(function () {
-                    analyticsConvCache = null;
-                    el.textContent = '转化率加载失败';
-                });
-        }
-
-        function renderAnalyticsDailyConversion(data) {
-            var el = document.getElementById('analyticsDailyConversion');
-            if (!el) return;
-            if (!data || !data.segments) {
-                analyticsConvCache = null;
-                el.textContent = '转化率暂无数据';
-                return;
-            }
-            analyticsConvCache = data;
-            var ownerHint = data.owner_admin_username
-                ? '（仅统计 <code>' + esc(data.owner_admin_username) + '</code> 名下用户）'
-                : '';
-            var html = analyticsPeriodHintHtml(data);
-            if (ownerHint) {
-                html += '<p class="hint" style="margin:0 0 12px;">激活与注册均仅计入主管理员账号' + ownerHint + '，不含其他子管理员名下用户。</p>';
-            }
-            /* 区间汇总置顶：最近 7 天等所选周期的注册 / 激活 / 转化率 */
-            html += renderDailyConversionPeriodOverview(data);
-            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data, {
-                collapsed: true
-            });
-            if (data.segments.alipay) {
-                html += renderDailyConversionSegmentBlock('支付宝激活', data.segments.alipay, data, {
-                    activationOnly: true,
-                    channelLabel: '支付宝',
-                    collapsed: true
-                });
-            }
-            el.innerHTML = html;
-        }
 
         function renderChannelRegistrationFunnel(data) {
             var el = document.getElementById('analyticsChannelFunnel');
@@ -4377,8 +3827,10 @@
             html += '</tbody></table></div>';
 
             var actions = Array.isArray(data.actions) ? data.actions : [];
-            html += '<p class="stat" style="margin:0 0 8px;">用户行为（点击 / 播放等）</p>';
-            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr><th>行为</th><th>次数</th></tr></thead><tbody>';
+            html +=
+                '<details class="analytics-section-details install-user-actions-details">' +
+                '<summary>用户行为（点击 / 播放等）</summary>';
+            html += '<div class="scroll-x"><table><thead><tr><th>行为</th><th>次数</th></tr></thead><tbody>';
             if (!actions.length) {
                 html += '<tr><td colspan="2">暂无行为数据</td></tr>';
             } else {
@@ -4386,7 +3838,7 @@
                     html += '<tr><td>' + esc(row.label || row.event_key) + '</td><td>' + esc(row.total) + '</td></tr>';
                 });
             }
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></details>';
 
             html += '<p class="stat" style="margin:0 0 8px;">按日明细</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
@@ -9713,57 +9165,6 @@
                     });
             });
         }
-        document.getElementById('btnRefreshConversion').addEventListener('click', function () {
-            loadAnalyticsDailyConversion();
-        });
-        var btnRefreshD1Cohort = document.getElementById('btnRefreshD1Cohort');
-        if (btnRefreshD1Cohort) {
-            btnRefreshD1Cohort.addEventListener('click', function () {
-                loadAnalyticsD1ReturnCohort();
-            });
-        }
-        var btnJumpD1OnlyUsers = document.getElementById('btnJumpD1OnlyUsers');
-        if (btnJumpD1OnlyUsers) {
-            btnJumpD1OnlyUsers.addEventListener('click', function () {
-                jumpToD1ReturnUsers('only');
-            });
-        }
-        var btnJumpD1HasUsers = document.getElementById('btnJumpD1HasUsers');
-        if (btnJumpD1HasUsers) {
-            btnJumpD1HasUsers.addEventListener('click', function () {
-                jumpToD1ReturnUsers('has');
-            });
-        }
-        var btnJumpD1OnlyBulk = document.getElementById('btnJumpD1OnlyBulk');
-        if (btnJumpD1OnlyBulk) {
-            btnJumpD1OnlyBulk.addEventListener('click', function () {
-                jumpToD1OnlyBulk();
-            });
-        }
-        var btnRefreshHighIncome = document.getElementById('btnRefreshHighIncome');
-        if (btnRefreshHighIncome) {
-            btnRefreshHighIncome.addEventListener('click', function () {
-                loadAnalyticsHighIncomeInactive();
-            });
-        }
-        var btnJumpHighIncomeUsers = document.getElementById('btnJumpHighIncomeUsers');
-        if (btnJumpHighIncomeUsers) {
-            btnJumpHighIncomeUsers.addEventListener('click', function () {
-                jumpToHighIncomeUsers();
-            });
-        }
-        var btnJumpHighIncomeBulk = document.getElementById('btnJumpHighIncomeBulk');
-        if (btnJumpHighIncomeBulk) {
-            btnJumpHighIncomeBulk.addEventListener('click', function () {
-                jumpToHighIncomeBulk();
-            });
-        }
-        var btnJumpRefundEligibleBulk = document.getElementById('btnJumpRefundEligibleBulk');
-        if (btnJumpRefundEligibleBulk) {
-            btnJumpRefundEligibleBulk.addEventListener('click', function () {
-                jumpToRefundEligibleBulk();
-            });
-        }
         var btnRefreshAnalytics = document.getElementById('btnRefreshAnalytics');
         if (btnRefreshAnalytics) {
             btnRefreshAnalytics.addEventListener('click', function () {
@@ -9821,21 +9222,6 @@
                     var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
                     loadDauUsersPage(dateN, pageN, boxN);
                 }
-            });
-        }
-        document.getElementById('analyticsConversionDays').addEventListener('change', function () {
-            loadAnalyticsDailyConversion();
-        });
-        var btnRefreshPricingAb = document.getElementById('btnRefreshPricingAb');
-        if (btnRefreshPricingAb) {
-            btnRefreshPricingAb.addEventListener('click', function () {
-                loadAnalyticsPricingAb();
-            });
-        }
-        var analyticsPricingAbDays = document.getElementById('analyticsPricingAbDays');
-        if (analyticsPricingAbDays) {
-            analyticsPricingAbDays.addEventListener('change', function () {
-                loadAnalyticsPricingAb();
             });
         }
         var btnRefreshChannelFunnel = document.getElementById('btnRefreshChannelFunnel');

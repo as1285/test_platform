@@ -1192,25 +1192,6 @@ tr.users-detail-row > td {
 .analytics-conv-wrap {
     margin-top: 12px;
 }
-.d1-focus-tag {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: #fff7ed;
-    color: #c2410c;
-    font-size: 12px;
-    font-weight: 600;
-    vertical-align: middle;
-}
-.d1-focus-card {
-    border-color: #fdba74;
-    background: linear-gradient(180deg, #fff7ed 0%, var(--admin-surface) 100%);
-}
-.high-income-focus-card {
-    border-color: #f59e0b;
-    background: linear-gradient(180deg, #fffbeb 0%, var(--admin-surface) 100%);
-}
 .high-income-badge {
     display: inline-block;
     margin-left: 5px;
@@ -3037,25 +3018,3 @@ tr.users-detail-row > td {
     border-color: var(--admin-primary-border);
     outline: none;
 }
-.ops-insight-box {
-    margin: 0 0 16px;
-    padding: 12px 14px;
-    border: 1px solid var(--admin-primary-border);
-    border-radius: 10px;
-    background: var(--admin-primary-soft);
-}
-.ops-insight-box h3 {
-    margin: 0 0 8px;
-    font-size: 14px;
-    color: var(--admin-heading);
-}
-.ops-insight-box ul {
-    margin: 0;
-    padding-left: 18px;
-}
-.ops-insight-box li {
-    margin: 6px 0;
-    color: var(--admin-text-secondary);
-    font-size: 13px;
-}
-
