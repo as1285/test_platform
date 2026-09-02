@@ -33,7 +33,10 @@ function pad2(n) {
     return (n < 10 ? '0' : '') + n;
 }
 
-/** 税款所属期 YYYY-MM */
+/**
+ * 税款所属期 YYYY-MM。
+ * @returns {string} 非法年月返回空串
+ */
 function taxPeriodFromYearMonth(year, month) {
     var y = parseInt(year, 10);
     var m = parseInt(month, 10);
@@ -41,7 +44,10 @@ function taxPeriodFromYearMonth(year, month) {
     return y + '-' + pad2(m);
 }
 
-/** 申报日期比所属期（年-月）晚一个月，默认每月 15 日 */
+/**
+ * 申报日期比所属期（年-月）晚一个月，默认每月 15 日。
+ * @returns {string} YYYY-MM-DD；非法返回空串
+ */
 function reportDateOneMonthAfterBelonging(year, month, day) {
     var y = parseInt(year, 10);
     var m = parseInt(month, 10);
@@ -278,7 +284,10 @@ function formatConsultCertFeeYuan(raw) {
     return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
 }
 
-/** 增值服务：离职/在职证明价格以后台「内容配置」为准 */
+/**
+ * 增值服务：离职/在职证明价格以后台「内容配置」为准。
+ * 副作用：写徽章与提示文案 DOM。
+ */
 function applyConsultLizhiCertFeeCopy(amount) {
     var yuan = formatConsultCertFeeYuan(amount);
     if (!yuan) return;
@@ -316,7 +325,10 @@ function loadConsultLizhiCertFeeCopy() {
         .catch(function () {});
 }
 
-/** 附加产品页：收拢开通/续费支付入口（始终展示） */
+/**
+ * 附加产品页：收拢开通/续费支付入口（始终展示）。
+ * 副作用：按激活态改标题/按钮文案与 href。
+ */
 function syncConsultPurchaseEntry(user) {
     var card = document.getElementById('cardConsultPurchaseEntry');
     var hint = document.getElementById('consultPurchaseEntryHint');
@@ -693,7 +705,10 @@ function clearForm() {
     initHeader();
 }
 
-/** 本期专项扣除 = 养老 + 医疗 + 失业 + 公积金（与申报口径一致） */
+/**
+ * 本期专项扣除 = 养老 + 医疗 + 失业 + 公积金（与申报口径一致）。
+ * @returns {number} 四舍五入到分
+ */
 function sumSpecialDeductionFromForm() {
     var p = parseFloat(document.getElementById('f_pension_insurance').value) || 0;
     var m = parseFloat(document.getElementById('f_medical_insurance').value) || 0;
@@ -1334,7 +1349,10 @@ function syncCompanyProfilesFromTaxRecords(records) {
     });
 }
 
-/** 从任职受雇列表补全纳税人识别号（统一社会信用代码 → 工作经历税号字段） */
+/**
+ * 从任职受雇列表补全纳税人识别号（统一社会信用代码 → 工作经历税号字段）。
+ * 副作用：rememberBatchCompanyProfile。
+ */
 function syncCompanyProfilesFromEmployers(employers) {
     if (!employers || !employers.length) return;
     employers.forEach(function (e) {
@@ -1400,6 +1418,7 @@ function enumerateYmRange(sy, sm, ey, em) {
 
 /** 解析单段工作经历（含按月自定义工资 map → monthSalaryOverrides） */
 
+/** 解析纯数字金额（去逗号）；非法返回 null。 */
 function parseMoneyToken(raw) {
     var s = String(raw || '')
         .replace(/,/g, '')
@@ -1454,6 +1473,7 @@ function normalizeTaxPasteLabels(text) {
  * 例：月薪税前2万（改为20000—23000区间）；发2万提成（改为21350.5）；奖金22000元—数字改为22621
  */
 
+/** 将粘贴文本按扣缴义务人/公司块切分。 */
 function splitTaxPasteEmployerBlocks(text) {
     var trimmed = String(text || '').trim();
     if (!trimmed) {
@@ -1742,6 +1762,7 @@ function parseOneTaxPasteEmployerBlock(block) {
  * 解析粘贴的个税 APP / 聊天记录文本（可含多家公司）。
  */
 
+/** 生成粘贴解析预览纯文本。 */
 function formatTaxPastePreview(parsed) {
     if (!parsed || !parsed.ok) {
         return parsed && parsed.error ? parsed.error : '解析失败';
@@ -2403,7 +2424,10 @@ function onSubmitEmployer(e) {
         });
 }
 
-/** 任职记录数写入本地，并清掉「我的」汇总缓存（含已离职，避免加了单位仍显示「暂无」） */
+/**
+ * 任职记录数写入本地，并清掉「我的」汇总缓存（含已离职，避免加了单位仍显示「暂无」）。
+ * 副作用：localStorage / sessionStorage。
+ */
 function syncLocalEmployerCountFromList(list) {
     var n = 0;
     (list || []).forEach(function (e) {

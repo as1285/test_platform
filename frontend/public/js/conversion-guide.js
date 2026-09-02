@@ -1792,7 +1792,7 @@
       track('track_tax_edit_entry', { page: currentPage(), source: 'value_confirm' });
       goManageTaxRecords();
     };
-    function document.getElementById('cgValueLater').onclick = function () {
+    document.getElementById('cgValueLater').onclick = function () {
       closeOv('later');
     };
     ov.addEventListener('click', function (e) {
@@ -1845,6 +1845,12 @@
     return yearRefundTotals(records, year).income_sum;
   }
 
+  /**
+   * 汇总某年非示例记录的税额与月收入，并打 tax/income/both 资格标记。
+   * @param {Array} records
+   * @param {number|string} year
+   * @returns {{year:number,tax_sum:number,income_sum:number,tax_hit:boolean,income_hit:boolean,reason:string}}
+   */
   function yearRefundTotals(records, year) {
     var y = parseInt(String(year), 10);
     var tax = 0;
@@ -2071,6 +2077,10 @@
     card.setAttribute('hidden', '');
   }
 
+  /**
+   * 同步咨询页退税入口卡：未激活推开通；已激活且年收入≥15万推广告浏览（可抑制）。
+   * @param {Array} [records]
+   */
   function syncRefundAdRecommendCards(records) {
     hideLegacyShuimingRefundWechatCard();
     syncShuimingInactivePrompt(records);
@@ -2306,6 +2316,10 @@
     return true;
   }
 
+  /**
+   * 填税完成后的统一出口：优先强制退税广告 → 软推荐收入弹窗 → 价值确认 / 明细跳转。
+   * @param {{source?: string, records?: Array}} [opts]
+   */
   function afterTaxRecordsCreated(opts) {
     opts = opts || {};
     var y = normalizeTaxYearLocal(null);
@@ -2702,6 +2716,7 @@
     if (el && el.parentNode) el.parentNode.removeChild(el);
   }
 
+  // === 填税引导 / Nudge ===
   function isTaxFillBannerDismissedToday() {
     try {
       return localStorage.getItem(TAX_FILL_BANNER_DISMISS_KEY) === beijingDayKey();

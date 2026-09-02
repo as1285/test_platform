@@ -7251,6 +7251,11 @@
     return ok;
   }
 
+  // === 客户端设备 ID 与请求载荷 ===
+  /**
+   * 持久化匿名设备 ID（localStorage.client_device_id）；过短或缺失时重新生成。
+   * 供 X-Client-Device / 埋点 / 首次打开去重等共用。
+   */
   function getOrCreateClientDeviceId() {
     try {
       var v = localStorage.getItem(CLIENT_DEVICE_STORAGE_KEY);
@@ -7488,6 +7493,9 @@
     return next;
   }
 
+  /**
+   * 组装设备画像（client_id / UA / 屏参等）；可经 window.buildClientDevicePayloadHook 合并壳字段。
+   */
   function buildClientDevicePayload() {
     var tz = '';
     try {
@@ -7521,6 +7529,9 @@
     return payload;
   }
 
+  /**
+   * 生成 X-Client-Device（及可选 X-Purchase-Abc）请求头；超长时仅保留 client_id/source/UA。
+   */
   function getClientDeviceHeaders() {
     try {
       var payload = buildClientDevicePayload();
@@ -7552,6 +7563,10 @@
     return h;
   }
 
+  /**
+   * 清理登录会话相关 localStorage（token、user_*、account_active、wm_cache 等）。
+   * 不清理渠道归因 / 设备 ID / AB sticky。
+   */
   function clearSession() {
     try {
       localStorage.removeItem('token');
@@ -7571,6 +7586,7 @@
     } catch (e) {}
   }
 
+  // === authFetch / 激活门禁 need_activation ===
   var API_PERF_SLOW_MS = 3000;
   var AUTH_FETCH_TIMEOUT_MS = 15000;
   var _apiPerfLastReportAt = 0;
@@ -7703,6 +7719,10 @@
     return action;
   }
 
+  /**
+   * 带鉴权的 fetch：合并 authHeaders；GET 短缓存/合流；401 清会话跳登录；
+   * 403+need_activation 写 account_active=0 并 reject（err.need_activation）。
+   */
   function authFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
@@ -8015,6 +8035,7 @@
     });
   }
 
+  // === trackUserAction / 埋点 ===
   function hasUserToken() {
     return !!getToken();
   }
@@ -8086,6 +8107,9 @@
     return s;
   }
 
+  /**
+   * 已登录埋点：POST api/user，带 Authorization + X-Page-Path；首屏安静期入队延后发。
+   */
   function fireTrack(action, pagePath, meta) {
     if (!hasUserToken()) return;
     var act = sanitizeTrackKey(action);
