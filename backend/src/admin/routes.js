@@ -46,7 +46,7 @@ app.post(
 function requireAdminUsersListMenu(req, res, next) {
   var peer = String((req.query && req.query.peer) || '').trim().toLowerCase();
   var isPeer = peer === '1' || peer === 'exempt';
-  return mw.requireAdminAnyMenu(isPeer ? ['peer-accounts', 'rename-tax-daily'])(req, res, next);
+  return mw.requireAdminAnyMenu(isPeer ? ['peer-accounts', 'rename-tax-daily'] : ['users'])(req, res, next);
 }
 
 app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users-deleted'), h.handleAdminDeletedUsers);
