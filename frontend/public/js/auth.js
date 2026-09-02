@@ -1750,6 +1750,20 @@
   }
 
   /**
+   * 华为 P40 Pro（ELS-AN00 / HarmonyOS 4.2 ArkWeb）。
+   * 100vw 常宽于画布，「我的」三宫格胶囊会掉到白卡下沿；勿套 noclip 的 100cqw。
+   */
+  function isHuaweiP40ProClient() {
+    var ua = clientUaBlob();
+    if (/Mate\s*60|\bALN-/i.test(ua)) return false;
+    if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(ua)) return false;
+    if (/HUAWEIELS|ELS-AN00|ELS-AN10|ELS-N04|ELS-AN\d{2}|ELS-NX9|ELS-L29|ELS-N29/i.test(ua)) {
+      return true;
+    }
+    return /(?:Huawei|HUAWEI|华为)?[\s_-]*P40[\s_-]*Pro/i.test(ua);
+  }
+
+  /**
    * 华为 nova 13 / 13 Pro（BLK-AL80 / MIS-AL00）。
    * HarmonyOS ArkWeb 的 100vw 常宽于画布，e1 叠字「添加/暂无」会掉到菜单顶边；
    * 白顶栏页 WebView 仍压在系统栏下，不能按鸿蒙族外置黑条清零顶距。
@@ -1858,6 +1872,10 @@
     if (isHuaweiMate60Client()) {
       return false;
     }
+    /* P40 Pro：100cqw / container-type 在 HarmonyOS 4.2 不可靠 */
+    if (isHuaweiP40ProClient()) {
+      return false;
+    }
     if (isHuaweiHarmonyOsFamilyClient() || isHiNovaFamilyClient()) {
       return true;
     }
@@ -1902,11 +1920,13 @@
         isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60');
       var mi14pro =
         isXiaomi14ProClient() || root.classList.contains('app-android-xiaomi-14pro');
-      var imp = mate60 || mi14pro ? 'important' : '';
+      var p40pro =
+        isHuaweiP40ProClient() || root.classList.contains('app-android-huawei-p40pro');
+      var imp = mate60 || mi14pro || p40pro ? 'important' : '';
       root.style.setProperty('--mine-rpx', rpx, imp);
       document.body.style.setProperty('--mine-rpx', rpx, imp);
       canvas.style.setProperty('--mine-rpx', rpx, imp);
-      if (mate60 || mi14pro) {
+      if (mate60 || mi14pro || p40pro) {
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('width', '100%', 'important');
       }
@@ -2023,8 +2043,8 @@
 
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 另走 lock。 */
   function androidMineE1TailCropCss() {
-    var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine';
+      var cropSel =
+      'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -2176,6 +2196,49 @@
   function pinMate60MineE1Layout() {
     try {
       var root = document.documentElement;
+      var p40pro = isHuaweiP40ProClient() || root.classList.contains('app-android-huawei-p40pro');
+      if (p40pro) {
+        root.classList.add('app-android-huawei-p40pro');
+        root.classList.add('app-android-client');
+        root.classList.remove('app-huawei-mine-noclip');
+        if (!document.body || !document.body.classList.contains('page-mine')) {
+          return;
+        }
+        root.style.setProperty('--mine-top-bleed', '0px');
+        document.body.style.setProperty('--mine-top-bleed', '0px');
+        var canvasP40 = document.getElementById('mineE1Canvas');
+        var layerP40 = document.getElementById('mineE1Layer');
+        var imgP40 = document.getElementById('headerImg');
+        if (canvasP40) {
+          canvasP40.style.setProperty('padding-top', '0', 'important');
+          canvasP40.style.setProperty('margin-top', '0', 'important');
+          canvasP40.style.setProperty('container-type', 'normal', 'important');
+          canvasP40.style.setProperty('width', '100%', 'important');
+          canvasP40.style.setProperty('height', 'auto', 'important');
+          canvasP40.style.setProperty('max-height', 'none', 'important');
+          canvasP40.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+          canvasP40.style.setProperty('background-size', '100% 100%', 'important');
+        }
+        if (imgP40) {
+          imgP40.style.setProperty('margin-top', '0', 'important');
+        }
+        if (layerP40) {
+          layerP40.style.setProperty('top', '0', 'important');
+          layerP40.style.setProperty('padding-bottom', 'calc(1180 / 750 * 100%)', 'important');
+        }
+        pinMineE1RpxFromCanvas();
+        if (!pinMate60MineE1Layout._p40RpxRearm) {
+          pinMate60MineE1Layout._p40RpxRearm = true;
+          [80, 240, 600, 1200].forEach(function (ms) {
+            setTimeout(function () {
+              try {
+                pinMineE1RpxFromCanvas();
+              } catch (eP40Rpx) {}
+            }, ms);
+          });
+        }
+        return;
+      }
       var mate60 = isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60');
       if (mate60) {
         root.classList.add('app-android-huawei-mate60');
@@ -3098,6 +3161,11 @@
           if (isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60')) {
             root.classList.add('app-android-huawei-mate60');
           }
+          if (isHuaweiP40ProClient() || root.classList.contains('app-android-huawei-p40pro')) {
+            root.classList.add('app-android-huawei-p40pro');
+            root.classList.add('app-android-client');
+            root.classList.remove('app-huawei-mine-noclip');
+          }
           if (isHuaweiNova13Client() || root.classList.contains('app-android-huawei-nova13')) {
             root.classList.add('app-android-huawei-nova13');
             root.classList.add('app-android-client');
@@ -3777,6 +3845,10 @@
       if (huaweiNova13Client) {
         androidClient = true;
       }
+      var huaweiP40ProClient = isHuaweiP40ProClient();
+      if (huaweiP40ProClient) {
+        androidClient = true;
+      }
       var onePlusAce2ProClient = androidClient && isOnePlusAce2ProClient();
       var onePlusAceProClient = androidClient && isOnePlusAceProClient();
       var onePlusAce2VClient = androidClient && isOnePlusAce2VClient();
@@ -4274,6 +4346,11 @@
         document.documentElement.classList.remove('app-huawei-mine-noclip');
         document.documentElement.classList.remove('app-android-huawei-harmony');
         document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+      }
+      if (huaweiP40ProClient) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-p40pro');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
       }
       if (huaweiNova13Client) {
         document.documentElement.classList.add('app-android-client');
@@ -5666,6 +5743,11 @@
         document.documentElement.classList.add('app-android-meizu-20pro');
         document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-android-white-page-outer');
+      }
+      if (isHuaweiP40ProClient()) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-huawei-p40pro');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
       }
       if (isHuaweiNova13Client()) {
         document.documentElement.classList.add('app-android-client');

@@ -88,15 +88,30 @@
                     } catch (eJump60) {
                         location.replace('mine_mate60_aug12.html?_v=20260824-aug12r6');
                     }
+                } else if (/ELS-AN00|ELS-AN10|ELS-N04|ELS-AN\d{2}|P40[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-huawei-p40pro');
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.remove('app-huawei-mine-noclip');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                    if (!document.getElementById('p40proMineFirstPaint')) {
+                        var p40Fp = document.createElement('style');
+                        p40Fp.id = 'p40proMineFirstPaint';
+                        p40Fp.textContent =
+                            'html.app-android-huawei-p40pro body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;}' +
+                            'html.app-android-huawei-p40pro body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;container-type:normal!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;background-size:100% 100%!important;}' +
+                            'html.app-android-huawei-p40pro body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
+                            'html.app-android-huawei-p40pro body.page-mine .mine-e1-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;}';
+                        document.head.appendChild(p40Fp);
+                    }
                 } else if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-huawei-mine-noclip');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
                     var huaweiNoclipInset = document.createElement('style');
                     huaweiNoclipInset.setAttribute('data-huawei-mine-noclip-inset', '1');
                     huaweiNoclipInset.textContent =
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas{padding-top:0!important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
-                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer{top:0!important;}';
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-canvas{padding-top:0!important;container-type:inline-size;--mine-rpx:calc(100cqw / 750);}' +
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-canvas>img{margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
+                        'html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-layer{top:0!important;}';
                     document.head.appendChild(huaweiNoclipInset);
                 }
                 if (/V2302A|V2302B|PD2302|V2307A|iQOO\s*Neo\s*8\s*Pro/i.test(u)) {
@@ -135,8 +150,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-p40pro"></script>
+    <script src="/js/auth.js?v=20260902-p40pro" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -275,7 +290,7 @@
         html.app-android-huawei-mate60 body.page-mine {
             --mine-top-bleed: 0px;
         }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine {
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine {
             --mine-top-bleed: 0px;
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
@@ -286,7 +301,7 @@
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed) !important;
         }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-canvas {
             padding-top: 0 !important;
         }
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas > img,
@@ -297,14 +312,14 @@
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas > img {
             margin-top: calc(-1 * var(--mine-top-bleed)) !important;
         }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-canvas > img,
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-canvas > #headerImg {
             margin-top: 0 !important;
             position: relative !important;
             top: auto !important;
             transform: none !important;
         }
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-layer {
             top: 0 !important;
         }
         html.app-android-vivo-family body.page-mine,
@@ -578,7 +593,7 @@
          * 1rpx 必须跟画布宽度走（cqw / JS 实测）。
          */
         html.app-android-huawei-nova13 body.page-mine .mine-e1-canvas,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-canvas {
             container-type: inline-size;
             --mine-rpx: calc(100cqw / 750);
         }
@@ -651,8 +666,26 @@
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
+        html.app-android-huawei-p40pro body.page-mine .mine-e1-canvas {
+            container-type: normal;
+            width: 100%;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: 750 / 1180;
+            background-size: 100% 100% !important;
+        }
+        html.app-android-huawei-p40pro body.page-mine .mine-e1-layer {
+            top: 0 !important;
+            padding-bottom: calc(1180 / 750 * 100%) !important;
+        }
+        html.app-android-huawei-p40pro body.page-mine,
+        html.app-android-huawei-p40pro body.page-mine .mine-e1-canvas,
+        html.app-android-huawei-p40pro body.page-mine .mine-e1-layer {
+            --mine-rpx: calc(100vw / 750);
+        }
         html.app-android-huawei-nova13 body.page-mine .mine-e1-pill,
-        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60) body.page-mine .mine-e1-pill {
+        html.app-android-huawei-p40pro body.page-mine .mine-e1-pill,
+        html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine .mine-e1-pill {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
