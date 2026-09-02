@@ -179,12 +179,40 @@
                 ) {
                     document.documentElement.classList.add('platform-ios');
                 }
+                try {
+                    var modelSm = '';
+                    try {
+                        modelSm = String(localStorage.getItem('tax_device_model_v1') || '');
+                    } catch (eModelSm) {}
+                    var blobSm = u + ' ' + modelSm;
+                    var is16pmUaSm =
+                        /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blobSm) &&
+                        !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blobSm);
+                    var is16pmVpSm = false;
+                    try {
+                        var swSm = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+                        var shSm = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+                        var shortSm = Math.min(swSm, shSm);
+                        var longSm = Math.max(swSm, shSm);
+                        is16pmVpSm =
+                            shortSm >= 436 &&
+                            shortSm <= 444 &&
+                            longSm >= 948 &&
+                            longSm <= 962 &&
+                            !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blobSm);
+                    } catch (eVpSm) {}
+                    if (is16pmUaSm || is16pmVpSm) {
+                        document.documentElement.classList.add('app-ios-iphone16promax');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                    }
+                } catch (e16pm) {}
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-ip16pm-width"></script>
+    <script src="/js/auth.js?v=20260902-ip16pm-width" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

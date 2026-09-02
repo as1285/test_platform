@@ -4612,10 +4612,17 @@
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:#fff !important;z-index:122 !important;pointer-events:none !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .page-root,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top) !important;z-index:auto !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed{position:relative !important;z-index:auto !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;padding:15px 16px !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;padding:15px 20px !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;display:flex !important;align-items:center !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:121 !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
+          'html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
+          'html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
+          'html.app-ios-iphone16promax body.page-shuiming-result .back-btn{left:20px !important;}' +
+          'html.app-ios-iphone16promax body.page-shuiming-result .header-right{right:20px !important;}' +
+          'html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card{margin-left:16px !important;margin-right:16px !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
@@ -8039,7 +8046,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260902-adopt';
+      s.src = '/js/conversion-guide.js?v=20260902-ip16pm-width';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

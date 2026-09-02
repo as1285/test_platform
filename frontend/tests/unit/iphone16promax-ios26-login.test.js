@@ -4,6 +4,7 @@ import { resolve } from 'path';
 
 const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8');
 const login = readFileSync(resolve(__dirname, '../../login.html'), 'utf8');
+const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
 
 describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
   it('does not classify 16 Pro Max as 17 Pro Max via iOS 26 + 440×956', () => {
@@ -30,5 +31,19 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
   it('login.html first-paints 16 Pro Max class', () => {
     expect(login).toContain('app-ios-iphone16promax');
     expect(login).toContain('20260902-ip16pm-login');
+  });
+
+  it('shuiming_result first-paints 16 Pro Max and narrows wide layout', () => {
+    expect(shuimingResult).toContain('MYTN3');
+    expect(shuimingResult).toContain('app-ios-iphone16promax');
+    expect(shuimingResult).toContain('20260902-ip16pm-width');
+    expect(shuimingResult).toContain('tax_device_model_v1');
+    expect(shuimingResult).toMatch(/short16 >= 436/);
+    expect(shuimingResult).toMatch(
+      /html\.app-ios-iphone16promax body\.page-shuiming-result \.list\s*\{[^}]*padding-left:\s*16px/
+    );
+    expect(shuimingResult).toMatch(
+      /html\.app-ios-iphone16promax\.platform-ios body\.page-shuiming-result \.list-company-name\s*\{[^}]*max-width:\s*20em/
+    );
   });
 });

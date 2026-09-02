@@ -296,7 +296,12 @@
                 }
                 var model = '';
                 try {
-                    if (window.device && window.device.model) model = String(window.device.model);
+                    model = String(localStorage.getItem('tax_device_model_v1') || '');
+                } catch (eModelLs) {}
+                try {
+                    if (window.device && window.device.model) {
+                        model += ' ' + String(window.device.model);
+                    }
                 } catch (eM) {}
                 if (
                     /iPhone\s*13\b|iPhone14,5\b/i.test(u + ' ' + model) &&
@@ -304,12 +309,37 @@
                 ) {
                     document.documentElement.classList.add('app-ios-iphone13');
                 }
+                /* iPhone 16 Pro Max：UA 常无型号，须读 localStorage + 440×956 视口兜底 */
+                try {
+                    var blob16 = u + ' ' + model;
+                    var is16pmUa =
+                        /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blob16) &&
+                        !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
+                    var is16pmVp = false;
+                    try {
+                        var sw16 = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+                        var sh16 = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+                        var short16 = Math.min(sw16, sh16);
+                        var long16 = Math.max(sw16, sh16);
+                        is16pmVp =
+                            short16 >= 436 &&
+                            short16 <= 444 &&
+                            long16 >= 948 &&
+                            long16 <= 962 &&
+                            !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
+                    } catch (eVp16) {}
+                    if (is16pmUa || is16pmVp) {
+                        document.documentElement.classList.add('app-ios-iphone16promax');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                    }
+                } catch (e16pm) {}
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-ip16pm-width"></script>
+    <script src="/js/auth.js?v=20260902-ip16pm-width" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1402,6 +1432,70 @@
 
         html.app-ios-iphone-promax-font body.page-shuiming-result .list-value {
             font-size: 16px;
+        }
+
+        /*
+         * iPhone 16 Pro Max（440 逻辑宽）：窄屏贴边铺满显得过宽。
+         * 加大左右留白、公司名可显示更长；压过 auth 注入的 16px 顶栏内边距。
+         */
+        html.app-ios-iphone16promax body.page-shuiming-result .list {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            box-sizing: border-box;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .list-item {
+            --list-inline-pad: 20px;
+            border-radius: 10px;
+            width: auto;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item {
+            padding-left: 24px !important;
+            padding-right: 24px !important;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .header,
+        html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .back-btn {
+            left: 20px !important;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .header-right {
+            right: 20px !important;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .list-company-name,
+        html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name {
+            max-width: 20em !important;
+        }
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .header-title {
+            font-size: 20px;
+        }
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .summary-label,
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .summary-value {
+            font-size: 19px;
+            line-height: 26px;
+        }
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .list-title,
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .list-date {
+            font-size: 19px;
+        }
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .list-label,
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .list-company {
+            font-size: 18px;
+        }
+        html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .list-value {
+            font-size: 17px;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .list-date {
+            margin-right: 20px;
+        }
+        html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,
+        html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card {
+            margin-left: 16px;
+            margin-right: 16px;
         }
 
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root {
