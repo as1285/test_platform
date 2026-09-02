@@ -272,29 +272,6 @@
     } catch (ePrime) {}
   }
 
-  function markIqooImmersiveClasses() {
-    try {
-      var ua = '';
-      try {
-        ua = String(navigator.userAgent || '');
-      } catch (eUa) {}
-      try {
-        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
-      } catch (eModel) {}
-      try {
-        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
-      } catch (eUa2) {}
-      if (/V2408A|V2408BA|V2408GA|\bV2408\b|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(ua)) {
-        document.documentElement.classList.add('app-android-iqoo-13');
-        document.documentElement.classList.add('app-android-immersive-white-top');
-      }
-      if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(ua)) {
-        document.documentElement.classList.add('app-android-iqoo-15');
-        document.documentElement.classList.add('app-android-immersive-white-top');
-      }
-    } catch (eIq) {}
-  }
-
   try {
     if (typeof window.authFetch !== 'function') {
       window.authFetch = bearerTokenFetch;
@@ -430,7 +407,6 @@
   })();
 
   markViewportChromeClasses();
-  markIqooImmersiveClasses();
   primeAndroidMineE1SmFirstPaint();
 
   if (!isPublicPage()) {
