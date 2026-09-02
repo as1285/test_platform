@@ -15,7 +15,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth.js?v=20260903-email-reg1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -806,6 +806,10 @@
                         try {
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}
+                        try {
+                            /* 注册成功后优先引导留邮箱（conversion-guide 读取） */
+                            sessionStorage.setItem('cg_email_nudge_after_register', '1');
+                        } catch (eEmailPend) {}
                         var goDownload = false;
                         try {
                             goDownload = sessionStorage.getItem('reg_next_download_v1') === '1';

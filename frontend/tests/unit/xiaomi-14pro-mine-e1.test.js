@@ -7,7 +7,6 @@ const NAME_RE = /(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro(?!\s*Max)/i;
 
 const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8');
 const mine = readFileSync(resolve(__dirname, '../../mine.html'), 'utf8');
-const mineV2 = readFileSync(resolve(__dirname, '../../mine_v2.html'), 'utf8');
 
 describe('Xiaomi 14 Pro mine e1 lock', () => {
   it('matches 14 Pro model codes and marketing name', () => {
@@ -41,32 +40,28 @@ describe('Xiaomi 14 Pro mine e1 lock', () => {
     expect(auth).toContain('background-size:100% 100% !important');
   });
 
-  it('mine pages first-paint the lock so HyperOS 2 does not flash a blue empty card', () => {
-    [mine, mineV2].forEach((html) => {
-      expect(html).toContain('app-android-xiaomi-14pro');
-      expect(html).toContain('app-android-xiaomi-15');
-      expect(html).toContain('data-xiaomi14pro-mine-firstpaint');
-      expect(html).toContain('data-xiaomi15-mine-firstpaint');
-      expect(html).toContain('data-xiaomi14pro-mine-e1-paint');
-      expect(html).toContain('23116PN5');
-      expect(html).toContain('24129PN74');
-      expect(html).toContain('overflow:visible!important');
-      expect(html).toContain('e1_01@sm.png');
-      expect(html).toContain('opacity:0!important');
-      expect(html).toContain('aspect-ratio:1284/2127');
-      expect(html).toContain('html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine');
-    });
+  it('mine.html first-paints the lock so HyperOS 2 does not flash a blue empty card', () => {
+    expect(mine).toContain('app-android-xiaomi-14pro');
+    expect(mine).toContain('app-android-xiaomi-15');
+    expect(mine).toContain('data-xiaomi14pro-mine-firstpaint');
+    expect(mine).toContain('data-xiaomi15-mine-firstpaint');
+    expect(mine).toContain('data-xiaomi14pro-mine-e1-paint');
+    expect(mine).toContain('23116PN5');
+    expect(mine).toContain('24129PN74');
+    expect(mine).toContain('overflow:visible!important');
+    expect(mine).toContain('e1_01@sm.png');
+    expect(mine).toContain('opacity:0!important');
+    expect(mine).toContain('aspect-ratio:1284/2127');
+    expect(mine).toContain('html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine');
   });
 
-  it('mine pages self-heal the big e1 image (corrupt cache / decode fail)', () => {
-    [mine, mineV2].forEach((html) => {
-      expect(html).toContain('data-mine-e1-selfheal');
-      expect(html).toContain('@sm.png');
-      expect(html).toContain('__mineE1ForceSm');
-      expect(html).toContain('?v=20260827-e1r3');
-      expect(html).toMatch(/auth-boot\.js\?v=2026090/);
-      expect(html).toMatch(/auth\.js\?v=2026090/);
-      expect(html).not.toContain('20260802-e1fix');
-    });
+  it('mine.html self-heals the big e1 image (corrupt cache / decode fail)', () => {
+    expect(mine).toContain('data-mine-e1-selfheal');
+    expect(mine).toContain('@sm.png');
+    expect(mine).toContain('__mineE1ForceSm');
+    expect(mine).toContain('?v=20260827-e1r3');
+    expect(mine).toMatch(/auth-boot\.js\?v=2026090/);
+    expect(mine).toMatch(/auth\.js\?v=2026090/);
+    expect(mine).not.toContain('20260802-e1fix');
   });
 });

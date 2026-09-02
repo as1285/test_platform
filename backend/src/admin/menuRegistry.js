@@ -5,6 +5,7 @@
  * - module：前端懒加载模块名
  *
  * 信息架构：转化运营 → 内容配置 → 用户管理 → 业务工具 → 数据分析 → 系统与安全
+ * C 档合并：内容配置 / 证明工具 / 社保公积金 / 登录审计 / 产品洞察 / 增长洞察
  */
 const ADMIN_MENU_GROUPS = [
   { id: 'ops-desk', label: '转化运营', order: 10 },
@@ -97,24 +98,17 @@ const ADMIN_PAGE_DEFS = [
     module: 'analytics',
     order: 40
   },
-  {
-    page: 'channel-analysis',
-    menu_key: 'channel-analysis',
-    label: '渠道分析',
-    group: 'insights',
-    module: 'analytics',
-    order: 50
-  },
   { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 50 },
 
-  /* —— 配置 —— */
+  /* —— 内容配置 hub —— */
   {
     page: 'settings',
     menu_key: 'settings',
-    label: '定价与引导',
+    label: '内容配置',
     group: 'ops-config',
     module: 'settings',
-    order: 10
+    order: 10,
+    alias_menus: ['install-guide', 'appearance']
   },
   {
     page: 'install-guide',
@@ -122,7 +116,9 @@ const ADMIN_PAGE_DEFS = [
     label: '安装分发',
     group: 'ops-config',
     module: 'settings',
-    order: 20
+    order: 20,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'appearance',
@@ -130,15 +126,9 @@ const ADMIN_PAGE_DEFS = [
     label: '外观',
     group: 'ops-config',
     module: 'settings',
-    order: 25
-  },
-  {
-    page: 'install-guide-stats',
-    menu_key: 'install-guide-stats',
-    label: '安装统计',
-    group: 'insights',
-    module: 'analytics',
-    order: 60
+    order: 25,
+    assignable: false,
+    nav_hidden: true
   },
 
   /* —— 用户 —— */
@@ -151,6 +141,15 @@ const ADMIN_PAGE_DEFS = [
     module: 'users',
     order: 15,
     alias_menus: ['peer-accounts']
+  },
+  {
+    page: 'user-emails',
+    menu_key: 'user-emails',
+    label: '邮箱管理',
+    group: 'users',
+    module: 'user-emails',
+    order: 20,
+    alias_menus: ['users', 'ops-board']
   },
   {
     page: 'users-deleted',
@@ -174,10 +173,11 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'sbdy-demo',
     menu_key: 'sbdy-demo',
-    label: '社保演示',
+    label: '社保公积金',
     group: 'cert-tools',
     module: 'sbdy-demo',
-    order: 10
+    order: 10,
+    alias_menus: ['gjj-demo']
   },
   {
     page: 'gjj-demo',
@@ -185,15 +185,18 @@ const ADMIN_PAGE_DEFS = [
     label: '公积金演示',
     group: 'cert-tools',
     module: 'gjj-demo',
-    order: 15
+    order: 15,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'lizhi-cert',
     menu_key: 'lizhi-cert',
-    label: '离职证明',
+    label: '证明工具',
     group: 'cert-tools',
     module: 'lizhi-cert',
-    order: 20
+    order: 20,
+    alias_menus: ['zaizhi-cert']
   },
   {
     page: 'zaizhi-cert',
@@ -201,7 +204,9 @@ const ADMIN_PAGE_DEFS = [
     label: '在职证明',
     group: 'cert-tools',
     module: 'zaizhi-cert',
-    order: 25
+    order: 25,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'ylbx-ps',
@@ -228,14 +233,34 @@ const ADMIN_PAGE_DEFS = [
     order: 40
   },
 
-  /* —— 数据 —— */
+  /* —— 数据：产品洞察 / 增长洞察 hub —— */
+  {
+    page: 'insights-product',
+    menu_key: 'insights-product',
+    label: '产品洞察',
+    group: 'insights',
+    module: 'analytics',
+    order: 18,
+    alias_menus: ['analytics-activity', 'analytics-devices', 'tax-fill-survey']
+  },
+  {
+    page: 'insights-growth',
+    menu_key: 'insights-growth',
+    label: '增长洞察',
+    group: 'insights',
+    module: 'analytics',
+    order: 19,
+    alias_menus: ['channel-analysis', 'install-guide-stats']
+  },
   {
     page: 'analytics-activity',
     menu_key: 'analytics-activity',
     label: '用户活跃',
     group: 'insights',
     module: 'analytics',
-    order: 20
+    order: 20,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'tax-fill-survey',
@@ -243,7 +268,19 @@ const ADMIN_PAGE_DEFS = [
     label: '填写调研',
     group: 'insights',
     module: 'tax-fill-survey',
-    order: 22
+    order: 22,
+    assignable: false,
+    nav_hidden: true
+  },
+  {
+    page: 'analytics-devices',
+    menu_key: 'analytics-devices',
+    label: '机型',
+    group: 'insights',
+    module: 'devices',
+    order: 25,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'analytics-tracking',
@@ -254,12 +291,24 @@ const ADMIN_PAGE_DEFS = [
     order: 30
   },
   {
-    page: 'analytics-devices',
-    menu_key: 'analytics-devices',
-    label: '机型',
+    page: 'channel-analysis',
+    menu_key: 'channel-analysis',
+    label: '渠道分析',
     group: 'insights',
-    module: 'devices',
-    order: 25
+    module: 'analytics',
+    order: 50,
+    assignable: false,
+    nav_hidden: true
+  },
+  {
+    page: 'install-guide-stats',
+    menu_key: 'install-guide-stats',
+    label: '安装统计',
+    group: 'insights',
+    module: 'analytics',
+    order: 60,
+    assignable: false,
+    nav_hidden: true
   },
 
   /* —— 系统 —— */
@@ -285,10 +334,11 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'login-log',
     menu_key: 'login-log',
-    label: '管理登录',
+    label: '登录审计',
     group: 'system',
     module: 'logs',
-    order: 30
+    order: 30,
+    alias_menus: ['user-login-log']
   },
   {
     page: 'user-login-log',
@@ -296,7 +346,9 @@ const ADMIN_PAGE_DEFS = [
     label: '用户登录',
     group: 'system',
     module: 'logs',
-    order: 40
+    order: 40,
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'server-monitor',
@@ -323,9 +375,78 @@ const ADMIN_PREFERRED_FIRST_PAGES = [
   'ops-ad-analytics',
   'codes',
   'settings',
-  'channel-analysis',
+  'insights-growth',
+  'insights-product',
   'users'
 ];
+
+/**
+ * 侧栏 hub：旧页仍保留 DOM，hash `#hub/tab` 或旧 hash 打开对应内容页。
+ * tab → 实际 content page（有独立 #page-*）
+ */
+const ADMIN_HUB_DEFS = {
+  settings: {
+    nav: 'settings',
+    defaultTab: 'pricing',
+    tabs: [
+      { id: 'pricing', label: '定价与引导', page: 'settings' },
+      { id: 'install', label: '安装分发', page: 'install-guide' },
+      { id: 'appearance', label: '外观', page: 'appearance' }
+    ]
+  },
+  'lizhi-cert': {
+    nav: 'lizhi-cert',
+    defaultTab: 'lizhi',
+    tabs: [
+      { id: 'lizhi', label: '离职证明', page: 'lizhi-cert' },
+      { id: 'zaizhi', label: '在职证明', page: 'zaizhi-cert' }
+    ]
+  },
+  'sbdy-demo': {
+    nav: 'sbdy-demo',
+    defaultTab: 'sbdy',
+    tabs: [
+      { id: 'sbdy', label: '社保演示', page: 'sbdy-demo' },
+      { id: 'gjj', label: '公积金演示', page: 'gjj-demo' }
+    ]
+  },
+  'login-log': {
+    nav: 'login-log',
+    defaultTab: 'admin',
+    tabs: [
+      { id: 'admin', label: '管理登录', page: 'login-log' },
+      { id: 'user', label: '用户登录', page: 'user-login-log' }
+    ]
+  },
+  'insights-product': {
+    nav: 'insights-product',
+    defaultTab: 'activity',
+    tabs: [
+      { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
+      { id: 'devices', label: '机型', page: 'analytics-devices' },
+      { id: 'survey', label: '填写调研', page: 'tax-fill-survey' }
+    ]
+  },
+  'insights-growth': {
+    nav: 'insights-growth',
+    defaultTab: 'channel',
+    tabs: [
+      { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
+      { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' }
+    ]
+  }
+};
+
+/** 内容页 → 所属 hub（用于侧栏高亮与旧 hash 归一） */
+const ADMIN_CONTENT_TO_HUB = (function () {
+  var map = Object.create(null);
+  Object.keys(ADMIN_HUB_DEFS).forEach(function (hub) {
+    ADMIN_HUB_DEFS[hub].tabs.forEach(function (t) {
+      map[t.page] = { hub: hub, tab: t.id };
+    });
+  });
+  return map;
+})();
 
 const ADMIN_MENU_KEYS = (function () {
   var seen = Object.create(null);
@@ -347,7 +468,6 @@ const ADMIN_MENU_LABELS = (function () {
     if (d.assignable === false) continue;
     if (!map[d.menu_key]) map[d.menu_key] = d.label;
   }
-  // 历史兼容文案（账号勾选不展示，仅兜底）
   map.analytics = '数据统计（旧）';
   return map;
 })();
@@ -388,42 +508,126 @@ var ADMIN_PAGE_ALIASES = {
   'peer-accounts': 'rename-tax-daily'
 };
 
-function normalizeAdminPageKey(page) {
-  var p = String(page || '')
+/**
+ * 解析 hash：`settings` / `settings/install` / `install-guide`
+ * @returns {{ page: string, hub: string|null, tab: string|null, contentPage: string }}
+ */
+function parseAdminRoute(raw) {
+  var full = String(raw || '')
     .replace(/^#/, '')
     .trim()
     .toLowerCase();
-  if (p === 'system' || p === 'setting') p = 'settings';
-  if (p === 'install' || p === 'guide') p = 'install-guide';
-  if (p === 'analytics') p = 'ops-board';
-  if (p === 'analytics-conversion') p = 'ops-board';
-  if (p === 'ops-research' || p === 'ops-lift') p = 'ops-board';
-  if (p === 'analytics-register') p = 'install-guide-stats';
-  if (ADMIN_PAGE_ALIASES[p]) p = ADMIN_PAGE_ALIASES[p];
-  return p;
+  var slash = full.indexOf('/');
+  var head = slash >= 0 ? full.slice(0, slash) : full;
+  var tabPart = slash >= 0 ? full.slice(slash + 1).replace(/\/+$/, '') : '';
+  if (head === 'system' || head === 'setting') head = 'settings';
+  if (head === 'install' || head === 'guide') head = 'install-guide';
+  if (head === 'analytics' || head === 'analytics-conversion') head = 'ops-board';
+  if (head === 'ops-research' || head === 'ops-lift') head = 'ops-board';
+  if (head === 'analytics-register') head = 'install-guide-stats';
+  if (ADMIN_PAGE_ALIASES[head]) head = ADMIN_PAGE_ALIASES[head];
+
+  if (ADMIN_HUB_DEFS[head]) {
+    var hubDef = ADMIN_HUB_DEFS[head];
+    var tabId = tabPart || hubDef.defaultTab;
+    var tab = null;
+    for (var i = 0; i < hubDef.tabs.length; i++) {
+      if (hubDef.tabs[i].id === tabId) {
+        tab = hubDef.tabs[i];
+        break;
+      }
+    }
+    if (!tab) tab = hubDef.tabs[0];
+    return {
+      page: head,
+      hub: head,
+      tab: tab.id,
+      contentPage: tab.page
+    };
+  }
+
+  var mapped = ADMIN_CONTENT_TO_HUB[head];
+  if (mapped) {
+    return {
+      page: mapped.hub,
+      hub: mapped.hub,
+      tab: mapped.tab,
+      contentPage: head
+    };
+  }
+
+  return { page: head, hub: null, tab: null, contentPage: head };
+}
+
+function normalizeAdminPageKey(page) {
+  var parsed = parseAdminRoute(page);
+  return parsed.contentPage || parsed.page || '';
 }
 
 /** 辅助函数：resolveMenuKeyForPage */
 function resolveMenuKeyForPage(page) {
-  var p = normalizeAdminPageKey(page);
+  var parsed = parseAdminRoute(page);
+  var p = parsed.hub || parsed.contentPage || parsed.page;
   for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
     if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i].menu_key;
+  }
+  for (var j = 0; j < ADMIN_PAGE_DEFS.length; j++) {
+    if (ADMIN_PAGE_DEFS[j].page === parsed.contentPage) return ADMIN_PAGE_DEFS[j].menu_key;
   }
   return p;
 }
 
 /** 获取：PageDef */
 function getPageDef(page) {
-  var p = normalizeAdminPageKey(page);
-  for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
-    if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i];
+  var parsed = parseAdminRoute(page);
+  var candidates = [parsed.contentPage, parsed.hub, parsed.page];
+  for (var c = 0; c < candidates.length; c++) {
+    var p = candidates[c];
+    if (!p) continue;
+    for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
+      if (ADMIN_PAGE_DEFS[i].page === p) return ADMIN_PAGE_DEFS[i];
+    }
   }
   return null;
 }
 
 /** 辅助函数：adminProfileCanAccessPage */
 function adminProfileCanAccessPage(admin, page) {
+  var parsed = parseAdminRoute(page);
+  /* hub 入口：有 hub menu 或任一 tab 内容页权限即可 */
+  if (parsed.hub && ADMIN_HUB_DEFS[parsed.hub] && parsed.page === parsed.hub) {
+    var hubDef = null;
+    for (var hi = 0; hi < ADMIN_PAGE_DEFS.length; hi++) {
+      if (ADMIN_PAGE_DEFS[hi].page === parsed.hub) {
+        hubDef = ADMIN_PAGE_DEFS[hi];
+        break;
+      }
+    }
+    if (hubDef && adminProfileCanAccessPageRaw(admin, hubDef)) return true;
+    var tabs = ADMIN_HUB_DEFS[parsed.hub].tabs;
+    for (var t = 0; t < tabs.length; t++) {
+      var tDef = null;
+      for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
+        if (ADMIN_PAGE_DEFS[i].page === tabs[t].page) {
+          tDef = ADMIN_PAGE_DEFS[i];
+          break;
+        }
+      }
+      if (tDef && adminProfileCanAccessPageRaw(admin, tDef)) return true;
+    }
+    return false;
+  }
   var def = getPageDef(page);
+  if (adminProfileCanAccessPageRaw(admin, def)) return true;
+  var contentKey = parsed.contentPage || parsed.page;
+  var mapped = ADMIN_CONTENT_TO_HUB[contentKey];
+  if (mapped && mapped.hub !== contentKey) {
+    return adminProfileCanAccessPage(admin, mapped.hub);
+  }
+  return false;
+}
+
+function adminProfileCanAccessPageRaw(admin, def) {
   if (!def) return false;
   if (def.hide_for_super && admin && admin.is_super) return false;
   if (def.super_only && !(admin && admin.is_super)) return false;
@@ -436,6 +640,7 @@ function adminProfileCanAccessPage(admin, page) {
     if (menus.indexOf(aliases[a]) >= 0) return true;
   }
   if (def.menu_key.indexOf('analytics-') === 0 && menus.indexOf('analytics') >= 0) return true;
+  if (def.menu_key.indexOf('insights-') === 0 && menus.indexOf('analytics') >= 0) return true;
   return false;
 }
 
@@ -513,7 +718,8 @@ function buildAdminSessionPayload(admin) {
     menu_tree: built.menu_tree,
     pages: built.pages,
     menu_defs: getAssignableMenuDefs(),
-    first_page: firstAllowedPage(admin)
+    first_page: firstAllowedPage(admin),
+    hubs: ADMIN_HUB_DEFS
   };
 }
 
@@ -521,9 +727,13 @@ module.exports = {
   ADMIN_MENU_GROUPS,
   ADMIN_PAGE_DEFS,
   ADMIN_PREFERRED_FIRST_PAGES,
+  ADMIN_HUB_DEFS,
+  ADMIN_CONTENT_TO_HUB,
   ADMIN_MENU_KEYS,
   ADMIN_MENU_LABELS,
   getAssignableMenuDefs,
+  parseAdminRoute,
+  normalizeAdminPageKey,
   resolveMenuKeyForPage,
   getPageDef,
   adminProfileCanAccessPage,

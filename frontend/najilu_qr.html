@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>完税二维码</title>
+    <style>
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --accent-soft: #eff6ff;
+            --warn: #b45309;
+            --warn-soft: #fff7e8;
+            --ok: #047857;
+            --ok-soft: #ecfdf5;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
+        }
+        .header {
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn { color: var(--accent); font-size: 15px; text-decoration: none; padding: 4px 2px; }
+        .header-title { font-size: 16px; font-weight: 600; }
+        .page { max-width: var(--wrap); margin: 0 auto; padding: 8px 20px 0; }
+        .hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
+        }
+        .hero h1 { font-size: 20px; margin: 0 0 6px; }
+        .hero p { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.88); margin: 0; }
+        .card {
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+        }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+        .warn-box {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--warn-soft);
+            color: var(--warn);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        .ok-box {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--ok-soft);
+            color: var(--ok);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        .ok-box[hidden], .warn-box[hidden] { display: none !important; }
+        .field-label { display: block; font-size: 12px; color: var(--ink-soft); margin: 0 0 6px; }
+        .field, .field-select {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .field:focus, .field-select:focus {
+            outline: none;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
+        }
+        .file-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            border: 1px dashed #93c0f0;
+            border-radius: 10px;
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .file-btn input { display: none; }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            background: var(--accent);
+        }
+        .btn + .btn { margin-top: 8px; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-secondary {
+            background: #fff;
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+        }
+        .btn-danger {
+            background: #fff;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--ink-soft);
+            line-height: 1.45;
+            min-height: 1.2em;
+        }
+        .status.is-err { color: #b91c1c; }
+        .crop-wrap {
+            display: none;
+            position: relative;
+            max-width: 100%;
+            margin: 8px 0 12px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .crop-wrap img {
+            display: block;
+            width: 100%;
+            cursor: crosshair;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .crop-box {
+            display: none;
+            position: absolute;
+            border: 2px solid #e11d48;
+            background: rgba(225, 29, 72, 0.12);
+            pointer-events: none;
+        }
+        .preview-img {
+            display: none;
+            max-width: 100%;
+            margin-top: 8px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+        }
+        .link-row {
+            margin-top: 8px;
+            font-size: 13px;
+        }
+        .link-row a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" href="purchase.html" id="najiluQrBack">‹ 返回</a>
+        <div class="header-title">完税二维码</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>替换完税二维码</h1>
+            <p id="najiluQrHeroDesc">付费开通后，可上传完整完税证明图并锁定为本账号默认二维码；之后重新生成纳税记录都用这张码。</p>
+        </div>
+
+        <div class="card" id="cardNajiluQrPay" hidden>
+            <div class="card-title" id="najiluQrPayTitle">开通权益 · ¥300</div>
+            <p class="card-hint">付一次终身可用。开通后即可替换并锁定完税二维码。</p>
+            <button type="button" class="btn" id="btnNajiluQrPay">支付宝付款开通</button>
+            <div id="najiluQrPayQrWrap" style="margin-top:12px;text-align:center;" hidden></div>
+            <p class="status" id="najiluQrPayStatus" hidden></p>
+        </div>
+
+        <div class="card" id="cardNajiluQrTool" hidden>
+            <div class="ok-box" id="najiluQrLockedBox" hidden>当前账号已锁定自定义二维码。重新上传并保存可覆盖；也可清除后恢复自动出码。</div>
+            <div class="warn-box">请使用标准完税证明整图。识别不准时可在下方源图上拖动框选二维码区域。</div>
+
+            <label class="field-label" for="najiluQrIssueId">开具记录（可选）</label>
+            <select class="field-select" id="najiluQrIssueId">
+                <option value="">加载中…</option>
+            </select>
+
+            <label class="field-label" for="najiluQrQueryCode">查询验证码（16 位，可选）</label>
+            <input class="field" id="najiluQrQueryCode" maxlength="32" placeholder="如 NSXJU5RLD55KET4M" autocomplete="off" autocapitalize="characters">
+
+            <label class="field-label" for="najiluQrMode">替换方式</label>
+            <select class="field-select" id="najiluQrMode">
+                <option value="block" selected>整块（二维码 + 验证码图）</option>
+                <option value="qr">仅二维码方块</option>
+            </select>
+
+            <label class="file-btn" for="najiluQrFullFile">选择完整完税证明图片</label>
+            <input type="file" id="najiluQrFullFile" accept="image/png,image/jpeg,image/jpg,image/webp">
+
+            <div class="crop-wrap" id="najiluQrCropWrap">
+                <img id="najiluQrCropImg" alt="源图">
+                <div class="crop-box" id="najiluQrCropBox"></div>
+            </div>
+
+            <details style="margin-bottom:12px;">
+                <summary style="font-size:13px;color:var(--ink-soft);cursor:pointer;">已有裁切图？直接上传（备用）</summary>
+                <label class="file-btn" for="najiluQrFile" style="margin-top:10px;">选择裁切图</label>
+                <input type="file" id="najiluQrFile" accept="image/png,image/jpeg,image/jpg,image/webp">
+            </details>
+
+            <button type="button" class="btn" id="najiluQrPreviewBtn">预览结果</button>
+            <button type="button" class="btn" id="najiluQrSaveBtn">保存为我的默认二维码</button>
+            <button type="button" class="btn btn-danger" id="najiluQrClearBtn">清除自定义二维码</button>
+            <p class="status" id="najiluQrStatus" aria-live="polite"></p>
+
+            <div class="card-title" style="margin-top:8px;">替换素材预览</div>
+            <img class="preview-img" id="najiluQrAssetPreview" alt="素材预览">
+            <div id="najiluQrCertPreview"></div>
+            <p class="link-row">保存后可去 <a href="najilu.html">纳税记录开具</a> 重新生成验证效果。</p>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+    <script src="/js/najilu-qr-user.js?v=20260903-pay300"></script>
+</body>
+</html>

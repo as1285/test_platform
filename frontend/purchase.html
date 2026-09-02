@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth.js?v=20260903-email-reg1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -1356,7 +1356,7 @@
                 </details>
                 <details class="purchase-faq-item" data-faq-id="lizhi_extra">
                     <summary>离职证明要另付吗？</summary>
-                    <p>主产品开通不等于离职证明。离职证明为独立 ¥50 去水印服务，可在下方「增值服务与其它」中进入。</p>
+                    <p id="purchaseLizhiFaqHint">主产品开通不等于离职证明。离职证明为独立去水印服务，可在下方「增值服务与其它」中进入。</p>
                 </details>
             </div>
         </section>
@@ -1423,26 +1423,35 @@
         <details class="purchase-fold" id="foldMoreServices">
             <summary>
                 <span>增值服务与其它</span>
-                <span class="purchase-fold-hint">离职/在职证明 · 下载</span>
+                <span class="purchase-fold-hint">离职/在职证明 · 完税二维码 · 下载</span>
             </summary>
             <div class="purchase-fold-body">
                 <p class="section-label" id="purchaseExtraServicesLabel">增值服务</p>
                 <div class="card" id="cardLizhiCert">
                     <div class="card-head">
                         <div class="card-title">离职证明生成</div>
-                        <span class="badge-auto">¥50 去水印</span>
+                        <span class="badge-auto" id="purchaseLizhiCertBadge">¥50 去水印</span>
                     </div>
-                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。</p>
+                    <p class="card-hint" id="purchaseLizhiCertHint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。</p>
                     <a class="btn btn-secondary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
                 </div>
 
                 <div class="card" id="cardZaizhiCert">
                     <div class="card-head">
                         <div class="card-title">在职证明生成</div>
-                        <span class="badge-auto">¥50 去水印</span>
+                        <span class="badge-auto" id="purchaseZaizhiCertBadge">¥50 去水印</span>
                     </div>
-                    <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
+                    <p class="card-hint" id="purchaseZaizhiCertHint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
                     <a class="btn btn-secondary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
+                </div>
+
+                <div class="card" id="cardNajiluQr">
+                    <div class="card-head">
+                        <div class="card-title">完税二维码替换</div>
+                        <span class="badge-auto" id="najiluQrPurchaseBadge">¥300 开通</span>
+                    </div>
+                    <p class="card-hint">付费开通后，可上传完整完税证明图并锁定本账号默认二维码；之后重新生成纳税记录都用这张码。</p>
+                    <a class="btn btn-secondary" id="btnNajiluQrEntry" href="najilu_qr.html?from=purchase">去开通</a>
                 </div>
 
                 <div class="card download-box" id="cardDownloadApp" hidden>
@@ -1662,6 +1671,7 @@
                     if (
                         path.indexOf('lizhi_cert') >= 0 ||
                         path.indexOf('zaizhi_cert') >= 0 ||
+                        path.indexOf('najilu_qr') >= 0 ||
                         path.indexOf('sbdy_demo') >= 0 ||
                         path.indexOf('purchase') >= 0 ||
                         path.indexOf('login') >= 0 ||
@@ -2109,6 +2119,56 @@
         return fetch(url, Object.assign({}, opts, { headers: headers, credentials: 'same-origin' }));
     }
 
+    function formatPurchaseCertFeeYuan(raw) {
+        var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
+        if (!isFinite(n) || n < 0) return '';
+        return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
+    }
+
+    function applyPurchaseLizhiCertFeeCopy(amount) {
+        var yuan = formatPurchaseCertFeeYuan(amount);
+        if (!yuan) return;
+        var badgeLizhi = document.getElementById('purchaseLizhiCertBadge');
+        var badgeZaizhi = document.getElementById('purchaseZaizhiCertBadge');
+        var hintLizhi = document.getElementById('purchaseLizhiCertHint');
+        var hintZaizhi = document.getElementById('purchaseZaizhiCertHint');
+        var faq = document.getElementById('purchaseLizhiFaqHint');
+        if (badgeLizhi) badgeLizhi.textContent = '¥' + yuan + ' 去水印';
+        if (badgeZaizhi) badgeZaizhi.textContent = '¥' + yuan + ' 去水印';
+        if (hintLizhi) {
+            hintLizhi.textContent =
+                '未付款也可生成（带「演示样例」水印）；付 ¥' +
+                yuan +
+                ' 后生成无演示水印版本。App 内请用系统分享「存储到文件」。';
+        }
+        if (hintZaizhi) {
+            hintZaizhi.textContent =
+                '未付款也可生成（带「演示样例」水印）；付 ¥' +
+                yuan +
+                ' 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。';
+        }
+        if (faq) {
+            faq.textContent =
+                '主产品开通不等于离职证明。离职证明为独立 ¥' +
+                yuan +
+                ' 去水印服务，可在下方「增值服务与其它」中进入。';
+        }
+    }
+
+    function loadPurchaseLizhiCertFeeCopy() {
+        if (!purchaseGetToken()) return;
+        purchaseAuthFetch('/api/lizhi-cert/status')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (j) {
+                if (j && j.code === 200 && j.data && j.data.fee_amount) {
+                    applyPurchaseLizhiCertFeeCopy(j.data.fee_amount);
+                }
+            })
+            .catch(function () {});
+    }
+
     function paymentFetch(url, options) {
         var opts = options || {};
         opts.headers = Object.assign({ 'Content-Type': 'application/json' }, purchaseAuthHeaders(), opts.headers || {});
@@ -2156,9 +2216,13 @@
         return (Math.max(1, original - discount) / 100).toFixed(2);
     }
 
-    /** 划线对照原价：优先用更贵的永久档；否则上浮约 35% 取整 */
+    /** 划线对照原价：优先套餐目录价（心理价特惠）；否则更贵永久档；再否则上浮约 35% 取整 */
     function skuListAnchorAmount(sku, allSkus) {
+        var listAmt = Number(sku && sku.list_amount) || 0;
         var amt = Number(sku && sku.amount) || 0;
+        if (listAmt > 0 && listAmt > amt) {
+            return listAmt % 1 === 0 ? String(Math.round(listAmt)) : listAmt.toFixed(2);
+        }
         if (amt <= 0) return '';
         var permMax = 0;
         (allSkus || []).forEach(function (s) {
@@ -2208,6 +2272,8 @@
         var ctaText = '体验价 · 打开支付宝付款';
         if (discounted) {
             ctaText = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
+        } else if (selected && selected.psych_offer) {
+            ctaText = '心理价 ¥' + selected.amount + ' · 打开支付宝付款';
         } else if (selected) {
             ctaText = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
         }
@@ -2733,7 +2799,9 @@
                     priceHtml = '¥' + String(s.amount || '');
                 }
                 var badge = '';
-                if (s.id === cheapestId) {
+                if (s.psych_offer) {
+                    badge = '<span class="pricing-sku-badge">心理价</span>';
+                } else if (s.id === cheapestId) {
                     badge = '<span class="pricing-sku-badge">体验价</span>';
                 } else if (s.grant_kind === 'permanent' || (longestDays && Number(s.grant_days) === longestDays)) {
                     badge = '<span class="pricing-sku-badge is-rec">更划算</span>';
@@ -4363,12 +4431,14 @@
         checkAlipayLatestOrder();
         completePendingBilibiliShare();
         loadBilibiliShareStatus();
+        loadPurchaseLizhiCertFeeCopy();
         try {
             if (typeof window.forceHidePageLoading === 'function') {
                 window.forceHidePageLoading();
             }
         } catch (eHide2) {}
     });
+    loadPurchaseLizhiCertFeeCopy();
 })();
     </script>
 </body>

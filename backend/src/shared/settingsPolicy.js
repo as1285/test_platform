@@ -20,6 +20,7 @@ const OPS_SETTING_KEYS = [
   'tax_edit_fee_json',
   'rename_fee_json',
   'lizhi_cert_fee_json',
+  'najilu_qr_fee_json',
 
   'activation_nudge_json',
   'activation_batch_channels_json',

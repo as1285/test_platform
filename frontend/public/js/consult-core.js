@@ -1,4 +1,20 @@
-/** consult-core: tabs/utils/employers/messages/boot */
+/**
+ * consult-core.js — 个人中心核心：页签 / 工具 / 任职 / 消息 / 启动编排
+ *
+ * 角色：consult 页公共工具与 UI 编排（页签切换、用户资料、单条表单字段、税额公式、
+ *       回收站渲染、粘贴解析辅助、任职受雇与消息列表、boot 入口）。
+ * 加载页：consult.html（defer；位于 consult-tax-edit-pay 之后、batch-tax / records 之前）。
+ * 依赖：authFetch、TaxApp.ui（可选）、consult-tax-edit-pay（consultTaxPost 可选）、
+ *       consult-batch-tax 中的部分函数（页签切到 records / boot 时调用，须后加载定义）。
+ * 鉴权：写税走 consultTaxWrite；用户/任职/消息走 authFetch api/user、api/message。
+ * 注意：回收站「打开/恢复」动作在 consult-records.js；本文件提供渲染与全部恢复等共享逻辑。
+ */
+
+// === 税务写接口封装 ===
+/**
+ * POST api/tax；优先走 consultTaxPost（同行付费墙）。
+ * 副作用：网络写税；可能弹付费窗。
+ */
 function consultTaxWrite(body) {
     if (window.consultTaxPost) {
         return window.consultTaxPost(body);
@@ -10,6 +26,8 @@ function consultTaxWrite(body) {
     });
 }
 
+// === 税款所属期 / 申报日工具 ===
+/** 两位数补零（月/日）。 */
 function pad2(n) {
     n = parseInt(n, 10);
     return (n < 10 ? '0' : '') + n;
@@ -37,6 +55,10 @@ function reportDateOneMonthAfterBelonging(year, month, day) {
     return y + '-' + pad2(m) + '-' + pad2(d);
 }
 
+/**
+ * 由年/月同步税款所属期与默认申报日。
+ * 副作用：写 #f_tax_period、#f_report_date。
+ */
 function syncBelongingPeriodFromForm() {
     var yearEl = document.getElementById('f_year');
     var monthEl = document.getElementById('f_month');
@@ -50,6 +72,7 @@ function syncBelongingPeriodFromForm() {
     if (rdEl) rdEl.value = reportDateOneMonthAfterBelonging(y, m, 15);
 }
 
+/** 绑定年月输入并首次同步所属期（全局只绑一次）。 */
 function initBelongingPeriodSync() {
     var yearEl = document.getElementById('f_year');
     var monthEl = document.getElementById('f_month');
@@ -69,6 +92,8 @@ function initBelongingPeriodSync() {
     syncBelongingPeriodFromForm();
 }
 
+// === URL 参数与当前用户 ===
+/** 读 location.search 查询参数。 */
 function getUrlParam(name) {
     var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
     var r = window.location.search.substr(1).match(reg);
@@ -76,6 +101,7 @@ function getUrlParam(name) {
     return null;
 }
 
+/** 当前用户 id：管理端上下文优先，否则 localStorage.user_id。 */
 function currentUserId() {
     if (window.__adminTaxBatchCtx && window.__adminTaxBatchCtx.username) {
         return String(window.__adminTaxBatchCtx.username);
@@ -85,6 +111,10 @@ function currentUserId() {
 
 window.consultUserFlags = { is_test_account: false };
 
+/**
+ * 根据测试账号标志更新 consultUserFlags 并复位公司名只读态。
+ * 副作用：写 window.consultUserFlags 与相关 DOM。
+ */
 function applyConsultTestRestrictions(user) {
     var isTest = !!(user && user.is_test_account);
     window.consultUserFlags = { is_test_account: isTest };
@@ -108,10 +138,13 @@ function applyConsultTestRestrictions(user) {
     });
 }
 
+/** 生成带 user_id 与 tab 的 consult.html 链接。 */
 function tabHref(tab) {
     return 'consult.html?user_id=' + encodeURIComponent(currentUserId()) + '&tab=' + encodeURIComponent(tab);
 }
 
+// === Toast / 顶栏提示 ===
+/** Toast 展示时长（TaxApp 或 TOAST_DURATION_MS）。 */
 function getToastDurationMs() {
     if (window.TaxApp && TaxApp.ui && typeof TaxApp.ui.durationMs === 'function') {
         return TaxApp.ui.durationMs();
@@ -121,6 +154,10 @@ function getToastDurationMs() {
     return isNaN(ms) || ms <= 0 ? 3000 : ms;
 }
 
+/**
+ * 成功/失败提示：管理端回调 → TaxApp.toast → #msgBar。
+ * 副作用：DOM 或外部 toast。
+ */
 function showMsg(text, ok) {
     if (window.__adminTaxBatchCtx && typeof window.__adminTaxBatchCtx.showMsg === 'function') {
         window.__adminTaxBatchCtx.showMsg(text, ok);
@@ -137,6 +174,11 @@ function showMsg(text, ok) {
 }
 
 
+// === 页签切换（个人信息 / 税务记录 / 激活） ===
+/**
+ * 切换页签面板、标题与 URL；按需拉消息/证明价/记录档案。
+ * 副作用：DOM active、history.replaceState、异步刷新。
+ */
 function switchTab(tab, pushHistory) {
     if (typeof window.forceHidePageLoading === 'function') {
         window.forceHidePageLoading();
@@ -169,6 +211,7 @@ function switchTab(tab, pushHistory) {
         refreshMessageList().catch(function () {});
     }
     if (tab === 'products') {
+        loadConsultLizhiCertFeeCopy();
         var shebaoCard = document.getElementById('cardShebaoPhoto');
         if (shebaoCard && !shebaoCard.hidden && typeof loadConsultShebaoPhotos === 'function') {
             loadConsultShebaoPhotos().catch(function () {});
@@ -195,6 +238,7 @@ function switchTab(tab, pushHistory) {
 }
 
 
+/** 绑定页签点击并根据 URL 打开初始 tab。 */
 function initTabs() {
     document.querySelectorAll('.tabs .tab').forEach(function(a) {
         var tabKey = a.getAttribute('data-tab');
@@ -215,6 +259,8 @@ function initTabs() {
     switchTab(tab, false);
 }
 
+// === 用户资料 / 开通入口 / 同行提示 ===
+/** 把 account_active 写入 localStorage。 */
 function syncAccountActiveToStorage(user) {
     if (!user) {
         return;
@@ -223,6 +269,51 @@ function syncAccountActiveToStorage(user) {
     try {
         localStorage.setItem('account_active', act ? '1' : '0');
     } catch (e0) {}
+}
+
+/** 证明费用金额格式化为展示用元。 */
+function formatConsultCertFeeYuan(raw) {
+    var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
+    if (!isFinite(n) || n < 0) return '';
+    return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
+}
+
+/** 增值服务：离职/在职证明价格以后台「内容配置」为准 */
+function applyConsultLizhiCertFeeCopy(amount) {
+    var yuan = formatConsultCertFeeYuan(amount);
+    if (!yuan) return;
+    var badgeLizhi = document.getElementById('consultLizhiCertBadge');
+    var badgeZaizhi = document.getElementById('consultZaizhiCertBadge');
+    var hintLizhi = document.getElementById('consultLizhiCertHint');
+    var hintZaizhi = document.getElementById('consultZaizhiCertHint');
+    if (badgeLizhi) badgeLizhi.textContent = '¥' + yuan + ' 去水印';
+    if (badgeZaizhi) badgeZaizhi.textContent = '¥' + yuan + ' 去水印';
+    if (hintLizhi) {
+        hintLizhi.textContent = '未付款可生成带「演示样例」水印；付 ¥' + yuan + ' 后去水印。';
+    }
+    if (hintZaizhi) {
+        hintZaizhi.textContent =
+            '未付款可生成带「演示样例」水印；付 ¥' + yuan + ' 后去水印。文书标题为「工作证明」。';
+    }
+}
+
+/**
+ * 拉取离职证明标价并刷新徽章文案。
+ * 副作用：GET /api/lizhi-cert/status → DOM。
+ */
+function loadConsultLizhiCertFeeCopy() {
+    if (typeof window.authFetch !== 'function') return;
+    window
+        .authFetch('/api/lizhi-cert/status')
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (j) {
+            if (j && j.code === 200 && j.data && j.data.fee_amount) {
+                applyConsultLizhiCertFeeCopy(j.data.fee_amount);
+            }
+        })
+        .catch(function () {});
 }
 
 /** 附加产品页：收拢开通/续费支付入口（始终展示） */
@@ -276,6 +367,10 @@ function syncConsultPurchaseEntry(user) {
     }
 }
 
+/**
+ * 同行账号则展示个税修改付费提示条。
+ * 副作用：GET tax_edit_policy → #peerTaxFeeBanner。
+ */
 function loadPeerTaxFeeBanner() {
     var banner = document.getElementById('peerTaxFeeBanner');
     if (!banner) return;
@@ -298,6 +393,10 @@ function loadPeerTaxFeeBanner() {
         .catch(function () {});
 }
 
+/**
+ * 拉用户摘要写入 localStorage 并刷新资料/开通入口。
+ * 副作用：api/user summary、多处 DOM。
+ */
 function loadUserInfoFromApi() {
     var userId = currentUserId();
     
@@ -330,6 +429,7 @@ function loadUserInfoFromApi() {
         });
 }
 
+/** 用用户对象更新标题、本地缓存与测试限制。 */
 function updateProfileForm(user) {
     document.title = '个人中心 - ' + (user.real_name || '杰瑞');
     if (user.real_name) {
@@ -350,6 +450,10 @@ function updateProfileForm(user) {
     applyConsultTestRestrictions(user);
 }
 
+/**
+ * 首屏头：同步所属期、证明价、本地开通入口；延迟拉用户。
+ * 副作用：定时 loadUserInfoFromApi。
+ */
 function initHeader() {
     try {
         var name = localStorage.getItem('real_name') || '杰瑞';
@@ -359,6 +463,7 @@ function initHeader() {
         initTaxReportedManualEditTracking();
         /* 本地激活态先亮支付入口，接口返回后再校正文案 */
         syncConsultPurchaseEntry(null);
+        loadConsultLizhiCertFeeCopy();
 
         /* 用户资料不挡税务列表首屏 */
         setTimeout(function () {
@@ -371,12 +476,15 @@ function initHeader() {
 
 /** 从服务端拉取当前用户全部税务记录（收入纳税明细同源数据） */
 
+// === 单条表单字段与所得类型 ===
+/** 从表单取扣缴义务人名称（trim）。 */
 function resolveLegacyCompanyFromForm() {
     var base = formObjectFromInputs();
     return base.company_name != null ? String(base.company_name).trim() : '';
 }
 
 
+/** 各段工作经历年终奖税额合计（单独计税）。 */
 function sumEmploymentBonusTax(employments) {
     var sum = 0;
     (employments || []).forEach(function (emp) {
@@ -402,11 +510,13 @@ function sumEmploymentBonusTax(employments) {
 }
 
 
+/** 所得类型对应的默认小类。 */
 function defaultIncomeSubtype(incomeType) {
     var key = String(incomeType || '').trim();
     return INCOME_TYPE_DEFAULT_SUBTYPES[key] || '';
 }
 
+/** 设置所得类型下拉；无选项时动态追加。副作用：改 select。 */
 function setIncomeTypeSelectValue(incomeType) {
     var sel = document.getElementById('f_income_type');
     if (!sel) return;
@@ -427,6 +537,7 @@ function setIncomeTypeSelectValue(incomeType) {
     sel.value = v;
 }
 
+/** 所得类型变更时写入默认小类。 */
 function syncIncomeSubtypeForTypeChange() {
     var typeEl = document.getElementById('f_income_type');
     var subEl = document.getElementById('f_income_subtype');
@@ -438,6 +549,7 @@ function syncIncomeSubtypeForTypeChange() {
 }
 
 
+/** 从单条记录表单 DOM 组装 record 对象（含默认年/月）。 */
 function formObjectFromInputs() {
     function fieldVal(id, fallback) {
         var el = document.getElementById(id);
@@ -473,9 +585,11 @@ function formObjectFromInputs() {
     };
 }
 
+// === 已申报税额手改追踪 ===
 var taxReportedManualEdit = false;
 var taxReportedLoadedValue = null;
 
+/** 税额比较键：两位小数字符串。 */
 function taxAmountKey(v) {
     var n = parseFloat(v);
     if (!isFinite(n)) {
@@ -484,11 +598,13 @@ function taxAmountKey(v) {
     return round2(n).toFixed(2);
 }
 
+/** 清除手改税额标记与加载快照。 */
 function resetTaxReportedManualEditFlag() {
     taxReportedManualEdit = false;
     taxReportedLoadedValue = null;
 }
 
+/** 判断用户是否手改过已申报税额（相对加载值）。 */
 function taxReportedWasManuallyChanged() {
     if (taxReportedManualEdit) {
         return true;
@@ -502,6 +618,7 @@ function taxReportedWasManuallyChanged() {
     return cur !== loaded;
 }
 
+/** 监听 #f_tax_reported 标记为手改（只初始化一次）。 */
 function initTaxReportedManualEditTracking() {
     if (window.__taxReportedManualEditInited) return;
     window.__taxReportedManualEditInited = true;
@@ -515,6 +632,11 @@ function initTaxReportedManualEditTracking() {
     el.addEventListener('blur', markManual);
 }
 
+// === 表单读写 / 专项扣除合计 ===
+/**
+ * 将记录填入单条表单；可能拆分超额减除费用到其他扣除。
+ * 副作用：清草稿、写各 input、记忆公司档案。
+ */
 function applyToForm(r) {
     if (!_singleTaxDraftRestoring) {
         clearSingleTaxDraft();
@@ -561,6 +683,7 @@ function applyToForm(r) {
     document.getElementById('f_donation_deduction').value = r.donation_deduction != null ? r.donation_deduction : '0.00';
 }
 
+/** 清空单条表单并重置为添加模式。副作用：reset、initHeader。 */
 function clearForm() {
     resetTaxReportedManualEditFlag();
     clearSingleTaxDraft();
@@ -579,6 +702,11 @@ function sumSpecialDeductionFromForm() {
     return round2(p + m + u + h);
 }
 
+// === 记录缓存补丁 / 按单位删除 ===
+/**
+ * 保存后补丁更新内存记录缓存（无则 unshift）。
+ * 副作用：写 __consultRecordsCache。
+ */
 function patchConsultRecordsCacheAfterSave(record) {
     var list = Array.isArray(window.__consultRecordsCache)
         ? window.__consultRecordsCache.slice()
@@ -601,6 +729,7 @@ function patchConsultRecordsCacheAfterSave(record) {
 }
 
 
+/** 关闭按单位删除弹窗。 */
 function closeDeleteTaxRecordsByCompanyModal() {
     var root = document.getElementById('deleteCompanyModal');
     if (root) {
@@ -608,6 +737,7 @@ function closeDeleteTaxRecordsByCompanyModal() {
     }
 }
 
+/** 收集记录中去重后的扣缴单位名（中文排序）。 */
 function collectDistinctRecordCompanies(records) {
     var names = [];
     var seen = {};
@@ -626,6 +756,10 @@ function collectDistinctRecordCompanies(records) {
 }
 
 
+/**
+ * 确认删除所选单位下全部记录并刷新列表。
+ * 副作用：delete_records_by_company API。
+ */
 function confirmDeleteTaxRecordsByCompany() {
     var sel = document.getElementById('deleteCompanySelect');
     var company = sel ? String(sel.value || '').trim() : '';
@@ -662,9 +796,11 @@ function confirmDeleteTaxRecordsByCompany() {
         });
 }
 
+// === 回收站渲染与全部恢复 ===
 var taxRecycleBinCache = [];
 
 
+/** 删除时间展示为 YYYY-MM-DD 前缀。 */
 function formatDeletedAtLabel(raw) {
     if (!raw) {
         return '';
@@ -676,11 +812,13 @@ function formatDeletedAtLabel(raw) {
     return s;
 }
 
+/** 回收站当前筛选的扣缴单位。 */
 function getTaxRecycleBinFilterCompany() {
     var sel = document.getElementById('taxRecycleBinCompanySelect');
     return sel ? String(sel.value || '').trim() : '';
 }
 
+/** 按单位筛选可见的已删记录。 */
 function getTaxRecycleBinVisibleRecords(list) {
     var company = getTaxRecycleBinFilterCompany();
     var all = list || [];
@@ -692,6 +830,7 @@ function getTaxRecycleBinVisibleRecords(list) {
     });
 }
 
+/** 按扣缴单位分组已删记录。 */
 function groupDeletedRecordsByCompany(list) {
     var order = [];
     var map = {};
@@ -713,6 +852,7 @@ function groupDeletedRecordsByCompany(list) {
     });
 }
 
+/** 重建回收站单位下拉并尽量保留原选中。副作用：改 select。 */
 function updateTaxRecycleBinCompanySelect(list) {
     var sel = document.getElementById('taxRecycleBinCompanySelect');
     if (!sel) {
@@ -738,6 +878,7 @@ function updateTaxRecycleBinCompanySelect(list) {
     }
 }
 
+/** 更新回收站工具条计数与主按钮文案/模式。 */
 function updateTaxRecycleBinChrome(list) {
     var visible = getTaxRecycleBinVisibleRecords(list);
     var total = (list || []).length;
@@ -777,6 +918,7 @@ function updateTaxRecycleBinChrome(list) {
     }
 }
 
+/** 统计某单位在回收站中的条数。 */
 function countDeletedRecordsByCompany(list, company) {
     var n = 0;
     (list || []).forEach(function (r) {
@@ -787,6 +929,7 @@ function countDeletedRecordsByCompany(list, company) {
     return n;
 }
 
+/** 单条已删记录 HTML（含恢复按钮）。 */
 function renderTaxRecycleBinItemHtml(r) {
     var idEsc = String(r.id).replace(/'/g, "\\'");
     var html = '';
@@ -805,6 +948,10 @@ function renderTaxRecycleBinItemHtml(r) {
     return html;
 }
 
+/**
+ * 渲染回收站列表（分组或扁平）。
+ * 副作用：写 body、下拉与工具条。
+ */
 function renderTaxRecycleBinList(list) {
     updateTaxRecycleBinCompanySelect(list);
     updateTaxRecycleBinChrome(list);
@@ -858,6 +1005,10 @@ function renderTaxRecycleBinList(list) {
 }
 
 
+/**
+ * 一键恢复回收站全部记录。
+ * 副作用：restore_all API、刷新列表与回收站。
+ */
 function restoreAllDeletedTaxRecords() {
     if (!taxRecycleBinCache.length) {
         showConsultStrongAlert('回收站为空');
@@ -889,6 +1040,7 @@ function restoreAllDeletedTaxRecords() {
         });
 }
 
+/** 回收站主按钮：按 data-mode 全部恢复或按单位恢复。 */
 function handleTaxRecycleBinPrimaryAction() {
     var primary = document.getElementById('taxRecycleBinPrimaryAction');
     var mode = primary ? primary.getAttribute('data-mode') : 'all';
@@ -900,6 +1052,8 @@ function handleTaxRecycleBinPrimaryAction() {
 }
 
 
+// === 税额公式试算卡 ===
+/** 金额四舍五入到分。 */
 function round2(n) {
     var x = Number(n);
     if (Number.isNaN(x)) return 0;
@@ -955,12 +1109,14 @@ function yearEndBonusTaxSeparate(bonus) {
     return 0;
 }
 
+/** 税额格式化为两位小数字符串。 */
 function formatTaxYuan(n) {
     var x = Number(n);
     if (!isFinite(x)) return '0.00';
     return (Math.round(x * 100) / 100).toFixed(2);
 }
 
+/** 公式卡试算：累计预扣 / 年终奖税额。副作用：写 #taxTryResult。 */
 function updateTaxTryResult() {
     var cumEl = document.getElementById('taxTryCumulative');
     var bonusEl = document.getElementById('taxTryBonus');
@@ -987,6 +1143,7 @@ function updateTaxTryResult() {
     out.innerHTML = parts.join('<br>');
 }
 
+/** 绑定公式卡展开与试算输入（模块加载时即执行）。 */
 function initTaxFormulaCard() {
     var card = document.getElementById('taxFormulaCard');
     var toggle = document.getElementById('taxFormulaToggle');
@@ -1009,6 +1166,8 @@ function initTaxFormulaCard() {
 }
 initTaxFormulaCard();
 
+// === 个税 FAQ 筛选卡 ===
+/** 按关键词与分类芯片过滤 FAQ 条目。副作用：item.hidden。 */
 function applyTaxFaqFilters() {
     var card = document.getElementById('taxFaqCard');
     if (!card) return;
@@ -1038,6 +1197,7 @@ function applyTaxFaqFilters() {
     if (emptyEl) emptyEl.hidden = shown > 0;
 }
 
+/** 初始化 FAQ 卡（默认展开）并绑定搜索/芯片。 */
 function initTaxFaqCard() {
     var card = document.getElementById('taxFaqCard');
     var toggle = document.getElementById('taxFaqToggle');
@@ -1081,11 +1241,14 @@ function initTaxFaqCard() {
 initTaxFaqCard();
 
 
+// === 单条税务草稿（localStorage） ===
+/** 单条草稿 localStorage key（含 user_id）。 */
 function singleTaxDraftStorageKey() {
     return SINGLE_TAX_DRAFT_KEY_PREFIX + String(currentUserId());
 }
 
 
+/** 草稿是否含有效公司或金额。 */
 function singleTaxDraftHasContent(record) {
     if (!record) {
         return false;
@@ -1102,6 +1265,7 @@ function singleTaxDraftHasContent(record) {
     return false;
 }
 
+/** 序列化当前新建表单为草稿对象；编辑中返回 null。 */
 function serializeSingleTaxDraft() {
     var editIdEl = document.getElementById('editing_id');
     if (editIdEl && editIdEl.value) {
@@ -1120,6 +1284,7 @@ function serializeSingleTaxDraft() {
 }
 
 
+/** 防抖 500ms 后保存单条草稿。副作用：timer。 */
 function scheduleSingleTaxDraftSave() {
     if (_singleTaxDraftRestoring) {
         return;
@@ -1130,6 +1295,7 @@ function scheduleSingleTaxDraftSave() {
     _singleTaxDraftSaveTimer = setTimeout(saveSingleTaxDraftNow, 500);
 }
 
+/** 删除本地单条草稿。 */
 function clearSingleTaxDraft() {
     try {
         localStorage.removeItem(singleTaxDraftStorageKey());
@@ -1137,6 +1303,8 @@ function clearSingleTaxDraft() {
 }
 
 
+// === 公司档案同步（税号 / 机关） ===
+/** 公司名匹配键：去空白小写。 */
 function companyNameMatchKey(name) {
     return String(name || '')
         .trim()
@@ -1145,6 +1313,10 @@ function companyNameMatchKey(name) {
 }
 
 
+/**
+ * 从税务记录补全本地公司税号/机关档案。
+ * 副作用：rememberBatchCompanyProfile。
+ */
 function syncCompanyProfilesFromTaxRecords(records) {
     if (!records || !records.length) return;
     records.forEach(function (r) {
@@ -1178,6 +1350,7 @@ function syncCompanyProfilesFromEmployers(employers) {
     });
 }
 
+/** 并行拉 records+employers 后同步公司档案。 */
 function syncAllCompanyProfiles() {
     return Promise.all([apiFetchRecords(), apiFetchEmployers()]).then(function (res) {
         syncCompanyProfilesFromTaxRecords(res[0] || []);
@@ -1185,6 +1358,7 @@ function syncAllCompanyProfiles() {
     });
 }
 
+/** 写 input 值并派发 input 事件（兼容旧浏览器）。 */
 function setFormFieldValue(el, val) {
     if (!el) return;
     var v = val == null ? '' : String(val);
@@ -1202,6 +1376,8 @@ function setFormFieldValue(el, val) {
 
 /** 记住公司全称及纳税人识别号、主管税务机关（点选历史或生成记录时写入） */
 
+// === 年月枚举与金额解析 ===
+/** 枚举闭区间内全部 {year,month}。 */
 function enumerateYmRange(sy, sm, ey, em) {
     var out = [];
     var startK = ymToKey(sy, sm);
@@ -1260,6 +1436,7 @@ function parseFlexibleMoney(raw) {
 }
 
 /** 统一标签：【扣缴义务人名称】： / [统计期间]： → 扣缴义务人名称： */
+// === 个税粘贴文本解析（多公司） ===
 function normalizeTaxPasteLabels(text) {
     return String(text || '')
         .replace(/\u00a0/g, ' ')
@@ -1311,6 +1488,7 @@ function splitTaxPasteEmployerBlocks(text) {
     return [trimmed];
 }
 
+/** 从单段粘贴文本提取公司名称。 */
 function extractTaxPasteCompanyName(block) {
     var m =
         block.match(/扣缴义务人名称\s*[：:]\s*(.+)/) ||
@@ -1338,6 +1516,7 @@ function extractTaxPasteCompanyName(block) {
 }
 
 
+/** 摘要模式推断任职起止年月。 */
 function inferTaxPasteSummaryRange(block, bonuses) {
     var hire = null;
     var hireM = block.match(/入职\s*[：:]?\s*[^\n]{0,20}?(\d{4})\s*年\s*(\d{1,2})\s*月/);
@@ -1415,6 +1594,7 @@ function inferTaxPasteSummaryRange(block, bonuses) {
     return { sy: sy, sm: sm, ey: ey, em: em };
 }
 
+/** 按区间与月薪生成摘要月份行（税额留空待算）。 */
 function buildSummaryMonthsFromRange(range, salary, salaryMax) {
     var months = [];
     var mid =
@@ -1440,6 +1620,7 @@ function buildSummaryMonthsFromRange(range, salary, salaryMax) {
     return months;
 }
 
+/** 汇总粘贴就业段收入/税额并校正 tax_locked。 */
 function finalizeTaxPasteEmployment(emp) {
     var incomeSum = 0;
     var taxSum = 0;
@@ -1649,6 +1830,10 @@ function formatTaxPastePreview(parsed) {
 }
 
 
+/**
+ * 将解析出的一段就业写入批量工作经历行。
+ * 副作用：setBatchEmpRowValues、更新按月工资徽章。
+ */
 function applyOneTaxPasteEmpToRow(row, emp) {
     if (!row || !emp) {
         return;
@@ -1713,10 +1898,13 @@ function applyOneTaxPasteEmpToRow(row, emp) {
 }
 
 
+// === 个人信息粘贴辅助（身份证 / 地址 / 卡） ===
+/** 保留数字字符。 */
 function digitsOnlyProfile(raw) {
     return String(raw || '').replace(/\D/g, '');
 }
 
+/** 18 位身份证推出生日期 YYYY-MM-DD。 */
 function birthFromId18Consult(idStr) {
     var s = String(idStr || '').trim().toUpperCase();
     if (s.length !== 18 || !/^\d{17}[\dX]$/.test(s)) {
@@ -1729,6 +1917,7 @@ function birthFromId18Consult(idStr) {
     return d.substring(0, 4) + '-' + d.substring(4, 6) + '-' + d.substring(6, 8);
 }
 
+/** 18 位身份证推性别：1 男 / 2 女。 */
 function genderFromId18Consult(idStr) {
     var s = String(idStr || '').trim().toUpperCase();
     if (s.length !== 18 || !/^\d{17}[\dX]$/.test(s)) {
@@ -1741,6 +1930,7 @@ function genderFromId18Consult(idStr) {
     return c % 2 === 1 ? 1 : 2;
 }
 
+/** 中文地址拆成地区 + 详细地址。 */
 function splitCnAddressConsult(full) {
     var s = String(full || '').replace(/\s+/g, '').trim();
     if (!s) {
@@ -1770,6 +1960,7 @@ function splitCnAddressConsult(full) {
     return { area: parts.join(' '), detail: rest || s };
 }
 
+/** 从粘贴文或卡 BIN 推断银行名。 */
 function inferBankNameFromPasteText(text, cardNo) {
     var t = String(text || '');
     var named = t.match(
@@ -1792,6 +1983,7 @@ function inferBankNameFromPasteText(text, cardNo) {
 }
 
 
+/** 个人信息粘贴解析预览文本。 */
 function formatProfilePastePreview(parsed) {
     if (!parsed || !parsed.ok) {
         return parsed && parsed.error ? parsed.error : '解析失败';
@@ -1822,6 +2014,11 @@ function formatProfilePastePreview(parsed) {
 }
 
 
+// === 累计预扣税额计算（单条/批量共用） ===
+/**
+ * 按自然年累计预扣，返回 ym→当月税额 map。
+ * monthlyTaxableFn(salary) 提供各月应纳税所得额。
+ */
 function taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableFn) {
     var taxMap = {};
     var byYear = {};
@@ -1922,6 +2119,7 @@ function taxesMapFromMonthTaxableEntries(monthEntries) {
     return taxMap;
 }
 
+/** 是否与目标记录同年同单位（排除年终奖小类）。 */
 function recordMatchesSingleTaxCohort(rec, record) {
     var year = parseInt(record.year, 10);
     if (parseInt(rec.year, 10) !== year) {
@@ -1977,11 +2175,17 @@ function computeSingleRecordTaxReported(record, allRecords) {
 }
 
 
+/** 含端点的随机整数。 */
 function randomIntInclusive(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 
+// === 任职受雇列表 CRUD ===
+/**
+ * 拉任职受雇列表（缓存 + in-flight 去重）。
+ * 副作用：写 __consultEmployersCache。
+ */
 function apiFetchEmployers(opts) {
     opts = opts || {};
     if (!opts.force && window.__consultEmployersCache && !window.__consultEmployersInFlight) {
@@ -2011,6 +2215,7 @@ function apiFetchEmployers(opts) {
 
 var employerEditId = null;
 
+/** 重置任职表单为添加模式。副作用：reset DOM。 */
 function resetEmployerFormMode() {
     employerEditId = null;
     var form = document.getElementById('employerForm');
@@ -2032,6 +2237,7 @@ function resetEmployerFormMode() {
     applyConsultTestRestrictions(window.consultUserFlags || {});
 }
 
+/** 展开/折叠任职或消息表单卡。 */
 function setConsultFormCardExpanded(cardId, expanded) {
     var card = document.getElementById(cardId);
     if (!card) return;
@@ -2052,6 +2258,7 @@ function setConsultFormCardExpanded(cardId, expanded) {
     }
 }
 
+/** URL open/onboarding=employer 时展开任职表单并清参数。 */
 function tryOpenEmployerFormFromUrl() {
     var open = getUrlParam('open');
     var onboarding = getUrlParam('onboarding');
@@ -2072,6 +2279,7 @@ function tryOpenEmployerFormFromUrl() {
     }, 80);
 }
 
+/** 展开并滚动到任职表单卡。 */
 function scrollToEmployerForm() {
     setConsultFormCardExpanded('employerFormCard', true);
     var el = document.getElementById('employerFormCard');
@@ -2085,6 +2293,7 @@ function scrollToEmployerForm() {
     }
 }
 
+/** 展开并滚动到消息表单卡。 */
 function scrollToMessageForm() {
     setConsultFormCardExpanded('messageFormCard', true);
     var el = document.getElementById('messageFormCard');
@@ -2096,6 +2305,7 @@ function scrollToMessageForm() {
     }
 }
 
+/** 绑定任职/消息卡片折叠与「打开」按钮。 */
 function bindConsultCompactFormToggles() {
     function bind(toggleId, cardId, openBtnId) {
         var toggle = document.getElementById(toggleId);
@@ -2123,6 +2333,7 @@ function bindConsultCompactFormToggles() {
     bind('messageFormToggle', 'messageFormCard', 'messageOpenFormBtn');
 }
 
+/** 用任职项填充表单字段。 */
 function fillEmployerForm(item) {
     if (!item) {
         return;
@@ -2138,6 +2349,10 @@ function fillEmployerForm(item) {
     applyConsultTestRestrictions(window.consultUserFlags || {});
 }
 
+/**
+ * 提交添加/更新任职受雇。
+ * 副作用：api/user、公司档案、刷新列表、转化引导。
+ */
 function onSubmitEmployer(e) {
     e.preventDefault();
     var data = {
@@ -2204,6 +2419,7 @@ function syncLocalEmployerCountFromList(list) {
     return n;
 }
 
+/** 刷新任职列表并同步本地计数与公司档案。 */
 function refreshEmployerList(opts) {
     return apiFetchEmployers(opts || {}).then(function (list) {
         syncLocalEmployerCountFromList(list);
@@ -2216,10 +2432,12 @@ function refreshEmployerList(opts) {
     });
 }
 
+/** 转义单引号等，供 onclick 属性使用。 */
 function escAttr(s) {
     return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+/** 渲染任职卡片列表。副作用：写 #employerListMount。 */
 function renderEmployerListFromArray(list) {
     var mount = document.getElementById('employerListMount');
     if (!mount) return;
@@ -2262,6 +2480,7 @@ function renderEmployerListFromArray(list) {
     mount.innerHTML = html;
 }
 
+/** 进入编辑任职：填表、切页签、滚动。 */
 function editEmployer(id) {
     apiFetchEmployers().then(function (list) {
         var item = list.find(function (x) {
@@ -2290,6 +2509,7 @@ function editEmployer(id) {
     });
 }
 
+/** 删除任职记录并刷新。副作用：API + localStorage 计数。 */
 function deleteEmployer(id) {
     if (!confirm('确定要删除这条任职受雇记录吗？')) return;
     window.authFetch('api/user', {
@@ -2323,10 +2543,12 @@ function deleteEmployer(id) {
         });
 }
 
+/** 跳转任职详情页 renzhi_detail.html。 */
 function viewEmployerDetail(id) {
     window.location.href = 'renzhi_detail.html?id=' + encodeURIComponent(String(id));
 }
 
+/** 复制任职为新记录。副作用：add_employer + 刷新。 */
 function copyEmployer(id) {
     apiFetchEmployers().then(function (list) {
         var item = list.find(function (x) {
@@ -2367,6 +2589,7 @@ function copyEmployer(id) {
     });
 }
 
+/** HTML 文本转义。 */
 function escapeHtml(s) {
     return String(s == null ? '' : s)
         .replace(/&/g, '&amp;')
@@ -2375,6 +2598,8 @@ function escapeHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
+// === 消息列表 CRUD ===
+/** 拉取消息列表。 */
 function apiFetchMessages() {
     var uid = currentUserId();
     return window.authFetch('api/message?action=list')
@@ -2388,6 +2613,7 @@ function apiFetchMessages() {
         .catch(function () { return []; });
 }
 
+/** 渲染消息卡片。副作用：写 #messageListMount。 */
 function renderMessageListFromArray(list) {
     var mount = document.getElementById('messageListMount');
     if (!mount) return;
@@ -2413,12 +2639,14 @@ function renderMessageListFromArray(list) {
     mount.innerHTML = html;
 }
 
+/** 拉消息并渲染。 */
 function refreshMessageList() {
     return apiFetchMessages().then(function (list) {
         renderMessageListFromArray(list);
     });
 }
 
+/** 添加消息。副作用：api/message、清部分字段、刷新。 */
 function onSubmitMessage(e) {
     e.preventDefault();
     var payload = {
@@ -2450,6 +2678,7 @@ function onSubmitMessage(e) {
         });
 }
 
+/** 删除消息并刷新列表。 */
 function deleteMessage(id) {
     if (!confirm('确定删除？')) return;
     window.authFetch('api/message', {
@@ -2474,6 +2703,7 @@ function deleteMessage(id) {
         });
 }
 
+/** 消息日期为空时填今天。 */
 function setDefaultMsgDate() {
     var el = document.getElementById('mf_msg_date');
     if (!el || el.value) return;
@@ -2481,6 +2711,11 @@ function setDefaultMsgDate() {
     el.value = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 
+// === 页面启动 boot ===
+/**
+ * consult 页启动：绑表单、init 各模块、首屏拉记录再任职。
+ * 副作用：大量 DOM/API；结束时 dispatchConsultDone。
+ */
 function boot() {
     if (window.__refreshNavFromMineUi) {
         window.__refreshNavFromMineUi();
@@ -2521,6 +2756,7 @@ function boot() {
     tryEditFromUrl();
 }
 
+// === 激活弹窗 / 产品页激活码绑定 ===
 (function bindConsultActivateModal() {
     var okBtn = document.getElementById('btnConsultActivateOk');
     var cancelBtn = document.getElementById('btnConsultActivateCancel');
@@ -2585,6 +2821,7 @@ function boot() {
     }
 })();
 
+// === 附加产品：社保照片上传 ===
 /** 附加产品：社保截图上传（consult 页原先只有 UI，未接线导致安卓点「选择照片」无反应） */
 (function bindConsultShebaoPhotoUpload() {
     function consultShebaoToken() {
@@ -2805,6 +3042,7 @@ function boot() {
     });
 })();
 
+// === iOS 底栏适配 ===
 (function() {
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (isIOS) {

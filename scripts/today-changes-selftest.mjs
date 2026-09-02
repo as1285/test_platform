@@ -71,11 +71,6 @@ mustInclude(
   'mate60 jul23 stub redirects to frozen aug12 page'
 );
 mustInclude(
-  'frontend/mine_v2.html',
-  ['mineE1Canvas', '20260827-cend-sync', 'mate60BuildMark', 'UI:e1-v12', 'padding-top:0!important', 'pinMate60RpxEarly', 'mine_mate60_aug12.html', '20260824-aug12r6'],
-  'mine_v2 e1 page forwards Mate60 to frozen aug12'
-);
-mustInclude(
   'frontend/mine.html',
   ['mine_mate60_aug12.html', '20260824-aug12r6', 'app-android-huawei-mate60'],
   'mine.html Mate60 jumps to frozen aug12 page'
@@ -142,8 +137,8 @@ mustInclude(
 );
 mustInclude(
   'cordova-app/www/index.html',
-  ['mine_v2.html?in_app=1&_v=20260824-e1v12'],
-  'cordova shell starts on mine_v2'
+  ['mine.html?in_app=1&_v=20260903-mine1'],
+  'cordova shell starts on mine.html'
 );
 mustExclude(
   'frontend/shouye.html',
@@ -640,9 +635,9 @@ mustInclude(
   'mine.html e1 self-heal + 14 Pro CSS paint'
 );
 mustInclude(
-  'frontend/mine_v2.html',
-  ['data-mine-e1-selfheal', '@sm.png', '__mineE1ForceSm', '?v=20260827-e1r3', 'data-xiaomi14pro-mine-e1-paint', 'e1_01@sm.png'],
-  'mine_v2.html e1 self-heal + fresh cache stamp'
+  'frontend/nginx.conf',
+  ['location = /mine_v2.html', 'return 301 /mine.html'],
+  'nginx redirects retired mine_v2 to mine.html'
 );
 mustInclude(
   'frontend/public/js/auth.js',

@@ -384,7 +384,7 @@ var MODELS = [
     label: '华为 Mate 60',
     match: ['Mate\\s*60', 'ALN-AL00', 'ALN-AL10', 'ALN-AL80', 'ALN-AN00', 'ALN-AL\\d{2}', 'ALN-AN\\d{2}', 'HUAWEIALN'],
     issues: [
-      { page: 'mine', title: '0-bleed 完整头图（禁止负裁切）', summary: 'ArkWeb 负 margin 把头像裁进状态栏；冻在 8-12/e1 完整头图，mine_v2 穿透旧缓存。', since: '2026-08-24' },
+      { page: 'mine', title: '0-bleed 完整头图（禁止负裁切）', summary: 'ArkWeb 负 margin 把头像裁进状态栏；冻在 8-12/e1 完整头图；主线 mine.html，旧 mine_v2 301 到主线。', since: '2026-08-24' },
       { page: 'mine', title: '实验层不可污染其它 Tab', summary: 'Jul23 卡片/40px 守卫曾加到没有 #mineE1Canvas 的首页/待办/消息。', since: '2026-08-21' },
       { page: 'shuiming', title: '全页避开状态栏', summary: '登录不再叠系统时间；沿用约 40px 顶距。', since: '2026-08-13' },
       { page: 'shouye', title: 'ArkWeb 布局漂移自修复', summary: '全站顶距与「我的」头图多次回退（8/13、8/18、8/19）。', since: '2026-08-24' }

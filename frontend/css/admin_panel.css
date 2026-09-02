@@ -386,6 +386,37 @@ body {
     animation: adminPageIn 0.22s ease;
 }
 
+/* Hub 合并页顶栏 Tab */
+.admin-hub-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 0 0 12px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+.admin-hub-tab {
+    appearance: none;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: #fff;
+    color: #334155;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.3;
+}
+.admin-hub-tab:hover {
+    border-color: rgba(13, 148, 136, 0.45);
+    color: #0f766e;
+}
+.admin-hub-tab.is-active {
+    background: #0d9488;
+    border-color: #0d9488;
+    color: #fff;
+}
+
 /* 全局功能搜索：不改变业务页结构，只缩短后台导航路径 */
 .admin-command[hidden] {
     display: none;

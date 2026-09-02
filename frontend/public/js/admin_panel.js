@@ -1034,6 +1034,34 @@
             if (menus.indexOf(menuKey) >= 0) return true;
             if (menuKey === 'rename-tax-daily' && menus.indexOf('peer-accounts') >= 0) return true;
             if (menuKey.indexOf('analytics-') === 0 && menus.indexOf('analytics') >= 0) return true;
+            if (menuKey.indexOf('insights-') === 0 && menus.indexOf('analytics') >= 0) return true;
+            /* hub 合并：有子页权限也可进 hub；有 hub 也可进子页 */
+            var hubAlias = {
+                settings: ['install-guide', 'appearance'],
+                'lizhi-cert': ['zaizhi-cert'],
+                'sbdy-demo': ['gjj-demo'],
+                'login-log': ['user-login-log'],
+                'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey'],
+                'insights-growth': ['channel-analysis', 'install-guide-stats']
+            };
+            if (hubAlias[menuKey]) {
+                for (var hi = 0; hi < hubAlias[menuKey].length; hi++) {
+                    if (menus.indexOf(hubAlias[menuKey][hi]) >= 0) return true;
+                }
+            }
+            var contentHub = {
+                'install-guide': 'settings',
+                appearance: 'settings',
+                'zaizhi-cert': 'lizhi-cert',
+                'gjj-demo': 'sbdy-demo',
+                'user-login-log': 'login-log',
+                'analytics-activity': 'insights-product',
+                'analytics-devices': 'insights-product',
+                'tax-fill-survey': 'insights-product',
+                'channel-analysis': 'insights-growth',
+                'install-guide-stats': 'insights-growth'
+            };
+            if (contentHub[menuKey] && menus.indexOf(contentHub[menuKey]) >= 0) return true;
             /* 侧栏已渲染的页应可进入（避免 menus 缓存落后于 menu_tree） */
             try {
                 var tree = window.AdminNav && AdminNav.getMenuTree ? AdminNav.getMenuTree() : [];
@@ -1132,8 +1160,12 @@
             var navEl = document.getElementById('adminSidebarNav');
             var tree = window.AdminNav && AdminNav.getMenuTree ? AdminNav.getMenuTree() : [];
             var active = String(location.hash || '').replace(/^#/, '') || firstAllowedAdminPage();
+            var activeNav = active.indexOf('/') >= 0 ? active.slice(0, active.indexOf('/')) : active;
+            if (ADMIN_CONTENT_TO_HUB[activeNav]) {
+                activeNav = ADMIN_CONTENT_TO_HUB[activeNav].hub;
+            }
             if (navEl && window.AdminNav && tree.length) {
-                AdminNav.renderSidebar(navEl, tree, active);
+                AdminNav.renderSidebar(navEl, tree, activeNav);
                 AdminNav.bindNavClicks(navEl);
                 initNavGroupCollapse();
             } else {
@@ -1177,66 +1209,141 @@
             }
         }
 
-        function normalizeAdminPage(raw) {
-            var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
-            if (k === 'peer-accounts') {
+        var ADMIN_HUB_DEFS = {
+            settings: {
+                nav: 'settings',
+                defaultTab: 'pricing',
+                tabs: [
+                    { id: 'pricing', label: '定价与引导', page: 'settings' },
+                    { id: 'install', label: '安装分发', page: 'install-guide' },
+                    { id: 'appearance', label: '外观', page: 'appearance' }
+                ]
+            },
+            'lizhi-cert': {
+                nav: 'lizhi-cert',
+                defaultTab: 'lizhi',
+                tabs: [
+                    { id: 'lizhi', label: '离职证明', page: 'lizhi-cert' },
+                    { id: 'zaizhi', label: '在职证明', page: 'zaizhi-cert' }
+                ]
+            },
+            'sbdy-demo': {
+                nav: 'sbdy-demo',
+                defaultTab: 'sbdy',
+                tabs: [
+                    { id: 'sbdy', label: '社保演示', page: 'sbdy-demo' },
+                    { id: 'gjj', label: '公积金演示', page: 'gjj-demo' }
+                ]
+            },
+            'login-log': {
+                nav: 'login-log',
+                defaultTab: 'admin',
+                tabs: [
+                    { id: 'admin', label: '管理登录', page: 'login-log' },
+                    { id: 'user', label: '用户登录', page: 'user-login-log' }
+                ]
+            },
+            'insights-product': {
+                nav: 'insights-product',
+                defaultTab: 'activity',
+                tabs: [
+                    { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
+                    { id: 'devices', label: '机型', page: 'analytics-devices' },
+                    { id: 'survey', label: '填写调研', page: 'tax-fill-survey' }
+                ]
+            },
+            'insights-growth': {
+                nav: 'insights-growth',
+                defaultTab: 'channel',
+                tabs: [
+                    { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
+                    { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' }
+                ]
+            }
+        };
+        var ADMIN_CONTENT_TO_HUB = {};
+        Object.keys(ADMIN_HUB_DEFS).forEach(function (hub) {
+            ADMIN_HUB_DEFS[hub].tabs.forEach(function (t) {
+                ADMIN_CONTENT_TO_HUB[t.page] = { hub: hub, tab: t.id };
+            });
+        });
+        var _adminRouteState = { hub: null, tab: null, contentPage: '', navKey: '' };
+
+        function parseAdminRouteClient(raw) {
+            var full = String(raw || '')
+                .replace(/^#/, '')
+                .trim()
+                .toLowerCase();
+            var slash = full.indexOf('/');
+            var head = slash >= 0 ? full.slice(0, slash) : full;
+            var tabPart = slash >= 0 ? full.slice(slash + 1).replace(/\/+$/, '') : '';
+            if (head === 'peer-accounts') {
                 _renamePeerActiveTab = 'peer';
-                k = 'rename-tax-daily';
+                head = 'rename-tax-daily';
             }
-            if (k === 'system' || k === 'setting') k = 'settings';
-            if (k === 'install' || k === 'guide') k = 'install-guide';
-            if (k === 'analytics' || k === 'analytics-conversion') k = 'ops-board';
-            if (k === 'ops-research' || k === 'ops-lift') k = 'ops-board';
-            if (k === 'analytics-register') k = 'install-guide-stats';
-            var ok = {
-                settings: 1,
-                'install-guide': 1,
-                appearance: 1,
-                codes: 1,
-                'admin-accounts': 1,
-                'downline-admins': 1,
-                users: 1,
-                'peer-accounts': 1,
-                'rename-tax-daily': 1,
-                'users-deleted': 1,
-                'user-data': 1,
-                'tax-records-edit': 1,
-                'ops-board': 1,
-                'ops-inactive': 1,
-                'ops-ad-analytics': 1,
-                'analytics-conversion': 1,
-                'analytics-activity': 1,
-                'tax-fill-survey': 1,
-                'analytics-devices': 1,
-                                'analytics-purchase': 1,
-                'analytics-tracking': 1,
-                'install-guide-stats': 1,
-                'channel-analysis': 1,
-                'login-log': 1,
-                'user-login-log': 1,
-                'server-monitor': 1,
-                'sbdy-demo': 1,
-                'gjj-demo': 1,
-                'lizhi-cert': 1,
-                'zaizhi-cert': 1,
-                'ylbx-ps': 1,
-                'ccb-flow': 1,
-                'najilu-qr': 1,
-                'blocked-ips': 1
-            };
-            /* DOM 已有面板则视为已知页，避免新业务页未写入 ok 表时被打回转化概览 */
-            if (k && document.getElementById('page-' + k)) {
-                ok[k] = 1;
+            if (head === 'system' || head === 'setting') head = 'settings';
+            if (head === 'install' || head === 'guide') head = 'install-guide';
+            if (head === 'analytics' || head === 'analytics-conversion') head = 'ops-board';
+            if (head === 'ops-research' || head === 'ops-lift') head = 'ops-board';
+            if (head === 'analytics-register') head = 'install-guide-stats';
+
+            if (ADMIN_HUB_DEFS[head]) {
+                var hubDef = ADMIN_HUB_DEFS[head];
+                var tabId = tabPart || hubDef.defaultTab;
+                var tab = null;
+                for (var i = 0; i < hubDef.tabs.length; i++) {
+                    if (hubDef.tabs[i].id === tabId) {
+                        tab = hubDef.tabs[i];
+                        break;
+                    }
+                }
+                if (!tab) tab = hubDef.tabs[0];
+                return {
+                    page: head,
+                    hub: head,
+                    tab: tab.id,
+                    contentPage: tab.page,
+                    hash: tab.id === hubDef.defaultTab ? head : head + '/' + tab.id
+                };
             }
-            if (!ok[k] || !adminHasMenu(k)) {
+            var mapped = ADMIN_CONTENT_TO_HUB[head];
+            if (mapped) {
+                var hDef = ADMIN_HUB_DEFS[mapped.hub];
+                var hHash =
+                    mapped.tab === hDef.defaultTab ? mapped.hub : mapped.hub + '/' + mapped.tab;
+                return {
+                    page: mapped.hub,
+                    hub: mapped.hub,
+                    tab: mapped.tab,
+                    contentPage: head,
+                    hash: hHash
+                };
+            }
+            return { page: head, hub: null, tab: null, contentPage: head, hash: head };
+        }
+
+        function normalizeAdminPage(raw) {
+            var parsed = parseAdminRouteClient(raw);
+            var content = parsed.contentPage || parsed.page;
+            var navKey = parsed.hub || content;
+            var ok =
+                !content ||
+                document.getElementById(adminPagePanelId(content)) ||
+                document.getElementById(adminPagePanelId(navKey)) ||
+                ADMIN_HUB_DEFS[navKey];
+            if (!ok || (!adminHasMenu(navKey) && !adminHasMenu(content))) {
                 return firstAllowedAdminPage();
             }
-            return k;
+            return parsed.hash || content;
         }
 
         function adminPagePanelId(pageKey) {
             if (pageKey === 'downline-admins') return 'page-admin-accounts';
             if (pageKey === 'peer-accounts') return 'page-rename-tax-daily';
+            if (pageKey === 'insights-product' || pageKey === 'insights-growth') {
+                /* hub 壳：实际展示 content 子页 */
+                return 'page-' + pageKey;
+            }
             return 'page-' + pageKey;
         }
 
@@ -1244,9 +1351,62 @@
             return adminHasMenu('admin-accounts') || adminHasMenu('downline-admins');
         }
 
-        function applyAdminRouteChrome(pageKey) {
-            var panelId = adminPagePanelId(pageKey);
-            var navPageKey = pageKey === 'peer-accounts' ? 'rename-tax-daily' : pageKey;
+        function ensureAdminHubTabs(panelEl, hubKey, activeTab) {
+            if (!panelEl || !hubKey || !ADMIN_HUB_DEFS[hubKey]) return;
+            var hubDef = ADMIN_HUB_DEFS[hubKey];
+            var bar = null;
+            for (var ci = 0; ci < panelEl.children.length; ci++) {
+                if (panelEl.children[ci].classList && panelEl.children[ci].classList.contains('admin-hub-tabs')) {
+                    bar = panelEl.children[ci];
+                    break;
+                }
+            }
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.className = 'admin-hub-tabs';
+                bar.setAttribute('role', 'tablist');
+                panelEl.insertBefore(bar, panelEl.firstChild);
+            }
+            bar.innerHTML = hubDef.tabs
+                .map(function (t) {
+                    var active = t.id === activeTab ? ' is-active' : '';
+                    return (
+                        '<button type="button" class="admin-hub-tab' +
+                        active +
+                        '" role="tab" data-hub="' +
+                        hubKey +
+                        '" data-tab="' +
+                        t.id +
+                        '" aria-selected="' +
+                        (t.id === activeTab ? 'true' : 'false') +
+                        '">' +
+                        t.label +
+                        '</button>'
+                    );
+                })
+                .join('');
+        }
+
+        function applyAdminRouteChrome(pageKey, routeState) {
+            routeState = routeState || _adminRouteState;
+            var contentPage = (routeState && routeState.contentPage) || pageKey;
+            var navPageKey =
+                (routeState && routeState.navKey) ||
+                (routeState && routeState.hub) ||
+                (pageKey === 'peer-accounts' ? 'rename-tax-daily' : pageKey);
+            var panelId = adminPagePanelId(contentPage);
+            /* insights hub 无独立内容时用子页 panel */
+            if (
+                (contentPage === 'insights-product' || contentPage === 'insights-growth') &&
+                routeState &&
+                routeState.contentPage &&
+                routeState.contentPage !== contentPage
+            ) {
+                panelId = adminPagePanelId(routeState.contentPage);
+            }
+            if (!document.getElementById(panelId) && routeState && routeState.contentPage) {
+                panelId = adminPagePanelId(routeState.contentPage);
+            }
             document.querySelectorAll('.page-panel').forEach(function (el) {
                 var on = el.id === panelId;
                 el.classList.toggle('active', on);
@@ -1259,10 +1419,28 @@
             if (window.AdminNav && typeof AdminNav.setActivePage === 'function') {
                 AdminNav.setActivePage(navPageKey);
             }
+            var activePanel = document.getElementById(panelId);
+            if (routeState && routeState.hub && activePanel) {
+                ensureAdminHubTabs(activePanel, routeState.hub, routeState.tab);
+            } else if (activePanel) {
+                var stale = null;
+                for (var si = 0; si < activePanel.children.length; si++) {
+                    if (
+                        activePanel.children[si].classList &&
+                        activePanel.children[si].classList.contains('admin-hub-tabs')
+                    ) {
+                        stale = activePanel.children[si];
+                        break;
+                    }
+                }
+                if (stale) stale.remove();
+            }
             var navBtn = document.querySelector('.nav-item[data-page="' + navPageKey + '"]');
             var titleEl = document.getElementById('pageTitle');
             if (titleEl && navBtn) {
                 titleEl.textContent = navBtn.getAttribute('data-title') || '管理控制台';
+            } else if (titleEl && routeState && routeState.hub && ADMIN_MENU_LABELS[routeState.hub]) {
+                titleEl.textContent = ADMIN_MENU_LABELS[routeState.hub];
             } else if (titleEl) {
                 titleEl.textContent = '管理控制台';
             }
@@ -1304,6 +1482,9 @@
             }
             if (pageKey === 'ops-board' || pageKey === 'ops-inactive') {
                 callAdminModuleLoadPage('ops-conversion');
+            }
+            if (pageKey === 'user-emails') {
+                callAdminModuleLoadPage('user-emails');
             }
             if (pageKey === 'ops-ad-analytics') {
                 callAdminModuleLoadPage('ad-analytics');
@@ -1393,47 +1574,48 @@
         function applyAdminRoute(opts) {
             var force = !!(opts && opts.force === true);
             var rawHash = String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
-            var pageKey = (opts && opts.page) ? String(opts.page).replace(/^#/, '').trim().toLowerCase() : '';
-            if (pageKey && document.getElementById(adminPagePanelId(pageKey))) {
-                /* 侧栏点击指定页：有面板就进入，勿被 allowlist 打回 */
-            } else {
-                pageKey = normalizeAdminPage(location.hash);
-                /* 侧栏已画出且页面存在时，以 hash 为准（修复在职证明点了仍停在转化概览） */
-                if (rawHash && rawHash !== pageKey && document.getElementById(adminPagePanelId(rawHash))) {
-                    var navHit = document.querySelector('.nav-item[data-page="' + rawHash + '"]');
-                    if (navHit || adminHasMenu(rawHash)) {
-                        pageKey = rawHash;
-                    }
-                }
+            var preferred = opts && opts.page ? String(opts.page).replace(/^#/, '').trim().toLowerCase() : '';
+            var parsed = parseAdminRouteClient(preferred || rawHash || firstAllowedAdminPage());
+            if (!adminHasMenu(parsed.hub || parsed.contentPage) && !adminHasMenu(parsed.contentPage)) {
+                parsed = parseAdminRouteClient(firstAllowedAdminPage());
             }
-            /* hash 被回退时同步地址栏，避免 #lizhi-cert / #zaizhi-cert 却停在转化页 */
-            if (pageKey && location.hash !== '#' + pageKey) {
+            var contentPage = parsed.contentPage || parsed.page;
+            var navKey = parsed.hub || contentPage;
+            if (navKey === 'peer-accounts') navKey = 'rename-tax-daily';
+            _adminRouteState = {
+                hub: parsed.hub,
+                tab: parsed.tab,
+                contentPage: contentPage,
+                navKey: navKey,
+                hash: parsed.hash
+            };
+            var canonical = parsed.hash || contentPage;
+            if (canonical && location.hash !== '#' + canonical) {
                 try {
-                    history.replaceState(null, '', '#' + pageKey);
+                    history.replaceState(null, '', '#' + canonical);
                 } catch (eHash) {
-                    location.hash = pageKey;
+                    location.hash = canonical;
                 }
             }
-            // 先立刻切页，避免等 Chart/CDN 时界面仍停在上一页（如「增长与触达配置」）
-            applyAdminRouteChrome(pageKey);
-            /* 同一页连续 apply（如登录后 /me 回调）不重复打接口；切走再进会刷新 */
-            if (!force && pageKey === _adminDataHash) {
+            applyAdminRouteChrome(contentPage, _adminRouteState);
+            if (!force && contentPage === _adminDataHash && parsed.tab === _adminDataTab) {
                 return;
             }
-            _adminDataHash = pageKey;
+            _adminDataHash = contentPage;
+            _adminDataTab = parsed.tab || '';
             function runRouteBody() {
-            applyAdminRouteChrome(pageKey);
-            refreshAdminPageData(pageKey);
+                applyAdminRouteChrome(contentPage, _adminRouteState);
+                refreshAdminPageData(contentPage);
             }
             function safeRunRouteBody() {
                 try {
                     runRouteBody();
                 } catch (err) {
-                    console.error('applyAdminRoute', pageKey, err);
+                    console.error('applyAdminRoute', contentPage, err);
                 }
             }
             if (window.AdminLoader && AdminLoader.ensureForPage) {
-                AdminLoader.ensureForPage(pageKey).then(safeRunRouteBody).catch(function (e) {
+                AdminLoader.ensureForPage(contentPage).then(safeRunRouteBody).catch(function (e) {
                     console.error('AdminLoader', e);
                     safeRunRouteBody();
                 });
@@ -1442,6 +1624,7 @@
             }
         }
 
+        var _adminDataTab = '';
 
         /* ========== API Analytics ========== */
 
@@ -7079,7 +7262,7 @@
         }
 
         var ADMIN_MENU_LABELS = {
-            settings: '定价与引导',
+            settings: '内容配置',
             'install-guide': '安装分发',
             appearance: '外观',
             codes: '激活码',
@@ -7088,7 +7271,7 @@
             'users-deleted': '已删除',
             'user-data': '用户数据',
             'tax-records-edit': '个税维护',
-            'login-log': '管理登录',
+            'login-log': '登录审计',
             'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
             'ops-board': '运营看板',
@@ -7102,12 +7285,14 @@
             'analytics-tracking': '埋点分析',
             'install-guide-stats': '安装统计',
             'channel-analysis': '渠道分析',
+            'insights-product': '产品洞察',
+            'insights-growth': '增长洞察',
             'admin-accounts': '账号权限',
             'downline-admins': '下线管理员',
             'server-monitor': '监控',
-            'sbdy-demo': '社保演示',
+            'sbdy-demo': '社保公积金',
             'gjj-demo': '公积金演示',
-            'lizhi-cert': '离职证明',
+            'lizhi-cert': '证明工具',
             'zaizhi-cert': '在职证明',
             'ylbx-ps': '社保图片PS',
             'ccb-flow': '工资流水',
@@ -8063,6 +8248,7 @@
                         applyTaxEditFeeToForm(data.data.tax_edit_fee || {});
                         applyRenameFeeToForm(data.data.rename_fee || {});
                         applyLizhiCertFeeToForm(data.data.lizhi_cert_fee || {});
+                        applyNajiluQrFeeToForm(data.data.najilu_qr_fee || {});
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
                             var nEn = document.getElementById('actNudgeEnabled');
@@ -8146,10 +8332,12 @@
                 if (!skuId) return;
                 var enabledEl = row.querySelector('.sku-catalog-enabled');
                 var amountEl = row.querySelector('.sku-catalog-amount');
+                var psychEl = row.querySelector('.sku-catalog-psych');
                 var daysEl = row.querySelector('.sku-catalog-days');
                 var hoursEl = row.querySelector('.sku-catalog-hours');
                 out[skuId] = {
                     amount: amountEl ? String(amountEl.value || '').trim() : '',
+                    psych_amount: psychEl ? String(psychEl.value || '').trim() : '',
                     grant_days: daysEl ? String(daysEl.value || '').trim() : '0',
                     grant_hours: hoursEl ? String(hoursEl.value || '').trim() : '0',
                     enabled: !!(enabledEl && enabledEl.checked)
@@ -8173,10 +8361,17 @@
                 if (!entry) return;
                 var enabledEl = row.querySelector('.sku-catalog-enabled');
                 var amountEl = row.querySelector('.sku-catalog-amount');
+                var psychEl = row.querySelector('.sku-catalog-psych');
                 var daysEl = row.querySelector('.sku-catalog-days');
                 var hoursEl = row.querySelector('.sku-catalog-hours');
                 if (amountEl && entry.amount != null && String(entry.amount).trim() !== '') {
                     amountEl.value = String(entry.amount);
+                }
+                if (psychEl) {
+                    psychEl.value =
+                        entry.psych_amount != null && String(entry.psych_amount).trim() !== ''
+                            ? String(entry.psych_amount)
+                            : '';
                 }
                 if (daysEl && entry.grant_days != null && String(entry.grant_days).trim() !== '') {
                     daysEl.value = String(entry.grant_days);
@@ -8278,6 +8473,22 @@
             };
         }
 
+        function applyNajiluQrFeeToForm(cfg) {
+            cfg = cfg || {};
+            var el = document.getElementById('najiluQrFeeAmount');
+            var raw = cfg.amount != null ? cfg.amount : cfg.fee_amount;
+            if (el && raw != null && String(raw).trim() !== '') {
+                el.value = String(raw);
+            }
+        }
+
+        function collectNajiluQrFeeFromForm() {
+            var el = document.getElementById('najiluQrFeeAmount');
+            return {
+                amount: el ? String(el.value || '').trim() : ''
+            };
+        }
+
         var btnSaveLizhiCertFee = document.getElementById('btnSaveLizhiCertFee');
         if (btnSaveLizhiCertFee) {
             btnSaveLizhiCertFee.addEventListener('click', function () {
@@ -8303,6 +8514,46 @@
                             if (hint) hint.textContent = '已保存';
                             applyLizhiCertFeeToForm((data.data && data.data.lizhi_cert_fee) || fees);
                             alert('离职/在职证明价格已保存，未下单用户将按新价格付款');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
+
+        var btnSaveNajiluQrFee = document.getElementById('btnSaveNajiluQrFee');
+        if (btnSaveNajiluQrFee) {
+            btnSaveNajiluQrFee.addEventListener('click', function () {
+                var btn = btnSaveNajiluQrFee;
+                var fees = collectNajiluQrFeeFromForm();
+                var n = Number(String(fees.amount || '').replace(/,/g, '').trim());
+                if (!isFinite(n) || n < 0.01 || n > 99999.99) {
+                    alert('请填写 0.01～99999.99 的完税二维码金额');
+                    return;
+                }
+                btn.disabled = true;
+                var hint = document.getElementById('najiluQrFeeHint');
+                if (hint) hint.textContent = '保存中…';
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ najilu_qr_fee: fees })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) hint.textContent = '已保存';
+                            applyNajiluQrFeeToForm((data.data && data.data.najilu_qr_fee) || fees);
+                            alert('完税二维码价格已保存，未下单用户将按新价格付款');
                         } else {
                             if (hint) hint.textContent = '';
                             alert(data.msg || '保存失败');
@@ -8441,6 +8692,14 @@
                     if (!isFinite(n) || n < 0.01 || n > 99999.99) {
                         alert('请为每个套餐填写 0.01～99999.99 的价格');
                         return;
+                    }
+                    var psychRaw = String(row.psych_amount || '').replace(/,/g, '').trim();
+                    if (psychRaw) {
+                        var pn = Number(psychRaw);
+                        if (!isFinite(pn) || pn < 0.01 || pn > 99999.99 || pn >= n) {
+                            alert('心理价须小于套餐价格，且为 0.01～99999.99；不填则不启用');
+                            return;
+                        }
                     }
                     var days = parseInt(row.grant_days, 10);
                     var hours = parseInt(row.grant_hours, 10);
@@ -9564,6 +9823,64 @@
             return labels[audience] || audience;
         }
 
+        var EMAIL_COPY_TEMPLATES = {
+            activate: {
+                subject: '开通后去除水印，完整查看收入纳税明细',
+                content:
+                    '你好，\n\n开通后可去除演示水印，完整查看与导出收入纳税明细、纳税记录。\n付款一般几秒内自动到账，点下方按钮即可前往开通。',
+                link_url: 'purchase.html?from=email_activate',
+                cta_label: '立即开通',
+                poster: 'activate'
+            },
+            offer: {
+                subject: '你的专属优惠仍有效，打开即可按优惠价开通',
+                content:
+                    '你好，\n\n你的专属优惠价仍然有效。打开支付页将按该价格下单；开通后去除水印，完整使用收入明细与纳税记录。\n优惠可能随时调整，建议尽早开通。',
+                link_url: 'purchase.html?from=email_offer',
+                cta_label: '按优惠价开通',
+                poster: 'offer'
+            },
+            soft_recall: {
+                subject: '你的演示账号还在，开通即可完整体验',
+                content:
+                    '你好，\n\n你之前留下的演示账号仍可继续使用。开通后去除水印，可完整查看收入纳税明细并导出纳税记录。\n若暂时不需要，忽略本邮件即可。',
+                link_url: 'purchase.html?from=email_recall',
+                cta_label: '去开通页看看',
+                poster: 'activate'
+            }
+        };
+
+        function applyEmailCopyTemplate(prefix, templateId) {
+            var t = EMAIL_COPY_TEMPLATES[templateId] || EMAIL_COPY_TEMPLATES.activate;
+            var map = {
+                bulk: {
+                    subject: 'bulkEmailSubject',
+                    content: 'bulkEmailContent',
+                    link: 'bulkEmailLink',
+                    cta: 'bulkEmailCta',
+                    poster: 'bulkEmailPoster'
+                },
+                user: {
+                    subject: 'userEmailSendSubject',
+                    content: 'userEmailSendContent',
+                    link: 'userEmailSendLink',
+                    cta: 'userEmailSendCta',
+                    poster: 'userEmailSendPoster'
+                }
+            };
+            var ids = map[prefix] || map.bulk;
+            var subj = document.getElementById(ids.subject);
+            var body = document.getElementById(ids.content);
+            var link = document.getElementById(ids.link);
+            var cta = document.getElementById(ids.cta);
+            var poster = document.getElementById(ids.poster);
+            if (subj) subj.value = t.subject;
+            if (body) body.value = t.content;
+            if (link) link.value = t.link_url;
+            if (cta) cta.value = t.cta_label;
+            if (poster) poster.value = t.poster;
+        }
+
         function bulkEmailPayload(dryRun) {
             var skipEl = document.getElementById('bulkEmailSkipSent');
             return {
@@ -9575,6 +9892,8 @@
                 link_url:
                     String((document.getElementById('bulkEmailLink') || {}).value || '').trim() ||
                     'purchase.html',
+                cta_label: String((document.getElementById('bulkEmailCta') || {}).value || '').trim() || '立即开通',
+                poster: String((document.getElementById('bulkEmailPoster') || {}).value || 'activate'),
                 skip_already_sent: !!(skipEl && skipEl.checked),
                 dry_run: !!dryRun
             };
@@ -9585,25 +9904,35 @@
             if (el) el.textContent = text || '';
         }
 
+        var bulkEmailTemplateEl = document.getElementById('bulkEmailTemplate');
+        if (bulkEmailTemplateEl) {
+            bulkEmailTemplateEl.addEventListener('change', function () {
+                applyEmailCopyTemplate('bulk', bulkEmailTemplateEl.value);
+            });
+        }
+
         var bulkEmailAudienceEl = document.getElementById('bulkEmailAudience');
         if (bulkEmailAudienceEl) {
             bulkEmailAudienceEl.addEventListener('change', function () {
                 var v = String(bulkEmailAudienceEl.value || '');
-                var subj = document.getElementById('bulkEmailSubject');
-                var body = document.getElementById('bulkEmailContent');
-                var link = document.getElementById('bulkEmailLink');
+                var tpl = document.getElementById('bulkEmailTemplate');
                 if (v === 'price_offer_unpaid') {
-                    if (subj) subj.value = '专属价提醒：打开支付页即可按优惠价开通';
-                    if (body)
-                        body.value =
-                            '您好，您的专属优惠价仍有效。打开支付页将按该价格下单，开通后可去除水印并完整使用功能。请尽快开通，以免优惠失效。';
-                    if (link) link.value = 'purchase.html?from=email_offer';
+                    if (tpl) tpl.value = 'offer';
+                    applyEmailCopyTemplate('bulk', 'offer');
                 } else if (v === 'refund_eligible') {
-                    if (subj) subj.value = '退税资格提醒';
+                    var subj = document.getElementById('bulkEmailSubject');
+                    var body = document.getElementById('bulkEmailContent');
+                    var link = document.getElementById('bulkEmailLink');
+                    var cta = document.getElementById('bulkEmailCta');
+                    if (subj) subj.value = '退税相关说明，开通后可完整查看明细';
                     if (body)
                         body.value =
-                            '您好，系统检测到您可能符合退税咨询条件。点击邮件中的按钮了解详情，或在 App 内查看相关说明。';
-                    if (link) link.value = 'refund_ad.html';
+                            '你好，\n\n根据你填写的个税数据，可能适合进一步了解退税相关说明。开通后可去除水印，完整查看收入纳税明细。\n点下方按钮前往了解。';
+                    if (link) link.value = 'refund_ad.html?from=email_refund';
+                    if (cta) cta.value = '了解详情';
+                } else {
+                    if (tpl) tpl.value = 'activate';
+                    applyEmailCopyTemplate('bulk', 'activate');
                 }
             });
         }
@@ -9998,7 +10327,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v18-rename-peer-merge';
+                var MENU_TREE_VER = 'ops-ia-v19-hub-merge';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);
@@ -10024,10 +10353,26 @@
                         location.hash = normalized;
                         return;
                     }
-                    applyAdminRoute();
+                    applyAdminRoute({ force: true });
                 })
                 .catch(function () {});
         }
+
+        document.addEventListener('click', function (e) {
+            var tabBtn = e.target && e.target.closest ? e.target.closest('.admin-hub-tab') : null;
+            if (!tabBtn) return;
+            var hub = tabBtn.getAttribute('data-hub');
+            var tab = tabBtn.getAttribute('data-tab');
+            if (!hub || !tab || !ADMIN_HUB_DEFS[hub]) return;
+            e.preventDefault();
+            var hubDef = ADMIN_HUB_DEFS[hub];
+            var hash = tab === hubDef.defaultTab ? hub : hub + '/' + tab;
+            if (location.hash !== '#' + hash) {
+                location.hash = hash;
+            } else {
+                applyAdminRoute({ page: hash, force: true });
+            }
+        });
 
         var navRoot = document.getElementById('adminSidebarNav');
         if (navRoot && window.AdminNav) {
@@ -10049,13 +10394,15 @@
         function goAdminPage(p) {
             p = String(p || '').replace(/^#/, '').trim();
             if (!p) return;
-            if (document.getElementById(adminPagePanelId(p))) {
+            var hasPanel = !!document.getElementById(adminPagePanelId(p));
+            if (hasPanel || ADMIN_HUB_DEFS[p] || ADMIN_CONTENT_TO_HUB[p]) {
                 applyAdminRoute({ force: true, page: p });
-                if (location.hash !== '#' + p) {
+                var want = (_adminRouteState && _adminRouteState.hash) || p;
+                if (location.hash !== '#' + want) {
                     try {
-                        history.replaceState(null, '', '#' + p);
+                        history.replaceState(null, '', '#' + want);
                     } catch (eHash) {
-                        location.hash = p;
+                        location.hash = want;
                     }
                 }
                 return;

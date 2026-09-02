@@ -18,7 +18,8 @@
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260902-regip',
-    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig'
+    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig',
+    'user-emails': '/js/admin/modules/user-emails.js?v=20260903-poster'
   };
 
   var PAGE_MODULE = {
@@ -48,6 +49,7 @@
     'ops-research': 'ops-conversion',
     'ops-lift': 'ops-conversion',
     'ops-ad-analytics': 'ad-analytics',
+    'user-emails': 'user-emails',
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-purchase': 'analytics',
@@ -55,7 +57,9 @@
     'analytics-devices': 'devices',
     'tax-fill-survey': 'tax-fill-survey',
     'install-guide-stats': 'analytics',
-    'channel-analysis': 'analytics'
+    'channel-analysis': 'analytics',
+    'insights-product': 'analytics',
+    'insights-growth': 'analytics'
   };
 
   var SCRIPT_LOAD_TIMEOUT_MS = 12000;

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-adminclean">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260903-hub-merge">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -51,11 +51,11 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格与时长、离职证明价格、改名费用、个税修改收费与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、改名费用、个税修改收费与激活引导弹窗</p></div>
                     <section>
                         <h2>支付套餐</h2>
                         <div class="form-row form-stack">
-                            <p class="hint mt-0">价格、天数、小时、是否上架都可改。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡、天卡、3天卡已下架，不再出现在购买页。</p>
+                            <p class="hint mt-0">「价格」为对照原价；「心理价」有填且低于原价时，支付页按心理价收款并显示「·心理价特惠」（划线为原价）。留空则仍按「价格」收款。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡、天卡、3天卡已下架，不再出现在购买页。</p>
                             <div class="scroll-x">
                                 <table class="sku-catalog-table" id="skuCatalogTable">
                                     <thead>
@@ -63,6 +63,7 @@
                                             <th>上架</th>
                                             <th>套餐</th>
                                             <th>价格（元）</th>
+                                            <th>心理价（元）</th>
                                             <th>天数</th>
                                             <th>小时</th>
                                         </tr>
@@ -72,6 +73,7 @@
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledWeek" aria-label="上架周卡" checked></td>
                                             <td>周卡</td>
                                             <td><input type="number" class="sku-catalog-amount" id="skuPriceWeek" min="0.01" max="99999.99" step="0.01" value="300"></td>
+                                            <td><input type="number" class="sku-catalog-psych" id="skuPsychWeek" min="0.01" max="99999.99" step="0.01" placeholder="如 120"></td>
                                             <td><input type="number" class="sku-catalog-days" id="skuDaysWeek" min="0" max="365" step="1" value="7"></td>
                                             <td><input type="number" class="sku-catalog-hours" id="skuHoursWeek" min="0" max="720" step="1" value="0"></td>
                                         </tr>
@@ -79,6 +81,7 @@
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledTwoWeek" aria-label="上架双周卡" checked></td>
                                             <td>双周卡</td>
                                             <td><input type="number" class="sku-catalog-amount" id="skuPriceTwoWeek" min="0.01" max="99999.99" step="0.01" value="348"></td>
+                                            <td><input type="number" class="sku-catalog-psych" id="skuPsychTwoWeek" min="0.01" max="99999.99" step="0.01" placeholder="如 199"></td>
                                             <td><input type="number" class="sku-catalog-days" id="skuDaysTwoWeek" min="0" max="365" step="1" value="14"></td>
                                             <td><input type="number" class="sku-catalog-hours" id="skuHoursTwoWeek" min="0" max="720" step="1" value="0"></td>
                                         </tr>
@@ -86,6 +89,7 @@
                                             <td><input type="checkbox" class="sku-catalog-enabled" id="skuEnabledMonth" aria-label="上架月卡" checked></td>
                                             <td>月卡</td>
                                             <td><input type="number" class="sku-catalog-amount" id="skuPriceMonth" min="0.01" max="99999.99" step="0.01" value="398"></td>
+                                            <td><input type="number" class="sku-catalog-psych" id="skuPsychMonth" min="0.01" max="99999.99" step="0.01" placeholder="如 298"></td>
                                             <td><input type="number" class="sku-catalog-days" id="skuDaysMonth" min="0" max="365" step="1" value="30"></td>
                                             <td><input type="number" class="sku-catalog-hours" id="skuHoursMonth" min="0" max="720" step="1" value="0"></td>
                                         </tr>
@@ -109,6 +113,15 @@
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveLizhiCertFee">保存证明价格</button>
                                 <span class="hint" id="lizhiCertFeeHint" style="margin-left:8px;"></span>
+                            </div>
+                            <p class="hint mt-0"><strong>完税二维码</strong>：用户付一次后可终身替换/锁定完税证明二维码。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="najiluQrFeeAmount">完税二维码（元）</label>
+                                <input type="number" id="najiluQrFeeAmount" min="0.01" max="99999.99" step="0.01" value="300">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveNajiluQrFee">保存完税二维码价格</button>
+                                <span class="hint" id="najiluQrFeeHint" style="margin-left:8px;"></span>
                             </div>
                             <p class="hint mt-0"><strong>改名费用</strong>：近 30 天活跃不少于 2 天、且历史改名超过 5 次后，每次再改名需先付下面金额。填 <strong>0</strong> 则超限后也不收费、不用付款。白名单免收。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
                             <div class="form-field form-field-narrow">
@@ -168,7 +181,7 @@
                     </section>
                     <section>
                         <h2>心理价出价</h2>
-                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知；低于线的进入下方待处理。当前默认：周卡 ¥120、双周卡 ¥199、月卡 ¥298（也可改下面输入框后保存）。无套餐金额时回退为「目录价 × 百分比」。</p>
+                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知；低于线的进入下方待处理。支付页默认展示的「心理价特惠」实付价请在上方「支付套餐 → 心理价」填写。此处为议价自动通过线（当前默认：周卡 ¥120、双周卡 ¥199、月卡 ¥298）。无套餐金额时回退为「目录价 × 百分比」。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <label><input type="checkbox" id="bidCfgEnabled" checked> 开放出价入口</label>
@@ -1095,6 +1108,93 @@
                                     条
                                 </label>
                             </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-user-emails" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">查看用户留下的邮箱，勾选后发送邮件；也可查看历史发送记录。</p></div>
+                    <section>
+                        <h2>已留邮箱用户</h2>
+                        <div class="user-filter-bar">
+                            <div class="user-filter-fields">
+                                <div>
+                                    <label for="userEmailActive">开通状态</label>
+                                    <select id="userEmailActive" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="0">未开通</option>
+                                        <option value="1">已开通</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="userEmailQ">账号 / 姓名 / 邮箱</label>
+                                    <input type="text" id="userEmailQ" class="filter-text-wide" placeholder="搜索" autocomplete="off">
+                                </div>
+                                <div class="flex-actions">
+                                    <button type="button" class="btn-primary" id="btnUserEmailSearch">查询</button>
+                                    <button type="button" class="btn-page" id="btnUserEmailSendSelected" disabled>给勾选发邮件</button>
+                                    <button type="button" class="btn-page" id="btnUserEmailExport">导出本页 CSV</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="stat" id="userEmailStat">加载中…</p>
+                        <div class="scroll-x">
+                            <table class="users-registry-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-w-40"><input type="checkbox" id="userEmailCheckAll" title="全选本页"></th>
+                                        <th>账号</th>
+                                        <th>姓名</th>
+                                        <th>邮箱</th>
+                                        <th>开通</th>
+                                        <th>注册</th>
+                                        <th>最近发信</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userEmailTbody"><tr><td colspan="8">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button type="button" class="btn-page" id="userEmailPrev">上一页</button>
+                            <span id="userEmailPageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="userEmailNext">下一页</button>
+                        </div>
+                    </section>
+                    <section class="mt-16">
+                        <h2>发送记录</h2>
+                        <div class="user-filter-bar">
+                            <div class="user-filter-fields">
+                                <div>
+                                    <label for="userEmailSendQ">账号 / 邮箱 / 标题</label>
+                                    <input type="text" id="userEmailSendQ" class="filter-text-wide" placeholder="搜索记录" autocomplete="off">
+                                </div>
+                                <div class="flex-actions">
+                                    <button type="button" class="btn-primary" id="btnUserEmailSendSearch">查询记录</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="stat" id="userEmailSendStat">—</p>
+                        <div class="scroll-x">
+                            <table class="users-registry-table">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>账号</th>
+                                        <th>邮箱</th>
+                                        <th>标题</th>
+                                        <th>人群/来源</th>
+                                        <th>状态</th>
+                                        <th>操作人</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userEmailSendTbody"><tr><td colspan="7">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button type="button" class="btn-page" id="userEmailSendPrev">上一页</button>
+                            <span id="userEmailSendPageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="userEmailSendNext">下一页</button>
                         </div>
                     </section>
                 </div>
@@ -2395,9 +2495,9 @@
                             <a class="ops-hub-card" href="#ops-inactive"><strong>未激活名单</strong><span>筛人群、导出、点进用户</span></a>
                             <a class="ops-hub-card" href="#ops-ad-analytics"><strong>广告数据</strong><span>退税合格、停留与复制微信</span></a>
                             <a class="ops-hub-card" href="#codes"><strong>发激活码</strong><span>开码、查码</span></a>
-                            <a class="ops-hub-card" href="#settings"><strong>定价与引导</strong><span>套餐价、引导文案</span></a>
+                            <a class="ops-hub-card" href="#settings"><strong>内容配置</strong><span>套餐价、安装包、外观</span></a>
                             <a class="ops-hub-card" href="#analytics-purchase"><strong>支付分析</strong><span>漏斗与 GMV 明细</span></a>
-                            <a class="ops-hub-card" href="#tax-fill-survey"><strong>填写问卷</strong><span>个税填写满意度</span></a>
+                            <a class="ops-hub-card" href="#insights-product/survey"><strong>填写问卷</strong><span>个税填写满意度</span></a>
                         </div>
                     </section>
                     <section>
@@ -2451,8 +2551,16 @@
                         </details>
                         <details class="page-hint-details ops-board-bulk mt-12" open>
                             <summary>邮件群发</summary>
-                            <p class="hint mt-8">向<strong>已填写邮箱</strong>的用户发 SMTP 邮件（复用服务器 QQ 邮箱配置）。单次最多 200 人，发送间隔约 0.12s；建议先「预览人数」。专属价未付人群请选「有专属价未开通」。</p>
+                            <p class="hint mt-8">向<strong>已填写邮箱</strong>的用户发 SMTP 邮件（复用服务器 QQ 邮箱配置）。单次最多 200 人；邮件含海报配图。建议先「预览人数」。也可到 <a href="#user-emails">邮箱管理</a> 按名单勾选发送。</p>
                             <div class="form-row form-stack">
+                                <div class="form-field">
+                                    <label for="bulkEmailTemplate">文案模板</label>
+                                    <select id="bulkEmailTemplate" class="filter-select">
+                                        <option value="activate" selected>开通去水印</option>
+                                        <option value="offer">专属优惠提醒</option>
+                                        <option value="soft_recall">轻量召回</option>
+                                    </select>
+                                </div>
                                 <div class="form-field">
                                     <label for="bulkEmailAudience">发送对象（仅含已留邮箱）</label>
                                     <select id="bulkEmailAudience" class="filter-select">
@@ -2469,15 +2577,30 @@
                                 </div>
                                 <div class="form-field">
                                     <label for="bulkEmailSubject">邮件标题</label>
-                                    <input type="text" id="bulkEmailSubject" maxlength="120" value="开通提醒：你的专属优惠仍有效">
+                                    <input type="text" id="bulkEmailSubject" maxlength="120" value="开通后去除水印，完整查看收入纳税明细">
                                 </div>
                                 <div class="form-field">
                                     <label for="bulkEmailContent">正文</label>
-                                    <textarea id="bulkEmailContent" class="textarea-block" rows="4" maxlength="4000">您好，检测到您的账号尚未开通。开通后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击邮件中的按钮即可前往开通页。</textarea>
+                                    <textarea id="bulkEmailContent" class="textarea-block" rows="5" maxlength="4000">你好，
+
+开通后可去除演示水印，完整查看与导出收入纳税明细、纳税记录。
+付款一般几秒内自动到账，点下方按钮即可前往开通。</textarea>
                                 </div>
                                 <div class="form-field form-field-narrow">
                                     <label for="bulkEmailLink">跳转页面</label>
-                                    <input type="text" id="bulkEmailLink" maxlength="200" value="purchase.html">
+                                    <input type="text" id="bulkEmailLink" maxlength="200" value="purchase.html?from=email_activate">
+                                </div>
+                                <div class="form-field form-field-narrow">
+                                    <label for="bulkEmailCta">按钮文案</label>
+                                    <input type="text" id="bulkEmailCta" maxlength="40" value="立即开通">
+                                </div>
+                                <div class="form-field form-field-narrow">
+                                    <label for="bulkEmailPoster">海报图</label>
+                                    <select id="bulkEmailPoster" class="filter-select">
+                                        <option value="activate" selected>开通去水印</option>
+                                        <option value="offer">专属优惠</option>
+                                        <option value="none">不配图</option>
+                                    </select>
                                 </div>
                                 <div class="form-field">
                                     <label class="checkbox-inline">
@@ -3464,6 +3587,40 @@
             </div>
         </div>
     </div>
+    <div id="userEmailSendBackdrop" class="admin-modal-backdrop" hidden>
+        <div class="admin-modal-box" onclick="event.stopPropagation()" style="max-width:520px;">
+            <h2 class="admin-modal-title">发送邮件</h2>
+            <p class="hint admin-modal-meta" id="userEmailSendMeta"></p>
+            <label class="field-label" for="userEmailSendTemplate">文案模板</label>
+            <select id="userEmailSendTemplate" class="filter-select input-full">
+                <option value="activate" selected>开通去水印</option>
+                <option value="offer">专属优惠提醒</option>
+                <option value="soft_recall">轻量召回</option>
+            </select>
+            <label class="field-label mt-10 d-block" for="userEmailSendSubject">邮件标题</label>
+            <input type="text" id="userEmailSendSubject" class="filter-text-wide input-full" maxlength="120" value="开通后去除水印，完整查看收入纳税明细" autocomplete="off">
+            <label class="field-label mt-10 d-block" for="userEmailSendContent">正文</label>
+            <textarea id="userEmailSendContent" class="textarea-block input-full" rows="5" maxlength="4000">你好，
+
+开通后可去除演示水印，完整查看与导出收入纳税明细、纳税记录。
+付款一般几秒内自动到账，点下方按钮即可前往开通。</textarea>
+            <label class="field-label mt-10 d-block" for="userEmailSendLink">跳转页面</label>
+            <input type="text" id="userEmailSendLink" class="filter-text-wide input-full" maxlength="200" value="purchase.html?from=email_activate" autocomplete="off">
+            <label class="field-label mt-10 d-block" for="userEmailSendCta">按钮文案</label>
+            <input type="text" id="userEmailSendCta" class="filter-text-wide input-full" maxlength="40" value="立即开通" autocomplete="off">
+            <label class="field-label mt-10 d-block" for="userEmailSendPoster">海报图</label>
+            <select id="userEmailSendPoster" class="filter-select input-full">
+                <option value="activate" selected>开通去水印</option>
+                <option value="offer">专属优惠</option>
+                <option value="none">不配图</option>
+            </select>
+            <p class="hint mt-8" id="userEmailSendStatus" aria-live="polite"></p>
+            <div class="form-actions modal-actions">
+                <button type="button" class="btn-primary" id="userEmailSendConfirm">确认发送</button>
+                <button type="button" class="btn-page" id="userEmailSendCancel">取消</button>
+            </div>
+        </div>
+    </div>
     <div id="userActivateBackdrop" class="admin-modal-backdrop" hidden>
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">激活账号</h2>
@@ -3567,9 +3724,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260902-regip"></script>
+    <script src="/js/admin/loader.js?v=20260903-poster"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260902-cert-fee"></script>
+    <script src="/js/admin_panel.js?v=20260903-hub-merge"></script>
 </body>
 </html>

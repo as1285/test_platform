@@ -288,6 +288,7 @@ function defaultCatalogConfig() {
     var s = CONFIGURABLE_CATALOG_SKUS[i];
     map[s.id] = {
       amount: String(s.amount),
+      psych_amount: '',
       grant_days: parseInt(s.grant_days, 10) || 0,
       grant_hours: parseInt(s.grant_hours, 10) || 0,
       grant_minutes: parseInt(s.grant_minutes, 10) || 0,
@@ -349,8 +350,18 @@ function normalizeCatalogEntry(raw, fallback) {
   if (obj && obj.enabled != null) {
     enabled = !(obj.enabled === false || obj.enabled === 0 || obj.enabled === '0');
   }
+  var psychAmount = '';
+  if (obj) {
+    var psychRaw = obj.psych_amount != null ? obj.psych_amount : obj.psychAmount;
+    if (psychRaw != null && String(psychRaw).trim() !== '') {
+      psychAmount = normalizeCatalogAmount(psychRaw);
+    }
+  } else if (fb.psych_amount != null && String(fb.psych_amount).trim() !== '') {
+    psychAmount = normalizeCatalogAmount(fb.psych_amount) || '';
+  }
   return {
     amount: amount,
+    psych_amount: psychAmount,
     grant_days: days != null ? days : parseInt(fb.grant_days, 10) || 0,
     grant_hours: hours != null ? hours : parseInt(fb.grant_hours, 10) || 0,
     grant_minutes: minutes != null ? minutes : parseInt(fb.grant_minutes, 10) || 0,
@@ -386,7 +397,7 @@ var DEFAULT_PRICING_AB = {
 };
 
 function cloneSku(s) {
-  return {
+  var out = {
     id: String(s.id || ''),
     amount: String(s.amount || ''),
     label: String(s.label || ''),
@@ -396,6 +407,11 @@ function cloneSku(s) {
     grant_days: parseInt(s.grant_days, 10) || 0,
     grant_minutes: parseInt(s.grant_minutes, 10) || 0
   };
+  if (s.list_amount != null && String(s.list_amount).trim() !== '') {
+    out.list_amount = String(s.list_amount);
+  }
+  if (s.psych_offer) out.psych_offer = true;
+  return out;
 }
 
 function applyCatalogEntryToSku(sku, entry) {
@@ -405,6 +421,24 @@ function applyCatalogEntryToSku(sku, entry) {
   if (entry.grant_days != null) c.grant_days = parseInt(entry.grant_days, 10) || 0;
   if (entry.grant_hours != null) c.grant_hours = parseInt(entry.grant_hours, 10) || 0;
   if (entry.grant_minutes != null) c.grant_minutes = parseInt(entry.grant_minutes, 10) || 0;
+  var psych = entry.psych_amount ? String(entry.psych_amount) : '';
+  var listN = Number(c.amount);
+  var psychN = Number(psych);
+  if (
+    psych &&
+    isFinite(psychN) &&
+    psychN > 0 &&
+    isFinite(listN) &&
+    listN > 0 &&
+    psychN < listN
+  ) {
+    c.list_amount = String(c.amount);
+    c.amount = psych;
+    c.psych_offer = true;
+    if (c.label && String(c.label).indexOf('心理价') < 0) {
+      c.label = String(c.label) + '·心理价特惠';
+    }
+  }
   return c;
 }
 
@@ -802,6 +836,23 @@ function createPricingAb(deps) {
       err.statusCode = 400;
       throw err;
     }
+    var badPsych = CONFIGURABLE_SKU_IDS.filter(function (id) {
+      var row = next[id] || {};
+      var raw =
+        merged[id] && merged[id].psych_amount != null
+          ? String(merged[id].psych_amount).trim()
+          : '';
+      if (!raw) return false;
+      if (!row.psych_amount) return true;
+      var listN = Number(row.amount);
+      var psychN = Number(row.psych_amount);
+      return !(isFinite(psychN) && psychN > 0 && isFinite(listN) && psychN < listN);
+    });
+    if (badPsych.length) {
+      var errPsych = new Error('心理价须小于套餐价格，且为 0.01～99999.99；不填则不启用心理价特惠');
+      errPsych.statusCode = 400;
+      throw errPsych;
+    }
     var badGrant = CONFIGURABLE_SKU_IDS.filter(function (id) {
       return !catalogEntryHasGrant(next[id]);
     });
@@ -1103,6 +1154,7 @@ module.exports = {
   normalizeCatalogAmounts: normalizeCatalogAmounts,
   normalizeCatalogConfig: normalizeCatalogConfig,
   catalogAmountsFromConfig: catalogAmountsFromConfig,
+  cloneLiveCatalog: cloneLiveCatalog,
   DEFAULT_PRICING_AB: DEFAULT_PRICING_AB,
   resolveCoverLongerGrant: resolveCoverLongerGrant,
   resolvePricingAbVariant: resolvePricingAbVariant,

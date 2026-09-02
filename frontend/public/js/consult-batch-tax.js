@@ -1,5 +1,17 @@
-/** consult-batch-tax: work experience batch generate / paste / example */
+/**
+ * consult-batch-tax.js — 工作经历批量生成 / 粘贴导入 / 示例填写
+ *
+ * 角色：批量税务主流程——多段工作经历表单、示例与模板、粘贴导入、按月自定义工资、
+ *       一键/确认生成与覆盖修改、年终奖单独写入；亦被管理端个税维护复用。
+ * 加载页：consult.html（defer；位于 consult-core 之后、consult-records 之前）；
+ *         管理端可通过 admin/loader 动态加载。
+ * 依赖：consult-core（税额公式、formObject、页签、showMsg 等）；authFetch；
+ *       consult-tax-edit-pay（ConsultTaxEditPay.fetchResponse / consultTaxPost，写税 402 付费墙）；
+ *       可选 ConversionGuide、__adminTaxBatchCtx。
+ * 鉴权：C 端 POST api/tax；管理端走 api/admin/user-tax-records（带 username）。
+ */
 
+// === API：批量写税入口（C 端 / 管理端 / 付费墙） ===
 /** C 端走 /api/tax；管理端个税维护走 /api/admin/user-tax-records（带 username） */
 function consultTaxApiFetch(body) {
     var ctx = window.__adminTaxBatchCtx;
@@ -24,6 +36,8 @@ function consultTaxApiFetch(body) {
     });
 }
 
+// === 强提示弹框（阻塞校验） ===
+/** 关闭居中强提示弹框。 */
 function closeConsultStrongAlertModal() {
     var root = document.getElementById('consultStrongAlertModal');
     if (root) {
@@ -47,6 +61,10 @@ function friendlyConsultTaxError(raw) {
     return msg;
 }
 
+/**
+ * 展示阻塞级错误提示（文案经 friendlyConsultTaxError）。
+ * 副作用：开 #consultStrongAlertModal。
+ */
 function showConsultStrongAlert(message) {
     var body = document.getElementById('consultStrongAlertText');
     if (body) {
@@ -59,6 +77,8 @@ function showConsultStrongAlert(message) {
 }
 
 
+// === 年终奖行内编辑 ===
+/** 取批量列表中最后一段非空公司名。 */
 function getLastBatchEmpCompanyFromDom() {
     var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
     var last = '';
@@ -70,6 +90,7 @@ function getLastBatchEmpCompanyFromDom() {
     return last;
 }
 
+/** 从一行读取公司名/税号/机关。 */
 function getBatchEmpProfileFromRow(row) {
     if (!row) return { name: '', company_tax_id: '', tax_authority: '' };
     var companyEl = row.querySelector('.batch-emp-company');
@@ -135,6 +156,7 @@ function employmentBonusList(emp) {
     return list;
 }
 
+/** 收集一行内已填年终奖项。 */
 function collectBatchEmpBonusesFromRow(row) {
     if (!row) return [];
     var items = row.querySelectorAll('.batch-emp-bonus-item');
@@ -216,6 +238,7 @@ function bindBatchEmpBonusItem(item) {
     }
 }
 
+/** 向该行追加一条年终奖输入项。副作用：改 DOM。 */
 function addBatchEmpBonusItem(row, preset) {
     if (!row) return null;
     var list = row.querySelector('.batch-emp-bonus-list');
@@ -250,6 +273,7 @@ function addBatchEmpBonusItem(row, preset) {
     return node;
 }
 
+/** 用奖金列表重建该行年终奖 UI。 */
 function setBatchEmpBonusesOnRow(row, bonuses) {
     if (!row) return;
     var list = row.querySelector('.batch-emp-bonus-list');
@@ -309,6 +333,7 @@ function bonusFitsBatchRowData(rowData, year, month) {
     return k >= ymToKey(sy, sm) && k <= ymToKey(ey, em);
 }
 
+/** 将年终奖记录挂到对应就业段 payload。 */
 function assignBonusRecordsToPayloads(payloads, bonusRecs) {
     var assigned = (payloads || []).map(function () {
         return [];
@@ -350,6 +375,7 @@ function assignBonusRecordsToPayloads(payloads, bonusRecs) {
     return assigned;
 }
 
+/** 快照各行年终奖，供修改模式判断是否手改。 */
 function collectBatchBonusSnapshot() {
     var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
     var out = [];
@@ -368,6 +394,7 @@ function collectBatchBonusSnapshot() {
 }
 
 
+/** 生成确认框中的年终奖摘要行。 */
 function buildBatchBonusConfirmText(employments) {
     var parts = [];
     (employments || []).forEach(function (emp) {
@@ -390,6 +417,7 @@ function buildBatchBonusConfirmText(employments) {
     return parts.join('') + (parts.length ? '。' : '');
 }
 
+// === 所得小类常量 / 自动去重提示 ===
 var INCOME_TYPE_DEFAULT_SUBTYPES = {
     '工资薪金': '正常工资薪金',
     '劳务报酬': '一般劳务报酬',
@@ -403,6 +431,7 @@ var INCOME_TYPE_DEFAULT_SUBTYPES = {
 };
 
 
+/** 若服务端自动去重，在成功提示后追加说明。 */
 function appendAutoDedupedTip(tip, data) {
     var n = data && data.auto_deduped != null ? Number(data.auto_deduped) : 0;
     if (n > 0) {
@@ -412,6 +441,7 @@ function appendAutoDedupedTip(tip, data) {
 }
 
 
+// === 批量表单草稿（localStorage） ===
 var BATCH_COMPANY_HISTORY_KEY_V1 = 'consult_batch_company_history_v1';
 var BATCH_COMPANY_HISTORY_MAX = 40;
 var SINGLE_TAX_DRAFT_KEY_PREFIX = 'consult_single_tax_draft_v1_';
@@ -420,6 +450,7 @@ var _singleTaxDraftSaveTimer = null;
 var _batchTaxDraftRestoring = false;
 var _singleTaxDraftRestoring = false;
 
+/** 批量表单草稿 storage key。 */
 function batchTaxDraftStorageKey() {
     return BATCH_TAX_DRAFT_KEY_PREFIX + String(currentUserId());
 }
@@ -430,6 +461,7 @@ function batchEmpRowInputVal(row, sel) {
     return el ? String(el.value) : '';
 }
 
+/** 序列化单行工作经历为草稿对象。 */
 function serializeBatchEmpRow(row) {
     var optionalMeta = row.querySelector('.batch-emp-optional-meta');
     var deductMeta = row.querySelector('.batch-emp-deduct-meta');
@@ -507,6 +539,7 @@ function batchTaxDraftHasContent(draft) {
     return false;
 }
 
+/** 序列化整份批量表单草稿；无内容返回 null。 */
 function serializeBatchTaxDraft() {
     var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
     var employments = [];
@@ -520,6 +553,7 @@ function serializeBatchTaxDraft() {
     };
 }
 
+/** 立即写入批量草稿。副作用：localStorage。 */
 function saveBatchTaxDraftNow() {
     if (_batchTaxDraftRestoring) {
         return;
@@ -534,6 +568,7 @@ function saveBatchTaxDraftNow() {
     } catch (eDraft) {}
 }
 
+/** 防抖保存批量草稿。 */
 function scheduleBatchTaxDraftSave() {
     if (_batchTaxDraftRestoring) {
         return;
@@ -544,6 +579,7 @@ function scheduleBatchTaxDraftSave() {
     _batchTaxDraftSaveTimer = setTimeout(saveBatchTaxDraftNow, 500);
 }
 
+/** 清除批量草稿。 */
 function clearBatchTaxDraft() {
     try {
         localStorage.removeItem(batchTaxDraftStorageKey());
@@ -565,6 +601,10 @@ function migrateLegacyBatchBonusDraft(draft) {
     }
 }
 
+/**
+ * 启动时恢复批量草稿到 DOM。
+ * 副作用：重建行、填值。
+ */
 function restoreBatchTaxDraftIfAny() {
     var list = document.getElementById('batch_employment_list');
     if (!list) {
@@ -603,6 +643,7 @@ function restoreBatchTaxDraftIfAny() {
     return true;
 }
 
+/** 绑定批量区 input 与页面隐藏时的草稿保存。 */
 function initBatchTaxDraftAutosave() {
     var card = document.getElementById('batchTaxCard');
     if (!card || card.getAttribute('data-draft-bound') === '1') {
@@ -620,6 +661,7 @@ function initBatchTaxDraftAutosave() {
 }
 
 
+// === 公司历史档案（税号 / 机关） ===
 function normalizeBatchCompanyProfile(item) {
     if (typeof item === 'string') {
         var n0 = String(item || '').trim();
@@ -635,6 +677,7 @@ function normalizeBatchCompanyProfile(item) {
     };
 }
 
+/** 读本地公司档案列表。 */
 function loadBatchCompanyProfiles() {
     try {
         var raw = localStorage.getItem(BATCH_COMPANY_PROFILES_KEY);
@@ -662,6 +705,7 @@ function loadBatchCompanyProfiles() {
     return [];
 }
 
+/** 写本地公司档案。副作用：localStorage。 */
 function saveBatchCompanyProfiles(profiles) {
     try {
         localStorage.setItem(
@@ -678,6 +722,7 @@ function loadBatchCompanyHistoryList() {
 }
 
 
+/** 按公司名查找本地档案。 */
 function getBatchCompanyProfile(companyName) {
     var raw = String(companyName || '').trim();
     if (!raw) return null;
@@ -727,6 +772,7 @@ function rememberBatchCompanyProfileFromRow(row) {
     });
 }
 
+/** 将历史税号/机关填入行（不覆盖已有值时按实现）。副作用：写 input。 */
 function applyBatchCompanyProfileToRow(row, companyName) {
     if (!row) return;
     var name = String(companyName != null ? companyName : '').trim();
@@ -851,6 +897,7 @@ function bindBatchEmpBonusMetaToggle(row) {
     });
 }
 
+/** 公司名输入失焦/变更时尝试套用档案。 */
 function tryApplyBatchCompanyProfileFromInput(inputEl) {
     if (!inputEl) return;
     var row = inputEl.closest('.batch-emp-row');
@@ -859,6 +906,7 @@ function tryApplyBatchCompanyProfileFromInput(inputEl) {
     applyBatchCompanyProfileToRow(row, v);
 }
 
+/** 刷新公司名 datalist。副作用：改 DOM。 */
 function refreshBatchCompanyHistoryDatalist() {
     var dl = document.getElementById('batchCompanyHistoryDatalist');
     if (!dl) return;
@@ -915,6 +963,7 @@ function bindBatchEmpCompanyMetaInputs(row) {
     });
 }
 
+/** 初始化公司历史 datalist 与已有行绑定。 */
 function initBatchCompanyHistoryUi() {
     return syncAllCompanyProfiles()
         .then(function () {
@@ -931,6 +980,7 @@ function initBatchCompanyHistoryUi() {
         });
 }
 
+// === 年月输入约束 ===
 function clampBatchMonthInput(inputEl) {
     if (!inputEl) return;
     var raw = String(inputEl.value || '').trim();
@@ -998,6 +1048,7 @@ function parseBatchRatioPct(el) {
     return v;
 }
 
+// === 工作经历行：三险一金 / 增删行 ===
 /** 按社保/公积金基数与比例写入本段三险一金月扣款 */
 function syncBatchEmpDeductionsFromBase(row) {
     if (!row) return;
@@ -1050,6 +1101,7 @@ function bindBatchEmpDeductionCalc(row) {
     });
 }
 
+/** 绑定单行：年月、扣除、奖金、公司历史等控件。 */
 function bindBatchEmpRow(node) {
     var rm = node.querySelector('.batch-emp-remove-btn');
     if (rm) {
@@ -1085,6 +1137,7 @@ function bindBatchEmpRow(node) {
     updateBatchEmpMonthSalaryBadge(node);
 }
 
+/** 删除一行工作经历。副作用：DOM + 草稿调度。 */
 function removeBatchEmpRow(row) {
     var list = document.getElementById('batch_employment_list');
     if (!row || !list) return;
@@ -1096,6 +1149,7 @@ function removeBatchEmpRow(row) {
     scheduleBatchTaxDraftSave();
 }
 
+/** 追加空白工作经历行并绑定。副作用：DOM。 */
 function addBatchEmpRow() {
     var tpl = document.getElementById('batchEmpRowTpl');
     var list = document.getElementById('batch_employment_list');
@@ -1131,6 +1185,7 @@ function addBatchEmpRow() {
     scheduleBatchTaxDraftSave();
 }
 
+/** 确保至少一行并绑定已有行。 */
 function initBatchEmploymentRows() {
     var list = document.getElementById('batch_employment_list');
     if (!list || list.querySelector('.batch-emp-row')) return;
@@ -1259,6 +1314,7 @@ function setBatchEmpRowValues(row, data) {
     updateBatchEmpMonthSalaryBadge(row);
 }
 
+// === 示例填写 / 场景模板 / 一键生成 ===
 /** 示例填写公司池：真实风格公司名（随机抽取）；旧版含「示例」的名称仍识别以便清理 */
 var BATCH_EXAMPLE_COMPANY_POOL_LEGACY = [
     '北京华示示例软件有限公司',
@@ -1484,6 +1540,7 @@ function filterBatchExampleEmploymentsIfOwnPresent(employments) {
     });
 }
 
+/** 计划删除此前示例公司产生的旧记录。 */
 function planBatchExampleRecordDeletion(employments, existingList) {
     if (!batchEmploymentsIncludeOwnCompany(employments)) {
         return { companies: [], count: 0 };
@@ -1507,6 +1564,7 @@ function planBatchExampleRecordDeletion(employments, existingList) {
     return { companies: Object.keys(toDelete), count: count };
 }
 
+/** 按公司名删除示例税务记录。副作用：API。 */
 function deleteBatchExampleTaxRecordsPromise(companies) {
     if (!companies || !companies.length) {
         return Promise.resolve(0);
@@ -1537,6 +1595,7 @@ function deleteBatchExampleTaxRecordsPromise(companies) {
     });
 }
 
+/** 提交前解析 DOM，并过滤「自有公司 + 示例行」冲突。 */
 function prepareBatchAddEmploymentsFromDom() {
     removeBatchExampleEmpRowsFromDomIfOwnPresent();
     var parsed = parseBatchEmploymentsFromDom();
@@ -1691,6 +1750,7 @@ function oneClickGenerateBatchTaxRecords() {
     batchAddEmploymentTaxRecords();
 }
 
+/** 按 AB/实验标记调整批量区 UI（若有）。 */
 function applyConsultBatchAbUi() {
     if (!window.ConversionGuide || typeof window.ConversionGuide.getBatchExampleProminent !== 'function') return;
     if (!window.ConversionGuide.getBatchExampleProminent()) return;
@@ -1703,6 +1763,7 @@ function applyConsultBatchAbUi() {
     }
 }
 
+// === 批量修改模式（从已有回填） ===
 /** 批量修改模式：回填时记录将被覆盖的已有记录 id */
 var batchTaxEditMode = null;
 
@@ -1853,6 +1914,10 @@ function segmentToBatchRowPayload(seg) {
     };
 }
 
+/**
+ * 进入批量修改模式，记录将覆盖的旧记录 id。
+ * 副作用：写 batchTaxEditMode、更新卡片 UI。
+ */
 function enterBatchTaxEditMode(scopeIds, opts) {
     opts = opts || {};
     var ids = [];
@@ -1875,11 +1940,13 @@ function enterBatchTaxEditMode(scopeIds, opts) {
     updateBatchTaxCardUi();
 }
 
+/** 退出批量修改模式并刷新卡片 UI。 */
 function exitBatchTaxEditMode() {
     batchTaxEditMode = null;
     updateBatchTaxCardUi();
 }
 
+/** 按是否修改模式切换主按钮文案与更多菜单。副作用：DOM。 */
 function updateBatchTaxCardUi() {
     var inEdit = !!(batchTaxEditMode && batchTaxEditMode.scopeIds && batchTaxEditMode.scopeIds.length);
     var card = document.getElementById('batchTaxCard');
@@ -1935,6 +2002,7 @@ function updateBatchTaxCardUi() {
     syncBatchTaxEmptyState();
 }
 
+// === 工具栏 UI / 空态 / 起步路径 ===
 function closeBatchTaxMoreMenu() {
     var menu = document.getElementById('batchTaxMoreMenu');
     var btn = document.getElementById('btnBatchTaxMore');
@@ -1966,6 +2034,7 @@ function hasTaxStartChooser() {
     return !!document.getElementById('taxStartChooser');
 }
 
+/** 显示手动批量表单（隐藏起步选择器）。 */
 function showBatchTaxManualForm(opts) {
     opts = opts || {};
     var chooser = document.getElementById('taxStartChooser');
@@ -1980,6 +2049,7 @@ function showBatchTaxManualForm(opts) {
     }
 }
 
+/** 显示税务起步三入口（有 #taxStartChooser 时）。 */
 function showTaxStartChooser(opts) {
     opts = opts || {};
     /* 管理端等无三入口 DOM：禁止藏表单 */
@@ -2005,6 +2075,7 @@ function showTaxStartChooser(opts) {
     }
 }
 
+/** 示例路径：填示例并触发一键生成。 */
 function startExampleAndGenerate() {
     if (typeof fillBatchTaxExample === 'function') {
         fillBatchTaxExample({ silent: true });
@@ -2015,6 +2086,7 @@ function startExampleAndGenerate() {
     }
 }
 
+/** 起步路径分发：example / paste / manual 等。 */
 function openTaxStartPath(path) {
     var p = String(path || '').trim();
     if (p === 'chooser') {
@@ -2035,6 +2107,10 @@ function openTaxStartPath(path) {
     /* manual: form already shown */
 }
 
+/**
+ * 按是否已有记录切换空态/表单显示。
+ * 副作用：多块 DOM hidden/class。
+ */
 function syncBatchTaxEmptyState() {
     var empty = document.getElementById('batchTaxEmptyState');
     var chooser = document.getElementById('taxStartChooser');
@@ -2111,6 +2187,7 @@ function scrollToTaxRecordsList() {
     }
 }
 
+/** 写入成功后滚动列表等收尾。 */
 function afterBatchTaxWriteSuccess() {
     window.__batchTaxUserExpanded = false;
     syncBatchTaxEmptyState();
@@ -2139,6 +2216,7 @@ function invokeAfterTaxRecordsCreated(opts) {
     }, 100);
 }
 
+/** 绑定税务区更多菜单、起步入口、管理菜单等 UX。 */
 function initConsultRecordsUx() {
     var moreBtn = document.getElementById('btnBatchTaxMore');
     var moreMenu = document.getElementById('batchTaxMoreMenu');
@@ -2214,6 +2292,7 @@ function initConsultRecordsUx() {
     syncBatchTaxEmptyState();
 }
 
+// === 从已有记录回填工作经历 ===
 function scrollToBatchTaxCard() {
     var card = document.getElementById('batchTaxCard');
     if (!card) {
@@ -2247,6 +2326,10 @@ function batchBonusWasManuallyChanged() {
     return batchBonusSnapshotKey(cur) !== batchBonusSnapshotKey(batchTaxEditMode.bonusSnapshot);
 }
 
+/**
+ * 从已有税务记录反推工作经历并进入修改模式。
+ * 副作用：重建行、enterBatchTaxEditMode。
+ */
 function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
     apiFetchRecords()
         .then(function (list) {
@@ -2353,6 +2436,8 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
         });
 }
 
+// === 组装月薪写入与确认文案 ===
+/** 由就业段展开月薪写入项并累计预扣税额。 */
 function buildBatchEmploymentWrites(employments) {
     var writes = [];
     var taxSumSalary = 0;
@@ -2414,6 +2499,7 @@ function buildBatchEmploymentWrites(employments) {
     return { writes: writes, taxSumSalary: taxSumSalary };
 }
 
+/** 生成确认框中各段工作经历摘要行。 */
 function buildBatchConfirmLines(employments) {
     var lines = [];
     var ei;
@@ -2439,6 +2525,7 @@ function buildBatchConfirmLines(employments) {
     return lines;
 }
 
+/** 组装待提交的月薪 + 年终奖 record 数组。 */
 function assembleBatchTaxRecords(writes, base, uidKey, employments) {
     var records = [];
     var wi;
@@ -2471,6 +2558,9 @@ function assembleBatchTaxRecords(writes, base, uidKey, employments) {
     return records;
 }
 
+/**
+ * 先删后写（覆盖修改）。副作用：API。
+ */
 function postBatchReplaceTaxRecordsPromise(idsToDelete, records) {
     var ids = Array.isArray(idsToDelete) ? idsToDelete : [];
     var list = Array.isArray(records) ? records : [];
@@ -2518,6 +2608,7 @@ function postBatchReplaceTaxRecordsPromise(idsToDelete, records) {
     });
 }
 
+/** 主操作按钮 loading/禁用态。副作用：DOM。 */
 function setBatchTaxActionLoading(loading, isUpdate) {
     var btn = document.getElementById(
         isUpdate ? 'batch_update_employments_btn' : 'batch_submit_employments_btn'
@@ -2543,6 +2634,8 @@ function ymToKey(y, m) {
 }
 
 
+// === 解析 DOM 工作经历行 ===
+/** 解析单行 DOM 为 employment 对象；失败带 error。 */
 function parseOneBatchEmpRow(row, rowIdx) {
     syncBatchEmpDeductionsFromBase(row);
     var companyEl = row.querySelector('.batch-emp-company');
@@ -2683,6 +2776,7 @@ function parseOneBatchEmpRow(row, rowIdx) {
     };
 }
 
+/** 解析全部工作经历行。 */
 function parseBatchEmploymentsFromDom() {
     var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
     if (!rows.length) {
@@ -2728,6 +2822,7 @@ function parseBatchEmploymentsFromDom() {
     return { ok: true, employments: employments };
 }
 
+// === 按月自定义工资弹窗（分页草稿） ===
 var batchMsModalCurrentRow = null;
 var batchMsModalMonthsSnapshot = [];
 /* 分页后 DOM 只存当前页输入框，故所有月份的值统一存草稿，保存时以草稿为准，避免翻页丢数据 */
@@ -2735,6 +2830,7 @@ var batchMsModalDraft = {};
 var batchMsModalPage = 0;
 var BATCH_MS_PAGE_SIZE = 12;
 
+/** 关闭按月工资弹窗。 */
 function closeBatchMonthSalaryModal() {
     var root = document.getElementById('batchMonthSalaryModal');
     if (root) {
@@ -2746,6 +2842,7 @@ function closeBatchMonthSalaryModal() {
     batchMsModalPage = 0;
 }
 
+/** 更新「已设 N 个月」徽章。 */
 function updateBatchEmpMonthSalaryBadge(row) {
     var badge = row.querySelector('.batch-emp-month-salary-badge');
     if (!badge) {
@@ -2772,6 +2869,10 @@ function updateBatchEmpMonthSalaryBadge(row) {
     }
 }
 
+/**
+ * 打开按月自定义工资弹窗并载入草稿。
+ * 副作用：弹窗 DOM、分页状态。
+ */
 function openBatchMonthSalaryModal(row) {
     var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
     var idx = Array.prototype.indexOf.call(rows, row);
@@ -2841,6 +2942,7 @@ function batchMsTotalPages() {
     return n > 0 ? Math.ceil(n / BATCH_MS_PAGE_SIZE) : 1;
 }
 
+/** 渲染当前页月份输入。副作用：弹窗 body。 */
 function renderBatchMsModalPage() {
     var bodyEl = document.getElementById('batchMsModalBody');
     if (!bodyEl) {
@@ -2912,6 +3014,7 @@ function gotoBatchMsPage(delta) {
     renderBatchMsModalPage();
 }
 
+/** 保存按月工资/税额 map 到行 dataset。副作用：关窗、徽章。 */
 function saveBatchMonthSalaryModal() {
     var row = batchMsModalCurrentRow;
     var bodyEl = document.getElementById('batchMsModalBody');
@@ -2960,6 +3063,7 @@ function saveBatchMonthSalaryModal() {
     scheduleBatchTaxDraftSave();
 }
 
+/** 清空按月自定义并关窗。 */
 function clearBatchMonthSalaryModal() {
     var row = batchMsModalCurrentRow;
     var bodyEl = document.getElementById('batchMsModalBody');
@@ -2986,6 +3090,7 @@ function clearBatchMonthSalaryModal() {
     scheduleBatchTaxDraftSave();
 }
 
+// === 按月工资弹窗事件绑定 ===
 (function bindBatchMonthSalaryModalUi() {
     var mask = document.getElementById('batchMsModalMask');
     var cx = document.getElementById('batchMsModalCloseX');
@@ -3021,6 +3126,7 @@ function clearBatchMonthSalaryModal() {
     }
 })();
 
+// === 个税粘贴导入弹窗 ===
 var TAX_PASTE_IMPORT_TEMPLATE =
     '某某有限公司\n' +
     '纳税人识别号：91xxxxxxxxxxxx\n' +
@@ -3053,6 +3159,7 @@ function copyTextFallbackLocal(text) {
     }
 }
 
+/** 复制粘贴导入模板到剪贴板。 */
 function copyTaxPasteImportTemplate() {
     var text = TAX_PASTE_IMPORT_TEMPLATE;
     function done(ok) {
@@ -3079,6 +3186,10 @@ function copyTaxPasteImportTemplate() {
 }
 
 
+/**
+ * 聊天摘要里「改为 / 数字改为」覆盖原金额。
+ * @returns {string} 替换后的文本
+ */
 function applyTaxPasteGaiweiOverrides(text) {
     var s = String(text || '');
     s = s.replace(
@@ -3320,6 +3431,10 @@ function parseTaxPasteDetailMonths(block) {
 }
 
 
+/**
+ * 解析粘贴的个税 APP / 聊天记录文本（可含多家公司）。
+ * @returns {{ok, employments, ...}}
+ */
 function parseTaxPasteText(rawText) {
     var text = applyTaxPasteGaiweiOverrides(
         normalizeTaxPasteLabels(
@@ -3378,6 +3493,7 @@ function parseTaxPasteText(rawText) {
 }
 
 
+/** 打开个税粘贴导入弹窗。 */
 function openTaxPasteImportModal() {
     var root = document.getElementById('taxPasteImportModal');
     var ta = document.getElementById('taxPasteImportText');
@@ -3400,6 +3516,7 @@ function openTaxPasteImportModal() {
     }
 }
 
+/** 关闭个税粘贴导入弹窗。 */
 function closeTaxPasteImportModal() {
     var root = document.getElementById('taxPasteImportModal');
     if (root) {
@@ -3407,6 +3524,7 @@ function closeTaxPasteImportModal() {
     }
 }
 
+/** 预览粘贴解析结果。副作用：写预览区、缓存 parsed。 */
 function previewTaxPasteImport() {
     var ta = document.getElementById('taxPasteImportText');
     var preview = document.getElementById('taxPasteImportPreview');
@@ -3423,6 +3541,7 @@ function previewTaxPasteImport() {
 }
 
 
+/** 将解析结果写入批量工作经历行。副作用：重建/填行。 */
 function applyTaxPasteParsedToForm(parsed) {
     if (!parsed || !parsed.ok) {
         return false;
@@ -3455,6 +3574,7 @@ function applyTaxPasteParsedToForm(parsed) {
     return true;
 }
 
+/** 确认填入表单（不提交）。 */
 function fillTaxPasteImportToForm() {
     var parsed = previewTaxPasteImport();
     if (!parsed.ok) {
@@ -3479,6 +3599,7 @@ function fillTaxPasteImportToForm() {
     );
 }
 
+/** 粘贴解析后直接触发生成。副作用：填表 + 提交。 */
 function generateTaxPasteImportDirect() {
     var parsed = previewTaxPasteImport();
     if (!parsed.ok) {
@@ -3517,6 +3638,7 @@ function generateTaxPasteImportDirect() {
     batchAddEmploymentTaxRecords();
 }
 
+// === 粘贴导入弹窗事件绑定 ===
 (function bindTaxPasteImportModalUi() {
     var mask = document.getElementById('taxPasteImportMask');
     var cx = document.getElementById('taxPasteImportCloseX');
@@ -3554,9 +3676,11 @@ function generateTaxPasteImportDirect() {
     }
 })();
 
+// === 个人信息粘贴导入 ===
 var _profilePasteImportLastParsed = null;
 
 
+/** 解析个人信息粘贴（姓名/身份证/地址/卡等）。 */
 function parseProfilePasteText(rawText) {
     var text = String(rawText || '')
         .replace(/\u00a0/g, ' ')
@@ -3688,6 +3812,7 @@ function parseProfilePasteText(rawText) {
 }
 
 
+/** 打开个人信息粘贴弹窗。 */
 function openProfilePasteImportModal() {
     var root = document.getElementById('profilePasteImportModal');
     var ta = document.getElementById('profilePasteImportText');
@@ -3708,6 +3833,7 @@ function openProfilePasteImportModal() {
     }
 }
 
+/** 关闭个人信息粘贴弹窗。 */
 function closeProfilePasteImportModal() {
     var root = document.getElementById('profilePasteImportModal');
     if (root) {
@@ -3715,6 +3841,7 @@ function closeProfilePasteImportModal() {
     }
 }
 
+/** 预览个人信息解析。 */
 function previewProfilePasteImport() {
     var ta = document.getElementById('profilePasteImportText');
     var preview = document.getElementById('profilePasteImportPreview');
@@ -3730,6 +3857,7 @@ function previewProfilePasteImport() {
     return parsed;
 }
 
+/** 将解析结果写入个人资料相关字段。副作用：DOM/可能 API。 */
 function applyProfilePasteImport() {
     var parsed = previewProfilePasteImport();
     if (!parsed.ok) {
@@ -3867,6 +3995,7 @@ function applyProfilePasteImport() {
         });
 }
 
+// === 个人信息粘贴弹窗事件绑定 ===
 (function bindProfilePasteImportModalUi() {
     var mask = document.getElementById('profilePasteImportMask');
     var cx = document.getElementById('profilePasteImportCloseX');
@@ -3892,6 +4021,7 @@ function applyProfilePasteImport() {
     }
 })();
 
+// === 强提示 / 按单位删除弹窗绑定 ===
 (function bindConsultStrongAlertModal() {
     var mask = document.getElementById('consultStrongAlertMask');
     var ok = document.getElementById('consultStrongAlertOk');
@@ -3921,6 +4051,7 @@ function applyProfilePasteImport() {
 /* 回收站弹窗绑定已移至 consult-records.js：closeTaxRecycleBin 等定义在其后加载的
  * consult-records.js 里，在本文件执行时尚不存在，此前的 typeof 守卫会静默跳过导致按钮全部失效。 */
 
+// === 批量记录构建 / 分块保存 ===
 /** monthEntries: [{ year, month, salary }, …] 已在时段内按时间顺序；按自然年度分段累计预扣 */
 
 function batchEmpRandomSalaryInRange(minV, maxV) {
@@ -3930,6 +4061,7 @@ function batchEmpRandomSalaryInRange(minV, maxV) {
     return round2(lo + Math.random() * (hi - lo));
 }
 
+/** 由写入项构建一条正常工资薪金 record。 */
 function buildBatchSalaryRecord(w, base, uidKey) {
     var o = JSON.parse(JSON.stringify(base));
     o.company_name = w.company;
@@ -3958,6 +4090,7 @@ function buildBatchSalaryRecord(w, base, uidKey) {
     return o;
 }
 
+/** 构建全年一次性奖金收入 record（单独计税）。 */
 function buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus, empIdx, seq) {
     var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
     var b = JSON.parse(JSON.stringify(base));
@@ -3996,6 +4129,10 @@ function buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMon
     return b;
 }
 
+/**
+ * 分块 batch_save_records（每批最多 100）。
+ * 副作用：多次 API；汇总 saved/ids。
+ */
 function postBatchTaxRecordsPromise(records) {
     var list = Array.isArray(records) ? records : [];
     var CHUNK = 100;
@@ -4040,6 +4177,11 @@ function setBatchSubmitBtnLoading(loading) {
     setBatchTaxActionLoading(loading, false);
 }
 
+// === 仅写年终奖 ===
+/**
+ * 仅提交各行年终奖记录。
+ * 副作用：确认框 + batch_save + 刷新列表。
+ */
 function batchAddYearEndBonusOnly() {
     document.querySelectorAll('#batch_employment_list .batch-emp-row').forEach(function (row) {
         setBatchEmpBonusMetaExpanded(row, true);
@@ -4157,6 +4299,7 @@ function quickGenerateBatchTaxDemo() {
     }, 280);
 }
 
+/** 批量记住各段公司档案。 */
 function rememberBatchEmploymentsProfiles(employments) {
     employments.forEach(function (e) {
         rememberBatchCompanyProfile({
@@ -4184,6 +4327,11 @@ function countEmploymentBonuses(employments) {
     return n;
 }
 
+// === 一键写入 / 覆盖修改主流程 ===
+/**
+ * 主流程：确认后按工作经历生成月薪（及年终奖）并保存。
+ * 副作用：可能删示例旧记录、API 写入、清草稿、刷新列表、转化引导。
+ */
 function batchAddEmploymentTaxRecords() {
     var parsed = prepareBatchAddEmploymentsFromDom();
     if (!parsed.ok) {
@@ -4290,6 +4438,10 @@ function batchAddEmploymentTaxRecords() {
         });
 }
 
+/**
+ * 覆盖修改：删除回填关联旧记录后重写。
+ * 副作用：replace API、退出修改模式、刷新列表。
+ */
 function batchUpdateEmploymentTaxRecords() {
     if (!batchTaxEditMode || !batchTaxEditMode.scopeIds || !batchTaxEditMode.scopeIds.length) {
         showConsultStrongAlert('请先通过「更多 → 从已有回填」或列表「回填修改」进入修改模式');
@@ -4381,6 +4533,7 @@ function batchUpdateEmploymentTaxRecords() {
 }
 
 
+// === window 导出（onclick / 管理端） ===
 /* admin / inline-onclick 兼容：显式挂到 window */
 window.oneClickGenerateBatchTaxRecords = oneClickGenerateBatchTaxRecords;
 window.batchAddEmploymentTaxRecords = batchAddEmploymentTaxRecords;

@@ -1,6 +1,18 @@
 /**
- * 首屏同步引导（小文件）：登录态、公开页判断、window 上立刻要用的 API、安全区 class、未登录跳转。
- * 机型顶栏补丁仍在 auth.js（defer），勿把大段 OEM 样式放进本文件。
+ * 首屏同步引导（小文件，建议 <head> 同步引入）：登录态、公开页判断、安全区 class、未登录跳转。
+ *
+ * 与 auth.js 分工：
+ * - 本文件：首屏立刻要用的轻量 API 与跳转，避免 defer 的 auth.js 解析前白屏/闪错。
+ * - auth.js（defer）：机型顶栏 / OEM 补丁、authFetch 完整实现、转化脚本注入等大段逻辑。
+ *   勿把大段 OEM 样式或重逻辑放进本文件。
+ *
+ * PUBLIC_PAGES：未登录也可访问的白名单页（首页/我的/登录注册/安装引导/广告落地等）。
+ * 另有特例：najilu.html?view=verify、xiugaimima.html?from=login 视为公开。
+ *
+ * 尽早挂到 window 的 API（业务页内联脚本可能依赖）：
+ * authGetToken / authFetch（Bearer 占位）/ currentPageName / isPublicPage /
+ * sanitizeLoginNext / getLoginNextTarget / getSalesChannel / appendSalesChannelToUrl /
+ * buildLoginPageUrl / markViewportChromeClasses；以及 showPageLoading 队列占位。
  */
 (function () {
   if (typeof window === 'undefined') {
@@ -14,6 +26,9 @@
   var LOGIN_PAGE = 'login.html';
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var SALES_CHANNEL_TTL_MS = 15 * 60 * 1000;
+
+  // === PUBLIC_PAGES / 页面判断 ===
+  /** 未登录可访问的白名单；受保护页无 token 时跳登录 */
   var PUBLIC_PAGES = {
     'index.html': true,
     'mine.html': true,
@@ -30,6 +45,7 @@
     'gjj_extract_ad.html': true
   };
 
+  /** @returns {string} 当前 HTML 文件名，缺省为 index.html */
   function currentPageName() {
     var p = window.location.pathname || '';
     var i = p.lastIndexOf('/');
@@ -48,6 +64,7 @@
     }
   }
 
+  /** 纳税记录「核验」视图：公开可访问，不走登录门禁 */
   function isNajiluVerifyView() {
     if (currentPageName() !== 'najilu.html') {
       return false;
@@ -59,6 +76,7 @@
     }
   }
 
+  /** 登录页「忘记密码」链路：xiugaimima.html?from=login 视为公开 */
   function isForgotPwdFromLoginPage() {
     if (currentPageName() !== 'xiugaimima.html') {
       return false;
@@ -74,6 +92,7 @@
     return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView() || isForgotPwdFromLoginPage();
   }
 
+  /** login/index 带 need_activate=1：激活引导页，已开通则应离开 */
   function isActivationPage() {
     if (currentPageName() !== 'login.html' && currentPageName() !== 'index.html') {
       return false;
@@ -93,6 +112,11 @@
     }
   }
 
+  /**
+   * 清洗登录后回跳目标：仅允许同目录下 *.html（可带 query），拒绝绝对 URL / purchase.html。
+   * @param {*} raw
+   * @returns {string}
+   */
   function sanitizeLoginNext(raw) {
     var s = String(raw == null ? '' : raw).trim();
     if (!s) return '';
@@ -116,6 +140,12 @@
     }
   }
 
+  // === 销售渠道捕获 ===
+  /**
+   * 校验渠道 id：小写字母数字下划线横线，最长 64。
+   * @param {*} raw
+   * @returns {string}
+   */
   function sanitizeSalesChannelId(raw) {
     var s = String(raw || '').trim().toLowerCase();
     if (!s || s.length > 64) {
@@ -127,6 +157,11 @@
     return s;
   }
 
+  /**
+   * 读取 localStorage sales_channel_v1（{ch, at}），超时则清除。
+   * 实际写入多在 auth.js；此处只读并透传到登录/跳转 URL。
+   * @returns {string}
+   */
   function getSalesChannel() {
     try {
       var raw = localStorage.getItem(SALES_CHANNEL_KEY);
@@ -147,6 +182,7 @@
     }
   }
 
+  /** 若 URL 尚无 ch/channel，则追加当前销售渠道 */
   function appendSalesChannelToUrl(url) {
     var ch = getSalesChannel();
     if (!ch || !url) {
@@ -166,6 +202,12 @@
     }
   }
 
+  /**
+   * 组装登录页 URL：next + extras + 销售渠道。
+   * @param {string} [nextPage]
+   * @param {Object} [extras]
+   * @returns {string}
+   */
   function buildLoginPageUrl(nextPage, extras) {
     var next = sanitizeLoginNext(nextPage);
     var u;
@@ -185,6 +227,7 @@
     return appendSalesChannelToUrl(u.pathname + u.search + u.hash);
   }
 
+  /** 轻量 Bearer fetch 占位；auth.js 加载后会覆盖为完整 authFetch */
   function bearerTokenFetch(url, opts) {
     opts = opts || {};
     var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -204,6 +247,11 @@
     );
   }
 
+  // === 安全区 / 机型 chrome class ===
+  /**
+   * 根据 UA + 本地机型缓存给 html 打 app-ios-client / app-android-client / app-top-safe-shell。
+   * 细机型补丁仍在 auth.js。
+   */
   function markViewportChromeClasses() {
     try {
       var root = document.documentElement;
@@ -279,6 +327,7 @@
     } catch (ePrime) {}
   }
 
+  // === window 早期 API 导出 ===
   try {
     if (typeof window.authFetch !== 'function') {
       window.authFetch = bearerTokenFetch;
@@ -295,6 +344,7 @@
   window.buildLoginPageUrl = buildLoginPageUrl;
   window.markViewportChromeClasses = markViewportChromeClasses;
 
+  /** page-loading.js 未到之前：先入队，避免业务页调用报错 */
   window.__pageLoadingQueue = window.__pageLoadingQueue || [];
   if (typeof window.showPageLoading !== 'function') {
     window.showPageLoading = function () {
@@ -308,6 +358,7 @@
     };
   }
 
+  /** tab-shell iframe：尽早隐藏子页底栏，避免与宿主双底栏闪现 */
   (function tabEmbedEarlyChrome() {
     function parentIsTabShellHost() {
       try {
@@ -416,6 +467,7 @@
   markViewportChromeClasses();
   primeAndroidMineE1SmFirstPaint();
 
+  // === 登录门禁跳转 ===
   if (!isPublicPage()) {
     if (!getToken()) {
       var curPage = currentPageName();

@@ -7,8 +7,10 @@ const {
   buildMenuTreeForAdmin,
   firstAllowedPage,
   getAssignableMenuDefs,
+  parseAdminRoute,
   ADMIN_MENU_GROUPS,
-  ADMIN_PAGE_DEFS
+  ADMIN_PAGE_DEFS,
+  ADMIN_HUB_DEFS
 } = require('../../src/admin/menuRegistry');
 
 describe('menuRegistry', () => {
@@ -23,10 +25,35 @@ describe('menuRegistry', () => {
     ]);
   });
 
-  it('resolves page aliases', () => {
-    expect(resolveMenuKeyForPage('analytics')).toBe('analytics-conversion');
+  it('resolves page aliases and hub routes', () => {
+    expect(resolveMenuKeyForPage('analytics')).toBe('ops-board');
     expect(resolveMenuKeyForPage('#settings')).toBe('settings');
-    expect(resolveMenuKeyForPage('install')).toBe('install-guide');
+    expect(resolveMenuKeyForPage('install')).toBe('settings');
+    expect(resolveMenuKeyForPage('install-guide')).toBe('settings');
+    expect(resolveMenuKeyForPage('settings/install')).toBe('settings');
+    expect(resolveMenuKeyForPage('zaizhi-cert')).toBe('lizhi-cert');
+    expect(resolveMenuKeyForPage('insights-product/survey')).toBe('insights-product');
+  });
+
+  it('parseAdminRoute maps legacy hashes to hub tabs', () => {
+    expect(parseAdminRoute('appearance')).toEqual({
+      page: 'settings',
+      hub: 'settings',
+      tab: 'appearance',
+      contentPage: 'appearance'
+    });
+    expect(parseAdminRoute('settings/install')).toEqual({
+      page: 'settings',
+      hub: 'settings',
+      tab: 'install',
+      contentPage: 'install-guide'
+    });
+    expect(parseAdminRoute('user-login-log')).toEqual({
+      page: 'login-log',
+      hub: 'login-log',
+      tab: 'user',
+      contentPage: 'user-login-log'
+    });
   });
 
   it('getPageDef finds appearance under ops-config', () => {
@@ -34,6 +61,7 @@ describe('menuRegistry', () => {
     expect(def).toBeTruthy();
     expect(def.group).toBe('ops-config');
     expect(def.label).toBe('外观');
+    expect(def.nav_hidden).toBe(true);
   });
 
   it('super admin can access all pages', () => {
@@ -92,38 +120,48 @@ describe('menuRegistry', () => {
     expect(tree.pages.map((p) => p.page)).not.toContain('downline-admins');
   });
 
-  it('buildMenuTreeForAdmin returns ordered groups', () => {
+  it('buildMenuTreeForAdmin hides merged pages and shows hubs', () => {
     const payload = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const tree = payload.menu_tree;
     expect(Array.isArray(tree)).toBe(true);
     expect(tree[0].label).toBe('转化运营');
-    expect(tree[0].items.map((i) => i.page)).toEqual(
+    const deskPages = tree[0].items.map((i) => i.page);
+    expect(deskPages).toEqual(
+      expect.arrayContaining(['ops-board', 'ops-inactive', 'ops-ad-analytics', 'codes'])
+    );
+    expect(deskPages).not.toContain('ops-research');
+    expect(deskPages).not.toContain('ops-lift');
+    expect(getPageDef('ops-ad-analytics').label).toBe('广告数据');
+    expect(getPageDef('ops-ad-analytics').module).toBe('ad-analytics');
+    const settings = tree.flatMap((g) => g.items || []).find((i) => i.page === 'settings');
+    expect(settings.label).toBe('内容配置');
+    const configGroup = tree.find((g) => g.id === 'ops-config');
+    expect(configGroup.items.map((i) => i.page)).toEqual(['settings']);
+    const tools = tree.find((g) => g.id === 'cert-tools');
+    expect(tools.items.map((i) => i.page)).toEqual(
+      expect.arrayContaining(['sbdy-demo', 'lizhi-cert'])
+    );
+    expect(tools.items.map((i) => i.page)).not.toContain('gjj-demo');
+    expect(tools.items.map((i) => i.page)).not.toContain('zaizhi-cert');
+    const dataGroup = tree.find((g) => g.id === 'insights');
+    const insightPages = dataGroup.items.map((i) => i.page);
+    expect(insightPages).toEqual(
       expect.arrayContaining([
-        'ops-inactive',
-        'ops-research',
-        'ops-lift',
-        'ops-ad-analytics',
-        'analytics-conversion'
+        'insights-product',
+        'insights-growth',
+        'analytics-purchase',
+        'analytics-tracking'
       ])
     );
-    expect(getPageDef('ops-ad-analytics').label).toBe('广告页数据运营');
-    expect(getPageDef('ops-ad-analytics').module).toBe('ad-analytics');
-    const settings = tree
-      .flatMap((g) => g.items || [])
-      .find((i) => i.page === 'settings');
-    expect(settings.label).toBe('定价与引导');
-    const dataGroup = tree.find((g) => g.id === 'insights');
-    expect(dataGroup.items.map((i) => i.page)).toContain('analytics-purchase');
-    expect(dataGroup.items.map((i) => i.page)).toContain('channel-analysis');
-    expect(dataGroup.items.map((i) => i.page)).toContain('analytics-devices');
-    expect(dataGroup.items.map((i) => i.page)).toContain('tax-fill-survey');
+    expect(insightPages).not.toContain('channel-analysis');
+    expect(insightPages).not.toContain('analytics-activity');
     expect(getPageDef('tax-fill-survey').label).toBe('填写调研');
-    expect(getPageDef('analytics-devices').label).toBe('机型');
+    expect(ADMIN_HUB_DEFS.settings).toBeTruthy();
   });
 
-  it('firstAllowedPage prefers unactivated-user ops desk', () => {
+  it('firstAllowedPage prefers ops board', () => {
     const page = firstAllowedPage({ is_super: true, menus: [] });
-    expect(page).toBe('ops-inactive');
+    expect(page).toBe('ops-board');
   });
 
   it('ops conversion pages are visible via analytics-conversion alias', () => {
@@ -150,45 +188,57 @@ describe('menuRegistry', () => {
     ).toBe(false);
   });
 
+  it('hub aliases grant access to nested content pages', () => {
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['settings'] }, 'install-guide')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['install-guide'] }, 'settings')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['lizhi-cert'] }, 'zaizhi-cert')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['login-log'] }, 'user-login-log')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ['analytics-activity'] },
+        'insights-product'
+      )
+    ).toBe(true);
+  });
+
   it('ADMIN_PAGE_DEFS pages are unique', () => {
     const pages = ADMIN_PAGE_DEFS.map((d) => d.page);
     expect(new Set(pages).size).toBe(pages.length);
   });
 
-  it('sidebar child pages are independently assignable', () => {
+  it('sidebar hubs are assignable; nested pages are not', () => {
     const assignable = getAssignableMenuDefs().map((d) => d.key);
     expect(assignable).toEqual(
-      expect.arrayContaining(['rename-tax-daily', 'users-deleted', 'user-login-log'])
+      expect.arrayContaining([
+        'settings',
+        'lizhi-cert',
+        'sbdy-demo',
+        'login-log',
+        'insights-product',
+        'insights-growth',
+        'rename-tax-daily',
+        'users-deleted'
+      ])
     );
     expect(assignable).not.toContain('peer-accounts');
+    expect(assignable).not.toContain('install-guide');
+    expect(assignable).not.toContain('appearance');
+    expect(assignable).not.toContain('zaizhi-cert');
+    expect(assignable).not.toContain('gjj-demo');
+    expect(assignable).not.toContain('user-login-log');
+    expect(assignable).not.toContain('analytics-activity');
     expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
-    expect(getPageDef('rename-tax-daily').label).toBe('同行 · 高频改名');
     expect(getPageDef('peer-accounts')).toEqual(getPageDef('rename-tax-daily'));
-    expect(getPageDef('users-deleted').menu_key).toBe('users-deleted');
-    expect(getPageDef('user-login-log').menu_key).toBe('user-login-log');
-    expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'rename-tax-daily')).toBe(
-      false
-    );
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['peer-accounts'] }, 'rename-tax-daily')
-    ).toBe(true);
-    expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['peer-accounts'] }, 'peer-accounts')
-    ).toBe(true);
-    expect(
-      adminProfileCanAccessPage(
-        { is_super: false, menus: ['rename-tax-daily'] },
-        'rename-tax-daily'
-      )
-    ).toBe(true);
-    expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['login-log'] }, 'user-login-log')
-    ).toBe(false);
-    expect(
-      adminProfileCanAccessPage(
-        { is_super: false, menus: ['user-login-log'] },
-        'user-login-log'
-      )
     ).toBe(true);
     const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const usersGroup = tree.menu_tree.find((g) => g.id === 'users');
@@ -196,7 +246,8 @@ describe('menuRegistry', () => {
       expect.arrayContaining(['users', 'rename-tax-daily', 'users-deleted'])
     );
     expect(usersGroup.items.map((i) => i.page)).not.toContain('peer-accounts');
-    const renameDef = getAssignableMenuDefs().find((d) => d.key === 'rename-tax-daily');
-    expect(renameDef.group_label).toBe('用户管理');
+    const systemGroup = tree.menu_tree.find((g) => g.id === 'system');
+    expect(systemGroup.items.map((i) => i.page)).toContain('login-log');
+    expect(systemGroup.items.map((i) => i.page)).not.toContain('user-login-log');
   });
 });

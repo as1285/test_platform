@@ -231,6 +231,31 @@ describe('sku catalog amounts', () => {
     expect(defaultCatalogConfig()['sku_249_1d']).toBeUndefined();
     expect(defaultCatalogConfig()['sku_268_3d']).toBeUndefined();
   });
+
+  it('applies psych_amount as shelf pay price with list_amount strike', () => {
+    const { cloneLiveCatalog } = require('../../src/legacy/pricingAb');
+    const cfg = normalizeCatalogConfig({
+      sku_300_7d: { amount: '300', psych_amount: '120', grant_days: 7, enabled: true },
+      sku_348_14d: { amount: '348', psych_amount: '', grant_days: 14, enabled: true },
+      sku_398_30d: { amount: '398', psych_amount: '400', grant_days: 30, enabled: true }
+    });
+    expect(cfg['sku_300_7d'].psych_amount).toBe('120.00');
+    expect(cfg['sku_348_14d'].psych_amount).toBe('');
+    /* 心理价不低于原价时 normalize 仍保留数字，上架时不会套用 */
+    expect(cfg['sku_398_30d'].psych_amount).toBe('400.00');
+    const live = cloneLiveCatalog(cfg);
+    const week = live.find((s) => s.id === 'sku_300_7d');
+    expect(week.amount).toBe('120.00');
+    expect(week.list_amount).toBe('300.00');
+    expect(week.psych_offer).toBe(true);
+    expect(week.label).toContain('心理价特惠');
+    const two = live.find((s) => s.id === 'sku_348_14d');
+    expect(two.amount).toBe('348.00');
+    expect(two.psych_offer).toBeFalsy();
+    const month = live.find((s) => s.id === 'sku_398_30d');
+    expect(month.amount).toBe('398.00');
+    expect(month.psych_offer).toBeFalsy();
+  });
 });
 
 describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () => {

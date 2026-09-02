@@ -236,8 +236,32 @@ app.post(
 app.post(
   '/api/admin/emails/bulk',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board', 'user-emails']),
   h.handleAdminEmailsBulk
+);
+app.get(
+  '/api/admin/emails/users',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
+  h.handleAdminEmailsUsers
+);
+app.get(
+  '/api/admin/emails/sends',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
+  h.handleAdminEmailsSends
+);
+app.post(
+  '/api/admin/emails/send',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
+  h.handleAdminEmailsSend
+);
+app.post(
+  '/api/admin/emails/clear',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-emails', 'users']),
+  h.handleAdminEmailsClear
 );
 app.get(
   '/api/admin/analytics/register-time',

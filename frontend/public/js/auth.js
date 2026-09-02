@@ -1,10 +1,21 @@
 /**
- * 登录态：JWT 存 localStorage.token；未登录访问受保护页面时跳转登录页。
+ * 登录态与 C 端壳：JWT 存 localStorage.token；未登录访问受保护页面时跳转登录页。
+ *
+ * 架构分工：
+ * - auth-boot.js：同步优先（首屏门禁、公开页判断、立刻要用的轻量 API / 安全区 class）；
+ * - 本文件 defer：设备/OEM CSS、顶栏与 safe-area、渠道归因、authFetch 全量实现、脚本注入。
+ *
+ * 动态注入（见文末 IIFE；部分带 email-reg 等版本戳，以实际 ?v= 为准）：
+ * conversion-guide.js、fast-nav.js、page-loading.js、page-perf.js、tab-shell.js、message-badge.js。
+ *
  * 受保护接口请使用 authFetch（自动带 Authorization + X-Client-Device，401 时清理并跳转）。
  * WebView / App 可设置 window.CLIENT_APP_VERSION；可选 window.buildClientDevicePayloadHook(base) 合并字段。
  * Cordova 壳在 UA 中追加 TaxPlatformCordovaApp（config AppendUserAgent），H5 可识别壳内环境。
+ *
+ * Mate60「我的」冻结页走独立分叉 auth-mate60-aug12.js，勿假定本文件在该页运行。
  */
 (function () {
+  // === 常量 / early authFetch 占位 ===
   var LOGIN_PAGE = 'login.html';
   var ACTIVATE_PAGE = 'login.html?need_activate=1';
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
@@ -78,6 +89,7 @@
   /** Dynamic Island / 刘海机（16 Pro 等）安全区高度兜底；iframe 内 env 常为 0 */
   var IOS_DYNAMIC_ISLAND_INSET_PX = 59;
 
+  // === Viewport / 壳内 / Cordova 检测 ===
   function isCordovaTaxAppShell() {
     try {
       if (CORDOVA_SHELL_UA_RE.test(navigator.userAgent || '')) {
@@ -267,6 +279,8 @@
     window.markViewportChromeClasses = markViewportChromeClasses;
   } catch (eExposeMark) {}
 
+  // === OEM / 机型识别与 html class ===
+  // 下列 isXxxClient 供顶栏/safe-area 与 setupMobileStatusBar 打 html class（华为/小米/vivo/iPhone 等）
   function getAndroidMajorVersion() {
     var m = String(navigator.userAgent || '').match(/Android\s+(\d+)/i);
     return m ? parseInt(m[1], 10) || 0 : 0;
@@ -1891,6 +1905,7 @@
     return /HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(ua);
   }
 
+  // === Mine e1 / 顶栏 / safe-area 布局锁定 ===
   /**
    * HarmonyOS ArkWeb：100vw 常宽于画布，e1 叠字「添加/暂无」会掉到菜单顶边。
    * Mate60 与其它鸿蒙：用画布实测宽度写 --mine-rpx（勿 cqw / container-type）。
@@ -5843,6 +5858,7 @@
     } catch (eMineUi) {}
   });
 
+  // === 登录态 / 公开页判断 ===
   function currentPageName() {
     var p = window.location.pathname || '';
     var i = p.lastIndexOf('/');
@@ -5875,6 +5891,9 @@
     }
   }
 
+  /**
+   * 是否公开页（未登录可停留）。命中则跳过文末登录跳转门禁。
+   */
   function isPublicPage() {
     /* 首页 / 办&查 / 我的：未登录可浏览；其它业务页跳登录 */
     return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView() || isForgotPwdFromLoginPage();
@@ -5942,6 +5961,7 @@
     }
   }
 
+  /** 读 localStorage.token（JWT）；异常时返回空串。 */
   function getToken() {
     try {
       return localStorage.getItem('token') || '';
@@ -5963,6 +5983,8 @@
     return 'web_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
   }
 
+  // === 渠道归因（sales_channel、share、landing AB、purchase ABC）===
+  // sticky key：sales_channel_v1、share_attr_v1、landing_bc_assignment_v1、purchase_abc_assignment_v1 等
   function sanitizeSalesChannelId(raw) {
     var s = String(raw || '').trim().toLowerCase();
     if (!s || s.length > 64) {
@@ -5974,6 +5996,9 @@
     return s;
   }
 
+  /**
+   * 从 URL ?ch= / ?channel= 写入代理渠道（localStorage.sales_channel_v1，TTL 见 SALES_CHANNEL_TTL_MS）。
+   */
   function initSalesChannelFromUrl() {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -6857,6 +6882,11 @@
     return '';
   }
 
+  // === 外链打开（Cordova InAppBrowser / Intent）===
+  /**
+   * 打开客服 QQ / 外链：优先 Cordova InAppBrowser(_system)，其次 window.openTaxPlatformExternal，再降级 window.open / location。
+   * 分享链路另见 sharePageLink 内安卓 SEND Intent。
+   */
   function openSupportQqAddUrl(url) {
     var href = url != null ? String(url).trim() : '';
     if (!href) {
@@ -8211,7 +8241,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260903-email-nudge';
+      s.src = '/js/conversion-guide.js?v=20260903-email-reg1';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

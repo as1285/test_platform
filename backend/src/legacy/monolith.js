@@ -51,6 +51,8 @@ const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBul
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const renameFeePolicy = require('../user/renameFeePolicy');
 const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
+const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
+const najiluQrMod = require('../admin/najiluQr');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql,
@@ -3595,6 +3597,35 @@ async function createTables() {
      SELECT DISTINCT admin_id, 'user-login-log' FROM admin_account_menus WHERE menu_key = 'login-log'`
   );
 
+  /* C 档 hub 合并：旧子页权限回填到侧栏 hub key，避免丢入口 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'settings' FROM admin_account_menus
+     WHERE menu_key IN ('install-guide', 'appearance')`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'lizhi-cert' FROM admin_account_menus WHERE menu_key = 'zaizhi-cert'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'sbdy-demo' FROM admin_account_menus WHERE menu_key = 'gjj-demo'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'login-log' FROM admin_account_menus WHERE menu_key = 'user-login-log'`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'insights-product' FROM admin_account_menus
+     WHERE menu_key IN ('analytics-activity', 'analytics-devices', 'tax-fill-survey')`
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'insights-growth' FROM admin_account_menus
+     WHERE menu_key IN ('channel-analysis', 'install-guide-stats')`
+  );
+
   conn.release();
 }
 
@@ -5477,6 +5508,9 @@ var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
 var SBDY_DEMO_SKU_ID = 'sku_sbdy_demo_199';
 var SBDY_DEMO_AMOUNT = '199.00';
 var SBDY_DEMO_SUBJECT = '社保演示去水印（终身）';
+var NAJILU_QR_SKU_ID = najiluQrFeePolicy.NAJILU_QR_SKU_ID;
+var NAJILU_QR_AMOUNT = najiluQrFeePolicy.NAJILU_QR_FEE_DEFAULT_AMOUNT;
+var NAJILU_QR_SUBJECT = najiluQrFeePolicy.NAJILU_QR_SUBJECT;
 function isLizhiCertSkuId(skuId) {
   return String(skuId || '') === LIZHI_CERT_SKU_ID;
 }
@@ -5486,17 +5520,22 @@ function isZaizhiCertSkuId(skuId) {
 function isSbdyDemoSkuId(skuId) {
   return String(skuId || '') === SBDY_DEMO_SKU_ID;
 }
+function isNajiluQrSkuId(skuId) {
+  return najiluQrFeePolicy.isNajiluQrSkuId(skuId);
+}
 function isNonActivationSkuId(skuId, grantKind) {
   return (
     isRenameFeeSkuId(skuId) ||
     isLizhiCertSkuId(skuId) ||
     isZaizhiCertSkuId(skuId) ||
     isSbdyDemoSkuId(skuId) ||
+    isNajiluQrSkuId(skuId) ||
     taxEditFeePolicy.isTaxEditFeeSkuId(skuId) ||
     String(grantKind || '') === 'rename_credit' ||
     String(grantKind || '') === 'lizhi_cert' ||
     String(grantKind || '') === 'zaizhi_cert' ||
     String(grantKind || '') === 'sbdy_demo' ||
+    String(grantKind || '') === 'najilu_qr' ||
     taxEditFeePolicy.isTaxEditFeeGrantKind(grantKind)
   );
 }
@@ -6135,6 +6174,8 @@ async function handleAlipayConfig(req, res) {
       return {
         id: s.id,
         amount: s.amount,
+        list_amount: s.list_amount || '',
+        psych_offer: !!s.psych_offer,
         label: s.label,
         subject: s.subject,
         grant_kind: s.grant_kind,
@@ -6518,6 +6559,43 @@ async function handleAlipayCreateOrder(req, res) {
         connZaizhi.release();
       } catch (eRel2) {}
     }
+  }
+
+  var isNajiluQr =
+    product === 'najilu_qr' || isNajiluQrSkuId(skuIdReq) || skuIdReq === 'najilu_qr';
+
+  /* —— 完税二维码替换终身权益（不走开通激活逻辑） —— */
+  if (isNajiluQr) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    try {
+      await najiluQrMod.ensureNajiluQrUnlockedColumn(pool);
+    } catch (eCol) {}
+    var unlockedNajilu = false;
+    try {
+      unlockedNajilu = await najiluQrMod.userHasNajiluQrUnlocked(req.authUserId);
+    } catch (eUn) {
+      unlockedNajilu = false;
+    }
+    if (unlockedNajilu) {
+      return res.status(409).json({ code: 409, msg: '完税二维码替换权益已开通，无需重复购买' });
+    }
+    var najiluFeeCfg = await najiluQrMod.loadNajiluQrFeeConfig(false);
+    var najiluAmount = alipay.normalizeAmount(
+      (najiluFeeCfg && najiluFeeCfg.amount) || NAJILU_QR_AMOUNT
+    );
+    return createAddonFaceToFaceOrder(req, res, {
+      product: 'najilu_qr',
+      skuId: NAJILU_QR_SKU_ID,
+      subject: NAJILU_QR_SUBJECT,
+      amount: najiluAmount,
+      grantKind: 'najilu_qr',
+      pricingVariant: 'najilu_qr',
+      invalidAmountMsg: '完税二维码费用配置无效',
+      dbFailMsg: '创建完税二维码订单失败',
+      payFailMsg: '创建支付宝完税二维码订单失败'
+    });
   }
 
   var isSbdyDemo =
@@ -7424,6 +7502,25 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       try {
         invalidateUserInfoApiCache(locked.username);
       } catch (eInv3) {}
+      return true;
+    }
+
+    /* 完税二维码：标记终身权益，不开通账号 */
+    if (isNajiluQrSkuId(meta.sku_id) || grantKind === 'najilu_qr') {
+      try {
+        await najiluQrMod.ensureNajiluQrUnlockedColumn(conn);
+      } catch (eColPay) {}
+      await najiluQrMod.markNajiluQrUnlocked(conn, locked.username);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInvNq) {}
       return true;
     }
 
@@ -16556,6 +16653,9 @@ async function handleAdminEmailsBulk(req, res) {
       subject: body.subject != null ? String(body.subject).trim() : body.title != null ? String(body.title).trim() : '',
       content: body.content != null ? String(body.content).trim() : '',
       linkUrl: body.link_url || 'purchase.html',
+      poster: body.poster != null ? String(body.poster).trim() : body.poster_key != null ? String(body.poster_key).trim() : '',
+      ctaLabel: body.cta_label != null ? String(body.cta_label).trim() : '',
+      benefits: body.benefits != null ? String(body.benefits).trim() : '',
       dryRun: dryRun,
       skipAlreadySent:
         body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
@@ -16567,6 +16667,95 @@ async function handleAdminEmailsBulk(req, res) {
       return res.status(400).json({ code: 400, msg: String(e.message) });
     }
     console.error('[admin emails bulk]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 已留邮箱用户列表 */
+async function handleAdminEmailsUsers(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().listUsers({
+      page: q.page,
+      limit: q.limit,
+      q: q.q,
+      active: q.active,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails users]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 邮件发送记录 */
+async function handleAdminEmailsSends(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().listSends({
+      page: q.page,
+      limit: q.limit,
+      q: q.q,
+      username: q.username,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails sends]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 向勾选用户发送邮件 */
+async function handleAdminEmailsSend(req, res) {
+  try {
+    var body = req.body || {};
+    var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
+    var usernames = body.usernames;
+    if (!Array.isArray(usernames) && body.username != null) {
+      usernames = [body.username];
+    }
+    var result = await getUserEmailBulk().sendToUsernames({
+      usernames: usernames,
+      subject:
+        body.subject != null
+          ? String(body.subject).trim()
+          : body.title != null
+            ? String(body.title).trim()
+            : '',
+      content: body.content != null ? String(body.content).trim() : '',
+      linkUrl: body.link_url || 'purchase.html',
+      poster: body.poster != null ? String(body.poster).trim() : body.poster_key != null ? String(body.poster_key).trim() : '',
+      ctaLabel: body.cta_label != null ? String(body.cta_label).trim() : '',
+      benefits: body.benefits != null ? String(body.benefits).trim() : '',
+      dryRun: dryRun,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    if (e && e.code === 400) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
+    console.error('[admin emails send]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 清空用户邮箱 */
+async function handleAdminEmailsClear(req, res) {
+  try {
+    var body = req.body || {};
+    var result = await getUserEmailBulk().clearUserEmail({
+      username: body.username,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    if (e && (e.code === 400 || e.code === 404)) {
+      return res.status(e.code).json({ code: e.code, msg: String(e.message) });
+    }
+    console.error('[admin emails clear]', e);
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
@@ -19533,6 +19722,7 @@ async function handleAdminSettingsGet(req, res) {
         tax_edit_fee: await loadTaxEditFeeConfig(true),
         rename_fee: await loadRenameFeeConfig(true),
         lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
+        najilu_qr_fee: await najiluQrMod.loadNajiluQrFeeConfig(true),
         activation_nudge: activationNudge
       }
     });
@@ -19564,6 +19754,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
   var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
   var hasLizhiCertFee = body.lizhi_cert_fee != null && typeof body.lizhi_cert_fee === 'object';
+  var hasNajiluQrFee = body.najilu_qr_fee != null && typeof body.najilu_qr_fee === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -19583,11 +19774,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasTaxEditFee &&
     !hasRenameFee &&
     !hasLizhiCertFee &&
+    !hasNajiluQrFee &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格、完税二维码价格或激活引导弹窗配置'
     });
   }
 
@@ -19611,6 +19803,7 @@ async function handleAdminSettingsPost(req, res) {
       hasTaxEditFee ||
       hasRenameFee ||
       hasLizhiCertFee ||
+      hasNajiluQrFee ||
       hasActivationNudge
     ) {
       return res.status(403).json({
@@ -19959,6 +20152,21 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasNajiluQrFee) {
+      try {
+        await najiluQrMod.saveNajiluQrFeeConfigFromAdmin(body.najilu_qr_fee);
+      } catch (eNajiluFeeSave) {
+        var najiluFeeMsg =
+          eNajiluFeeSave && eNajiluFeeSave.message
+            ? String(eNajiluFeeSave.message)
+            : '保存完税二维码价格失败';
+        return res.status(eNajiluFeeSave && eNajiluFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eNajiluFeeSave && eNajiluFeeSave.statusCode === 400 ? 400 : 500,
+          msg: najiluFeeMsg
+        });
+      }
+    }
+
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -20000,6 +20208,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
     outData.rename_fee = await loadRenameFeeConfig(true);
     outData.lizhi_cert_fee = await loadLizhiCertFeeConfig(true);
+    outData.najilu_qr_fee = await najiluQrMod.loadNajiluQrFeeConfig(true);
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
@@ -20578,7 +20787,7 @@ async function handleAdminUserRefund(req, res) {
        SET status = 'refunded'
        WHERE username = ? AND status = 'paid'
          AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
-         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%' AND sku_id NOT LIKE 'sku_tax_edit%'))`,
+         AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%' AND sku_id NOT LIKE 'sku_najilu%' AND sku_id NOT LIKE 'sku_tax_edit%'))`,
       [target]
     );
     await conn.commit();
@@ -23253,6 +23462,10 @@ function getHandlers() {
     handleAdminAnalyticsDauUsers,
     handleAdminMessagesBulk,
     handleAdminEmailsBulk,
+    handleAdminEmailsUsers,
+    handleAdminEmailsSends,
+    handleAdminEmailsSend,
+    handleAdminEmailsClear,
     handleAdminRegisterTimeDistribution,
     handleAdminRegisterChannelStats,
     handleAdminUserTaxRecords,

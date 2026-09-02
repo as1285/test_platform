@@ -1,4 +1,18 @@
-/** consult-records: tax record list CRUD / recycle */
+/**
+ * consult-records.js — 税务记录列表 CRUD / 回收站 / 激活码
+ *
+ * 角色：单条保存与列表渲染、批量删除/去重、回收站打开与恢复、激活弹窗；并在 DOMContentLoaded 后调用 boot()。
+ * 加载页：consult.html（defer，位于 consult-core → consult-batch-tax 之后）。
+ * 依赖：authFetch / authHeaders；consult-core（showMsg、applyToForm、回收站渲染、draft 等）；
+ *       consult-batch-tax（company profile、syncBatchTaxEmptyState 等）；consult-tax-edit-pay（consultTaxPost 可选）。
+ * 注意：回收站按钮绑定必须放在本文件（函数定义处），勿挪回先加载的 batch-tax。
+ */
+
+// === 税务写接口（可走付费墙） ===
+/**
+ * POST api/tax；若已挂 consultTaxPost（付费墙）则优先走拦截器。
+ * 副作用：网络写税；402 时可能弹付费窗。
+ */
 function consultTaxWrite(body) {
     if (window.consultTaxPost) {
         return window.consultTaxPost(body);
@@ -10,6 +24,11 @@ function consultTaxWrite(body) {
     });
 }
 
+// === 激活码弹窗 ===
+/**
+ * 关闭激活码弹窗并清空输入。
+ * 副作用：改 DOM class / input value。
+ */
 function closeConsultActivateModal() {
     var root = document.getElementById('consultActivateModal');
     if (root) {
@@ -21,6 +40,10 @@ function closeConsultActivateModal() {
     }
 }
 
+/**
+ * 打开激活码弹窗并聚焦输入框。
+ * 副作用：可能刷新安装包链接；改 DOM。
+ */
 function openConsultActivateModal() {
     refreshConsultInstallPackageUrls();
     var root = document.getElementById('consultActivateModal');
@@ -38,6 +61,10 @@ function openConsultActivateModal() {
     }
 }
 
+/**
+ * 提交激活码；成功则写 token/激活态并刷新列表。
+ * 副作用：localStorage、关弹窗、解锁批量工具栏、拉用户与记录。
+ */
 function submitConsultActivateWithCode(code) {
     code = String(code || '').trim();
     if (!code) {
@@ -109,11 +136,17 @@ function submitConsultActivateWithCode(code) {
         });
 }
 
+/** 打开激活弹窗（入口封装）。 */
 function submitConsultActivate() {
     openConsultActivateModal();
 }
 
 
+// === 税务记录拉取与缓存 ===
+/**
+ * 拉取当前用户税务记录；带内存缓存与 in-flight 去重。
+ * 副作用：写 window.__consultRecordsCache / InFlight。
+ */
 function apiFetchRecords(opts) {
     opts = opts || {};
     if (!opts.force && window.__consultRecordsCache && !window.__consultRecordsInFlight) {
@@ -142,6 +175,8 @@ function apiFetchRecords(opts) {
 }
 
 
+// === 单条记录表单提交 ===
+/** 绑定所得类型变更 → 同步默认小类（只绑一次）。 */
 function initIncomeTypeSelect() {
     var typeEl = document.getElementById('f_income_type');
     if (!typeEl || typeEl.getAttribute('data-income-type-bound') === '1') return;
@@ -150,6 +185,10 @@ function initIncomeTypeSelect() {
 }
 
 
+/**
+ * 单条添加/更新：校验公司、重算或保留手改税额后 save_record。
+ * 副作用：写税 API、补丁缓存、清表单/草稿、刷新列表。
+ */
 function onSubmitRecord(e) {
     e.preventDefault();
     if (window.__recordSaveInFlight) return;
@@ -243,6 +282,11 @@ function onSubmitRecord(e) {
         });
 }
 
+// === 列表刷新与支付引导横幅 ===
+/**
+ * 并行拉 records+employers，同步公司档案并渲染列表。
+ * 副作用：缓存、datalist、支付引导、ConversionGuide、空态。
+ */
 function refreshRecordList(opts) {
     opts = opts || {};
     var force = opts.force !== false;
@@ -268,6 +312,7 @@ function refreshRecordList(opts) {
     });
 }
 
+/** 读 localStorage.account_active 判断是否已开通。 */
 function isConsultAccountActiveLocal() {
     try {
         return localStorage.getItem('account_active') === '1';
@@ -276,6 +321,7 @@ function isConsultAccountActiveLocal() {
     }
 }
 
+/** 今日是否已关闭支付引导横幅。 */
 function taxPayGuideDismissedToday() {
     try {
         var d = new Date();
@@ -292,6 +338,7 @@ function taxPayGuideDismissedToday() {
     }
 }
 
+/** 标记今日已关闭支付引导。副作用：写 localStorage。 */
 function markTaxPayGuideDismissedToday() {
     try {
         var d = new Date();
@@ -344,6 +391,11 @@ function syncTaxPayGuideBanner(list) {
     }
 }
 
+// === 记录列表渲染 / 编辑删除 ===
+/**
+ * 渲染税务记录卡片列表（空态含示例 CTA）。
+ * 副作用：写 #recordListMount；同步支付引导与编辑引导。
+ */
 function renderListFromArray(list) {
     var mount = document.getElementById('recordListMount');
     if (!mount) return;
@@ -391,6 +443,7 @@ function renderListFromArray(list) {
     }
 }
 
+/** 展开「更多」与单条表单卡片，便于编辑可见。副作用：改 class/aria。 */
 function expandSingleTaxRecordCard() {
     /* 单条表单嵌在「更多」卡片内，外层折叠时 .tax-more-body 为 display:none，
        不先展开外层，内层展开也仍不可见，scrollIntoView 亦无效 */
@@ -413,6 +466,7 @@ function expandSingleTaxRecordCard() {
     }
 }
 
+/** 展开并滚动到单条记录表单。 */
 function scrollToSingleTaxRecordForm() {
     var el = document.getElementById('singleTaxRecordCard');
     if (!el) {
@@ -434,6 +488,10 @@ function scrollToSingleTaxRecordForm() {
     }
 }
 
+/**
+ * 按 id 加载记录到表单并切到 records 页。
+ * 副作用：applyToForm、switchTab、滚动。
+ */
 function editRecord(id) {
     apiFetchRecords()
         .then(function (list) {
@@ -451,6 +509,10 @@ function editRecord(id) {
         });
 }
 
+/**
+ * 软删单条（进回收站）并刷新列表。
+ * 副作用：delete_record API、showMsg。
+ */
 function deleteRecord(id) {
     if (!confirm('确定删除？删除后可在回收站恢复。')) return;
     consultTaxWrite({
@@ -473,6 +535,8 @@ function deleteRecord(id) {
         });
 }
 
+// === 批量删除 / 按年 / 去重 / 按单位 ===
+/** 删除当前账号全部税务记录（可回收站恢复）。 */
 function deleteAllTaxRecords() {
     if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复。')) return;
     consultTaxWrite({
@@ -493,6 +557,7 @@ function deleteAllTaxRecords() {
         });
 }
 
+/** 按年份批量软删税务记录。副作用：prompt/confirm + API。 */
 function deleteTaxRecordsByYear() {
     var defaultYear = String(new Date().getFullYear());
     var yearEl = document.getElementById('f_year');
@@ -526,6 +591,7 @@ function deleteTaxRecordsByYear() {
 }
 
 
+/** 去重：同单位+年月+小类保留最新。副作用：dedupe_records API。 */
 function dedupeTaxRecords() {
     if (
         !confirm(
@@ -555,6 +621,7 @@ function dedupeTaxRecords() {
 }
 
 
+/** 打开按扣缴单位删除弹窗并填充单位下拉。 */
 function openDeleteTaxRecordsByCompanyModal() {
     apiFetchRecords().then(function (list) {
         var names = collectDistinctRecordCompanies(list);
@@ -581,6 +648,8 @@ function openDeleteTaxRecordsByCompanyModal() {
 }
 
 
+// === 回收站打开与恢复 ===
+/** 关闭回收站弹窗。 */
 function closeTaxRecycleBin() {
     var root = document.getElementById('taxRecycleBinModal');
     if (root) {
@@ -589,6 +658,10 @@ function closeTaxRecycleBin() {
 }
 
 
+/**
+ * 拉取已删除记录并写入 taxRecycleBinCache。
+ * 副作用：更新全局缓存数组。
+ */
 function apiFetchDeletedRecords() {
     return window.authFetch('api/tax?action=deleted_records')
         .then(function (r) {
@@ -605,6 +678,10 @@ function apiFetchDeletedRecords() {
 }
 
 
+/**
+ * 打开回收站并加载列表。
+ * 副作用：开弹窗、renderTaxRecycleBinList。
+ */
 function openTaxRecycleBin() {
     var root = document.getElementById('taxRecycleBinModal');
     var body = document.getElementById('taxRecycleBinBody');
@@ -625,6 +702,7 @@ function openTaxRecycleBin() {
         });
 }
 
+/** 恢复单条已删记录并刷新回收站与列表。 */
 function restoreDeletedTaxRecord(id) {
     consultTaxWrite({
             action: 'restore_record',
@@ -649,6 +727,7 @@ function restoreDeletedTaxRecord(id) {
         });
 }
 
+/** 按扣缴单位批量恢复回收站记录。 */
 function restoreDeletedTaxRecordsByCompanyName(companyName) {
     var company = String(companyName || '').trim();
     if (!company) {
@@ -687,11 +766,17 @@ function restoreDeletedTaxRecordsByCompanyName(companyName) {
         });
 }
 
+/** 按当前筛选单位恢复（委托给 ByCompanyName）。 */
 function restoreDeletedTaxRecordsByCompany() {
     restoreDeletedTaxRecordsByCompanyName(getTaxRecycleBinFilterCompany());
 }
 
 
+// === 单条草稿存取（与 core 配合） ===
+/**
+ * 立即序列化单条新建草稿到 localStorage（编辑中不存）。
+ * 副作用：setItem/removeItem。
+ */
 function saveSingleTaxDraftNow() {
     if (_singleTaxDraftRestoring) {
         return;
@@ -707,6 +792,10 @@ function saveSingleTaxDraftNow() {
 }
 
 
+/**
+ * 启动时若无 edit_id 则恢复本地单条草稿到表单。
+ * 副作用：applyToForm；可能重写草稿。
+ */
 function restoreSingleTaxDraftIfAny() {
     if (getUrlParam('edit_id')) {
         return false;
@@ -745,6 +834,7 @@ function restoreSingleTaxDraftIfAny() {
     return true;
 }
 
+/** 绑定单条表单 input/change 与页面隐藏时的草稿保存。 */
 function initSingleTaxDraftAutosave() {
     var form = document.getElementById('recordForm');
     if (!form || form.getAttribute('data-draft-bound') === '1') {
@@ -762,6 +852,8 @@ function initSingleTaxDraftAutosave() {
 }
 
 
+// === URL 深链编辑 / 弹窗绑定 / 启动 ===
+/** 若 URL 含 edit_id 则打开对应记录编辑。 */
 function tryEditFromUrl() {
     var eid = getUrlParam('edit_id');
     if (eid) editRecord(eid);

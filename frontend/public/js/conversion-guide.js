@@ -1,14 +1,34 @@
 /**
- * 用户转化引导（P0–P5）：注册/激活/填税动线、价值确认、留存轻触达。
- * 依赖 auth.js（authFetch、trackUserAction）。
+ * 用户转化引导（P0–P5 漏斗）：
+ * P0 注册/登录 → P1 激活开通 → P2 填税/任职 → P3 价值确认（明细/证书）→
+ * P4 二次退税广告推荐 → P5 留存轻触达（邮箱/激活 nudge/关于页提示）。
+ *
+ * 依赖：auth.js 提供的 authFetch、trackUserAction（及部分页面全局工具）。
+ * 加载方式：由 auth.js 的 injectConversionGuide 动态注入，HTML 不静态引用本文件；
+ * tab-shell iframe / 部分只读页会跳过注入。
+ *
+ * 主要 localStorage / sessionStorage 键（详见下方「状态/缓存」段）：
+ * - account_active / tax_record_count / employer_count（与业务页共享）
+ * - cg_*：转化 dismiss、日频、截图/编辑模式、收入访问计数等
+ * - refund_ad_*：填完强制跳转 / 年收入软推荐 / 微信已复制
+ * - cg_profile_summary_v2（sessionStorage）：用户摘要短缓存
+ * - cg_post_activate_pending / cg_email_nudge_after_register（sessionStorage）
+ *
+ * 已激活账号：skipConversionPromo() 为 true 时抑制营销条/卡/弹窗，
+ * 仍保留激活门禁点击拦截与「添加个税」等必要引导。
  */
 (function () {
+  // === 状态 / 缓存 ===
   var ONBOARD_ACTIVATE = 'activate';
   var ONBOARD_TAX = 'tax';
   var ONBOARD_EDIT = 'edit';
+  /** session：刚开通成功，待展示编辑教练条 */
   var POST_ACTIVATE_PENDING_KEY = 'cg_post_activate_pending';
+  /** local：税务编辑引导今日已关（存北京日） */
   var TAX_EDIT_GUIDE_DISMISS_KEY = 'cg_tax_edit_guide_dismiss_v1';
+  /** local：智能填税 confirm 已出过 */
   var SMART_GUIDE_KEY = 'cg_smart_guide_dismissed';
+  /** local：收入相关页浏览次数（触发智能引导） */
   var INCOME_VISIT_KEY = 'cg_income_visit_count';
   var DETAIL_EMPTY_VISIT_KEY = 'cg_detail_empty_visits';
   var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
@@ -17,8 +37,11 @@
   var ACT_NUDGE_COUNT_KEY = 'cg_act_nudge_count_v1';
   var EMAIL_NUDGE_DAY_KEY = 'cg_email_nudge_day_v1';
   var EMAIL_NUDGE_DISMISS_KEY = 'cg_email_nudge_dismiss_v1';
+  /** session：注册成功后优先弹邮箱收集 */
+  var EMAIL_NUDGE_AFTER_REGISTER_KEY = 'cg_email_nudge_after_register';
   var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
   var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
+  /** local：填完个税后强制去过一次退税广告页 */
   var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
   /** 年收入≥15万：软推荐去广告页浏览（可跳过；与填完强制跳转互补） */
   var REFUND_AD_INCOME_RECOMMEND_KEY = 'refund_ad_income_recommend_v1';
@@ -235,7 +258,12 @@
     return taxRecordCount() > 0;
   }
 
-  /** 已激活账号不再展示转化引导条/卡片/弹窗（仅保留未激活时的激活引导与点击门禁） */
+  // === 已激活账号：抑制转化促销 ===
+  /**
+   * 已激活账号不再展示转化引导条/卡片/弹窗（仅保留未激活时的激活引导与点击门禁）。
+   * init / 各 render* 入口应先判断本函数。
+   * @returns {boolean}
+   */
   function skipConversionPromo() {
     return isAccountActive();
   }
@@ -270,6 +298,10 @@
     );
   }
 
+  /**
+   * 去开通/下载：游客走安装引导；已登录走 purchase.html?from=…
+   * @param {string} [from] 来源标记（埋点 / purchase from）
+   */
   function goActivate(from) {
     try {
       if (localStorage.getItem('landing_guest_v1') === '1') {
@@ -389,6 +421,12 @@
     return !!LIGHT_SHELL_PAGES[currentPage()];
   }
 
+  /**
+   * 把 api/user?action=summary（或缓存）写回 localStorage，并清理已激活营销 UI。
+   * opts.fromCache=true：不得把已开通打回未开通。
+   * @param {Object} u
+   * @param {{fromCache?: boolean}} [opts]
+   */
   function applyProfileSummary(u, opts) {
     opts = opts || {};
     if (!u || typeof u !== 'object') return;
@@ -490,6 +528,11 @@
     } catch (e) {}
   }
 
+  /**
+   * 拉取用户摘要（开通态、个税条数、注册时长、是否有邮箱）；带 TTL 缓存与 in-flight 合并。
+   * @param {{force?: boolean}} [opts]
+   * @returns {Promise<void>}
+   */
   function fetchProfileCounts(opts) {
     opts = opts || {};
     if (!isLoggedIn() || typeof window.authFetch !== 'function') {
@@ -869,6 +912,11 @@
     }
   }
 
+  // === 截图 / 水印模式 ===
+  /**
+   * session 截图模式：隐藏演示 UI / 水印相关入口，便于用户截真实界面。
+   * @returns {boolean}
+   */
   function isScreenshotModeOn() {
     try {
       return sessionStorage.getItem(SCREENSHOT_MODE_KEY) === '1';
@@ -1121,6 +1169,7 @@
     });
   }
 
+  // === 激活 UI / 开通门禁 ===
   /**
    * 未开通能力轻量卡点：主按钮去支付，可选「先看看」继续原操作。
    * opts: { feature, from, title, message, allowContinue, continueLabel, onContinue, onPrimary }
@@ -1204,6 +1253,11 @@
     document.body.appendChild(root);
   }
 
+  /**
+   * 未开通拦截并弹层；已开通返回 true。游客引导下载。
+   * @param {string} [featureName]
+   * @returns {boolean}
+   */
   function gateActivation(featureName) {
     if (isAccountActive()) return true;
     if (isLandingGuest()) {
@@ -1738,7 +1792,7 @@
       track('track_tax_edit_entry', { page: currentPage(), source: 'value_confirm' });
       goManageTaxRecords();
     };
-    document.getElementById('cgValueLater').onclick = function () {
+    function document.getElementById('cgValueLater').onclick = function () {
       closeOv('later');
     };
     ov.addEventListener('click', function (e) {
@@ -1746,6 +1800,7 @@
     });
   }
 
+  // === 二次退税广告推荐 ===
   function hasSeenRefundAdAfterTax() {
     try {
       return localStorage.getItem(REFUND_AD_AFTER_TAX_KEY) === '1';
@@ -2934,6 +2989,24 @@
     } catch (e) {}
   }
 
+  function consumeEmailNudgeAfterRegisterFlag() {
+    try {
+      if (sessionStorage.getItem(EMAIL_NUDGE_AFTER_REGISTER_KEY) === '1') {
+        sessionStorage.removeItem(EMAIL_NUDGE_AFTER_REGISTER_KEY);
+        return true;
+      }
+    } catch (e0) {}
+    return false;
+  }
+
+  function peekEmailNudgeAfterRegisterFlag() {
+    try {
+      return sessionStorage.getItem(EMAIL_NUDGE_AFTER_REGISTER_KEY) === '1';
+    } catch (e0) {
+      return false;
+    }
+  }
+
   /**
    * 引导填写邮箱（可跳过）。force=true 时忽略当日限制。
    */
@@ -3045,9 +3118,15 @@
       page === 'message.html' ||
       page === 'shouye.html';
     if (!allow) return;
-    setTimeout(function () {
-      openEmailCollectNudge({ force: false });
-    }, page === 'purchase.html' ? 2200 : 1600);
+    var afterReg = peekEmailNudgeAfterRegisterFlag();
+    setTimeout(
+      function () {
+        var force = afterReg || false;
+        if (afterReg) consumeEmailNudgeAfterRegisterFlag();
+        openEmailCollectNudge({ force: force });
+      },
+      afterReg ? 700 : page === 'purchase.html' ? 2200 : 1600
+    );
   }
 
   /** 兼容旧缓存脚本仍会注入该浮钮：持续清理一段时间 */
@@ -3091,19 +3170,34 @@
       syncRefundAdRecommendCards(
         Array.isArray(window.__consultRecordsCache) ? window.__consultRecordsCache : []
       );
-      /* 无个税时对所有登录用户强提示（含已激活） */
-      setTimeout(maybeShowTaxFillNudge, 480);
+      /* 注册成功优先留邮箱：延后个税弹窗，避免互相挡住 */
+      var preferEmailAfterReg = peekEmailNudgeAfterRegisterFlag();
+      if (preferEmailAfterReg) {
+        maybeScheduleEmailNudge();
+        setTimeout(function () {
+          if (!document.getElementById('cg-email-nudge-root')) {
+            maybeShowTaxFillNudge();
+          }
+        }, 2800);
+      } else {
+        setTimeout(maybeShowTaxFillNudge, 480);
+      }
       bumpIncomeBrowseVisit();
       renderShuimingHint();
       if (!skipConversionPromo()) {
         renderAboutUpdateNudge();
         renderCareVersionHint();
         setTimeout(function () {
-          if (!document.getElementById('cg-tax-fill-nudge-root')) {
+          if (
+            !document.getElementById('cg-tax-fill-nudge-root') &&
+            !document.getElementById('cg-email-nudge-root')
+          ) {
             maybeShowActivationNudge();
           }
         }, 900);
-        maybeScheduleEmailNudge();
+        if (!preferEmailAfterReg) {
+          maybeScheduleEmailNudge();
+        }
       } else {
         renderAboutUpdateNudge();
       }

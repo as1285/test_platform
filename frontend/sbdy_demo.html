@@ -355,7 +355,7 @@ window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
         if (back) {
             if (fromQ === 'consult' || /consult\.html/i.test(ref)) back.setAttribute('href', 'consult.html?tab=products');
             else if (fromQ === 'purchase' || /purchase\.html/i.test(ref)) back.setAttribute('href', 'purchase.html?from=mine');
-            else if (/mine\.html|mine_v2\.html|mine_mate60/i.test(ref)) back.setAttribute('href', 'mine.html');
+            else if (/mine\.html|mine_mate60/i.test(ref)) back.setAttribute('href', 'mine.html');
         }
     } catch (e0) {}
 

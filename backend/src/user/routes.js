@@ -54,6 +54,26 @@ function registerUserRoutes(app, deps) {
     },
     h.handleUserShebaoPhotoUpload
   );
+
+  /* 完税二维码替换：仅需登录；未付费不可保存 */
+  app.get('/api/najilu-qr/status', mw.requireAuth, h.handleUserNajiluQrStatus);
+  app.get('/api/najilu-qr/list', mw.requireAuth, h.handleUserNajiluQrList);
+  app.post(
+    '/api/najilu-qr/save',
+    mw.requireAuth,
+    function (req, res, next) {
+      mw.userNajiluQrUpload.single('file')(req, res, function (err) {
+        if (err) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ code: 413, msg: '图片过大，单张不超过 8MB' });
+          }
+          return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+        }
+        next();
+      });
+    },
+    h.handleUserNajiluQrSave
+  );
 }
 
 module.exports = { registerUserRoutes };

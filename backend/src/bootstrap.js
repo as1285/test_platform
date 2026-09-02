@@ -56,7 +56,8 @@ function buildApp() {
       bankSalaryFlow.getHandlers()
     ),
     middleware: Object.assign({}, getMiddleware(), {
-      userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload
+      userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload,
+      userNajiluQrUpload: najiluQr.userNajiluQrUpload
     })
   };
 

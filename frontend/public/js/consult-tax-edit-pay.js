@@ -1,5 +1,15 @@
-/** 个税修改付费：同行账号仅当天无限 */
+/**
+ * consult-tax-edit-pay.js — 同行账号「个税修改」付费墙
+ *
+ * 角色：拦截写税务接口的 402，弹出支付宝「当天无限改」付款；支付成功后自动重试原请求。
+ * 加载页：consult.html（先于 consult-core / batch-tax / records，defer）。
+ * 依赖：authFetch / authGetToken（或 localStorage.token）；可选 QRCode、showPaymentCreateFailDialog。
+ * 导出：window.ConsultTaxEditPay、window.consultTaxPost（= fetchResponse）。
+ * 被 consult-batch-tax.consultTaxApiFetch / consult-core|records.consultTaxWrite 优先调用。
+ */
+
 (function (global) {
+    // === 常量与模块状态 ===
     var LEGACY_SINGLE_SKU = 'sku_tax_edit_fee_20';
     var DAILY_SKU = 'sku_tax_edit_unlimited_30';
     var pollTimer = null;
@@ -9,20 +19,32 @@
     var promptOpen = false;
     var lastPolicy = null;
 
+    // === 金额与策略文案 ===
+    /**
+     * 格式化为展示用元金额字符串。
+     * @returns {string} 非法或非正数时返回 fallback
+     */
     function formatYuan(raw, fallback) {
         var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
         if (!isFinite(n) || n <= 0) return fallback || '';
         return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
     }
 
+    /** 从策略对象取金额字段并格式化。 */
     function policyYuan(policy, key, fallback) {
         return formatYuan(policy && policy[key], fallback);
     }
 
+    /** 当天无限改套餐价格（元），缺省 30。 */
     function dailyYuan() {
         return policyYuan(lastPolicy, 'daily_amount', '30');
     }
 
+    // === 鉴权请求封装 ===
+    /**
+     * 带 Bearer 的 fetch；优先复用全局 authFetch。
+     * 副作用：无；仅发 HTTP。
+     */
     function authFetch(url, opts) {
         if (typeof global.authFetch === 'function') {
             return global.authFetch(url, opts);
@@ -44,6 +66,11 @@
         return fetch(url, Object.assign({}, opts || {}, { headers: headers, credentials: 'same-origin' }));
     }
 
+    // === 付费弹窗 DOM ===
+    /**
+     * 确保付费弹窗已挂到 body，并绑定取消/刷新/下单按钮。
+     * 副作用：首次调用会插入 DOM 与事件监听。
+     */
     function ensureModal() {
         var root = document.getElementById('consultTaxEditPayModal');
         if (root) return root;
@@ -84,11 +111,16 @@
         return root;
     }
 
+    /** 更新弹窗状态文案。副作用：写 #consultTaxEditPayStatus。 */
     function setStatus(msg) {
         var el = document.getElementById('consultTaxEditPayStatus');
         if (el) el.textContent = msg || '—';
     }
 
+    /**
+     * 唤醒所有等待支付结果的 Promise。
+     * 副作用：清空 payWaiters。
+     */
     function settle(ok) {
         var list = payWaiters.splice(0, payWaiters.length);
         list.forEach(function (fn) {
@@ -98,6 +130,10 @@
         });
     }
 
+    /**
+     * 关闭弹窗并停止轮询。
+     * 副作用：清 timer/pending；settle(paid)。
+     */
     function closeModal(paid) {
         var root = document.getElementById('consultTaxEditPayModal');
         if (root) root.classList.remove('is-open');
@@ -111,6 +147,10 @@
         settle(!!paid);
     }
 
+    /**
+     * 用策略刷新提示文案与按钮价格。
+     * 副作用：写 lastPolicy 与弹窗文案。
+     */
     function fillHint(policy) {
         lastPolicy = policy || lastPolicy || {};
         var hint = document.getElementById('consultTaxEditPayHint');
@@ -131,6 +171,10 @@
         if (btnDaily) btnDaily.textContent = '支付 ¥' + daily + '，当天无限改';
     }
 
+    /**
+     * 渲染支付宝付款码（QRCode 或明文链接）。
+     * 副作用：写 #consultTaxEditPayQrWrap。
+     */
     function renderQr(qr) {
         var qrWrap = document.getElementById('consultTaxEditPayQrWrap');
         if (!qrWrap) return;
@@ -156,11 +200,17 @@
         }
     }
 
+    /** 下单失败后重新展示「支付」按钮。 */
     function showRetry() {
         var choices = document.getElementById('consultTaxEditPayChoices');
         if (choices) choices.hidden = false;
     }
 
+    // === 下单 / 扫码支付 ===
+    /**
+     * 创建当天无限改订单并展示二维码，启动轮询。
+     * 副作用：POST create；改 pending*；可能 closeModal(true)。
+     */
     function startPay() {
         var choices = document.getElementById('consultTaxEditPayChoices');
         var qrWrap = document.getElementById('consultTaxEditPayQrWrap');
@@ -224,6 +274,8 @@
             });
     }
 
+    // === 支付结果轮询 ===
+    /** 判断 latest 订单是否为本弹窗对应的已支付个税修改单。 */
     function isPaidTaxEditOrder(ord) {
         if (!ord || String(ord.status || '') !== 'paid') return false;
         var sku = String(ord.sku_id || '');
@@ -235,6 +287,10 @@
         return sku === DAILY_SKU || sku === LEGACY_SINGLE_SKU || !pendingSku;
     }
 
+    /**
+     * 查一次最新支付宝订单；已支付则关窗并 settle(true)。
+     * 副作用：可能 closeModal(true)；手动时更新状态文案。
+     */
     function pollOnce(manual) {
         authFetch('api/payments/alipay/latest')
             .then(function (r) {
@@ -254,6 +310,11 @@
             });
     }
 
+    // === 付费提示与策略解析 ===
+    /**
+     * 打开付费墙并自动下单；返回支付是否成功的 Promise。
+     * 副作用：开弹窗、startPay、注册 waiter。
+     */
     function promptPay(policy) {
         ensureModal();
         fillHint(policy || {});
@@ -272,6 +333,7 @@
         });
     }
 
+    /** 从 402 JSON 中抽出策略对象。 */
     function policyFromPack(data) {
         if (!data) return {};
         if (data.data && (data.data.need_tax_edit_fee || data.data.subject != null)) {
@@ -281,6 +343,11 @@
         return data.data || data;
     }
 
+    // === 402 拦截器（写税入口） ===
+    /**
+     * 写税 POST 包装：遇 402 弹付费墙，付完后重试同一 body。
+     * 副作用：可能开弹窗；成功时二次请求 api/tax。
+     */
     function fetchResponse(body) {
         function once() {
             return authFetch('api/tax', {
@@ -326,6 +393,7 @@
         return once();
     }
 
+    // === 对外导出 ===
     global.ConsultTaxEditPay = {
         promptPay: promptPay,
         fetchResponse: fetchResponse
