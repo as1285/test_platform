@@ -71,6 +71,12 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/V2408A|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-15');
                     document.documentElement.classList.add('app-android-immersive-white-top');

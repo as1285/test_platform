@@ -8801,7 +8801,7 @@ async function getUserSummaryForApi(userId) {
   try {
     const [rows] = await conn.execute(
       `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
-              activation_kind, active_until, created_at, register_source_channel,
+              activation_kind, active_until, created_at, register_source_channel, sales_promo_channel,
               TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours_since_register
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
@@ -8821,6 +8821,7 @@ async function getUserSummaryForApi(userId) {
         bank_card_count: 0,
         tax_record_count: 0,
         register_source_channel: '',
+        sales_promo_channel: '',
         user_type: USER_TYPE_NORMAL,
         is_guest: false,
         created_at: null,
@@ -8851,6 +8852,8 @@ async function getUserSummaryForApi(userId) {
       tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
       register_source_channel:
         rec.register_source_channel != null ? String(rec.register_source_channel).trim() : '',
+      sales_promo_channel:
+        rec.sales_promo_channel != null ? String(rec.sales_promo_channel).trim() : '',
       user_type: ut,
       is_test_account: ut === USER_TYPE_TEST,
       is_guest: ut === USER_TYPE_GUEST,
@@ -21541,7 +21544,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         lizhi_users: 0,
         lizhi_gmv: 0,
         rename_orders: 0,
-        rename_gmv: 0
+        rename_gmv: 0,
+        tax_edit_orders: 0,
+        tax_edit_gmv: 0
       };
       /* NULL sku/grant 的历史订单归开通；CASE WHEN NULL 视为否，勿用 NOT (a OR b) */
       var lizhiSkuSql =
@@ -21594,7 +21599,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
                   COUNT(DISTINCT CASE WHEN ${lizhiSkuSql} THEN username ELSE NULL END) AS lizhi_users,
                   ROUND(COALESCE(SUM(CASE WHEN ${lizhiSkuSql} THEN amount ELSE 0 END), 0), 2) AS lizhi_gmv,
                   SUM(CASE WHEN ${renameSkuSql} THEN 1 ELSE 0 END) AS rename_orders,
-                  ROUND(COALESCE(SUM(CASE WHEN ${renameSkuSql} THEN amount ELSE 0 END), 0), 2) AS rename_gmv
+                  ROUND(COALESCE(SUM(CASE WHEN ${renameSkuSql} THEN amount ELSE 0 END), 0), 2) AS rename_gmv,
+                  SUM(CASE WHEN ${taxEditSkuSql} THEN 1 ELSE 0 END) AS tax_edit_orders,
+                  ROUND(COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN amount ELSE 0 END), 0), 2) AS tax_edit_gmv
            FROM payment_orders
            WHERE status = 'paid' AND ${paidPf.sql}
            GROUP BY ${cnPaidDay}
@@ -21614,7 +21621,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             lizhi_users: Number(r.lizhi_users) || 0,
             lizhi_gmv: Number(r.lizhi_gmv) || 0,
             rename_orders: Number(r.rename_orders) || 0,
-            rename_gmv: Number(r.rename_gmv) || 0
+            rename_gmv: Number(r.rename_gmv) || 0,
+            tax_edit_orders: Number(r.tax_edit_orders) || 0,
+            tax_edit_gmv: Number(r.tax_edit_gmv) || 0
           };
           paidSummary.paid_orders += Number(r.paid_orders) || 0;
           paidSummary.gmv += Number(r.gmv) || 0;
@@ -21624,6 +21633,8 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           paidSummary.lizhi_gmv += Number(r.lizhi_gmv) || 0;
           paidSummary.rename_orders += Number(r.rename_orders) || 0;
           paidSummary.rename_gmv += Number(r.rename_gmv) || 0;
+          paidSummary.tax_edit_orders += Number(r.tax_edit_orders) || 0;
+          paidSummary.tax_edit_gmv += Number(r.tax_edit_gmv) || 0;
         });
         const [paidUsersRow] = await conn.execute(
           `SELECT COUNT(DISTINCT username) AS paid_users,
@@ -21638,6 +21649,7 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         paidSummary.activation_gmv = Math.round(paidSummary.activation_gmv * 100) / 100;
         paidSummary.lizhi_gmv = Math.round(paidSummary.lizhi_gmv * 100) / 100;
         paidSummary.rename_gmv = Math.round(paidSummary.rename_gmv * 100) / 100;
+        paidSummary.tax_edit_gmv = Math.round(paidSummary.tax_edit_gmv * 100) / 100;
       } catch (ePay) {
         console.error('[admin purchase-events] payment_orders', ePay && ePay.message);
       }
@@ -21715,7 +21727,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             lizhi_users: 0,
             lizhi_gmv: 0,
             rename_orders: 0,
-            rename_gmv: 0
+            rename_gmv: 0,
+            tax_edit_orders: 0,
+            tax_edit_gmv: 0
           };
           var adminActDay = adminActDailyMap[d] || {
             admin_activation_orders: 0,
@@ -21765,7 +21779,9 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             lizhi_users: pay.lizhi_users,
             lizhi_gmv: pay.lizhi_gmv,
             rename_orders: pay.rename_orders,
-            rename_gmv: pay.rename_gmv
+            rename_gmv: pay.rename_gmv,
+            tax_edit_orders: pay.tax_edit_orders,
+            tax_edit_gmv: pay.tax_edit_gmv
           };
         });
 

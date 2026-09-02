@@ -429,6 +429,17 @@
         );
       } catch (eCh) {}
     }
+    try {
+      var promoCh =
+        u.sales_promo_channel != null
+          ? String(u.sales_promo_channel || '').trim().toLowerCase()
+          : '';
+      if (promoCh) {
+        localStorage.setItem('sales_promo_channel', promoCh);
+      } else {
+        localStorage.removeItem('sales_promo_channel');
+      }
+    } catch (ePromo) {}
     if (u.employer_count != null) {
       try {
         localStorage.setItem('employer_count', String(Number(u.employer_count) || 0));
@@ -897,14 +908,20 @@
 
   function isGithubRegisterSource() {
     try {
-      var s = String(localStorage.getItem('register_source_channel') || '')
+      var promo = String(localStorage.getItem('sales_promo_channel') || '')
         .trim()
         .toLowerCase();
-      if (s === 'github') return true;
-      var raw = localStorage.getItem('register_source_channel_v1');
-      if (raw) {
-        var o = JSON.parse(raw);
-        if (o && String(o.src || '').toLowerCase() === 'github') return true;
+      if (promo === 'github') return true;
+      if (typeof window.getSalesChannel === 'function') {
+        var ch = String(window.getSalesChannel() || '')
+          .trim()
+          .toLowerCase();
+        if (ch === 'github') return true;
+      }
+      var rawCh = localStorage.getItem('sales_channel_v1');
+      if (rawCh) {
+        var oc = JSON.parse(rawCh);
+        if (oc && String(oc.ch || '').trim().toLowerCase() === 'github') return true;
       }
     } catch (e0) {}
     return false;

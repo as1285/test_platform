@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-store">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260901-opsboard">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-visitor-fold">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -14,6 +17,7 @@
         <aside class="sidebar" aria-label="功能导航">
             <div class="sidebar-brand">
                 <div class="sidebar-brand-row">
+                    <span class="sidebar-brand-mark" aria-hidden="true"></span>
                     <span class="sidebar-brand-title">运营台</span>
                     <button type="button" class="sidebar-close" id="adminSidebarClose" aria-label="关闭导航">×</button>
                 </div>
@@ -2592,61 +2596,67 @@
                             </div>
                         </div>
                         <div id="opsAdSummary" class="share-kpi-grid" aria-live="polite">加载中…</div>
-                        <h3 class="mt-16">操作分布</h3>
-                        <div class="scroll-x">
-                            <table class="users-registry-table">
-                                <thead>
-                                    <tr>
-                                        <th>操作</th>
-                                        <th>次数</th>
-                                        <th>人数</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="opsAdActionTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <h3 class="mt-16">按日</h3>
-                        <div class="scroll-x">
-                            <table class="users-registry-table">
-                                <thead>
-                                    <tr>
-                                        <th>日期</th>
-                                        <th>浏览</th>
-                                        <th>人数</th>
-                                        <th>复制</th>
-                                        <th>平均停留</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="opsAdDailyTbody"><tr><td colspan="5">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <h3 class="mt-16">用户停留与操作</h3>
-                        <p class="stat" id="opsAdUserStat">进入本页后加载…</p>
-                        <div class="scroll-x">
-                            <table class="users-registry-table">
-                                <thead>
-                                    <tr>
-                                        <th>账号</th>
-                                        <th>姓名</th>
-                                        <th>开通</th>
-                                        <th>浏览</th>
-                                        <th>总停留</th>
-                                        <th>平均停留</th>
-                                        <th>复制</th>
-                                        <th>最近操作</th>
-                                        <th>最近访问</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="opsAdUserTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination">
-                            <button type="button" class="btn-page" id="opsAdPrev">上一页</button>
-                            <span id="opsAdPageInfo">第 1 页</span>
-                            <button type="button" class="btn-page" id="opsAdNext">下一页</button>
-                        </div>
-                        <div id="opsAdUserDetail" class="mt-16" hidden></div>
+                        <details class="analytics-section-details mt-16">
+                            <summary>操作分布</summary>
+                            <div class="scroll-x mt-8">
+                                <table class="users-registry-table">
+                                    <thead>
+                                        <tr>
+                                            <th>操作</th>
+                                            <th>次数</th>
+                                            <th>人数</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opsAdActionTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
+                                </table>
+                            </div>
+                        </details>
+                        <details class="analytics-section-details mt-12">
+                            <summary>按日</summary>
+                            <div class="scroll-x mt-8">
+                                <table class="users-registry-table">
+                                    <thead>
+                                        <tr>
+                                            <th>日期</th>
+                                            <th>浏览</th>
+                                            <th>人数</th>
+                                            <th>复制</th>
+                                            <th>平均停留</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opsAdDailyTbody"><tr><td colspan="5">进入本页后加载…</td></tr></tbody>
+                                </table>
+                            </div>
+                        </details>
+                        <details class="analytics-section-details mt-12">
+                            <summary>用户停留与操作</summary>
+                            <p class="stat mt-8" id="opsAdUserStat">进入本页后加载…</p>
+                            <div class="scroll-x">
+                                <table class="users-registry-table">
+                                    <thead>
+                                        <tr>
+                                            <th>账号</th>
+                                            <th>姓名</th>
+                                            <th>开通</th>
+                                            <th>浏览</th>
+                                            <th>总停留</th>
+                                            <th>平均停留</th>
+                                            <th>复制</th>
+                                            <th>最近操作</th>
+                                            <th>最近访问</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opsAdUserTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
+                                </table>
+                            </div>
+                            <div class="pagination">
+                                <button type="button" class="btn-page" id="opsAdPrev">上一页</button>
+                                <span id="opsAdPageInfo">第 1 页</span>
+                                <button type="button" class="btn-page" id="opsAdNext">下一页</button>
+                            </div>
+                            <div id="opsAdUserDetail" class="mt-16" hidden></div>
+                        </details>
                     </section>
                 </div>
 
@@ -2674,7 +2684,7 @@
                     <div class="page-lede"><p class="page-lede-text">购买链路、支付宝漏斗与收入表现</p></div>
                     <section>
                         <h2>支付分析</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付），并按产品拆分：开通套餐、离职证明（¥50）、改名费。另计管理员名下激活码开通：<code>18933137956</code> 按 ¥100/单、<code>19106014552</code> 按 ¥60/单；<code>admin</code> 名下<strong>除支付宝激活外</strong>的剩余激活按 ¥100/单（支付宝激活已在上方线上 GMV 中，避免重复）。不含已退款/已删除/游客，并入合计 GMV 与开通 GMV。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付），并按产品拆分：开通套餐、离职证明（¥50）、同行费用（每天无限）。另计管理员名下激活码开通：<code>18933137956</code> 按 ¥100/单、<code>19106014552</code> 按 ¥60/单；<code>admin</code> 名下<strong>除支付宝激活外</strong>的剩余激活按 ¥100/单（支付宝激活已在上方线上 GMV 中，避免重复）。不含已退款/已删除/游客，并入合计 GMV 与开通 GMV。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPurchaseDays">统计区间</label>
@@ -2766,7 +2776,7 @@
                                 </table>
                             </div>
                             <details class="analytics-section-details mb-12">
-                                <summary>事件汇总</summary>
+                                <summary>事件汇总（埋点）</summary>
                                 <div class="scroll-x mt-8">
                                     <table>
                                         <thead>
@@ -2780,32 +2790,34 @@
                                     </table>
                                 </div>
                             </details>
-                            <h3>每日明细</h3>
-                            <p id="analyticsPurchaseDailyHint" class="hint mt-0 mb-8">—</p>
-                            <div class="scroll-x">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>日期</th>
-                                            <th>浏览UV</th>
-                                            <th>生成付款</th>
-                                            <th>打开支付宝</th>
-                                            <th>支付成功</th>
-                                            <th>浏览→支付</th>
-                                            <th>激活成功</th>
-                                            <th>激活失败</th>
-                                            <th>已付订单</th>
-                                            <th>总GMV</th>
-                                            <th>开通GMV</th>
-                                            <th>管理员激活</th>
-                                            <th>离职证明</th>
-                                            <th>离职GMV</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="analyticsPurchaseDailyTbody"><tr><td colspan="14">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
+                            <details class="analytics-section-details mb-12">
+                                <summary>每日明细（可展开到账号）</summary>
+                                <p id="analyticsPurchaseDailyHint" class="hint mt-8 mb-8">—</p>
+                                <div class="scroll-x">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>日期</th>
+                                                <th>浏览UV</th>
+                                                <th>生成付款</th>
+                                                <th>打开支付宝</th>
+                                                <th>支付成功</th>
+                                                <th>浏览→支付</th>
+                                                <th>激活成功</th>
+                                                <th>激活失败</th>
+                                                <th>已付订单</th>
+                                                <th>总GMV</th>
+                                                <th>开通GMV</th>
+                                                <th>管理员激活</th>
+                                                <th>离职证明</th>
+                                                <th>离职GMV</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="analyticsPurchaseDailyTbody"><tr><td colspan="14">加载中…</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </details>
                         </div>
                     </section>
                 </div>
@@ -2967,7 +2979,10 @@
                             </div>
                             <button type="button" class="btn-page" id="btnRefreshPageLoadPerf">刷新性能数据</button>
                         </div>
-                        <div id="analyticsPageLoadPerf" class="analytics-conv-wrap" aria-live="polite">页面性能加载中…</div>
+                        <details class="analytics-section-details mt-10">
+                            <summary>查看性能数据</summary>
+                            <div id="analyticsPageLoadPerf" class="analytics-conv-wrap" aria-live="polite">页面性能加载中…</div>
+                        </details>
                     </section>
                     <section>
                         <h2>安装页埋点汇总</h2>
@@ -2979,7 +2994,10 @@
                             </div>
                             <button type="button" class="btn-page" id="btnRefreshInstallTrack">刷新安装埋点</button>
                         </div>
-                        <div id="analyticsInstallTrack" class="analytics-conv-wrap" aria-live="polite">安装埋点加载中…</div>
+                        <details class="analytics-section-details mt-10">
+                            <summary>查看安装页埋点</summary>
+                            <div id="analyticsInstallTrack" class="analytics-conv-wrap" aria-live="polite">安装埋点加载中…</div>
+                        </details>
                     </section>
                     <section>
                         <div class="form-row flex-align-center mb-8">
@@ -2991,32 +3009,38 @@
                         </div>
                         <h2>激活 / 购买页埋点（详细）</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0 mb-8">覆盖购买激活页全链路：页浏览 → 确认激活 / 支付宝生成码与打开付款 → 酷发卡 / 微信 / 闲鱼 / 客服。按<strong>北京时间自然日</strong>汇总；可展开查看当日账号及每人各按钮次数。数据来自 <code>user_page_events</code>。</p></details>
-                        <div class="scroll-x mb-10">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>按钮 / 事件</th>
-                                        <th>所在位置</th>
-                                        <th>区间合计</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="activateEventsSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <p id="activateEventsHint" class="stat mb-8">—</p>
-                        <div class="scroll-x">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>日期</th>
-                                        <th>合计</th>
-                                        <th>去重用户</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="activateEventsDailyTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
-                            </table>
-                        </div>
+                        <details class="analytics-section-details mb-10">
+                            <summary>查看事件合计</summary>
+                            <div class="scroll-x mt-8">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>按钮 / 事件</th>
+                                            <th>所在位置</th>
+                                            <th>区间合计</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                                </table>
+                            </div>
+                            <p id="activateEventsHint" class="stat mb-8">—</p>
+                        </details>
+                        <details class="analytics-section-details">
+                            <summary>查看按日明细（可展开到账号）</summary>
+                            <div class="scroll-x mt-8">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>日期</th>
+                                            <th>合计</th>
+                                            <th>去重用户</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activateEventsDailyTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
+                                </table>
+                            </div>
+                        </details>
                     </section>
                     <section>
                         <div class="section-head-actions">
@@ -3026,13 +3050,16 @@
                             </div>
                             <button type="button" class="btn-sm btn-ban" id="btnClearAnalyticsEvents">删除数据</button>
                         </div>
-                        <div class="scroll-x mt-12">
-                            <table>
-                                <thead><tr><th>按钮名称</th><th>页面名称</th><th>次数</th></tr></thead>
-                                <tbody id="analyticsEventsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <p id="analyticsEventsHint" class="hint mt-8">—</p>
+                        <details class="analytics-section-details mt-12">
+                            <summary>查看 C 端行为埋点</summary>
+                            <div class="scroll-x mt-8">
+                                <table>
+                                    <thead><tr><th>按钮名称</th><th>页面名称</th><th>次数</th></tr></thead>
+                                    <tbody id="analyticsEventsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                                </table>
+                            </div>
+                            <p id="analyticsEventsHint" class="hint mt-8">—</p>
+                        </details>
                     </section>
                 </div>
 
@@ -3410,6 +3437,6 @@
     <script src="/js/admin/loader.js?v=20260831-adops"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260901-opsboard"></script>
+    <script src="/js/admin_panel.js?v=20260902-visitor-fold"></script>
 </body>
 </html>

@@ -175,6 +175,24 @@
                         (document.head || document.documentElement).appendChild(vx90St);
                     }
                 }
+                if (/V2408A|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-13');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-iqoo13-result-firstpaint]')) {
+                        var iq13St = document.createElement('style');
+                        iq13St.setAttribute('data-iqoo13-result-firstpaint', '1');
+                        iq13St.textContent =
+                            'html.app-android-iqoo-13 body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;}' +
+                            'html.app-android-iqoo-13 body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;}' +
+                            'html.app-android-iqoo-13 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-iqoo-13 body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-iqoo-13 body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;}' +
+                            'html.app-android-iqoo-13 body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(iq13St);
+                    }
+                }
                 if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-15');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -269,8 +287,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260901-ios16pro-tabembed"></script>
-    <script src="/js/auth.js?v=20260901-ios16pro-tabembed" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-iqoo13"></script>
+    <script src="/js/auth.js?v=20260902-iqoo13" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -327,8 +345,16 @@
         .page-root {
             --safe-top: env(safe-area-inset-top, 0px);
             --header-height: 48px;
-            --shuiming-chrome-top: var(--app-shell-statusbar-top, var(--safe-top, 0px));
+            /*
+             * 必须与顶栏 height 用的 --safe-top 同源。
+             * 若优先读 --app-shell-statusbar-top，而 auth 又把 --safe-top 清 0，
+             * 汇总 top 会比顶栏底多出一截，列表滑动时穿模进红框空隙。
+             */
+            --shuiming-chrome-top: var(--safe-top, 0px);
             --list-summary-pad: 102px;
+            --shuiming-chrome-shield-h: calc(
+                var(--header-height, 48px) + var(--shuiming-chrome-top, 0px) + var(--list-summary-pad, 102px)
+            );
             position: relative;
             z-index: 1;
             min-height: 100vh;
@@ -345,6 +371,23 @@
             overflow: visible;
         }
 
+        /*
+         * 顶栏+汇总下方的不透明垫层：挡住列表在空隙里穿模。
+         * 高度由 syncChromeBelowHeader 按实测汇总底写入。
+         */
+        .shuiming-chrome-shield {
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: var(--shuiming-chrome-shield-h, 180px);
+            background: #f5f6fa;
+            z-index: 99;
+            pointer-events: none;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        }
+
         .header {
             background: #fff;
             padding: 8px 16px;
@@ -359,6 +402,8 @@
             height: calc(var(--header-height) + var(--safe-top));
             padding-top: calc(8px + var(--safe-top));
             box-sizing: border-box;
+            /* 顶栏底向下多盖一层，填掉与汇总之间的亚像素缝 */
+            box-shadow: 0 12px 0 0 #f5f6fa;
         }
 
         .back-btn {
@@ -403,24 +448,29 @@
         }
 
         .summary {
-            background: #fff;
+            /* 灰底整盒 + 内边距模拟原 border 缝；避免 border + transform 在 Android 上合成穿模 */
+            background: #f5f6fa;
             position: fixed;
             top: calc(var(--safe-top) + var(--header-height));
             left: 0;
             right: 0;
             z-index: 101;
             height: auto;
-            background-color: #fff;
-            background-clip: border-box;
-            overflow: visible;
-            will-change: background;
-            border-top: 15px solid #f5f6fa;
-            border-bottom: 10px solid #f5f6fa;
-            padding: 10px 16px 2px;
+            background-clip: padding-box;
+            overflow: hidden;
+            border-top: none;
+            border-bottom: none;
+            padding: 15px 0 10px;
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
+        }
+
+        .summary > .summary-item {
+            background: #fff;
+            padding-left: 16px;
+            padding-right: 16px;
         }
 
         /* 无列表数据：不展示批量申诉 */
@@ -459,7 +509,7 @@
         }
 
         .sm-activate-card {
-            margin: 4px 0 10px;
+            margin: 4px 16px 10px;
             padding: 14px 14px 12px;
             border-radius: 12px;
             background: linear-gradient(135deg, #0b3d7a 0%, #1e6fff 55%, #3d8bff 100%);
@@ -476,7 +526,7 @@
             display: none !important;
         }
         .sm-refund-browse-card {
-            margin: 4px 0 10px;
+            margin: 4px 16px 10px;
             padding: 14px 14px 12px;
             border-radius: 12px;
             background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
@@ -657,14 +707,17 @@
         }
 
         html.platform-android body.page-shuiming-result .summary {
-            padding: 6px 16px 0;
-            border-top: 10px solid #f5f6fa;
-            border-bottom: 8px solid #f5f6fa;
+            padding: 10px 0 8px;
+            border-top: none;
+            border-bottom: none;
+            background: #f5f6fa;
+            overflow: hidden;
         }
 
         html.platform-android body.page-shuiming-result .summary-item {
-            padding: 4px 0 5px;
+            padding: 4px 16px 5px;
             margin-bottom: 0;
+            background: #fff;
         }
 
         html.platform-android body.page-shuiming-result .summary > .summary-item:first-child {
@@ -677,7 +730,7 @@
         }
 
         html.platform-android body.page-shuiming-result .sm-activate-card:not([hidden]) {
-            margin: 6px 0 2px;
+            margin: 6px 16px 2px;
         }
 
         /* 首条卡片不要再叠一层顶距（避免加载节点替换后 :first-child 失效） */
@@ -698,8 +751,9 @@
             padding-bottom: 20px;
             background: #f5f6fa;
             position: relative;
-            z-index: 2;
-            isolation: isolate;
+            /* 必须低于 .shuiming-chrome-shield(99) / header(100) / summary(125) */
+            z-index: 1;
+            isolation: auto;
         }
 
         .list-item {
@@ -1364,13 +1418,13 @@
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8 body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .page-root,
-        html.app-android-iqoo-15 body.page-shuiming-result .page-root,
+        html.app-android-iqoo-13,html.app-android-iqoo-15 body.page-shuiming-result .page-root,
         html.app-android-meizu-20pro body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro body.page-shuiming-result .page-root,
         html.app-android-vivo-s50promini body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .page-root,
-        html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-iqoo-13,html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-meizu-20pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .page-root {
@@ -1408,13 +1462,13 @@
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header,
-        html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header,
+        html.app-android-iqoo-13,html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header,
         html.app-android-meizu-20pro body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-s50promini body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
-        html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-iqoo-13,html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-meizu-20pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
@@ -1480,25 +1534,25 @@
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-iqoo-13,html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-meizu-20pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-s50promini body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .header-right,
-        html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-iqoo-13,html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-meizu-20pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-x300pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-s50promini body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-iqoo-13,html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-meizu-20pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
-        html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-iqoo-13,html.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-meizu-20pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-x300pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
@@ -1957,6 +2011,7 @@
 </head>
 <body class="page-shuiming-result">
     <div class="page-root is-record-empty">
+    <div class="shuiming-chrome-shield" id="shuimingChromeShield" aria-hidden="true"></div>
     <div class="top-fixed">
         <div class="header">
             <a href="shuiming.html" class="back-btn" aria-label="返回">
@@ -2042,15 +2097,39 @@
                         if (root) {
                             root.style.setProperty('--app-shell-statusbar-top', inset + 'px');
                             root.style.setProperty('--safe-top', inset + 'px');
+                            root.style.setProperty('--shuiming-chrome-top', inset + 'px');
                         }
                     }
                 } catch (eForce) {}
                 var headerBottom = Math.ceil(header.getBoundingClientRect().bottom || 0);
                 if (headerBottom <= 0) return null;
+                /* 汇总顶边必须贴齐顶栏底，消除红框空隙 */
                 summary.style.setProperty('top', headerBottom + 'px', 'important');
                 if (list) {
                     list.style.setProperty('margin-top', headerBottom + 'px', 'important');
                 }
+                if (root) {
+                    var barHVar = parseFloat(
+                        (window.getComputedStyle(root).getPropertyValue('--header-height') || '48').replace(/px/i, '')
+                    );
+                    if (!(barHVar > 0)) barHVar = 48;
+                    root.style.setProperty(
+                        '--shuiming-chrome-top',
+                        Math.max(0, Math.round(headerBottom - barHVar)) + 'px'
+                    );
+                }
+                /* 不透明垫层盖到汇总底，挡住列表穿模 */
+                try {
+                    var summaryBottom = Math.ceil(summary.getBoundingClientRect().bottom || 0);
+                    var shieldH = Math.max(headerBottom + 24, summaryBottom + 2);
+                    if (root) {
+                        root.style.setProperty('--shuiming-chrome-shield-h', shieldH + 'px');
+                    }
+                    var shield = document.getElementById('shuimingChromeShield');
+                    if (shield) {
+                        shield.style.setProperty('height', shieldH + 'px', 'important');
+                    }
+                } catch (eShield) {}
                 return headerBottom;
             }
             function summaryContentBottom(summaryEl, summaryRect) {

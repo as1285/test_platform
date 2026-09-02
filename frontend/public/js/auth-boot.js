@@ -264,11 +264,56 @@
       st.setAttribute('data-android-mine-e1-sm-firstpaint', '1');
       st.textContent =
         'html.app-android-mine-e1-sm body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;background-color:#f5f6fa!important;background-image:none!important;}' +
-        'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:visible!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% 100%!important;background-repeat:no-repeat!important;aspect-ratio:1284/2127!important;container-type:normal!important;width:100%!important;}' +
-        'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img,html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:fill!important;position:relative!important;top:auto!important;transform:none!important;opacity:0!important;}' +
-        'html.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;}';
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:unset!important;container-type:normal!important;width:100%!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-canvas>img,html.app-android-mine-e1-sm:not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:1px!important;height:1px!important;max-height:none!important;object-fit:fill!important;position:absolute!important;top:auto!important;transform:none!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
       document.head.appendChild(st);
     } catch (ePrime) {}
+  }
+
+  function primeIqooMineFirstPaint() {
+    try {
+      if (currentPageName() !== 'mine.html') {
+        return;
+      }
+      var ua = '';
+      try {
+        ua = String(navigator.userAgent || '');
+      } catch (eUa) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+      } catch (eUa2) {}
+      var iq13 = /V2408A|V2408BA|V2408GA|\bV2408\b|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(ua);
+      var iq15 = /V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(ua);
+      if (!iq13 && !iq15) {
+        return;
+      }
+      if (iq13) {
+        document.documentElement.classList.add('app-android-iqoo-13');
+      }
+      if (iq15) {
+        document.documentElement.classList.add('app-android-iqoo-15');
+      }
+      document.documentElement.classList.add('app-android-immersive-white-top');
+      if (document.getElementById('iqoo13MineFirstPaint')) {
+        return;
+      }
+      var st = document.createElement('style');
+      st.id = 'iqoo13MineFirstPaint';
+      st.setAttribute('data-iqoo13-mine-firstpaint', '1');
+      st.textContent =
+        'html.app-android-iqoo-13 body.page-mine,html.app-android-iqoo-15 body.page-mine{background:#000!important;}' +
+        'html.app-android-iqoo-13 body.page-mine .mine-stack,html.app-android-iqoo-15 body.page-mine .mine-stack{display:flex!important;flex-direction:column!important;min-height:calc(100vh - 70px)!important;min-height:calc(100dvh - 70px)!important;background:#f4f6f9!important;}' +
+        'html.app-android-iqoo-13 body.page-mine .mine-e1-canvas,html.app-android-iqoo-15 body.page-mine .mine-e1-canvas{flex:0 0 auto!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:auto!important;overflow:hidden!important;background-color:#f4f6f9!important;background-size:100% auto!important;background-position:top center!important;}' +
+        'html.app-android-iqoo-13 body.page-mine .mine-e1-canvas>img,html.app-android-iqoo-13 body.page-mine .mine-e1-canvas>#headerImg,html.app-android-iqoo-15 body.page-mine .mine-e1-canvas>img,html.app-android-iqoo-15 body.page-mine .mine-e1-canvas>#headerImg{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;}' +
+        'html.app-android-iqoo-13 body.page-mine .mine-e1-footer,html.app-android-iqoo-15 body.page-mine .mine-e1-footer{margin-top:auto!important;background:#f4f6f9!important;padding-bottom:12px!important;}' +
+        'html.app-android-iqoo-13.mine-guest body.page-mine .mine-e1-footer,html.app-android-iqoo-15.mine-guest body.page-mine .mine-e1-footer{display:none!important;}';
+      document.head.appendChild(st);
+    } catch (eIq) {}
   }
 
   try {
@@ -407,6 +452,7 @@
 
   markViewportChromeClasses();
   primeAndroidMineE1SmFirstPaint();
+  primeIqooMineFirstPaint();
 
   if (!isPublicPage()) {
     if (!getToken()) {

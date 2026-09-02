@@ -12,7 +12,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260901-income15-consult">
+    <link rel="stylesheet" href="/css/consult.css?v=20260901-bonus-solo">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -430,13 +430,14 @@
                         </div>
                         <div class="batch-emp-bonus-meta">
                             <button type="button" class="batch-emp-bonus-toggle" aria-expanded="false">
-                                <span>年终奖（可选，可多笔）</span>
+                                <span>年终奖（可单独增加，可多笔）</span>
                                 <span class="batch-emp-bonus-toggle-icon" aria-hidden="true">▼</span>
                             </button>
                             <div class="batch-emp-bonus-body">
-                                <p class="batch-emp-bonus-hint">单独计税并各生成一条记录。同一年可填多笔（请用不同月份）；无年终奖可忽略。</p>
+                                <p class="batch-emp-bonus-hint">填金额后点「单独增加年终奖」即可写入，不会改动已有月薪。同一年可多笔（请用不同月份）。</p>
                                 <div class="batch-emp-bonus-list"></div>
                                 <button type="button" class="batch-emp-bonus-add">再加一笔年终奖</button>
+                                <button type="button" class="btn btn-default btn-sm batch-emp-bonus-solo-btn">单独增加年终奖</button>
                             </div>
                         </div>
                     </div>
@@ -467,6 +468,7 @@
                 <div class="batch-tax-actions">
                     <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="oneClickGenerateBatchTaxRecords()">一键生成税务记录</button>
                     <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">保存覆盖</button>
+                    <button type="button" class="batch-bonus-only-btn" onclick="batchAddYearEndBonusOnly()">单独增加年终奖</button>
                 </div>
                 </div>
                 </div>
@@ -942,7 +944,7 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
     <script defer src="/js/consult-core.js?v=20260831-renzhiguide"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260829-fillcta"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260901-bonus-solo"></script>
     <script defer src="/js/consult-records.js?v=20260831-refundqual"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>

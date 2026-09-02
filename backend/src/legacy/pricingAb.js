@@ -3,7 +3,7 @@
  * 价格、时长、是否上架以后台「支付套餐」为准。
  * 历史 A/B/C 分流与 sticky 仍可读，新解析一律走 B（treatment）。
  * 小时卡 / 天卡 / 3天卡 / 永久档已下架，仅历史订单 / 已有专属价可解析。
- * GitHub 渠道：未开通另加 ¥98/3天体验卡；周卡/双周/月卡改为 200/300/398（不改全站货架）。
+ * GitHub 等推广渠道与全站同价（sales_promo_channel 仅作统计/归因，不再改价）。
  */
 'use strict';
 
@@ -585,9 +585,11 @@ function normalizeAbcPercents(raw, landingCPercent) {
 }
 
 function isGithubChannel(userRow) {
-  return String((userRow && userRow.register_source_channel) || '')
-    .trim()
-    .toLowerCase() === 'github';
+  return (
+    String((userRow && userRow.sales_promo_channel) || '')
+      .trim()
+      .toLowerCase() === 'github'
+  );
 }
 
 function shouldOfferGithubEntry(userRow) {
@@ -1026,37 +1028,16 @@ function createPricingAb(deps) {
     if (seed !== 'guest') {
       await setStickyAbc(seed, 'b', 'single_plan', true);
     }
-    var githubEntry = false;
-    if (seed && seed !== 'guest' && pool) {
-      try {
-        const conn = await pool.getConnection();
-        try {
-          const [rows] = await conn.execute(
-            'SELECT register_source_channel, account_active FROM users WHERE username = ? LIMIT 1',
-            [seed]
-          );
-          if (isGithubChannel(rows && rows[0])) {
-            skus = applyGithubChannelCatalogPrices(skus);
-          }
-          if (shouldOfferGithubEntry(rows && rows[0])) {
-            skus = prependGithubEntrySku(skus);
-            githubEntry = true;
-          }
-        } finally {
-          conn.release();
-        }
-      } catch (eGh) {}
-    }
     return {
       enabled: true,
       variant: 'treatment',
       abc_variant: 'b',
-      abc_source: githubEntry ? 'github_entry' : 'single_plan',
+      abc_source: 'single_plan',
       skus: skus,
       pricing_ab_enabled: false,
       forced_by_channel: false,
       force_client_abc: true,
-      github_entry: githubEntry
+      github_entry: false
     };
   }
 

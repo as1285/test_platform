@@ -233,20 +233,23 @@ describe('sku catalog amounts', () => {
   });
 });
 
-describe('GitHub entry SKU', () => {
-  it('offers 98/3d only to unactivated GitHub users', () => {
-    expect(shouldOfferGithubEntry({ register_source_channel: 'github', account_active: 0 })).toBe(
-      true
-    );
-    expect(shouldOfferGithubEntry({ register_source_channel: 'GitHub', account_active: false })).toBe(
-      true
-    );
-    expect(shouldOfferGithubEntry({ register_source_channel: 'github', account_active: 1 })).toBe(
-      false
-    );
-    expect(shouldOfferGithubEntry({ register_source_channel: 'douyin', account_active: 0 })).toBe(
-      false
-    );
+describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () => {
+  it('shouldOfferGithubEntry still detects unactivated GitHub promo users', () => {
+    expect(
+      shouldOfferGithubEntry({ sales_promo_channel: 'github', register_source_channel: 'douyin', account_active: 0 })
+    ).toBe(true);
+    expect(
+      shouldOfferGithubEntry({ sales_promo_channel: 'GitHub', register_source_channel: 'other', account_active: false })
+    ).toBe(true);
+    expect(
+      shouldOfferGithubEntry({ sales_promo_channel: 'github', register_source_channel: 'github', account_active: 1 })
+    ).toBe(false);
+    expect(
+      shouldOfferGithubEntry({ register_source_channel: 'github', account_active: 0 })
+    ).toBe(false);
+    expect(
+      shouldOfferGithubEntry({ sales_promo_channel: 'douyin', register_source_channel: 'github', account_active: 0 })
+    ).toBe(false);
     expect(shouldOfferGithubEntry(null)).toBe(false);
   });
 
@@ -261,9 +264,10 @@ describe('GitHub entry SKU', () => {
     expect(twice.filter((s) => s.id === 'sku_98_3d').length).toBe(1);
   });
 
-  it('rewrites week/biweek/month amounts for GitHub channel only', () => {
-    expect(isGithubChannel({ register_source_channel: 'github' })).toBe(true);
-    expect(isGithubChannel({ register_source_channel: 'douyin' })).toBe(false);
+  it('rewrites week/biweek/month amounts for GitHub promo link only', () => {
+    expect(isGithubChannel({ sales_promo_channel: 'github' })).toBe(true);
+    expect(isGithubChannel({ register_source_channel: 'github' })).toBe(false);
+    expect(isGithubChannel({ sales_promo_channel: 'douyin' })).toBe(false);
     const out = applyGithubChannelCatalogPrices([
       { id: 'sku_300_7d', amount: '300.00', label: '周卡' },
       { id: 'sku_348_14d', amount: '398.00', label: '双周卡' },

@@ -2775,10 +2775,10 @@
                                 pay.lizhi_gmv != null ? pay.lizhi_gmv : 0
                             ],
                             [
-                                '改名费',
-                                pay.rename_orders || 0,
+                                '同行费用（每天无限）',
+                                pay.tax_edit_orders || 0,
                                 '—',
-                                pay.rename_gmv != null ? pay.rename_gmv : 0
+                                pay.tax_edit_gmv != null ? pay.tax_edit_gmv : 0
                             ],
                             [
                                 '开通合计（含管理员激活）',
@@ -3830,11 +3830,14 @@
             }
             /* 区间汇总置顶：最近 7 天等所选周期的注册 / 激活 / 转化率 */
             html += renderDailyConversionPeriodOverview(data);
-            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
+            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data, {
+                collapsed: true
+            });
             if (data.segments.alipay) {
                 html += renderDailyConversionSegmentBlock('支付宝激活', data.segments.alipay, data, {
                     activationOnly: true,
-                    channelLabel: '支付宝'
+                    channelLabel: '支付宝',
+                    collapsed: true
                 });
             }
             el.innerHTML = html;
@@ -4325,7 +4328,9 @@
             html += '</tbody></table></div>';
 
             var recentVisitors = Array.isArray(data.recent_visitors) ? data.recent_visitors : [];
-            html += '<p class="stat" style="margin:0 0 8px;">最近访客行为（最多 3 位访客，同一访客合并展示）</p>';
+            html +=
+                '<details class="analytics-section-details install-recent-visitors-details">' +
+                '<summary>最近访客行为（最多 3 位访客，同一访客合并展示）</summary>';
             html += '<div class="scroll-x"><table><thead><tr>';
             html += '<th>访客</th><th>IP</th><th>设备</th><th>时间</th><th>行为</th><th>停留/加载</th></tr></thead><tbody>';
             if (!recentVisitors.length) {
@@ -4371,7 +4376,7 @@
                     });
                 });
             }
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></details>';
             el.innerHTML = html;
 
             if (typeof Chart !== 'undefined' && daily.length) {

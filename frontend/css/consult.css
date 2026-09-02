@@ -814,6 +814,21 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
 #panel-records .batch-emp-bonus-item-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
 #panel-records .batch-emp-bonus-remove { background: transparent; border: none; color: var(--color-danger); font-size: 12px; padding: 2px 4px; cursor: pointer; }
 #panel-records .batch-emp-bonus-add { display: block; width: 100%; margin: 8px 0 2px; padding: 8px 10px; font-size: 13px; color: var(--color-primary); background: transparent; border: 1px dashed var(--color-primary-border, #93c5fd); border-radius: 8px; cursor: pointer; }
+#panel-records .batch-emp-bonus-solo-btn {
+    display: block;
+    width: 100%;
+    margin: 8px 0 4px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--color-primary, #3b82f6);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.22);
+}
+#panel-records .batch-emp-bonus-solo-btn:active { opacity: 0.92; }
 
 /* 年月输入 */
 #panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }

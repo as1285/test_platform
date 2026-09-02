@@ -280,6 +280,14 @@ function bindBatchEmpBonusList(row) {
             scheduleBatchTaxDraftSave();
         });
     }
+    var soloBtn = row.querySelector('.batch-emp-bonus-solo-btn');
+    if (soloBtn && soloBtn.getAttribute('data-bonus-solo-bound') !== '1') {
+        soloBtn.setAttribute('data-bonus-solo-bound', '1');
+        soloBtn.addEventListener('click', function () {
+            setBatchEmpBonusMetaExpanded(row, true);
+            batchAddYearEndBonusOnly();
+        });
+    }
     if (!row.querySelector('.batch-emp-bonus-item')) {
         addBatchEmpBonusItem(row);
     } else {
@@ -3944,8 +3952,9 @@ function buildBatchSalaryRecord(w, base, uidKey) {
     o.unemployment_insurance = String(w.unemployment);
     o.housing_fund = String(round2(w.housingFund));
     o.tax_free_income = '0.00';
-    o.income_type = o.income_type || '工资薪金';
-    o.income_subtype = o.income_subtype || '正常工资薪金';
+    /* 必须强制月薪小类：base 来自表单，若刚看过/编过年终奖会带「全年一次性奖金收入」，|| 兜底盖不住 */
+    o.income_type = '工资薪金';
+    o.income_subtype = '正常工资薪金';
     return o;
 }
 
