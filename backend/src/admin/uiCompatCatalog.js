@@ -172,9 +172,10 @@ var MODELS = [
     platform: 'ios',
     family: 'apple',
     label: 'iPhone 16 Pro Max',
-    match: ['iPhone\\s*16\\s*Pro\\s*Max', 'iPhone17,2'],
+    match: ['iPhone\\s*16\\s*Pro\\s*Max', 'iPhone17,2', 'MYTN3'],
     issues: [
       { page: 'shuiming', title: '顶栏勿铺满状态栏', summary: '白底铺满会挡住系统时间，与 14/15 相反。', since: '2026-06-17' },
+      { page: 'shuiming', title: '明细页大屏比例收窄', summary: '440 宽下贴边铺满+13em 公司名显得过宽；列表留白、字号与公司名加宽。', since: '2026-09-02' },
       { page: 'nav', title: '五 Tab 底栏间距统一', summary: '与 16 Pro 同一套 8px，勿套 15 Pro Max 铺满。', since: '2026-08-16' }
     ]
   },

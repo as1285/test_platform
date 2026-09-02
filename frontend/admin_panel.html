@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-gmvsplit">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-gmvsum2">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -789,6 +789,12 @@
                                     <label for="filterExact">精准查询</label>
                                     <label class="filter-inline-check filter-inline-check--fill" for="filterExact">
                                         <input type="checkbox" id="filterExact"> 开启
+                                    </label>
+                                </div>
+                                <div class="user-filter-field">
+                                    <label for="filterSameRegisterIp">同IP账号</label>
+                                    <label class="filter-inline-check filter-inline-check--fill" for="filterSameRegisterIp" title="勾选后按账号的注册 IP 查出该 IP 下全部账号（需填写账号）">
+                                        <input type="checkbox" id="filterSameRegisterIp"> 开启
                                     </label>
                                 </div>
                                 <div class="user-filter-field">
@@ -2325,6 +2331,38 @@
                             <button type="button" class="btn-page btn-page-primary" id="btnOpsBoardRefresh">刷新</button>
                         </div>
                         <div class="ops-board-kpi" id="opsBoardKpi" aria-live="polite">加载中…</div>
+                        <div class="ops-board-pay-detail" id="opsBoardPayDetail" hidden>
+                            <div class="ops-board-pay-detail-head">
+                                <div class="ops-board-pay-detail-title">
+                                    <strong>支付明细</strong>
+                                    <span class="hint" id="opsBoardPayDetailMeta"></span>
+                                </div>
+                                <div class="ops-board-pay-detail-actions">
+                                    <select id="opsBoardPayDays" class="filter-select" aria-label="支付明细天数">
+                                        <option value="1" selected>今日</option>
+                                        <option value="7">近 7 日</option>
+                                        <option value="30">近 30 日</option>
+                                    </select>
+                                    <button type="button" class="btn-page btn-sm" id="btnOpsBoardPayClose">收起</button>
+                                </div>
+                            </div>
+                            <div class="scroll-x">
+                                <table class="ops-board-pay-table">
+                                    <thead>
+                                        <tr>
+                                            <th>用户</th>
+                                            <th>SKU</th>
+                                            <th>金额</th>
+                                            <th>支付时间</th>
+                                            <th>商户单号</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opsBoardPayTbody">
+                                        <tr><td colspan="5">加载中…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </section>
                     <section>
                         <h2>待跟进</h2>
@@ -2793,7 +2831,7 @@
                                 </div>
                             </details>
                             <details class="analytics-section-details mb-12">
-                                <summary>每日明细（可展开到账号）</summary>
+                                <summary>每日明细（可展开付款详情）</summary>
                                 <p id="analyticsPurchaseDailyHint" class="hint mt-8 mb-8">—</p>
                                 <div class="scroll-x">
                                     <table>
@@ -3386,8 +3424,31 @@
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">激活账号</h2>
             <p class="hint admin-modal-meta" id="userActivateMeta"></p>
-            <label class="field-label" for="userActivateCodeInput">激活码</label>
-            <input type="text" id="userActivateCodeInput" class="filter-text-wide input-full" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+            <label class="field-label" for="userActivateDuration">激活时长</label>
+            <select id="userActivateDuration" class="filter-select input-full">
+                <option value="7">周卡 · 7 天</option>
+                <option value="30">月卡 · 30 天</option>
+                <option value="14">双周卡 · 14 天</option>
+                <option value="1">1 天</option>
+                <option value="3">3 天</option>
+                <option value="permanent">永久</option>
+                <option value="custom">自定义…</option>
+            </select>
+            <div id="userActivateCustomWrap" class="form-row mt-10" hidden>
+                <div>
+                    <label class="field-label" for="userActivateDays">天</label>
+                    <input type="number" id="userActivateDays" class="filter-select input-w-100" min="0" max="365" step="1" value="7" inputmode="numeric">
+                </div>
+                <div>
+                    <label class="field-label" for="userActivateHours">小时</label>
+                    <input type="number" id="userActivateHours" class="filter-select input-w-100" min="0" max="720" step="1" value="0" inputmode="numeric">
+                </div>
+                <div>
+                    <label class="field-label" for="userActivateMinutes">分钟</label>
+                    <input type="number" id="userActivateMinutes" class="filter-select input-w-100" min="0" max="525600" step="1" value="0" inputmode="numeric">
+                </div>
+            </div>
+            <p class="hint mt-8">直接开通，无需激活码。选「永久」则长期有效；自定义时天数/小时/分钟可叠加。</p>
             <div class="form-actions modal-actions">
                 <button type="button" class="btn-primary" id="userActivateConfirm">确认激活</button>
                 <button type="button" class="btn-page" id="userActivateCancel">取消</button>
@@ -3462,9 +3523,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260831-adops"></script>
+    <script src="/js/admin/loader.js?v=20260902-gmvsum2"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260902-api-autoheal"></script>
+    <script src="/js/admin_panel.js?v=20260902-activedur"></script>
 </body>
 </html>

@@ -1897,6 +1897,7 @@
             if (usernameEl) usernameEl.value = '';
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = false;
+            setFilterSameRegisterIp(false);
             if (riskEl) riskEl.value = '';
             if (activeEl) activeEl.value = '0';
             if (bannedEl) bannedEl.value = '0';
@@ -2023,6 +2024,7 @@
             if (usernameEl) usernameEl.value = '';
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = false;
+            setFilterSameRegisterIp(false);
             if (riskEl) riskEl.value = '';
             if (activeEl) activeEl.value = '0';
             if (bannedEl) bannedEl.value = '0';
@@ -2156,6 +2158,8 @@
             var page = Number(data.page) || 1;
             var total = Number(data.total) || 0;
             var totalPages = Math.max(1, Number(data.total_pages) || 1);
+            var orderCount = data.order_count != null ? data.order_count : null;
+            var gmv = data.gmv != null ? data.gmv : null;
             box.setAttribute('data-date', dateStr);
             box.setAttribute('data-page', String(page));
             box.setAttribute('data-loaded', '1');
@@ -2163,31 +2167,30 @@
             html +=
                 '<div class="dau-users-title">' +
                 esc(dateStr) +
-                ' 支付页用户（共 ' +
+                ' 付款详情（' +
                 total +
-                ' 人）</div>';
+                ' 人' +
+                (orderCount != null ? ' · ' + orderCount + ' 单' : '') +
+                (gmv != null ? ' · ¥' + gmv : '') +
+                '）</div>';
             if (!users.length) {
-                html += '<p class="hint">当日暂无用户</p>';
+                html += '<p class="hint">当日暂无已付订单</p>';
             } else {
                 html += '<ul class="dau-users-list">';
                 users.forEach(function (u) {
-                    var parts = [];
-                    var ev = u.events || {};
-                    if (ev.track_activate_prompt_open) parts.push('弹窗开 ' + ev.track_activate_prompt_open);
-                    if (ev.track_activate_prompt_confirm) parts.push('确认激活 ' + ev.track_activate_prompt_confirm);
-                    if (ev.track_activate_prompt_cancel) parts.push('弹窗取消 ' + ev.track_activate_prompt_cancel);
-                    if (ev.track_activation_nudge_cta) parts.push('引导去激活 ' + ev.track_activation_nudge_cta);
-                    if (ev.track_purchase_page_view) parts.push('浏览 ' + ev.track_purchase_page_view);
-                    if (ev.track_alipay_payment_start) parts.push('生成付款 ' + ev.track_alipay_payment_start);
-                    if (ev.track_alipay_open_click) parts.push('打开支付宝 ' + ev.track_alipay_open_click);
-                    if (ev.track_alipay_payment_success) parts.push('支付成功 ' + ev.track_alipay_payment_success);
-                    if (ev.track_purchase_activate_success) parts.push('激活成功 ' + ev.track_purchase_activate_success);
-                    if (ev.track_purchase_activate_fail) parts.push('激活失败 ' + ev.track_purchase_activate_fail);
+                    var payments = Array.isArray(u.payments) ? u.payments : [];
+                    var parts = payments.map(function (p) {
+                        var label = p.label || p.sku_id || '其他';
+                        var amt = '¥' + (p.amount != null ? p.amount : 0);
+                        var t = p.paid_at ? formatDt(p.paid_at) : '';
+                        return label + ' ' + amt + (t ? ' · ' + t : '');
+                    });
                     html +=
                         '<li><strong class="cell-break">' +
                         esc(u.username || '—') +
-                        '</strong> · 合计 ' +
-                        esc(String(u.total || 0)) +
+                        '</strong> · 合计 ¥' +
+                        esc(String(u.total_amount != null ? u.total_amount : 0)) +
+                        (u.order_count ? ' · ' + esc(String(u.order_count)) + ' 单' : '') +
                         (parts.length
                             ? '<div class="hint mt-0 mb-0" style="font-size:12px;">' +
                               esc(parts.join(' · ')) +
@@ -5745,47 +5748,82 @@
                 });
         }
 
+        function syncUserActivateCustomWrap() {
+            var dur = document.getElementById('userActivateDuration');
+            var wrap = document.getElementById('userActivateCustomWrap');
+            if (!wrap) return;
+            var isCustom = dur && String(dur.value || '') === 'custom';
+            if (isCustom) wrap.removeAttribute('hidden');
+            else wrap.setAttribute('hidden', '');
+        }
+
         function closeUserActivateModal() {
             var bd = document.getElementById('userActivateBackdrop');
             if (bd) {
                 bd.setAttribute('hidden', '');
             }
             userActivateTarget = null;
-            var inp = document.getElementById('userActivateCodeInput');
-            if (inp) {
-                inp.value = '';
-            }
         }
 
         function openUserActivateModal(username) {
             userActivateTarget = username;
             var metaEl = document.getElementById('userActivateMeta');
             if (metaEl) {
-                metaEl.textContent = '为账号「' + username + '」输入激活码并确认激活。';
+                metaEl.textContent = '为账号「' + username + '」选择激活时长并确认开通。';
             }
-            var inp = document.getElementById('userActivateCodeInput');
-            if (inp) {
-                inp.value = '';
-            }
+            var dur = document.getElementById('userActivateDuration');
+            if (dur) dur.value = '7';
+            var daysEl = document.getElementById('userActivateDays');
+            var hoursEl = document.getElementById('userActivateHours');
+            var minutesEl = document.getElementById('userActivateMinutes');
+            if (daysEl) daysEl.value = '7';
+            if (hoursEl) hoursEl.value = '0';
+            if (minutesEl) minutesEl.value = '0';
+            syncUserActivateCustomWrap();
             var bd = document.getElementById('userActivateBackdrop');
             if (bd) {
                 bd.removeAttribute('hidden');
             }
-            if (inp) {
+            if (dur) {
                 try {
-                    inp.focus();
+                    dur.focus();
                 } catch (eFocus) {}
             }
+        }
+
+        function readUserActivateGrantPayload() {
+            var durEl = document.getElementById('userActivateDuration');
+            var v = durEl ? String(durEl.value || '').trim() : '7';
+            if (v === 'permanent') {
+                return { permanent: true, grant_days: 0, grant_hours: 0, grant_minutes: 0 };
+            }
+            if (v === 'custom') {
+                var daysEl = document.getElementById('userActivateDays');
+                var hoursEl = document.getElementById('userActivateHours');
+                var minutesEl = document.getElementById('userActivateMinutes');
+                var days = daysEl ? parseInt(daysEl.value, 10) : 0;
+                var hours = hoursEl ? parseInt(hoursEl.value, 10) : 0;
+                var minutes = minutesEl ? parseInt(minutesEl.value, 10) : 0;
+                if (!isFinite(days) || days < 0) days = 0;
+                if (!isFinite(hours) || hours < 0) hours = 0;
+                if (!isFinite(minutes) || minutes < 0) minutes = 0;
+                if (days < 1 && hours < 1 && minutes < 1) {
+                    return { error: '自定义时长至少填写 1 天/小时/分钟中的一项' };
+                }
+                return { permanent: false, grant_days: days, grant_hours: hours, grant_minutes: minutes };
+            }
+            var n = parseInt(v, 10);
+            if (!isFinite(n) || n < 1) n = 7;
+            return { permanent: false, grant_days: n, grant_hours: 0, grant_minutes: 0 };
         }
 
         function submitUserActivate() {
             if (!userActivateTarget) {
                 return;
             }
-            var codeEl = document.getElementById('userActivateCodeInput');
-            var code = codeEl ? String(codeEl.value || '').trim() : '';
-            if (!code) {
-                alert('请输入激活码');
+            var grant = readUserActivateGrantPayload();
+            if (grant.error) {
+                alert(grant.error);
                 return;
             }
             var confirmBtn = document.getElementById('userActivateConfirm');
@@ -5793,9 +5831,17 @@
                 confirmBtn.disabled = true;
                 confirmBtn.textContent = '激活中…';
             }
+            var body = { username: userActivateTarget };
+            if (grant.permanent) {
+                body.permanent = true;
+            } else {
+                body.grant_days = grant.grant_days;
+                body.grant_hours = grant.grant_hours;
+                body.grant_minutes = grant.grant_minutes;
+            }
             adminFetch('api/admin/user-activate', {
                 method: 'POST',
-                body: JSON.stringify({ username: userActivateTarget, code: code })
+                body: JSON.stringify(body)
             })
                 .then(function (r) {
                     return r.json();
@@ -5981,6 +6027,56 @@
         /* ========== User Management — Registered Users ========== */
         var pendingHighlightUsername = '';
 
+        function setFilterSameRegisterIp(on) {
+            var el = document.getElementById('filterSameRegisterIp');
+            if (el) el.checked = !!on;
+        }
+
+        /** 按某账号的注册 IP 查出该 IP 下全部账号 */
+        function searchSameRegisterIpUsers(username) {
+            var name = String(username || '').trim();
+            if (!name) return;
+            var usernameEl = document.getElementById('filterUsername');
+            var realNameEl = document.getElementById('filterRealName');
+            var exactEl = document.getElementById('filterExact');
+            var riskEl = document.getElementById('filterRisk');
+            var activeEl = document.getElementById('filterActive');
+            var bannedEl = document.getElementById('filterBanned');
+            var taxModEl = document.getElementById('filterTaxModifiedToday');
+            var loginInactiveEl = document.getElementById('filterLoginInactive');
+            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
+            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+            var peerEl = document.getElementById('filterPeerAccount');
+            var whitelistEl = document.getElementById('filterWhitelist');
+            var agentEl = document.getElementById('filterAgent');
+            var d1El = document.getElementById('filterD1Return');
+            var highIncomeEl = document.getElementById('filterHighIncome');
+            if (usernameEl) usernameEl.value = name;
+            if (realNameEl) realNameEl.value = '';
+            if (exactEl) exactEl.checked = false;
+            setFilterSameRegisterIp(true);
+            if (riskEl) riskEl.value = '';
+            if (activeEl) activeEl.value = '';
+            if (bannedEl) bannedEl.value = '';
+            if (taxModEl) taxModEl.value = '';
+            if (loginInactiveEl) loginInactiveEl.value = '';
+            if (nameChangesGtEl) nameChangesGtEl.value = '';
+            if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+            if (peerEl) peerEl.value = '';
+            if (whitelistEl) whitelistEl.value = '';
+            if (agentEl) agentEl.value = '';
+            if (d1El) d1El.value = '';
+            if (highIncomeEl) highIncomeEl.value = '';
+            pendingHighlightUsername = name;
+            userPage = 1;
+            var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
+            if (alreadyUsers) {
+                loadUsers(1);
+            } else {
+                location.hash = 'users';
+            }
+        }
+
         /** 从激活码等入口跳到注册用户列表并定位账号 */
         function jumpToRegisteredUser(username) {
             var name = String(username || '').trim();
@@ -6003,6 +6099,7 @@
             if (usernameEl) usernameEl.value = name;
             if (realNameEl) realNameEl.value = '';
             if (exactEl) exactEl.checked = true;
+            setFilterSameRegisterIp(false);
             if (riskEl) riskEl.value = '';
             if (activeEl) activeEl.value = '';
             if (bannedEl) bannedEl.value = '';
@@ -6071,8 +6168,10 @@
             var active = document.getElementById('filterActive').value;
             var banned = document.getElementById('filterBanned').value;
             var exactEl = document.getElementById('filterExact');
+            var sameIpEl = document.getElementById('filterSameRegisterIp');
             var riskEl = document.getElementById('filterRisk');
             var exact = exactEl && exactEl.checked;
+            var sameRegisterIp = !!(sameIpEl && sameIpEl.checked && username);
             var risk = riskEl ? riskEl.value : '';
             var taxModEl = document.getElementById('filterTaxModifiedToday');
             var taxModifiedToday = taxModEl ? taxModEl.value : '';
@@ -6094,11 +6193,15 @@
             var highIncome = highIncomeEl ? String(highIncomeEl.value || '').trim() : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
-            if (username) url += '&username=' + encodeURIComponent(username);
+            if (sameRegisterIp) {
+                url += '&same_register_ip_of=' + encodeURIComponent(username);
+            } else if (username) {
+                url += '&username=' + encodeURIComponent(username);
+            }
             if (realName) url += '&real_name=' + encodeURIComponent(realName);
             if (active !== '') url += '&active=' + active;
             if (banned !== '') url += '&banned=' + banned;
-            if (exact) url += '&exact=1';
+            if (exact && !sameRegisterIp) url += '&exact=1';
             if (risk !== '') url += '&risk=' + encodeURIComponent(risk);
             if (taxModifiedToday !== '') {
                 url += '&tax_modified_today=' + encodeURIComponent(taxModifiedToday);
@@ -6137,6 +6240,12 @@
                     var statText = '共 ' + total + ' 个账号';
                     if (data.data.high_income_filter === '1') {
                         statText += '（未激活且自己填月收入>1.5万）';
+                    }
+                    var sameIpSeed = data.data.same_register_ip_of
+                        ? String(data.data.same_register_ip_of).trim()
+                        : '';
+                    if (sameIpSeed) {
+                        statText += '（账号 ' + sameIpSeed + ' 同注册IP）';
                     }
                     document.getElementById('userStat').textContent = statText;
                     
@@ -6215,11 +6324,24 @@
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
                         var riskCell = '<span class="risk-hint-line">—</span>';
                         if (u.risk && u.risk_messages && u.risk_messages.length) {
+                            var riskHintParts = (u.risk_messages || []).map(function (msg) {
+                                var m = String(msg || '');
+                                if (m.indexOf('同IP注册') === 0) {
+                                    return (
+                                        '<button type="button" class="risk-same-ip-link" data-u="' +
+                                        esc(u.username) +
+                                        '" title="查询该账号同注册IP下的全部账号">' +
+                                        esc(m) +
+                                        '</button>'
+                                    );
+                                }
+                                return esc(m);
+                            });
                             riskCell =
                                 '<span class="badge badge-risk" title="' +
                                 esc(u.risk_messages.join('；')) +
                                 '">风险</span><div class="risk-hint-line">' +
-                                esc(u.risk_messages.join('；')) +
+                                riskHintParts.join('；') +
                                 '</div>';
                         } else {
                             var ipCnt = u.distinct_ip_count != null ? Number(u.distinct_ip_count) : 0;
@@ -6816,6 +6938,11 @@
                                     }
                                 })
                                 .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.risk-same-ip-link').forEach(function (btn) {
+                        btn.onclick = function () {
+                            searchSameRegisterIpUsers(btn.getAttribute('data-u'));
                         };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-detail').forEach(function (btn) {
@@ -7982,6 +8109,7 @@
                 if (usernameEl) usernameEl.value = '';
                 if (realNameEl) realNameEl.value = '';
                 if (exactEl) exactEl.checked = false;
+                setFilterSameRegisterIp(false);
                 if (riskEl) riskEl.value = '';
                 if (activeEl) activeEl.value = '';
                 if (bannedEl) bannedEl.value = '';
@@ -10169,14 +10297,9 @@
         if (userActivateConfirm) {
             userActivateConfirm.addEventListener('click', submitUserActivate);
         }
-        var userActivateCodeInput = document.getElementById('userActivateCodeInput');
-        if (userActivateCodeInput) {
-            userActivateCodeInput.addEventListener('keydown', function (ev) {
-                if (ev.key === 'Enter') {
-                    ev.preventDefault();
-                    submitUserActivate();
-                }
-            });
+        var userActivateDuration = document.getElementById('userActivateDuration');
+        if (userActivateDuration) {
+            userActivateDuration.addEventListener('change', syncUserActivateCustomWrap);
         }
 
 

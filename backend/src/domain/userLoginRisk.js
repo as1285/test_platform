@@ -78,6 +78,19 @@ function userLoginRiskMatchSql(usernameExpr) {
   );
 }
 
+/**
+ * 与种子账号同注册 IP 的账号（需绑定 1 个参数：种子 username）。
+ * 依据 user_login_events.reason = 'register_ok' 的 IP 关联。
+ */
+function userSameRegisterIpOfSql(usernameExpr) {
+  const u = usernameExpr || 'users.username';
+  return (
+    'EXISTS (SELECT 1 FROM user_login_events reg_peer INNER JOIN user_login_events reg_seed ON TRIM(reg_peer.ip) = TRIM(reg_seed.ip) WHERE reg_peer.username = ' +
+    u +
+    " AND reg_peer.reason = 'register_ok' AND reg_seed.reason = 'register_ok' AND reg_seed.username = ? AND reg_seed.ip IS NOT NULL AND TRIM(reg_seed.ip) <> '' AND reg_peer.ip IS NOT NULL AND TRIM(reg_peer.ip) <> '')"
+  );
+}
+
 module.exports = {
   USER_LOGIN_RISK_IP_THRESHOLD,
   USER_LOGIN_RISK_DEVICE_THRESHOLD,
@@ -85,5 +98,6 @@ module.exports = {
   userLoginRiskIpUnionSubquery,
   computeUserLoginRisk,
   userRegisterIpRiskMatchSql,
-  userLoginRiskMatchSql
+  userLoginRiskMatchSql,
+  userSameRegisterIpOfSql
 };

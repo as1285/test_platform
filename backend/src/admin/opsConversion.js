@@ -18,6 +18,38 @@ var REFUND_VIEW_KEYS = [
   'track_purchase_refund_ad_view'
 ];
 
+/** 看板 GMV 拆分用：已知 SKU 展示名 */
+var OPS_SKU_LABELS = {
+  sku_300_7d: '周卡',
+  sku_348_14d: '双周卡',
+  sku_398_30d: '月卡',
+  sku_98_3d: '体验卡',
+  sku_99_1h: '小时卡',
+  sku_249_1d: '天卡',
+  sku_268_3d: '3天卡',
+  sku_600_perm: '永久',
+  sku_999_perm: '永久'
+};
+OPS_SKU_LABELS[taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID] = '同行费用（每天无限）';
+OPS_SKU_LABELS[taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID] = '个税修改费';
+
+function opsSkuGmvLabel(row) {
+  var id = String((row && row.sku_id) || '').trim();
+  var kind = String((row && row.grant_kind) || '').trim();
+  if (kind === 'tax_edit_daily' || id === taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID) {
+    return '同行费用（每天无限）';
+  }
+  if (kind === 'tax_edit_single' || id === taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID) {
+    return '个税修改费';
+  }
+  if (id && OPS_SKU_LABELS[id]) return OPS_SKU_LABELS[id];
+  var subject = String((row && row.subject) || '').trim();
+  if (subject) {
+    return subject.replace(/^激活码[·•．.\s]*/, '') || subject;
+  }
+  return id || '其他';
+}
+
 function monthIncomeSql(alias) {
   var t = alias || 'tr';
   return 'GREATEST(IFNULL(' + t + '.income_this_period, 0), IFNULL(' + t + '.income, 0))';
@@ -380,6 +412,20 @@ async function handleOpsBoard(req, res) {
          FROM payment_orders WHERE ` + payWhere.join(' AND '),
         payParams
       );
+      const [paySkuRows] = await conn.query(
+        `SELECT COALESCE(NULLIF(TRIM(sku_id), ''), '(unknown)') AS sku_id,
+                MAX(subject) AS subject,
+                MAX(grant_kind) AS grant_kind,
+                COUNT(*) AS orders,
+                COALESCE(SUM(amount), 0) AS gmv
+         FROM payment_orders
+         WHERE ` +
+          payWhere.join(' AND ') +
+          `
+         GROUP BY COALESCE(NULLIF(TRIM(sku_id), ''), '(unknown)')
+         ORDER BY gmv DESC, orders DESC`,
+        payParams
+      );
 
       var stockBuilt = baseInactiveWhere(req.admin);
       var stockSql = ' WHERE ' + stockBuilt.where.join(' AND ');
@@ -455,7 +501,15 @@ async function handleOpsBoard(req, res) {
             pay_orders: n(p, 'pay_orders'),
             pay_gmv: Math.round(Number(p.pay_gmv || 0) * 100) / 100,
             pay_orders_gmv: Math.round(Number(p.pay_orders_gmv || 0) * 100) / 100,
-            tax_edit_gmv: Math.round(Number(p.tax_edit_gmv || 0) * 100) / 100
+            tax_edit_gmv: Math.round(Number(p.tax_edit_gmv || 0) * 100) / 100,
+            gmv_by_sku: (paySkuRows || []).map(function (r) {
+              return {
+                sku_id: String(r.sku_id || ''),
+                label: opsSkuGmvLabel(r),
+                orders: Number(r.orders) || 0,
+                gmv: Math.round(Number(r.gmv || 0) * 100) / 100
+              };
+            })
           },
           stock: {
             total: n(s, 'total'),
@@ -1064,9 +1118,79 @@ async function handleOpsRefundEligible(req, res) {
   }
 }
 
+/**
+ * 运营看板 GMV 详情：已付订单明细（默认今日，可 days=1..90）。
+ * 与看板「今日 GMV」同一口径：status=paid，按北京日切。
+ */
+async function handleOpsBoardPayments(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10);
+    if (!isFinite(days) || days < 1) days = 1;
+    if (days > 90) days = 90;
+    var pool = getPool();
+    var conn = await pool.getConnection();
+    try {
+      var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+      var todayBjSql = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+      var payWhere = ["status = 'paid'"];
+      var payParams = [];
+      if (days === 1) {
+        payWhere.push(cnPaidDay + ' = ' + todayBjSql);
+      } else {
+        payWhere.push(
+          cnPaidDay + ' >= DATE_SUB(' + todayBjSql + ', INTERVAL ? DAY)'
+        );
+        payParams.push(days - 1);
+      }
+      const [rows] = await conn.query(
+        `SELECT id, username, sku_id, subject, grant_kind, amount,
+                out_trade_no, alipay_trade_no, paid_at, created_at
+         FROM payment_orders
+         WHERE ` +
+          payWhere.join(' AND ') +
+          `
+         ORDER BY COALESCE(paid_at, created_at) DESC, id DESC
+         LIMIT 500`,
+        payParams
+      );
+      var list = (rows || []).map(function (r) {
+        return {
+          id: Number(r.id) || 0,
+          username: String(r.username || ''),
+          sku_id: String(r.sku_id || ''),
+          label: opsSkuGmvLabel(r),
+          subject: String(r.subject || ''),
+          grant_kind: String(r.grant_kind || ''),
+          amount: Math.round(Number(r.amount || 0) * 100) / 100,
+          out_trade_no: String(r.out_trade_no || ''),
+          paid_at: r.paid_at || r.created_at || null
+        };
+      });
+      var gmv = 0;
+      for (var i = 0; i < list.length; i++) gmv += Number(list[i].amount) || 0;
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          truncated: list.length >= 500,
+          orders: list.length,
+          gmv: Math.round(gmv * 100) / 100,
+          list: list
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[ops-board-payments]', e);
+    res.status(500).json({ code: 500, msg: String(e.message || '加载支付明细失败') });
+  }
+}
+
 function getHandlers() {
   return {
     handleOpsBoard: handleOpsBoard,
+    handleOpsBoardPayments: handleOpsBoardPayments,
     handleOpsInactiveSummary: handleOpsInactiveSummary,
     handleOpsInactiveUsers: handleOpsInactiveUsers,
     handleOpsConversionResearch: handleOpsConversionResearch,
@@ -1083,5 +1207,6 @@ module.exports = {
   refundEligibleSql: refundEligibleSql,
   refundYearAggSql: refundYearAggSql,
   parseSegment: parseSegment,
-  parseDays: parseDays
+  parseDays: parseDays,
+  opsSkuGmvLabel: opsSkuGmvLabel
 };

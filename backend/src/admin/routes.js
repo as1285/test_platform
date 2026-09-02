@@ -156,6 +156,12 @@ app.get(
   h.handleOpsBoard
 );
 app.get(
+  '/api/admin/ops/board/payments',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-board', 'ops-inactive', 'analytics-conversion', 'ops-lift', 'ops-research']),
+  h.handleOpsBoardPayments
+);
+app.get(
   '/api/admin/ops/inactive-summary',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users', 'ops-board']),

@@ -17,7 +17,7 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260825-crop-pad',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260902-gmvsplit',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260902-gmvsum2',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig'
   };
 

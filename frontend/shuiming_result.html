@@ -1470,6 +1470,16 @@
         html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name {
             max-width: 20em !important;
         }
+        /*
+         * iPhone 17 Pro Max：公司名固定约 13 字宽省略（与 JS 截断一致），
+         * 勿沿用 16 Pro Max 的 20em 加长显示。
+         */
+        html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,
+        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name,
+        html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list-company-name,
+        html.app-ios-iphone17promax.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-company-name {
+            max-width: 13em !important;
+        }
         html.app-ios-iphone16promax.app-ios-iphone-promax-font body.page-shuiming-result .header-title {
             font-size: 20px;
         }
@@ -2543,7 +2553,7 @@
             );
         }
 
-        /** iOS：公司名交给 CSS 约 13 字宽省略；Android 仍 JS 截 12 字 */
+        /** iOS（含 17 Pro Max）：公司名按 13 字截断；Android 仍 12 字 */
         function isIosCompanyNameEllipsisClient() {
             try {
                 var root = document.documentElement;
@@ -2571,10 +2581,15 @@
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
                 /*
-                 * 官方个税 App（iPhone 13）：公司名约 13 字后省略。
-                 * iOS 用 CSS 13em，不依赖型号；Android 保持 12 字 JS 截断。
+                 * 官方个税 App：公司名约 13 字后省略。
+                 * iOS（含 17 Pro Max）用 JS 截 13 字，避免大屏仅靠 CSS 13em 仍显示过长；
+                 * Android 保持 12 字。完整名称放 title 便于长按查看。
                  */
-                var companyShow = iosCompanyEllipsis ? company : truncateChars(company, 12);
+                var companyShow = truncateChars(company, iosCompanyEllipsis ? 13 : 12);
+                var companyTitleAttr =
+                    company && companyShow !== company
+                        ? ' title="' + escapeHtml(company) + '"'
+                        : '';
                 var id = record.id != null ? String(record.id).trim() : '';
                 var detailHref = buildXiangqingUrl(record, listYear);
                 if (!detailHref) {
@@ -2594,7 +2609,9 @@
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
                 listHtml +=
-                    '<div class="list-row"><span class="list-company">扣缴义务人：<span class="list-company-name">' +
+                    '<div class="list-row"><span class="list-company">扣缴义务人：<span class="list-company-name"' +
+                    companyTitleAttr +
+                    '>' +
                     escapeHtml(companyShow) +
                     '</span></span></div>';
                 listHtml +=

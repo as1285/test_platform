@@ -525,6 +525,107 @@
         } catch (e0) {}
       });
     }
+    var kpiMount = document.getElementById('opsBoardKpi');
+    if (kpiMount) {
+      kpiMount.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.js-ops-gmv-detail') : null;
+        if (!btn) return;
+        openPayDetail();
+      });
+    }
+    var payClose = document.getElementById('btnOpsBoardPayClose');
+    if (payClose) {
+      payClose.addEventListener('click', function () {
+        var panel = document.getElementById('opsBoardPayDetail');
+        if (panel) panel.hidden = true;
+      });
+    }
+    var payDays = document.getElementById('opsBoardPayDays');
+    if (payDays) {
+      payDays.addEventListener('change', function () {
+        var panel = document.getElementById('opsBoardPayDetail');
+        if (panel && !panel.hidden) loadPayDetail();
+      });
+    }
+    var payTbody = document.getElementById('opsBoardPayTbody');
+    if (payTbody) {
+      payTbody.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.js-ops-open-user') : null;
+        if (!btn) return;
+        jumpToUser(btn.getAttribute('data-u'));
+      });
+    }
+  }
+
+  function openPayDetail() {
+    var panel = document.getElementById('opsBoardPayDetail');
+    if (panel) panel.hidden = false;
+    loadPayDetail();
+  }
+
+  function loadPayDetail() {
+    var tbody = document.getElementById('opsBoardPayTbody');
+    var meta = document.getElementById('opsBoardPayDetailMeta');
+    var daysEl = document.getElementById('opsBoardPayDays');
+    var days = daysEl && daysEl.value ? daysEl.value : '1';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
+    if (meta) meta.textContent = '';
+    fetchAdmin('api/admin/ops/board/payments?days=' + encodeURIComponent(days))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          if (tbody) {
+            tbody.innerHTML =
+              '<tr><td colspan="5">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
+          }
+          return;
+        }
+        renderPayDetail(j.data);
+      })
+      .catch(function () {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载失败</td></tr>';
+      });
+  }
+
+  function renderPayDetail(data) {
+    var tbody = document.getElementById('opsBoardPayTbody');
+    var meta = document.getElementById('opsBoardPayDetailMeta');
+    if (!tbody) return;
+    var list = (data && data.list) || [];
+    if (meta) {
+      meta.textContent =
+        '共 ' +
+        (data.orders != null ? data.orders : list.length) +
+        ' 单 · ¥' +
+        (data.gmv != null ? data.gmv : 0) +
+        (data.truncated ? '（仅显示最近 500 单）' : '');
+    }
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5">暂无已付订单</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list
+      .map(function (row) {
+        var u = String(row.username || '');
+        return (
+          '<tr><td><button type="button" class="btn-rename-user js-ops-open-user" data-u="' +
+          esc(u) +
+          '">' +
+          esc(u || '—') +
+          '</button></td><td>' +
+          esc(row.label || row.sku_id || '—') +
+          '</td><td>¥' +
+          esc(String(row.amount != null ? row.amount : 0)) +
+          '</td><td>' +
+          esc(formatDt(row.paid_at)) +
+          '</td><td class="cell-break"><code>' +
+          esc(row.out_trade_no || '—') +
+          '</code></td></tr>'
+        );
+      })
+      .join('');
   }
 
   function kpiCard(label, value, sub) {
@@ -539,19 +640,54 @@
     );
   }
 
-  function kpiGmvCard(payOrdersGmv, taxEditGmv) {
+  function kpiGmvCard(skuRows, payOrdersGmv, taxEditGmv, totalGmv) {
     function yen(v) {
       return '¥' + (v != null ? v : 0);
     }
+    var rows = Array.isArray(skuRows) ? skuRows.slice() : [];
+    if (!rows.length) {
+      rows = [
+        { label: '付费了单', orders: 0, gmv: payOrdersGmv },
+        { label: '修改个税', orders: 0, gmv: taxEditGmv }
+      ];
+    }
+    var sumFromRows = 0;
+    for (var i = 0; i < rows.length; i++) {
+      sumFromRows += Number(rows[i].gmv) || 0;
+    }
+    sumFromRows = Math.round(sumFromRows * 100) / 100;
+    var fromApi = Number(totalGmv);
+    /* 有 SKU 拆分时以拆分合计为准，避免 pay_gmv 为 0/缺失时总额空白 */
+    var total =
+      rows.length && sumFromRows > 0
+        ? sumFromRows
+        : isFinite(fromApi) && fromApi > 0
+          ? Math.round(fromApi * 100) / 100
+          : sumFromRows;
+    var items = rows
+      .map(function (r) {
+        var label = r.label || r.sku_id || '其他';
+        var orders = Number(r.orders) || 0;
+        var k = orders > 0 ? label + ' · ' + orders + '单' : label;
+        return (
+          '<div class="ops-board-kpi-split-item"><span class="k">' +
+          esc(k) +
+          '</span><span class="v">' +
+          esc(yen(r.gmv)) +
+          '</span></div>'
+        );
+      })
+      .join('');
     return (
-      '<div class="ops-board-kpi-card ops-board-kpi-gmv"><div class="label">今日 GMV</div>' +
+      '<div class="ops-board-kpi-card ops-board-kpi-gmv">' +
+      '<div class="label ops-board-kpi-gmv-head"><span>今日 GMV</span>' +
+      '<button type="button" class="btn-page btn-sm js-ops-gmv-detail">详情</button>' +
+      '</div>' +
+      '<div class="value ops-board-kpi-gmv-total" title="今日付费总额">' +
+      esc(yen(total)) +
+      '</div>' +
       '<div class="ops-board-kpi-split">' +
-      '<div class="ops-board-kpi-split-item"><span class="k">付费了单</span><span class="v">' +
-      esc(yen(payOrdersGmv)) +
-      '</span></div>' +
-      '<div class="ops-board-kpi-split-item"><span class="k">修改个税</span><span class="v">' +
-      esc(yen(taxEditGmv)) +
-      '</span></div>' +
+      items +
       '</div></div>'
     );
   }
@@ -610,7 +746,7 @@
         kpiCard('今日注册', today.register) +
         kpiCard('今日激活', today.activate) +
         kpiCard('今日付费单', today.pay_orders) +
-        kpiGmvCard(payOrdersGmv, today.tax_edit_gmv);
+        kpiGmvCard(today.gmv_by_sku, payOrdersGmv, today.tax_edit_gmv, today.pay_gmv);
     }
     var todo = document.getElementById('opsBoardTodo');
     if (todo) {

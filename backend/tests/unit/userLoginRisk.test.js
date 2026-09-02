@@ -4,7 +4,8 @@ const {
   USER_REGISTER_IP_ACCOUNT_THRESHOLD,
   computeUserLoginRisk,
   userRegisterIpRiskMatchSql,
-  userLoginRiskMatchSql
+  userLoginRiskMatchSql,
+  userSameRegisterIpOfSql
 } = require('../../src/domain/userLoginRisk');
 
 describe('userLoginRisk', () => {
@@ -41,5 +42,14 @@ describe('userLoginRisk', () => {
     const sql = userLoginRiskMatchSql('users.username');
     expect(sql).toContain('register_ok');
     expect(sql).toContain(String(USER_REGISTER_IP_ACCOUNT_THRESHOLD));
+  });
+
+  it('builds same-register-ip-of SQL with one bind placeholder', () => {
+    const sql = userSameRegisterIpOfSql('users.username');
+    expect(sql).toContain("reg_peer.reason = 'register_ok'");
+    expect(sql).toContain("reg_seed.reason = 'register_ok'");
+    expect(sql).toContain('reg_seed.username = ?');
+    expect(sql).toContain('TRIM(reg_peer.ip) = TRIM(reg_seed.ip)');
+    expect((sql.match(/\?/g) || []).length).toBe(1);
   });
 });

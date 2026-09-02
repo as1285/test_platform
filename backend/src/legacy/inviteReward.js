@@ -226,6 +226,7 @@ function createInviteReward(deps) {
     activationFieldsForApi: activationFieldsForApi,
     setUserPermanentInConn: setUserPermanentInConn,
     addTrialDaysInConn: addTrialDaysInConn,
+    addTrialDurationInConn: addTrialDurationInConn,
     applyActivationCodeExtended: applyActivationCodeExtended
   };
 }

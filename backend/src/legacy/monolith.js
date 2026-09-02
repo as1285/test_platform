@@ -51,7 +51,8 @@ const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const renameFeePolicy = require('../user/renameFeePolicy');
 const {
   computeUserLoginRisk,
-  userLoginRiskMatchSql
+  userLoginRiskMatchSql,
+  userSameRegisterIpOfSql
 } = require('../domain/userLoginRisk');
 
 const JWT_SECRET = config.JWT_SECRET;
@@ -17091,6 +17092,7 @@ async function handleAdminUsers(req, res) {
 
     // 筛选参数
     var qUsername = String(req.query.username || '').trim();
+    var qSameRegisterIpOf = String(req.query.same_register_ip_of || '').trim();
     var qRealName = String(req.query.real_name || '').trim();
     var qActive = req.query.active; // '1' or '0'
     var qBanned = req.query.banned; // '1' or '0'
@@ -17128,7 +17130,11 @@ async function handleAdminUsers(req, res) {
       whereClauses.push(nonGuestUsernameSql('users.username'));
     }
 
-    if (qUsername) {
+    /* 同注册 IP：优先于账号模糊/精准，列出种子账号注册 IP 下全部账号 */
+    if (qSameRegisterIpOf) {
+      whereClauses.push(userSameRegisterIpOfSql('users.username'));
+      params.push(qSameRegisterIpOf);
+    } else if (qUsername) {
       if (qExact) {
         whereClauses.push('username = ?');
         params.push(qUsername);
@@ -17529,7 +17535,8 @@ async function handleAdminUsers(req, res) {
         peer_filter: qPeerExempt ? 'exempt' : qPeer ? '1' : '',
         whitelist_filter: qWhitelist,
         high_income_filter: qHighIncome ? '1' : '',
-        high_income_threshold: HIGH_SELF_INCOME_THRESHOLD
+        high_income_threshold: HIGH_SELF_INCOME_THRESHOLD,
+        same_register_ip_of: qSameRegisterIpOf || ''
       }
     });
   } catch (e) {
@@ -18591,53 +18598,212 @@ async function handleAdminCodes(req, res) {
   }
 }
 
-/** 管理员手动开通 */
+/** 管理员手动开通：按时长直接激活（可不填激活码）；仍兼容传 code */
 async function handleAdminUserActivate(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
   var code = body.code != null ? String(body.code).trim() : '';
+  var grantDays = parseInt(body.grant_days, 10);
+  var grantHours = parseInt(body.grant_hours, 10);
+  var grantMinutes = parseInt(body.grant_minutes, 10);
+  if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
+  if (!isFinite(grantHours) || grantHours < 0) grantHours = 0;
+  if (!isFinite(grantMinutes) || grantMinutes < 0) grantMinutes = 0;
+  if (grantDays > 365) grantDays = 365;
+  if (grantHours > 720) grantHours = 720;
+  if (grantMinutes > 525600) grantMinutes = 525600;
+  var wantPermanent =
+    body.permanent === true ||
+    body.permanent === 1 ||
+    body.permanent === '1' ||
+    String(body.duration || '').trim().toLowerCase() === 'permanent';
   if (!target) {
     return res.status(400).json({ code: 400, msg: 'username required' });
-  }
-  if (!code) {
-    return res.status(400).json({ code: 400, msg: '请输入激活码' });
   }
   if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
   }
+  /* 兼容旧客户端：仍可用激活码开通 */
+  if (code) {
+    const connLegacy = await pool.getConnection();
+    try {
+      const [urows] = await connLegacy.execute(
+        'SELECT id, account_active, list_hidden_at FROM users WHERE username = ?',
+        [target]
+      );
+      if (urows.length === 0) {
+        connLegacy.release();
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      if (urows[0].list_hidden_at) {
+        connLegacy.release();
+        return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+      }
+      var allowedLegacy = await adminCanAccessTargetUser(connLegacy, req.admin, target);
+      if (!allowedLegacy) {
+        connLegacy.release();
+        return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+      }
+      var alreadyLegacy =
+        urows[0].account_active === 1 ||
+        urows[0].account_active === true ||
+        Number(urows[0].account_active) === 1;
+      connLegacy.release();
+      if (alreadyLegacy) {
+        return res.json({
+          code: 200,
+          data: { username: target, account_active: true },
+          msg: '账号已激活'
+        });
+      }
+      await applyActivationCode(target, code);
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: true },
+        msg: '激活成功'
+      });
+    } catch (e) {
+      try {
+        connLegacy.release();
+      } catch (e2) {}
+      return res.status(400).json({ code: 400, msg: e.message || String(e) });
+    }
+  }
+
+  var isPermanent = wantPermanent || (grantDays < 1 && grantHours < 1 && grantMinutes < 1);
+  if (!isPermanent && grantDays < 1 && grantHours < 1 && grantMinutes < 1) {
+    return res.status(400).json({ code: 400, msg: '请选择激活时长' });
+  }
+
   const conn = await pool.getConnection();
   try {
+    await conn.beginTransaction();
     const [urows] = await conn.execute(
-      'SELECT id, account_active, list_hidden_at FROM users WHERE username = ?',
+      `SELECT id, account_active, activation_kind, active_until, list_hidden_at
+       FROM users WHERE username = ? FOR UPDATE`,
       [target]
     );
     if (urows.length === 0) {
+      await conn.rollback();
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
     if (urows[0].list_hidden_at) {
+      await conn.rollback();
       conn.release();
       return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
     }
     var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
     if (!allowed) {
+      await conn.rollback();
       conn.release();
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
-    var already =
-      urows[0].account_active === 1 ||
-      urows[0].account_active === true ||
-      Number(urows[0].account_active) === 1;
-    conn.release();
-    if (already) {
-      return res.json({ code: 200, data: { username: target, account_active: true }, msg: '账号已激活' });
+    var row = urows[0];
+    var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+    if (kind === 'permanent' || (isUserPermanentActive(row) && kind !== 'trial')) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: true, activation_kind: 'permanent' },
+        msg: '账号已是永久激活'
+      });
     }
-    await applyActivationCode(target, code);
-    return res.json({ code: 200, data: { username: target, account_active: true }, msg: '激活成功' });
+    var already =
+      row.account_active === 1 ||
+      row.account_active === true ||
+      Number(row.account_active) === 1;
+    if (already && !isPermanent && kind === 'trial') {
+      /* 已时效激活：允许用更长档覆盖/续期 */
+    } else if (already && isPermanent) {
+      /* 已激活改永久：走永久路径 */
+    } else if (already) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: true },
+        msg: '账号已激活'
+      });
+    }
+
+    var ownerAdmin =
+      req.admin && req.admin.username ? String(req.admin.username).trim() : ADMIN_PANEL_USER;
+    var plainCode = randomActivationCodePlain();
+    var noteBits = ['管理员手动开通'];
+    if (isPermanent) noteBits.push('永久');
+    else {
+      if (grantDays > 0) noteBits.push(grantDays + '天');
+      if (grantHours > 0) noteBits.push(grantHours + '时');
+      if (grantMinutes > 0) noteBits.push(grantMinutes + '分');
+    }
+    const [codeResult] = await conn.execute(
+      `INSERT INTO activation_codes
+       (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, last_used_at, used_by_username, owner_admin_username)
+       VALUES (?, 1, 1, NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
+      [
+        plainCode,
+        isPermanent ? null : grantDays || null,
+        isPermanent ? null : grantHours || null,
+        isPermanent ? null : grantMinutes || null,
+        noteBits.join(' '),
+        target,
+        ownerAdmin || ADMIN_PANEL_USER
+      ]
+    );
+    var grantResult;
+    if (isPermanent) {
+      await getInviteReward().setUserPermanentInConn(conn, target, 'admin_manual');
+      grantResult = { kind: 'permanent', active_until: null };
+    } else {
+      grantResult = await getInviteReward().addTrialDurationInConn(
+        conn,
+        target,
+        grantDays,
+        grantHours,
+        'admin_manual',
+        String(codeResult.insertId),
+        grantMinutes
+      );
+      await conn.execute(
+        `UPDATE users SET activation_source_channel = COALESCE(NULLIF(TRIM(activation_source_channel), ''), ?)
+         WHERE username = ?`,
+        ['admin_manual', target]
+      );
+    }
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    invalidateUserInfoApiCache(target);
+    var msg = isPermanent
+      ? '已永久激活'
+      : '已激活 ' +
+        (grantDays > 0 ? grantDays + ' 天' : '') +
+        (grantHours > 0 ? (grantDays > 0 ? ' ' : '') + grantHours + ' 小时' : '') +
+        (grantMinutes > 0
+          ? (grantDays > 0 || grantHours > 0 ? ' ' : '') + grantMinutes + ' 分钟'
+          : '');
+    return res.json({
+      code: 200,
+      data: {
+        username: target,
+        account_active: true,
+        activation_kind: grantResult.kind || (isPermanent ? 'permanent' : 'trial'),
+        active_until: grantResult.active_until || null,
+        grant_days: isPermanent ? 0 : grantDays,
+        grant_hours: isPermanent ? 0 : grantHours,
+        grant_minutes: isPermanent ? 0 : grantMinutes
+      },
+      msg: msg
+    });
   } catch (e) {
     try {
-      conn.release();
+      await conn.rollback();
     } catch (e2) {}
+    try {
+      conn.release();
+    } catch (e3) {}
     return res.status(400).json({ code: 400, msg: e.message || String(e) });
   }
 }
@@ -21814,75 +21980,80 @@ async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return res.status(400).json({ code: 400, msg: 'date required (YYYY-MM-DD)' });
     }
-    var eventKey = req.query.event_key != null ? String(req.query.event_key).trim() : '';
-    if (eventKey && !isPurchasePageTrackEventKey(eventKey)) {
-      return res.status(400).json({ code: 400, msg: 'invalid event_key' });
-    }
     var page = parseInt(req.query.page, 10) || 1;
     var limit = parseInt(req.query.limit, 10) || 20;
     if (page < 1) page = 1;
     if (limit < 1) limit = 20;
     if (limit > 100) limit = 100;
-    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+    var skuLabelFn = require('../admin/opsConversion').opsSkuGmvLabel;
     const conn = await pool.getConnection();
     try {
-      var eventFilterSql = PURCHASE_PAGE_TRACK_EVENT_SQL;
-      var params = [dateStr];
-      if (eventKey) {
-        eventFilterSql = 'route_key LIKE ?';
-        params = [dateStr, '%#' + eventKey];
-      }
-      const [aggRows] = await conn.execute(
-        `SELECT username,
-                SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
-                COUNT(*) AS cnt,
-                MAX(created_at) AS last_at
-         FROM user_page_events
-         WHERE ${cnDay} = ?
-           AND ${eventFilterSql}
-         GROUP BY username, event_key`,
-        params
+      /* 展开行只展示当日已付订单明细（按用户聚合），不再列埋点次数 */
+      const [payRows] = await conn.execute(
+        `SELECT id, username, sku_id, subject, grant_kind, amount,
+                out_trade_no, paid_at, created_at
+         FROM payment_orders
+         WHERE status = 'paid' AND ${cnPaidDay} = ?
+         ORDER BY COALESCE(paid_at, created_at) DESC, id DESC`,
+        [dateStr]
       );
       var userMap = {};
-      aggRows.forEach(function (r) {
-        var ek = String(r.event_key || '').trim();
-        if (!isPurchasePageTrackEventKey(ek)) return;
+      var orderTotal = 0;
+      var gmvTotal = 0;
+      (payRows || []).forEach(function (r) {
         var uname = String(r.username || '').trim();
         if (!uname) return;
         if (!userMap[uname]) {
           userMap[uname] = {
             username: uname,
-            total: 0,
-            events: {},
+            order_count: 0,
+            total_amount: 0,
+            payments: [],
             last_at: null
           };
-          PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k) {
-            userMap[uname].events[k] = 0;
-          });
         }
-        var c = Number(r.cnt) || 0;
-        userMap[uname].events[ek] = (userMap[uname].events[ek] || 0) + c;
-        userMap[uname].total += c;
-        var at = r.last_at ? new Date(r.last_at).getTime() : 0;
+        var amount = Math.round(Number(r.amount || 0) * 100) / 100;
+        var paidAt = r.paid_at || r.created_at || null;
+        var at = paidAt ? new Date(paidAt).getTime() : 0;
+        userMap[uname].payments.push({
+          id: Number(r.id) || 0,
+          sku_id: String(r.sku_id || ''),
+          label: skuLabelFn(r),
+          subject: String(r.subject || ''),
+          amount: amount,
+          out_trade_no: String(r.out_trade_no || ''),
+          paid_at: paidAt ? new Date(paidAt).toISOString() : null
+        });
+        userMap[uname].order_count += 1;
+        userMap[uname].total_amount =
+          Math.round((userMap[uname].total_amount + amount) * 100) / 100;
         if (!userMap[uname].last_at || at > userMap[uname].last_at) {
           userMap[uname].last_at = at;
         }
+        orderTotal += 1;
+        gmvTotal += amount;
       });
       var list = Object.keys(userMap)
         .map(function (k) {
           return userMap[k];
         })
         .sort(function (a, b) {
-          return b.total - a.total || String(a.username).localeCompare(String(b.username));
+          return (
+            b.total_amount - a.total_amount ||
+            b.order_count - a.order_count ||
+            String(a.username).localeCompare(String(b.username))
+          );
         });
       var total = list.length;
-      var totalPages = Math.max(1, Math.ceil(total / limit));
+      var totalPages = Math.max(1, Math.ceil(total / limit) || 1);
       if (page > totalPages) page = totalPages;
       var slice = list.slice((page - 1) * limit, page * limit).map(function (u) {
         return {
           username: u.username,
-          total: u.total,
-          events: u.events,
+          order_count: u.order_count,
+          total_amount: u.total_amount,
+          payments: u.payments,
           last_at: u.last_at ? new Date(u.last_at).toISOString() : null
         };
       });
@@ -21890,12 +22061,12 @@ async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
         code: 200,
         data: {
           date: dateStr,
-          event_key: eventKey || '',
-          event_keys: PURCHASE_PAGE_TRACK_EVENT_KEYS.slice(),
           page: page,
           limit: limit,
           total: total,
           total_pages: totalPages,
+          order_count: orderTotal,
+          gmv: Math.round(gmvTotal * 100) / 100,
           users: slice
         }
       });
@@ -21904,7 +22075,7 @@ async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
     }
   } catch (e) {
     console.error('[admin purchase-events/users]', e);
-    return res.status(500).json({ code: 500, msg: '加载支付页用户明细失败' });
+    return res.status(500).json({ code: 500, msg: '加载付款明细失败' });
   }
 }
 
