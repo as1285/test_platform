@@ -269,7 +269,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v17-ops-board'],
+  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v18-rename-peer-merge'],
   'admin zaizhi-cert hash not bounced'
 );
 mustInclude(
@@ -285,10 +285,11 @@ mustInclude(
 mustInclude(
   'backend/src/admin/menuRegistry.js',
   [
-    "page: 'peer-accounts'",
-    "menu_key: 'peer-accounts'",
     "page: 'rename-tax-daily'",
     "menu_key: 'rename-tax-daily'",
+    "label: '同行 · 高频改名'",
+    "alias_menus: ['peer-accounts']",
+    "'peer-accounts': 'rename-tax-daily'",
     "page: 'users-deleted'",
     "menu_key: 'users-deleted'",
     "page: 'user-login-log'",
@@ -297,21 +298,25 @@ mustInclude(
   ],
   'menuRegistry assignable sidebar child pages'
 );
+mustExclude(
+  'backend/src/admin/menuRegistry.js',
+  ["page: 'peer-accounts'", "menu_key: 'peer-accounts'"],
+  'menuRegistry peer-accounts removed as standalone page'
+);
 mustInclude(
   'backend/src/admin/routes.js',
   [
     "requireAdminMenu('users-deleted')",
-    "requireAdminMenu('rename-tax-daily')",
+    "requireAdminAnyMenu(['rename-tax-daily', 'peer-accounts'])",
     "requireAdminMenu('user-login-log')",
-    "['peer-accounts']"
+    "['peer-accounts', 'rename-tax-daily']"
   ],
   'admin routes gate new sidebar menu keys'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
   [
-    "SELECT DISTINCT admin_id, 'peer-accounts'",
-    "SELECT DISTINCT admin_id, 'rename-tax-daily'",
+    "SELECT DISTINCT admin_id, 'rename-tax-daily' FROM admin_account_menus WHERE menu_key IN ('users', 'peer-accounts')",
     "SELECT DISTINCT admin_id, 'users-deleted'",
     "SELECT DISTINCT admin_id, 'user-login-log'"
   ],
@@ -319,8 +324,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v17-ops-board'],
+  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v18-rename-peer-merge', 'setRenamePeerTab', 'rename-peer-tab'],
   'admin accounts menu selector grouped by sidebar'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['page-rename-tax-daily', 'renamePeerTabDaily', 'renamePeerTabPeer', '同行 · 高频改名'],
+  'admin merged rename/peer page tabs'
+);
+mustExclude(
+  'frontend/admin_panel.html',
+  ['id="page-peer-accounts"'],
+  'admin standalone peer-accounts page removed'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
