@@ -4,6 +4,7 @@
 'use strict';
 
 const { getPool } = require('../shared/db');
+const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 
 var HIGH_INCOME = 15000;
 var GUEST_PREFIX = '__guest_';
@@ -364,9 +365,19 @@ async function handleOpsBoard(req, res) {
 
       var payWhere = ["status = 'paid'", cnPaidDay + ' = ' + todayBjSql];
       var payParams = [];
+      /* 与支付分析一致：个税修改费单独拆出，其余已付计入「付费了单」 */
+      var taxEditSkuSql =
+        "(sku_id IN ('" +
+        taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID +
+        "','" +
+        taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID +
+        "') OR grant_kind IN ('tax_edit_single','tax_edit_daily'))";
       const [payRows] = await conn.query(
-        'SELECT COUNT(*) AS pay_orders, COALESCE(SUM(amount), 0) AS pay_gmv FROM payment_orders WHERE ' +
-          payWhere.join(' AND '),
+        `SELECT COUNT(*) AS pay_orders,
+                COALESCE(SUM(amount), 0) AS pay_gmv,
+                COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN 0 ELSE amount END), 0) AS pay_orders_gmv,
+                COALESCE(SUM(CASE WHEN ${taxEditSkuSql} THEN amount ELSE 0 END), 0) AS tax_edit_gmv
+         FROM payment_orders WHERE ` + payWhere.join(' AND '),
         payParams
       );
 
@@ -442,7 +453,9 @@ async function handleOpsBoard(req, res) {
             register: n(t, 'register_today'),
             activate: n(a, 'activate_today'),
             pay_orders: n(p, 'pay_orders'),
-            pay_gmv: Math.round(Number(p.pay_gmv || 0) * 100) / 100
+            pay_gmv: Math.round(Number(p.pay_gmv || 0) * 100) / 100,
+            pay_orders_gmv: Math.round(Number(p.pay_orders_gmv || 0) * 100) / 100,
+            tax_edit_gmv: Math.round(Number(p.tax_edit_gmv || 0) * 100) / 100
           },
           stock: {
             total: n(s, 'total'),

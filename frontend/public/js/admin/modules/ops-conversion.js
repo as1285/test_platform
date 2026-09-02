@@ -539,6 +539,23 @@
     );
   }
 
+  function kpiGmvCard(payOrdersGmv, taxEditGmv) {
+    function yen(v) {
+      return '¥' + (v != null ? v : 0);
+    }
+    return (
+      '<div class="ops-board-kpi-card ops-board-kpi-gmv"><div class="label">今日 GMV</div>' +
+      '<div class="ops-board-kpi-split">' +
+      '<div class="ops-board-kpi-split-item"><span class="k">付费了单</span><span class="v">' +
+      esc(yen(payOrdersGmv)) +
+      '</span></div>' +
+      '<div class="ops-board-kpi-split-item"><span class="k">修改个税</span><span class="v">' +
+      esc(yen(taxEditGmv)) +
+      '</span></div>' +
+      '</div></div>'
+    );
+  }
+
   function todoCard(segOrHref, label, num, hint, isAd) {
     if (isAd) {
       return (
@@ -580,11 +597,20 @@
     var funnel = ((data && data.research) || {}).funnel || {};
     var kpi = document.getElementById('opsBoardKpi');
     if (kpi) {
+      var payOrdersGmv =
+        today.pay_orders_gmv != null
+          ? today.pay_orders_gmv
+          : Math.max(
+              0,
+              Math.round(
+                ((Number(today.pay_gmv) || 0) - (Number(today.tax_edit_gmv) || 0)) * 100
+              ) / 100
+            );
       kpi.innerHTML =
         kpiCard('今日注册', today.register) +
         kpiCard('今日激活', today.activate) +
         kpiCard('今日付费单', today.pay_orders) +
-        kpiCard('今日 GMV', '¥' + (today.pay_gmv != null ? today.pay_gmv : 0));
+        kpiGmvCard(payOrdersGmv, today.tax_edit_gmv);
     }
     var todo = document.getElementById('opsBoardTodo');
     if (todo) {
