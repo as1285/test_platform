@@ -193,6 +193,10 @@
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/V2405A|V2405DA|V2413\b|V2419A|V2419DA|PD2419[A-Z]?|\bV2419\b|(?:vivo[\s_-]*)?X200[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x200pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                }
                 if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-x90');
                     document.documentElement.classList.add('app-android-immersive-white-top');

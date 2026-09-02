@@ -105,6 +105,12 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/V2405A|V2405DA|V2413\b|V2419A|V2419DA|PD2419[A-Z]?|\bV2419\b|(?:vivo[\s_-]*)?X200[\s_-]*Pro/i.test(u)) {
+                    document.documentElement.classList.add('app-android-vivo-x200pro');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-x90');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -232,7 +238,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260902-ip16pm-mq"></script>
-    <script src="/js/auth.js?v=20260902-ip16pm-mq" defer></script>
+    <script src="/js/auth.js?v=20260902-x200mini" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -372,6 +378,10 @@
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-vivo-s50promini.app-android-white-page-outer body.page-shuiming > .header,
         html.app-android-vivo-s50promini.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-vivo-x200pro body.page-shuiming > .header,
+        html.app-android-vivo-x200pro.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-vivo-x200pro.app-android-white-page-outer body.page-shuiming > .header,
+        html.app-android-vivo-x200pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .header,
         html.app-android-huawei-nova13 body.page-shuiming > .header,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-immersive-white-top body.page-shuiming > .header,
@@ -396,6 +406,10 @@
         html.app-android-vivo-s50promini.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-vivo-s50promini.app-android-white-page-outer body.page-shuiming > .content,
         html.app-android-vivo-s50promini.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-vivo-x200pro body.page-shuiming > .content,
+        html.app-android-vivo-x200pro.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-vivo-x200pro.app-android-white-page-outer body.page-shuiming > .content,
+        html.app-android-vivo-x200pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming > .content,
         html.app-android-huawei-nova13 body.page-shuiming > .content,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-immersive-white-top body.page-shuiming > .content,

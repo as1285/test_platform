@@ -198,8 +198,8 @@ mustInclude(
 );
 mustInclude(
   'backend/scripts/company_seal.py',
-  ['SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.82', 'x_scale = 0.68', 'inner_w = max(6'],
-  'company_seal SealUtil-style double-ring seal'
+  ['SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.90', 'drawstamputils', '_apply_rough_edge', '单圈朱红'],
+  'company_seal DrawStampUtils-style single-ring official seal'
 );
 mustExclude(
   'backend/scripts/lizhi_render_pdf.py',
@@ -1332,6 +1332,22 @@ mustInclude(
   'frontend/public/js/auth.js',
   ['isVivoS50ProMiniClient', 'app-android-vivo-s50promini', '(?:vivo[\\s_-]*)?S50', 'V2527A'],
   'vivo S50 Pro mini detect + immersive'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'isVivoX200ProLikeClient',
+    'app-android-vivo-x200pro',
+    'V2419A',
+    'X200[\\s_-]*Pro',
+    ':not(.app-android-vivo-x200pro)'
+  ],
+  'vivo X200 Pro / mini detect + immersive'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['V2419A', 'app-android-vivo-x200pro', 'data-vivox200pro-result-firstpaint', '20260902-x200mini'],
+  'shuiming_result vivo X200 Pro mini first-paint'
 );
 mustInclude(
   'frontend/shuiming.html',
