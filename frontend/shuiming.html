@@ -185,15 +185,29 @@
                         modelSm = String(localStorage.getItem('tax_device_model_v1') || '');
                     } catch (eModelSm) {}
                     var blobSm = u + ' ' + modelSm;
+                    var seenWideSm = false;
+                    try {
+                        seenWideSm = sessionStorage.getItem('tax_ios_promax_wide_v1') === '1';
+                    } catch (eSeenSm) {}
                     var is16pmUaSm =
                         /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blobSm) &&
                         !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blobSm);
                     var is16pmVpSm = false;
+                    var isLargePmSm = false;
                     try {
                         var swSm = window.screen && window.screen.width ? Number(window.screen.width) : 0;
                         var shSm = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+                        if (!swSm || !shSm) {
+                            swSm = window.innerWidth ? Number(window.innerWidth) : 0;
+                            shSm = window.innerHeight ? Number(window.innerHeight) : 0;
+                        }
                         var shortSm = Math.min(swSm, shSm);
                         var longSm = Math.max(swSm, shSm);
+                        isLargePmSm =
+                            shortSm >= 428 &&
+                            shortSm <= 444 &&
+                            longSm >= 920 &&
+                            longSm <= 962;
                         is16pmVpSm =
                             shortSm >= 436 &&
                             shortSm <= 444 &&
@@ -203,16 +217,22 @@
                     } catch (eVpSm) {}
                     if (is16pmUaSm || is16pmVpSm) {
                         document.documentElement.classList.add('app-ios-iphone16promax');
+                    }
+                    if (is16pmUaSm || is16pmVpSm || isLargePmSm || seenWideSm) {
+                        document.documentElement.classList.add('app-ios-promax-wide');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
                         document.documentElement.classList.add('app-top-safe-shell');
+                        try {
+                            sessionStorage.setItem('tax_ios_promax_wide_v1', '1');
+                        } catch (eSetSm) {}
                     }
                 } catch (e16pm) {}
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260902-ip16pm-width"></script>
-    <script src="/js/auth.js?v=20260902-ip16pm-width" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-ip16pm-wide2"></script>
+    <script src="/js/auth.js?v=20260902-ip16pm-wide2" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -279,6 +299,16 @@
         /* 内容区域 */
         .content {
             padding: calc(44px + env(safe-area-inset-top, 0px)) 0 32px;
+        }
+        html.app-ios-promax-wide body.page-shuiming > .header,
+        html.app-ios-iphone16promax body.page-shuiming > .header {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        html.app-ios-promax-wide body.page-shuiming > .content,
+        html.app-ios-iphone16promax body.page-shuiming > .content {
+            padding-left: 8px;
+            padding-right: 8px;
         }
 
         /* Cordova iOS：壳内需 statusbar 占位；Android Cordova 黑条在 WebView 外，勿叠 */

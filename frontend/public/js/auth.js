@@ -1112,6 +1112,30 @@
     }
   }
 
+  /**
+   * 大屏 Pro Max 宽度档：15 PM 430×932、16 PM 440×956、放大模式 430×932。
+   * 只认 screen.width 会漏「显示放大」的 16 Pro Max。
+   */
+  function isIPhoneLargePromaxWidthViewport() {
+    var sides = getIOSLogicalScreenSides();
+    if (!sides) {
+      return false;
+    }
+    return (
+      sides.shortSide >= 428 &&
+      sides.shortSide <= 444 &&
+      sides.longSide >= 920 &&
+      sides.longSide <= 962
+    );
+  }
+
+  function markIosPromaxWideLayout() {
+    try {
+      document.documentElement.classList.add('app-ios-promax-wide');
+      sessionStorage.setItem('tax_ios_promax_wide_v1', '1');
+    } catch (eWide) {}
+  }
+
   /** iPhone 17 / 17 Pro / 17 Air 等 6.3 寸档逻辑屏约 402×874（容差）。 */
   function isIPhone402x874Viewport() {
     try {
@@ -4156,6 +4180,20 @@
           upsertMeta('msapplication-navbutton-color', '#2c80f4');
         }
       }
+      if (
+        iosIPhone16ProMax ||
+        iosIPhone15ProMax ||
+        iosIPhone17ProMax ||
+        (iosClient && isIPhoneLargePromaxWidthViewport())
+      ) {
+        markIosPromaxWideLayout();
+      } else {
+        try {
+          if (sessionStorage.getItem('tax_ios_promax_wide_v1') === '1') {
+            markIosPromaxWideLayout();
+          }
+        } catch (eWideSeen) {}
+      }
       if (iosIPhone14 || iosIPhone12Pro) {
         /* 12 Pro 与 14 同为 390×844 刘海，复用白顶栏避让样式 */
         document.documentElement.classList.add('app-ios-iphone14');
@@ -4616,13 +4654,15 @@
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;display:flex !important;align-items:center !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:121 !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
-          'html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
-          'html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
-          'html.app-ios-iphone16promax body.page-shuiming-result .back-btn{left:20px !important;}' +
-          'html.app-ios-iphone16promax body.page-shuiming-result .header-right{right:20px !important;}' +
-          'html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card{margin-left:16px !important;margin-right:16px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list,html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item,html.app-ios-iphone15promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
+          'html.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-company-name,html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .back-btn,html.app-ios-iphone16promax body.page-shuiming-result .back-btn{left:20px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .header-right,html.app-ios-iphone16promax body.page-shuiming-result .header-right{right:20px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card{margin-left:20px !important;margin-right:20px !important;}' +
+          'html.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:20px !important;padding-right:20px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming .content{padding-left:8px !important;padding-right:8px !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
@@ -8046,7 +8086,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260902-ip16pm-width';
+      s.src = '/js/conversion-guide.js?v=20260902-ip16pm-wide2';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

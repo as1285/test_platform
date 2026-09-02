@@ -14,6 +14,9 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
     expect(auth).toContain('MYTN3');
     expect(auth).toMatch(/function isIPhone16ProMaxClient\(\)/);
     expect(auth).toMatch(/function isIPhone17ProMaxClient\(\)/);
+    expect(auth).toContain('function isIPhoneLargePromaxWidthViewport');
+    expect(auth).toContain('function markIosPromaxWideLayout');
+    expect(auth).toContain('app-ios-promax-wide');
   });
 
   it('does not steal 16 Pro via iOS 26 + 402×874 heuristic', () => {
@@ -36,14 +39,16 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
   it('shuiming_result first-paints 16 Pro Max and narrows wide layout', () => {
     expect(shuimingResult).toContain('MYTN3');
     expect(shuimingResult).toContain('app-ios-iphone16promax');
-    expect(shuimingResult).toContain('20260902-ip16pm-width');
+    expect(shuimingResult).toContain('app-ios-promax-wide');
+    expect(shuimingResult).toContain('tax_ios_promax_wide_v1');
+    expect(shuimingResult).toContain('20260902-ip16pm-wide2');
     expect(shuimingResult).toContain('tax_device_model_v1');
-    expect(shuimingResult).toMatch(/short16 >= 436/);
+    expect(shuimingResult).toMatch(/short16 >= 428/);
     expect(shuimingResult).toMatch(
-      /html\.app-ios-iphone16promax body\.page-shuiming-result \.list\s*\{[^}]*padding-left:\s*16px/
+      /html\.app-ios-promax-wide body\.page-shuiming-result \.list[^}]*padding-left:\s*20px/
     );
     expect(shuimingResult).toMatch(
-      /html\.app-ios-iphone16promax\.platform-ios body\.page-shuiming-result \.list-company-name\s*\{[^}]*max-width:\s*20em/
+      /html\.app-ios-promax-wide\.platform-ios body\.page-shuiming-result \.list-company-name\s*\{[^}]*max-width:\s*20em/
     );
   });
 });

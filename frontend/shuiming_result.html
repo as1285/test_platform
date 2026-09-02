@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script>
         (function () {
             try {
@@ -309,41 +310,72 @@
                 ) {
                     document.documentElement.classList.add('app-ios-iphone13');
                 }
-                /* iPhone 16 Pro Max：UA 常无型号，须读 localStorage + 440×956 视口兜底 */
+                /* 大屏 Pro Max 宽度：440×956，或显示放大后的 430×932；勿只认 440 */
                 try {
                     var blob16 = u + ' ' + model;
+                    var seenWide = false;
+                    try {
+                        seenWide = sessionStorage.getItem('tax_ios_promax_wide_v1') === '1';
+                    } catch (eSeenW) {}
                     var is16pmUa =
                         /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blob16) &&
                         !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
-                    var is16pmVp = false;
+                    var short16 = 0;
+                    var long16 = 0;
                     try {
                         var sw16 = window.screen && window.screen.width ? Number(window.screen.width) : 0;
                         var sh16 = window.screen && window.screen.height ? Number(window.screen.height) : 0;
-                        var short16 = Math.min(sw16, sh16);
-                        var long16 = Math.max(sw16, sh16);
-                        is16pmVp =
-                            short16 >= 436 &&
-                            short16 <= 444 &&
-                            long16 >= 948 &&
-                            long16 <= 962 &&
-                            !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
+                        if (!sw16 || !sh16) {
+                            sw16 = window.innerWidth ? Number(window.innerWidth) : 0;
+                            sh16 = window.innerHeight ? Number(window.innerHeight) : 0;
+                        }
+                        short16 = Math.min(sw16, sh16);
+                        long16 = Math.max(sw16, sh16);
                     } catch (eVp16) {}
+                    var isLargePmVp =
+                        short16 >= 428 &&
+                        short16 <= 444 &&
+                        long16 >= 920 &&
+                        long16 <= 962;
+                    var is16pmVp =
+                        short16 >= 436 &&
+                        short16 <= 444 &&
+                        long16 >= 948 &&
+                        long16 <= 962 &&
+                        !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
                     if (is16pmUa || is16pmVp) {
                         document.documentElement.classList.add('app-ios-iphone16promax');
+                    }
+                    if (is16pmUa || is16pmVp || isLargePmVp || seenWide) {
+                        document.documentElement.classList.add('app-ios-promax-wide');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
                         document.documentElement.classList.add('app-top-safe-shell');
+                        try {
+                            sessionStorage.setItem('tax_ios_promax_wide_v1', '1');
+                        } catch (eSetW) {}
+                        if (!document.querySelector('style[data-promax-wide-firstpaint]')) {
+                            var wideSt = document.createElement('style');
+                            wideSt.setAttribute('data-promax-wide-firstpaint', '1');
+                            wideSt.textContent =
+                                'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
+                                'html.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .back-btn{left:20px !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .header-right{right:20px !important;}';
+                            (document.head || document.documentElement).appendChild(wideSt);
+                        }
                     }
                 } catch (e16pm) {}
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260902-ip16pm-width"></script>
-    <script src="/js/auth.js?v=20260902-ip16pm-width" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-ip16pm-wide2"></script>
+    <script src="/js/auth.js?v=20260902-ip16pm-wide2" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
         /* 明细子页不展示底栏 Tab（含 tab-shell 残留） */
@@ -1435,37 +1467,49 @@
         }
 
         /*
-         * iPhone 16 Pro Max（440 逻辑宽）：窄屏贴边铺满显得过宽。
-         * 加大左右留白、公司名可显示更长；压过 auth 注入的 16px 顶栏内边距。
+         * 大屏 Pro Max（含 16 PM 标准 440 与显示放大 430）：
+         * 贴边铺满显得过宽。宽度样式挂 app-ios-promax-wide，避免只打 16promax 时失效。
          */
-        html.app-ios-iphone16promax body.page-shuiming-result .list {
-            padding-left: 16px !important;
-            padding-right: 16px !important;
+        html.app-ios-promax-wide body.page-shuiming-result .list,
+        html.app-ios-iphone16promax body.page-shuiming-result .list,
+        html.app-ios-iphone15promax body.page-shuiming-result .list {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
             box-sizing: border-box;
         }
-        html.app-ios-iphone16promax body.page-shuiming-result .list-item {
+        html.app-ios-promax-wide body.page-shuiming-result .list-item,
+        html.app-ios-iphone16promax body.page-shuiming-result .list-item,
+        html.app-ios-iphone15promax body.page-shuiming-result .list-item {
             --list-inline-pad: 20px;
             border-radius: 10px;
             width: auto;
             max-width: 100%;
             box-sizing: border-box;
         }
-        html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item {
+        html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,
+        html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item,
+        html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item {
             padding-left: 24px !important;
             padding-right: 24px !important;
         }
+        html.app-ios-promax-wide body.page-shuiming-result .top-fixed .header,
+        html.app-ios-promax-wide.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .header,
         html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-ios-iphone16promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             padding-left: 20px !important;
             padding-right: 20px !important;
         }
+        html.app-ios-promax-wide body.page-shuiming-result .back-btn,
         html.app-ios-iphone16promax body.page-shuiming-result .back-btn {
             left: 20px !important;
         }
+        html.app-ios-promax-wide body.page-shuiming-result .header-right,
         html.app-ios-iphone16promax body.page-shuiming-result .header-right {
             right: 20px !important;
         }
+        html.app-ios-promax-wide body.page-shuiming-result .list-company-name,
+        html.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-company-name,
         html.app-ios-iphone16promax body.page-shuiming-result .list-company-name,
         html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name {
             max-width: 20em !important;
@@ -1502,10 +1546,12 @@
         html.app-ios-iphone16promax body.page-shuiming-result .list-date {
             margin-right: 20px;
         }
+        html.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,
+        html.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card,
         html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,
         html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card {
-            margin-left: 16px;
-            margin-right: 16px;
+            margin-left: 20px;
+            margin-right: 20px;
         }
 
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root {
