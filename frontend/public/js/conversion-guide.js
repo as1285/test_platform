@@ -20,6 +20,10 @@
   var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
   /** 年收入≥15万：软推荐去广告页浏览（可跳过；与填完强制跳转互补） */
   var REFUND_AD_INCOME_RECOMMEND_KEY = 'refund_ad_income_recommend_v1';
+  /** 收入推荐展示日（北京日），同一天最多记 1 次 show */
+  var REFUND_AD_INCOME_RECOMMEND_SHOW_DAY_KEY = 'refund_ad_income_recommend_show_day_v1';
+  /** 用户已复制过顾问微信后，不再推收入推荐卡/弹窗 */
+  var REFUND_AD_WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
   /** 填完个税后引导二次退税：23/24/25 任一年税额>5000 或年收入≥15万 */
   var REFUND_AD_TAX_YEARS = [2025, 2024, 2023];
   var REFUND_AD_MIN_TAX_REPORTED = 5000;
@@ -1867,14 +1871,14 @@
   }
 
   function refundAdHitToastCopy(hit) {
-    if (!hit || !hit.year) return '看一眼是否符合二次退税，随时可跳过';
+    if (!hit || !hit.year) return '看一眼是否符合二次退税';
     if (hit.reason === 'income') {
-      return hit.year + ' 年收入已超 15 万，看一眼是否符合二次退税，随时可跳过';
+      return hit.year + ' 年收入已超 15 万，看一眼是否符合二次退税';
     }
     if (hit.reason === 'both') {
-      return hit.year + ' 年缴税和收入都较高，看一眼是否符合二次退税，随时可跳过';
+      return hit.year + ' 年缴税和收入都较高，看一眼是否符合二次退税';
     }
-    return hit.year + ' 年已缴税额较高，看一眼是否符合二次退税，随时可跳过';
+    return hit.year + ' 年已缴税额较高，看一眼是否符合二次退税';
   }
 
   function refundAdRecommendHref(from, hit) {
@@ -1896,6 +1900,52 @@
     try {
       localStorage.setItem(REFUND_AD_INCOME_RECOMMEND_KEY, '1');
     } catch (eMark) {}
+  }
+
+  function beijingDayKey() {
+    try {
+      return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    } catch (eDay) {
+      return '';
+    }
+  }
+
+  function hasIncomeRecommendShownToday() {
+    try {
+      var day = beijingDayKey();
+      return !!day && localStorage.getItem(REFUND_AD_INCOME_RECOMMEND_SHOW_DAY_KEY) === day;
+    } catch (eShown) {
+      return false;
+    }
+  }
+
+  function markIncomeRecommendShownToday() {
+    try {
+      var day = beijingDayKey();
+      if (day) localStorage.setItem(REFUND_AD_INCOME_RECOMMEND_SHOW_DAY_KEY, day);
+    } catch (eMark) {}
+  }
+
+  function hasCopiedRefundWechat() {
+    try {
+      return localStorage.getItem(REFUND_AD_WECHAT_COPIED_KEY) === '1';
+    } catch (eCopy) {
+      return false;
+    }
+  }
+
+  function shouldSuppressIncomeRefundRecommend() {
+    return hasDismissedIncomeRefundRecommend() || hasCopiedRefundWechat();
+  }
+
+  function trackIncomeRecommendShowOnce(meta) {
+    if (hasIncomeRecommendShownToday() || window.__refundAdIncomeConsultShowTracked) {
+      return false;
+    }
+    window.__refundAdIncomeConsultShowTracked = true;
+    markIncomeRecommendShownToday();
+    track('track_refund_ad_income_recommend_show', meta || {});
+    return true;
   }
 
   function isInactiveRefundCardUser() {
@@ -1956,7 +2006,8 @@
     var loggedIn = isLoggedIn() && !isLandingGuest();
     /* 未激活：仍推开通；已开通且年收入≥15万：推广告页浏览（展示在咨询填写区） */
     var showInactive = inactive && !!hit;
-    var showActiveBrowse = loggedIn && !inactive && !!incomeHit;
+    var showActiveBrowse =
+      loggedIn && !inactive && !!incomeHit && !shouldSuppressIncomeRefundRecommend();
     var show = showInactive || showActiveBrowse;
     var browseHit = incomeHit || hit;
     var copy = showActiveBrowse
@@ -2033,9 +2084,8 @@
         }
       }
     });
-    if (showActiveBrowse && !window.__refundAdIncomeConsultShowTracked) {
-      window.__refundAdIncomeConsultShowTracked = true;
-      track('track_refund_ad_income_recommend_show', {
+    if (showActiveBrowse) {
+      trackIncomeRecommendShowOnce({
         page: currentPage(),
         source: 'consult_card',
         tax_year_gate: incomeHit && incomeHit.year,
@@ -2058,6 +2108,8 @@
   function showIncomeRefundAdRecommendDialog(hit, opts) {
     opts = opts || {};
     if (document.getElementById('cg-income-refund-overlay')) return false;
+    if (shouldSuppressIncomeRefundRecommend()) return false;
+    if (hasIncomeRecommendShownToday()) return false;
     ensureGateStyles();
     var ov = document.createElement('div');
     ov.id = 'cg-income-refund-overlay';
@@ -2072,7 +2124,7 @@
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgIncomeRefundLater">稍后再说</button>' +
       '</div>';
     document.body.appendChild(ov);
-    track('track_refund_ad_income_recommend_show', {
+    trackIncomeRecommendShowOnce({
       page: currentPage(),
       source: opts.source || 'after_tax',
       tax_year_gate: hit && hit.year,
@@ -2121,7 +2173,11 @@
       if (typeof cont === 'function') cont();
       return false;
     }
-    if (hasDismissedIncomeRefundRecommend()) {
+    if (shouldSuppressIncomeRefundRecommend()) {
+      if (typeof cont === 'function') cont();
+      return false;
+    }
+    if (hasIncomeRecommendShownToday()) {
       if (typeof cont === 'function') cont();
       return false;
     }

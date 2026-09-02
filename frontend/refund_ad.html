@@ -55,8 +55,8 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260902-mate30epro"></script>
-    <script src="/js/auth.js?v=20260902-mate30epro" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
     <script src="/js/app/nav.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ff9a1f">
@@ -112,39 +112,77 @@
             line-height: 1.45;
         }
         body.is-from-tax-done .refund-ad-header-sub { display: block; }
+        /* 跳过入口放在复制 CTA 下方，且默认弱样式，避免填完首屏先点走 */
         .refund-ad-continue {
             display: none;
-            margin: 0 0 12px;
-            padding: 12px 12px 10px;
-            border-radius: 14px;
-            background: #fff;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+            margin: 10px 0 0;
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
         }
         body.is-from-tax-done .refund-ad-continue { display: block; }
         .refund-ad-continue-btn {
             display: block;
             width: 100%;
-            min-height: 44px;
-            border: none;
+            min-height: 40px;
+            border: 1px solid #cbd5e1;
             border-radius: 10px;
-            background: #1d6fd8;
-            color: #fff;
-            font-size: 15px;
-            font-weight: 700;
+            background: #fff;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 600;
             font-family: inherit;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            opacity: 0.45;
+            pointer-events: none;
+        }
+        body.is-from-tax-done .refund-ad-continue.is-ready .refund-ad-continue-btn {
+            opacity: 1;
+            pointer-events: auto;
         }
         .refund-ad-continue-btn:active { opacity: 0.9; }
         .refund-ad-continue-note {
-            margin: 8px 2px 0;
+            margin: 6px 2px 0;
             text-align: center;
             font-size: 11px;
             color: #94a3b8;
             line-height: 1.4;
         }
+        .refund-ad-sticky-cta {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: var(--bottom-nav-clearance, 86px);
+            z-index: 40;
+            padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, #f8fafc 28%, #f8fafc 100%);
+            pointer-events: none;
+        }
+        .refund-ad-sticky-cta-btn {
+            pointer-events: auto;
+            display: block;
+            width: 100%;
+            max-width: var(--wrap);
+            margin: 0 auto;
+            min-height: 48px;
+            border: none;
+            border-radius: 12px;
+            background: #07c160;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 800;
+            font-family: inherit;
+            box-shadow: 0 8px 20px rgba(7, 193, 96, 0.35);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-sticky-cta-btn:active { opacity: 0.92; }
+        .refund-ad-sticky-cta-btn.is-copied {
+            background: #059669;
+        }
         .refund-ad-page {
-            padding: 12px 12px var(--bottom-nav-clearance, 86px);
+            padding: 12px 12px calc(var(--bottom-nav-clearance, 86px) + 64px);
             display: flex;
             justify-content: center;
         }
@@ -203,6 +241,20 @@
             word-break: break-all;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-wx.is-stack {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 14px;
+        }
+        .refund-ad-wx.is-stack .refund-ad-copy {
+            width: 100%;
+            min-height: 46px;
+            padding: 0 16px;
+            border-radius: 11px;
+            font-size: 15px;
+            font-weight: 800;
         }
         .refund-ad-copy {
             flex-shrink: 0;
@@ -390,7 +442,7 @@
     <header class="refund-ad-header">
         <a href="consult.html" class="refund-ad-back" id="refundAdBackLink">返回咨询</a>
         <h1 id="refundAdTitle">二次退税 · 公积金</h1>
-        <p class="refund-ad-header-sub" id="refundAdSub">填完了。看一眼是否符合二次退税，不想看可直接去记录。</p>
+        <p class="refund-ad-header-sub" id="refundAdSub">根据你刚填的记录，先看是否符合二次退税；符合就复制微信咨询。</p>
     </header>
     <main class="refund-ad-page">
         <div class="refund-ad-wrap">
@@ -402,10 +454,6 @@
                     alt="支持小红书、拼多多、京东、得物、美团、抖音、快手、淘宝、花呗、公积金等多平台秒到与货到服务"
                 >
             </div>
-            <div class="refund-ad-continue" id="refundAdContinue">
-                <button type="button" class="refund-ad-continue-btn" id="btnRefundAdContinue">查看我刚填的记录</button>
-                <p class="refund-ad-continue-note">不强制加微信，随时可从「我要咨询」回来</p>
-            </div>
             <p class="refund-ad-lede" id="refundAdLede">先对照：<strong>2023–2025 任一年已缴税额超过 5000 元</strong>，或<strong>任一年收入达到 15 万</strong>。符合就复制微信号，备注「二次退税」咨询。</p>
             <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
                 <h2 class="refund-ad-visually-hidden">哪些人可以做二次退税</h2>
@@ -416,14 +464,18 @@
                     height="1024"
                     alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
                 >
-                <div class="refund-ad-wx">
+                <div class="refund-ad-wx is-stack">
                     <div class="refund-ad-wx-meta">
                         <span class="refund-ad-wx-label">加微信咨询（备注：二次退税）</span>
                         <strong class="refund-ad-wx-id" id="refundWechatId">Tangdong6832</strong>
                     </div>
-                    <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
+                    <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">一键复制微信号 · 去微信咨询</button>
                 </div>
             </aside>
+            <div class="refund-ad-continue" id="refundAdContinue">
+                <button type="button" class="refund-ad-continue-btn" id="btnRefundAdContinue" disabled>查看我刚填的记录</button>
+                <p class="refund-ad-continue-note" id="refundAdContinueNote">先看是否符合二次退税；约 3 秒后可跳过</p>
+            </div>
             <p class="gjj-ad-lede" id="gjjAdLede">同一顾问也可问公积金：<strong>在职 / 离职 / 封存、大额 / 小额</strong>都可操作，不成功不收费，当天到账。复制微信号，备注「公积金提取」。</p>
             <aside class="gjj-ad-on-refund" id="gjjAdOnRefund" aria-label="公积金提取">
                 <img
@@ -434,12 +486,12 @@
                     height="1024"
                     alt="公积金提取：在职离职封存大额小额皆可操作，不成功不收费，当天到账"
                 >
-                <div class="refund-ad-wx">
+                <div class="refund-ad-wx is-stack">
                     <div class="refund-ad-wx-meta">
                         <span class="refund-ad-wx-label">加微信咨询（备注：公积金提取）</span>
                         <strong class="refund-ad-wx-id" id="gjjWechatId">Tangdong6832</strong>
                     </div>
-                    <button type="button" class="refund-ad-copy" id="btnCopyGjjWechat">复制微信号</button>
+                    <button type="button" class="refund-ad-copy" id="btnCopyGjjWechat">一键复制微信号 · 备注公积金</button>
                 </div>
             </aside>
             <section class="refund-ad-guide" id="refundAdGuide" aria-labelledby="refundAdGuideTitle">
@@ -472,13 +524,16 @@
                         <span class="refund-ad-wx-label">准备好了就加顾问</span>
                         <strong class="refund-ad-wx-id" id="refundWechatIdGuide">Tangdong6832</strong>
                     </div>
-                    <button type="button" class="refund-ad-copy" id="btnCopyRefundWechatGuide">复制微信号</button>
+                    <button type="button" class="refund-ad-copy" id="btnCopyRefundWechatGuide">一键复制微信号 · 去微信咨询</button>
                 </div>
                 <p class="refund-ad-guide-foot">添加时请备注「二次退税」。不强制添加，随时可从「我要咨询」回本页。</p>
             </section>
         </div>
     </main>
     <div class="refund-ad-toast" id="refundAdToast" role="status" aria-live="polite"></div>
+    <div class="refund-ad-sticky-cta" id="refundAdStickyCta">
+        <button type="button" class="refund-ad-sticky-cta-btn" id="btnStickyCopyRefundWechat">一键复制微信号 · 去微信咨询</button>
+    </div>
     <div class="bottom-nav" aria-label="主导航">
         <a href="shouye.html" class="nav-item" data-icon="sy">
             <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt="首页"></div>
@@ -504,10 +559,26 @@
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
+        var WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
         var copyBtn = document.getElementById('btnCopyRefundWechat');
+        var stickyCopyBtn = document.getElementById('btnStickyCopyRefundWechat');
         var idEl = document.getElementById('refundWechatId');
         var toastEl = document.getElementById('refundAdToast');
         var toastTimer = null;
+        var leaveNext = '';
+
+        function markWechatCopied() {
+            try {
+                localStorage.setItem(WECHAT_COPIED_KEY, '1');
+            } catch (eMark) {}
+            if (stickyCopyBtn) {
+                stickyCopyBtn.classList.add('is-copied');
+                stickyCopyBtn.textContent = '已复制 · 打开微信添加（备注二次退税）';
+            }
+            if (copyBtn) copyBtn.textContent = '已复制 · 打开微信添加';
+            var guideBtn = document.getElementById('btnCopyRefundWechatGuide');
+            if (guideBtn) guideBtn.textContent = '已复制 · 打开微信添加';
+        }
 
         function showToast(msg) {
             if (!toastEl) {
@@ -519,7 +590,7 @@
             if (toastTimer) clearTimeout(toastTimer);
             toastTimer = setTimeout(function () {
                 toastEl.classList.remove('show');
-            }, 2800);
+            }, 3200);
         }
 
         function pageSource() {
@@ -590,25 +661,50 @@
             });
         }
 
-        function copyWechat() {
+        function copyWechat(copyFrom) {
             copyText(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制微信号 ' + WECHAT_ID);
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「二次退税」');
                     copiedThisVisit += 1;
-                    track('track_refund_ad_copy', { wechat_id: WECHAT_ID });
+                    markWechatCopied();
+                    track('track_refund_ad_copy', {
+                        wechat_id: WECHAT_ID,
+                        copy_from: copyFrom || 'wx_btn'
+                    });
                 })
                 .catch(function () {
                     showToast('复制失败，请长按微信号手动复制');
                 });
         }
 
-        if (copyBtn) copyBtn.addEventListener('click', copyWechat);
-        if (idEl) idEl.addEventListener('click', copyWechat);
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                copyWechat('wx_btn');
+            });
+        }
+        if (stickyCopyBtn) {
+            stickyCopyBtn.addEventListener('click', function () {
+                copyWechat('sticky');
+            });
+        }
+        if (idEl) {
+            idEl.addEventListener('click', function () {
+                copyWechat('wx_id');
+            });
+        }
 
         var copyBtnGuide = document.getElementById('btnCopyRefundWechatGuide');
         var idElGuide = document.getElementById('refundWechatIdGuide');
-        if (copyBtnGuide) copyBtnGuide.addEventListener('click', copyWechat);
-        if (idElGuide) idElGuide.addEventListener('click', copyWechat);
+        if (copyBtnGuide) {
+            copyBtnGuide.addEventListener('click', function () {
+                copyWechat('guide_btn');
+            });
+        }
+        if (idElGuide) {
+            idElGuide.addEventListener('click', function () {
+                copyWechat('guide_id');
+            });
+        }
 
         function consultHref(tab, extra) {
             var href = 'consult.html?tab=' + encodeURIComponent(tab || 'employers');
@@ -716,7 +812,8 @@
                 dwell_seconds: sec,
                 copied: copiedThisVisit > 0 ? 1 : 0,
                 copy_count: copiedThisVisit,
-                year: year || undefined
+                year: year || undefined,
+                next: leaveNext || undefined
             });
         }
 
@@ -750,15 +847,42 @@
             bindDwell();
         });
 
+        var continueWrap = document.getElementById('refundAdContinue');
         var continueBtn = document.getElementById('btnRefundAdContinue');
+        var continueNote = document.getElementById('refundAdContinueNote');
         if (continueBtn) {
             continueBtn.addEventListener('click', function () {
+                if (continueBtn.disabled) return;
+                leaveNext = 'shuiming_result';
                 track('track_refund_ad_after_tax_continue', { year: year || undefined });
                 var next =
                     'shuiming_result.html?from=tax_done' +
                     (year ? '&year=' + encodeURIComponent(year) : '');
                 window.location.href = next;
             });
+        }
+        if (fromTaxDone && continueWrap && continueBtn) {
+            var unlockAt = Date.now() + 3000;
+            function tickContinueUnlock() {
+                var left = Math.max(0, Math.ceil((unlockAt - Date.now()) / 1000));
+                if (left > 0) {
+                    if (continueNote) {
+                        continueNote.textContent = '先看是否符合二次退税；' + left + ' 秒后可跳过';
+                    }
+                    continueBtn.disabled = true;
+                    setTimeout(tickContinueUnlock, 250);
+                    return;
+                }
+                continueBtn.disabled = false;
+                continueWrap.classList.add('is-ready');
+                if (continueNote) {
+                    continueNote.textContent = '不强制加微信，随时可从「我要咨询」回来';
+                }
+            }
+            tickContinueUnlock();
+        } else if (continueBtn) {
+            continueBtn.disabled = false;
+            if (continueWrap) continueWrap.classList.add('is-ready');
         }
 
         var poster = document.querySelector('.refund-ad-poster');
@@ -771,8 +895,9 @@
         function copyGjjWechat(copyFrom) {
             copyText(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制微信号 ' + WECHAT_ID + '，备注公积金提取');
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「公积金提取」');
                     copiedThisVisit += 1;
+                    markWechatCopied();
                     track('track_gjj_extract_ad_copy', {
                         wechat_id: WECHAT_ID,
                         copy_from: copyFrom || 'wx_block',
@@ -859,8 +984,9 @@
             }
             item.addEventListener('click', function () {
                 if (item.classList.contains('active')) return;
+                leaveNext = item.getAttribute('href') || '';
                 track('track_refund_ad_nav_click', {
-                    target: item.getAttribute('href') || '',
+                    target: leaveNext,
                     icon: icon || ''
                 });
             });

@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth-boot.js?v=20260902-mate30epro"></script>
-    <script src="/js/auth.js?v=20260902-mate30epro" defer></script>
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -966,9 +966,10 @@
         }
         .purchase-refund-ad-wx {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 10px;
-            padding: 12px 12px 12px 14px;
+            padding: 14px;
             background: rgba(255, 255, 255, 0.96);
         }
         .purchase-refund-ad-wx-meta {
@@ -984,7 +985,7 @@
         }
         .purchase-refund-ad-wx-id {
             display: block;
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: 0.02em;
             color: #111827;
@@ -993,20 +994,24 @@
             -webkit-tap-highlight-color: transparent;
         }
         .purchase-refund-ad-copy {
-            flex-shrink: 0;
-            min-height: 38px;
-            padding: 0 14px;
+            width: 100%;
+            min-height: 46px;
+            padding: 0 16px;
             border: none;
-            border-radius: 9px;
+            border-radius: 11px;
             background: #07c160;
             color: #fff;
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 800;
             font-family: inherit;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 6px 14px rgba(7, 193, 96, 0.28);
         }
         .purchase-refund-ad-copy:active { opacity: 0.9; }
+        .purchase-refund-ad-copy.is-copied {
+            background: #059669;
+        }
         .purchase-yuefu-entry {
             display: flex;
             align-items: center;
@@ -1375,10 +1380,10 @@
             >
             <div class="purchase-refund-ad-wx">
                 <div class="purchase-refund-ad-wx-meta">
-                    <span class="purchase-refund-ad-wx-label">加微信咨询（备注：二次退税）</span>
+                    <span class="purchase-refund-ad-wx-label">符合二次退税？一键复制顾问微信</span>
                     <strong class="purchase-refund-ad-wx-id" id="purchaseRefundWechatId">Tangdong6832</strong>
                 </div>
-                <button type="button" class="purchase-refund-ad-copy" id="btnCopyRefundWechat">复制微信号</button>
+                <button type="button" class="purchase-refund-ad-copy" id="btnCopyRefundWechat">一键复制微信号 · 备注二次退税</button>
             </div>
         </aside>
 
@@ -1392,10 +1397,10 @@
             >
             <div class="purchase-refund-ad-wx">
                 <div class="purchase-refund-ad-wx-meta">
-                    <span class="purchase-refund-ad-wx-label">加微信咨询（备注：公积金提取）</span>
+                    <span class="purchase-refund-ad-wx-label">公积金提取咨询 · 一键复制顾问微信</span>
                     <strong class="purchase-refund-ad-wx-id" id="purchaseGjjWechatId">Tangdong6832</strong>
                 </div>
-                <button type="button" class="purchase-refund-ad-copy" id="btnCopyGjjWechat">复制微信号</button>
+                <button type="button" class="purchase-refund-ad-copy" id="btnCopyGjjWechat">一键复制微信号 · 备注公积金</button>
             </div>
         </aside>
 
@@ -3334,15 +3339,27 @@
 
     (function initPurchaseRefundAd() {
         var WECHAT_ID = 'Tangdong6832';
+        var WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
         var ad = document.getElementById('purchaseRefundAd');
         var copyBtn = document.getElementById('btnCopyRefundWechat');
         var idEl = document.getElementById('purchaseRefundWechatId');
         if (!ad) return;
 
+        function markCopied() {
+            try {
+                localStorage.setItem(WECHAT_COPIED_KEY, '1');
+            } catch (eMark) {}
+            if (copyBtn) {
+                copyBtn.classList.add('is-copied');
+                copyBtn.textContent = '已复制 · 打开微信添加（备注二次退税）';
+            }
+        }
+
         function copyWechat() {
             copyTextFallback(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制微信号 ' + WECHAT_ID);
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「二次退税」');
+                    markCopied();
                     trackPurchase('track_purchase_refund_ad_copy', { wechat_id: WECHAT_ID });
                 })
                 .catch(function () {
@@ -3402,15 +3419,27 @@
 
     (function initPurchaseGjjEntry() {
         var WECHAT_ID = 'Tangdong6832';
+        var WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
         var entry = document.getElementById('purchaseGjjEntry');
         var copyBtn = document.getElementById('btnCopyGjjWechat');
         var idEl = document.getElementById('purchaseGjjWechatId');
         if (!entry) return;
 
+        function markCopied() {
+            try {
+                localStorage.setItem(WECHAT_COPIED_KEY, '1');
+            } catch (eMark) {}
+            if (copyBtn) {
+                copyBtn.classList.add('is-copied');
+                copyBtn.textContent = '已复制 · 打开微信添加（备注公积金）';
+            }
+        }
+
         function copyGjjWechat() {
             copyTextFallback(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制微信号 ' + WECHAT_ID + '，备注公积金提取');
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「公积金提取」');
+                    markCopied();
                     trackPurchase('track_gjj_extract_ad_copy', {
                         wechat_id: WECHAT_ID,
                         copy_from: 'purchase',

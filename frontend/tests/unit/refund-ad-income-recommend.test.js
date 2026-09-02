@@ -16,6 +16,10 @@ const consultCss = readFileSync(resolve(__dirname, '../../css/consult.css'), 'ut
 describe('income ≥150k refund ad browse recommend', () => {
   it('wires soft recommend dialog and income hit helpers in conversion-guide', () => {
     expect(guideSrc).toContain('REFUND_AD_INCOME_RECOMMEND_KEY');
+    expect(guideSrc).toContain('REFUND_AD_INCOME_RECOMMEND_SHOW_DAY_KEY');
+    expect(guideSrc).toContain('REFUND_AD_WECHAT_COPIED_KEY');
+    expect(guideSrc).toContain('function trackIncomeRecommendShowOnce');
+    expect(guideSrc).toContain('function shouldSuppressIncomeRefundRecommend');
     expect(guideSrc).toContain('function primaryIncomeRefundHit');
     expect(guideSrc).toContain('function maybeRecommendIncomeRefundAd');
     expect(guideSrc).toContain('function showIncomeRefundAdRecommendDialog');
