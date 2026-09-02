@@ -1310,7 +1310,7 @@
 
         <div class="price-bid-mask" id="priceBidMask" hidden>
             <div class="price-bid-sheet" role="dialog" aria-modal="true" aria-label="提交心理价">
-                <div class="price-bid-title">说出你的心理价</div>
+                <div class="price-bid-title" id="priceBidTitle">说出你的心理价</div>
                 <p class="price-bid-sub" id="priceBidSub">当前套餐：—</p>
                 <input type="number" id="priceBidAmount" min="1" step="1" inputmode="numeric" placeholder="想按多少元开通？">
                 <input type="text" id="priceBidNote" maxlength="50" placeholder="补一句话（可选）">
@@ -1498,7 +1498,7 @@
         <div class="price-survey-mask" id="priceSurveyMask"></div>
         <div class="price-survey-panel">
             <div class="price-survey-title" id="priceSurveyTitle">点一下就走</div>
-            <p class="price-survey-sub">价格感觉如何？点完立刻返回，不用再提交。</p>
+            <p class="price-survey-sub">价格感觉如何？点「偏贵」可接着报心理价；合适/便宜点完即可返回。</p>
             <label class="price-survey-label">您觉得现在的价格</label>
             <div class="price-survey-opts" id="priceSurveySentimentOpts">
                 <button type="button" class="price-survey-opt" data-sentiment="expensive">偏贵</button>
@@ -2778,6 +2778,10 @@
 
     /* 心理价出价：达线自动改价并立即生效，未达线转人工（站内信通知结果） */
     var priceBidUi = { enabled: false, status: '', minAmount: 0, submitting: false };
+    var priceBidSheetApi = {
+        open: function () {},
+        close: function () {}
+    };
 
     function renderPriceBidEntry(hideAll) {
         var teaser = document.getElementById('priceBidTeaser');
@@ -2795,6 +2799,10 @@
                 state.hidden = false;
                 state.textContent = '你的出价已提交，处理结果会发站内信通知。';
             }
+            return;
+        }
+        if (priceBidUi.status === 'accepted') {
+            teaser.hidden = true;
             return;
         }
         teaser.hidden = false;
@@ -2818,6 +2826,14 @@
             .catch(function () {});
     }
 
+    function canOpenPriceBidSheet() {
+        return (
+            !!priceBidUi.enabled &&
+            priceBidUi.status !== 'pending' &&
+            priceBidUi.status !== 'accepted'
+        );
+    }
+
     (function bindPriceBid() {
         var mask = document.getElementById('priceBidMask');
         var btnOpen = document.getElementById('btnPriceBidOpen');
@@ -2825,12 +2841,36 @@
         var amountEl = document.getElementById('priceBidAmount');
         var noteEl = document.getElementById('priceBidNote');
         var subEl = document.getElementById('priceBidSub');
+        var titleEl = document.getElementById('priceBidTitle');
         var btnCancel = document.getElementById('btnPriceBidCancel');
         var btnSubmit = document.getElementById('btnPriceBidSubmit');
+        var bidSheetOpts = { from: '', onCancelLeave: false, prefillAmount: '' };
+
         function closeBidSheet() {
             mask.hidden = true;
+            var leave = bidSheetOpts.onCancelLeave;
+            bidSheetOpts = { from: '', onCancelLeave: false, prefillAmount: '' };
+            if (titleEl) titleEl.textContent = '说出你的心理价';
+            if (btnCancel) btnCancel.textContent = '再想想';
+            if (leave && typeof leavePurchasePage === 'function') {
+                leavePurchasePage();
+            }
         }
-        btnOpen.addEventListener('click', function () {
+
+        function openBidSheet(opts) {
+            opts = opts || {};
+            bidSheetOpts = {
+                from: opts.from ? String(opts.from) : '',
+                onCancelLeave: opts.onCancelLeave === true,
+                prefillAmount: opts.prefillAmount != null ? String(opts.prefillAmount) : ''
+            };
+            var fromSurvey = bidSheetOpts.from === 'price_survey_expensive';
+            if (titleEl) {
+                titleEl.textContent = fromSurvey ? '觉得贵？说说你的心理价' : '说出你的心理价';
+            }
+            if (btnCancel) {
+                btnCancel.textContent = fromSurvey ? '先离开' : '再想想';
+            }
             var sku =
                 typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;
             if (subEl) {
@@ -2838,17 +2878,37 @@
                     ? '当前套餐：' + (sku.label || '') + '（现价 ¥' + sku.amount + '）'
                     : '当前套餐：—';
             }
-            if (amountEl) amountEl.value = '';
+            if (amountEl) {
+                amountEl.value = bidSheetOpts.prefillAmount || '';
+            }
             if (noteEl) noteEl.value = '';
             mask.hidden = false;
-            trackPurchase('track_price_bid_open', { sku_id: alipayPricing.selectedSkuId || '' });
+            trackPurchase('track_price_bid_open', {
+                sku_id: alipayPricing.selectedSkuId || '',
+                from: bidSheetOpts.from || 'teaser'
+            });
             setTimeout(function () {
                 try {
                     if (amountEl) amountEl.focus();
                 } catch (eFocus) {}
             }, 60);
+        }
+
+        priceBidSheetApi.open = openBidSheet;
+        priceBidSheetApi.close = function () {
+            bidSheetOpts.onCancelLeave = false;
+            mask.hidden = true;
+            bidSheetOpts = { from: '', onCancelLeave: false, prefillAmount: '' };
+        };
+
+        btnOpen.addEventListener('click', function () {
+            openBidSheet({ from: 'teaser' });
         });
-        if (btnCancel) btnCancel.addEventListener('click', closeBidSheet);
+        if (btnCancel) {
+            btnCancel.addEventListener('click', function () {
+                closeBidSheet();
+            });
+        }
         mask.addEventListener('click', function (ev) {
             if (ev.target === mask) closeBidSheet();
         });
@@ -2866,6 +2926,7 @@
                 }
                 priceBidUi.submitting = true;
                 btnSubmit.disabled = true;
+                var fromTag = bidSheetOpts.from || 'teaser';
                 paymentFetch('/api/payments/price-bid', {
                     method: 'POST',
                     body: JSON.stringify({
@@ -2881,16 +2942,18 @@
                             (x.body && x.body.msg) || (ok ? '已提交' : '提交失败，请稍后再试')
                         );
                         if (!ok) return;
-                        closeBidSheet();
+                        /* 提交成功：留在支付页，便于按新价付款 */
+                        bidSheetOpts.onCancelLeave = false;
+                        priceBidSheetApi.close();
                         trackPurchase('track_price_bid_submit', {
                             sku_id: alipayPricing.selectedSkuId || '',
                             bid_amount: amount,
-                            bid_status: data ? data.status : ''
+                            bid_status: data ? data.status : '',
+                            from: fromTag
                         });
                         if (data && data.status === 'accepted') {
                             priceBidUi.status = 'accepted';
                             renderPriceBidEntry(true);
-                            /* 专属价已写入，重拉配置让页面立刻按新价展示 */
                             loadAlipayPurchase();
                         } else {
                             priceBidUi.status = 'pending';
@@ -3696,9 +3759,10 @@
             sub.textContent =
                 '当前最低约 ¥' +
                 String(range.min) +
-                '。点「偏贵 / 合适 / 偏便宜」立刻返回，不用再提交。';
+                '。点「偏贵」可报心理价议价；合适/便宜点一下就返回。';
         } else {
-            sub.textContent = '价格感觉如何？点完立刻返回，不用再提交。';
+            sub.textContent =
+                '价格感觉如何？点「偏贵」可接着报心理价；合适/便宜点完即可返回。';
         }
     }
 
@@ -3834,6 +3898,12 @@
     function submitPriceSurvey(opts) {
         opts = opts || {};
         var skipped = opts.skipped === true;
+        var afterDone =
+            typeof opts.after === 'function'
+                ? opts.after
+                : function () {
+                      leavePurchasePage();
+                  };
         if (priceSurveySubmitting) return;
         if (!skipped) {
             if (!priceSurveySentiment) {
@@ -3866,7 +3936,8 @@
         trackPurchase(skipped ? 'track_purchase_price_survey_skip' : 'track_purchase_price_survey_submit', {
             sentiment: body.sentiment,
             expected_price: body.expected_price,
-            has_expected_price: expectedNum != null
+            has_expected_price: expectedNum != null,
+            handoff: opts.handoff || ''
         });
         markPriceSurveyDoneLocal();
         purchaseAuthFetch('/api/growth/purchase-price-survey', {
@@ -3875,11 +3946,22 @@
             body: JSON.stringify(body)
         })
             .then(function () {
-                leavePurchasePage();
+                afterDone();
             })
             .catch(function () {
-                leavePurchasePage();
+                afterDone();
             });
+    }
+
+    function handoffExpensiveToPriceBid() {
+        trackPurchase('track_purchase_price_survey_to_bid', {
+            sku_id: alipayPricing.selectedSkuId || ''
+        });
+        closePriceSurveyModal();
+        priceBidSheetApi.open({
+            from: 'price_survey_expensive',
+            onCancelLeave: true
+        });
     }
 
     function initPriceSurveyExitGate() {
@@ -3944,6 +4026,15 @@
                 }
                 if (priceSurveySentiment === 'fair') {
                     submitPriceSurvey({ skipped: false });
+                    return;
+                }
+                /* 偏贵：有议价能力时直接走心理价出价，不再弹芯片 */
+                if (priceSurveySentiment === 'expensive' && canOpenPriceBidSheet()) {
+                    submitPriceSurvey({
+                        skipped: false,
+                        handoff: 'price_bid',
+                        after: handoffExpensiveToPriceBid
+                    });
                     return;
                 }
                 revealPriceSurveyPriceBlock();

@@ -8211,7 +8211,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260902-ip16pm-mq';
+      s.src = '/js/conversion-guide.js?v=20260903-email-nudge';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

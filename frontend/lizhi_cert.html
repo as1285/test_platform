@@ -214,11 +214,11 @@
     <div class="page">
         <div class="hero">
             <h1>离职证明生成</h1>
-            <p>未付款可生成带「演示样例」水印的 PDF；支付宝付 ¥50 开通后，可生成无演示水印版本。</p>
+            <p id="lizhiHeroDesc">未付款可生成带「演示样例」水印的 PDF；支付宝付 ¥50 开通后，可生成无演示水印版本。</p>
         </div>
 
         <div class="card" id="cardPay" hidden>
-            <div class="card-title">开通权益 · ¥50</div>
+            <div class="card-title" id="lizhiPayTitle">开通权益 · ¥50</div>
             <p class="card-hint">付款成功后自动解锁并去除「演示样例」水印，无需激活码。</p>
             <button type="button" class="btn" id="btnLizhiPay">支付宝付款开通</button>
             <div class="qr-wrap" id="lizhiQrWrap" hidden></div>
@@ -274,7 +274,7 @@
         </div>
     </div>
 
-        <script src="/js/employment-cert-page.js?v=20260902-android-save"></script>
+        <script src="/js/employment-cert-page.js?v=20260902-lizhi-fee"></script>
     <script>
 (function () {
     window.initEmploymentCertPage({
@@ -310,6 +310,8 @@
             pdfTip: 'lizhiPdfTip',
             quickCompany: 'lizhiQuickCompany',
             payBtn: 'btnLizhiPay',
+            payTitle: 'lizhiPayTitle',
+            heroDesc: 'lizhiHeroDesc',
             generateBtn: 'btnLizhiGenerate',
             quickBtn: 'btnLizhiQuick',
             prefillBtn: 'btnLizhiPrefill',

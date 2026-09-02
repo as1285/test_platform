@@ -51,7 +51,7 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格与时长、改名费用、个税修改收费与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格与时长、离职证明价格、改名费用、个税修改收费与激活引导弹窗</p></div>
                     <section>
                         <h2>支付套餐</h2>
                         <div class="form-row form-stack">
@@ -101,6 +101,15 @@
                     <section>
                         <h2>个税修改收费</h2>
                         <div class="form-row form-stack">
+                            <p class="hint mt-0"><strong>离职/在职证明</strong>：两种证明共用同一价格，用户付一次开通对应证明的终身无水印生成。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="lizhiCertFeeAmount">离职/在职证明（元）</label>
+                                <input type="number" id="lizhiCertFeeAmount" min="0.01" max="99999.99" step="0.01" value="50">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveLizhiCertFee">保存证明价格</button>
+                                <span class="hint" id="lizhiCertFeeHint" style="margin-left:8px;"></span>
+                            </div>
                             <p class="hint mt-0"><strong>改名费用</strong>：近 30 天活跃不少于 2 天、且历史改名超过 5 次后，每次再改名需先付下面金额。填 <strong>0</strong> 则超限后也不收费、不用付款。白名单免收。改完立即对未下单用户生效；已生成的待支付订单仍按原金额。</p>
                             <div class="form-field form-field-narrow">
                                 <label for="renameFeeAmount">单次改名（元）</label>
@@ -159,13 +168,25 @@
                     </section>
                     <section>
                         <h2>心理价出价</h2>
-                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 目录价 × 自动通过线时立即生效为该账号专属价并站内信通知；低于线的进入下方待处理，人工「通过」（可改成交价）或「驳回」，处理结果都会站内信告知用户。</p>
+                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知；低于线的进入下方待处理。当前默认：周卡 ¥120、双周卡 ¥199、月卡 ¥298（也可改下面输入框后保存）。无套餐金额时回退为「目录价 × 百分比」。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <label><input type="checkbox" id="bidCfgEnabled" checked> 开放出价入口</label>
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="bidCfgFloorPct">自动通过线（目录价 %）</label>
+                                <label for="bidCfgFloorWeek">周卡自动通过（元）</label>
+                                <input type="number" id="bidCfgFloorWeek" min="1" max="99999" step="1" placeholder="120">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorTwoWeek">双周卡自动通过（元）</label>
+                                <input type="number" id="bidCfgFloorTwoWeek" min="1" max="99999" step="1" placeholder="199">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorMonth">月卡自动通过（元）</label>
+                                <input type="number" id="bidCfgFloorMonth" min="1" max="99999" step="1" placeholder="298">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorPct">无套餐金额时回退（目录价 %）</label>
                                 <input type="number" id="bidCfgFloorPct" min="1" max="100" step="1" placeholder="60">
                             </div>
                             <div class="form-field form-field-narrow">
@@ -2428,6 +2449,49 @@
                                 </div>
                             </div>
                         </details>
+                        <details class="page-hint-details ops-board-bulk mt-12" open>
+                            <summary>邮件群发</summary>
+                            <p class="hint mt-8">向<strong>已填写邮箱</strong>的用户发 SMTP 邮件（复用服务器 QQ 邮箱配置）。单次最多 200 人，发送间隔约 0.12s；建议先「预览人数」。专属价未付人群请选「有专属价未开通」。</p>
+                            <div class="form-row form-stack">
+                                <div class="form-field">
+                                    <label for="bulkEmailAudience">发送对象（仅含已留邮箱）</label>
+                                    <select id="bulkEmailAudience" class="filter-select">
+                                        <option value="has_email_inactive" selected>未激活且已留邮箱</option>
+                                        <option value="price_offer_unpaid">有专属价未开通（已留邮箱）</option>
+                                        <option value="pending_activate_24h">注册超 24h 未激活</option>
+                                        <option value="all_inactive">全部未激活</option>
+                                        <option value="inactive_has_tax">未激活且有个税记录</option>
+                                        <option value="inactive_visited_purchase">未激活且去过支付页</option>
+                                        <option value="inactive_purchase_no_pay">未激活、去过支付页、未支付</option>
+                                        <option value="inactive_high_income">未激活·月收入&gt;1.5万</option>
+                                        <option value="refund_eligible">退税合格</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label for="bulkEmailSubject">邮件标题</label>
+                                    <input type="text" id="bulkEmailSubject" maxlength="120" value="开通提醒：你的专属优惠仍有效">
+                                </div>
+                                <div class="form-field">
+                                    <label for="bulkEmailContent">正文</label>
+                                    <textarea id="bulkEmailContent" class="textarea-block" rows="4" maxlength="4000">您好，检测到您的账号尚未开通。开通后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击邮件中的按钮即可前往开通页。</textarea>
+                                </div>
+                                <div class="form-field form-field-narrow">
+                                    <label for="bulkEmailLink">跳转页面</label>
+                                    <input type="text" id="bulkEmailLink" maxlength="200" value="purchase.html">
+                                </div>
+                                <div class="form-field">
+                                    <label class="checkbox-inline">
+                                        <input type="checkbox" id="bulkEmailSkipSent" checked>
+                                        跳过近 7 天已成功发过邮件的用户（推荐）
+                                    </label>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn-page" id="btnBulkEmailPreview">预览人数</button>
+                                    <button type="button" class="btn-primary" id="btnBulkEmailSend">确认发邮件</button>
+                                    <span class="hint" id="bulkEmailStatus" aria-live="polite"></span>
+                                </div>
+                            </div>
+                        </details>
                     </section>
                 </div>
 
@@ -2866,7 +2930,7 @@
                 <div id="page-analytics-activity" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户日活与登录趋势</h2>
-                        <p class="hint mt-0"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。完整记录详见侧栏「用户登录」。</p>
+                        <p class="hint mt-0"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重人数，按<strong>同一 IP 去重</strong>（同 IP 多账号只计 1；无 IP 的账号按用户名各计 1）；点击「查看账号」可展开列表（每 IP 显示一个代表账号，同 IP 多号会标注）。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。完整记录详见侧栏「用户登录」。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsOverviewDays">统计区间</label>
@@ -2877,7 +2941,7 @@
                         </div>
                         <div class="analytics-grid">
                             <div class="scroll-x">
-                                <p class="stat">日活（去重用户数）</p>
+                                <p class="stat">日活（按 IP 去重）</p>
                                 <table>
                                     <thead><tr><th>日期</th><th>活跃用户数</th><th>操作</th></tr></thead>
                                     <tbody id="analyticsDauTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
@@ -3506,6 +3570,6 @@
     <script src="/js/admin/loader.js?v=20260902-regip"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260902-actions-collapse"></script>
+    <script src="/js/admin_panel.js?v=20260902-cert-fee"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /**
- * C 端 · 在职/工作证明（¥50 终身解锁后无限次生成）
+ * C 端 · 在职/工作证明（付费终身解锁后无限次生成；金额与离职证明共用后台配置）
  */
 const crypto = require('crypto');
 const { getPool } = require('../shared/db');
@@ -9,10 +9,42 @@ const {
   pickZaizhiCompany,
   genderFromIdNumber
 } = require('./employmentCertShared');
+const lizhiCertFeePolicy = require('./lizhiCertFeePolicy');
 
 var ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
-var ZAIZHI_CERT_AMOUNT = '50.00';
+var ZAIZHI_CERT_AMOUNT = lizhiCertFeePolicy.LIZHI_CERT_FEE_DEFAULT_AMOUNT;
 var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
+
+var _zaizhiCertFeeConfigCache = null;
+var _zaizhiCertFeeConfigCacheAt = 0;
+var ZAIZHI_CERT_FEE_CONFIG_CACHE_MS = 10000;
+
+async function loadZaizhiCertFeeConfig(force) {
+  var now = Date.now();
+  if (
+    !force &&
+    _zaizhiCertFeeConfigCache &&
+    now - _zaizhiCertFeeConfigCacheAt < ZAIZHI_CERT_FEE_CONFIG_CACHE_MS
+  ) {
+    return _zaizhiCertFeeConfigCache;
+  }
+  var out = lizhiCertFeePolicy.defaultLizhiCertFeeConfig();
+  try {
+    var pool = getPool();
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [lizhiCertFeePolicy.SETTING_KEY_LIZHI_CERT_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = lizhiCertFeePolicy.normalizeLizhiCertFeeConfig(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认 */
+  }
+  _zaizhiCertFeeConfigCache = out;
+  _zaizhiCertFeeConfigCacheAt = now;
+  return out;
+}
 
 /** 安卓 WebView 无文件分享时，用短期 HTTPS 链接触发系统浏览器下载 */
 var TEMP_SHARE_TTL_MS = 30 * 60 * 1000;
@@ -101,11 +133,12 @@ async function handleZaizhiCertStatus(req, res) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
     var unlocked = await userHasZaizhiUnlocked(req.authUserId);
+    var feeCfg = await loadZaizhiCertFeeConfig(false);
     return res.json({
       code: 200,
       data: {
         unlocked: unlocked,
-        fee_amount: ZAIZHI_CERT_AMOUNT,
+        fee_amount: feeCfg.amount || ZAIZHI_CERT_AMOUNT,
         fee_subject: ZAIZHI_CERT_SUBJECT,
         sku_id: ZAIZHI_CERT_SKU_ID,
         product: 'zaizhi_cert',

@@ -15,6 +15,8 @@
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
   var ACT_NUDGE_DAY_KEY = 'cg_act_nudge_day_v1';
   var ACT_NUDGE_COUNT_KEY = 'cg_act_nudge_count_v1';
+  var EMAIL_NUDGE_DAY_KEY = 'cg_email_nudge_day_v1';
+  var EMAIL_NUDGE_DISMISS_KEY = 'cg_email_nudge_dismiss_v1';
   var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
   var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
   var REFUND_AD_AFTER_TAX_KEY = 'refund_ad_after_tax_v1';
@@ -29,6 +31,7 @@
   var REFUND_AD_MIN_TAX_REPORTED = 5000;
   var REFUND_AD_MIN_YEAR_INCOME = 150000;
   var hoursSinceRegisterCached = 0;
+  var hasEmailCached = false;
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
   var EDIT_HINT = '数据可随时在「我要咨询 → 税务记录」中修改或补充。';
@@ -452,6 +455,9 @@
     if (u.hours_since_register != null) {
       hoursSinceRegisterCached = Number(u.hours_since_register) || 0;
     }
+    if (u.has_email != null) {
+      hasEmailCached = !!u.has_email;
+    }
     removeMineConversionUi();
   }
 
@@ -477,7 +483,8 @@
           account_active: u.account_active,
           tax_record_count: u.tax_record_count,
           employer_count: u.employer_count,
-          hours_since_register: u.hours_since_register
+          hours_since_register: u.hours_since_register,
+          has_email: !!u.has_email
         })
       );
     } catch (e) {}
@@ -608,6 +615,19 @@
       '.cg-act-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:8px;font-size:16px;font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer}' +
       '.cg-act-nudge-btn.primary{background:#1e6fff;color:#fff}' +
       '.cg-act-nudge-btn.secondary{background:#f5f6fa;color:#666}' +
+      '.cg-email-nudge-root{position:fixed;inset:0;z-index:' +
+      CG_OVERLAY_Z +
+      ';display:flex;align-items:flex-end;justify-content:center;padding:0}' +
+      '.cg-email-nudge-mask{position:absolute;inset:0;background:rgba(15,23,42,.4)}' +
+      '.cg-email-nudge-panel{position:relative;z-index:1;width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(15,23,42,.12);box-sizing:border-box}' +
+      '.cg-email-nudge-title{margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a}' +
+      '.cg-email-nudge-body{margin:0 0 12px;font-size:13px;line-height:1.55;color:#64748b}' +
+      '.cg-email-nudge-input{width:100%;height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;font-family:inherit;box-sizing:border-box;margin:0 0 8px}' +
+      '.cg-email-nudge-err{margin:0 0 10px;font-size:12px;color:#dc2626;min-height:16px}' +
+      '.cg-email-nudge-actions{display:flex;flex-direction:column;gap:8px}' +
+      '.cg-email-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}' +
+      '.cg-email-nudge-btn.primary{background:#1e6fff;color:#fff}' +
+      '.cg-email-nudge-btn.ghost{background:#f1f5f9;color:#64748b;font-weight:500}' +
       '.cg-pay-gate-root{position:fixed;inset:0;z-index:' +
       CG_OVERLAY_Z +
       ';display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
@@ -2883,6 +2903,153 @@
     if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
+  function beijingDayKey() {
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date());
+    } catch (e) {
+      return new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  function isValidEmailClient(raw) {
+    var s = raw == null ? '' : String(raw).trim();
+    if (!s || s.length > 255) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  }
+
+  function closeEmailCollectNudge() {
+    var root = document.getElementById('cg-email-nudge-root');
+    if (root && root.parentNode) root.parentNode.removeChild(root);
+  }
+
+  function markEmailNudgeDismissed() {
+    try {
+      localStorage.setItem(EMAIL_NUDGE_DISMISS_KEY, '1');
+      localStorage.setItem(EMAIL_NUDGE_DAY_KEY, beijingDayKey());
+    } catch (e) {}
+  }
+
+  /**
+   * 引导填写邮箱（可跳过）。force=true 时忽略当日限制。
+   */
+  function openEmailCollectNudge(opts) {
+    opts = opts || {};
+    if (!isLoggedIn() || hasEmailCached) return false;
+    if (document.getElementById('cg-email-nudge-root')) return false;
+    if (document.getElementById('cg-act-nudge-root') || document.getElementById('cg-tax-fill-nudge-root')) {
+      return false;
+    }
+    if (!opts.force) {
+      try {
+        if (localStorage.getItem(EMAIL_NUDGE_DISMISS_KEY) === '1') return false;
+        if (localStorage.getItem(EMAIL_NUDGE_DAY_KEY) === beijingDayKey()) return false;
+      } catch (eDay) {}
+    }
+    ensureGateStyles();
+    var root = document.createElement('div');
+    root.id = 'cg-email-nudge-root';
+    root.className = 'cg-email-nudge-root';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.innerHTML =
+      '<div class="cg-email-nudge-mask" data-act="dismiss"></div>' +
+      '<div class="cg-email-nudge-panel">' +
+      '<div class="cg-email-nudge-title">留下邮箱，优惠不错过</div>' +
+      '<p class="cg-email-nudge-body">专属价、开通提醒会发到邮箱。可不填，随时在「个人信息」里补充。</p>' +
+      '<input type="email" class="cg-email-nudge-input" id="cgEmailNudgeInput" maxlength="255" placeholder="例如 name@qq.com" autocomplete="email" inputmode="email">' +
+      '<div class="cg-email-nudge-err" id="cgEmailNudgeErr"></div>' +
+      '<div class="cg-email-nudge-actions">' +
+      '<button type="button" class="cg-email-nudge-btn primary" data-act="save">保存邮箱</button>' +
+      '<button type="button" class="cg-email-nudge-btn ghost" data-act="dismiss">暂时不用</button>' +
+      '</div></div>';
+    document.body.appendChild(root);
+    try {
+      localStorage.setItem(EMAIL_NUDGE_DAY_KEY, beijingDayKey());
+    } catch (eMark) {}
+    try {
+      if (typeof trackUserAction === 'function') trackUserAction('track_email_collect_open');
+    } catch (eTr) {}
+    var input = document.getElementById('cgEmailNudgeInput');
+    var errEl = document.getElementById('cgEmailNudgeErr');
+    setTimeout(function () {
+      if (input) input.focus();
+    }, 80);
+    root.addEventListener('click', function (ev) {
+      var t = ev.target;
+      var act = t && t.getAttribute ? t.getAttribute('data-act') : '';
+      if (act === 'dismiss') {
+        markEmailNudgeDismissed();
+        try {
+          if (typeof trackUserAction === 'function') trackUserAction('track_email_collect_dismiss');
+        } catch (e1) {}
+        closeEmailCollectNudge();
+        return;
+      }
+      if (act !== 'save') return;
+      var val = input ? String(input.value || '').trim() : '';
+      if (!isValidEmailClient(val)) {
+        if (errEl) errEl.textContent = '请填写有效邮箱，例如 name@qq.com';
+        return;
+      }
+      if (errEl) errEl.textContent = '';
+      var btn = t;
+      btn.disabled = true;
+      if (typeof window.authFetch !== 'function') {
+        btn.disabled = false;
+        if (errEl) errEl.textContent = '请先登录';
+        return;
+      }
+      window
+        .authFetch('api/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'save_profile', email: val })
+        })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (data) {
+          if (data.code !== 200) {
+            throw new Error(data.msg || '保存失败');
+          }
+          hasEmailCached = true;
+          try {
+            localStorage.removeItem(EMAIL_NUDGE_DISMISS_KEY);
+          } catch (e2) {}
+          try {
+            if (typeof trackUserAction === 'function') trackUserAction('track_email_collect_save');
+          } catch (e3) {}
+          closeEmailCollectNudge();
+          showCaptureToast('邮箱已保存', { duration: 1800 });
+          fetchProfileCounts({ force: true });
+        })
+        .catch(function (e) {
+          btn.disabled = false;
+          if (errEl) errEl.textContent = (e && e.message) || '保存失败';
+        });
+    });
+    return true;
+  }
+
+  function maybeScheduleEmailNudge() {
+    if (!isLoggedIn() || hasEmailCached || skipConversionPromo()) return;
+    var page = currentPage();
+    var allow =
+      page === 'mine.html' ||
+      page === 'purchase.html' ||
+      page === 'message.html' ||
+      page === 'shouye.html';
+    if (!allow) return;
+    setTimeout(function () {
+      openEmailCollectNudge({ force: false });
+    }, page === 'purchase.html' ? 2200 : 1600);
+  }
+
   /** 兼容旧缓存脚本仍会注入该浮钮：持续清理一段时间 */
   function guardRemoveWatermarkPayChip() {
     removeWatermarkPayChip();
@@ -2936,6 +3103,7 @@
             maybeShowActivationNudge();
           }
         }, 900);
+        maybeScheduleEmailNudge();
       } else {
         renderAboutUpdateNudge();
       }
@@ -3167,6 +3335,7 @@
     mountShuimingValueBar: mountShuimingValueBar,
     mountNajiluPreviewBar: mountNajiluPreviewBar,
     prependMaintenanceMessages: prependMaintenanceMessages,
+    openEmailCollectNudge: openEmailCollectNudge,
     refresh: fetchProfileCounts,
     hideDemoUiForCapture: hideDemoUiForCapture,
     setScreenshotMode: setScreenshotMode,

@@ -100,6 +100,28 @@
     var feeAmount = '50.00';
     var certUnlocked = false;
 
+    function formatFeeYuan(raw) {
+      var n = Number(String(raw == null ? '' : raw).replace(/,/g, '').trim());
+      if (!isFinite(n) || n < 0) return '';
+      return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
+    }
+
+    function applyFeeCopy() {
+      var yuan = formatFeeYuan(feeAmount) || String(feeAmount || '').trim();
+      if (!yuan) return;
+      var payBtn = el(ids.payBtn);
+      if (payBtn) payBtn.textContent = '支付宝付款开通 ¥' + yuan;
+      var payTitle = el(ids.payTitle);
+      if (payTitle) payTitle.textContent = '开通权益 · ¥' + yuan;
+      var heroDesc = el(ids.heroDesc);
+      if (heroDesc) {
+        heroDesc.textContent =
+          '未付款可生成带「演示样例」水印的 PDF；支付宝付 ¥' +
+          yuan +
+          ' 开通后，可生成无演示水印版本。';
+      }
+    }
+
     function fieldValue(key) {
       var node = el(fields[key]);
       return node ? String(node.value || '').trim() : '';
@@ -686,8 +708,7 @@
           if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
           feeAmount = j.data.fee_amount || feeAmount;
           applyUnlocked(!!j.data.unlocked);
-          var payBtn = el(ids.payBtn);
-          if (payBtn) payBtn.textContent = '支付宝付款开通 ¥' + feeAmount;
+          applyFeeCopy();
           return loadPrefill();
         })
         .catch(function (e) {
@@ -742,7 +763,7 @@
               qr +
               '</p>';
           }
-          setStatus(payStatus, '请使用支付宝扫码支付 ¥' + feeAmount);
+        setStatus(payStatus, '请使用支付宝扫码支付 ¥' + (formatFeeYuan(feeAmount) || feeAmount));
           if (pollTimer) clearInterval(pollTimer);
           pollTimer = setInterval(pollPay, 2500);
         })

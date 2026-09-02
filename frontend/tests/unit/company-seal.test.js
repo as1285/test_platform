@@ -6,7 +6,7 @@ import { existsSync, unlinkSync, statSync } from 'fs';
 const script = resolve(__dirname, '../../../backend/scripts/company_seal.py');
 const out = resolve(__dirname, '../../../backend/scripts/_test_company_seal.png');
 
-describe('company_seal.py SealUtil-style seal', () => {
+describe('company_seal.py DrawStampUtils-style seal', () => {
   it('renders a non-empty PNG for a sample company', () => {
     if (existsSync(out)) unlinkSync(out);
     const r = spawnSync(

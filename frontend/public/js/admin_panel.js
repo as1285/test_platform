@@ -1909,8 +1909,11 @@
 
         function normalizeDauUserRow(item) {
             if (item != null && typeof item === 'object' && item.username != null) {
+                var sameIp = Number(item.same_ip_count);
                 return {
                     username: String(item.username),
+                    ip: item.ip != null ? String(item.ip) : '',
+                    same_ip_count: isFinite(sameIp) && sameIp > 0 ? sameIp : 1,
                     has_tax_records: !!(item.has_tax_records === true || item.has_tax_records === 1),
                     tax_modified_on_date: !!(
                         item.tax_modified_on_date === true || item.tax_modified_on_date === 1
@@ -1919,6 +1922,8 @@
             }
             return {
                 username: String(item == null ? '' : item),
+                ip: '',
+                same_ip_count: 1,
                 has_tax_records: false,
                 tax_modified_on_date: false
             };
@@ -1932,6 +1937,18 @@
                 return '<span class="dau-tax-badge has-records">有个税记录</span>';
             }
             return '';
+        }
+
+        function dauSameIpBadgeHtml(user) {
+            var n = user && user.same_ip_count != null ? Number(user.same_ip_count) : 0;
+            if (!isFinite(n) || n < 2) {
+                return '';
+            }
+            return (
+                '<span class="dau-tax-badge" style="background:#fff7ed;color:#c2410c;" title="同 IP 活跃账号数">同IP×' +
+                n +
+                '</span>'
+            );
         }
 
         function renderDauUsersPanel(box, dateStr, data) {
@@ -1955,13 +1972,18 @@
             box.setAttribute('data-page', String(page));
             box.setAttribute('data-loaded', '1');
 
+            var accountTotal = Number(data.account_total);
             var html = '<div class="dau-users-panel">';
             html +=
                 '<div class="dau-users-title">' +
                 esc(dateStr) +
-                ' 活跃用户账号（共 ' +
+                ' 活跃用户（按 IP 去重共 ' +
                 total +
-                ' 个；本页 ' +
+                ' 个' +
+                (isFinite(accountTotal) && accountTotal > total
+                    ? '，账号 ' + accountTotal + ' 个'
+                    : '') +
+                '；本页 ' +
                 modifiedOnPage +
                 ' 个当日修改个税，' +
                 hasRecordsOnPage +
@@ -1973,8 +1995,10 @@
                 users.forEach(function (u, idx) {
                     var n = (page - 1) * DAU_USERS_PAGE_LIMIT + idx + 1;
                     var badge = dauTaxBadgeHtml(u);
+                    var ipBadge = dauSameIpBadgeHtml(u);
                     html += '<div class="dau-user-item">';
                     html += '<span class="dau-user-name">' + n + '. ' + esc(u.username) + '</span>';
+                    if (ipBadge) html += ipBadge;
                     if (badge) html += badge;
                     html += '</div>';
                 });
@@ -8038,6 +8062,7 @@
                         );
                         applyTaxEditFeeToForm(data.data.tax_edit_fee || {});
                         applyRenameFeeToForm(data.data.rename_fee || {});
+                        applyLizhiCertFeeToForm(data.data.lizhi_cert_fee || {});
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
                             var nEn = document.getElementById('actNudgeEnabled');
@@ -8235,6 +8260,62 @@
             return {
                 amount: el ? String(el.value || '').trim() : ''
             };
+        }
+
+        function applyLizhiCertFeeToForm(cfg) {
+            cfg = cfg || {};
+            var el = document.getElementById('lizhiCertFeeAmount');
+            var raw = cfg.amount != null ? cfg.amount : cfg.fee_amount;
+            if (el && raw != null && String(raw).trim() !== '') {
+                el.value = String(raw);
+            }
+        }
+
+        function collectLizhiCertFeeFromForm() {
+            var el = document.getElementById('lizhiCertFeeAmount');
+            return {
+                amount: el ? String(el.value || '').trim() : ''
+            };
+        }
+
+        var btnSaveLizhiCertFee = document.getElementById('btnSaveLizhiCertFee');
+        if (btnSaveLizhiCertFee) {
+            btnSaveLizhiCertFee.addEventListener('click', function () {
+                var btn = btnSaveLizhiCertFee;
+                var fees = collectLizhiCertFeeFromForm();
+                var n = Number(String(fees.amount || '').replace(/,/g, '').trim());
+                if (!isFinite(n) || n < 0.01 || n > 99999.99) {
+                    alert('请填写 0.01～99999.99 的证明金额');
+                    return;
+                }
+                btn.disabled = true;
+                var hint = document.getElementById('lizhiCertFeeHint');
+                if (hint) hint.textContent = '保存中…';
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ lizhi_cert_fee: fees })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) hint.textContent = '已保存';
+                            applyLizhiCertFeeToForm((data.data && data.data.lizhi_cert_fee) || fees);
+                            alert('离职/在职证明价格已保存，未下单用户将按新价格付款');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
         }
 
         var btnSaveRenameFee = document.getElementById('btnSaveRenameFee');
@@ -8705,10 +8786,17 @@
                             var pct = document.getElementById('bidCfgFloorPct');
                             var min = document.getElementById('bidCfgMin');
                             var daily = document.getElementById('bidCfgDaily');
+                            var floorWeek = document.getElementById('bidCfgFloorWeek');
+                            var floorTwo = document.getElementById('bidCfgFloorTwoWeek');
+                            var floorMonth = document.getElementById('bidCfgFloorMonth');
+                            var floors = d.config.floor_by_sku || {};
                             if (en) en.checked = d.config.enabled !== false;
                             if (pct) pct.value = d.config.floor_pct;
                             if (min) min.value = d.config.min_amount;
                             if (daily) daily.value = d.config.daily_limit;
+                            if (floorWeek) floorWeek.value = floors.sku_300_7d != null ? floors.sku_300_7d : 120;
+                            if (floorTwo) floorTwo.value = floors.sku_348_14d != null ? floors.sku_348_14d : 199;
+                            if (floorMonth) floorMonth.value = floors.sku_398_30d != null ? floors.sku_398_30d : 298;
                         }
                     })
                     .catch(function () {
@@ -8765,7 +8853,12 @@
                         enabled: !!(document.getElementById('bidCfgEnabled') || {}).checked,
                         floor_pct: (document.getElementById('bidCfgFloorPct') || {}).value,
                         min_amount: (document.getElementById('bidCfgMin') || {}).value,
-                        daily_limit: (document.getElementById('bidCfgDaily') || {}).value
+                        daily_limit: (document.getElementById('bidCfgDaily') || {}).value,
+                        floor_by_sku: {
+                            sku_300_7d: (document.getElementById('bidCfgFloorWeek') || {}).value,
+                            sku_348_14d: (document.getElementById('bidCfgFloorTwoWeek') || {}).value,
+                            sku_398_30d: (document.getElementById('bidCfgFloorMonth') || {}).value
+                        }
                     };
                     btnSaveCfg.disabled = true;
                     if (hint) hint.textContent = '保存中…';
@@ -9452,6 +9545,168 @@
                     })
                     .finally(function () {
                         btnBulkMsgSend.disabled = false;
+                    });
+            });
+        }
+
+        function bulkEmailAudienceLabel(audience) {
+            var labels = {
+                has_email_inactive: '未激活且已留邮箱',
+                price_offer_unpaid: '有专属价未开通',
+                pending_activate_24h: '注册超 24h 未激活',
+                all_inactive: '全部未激活',
+                inactive_has_tax: '未激活且有个税记录',
+                inactive_visited_purchase: '未激活且去过支付页',
+                inactive_purchase_no_pay: '未激活、去过支付页、未支付',
+                inactive_high_income: '未激活·月收入>1.5万',
+                refund_eligible: '退税合格'
+            };
+            return labels[audience] || audience;
+        }
+
+        function bulkEmailPayload(dryRun) {
+            var skipEl = document.getElementById('bulkEmailSkipSent');
+            return {
+                audience: String(
+                    (document.getElementById('bulkEmailAudience') || {}).value || 'has_email_inactive'
+                ),
+                subject: String((document.getElementById('bulkEmailSubject') || {}).value || '').trim(),
+                content: String((document.getElementById('bulkEmailContent') || {}).value || '').trim(),
+                link_url:
+                    String((document.getElementById('bulkEmailLink') || {}).value || '').trim() ||
+                    'purchase.html',
+                skip_already_sent: !!(skipEl && skipEl.checked),
+                dry_run: !!dryRun
+            };
+        }
+
+        function setBulkEmailStatus(text) {
+            var el = document.getElementById('bulkEmailStatus');
+            if (el) el.textContent = text || '';
+        }
+
+        var bulkEmailAudienceEl = document.getElementById('bulkEmailAudience');
+        if (bulkEmailAudienceEl) {
+            bulkEmailAudienceEl.addEventListener('change', function () {
+                var v = String(bulkEmailAudienceEl.value || '');
+                var subj = document.getElementById('bulkEmailSubject');
+                var body = document.getElementById('bulkEmailContent');
+                var link = document.getElementById('bulkEmailLink');
+                if (v === 'price_offer_unpaid') {
+                    if (subj) subj.value = '专属价提醒：打开支付页即可按优惠价开通';
+                    if (body)
+                        body.value =
+                            '您好，您的专属优惠价仍有效。打开支付页将按该价格下单，开通后可去除水印并完整使用功能。请尽快开通，以免优惠失效。';
+                    if (link) link.value = 'purchase.html?from=email_offer';
+                } else if (v === 'refund_eligible') {
+                    if (subj) subj.value = '退税资格提醒';
+                    if (body)
+                        body.value =
+                            '您好，系统检测到您可能符合退税咨询条件。点击邮件中的按钮了解详情，或在 App 内查看相关说明。';
+                    if (link) link.value = 'refund_ad.html';
+                }
+            });
+        }
+
+        var btnBulkEmailPreview = document.getElementById('btnBulkEmailPreview');
+        if (btnBulkEmailPreview) {
+            btnBulkEmailPreview.addEventListener('click', function () {
+                setBulkEmailStatus('预览中…');
+                btnBulkEmailPreview.disabled = true;
+                adminFetch('api/admin/emails/bulk', {
+                    method: 'POST',
+                    body: JSON.stringify(bulkEmailPayload(true))
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        if (j.code !== 200 || !j.data) {
+                            setBulkEmailStatus(j.msg || '预览失败');
+                            return;
+                        }
+                        var smtpHint = j.data.smtp_ready ? '' : '（SMTP 未配置，无法实发）';
+                        setBulkEmailStatus(
+                            '匹配已留邮箱 ' +
+                                (j.data.matched != null ? j.data.matched : 0) +
+                                ' 人' +
+                                smtpHint
+                        );
+                    })
+                    .catch(function (e) {
+                        setBulkEmailStatus(e && e.message ? e.message : '预览失败');
+                    })
+                    .finally(function () {
+                        btnBulkEmailPreview.disabled = false;
+                    });
+            });
+        }
+
+        var btnBulkEmailSend = document.getElementById('btnBulkEmailSend');
+        if (btnBulkEmailSend) {
+            btnBulkEmailSend.addEventListener('click', function () {
+                var payload = bulkEmailPayload(false);
+                if (!payload.subject || !payload.content) {
+                    alert('请填写邮件标题和正文');
+                    return;
+                }
+                setBulkEmailStatus('核对人数…');
+                btnBulkEmailSend.disabled = true;
+                adminFetch('api/admin/emails/bulk', {
+                    method: 'POST',
+                    body: JSON.stringify(bulkEmailPayload(true))
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        if (j.code !== 200 || !j.data) {
+                            throw new Error(j.msg || '预览失败');
+                        }
+                        if (!j.data.smtp_ready) {
+                            throw new Error('SMTP 未配置，请先在 docker-compose / .env 设置 SMTP_USER、SMTP_PASS');
+                        }
+                        var n = j.data.matched != null ? j.data.matched : 0;
+                        if (
+                            !confirm(
+                                '向「' +
+                                    bulkEmailAudienceLabel(payload.audience) +
+                                    '」群发邮件？\n预计 ' +
+                                    n +
+                                    ' 人（单次上限 200）。确认后将真实发出。'
+                            )
+                        ) {
+                            throw new Error('已取消');
+                        }
+                        setBulkEmailStatus('发送中（较慢，请勿关闭）…');
+                        return adminFetch('api/admin/emails/bulk', {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        }).then(function (r2) {
+                            return r2.json();
+                        });
+                    })
+                    .then(function (j) {
+                        if (!j || j.code !== 200 || !j.data) {
+                            setBulkEmailStatus((j && j.msg) || '发送失败');
+                            alert((j && j.msg) || '发送失败');
+                            return;
+                        }
+                        var msg =
+                            '成功 ' +
+                            (j.data.sent != null ? j.data.sent : 0) +
+                            '，失败 ' +
+                            (j.data.failed != null ? j.data.failed : 0);
+                        setBulkEmailStatus(msg);
+                        alert(msg);
+                    })
+                    .catch(function (e) {
+                        var m = e && e.message ? e.message : '发送失败';
+                        setBulkEmailStatus(m === '已取消' ? '' : m);
+                        if (m !== '已取消') alert(m);
+                    })
+                    .finally(function () {
+                        btnBulkEmailSend.disabled = false;
                     });
             });
         }

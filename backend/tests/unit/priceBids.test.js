@@ -72,22 +72,25 @@ describe('normalizeBidConfig', () => {
     expect(cfg.floor_pct).toBe(100);
     expect(cfg.min_amount).toBe(1);
     expect(cfg.daily_limit).toBe(10);
+    expect(cfg.floor_by_sku.sku_300_7d).toBe(120);
+    expect(cfg.floor_by_sku.sku_348_14d).toBe(199);
+    expect(cfg.floor_by_sku.sku_398_30d).toBe(298);
   });
 });
 
 describe('submitBid auto accept vs pending', () => {
-  it('auto-accepts at or above floor (60% of 300 = 180) and writes offer', async () => {
+  it('auto-accepts at or above week-card floor (¥120) and writes offer', async () => {
     const state = { queries: [] };
     const offerCalls = [];
     const notes = [];
     const api = makeApi(state, offerCalls, notes);
-    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '200' });
+    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '120' });
     expect(out.status).toBe('accepted');
-    expect(out.accepted_amount).toBe('200.00');
+    expect(out.accepted_amount).toBe('120.00');
     expect(offerCalls.length).toBe(1);
     expect(offerCalls[0].username).toBe('u1');
     expect(offerCalls[0].input.sku_id).toBe('sku_300_7d');
-    expect(offerCalls[0].input.amount).toBe('200.00');
+    expect(offerCalls[0].input.amount).toBe('120.00');
     expect(notes.length).toBe(1);
   });
 

@@ -232,12 +232,22 @@ async function collectRangeStats(conn, startYmd, endYmd) {
     USER_TYPE_GUEST;
 
   const [dauRows] = await conn.execute(
-    'SELECT activity_date AS d, COUNT(*) AS n FROM user_daily_activity ' +
-      'WHERE activity_date BETWEEN ? AND ? GROUP BY activity_date',
+    'SELECT uda.activity_date AS d, COUNT(DISTINCT COALESCE(' +
+      "NULLIF(TRIM((SELECT ule.ip FROM user_login_events ule WHERE ule.username = uda.username AND ule.ok = 1 AND DATE(ule.created_at) = uda.activity_date AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1)), '')," +
+      "NULLIF(TRIM((SELECT ule.ip FROM user_login_events ule WHERE ule.username = uda.username AND (ule.ok = 1 OR ule.reason LIKE 'register_%') AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1)), '')," +
+      "NULLIF(TRIM((SELECT ud.ip_last FROM user_devices ud WHERE ud.username = uda.username AND ud.ip_last IS NOT NULL AND TRIM(ud.ip_last) <> '' ORDER BY ud.last_seen DESC LIMIT 1)), '')," +
+      "CONCAT('__nouip:', uda.username)" +
+      ')) AS n FROM user_daily_activity uda ' +
+      'WHERE uda.activity_date BETWEEN ? AND ? GROUP BY uda.activity_date',
     [startYmd, endYmd]
   );
   const [[dauUniq]] = await conn.execute(
-    'SELECT COUNT(DISTINCT username) AS n FROM user_daily_activity WHERE activity_date BETWEEN ? AND ?',
+    'SELECT COUNT(DISTINCT COALESCE(' +
+      "NULLIF(TRIM((SELECT ule.ip FROM user_login_events ule WHERE ule.username = uda.username AND ule.ok = 1 AND DATE(ule.created_at) = uda.activity_date AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1)), '')," +
+      "NULLIF(TRIM((SELECT ule.ip FROM user_login_events ule WHERE ule.username = uda.username AND (ule.ok = 1 OR ule.reason LIKE 'register_%') AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1)), '')," +
+      "NULLIF(TRIM((SELECT ud.ip_last FROM user_devices ud WHERE ud.username = uda.username AND ud.ip_last IS NOT NULL AND TRIM(ud.ip_last) <> '' ORDER BY ud.last_seen DESC LIMIT 1)), '')," +
+      "CONCAT('__nouip:', uda.username)" +
+      ')) AS n FROM user_daily_activity uda WHERE uda.activity_date BETWEEN ? AND ?',
     [startYmd, endYmd]
   );
   const [regRows] = await conn.execute(
@@ -448,7 +458,7 @@ function wrapHtml(title, inner) {
     htmlEscape(title) +
     '</h2>' +
     inner +
-    '<p style="color:#888;font-size:12px;margin-top:20px;">口径：日活 = user_daily_activity；注册/激活/支付日 = 北京时间 UTC+8；游客已排除。治疗类 = 试用+永久，不含改名费。</p>' +
+    '<p style="color:#888;font-size:12px;margin-top:20px;">口径：日活 = user_daily_activity 按 IP 去重（同 IP 多账号计 1）；注册/激活/支付日 = 北京时间 UTC+8；游客已排除。治疗类 = 试用+永久，不含改名费。</p>' +
     '</div>'
   );
 }

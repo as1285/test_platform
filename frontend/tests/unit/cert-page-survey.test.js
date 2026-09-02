@@ -101,9 +101,9 @@ describe('cert-page-survey', () => {
     const lizhi = readFileSync(resolve(__dirname, '../../lizhi_cert.html'), 'utf8');
     const zaizhi = readFileSync(resolve(__dirname, '../../zaizhi_cert.html'), 'utf8');
     expect(lizhi).toContain('cert-page-survey.js');
-    expect(lizhi).toContain("product: 'lizhi'");
+    expect(lizhi).toContain("surveyProduct: 'lizhi'");
     expect(zaizhi).toContain('cert-page-survey.js');
-    expect(zaizhi).toContain("product: 'zaizhi'");
+    expect(zaizhi).toContain("surveyProduct: 'zaizhi'");
   });
 
   it('does not intercept back after local done', () => {

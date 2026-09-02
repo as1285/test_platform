@@ -47,8 +47,10 @@ const { createPricingAb, DEFAULT_PRICING_AB } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const { createPriceBids } = require('../payments/priceBids');
+const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBulk');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const renameFeePolicy = require('../user/renameFeePolicy');
+const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql,
@@ -594,6 +596,8 @@ var inviteRewardApi = null;
 var pricingAbApi = null;
 /** 用户专属报价 */
 var userPriceOffersApi = null;
+/** 运营邮件群发 */
+var userEmailBulkApi = null;
 /** 代理专属渠道 */
 var agentChannelsApi = null;
 
@@ -643,10 +647,35 @@ function getPriceBids() {
           [mid, uid, String(title || '通知'), content, MSG_COMPANY_SYSTEM_NOTICE, new Date().toISOString().slice(0, 10)]
         );
         invalidateMessageListCache(uid);
+        try {
+          await getUserEmailBulk().notifyUserEmail(uid, title, body, linkUrl);
+        } catch (eMail) {
+          /* 邮件失败不阻塞站内信 */
+        }
       }
     });
   }
   return priceBidsApi;
+}
+
+function getUserEmailBulk() {
+  if (!userEmailBulkApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    userEmailBulkApi = createUserEmailBulk({
+      getPool: function () {
+        return pool;
+      },
+      mail: mail,
+      publicSiteUrl: config.PUBLIC_SITE_URL,
+      bulkAudienceSet: BULK_MSG_AUDIENCE_SET,
+      appendBulkMsgAudienceFilters: appendBulkMsgAudienceFilters,
+      appendAdminUserScope: appendAdminUserScope,
+      nonGuestUsernameSql: nonGuestUsernameSql
+    });
+  }
+  return userEmailBulkApi;
 }
 
 function getInviteReward() {
@@ -5438,12 +5467,12 @@ function isRenameFeeSkuId(skuId) {
   return String(skuId || '') === RENAME_FEE_SKU_ID;
 }
 
-/** 离职证明：¥50 付一次终身无限次生成（不开通账号） */
+/** 离职证明：付一次终身无限次生成（不开通账号；金额以后台配置为准） */
 var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
-var LIZHI_CERT_AMOUNT = '50.00';
+var LIZHI_CERT_AMOUNT = lizhiCertFeePolicy.LIZHI_CERT_FEE_DEFAULT_AMOUNT;
 var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
 var ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
-var ZAIZHI_CERT_AMOUNT = '50.00';
+var ZAIZHI_CERT_AMOUNT = lizhiCertFeePolicy.LIZHI_CERT_FEE_DEFAULT_AMOUNT;
 var ZAIZHI_CERT_SUBJECT = '在职证明生成（终身）';
 var SBDY_DEMO_SKU_ID = 'sku_sbdy_demo_199';
 var SBDY_DEMO_AMOUNT = '199.00';
@@ -5669,6 +5698,54 @@ async function saveRenameFeeConfigFromAdmin(body) {
   }
   _renameFeeConfigCache = next;
   _renameFeeConfigCacheAt = Date.now();
+  return next;
+}
+
+var _lizhiCertFeeConfigCache = null;
+var _lizhiCertFeeConfigCacheAt = 0;
+var LIZHI_CERT_FEE_CONFIG_CACHE_MS = 10000;
+
+async function loadLizhiCertFeeConfig(force) {
+  var now = Date.now();
+  if (
+    !force &&
+    _lizhiCertFeeConfigCache &&
+    now - _lizhiCertFeeConfigCacheAt < LIZHI_CERT_FEE_CONFIG_CACHE_MS
+  ) {
+    return _lizhiCertFeeConfigCache;
+  }
+  var out = lizhiCertFeePolicy.defaultLizhiCertFeeConfig();
+  try {
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [lizhiCertFeePolicy.SETTING_KEY_LIZHI_CERT_FEE]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = lizhiCertFeePolicy.normalizeLizhiCertFeeConfig(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认离职证明金额 */
+  }
+  _lizhiCertFeeConfigCache = out;
+  _lizhiCertFeeConfigCacheAt = now;
+  return out;
+}
+
+async function saveLizhiCertFeeConfigFromAdmin(body) {
+  var next = lizhiCertFeePolicy.parseLizhiCertFeeConfigFromAdmin(body);
+  if (!next) {
+    var err = new Error('证明金额无效，请填写 0.01～99999.99');
+    err.statusCode = 400;
+    throw err;
+  }
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, lizhiCertFeePolicy.SETTING_KEY_LIZHI_CERT_FEE, JSON.stringify(next));
+  } finally {
+    conn.release();
+  }
+  _lizhiCertFeeConfigCache = next;
+  _lizhiCertFeeConfigCacheAt = Date.now();
   return next;
 }
 
@@ -6246,7 +6323,8 @@ async function handleAlipayCreateOrder(req, res) {
     ) {
       return res.status(409).json({ code: 409, msg: '离职证明无水印权益已开通，无需重复购买' });
     }
-    var lizhiAmount = alipay.normalizeAmount(LIZHI_CERT_AMOUNT);
+    var lizhiFeeCfg = await loadLizhiCertFeeConfig(false);
+    var lizhiAmount = alipay.normalizeAmount(lizhiFeeCfg.amount || LIZHI_CERT_AMOUNT);
     if (!lizhiAmount) {
       return res.status(503).json({ code: 503, msg: '离职证明费用配置无效' });
     }
@@ -6353,7 +6431,8 @@ async function handleAlipayCreateOrder(req, res) {
     ) {
       return res.status(409).json({ code: 409, msg: '在职证明无水印权益已开通，无需重复购买' });
     }
-    var zaizhiAmount = alipay.normalizeAmount(ZAIZHI_CERT_AMOUNT);
+    var zaizhiFeeCfg = await loadLizhiCertFeeConfig(false);
+    var zaizhiAmount = alipay.normalizeAmount(zaizhiFeeCfg.amount || ZAIZHI_CERT_AMOUNT);
     if (!zaizhiAmount) {
       return res.status(503).json({ code: 503, msg: '在职证明费用配置无效' });
     }
@@ -8798,7 +8877,7 @@ async function getUserSummaryForApi(userId) {
   try {
     const [rows] = await conn.execute(
       `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
-              activation_kind, active_until, created_at, register_source_channel, sales_promo_channel,
+              activation_kind, active_until, created_at, register_source_channel, sales_promo_channel, email,
               TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours_since_register
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
@@ -8822,7 +8901,8 @@ async function getUserSummaryForApi(userId) {
         user_type: USER_TYPE_NORMAL,
         is_guest: false,
         created_at: null,
-        hours_since_register: 0
+        hours_since_register: 0,
+        has_email: false
       };
       _userSummaryApiCache.set(uid, { v: empty, t: now });
       return empty;
@@ -8855,7 +8935,8 @@ async function getUserSummaryForApi(userId) {
       is_test_account: ut === USER_TYPE_TEST,
       is_guest: ut === USER_TYPE_GUEST,
       created_at: rec.created_at ? rec.created_at.toISOString() : null,
-      hours_since_register: Number(rec.hours_since_register) || 0
+      hours_since_register: Number(rec.hours_since_register) || 0,
+      has_email: isValidUserEmail(rec.email)
     };
     _userSummaryApiCache.set(uid, { v: out, t: now });
     if (_userSummaryApiCache.size > 800) {
@@ -9621,6 +9702,10 @@ async function handleUserPost(req, res) {
         }
         var pfEmail = profileField(body, 'email', 255);
         if (pfEmail !== undefined) {
+          if (pfEmail && !isValidUserEmail(pfEmail)) {
+            await conn.rollback();
+            return res.status(400).json({ code: 400, msg: '请填写有效的电子邮箱' });
+          }
           updateFields.push('email = ?');
           updateParams.push(pfEmail);
         }
@@ -16459,6 +16544,33 @@ async function handleAdminMessagesBulk(req, res) {
   }
 }
 
+/**
+ * 已留邮箱用户群发邮件（SMTP）
+ */
+async function handleAdminEmailsBulk(req, res) {
+  try {
+    var body = req.body || {};
+    var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
+    var result = await getUserEmailBulk().sendBulk({
+      audience: body.audience != null ? String(body.audience).trim() : 'has_email_inactive',
+      subject: body.subject != null ? String(body.subject).trim() : body.title != null ? String(body.title).trim() : '',
+      content: body.content != null ? String(body.content).trim() : '',
+      linkUrl: body.link_url || 'purchase.html',
+      dryRun: dryRun,
+      skipAlreadySent:
+        body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    if (e && e.code === 400) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
+    console.error('[admin emails bulk]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 定时：注册超 24h 未激活用户站内信推广（每人最多一封自动信） */
 var _activationInboxPromoRunning = false;
 async function runActivationInboxPromo(reason) {
@@ -19042,7 +19154,7 @@ async function handleAdminPriceBidsReview(req, res) {
       code: 200,
       msg:
         out.status === 'accepted'
-          ? '已通过，¥' + out.accepted_amount + ' 专属价已生效并站内信通知'
+          ? '已通过，¥' + out.accepted_amount + ' 专属价已生效（站内信；有邮箱则同步邮件）'
           : '已驳回并站内信告知',
       data: out
     });
@@ -19420,6 +19532,7 @@ async function handleAdminSettingsGet(req, res) {
         sku_catalog: await getPricingAb().loadCatalogConfig(true),
         tax_edit_fee: await loadTaxEditFeeConfig(true),
         rename_fee: await loadRenameFeeConfig(true),
+        lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
         activation_nudge: activationNudge
       }
     });
@@ -19450,6 +19563,7 @@ async function handleAdminSettingsPost(req, res) {
     (body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object');
   var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
   var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
+  var hasLizhiCertFee = body.lizhi_cert_fee != null && typeof body.lizhi_cert_fee === 'object';
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -19468,11 +19582,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasSkuCatalogPrices &&
     !hasTaxEditFee &&
     !hasRenameFee &&
+    !hasLizhiCertFee &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格或激活引导弹窗配置'
     });
   }
 
@@ -19495,6 +19610,7 @@ async function handleAdminSettingsPost(req, res) {
       hasSkuCatalogPrices ||
       hasTaxEditFee ||
       hasRenameFee ||
+      hasLizhiCertFee ||
       hasInvite ||
       hasActivationNudge
     ) {
@@ -19829,6 +19945,21 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasLizhiCertFee) {
+      try {
+        await saveLizhiCertFeeConfigFromAdmin(body.lizhi_cert_fee);
+      } catch (eLizhiFeeSave) {
+        var lizhiFeeMsg =
+          eLizhiFeeSave && eLizhiFeeSave.message
+            ? String(eLizhiFeeSave.message)
+            : '保存离职证明价格失败';
+        return res.status(eLizhiFeeSave && eLizhiFeeSave.statusCode === 400 ? 400 : 500).json({
+          code: eLizhiFeeSave && eLizhiFeeSave.statusCode === 400 ? 400 : 500,
+          msg: lizhiFeeMsg
+        });
+      }
+    }
+
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -19869,6 +20000,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.sku_catalog = await getPricingAb().loadCatalogConfig(true);
     outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
     outData.rename_fee = await loadRenameFeeConfig(true);
+    outData.lizhi_cert_fee = await loadLizhiCertFeeConfig(true);
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
@@ -20973,6 +21105,42 @@ var DEVICE_STATS_MODEL_ICON_LABEL = {
   other: '其他'
 };
 
+/** 日活按 IP 去重键：优先当日成功登录 IP，其次任意成功/注册 IP，再次设备 ip_last；无 IP 则按账号各计 1 */
+function dauActivityIpKeySql(udaAlias) {
+  var u = udaAlias || 'uda';
+  return (
+    'COALESCE(' +
+    'NULLIF(TRIM((' +
+    'SELECT ule.ip FROM user_login_events ule ' +
+    'WHERE ule.username = ' +
+    u +
+    '.username AND ule.ok = 1 AND DATE(ule.created_at) = ' +
+    u +
+    ".activity_date AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' " +
+    'ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1' +
+    ")), '')," +
+    'NULLIF(TRIM((' +
+    'SELECT ule.ip FROM user_login_events ule ' +
+    'WHERE ule.username = ' +
+    u +
+    ".username AND (ule.ok = 1 OR ule.reason LIKE 'register_%') " +
+    "AND ule.ip IS NOT NULL AND TRIM(ule.ip) <> '' " +
+    'ORDER BY ule.created_at DESC, ule.id DESC LIMIT 1' +
+    ")), '')," +
+    'NULLIF(TRIM((' +
+    'SELECT ud.ip_last FROM user_devices ud ' +
+    'WHERE ud.username = ' +
+    u +
+    ".username AND ud.ip_last IS NOT NULL AND TRIM(ud.ip_last) <> '' " +
+    'ORDER BY ud.last_seen DESC LIMIT 1' +
+    ")), '')," +
+    "CONCAT('__nouip:', " +
+    u +
+    '.username)' +
+    ')'
+  );
+}
+
 /** 加载：tax record flags for usernames */
 async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
   var flags = {};
@@ -21010,7 +21178,7 @@ async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
   return flags;
 }
 
-/** DAU 用户列表 */
+/** DAU 用户列表（按 IP 去重：同 IP 多账号只保留一个代表账号） */
 async function handleAdminAnalyticsDauUsers(req, res) {
   try {
     var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
@@ -21030,44 +21198,79 @@ async function handleAdminAnalyticsDauUsers(req, res) {
     }
     const conn = await pool.getConnection();
     try {
-      const [[countRow]] = await conn.execute(
-        'SELECT COUNT(*) AS c FROM user_daily_activity WHERE activity_date = ?',
+      var ipKeySql = dauActivityIpKeySql('uda');
+      const [rawRows] = await conn.query(
+        'SELECT uda.username AS username, ' +
+          ipKeySql +
+          ' AS ip_key FROM user_daily_activity uda WHERE uda.activity_date = ? ORDER BY uda.username ASC',
         [dateStr]
       );
-      var total = countRow && countRow.c != null ? Number(countRow.c) : 0;
+      var byIp = Object.create(null);
+      var groups = [];
+      (rawRows || []).forEach(function (r) {
+        var un = String(r.username || '').trim();
+        if (!un) {
+          return;
+        }
+        var ipKey = String(r.ip_key || '').trim() || '__nouip:' + un;
+        if (!byIp[ipKey]) {
+          byIp[ipKey] = {
+            username: un,
+            ip_key: ipKey,
+            same_ip_count: 1,
+            accounts: [un]
+          };
+          groups.push(byIp[ipKey]);
+        } else {
+          byIp[ipKey].same_ip_count += 1;
+          byIp[ipKey].accounts.push(un);
+        }
+      });
+      var total = groups.length;
       var totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
       if (totalPages > 0 && page > totalPages) {
         page = totalPages;
       }
       var offset = Math.max(0, ((page - 1) * limit) | 0);
-      var limInt = limit | 0;
-      const [rows] = await conn.query(
-        'SELECT username FROM user_daily_activity WHERE activity_date = ? ORDER BY username ASC LIMIT ' +
-          limInt +
-          ' OFFSET ' +
-          offset,
-        [dateStr]
-      );
+      var pageGroups = groups.slice(offset, offset + limit);
       if (total > 0 && totalPages < 1) {
         totalPages = 1;
       }
-      var pageUsernames = rows.map(function (r) {
-        return String(r.username || '');
+      var allNames = [];
+      pageGroups.forEach(function (g) {
+        g.accounts.forEach(function (n) {
+          allNames.push(n);
+        });
       });
-      var taxFlags = await loadTaxRecordFlagsForUsernames(conn, pageUsernames, dateStr);
+      var taxFlags = await loadTaxRecordFlagsForUsernames(conn, allNames, dateStr);
       return res.json({
         code: 200,
         data: {
           date: dateStr,
-          users: pageUsernames.map(function (uname) {
-            var f = taxFlags[uname] || { has_tax_records: false, tax_modified_on_date: false };
+          users: pageGroups.map(function (g) {
+            var hasTax = false;
+            var modTax = false;
+            g.accounts.forEach(function (un) {
+              var f = taxFlags[un] || {};
+              if (f.has_tax_records) {
+                hasTax = true;
+              }
+              if (f.tax_modified_on_date) {
+                modTax = true;
+              }
+            });
+            var ipDisp =
+              g.ip_key.indexOf('__nouip:') === 0 ? '' : g.ip_key;
             return {
-              username: uname,
-              has_tax_records: !!f.has_tax_records,
-              tax_modified_on_date: !!f.tax_modified_on_date
+              username: g.username,
+              ip: ipDisp,
+              same_ip_count: g.same_ip_count,
+              has_tax_records: hasTax,
+              tax_modified_on_date: modTax
             };
           }),
           total: total,
+          account_total: (rawRows || []).length,
           page: page,
           limit: limit,
           total_pages: totalPages
@@ -21090,10 +21293,12 @@ async function handleAdminAnalyticsOverview(req, res) {
     var loginPf = analyticsPeriodLoginDatetimeFilter(period);
     const conn = await pool.getConnection();
     try {
+      var ipKeySql = dauActivityIpKeySql('uda');
       const [dauRows] = await conn.execute(
-        `SELECT activity_date AS d, COUNT(*) AS cnt FROM user_daily_activity
-         WHERE ${actPf.sql}
-         GROUP BY activity_date ORDER BY activity_date ASC`,
+        `SELECT uda.activity_date AS d, COUNT(DISTINCT ${ipKeySql}) AS cnt
+         FROM user_daily_activity uda
+         WHERE ${actPf.sql.replace(/activity_date/g, 'uda.activity_date')}
+         GROUP BY uda.activity_date ORDER BY uda.activity_date ASC`,
         actPf.params
       );
       const [loginRows] = await conn.execute(
@@ -21179,6 +21384,9 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_purchase_price_survey_submit',
   'track_purchase_price_survey_skip',
   'track_purchase_price_survey_soft_dismiss',
+  'track_purchase_price_survey_to_bid',
+  'track_price_bid_open',
+  'track_price_bid_submit',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
   'track_kufaka_purchase_click',
@@ -21235,6 +21443,9 @@ function purchasePageTrackEventLabel(eventKey) {
     track_purchase_price_survey_submit: '离开调研提交',
     track_purchase_price_survey_skip: '离开调研跳过',
     track_purchase_price_survey_soft_dismiss: '离开调研软关闭',
+    track_purchase_price_survey_to_bid: '离开调研偏贵转出价',
+    track_price_bid_open: '心理价出价打开',
+    track_price_bid_submit: '心理价出价提交',
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_kufaka_purchase_click: '酷发卡购买',
@@ -22096,6 +22307,9 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_purchase_price_survey_submit',
   'track_purchase_price_survey_skip',
   'track_purchase_price_survey_soft_dismiss',
+  'track_purchase_price_survey_to_bid',
+  'track_price_bid_open',
+  'track_price_bid_submit',
   'track_kufaka_purchase_click',
   'track_purchase_sales_agent_view',
   'track_purchase_sales_agent_copy_wechat',
@@ -22155,7 +22369,10 @@ function activateTrackEventLabel(eventKey) {
     track_purchase_price_survey_open: '离开调研打开',
     track_purchase_price_survey_submit: '离开调研提交',
     track_purchase_price_survey_skip: '离开调研跳过',
-    track_purchase_price_survey_soft_dismiss: '离开调研软关闭'
+    track_purchase_price_survey_soft_dismiss: '离开调研软关闭',
+    track_purchase_price_survey_to_bid: '离开调研偏贵转出价',
+    track_price_bid_open: '心理价出价打开',
+    track_price_bid_submit: '心理价出价提交'
   };
   return labels[eventKey] || eventKey;
 }
@@ -23036,6 +23253,7 @@ function getHandlers() {
     handleAdminAnalyticsOverview,
     handleAdminAnalyticsDauUsers,
     handleAdminMessagesBulk,
+    handleAdminEmailsBulk,
     handleAdminRegisterTimeDistribution,
     handleAdminRegisterChannelStats,
     handleAdminUserTaxRecords,

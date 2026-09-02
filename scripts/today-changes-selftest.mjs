@@ -198,7 +198,7 @@ mustInclude(
 );
 mustInclude(
   'backend/scripts/company_seal.py',
-  ['SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.90', 'drawstamputils', '_apply_rough_edge', '单圈朱红'],
+  ['SEAL_RED = (210, 36, 40, 255)', 'SEAL_STAMP_ALPHA = 0.90', 'drawstamputils', '_apply_rough_edge', '单圈朱红', '_draw_single_ring'],
   'company_seal DrawStampUtils-style single-ring official seal'
 );
 mustExclude(
@@ -1780,8 +1780,19 @@ mustInclude(
 );
 mustInclude(
   'backend/src/payments/priceBids.js',
-  ['createPriceBids', 'user_price_bids', 'floor_pct', 'acceptToOffer'],
-  'price bid module with auto accept floor'
+  [
+    'createPriceBids',
+    'user_price_bids',
+    'floor_pct',
+    'floor_by_sku',
+    'sku_300_7d',
+    '120',
+    '199',
+    '298',
+    'resolveAutoFloor',
+    'acceptToOffer'
+  ],
+  'price bid module with per-sku auto accept floor'
 );
 mustInclude(
   'backend/src/payments/routes.js',
@@ -1800,13 +1811,17 @@ mustInclude(
     'btnPriceBidOpen',
     'price-bid-mask',
     'track_price_bid_submit',
-    "paymentFetch('/api/payments/price-bid'"
+    "paymentFetch('/api/payments/price-bid'",
+    'handoffExpensiveToPriceBid',
+    'track_purchase_price_survey_to_bid',
+    'canOpenPriceBidSheet',
+    "from: 'price_survey_expensive'"
   ],
-  'purchase page price bid entry and sheet'
+  'purchase page price bid entry and expensive survey handoff'
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['心理价出价', 'bidTbody', 'btnSaveBidCfg', 'bidCfgFloorPct'],
+  ['心理价出价', 'bidTbody', 'btnSaveBidCfg', 'bidCfgFloorPct', 'bidCfgFloorWeek', 'bidCfgFloorTwoWeek', 'bidCfgFloorMonth'],
   'admin price bids section'
 );
 mustInclude(

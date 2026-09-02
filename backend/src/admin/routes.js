@@ -233,6 +233,12 @@ app.post(
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
   h.handleAdminMessagesBulk
 );
+app.post(
+  '/api/admin/emails/bulk',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board']),
+  h.handleAdminEmailsBulk
+);
 app.get(
   '/api/admin/analytics/register-time',
   mw.requireAdminAuth,

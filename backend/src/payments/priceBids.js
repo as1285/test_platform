@@ -6,10 +6,19 @@
 
 var SETTING_KEY_PRICE_BID = 'price_bid_config';
 
+/** 现售三档默认自动通过线（元）；有配置时优先于目录价百分比 */
+var DEFAULT_FLOOR_BY_SKU = {
+  sku_300_7d: 120,
+  sku_348_14d: 199,
+  sku_398_30d: 298
+};
+
 var DEFAULT_BID_CONFIG = {
   enabled: true,
-  /* 自动通过线：目录价的百分比 */
+  /* 无按套餐金额时的回退：目录价百分比 */
   floor_pct: 60,
+  /* 按套餐自动通过线（元） */
+  floor_by_sku: Object.assign({}, DEFAULT_FLOOR_BY_SKU),
   /* 全局最低出价（元），低于此直接拒收 */
   min_amount: 30,
   /* 24h 内可提交次数 */
@@ -22,14 +31,50 @@ function clampInt(v, lo, hi, dft) {
   return Math.min(hi, Math.max(lo, n));
 }
 
+function clampMoney(v, dft) {
+  var n = Number(v);
+  if (!isFinite(n) || n <= 0) return dft;
+  if (n > 99999) n = 99999;
+  return Math.round(n * 100) / 100;
+}
+
+function normalizeFloorBySku(raw) {
+  var src = raw && typeof raw === 'object' ? raw : {};
+  var out = {};
+  var keys = Object.keys(DEFAULT_FLOOR_BY_SKU);
+  for (var i = 0; i < keys.length; i++) {
+    var id = keys[i];
+    out[id] = clampMoney(
+      src[id] != null ? src[id] : DEFAULT_FLOOR_BY_SKU[id],
+      DEFAULT_FLOOR_BY_SKU[id]
+    );
+  }
+  return out;
+}
+
 function normalizeBidConfig(raw) {
   var o = raw && typeof raw === 'object' ? raw : {};
   return {
     enabled: o.enabled !== false && o.enabled !== 0 && o.enabled !== '0',
     floor_pct: clampInt(o.floor_pct, 1, 100, DEFAULT_BID_CONFIG.floor_pct),
+    floor_by_sku: normalizeFloorBySku(o.floor_by_sku),
     min_amount: clampInt(o.min_amount, 1, 99999, DEFAULT_BID_CONFIG.min_amount),
     daily_limit: clampInt(o.daily_limit, 1, 10, DEFAULT_BID_CONFIG.daily_limit)
   };
+}
+
+/** 自动通过线：优先套餐固定金额，否则目录价 × floor_pct，且不低于全局最低出价 */
+function resolveAutoFloor(cfg, skuId, listAmount) {
+  var c = cfg || DEFAULT_BID_CONFIG;
+  var id = String(skuId || '').trim();
+  var bySku = c.floor_by_sku && c.floor_by_sku[id] != null ? Number(c.floor_by_sku[id]) : NaN;
+  var floor;
+  if (isFinite(bySku) && bySku > 0) {
+    floor = bySku;
+  } else {
+    floor = (isFinite(listAmount) ? listAmount : 0) * ((c.floor_pct || 60) / 100);
+  }
+  return Math.max(c.min_amount || 0, floor);
 }
 
 function plainBidRow(row) {
@@ -242,12 +287,12 @@ function createPriceBids(deps) {
       sku_label: sku.label || '',
       bid_amount: amount
     };
-    var floor = Math.max(cfg.min_amount, (isFinite(listAmount) ? listAmount : 0) * (cfg.floor_pct / 100));
+    var floor = resolveAutoFloor(cfg, sku.id, listAmount);
     if (isFinite(listAmount) && num >= floor) {
       await acceptToOffer(bid, amount, 'price-bid-auto', true);
       return { status: 'accepted', accepted_amount: amount, sku_label: sku.label || '' };
     }
-    return { status: 'pending', sku_label: sku.label || '' };
+    return { status: 'pending', sku_label: sku.label || '', floor_hint: String(Math.round(floor)) };
   }
 
   async function listBids(opts) {
@@ -351,5 +396,7 @@ function createPriceBids(deps) {
 module.exports = {
   createPriceBids: createPriceBids,
   normalizeBidConfig: normalizeBidConfig,
-  DEFAULT_BID_CONFIG: DEFAULT_BID_CONFIG
+  resolveAutoFloor: resolveAutoFloor,
+  DEFAULT_BID_CONFIG: DEFAULT_BID_CONFIG,
+  DEFAULT_FLOOR_BY_SKU: DEFAULT_FLOOR_BY_SKU
 };
