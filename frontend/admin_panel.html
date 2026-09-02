@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-visitor-fold">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260902-api-autoheal">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -3277,14 +3277,40 @@
                 <div id="page-server-monitor" class="page-panel" role="tabpanel">
                     <section>
                         <h2>服务状态</h2>
-                        <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx。服务异常时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。每晚 0 点（北京时间）自动发送昨日日活/注册/激活/付费日报，周一附周报，每月 1 日附月报。</p>
-                        <div class="form-row flex-align-center mt-8">
+                        <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx，并自测登录/公开/用户/管理等关键接口。任一接口 404/5xx 或超时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。开启自动修复后，健康检查失败或多数接口连续两轮异常会重启后端进程（冷却 10 分钟，每小时最多 3 次）。每晚 0 点（北京时间）自动发送昨日日活/注册/激活/付费日报，周一附周报，每月 1 日附月报。</p>
+                        <div class="form-row flex-align-center mt-8 flex-wrap gap-10">
                             <button type="button" class="btn-primary" id="btnRefreshServerMonitor">刷新</button>
+                            <button type="button" class="btn-page" id="btnMonitorRunSelftest">立即自测接口</button>
                             <button type="button" class="btn-page" id="btnMonitorTestEmail">发送测试邮件</button>
                             <button type="button" class="btn-page" id="btnOpsStatsSendEmail">补发昨日运营日报</button>
+                            <label class="flex-align-center" style="display:inline-flex;gap:6px;margin:0;">
+                                <input type="checkbox" id="chkMonitorAutoHeal" checked>
+                                API 挂了自动修复
+                            </label>
                             <span id="monitorSmtpStatus" class="stat m-0">—</span>
                         </div>
+                        <p class="stat" id="monitorAutoHealStat">—</p>
                         <div id="monitorServicesGrid" class="monitor-services-grid" aria-live="polite">加载中…</div>
+                    </section>
+                    <section>
+                        <h2>接口自测</h2>
+                        <p class="hint">公开接口期望 HTTP 200；需登录的接口期望 401（证明路由还在）。出现 404、5xx 或超时即告警。</p>
+                        <p class="stat" id="monitorApiProbeStat">—</p>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>接口</th>
+                                        <th>方法</th>
+                                        <th>路径</th>
+                                        <th>HTTP</th>
+                                        <th>耗时</th>
+                                        <th>结果</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monitorApiProbesTbody"><tr><td colspan="6">暂无自测记录</td></tr></tbody>
+                            </table>
+                        </div>
                     </section>
                     <section>
                         <h2>主机资源</h2>
@@ -3439,6 +3465,6 @@
     <script src="/js/admin/loader.js?v=20260831-adops"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260902-visitor-fold"></script>
+    <script src="/js/admin_panel.js?v=20260902-api-autoheal"></script>
 </body>
 </html>

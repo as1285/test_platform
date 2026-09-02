@@ -15,7 +15,7 @@ dr_load_env
 
 COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/docker-compose.yml}"
 FRONTEND_URL="${HEALTH_FRONTEND_URL:-${PUBLIC_SITE_URL:-https://lkj.qiyun888.top}}"
-API_URL="${HEALTH_API_URL:-http://127.0.0.1:3000/api/user?action=ping}"
+API_URL="${HEALTH_API_URL:-http://127.0.0.1:3000/api/health}"
 AUTO_HEAL="${HEALTH_AUTO_HEAL:-1}"
 DISK_ALERT_PCT="${HEALTH_DISK_ALERT_PCT:-90}"
 MEM_ALERT_PCT="${HEALTH_MEM_ALERT_PCT:-92}"

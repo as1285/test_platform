@@ -754,6 +754,10 @@ tr:nth-child(even) { background: var(--admin-surface-soft); }
 tr:hover td { background: var(--admin-primary-soft-2); }
 tr.users-detail-row:hover td,
 tr.users-detail-row td { background: transparent; }
+table tr.row-danger td {
+    color: var(--admin-danger, #c62828);
+    background: var(--admin-danger-soft, #fdecea);
+}
 .cell-break {
     max-width: 260px;
     white-space: normal;

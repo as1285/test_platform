@@ -3169,6 +3169,34 @@
                 smtpEl.style.color = data.smtp_configured ? '#2e7d32' : '#c62828';
             }
 
+            var heal = data.auto_heal || {};
+            var healChk = document.getElementById('chkMonitorAutoHeal');
+            if (healChk && document.activeElement !== healChk) {
+                healChk.checked = !!heal.enabled;
+            }
+            var healStat = document.getElementById('monitorAutoHealStat');
+            if (healStat) {
+                var healBits = [];
+                healBits.push(heal.enabled ? '自动修复：开' : '自动修复：关');
+                if (heal.streak) {
+                    healBits.push('连续异常 ' + heal.streak + ' 轮');
+                }
+                if (heal.last_at) {
+                    healBits.push(
+                        '上次修复 ' +
+                            formatDt(heal.last_at) +
+                            (heal.last_reason ? '（' + heal.last_reason + '）' : '')
+                    );
+                } else {
+                    healBits.push(
+                        heal.enabled
+                            ? '健康检查挂了或一半以上接口连续失败 2 轮后重启后端'
+                            : '不会自动重启'
+                    );
+                }
+                healStat.textContent = healBits.join(' · ');
+            }
+
             var svcGrid = document.getElementById('monitorServicesGrid');
             if (svcGrid) {
                 var services = Array.isArray(data.services) ? data.services : [];
@@ -3274,6 +3302,35 @@
                         ah += '</tr>';
                     });
                     tbody.innerHTML = ah;
+                }
+            }
+
+            var probes = Array.isArray(data.api_probes) ? data.api_probes : [];
+            var probeStat = document.getElementById('monitorApiProbeStat');
+            var probeBody = document.getElementById('monitorApiProbesTbody');
+            if (probeStat) {
+                var failN = probes.filter(function (p) { return !p.ok; }).length;
+                probeStat.textContent = probes.length
+                    ? ('共 ' + probes.length + ' 个接口，失败 ' + failN + ' 个')
+                    : '尚未跑过接口自测';
+                probeStat.style.color = failN ? '#c62828' : '';
+            }
+            if (probeBody) {
+                if (!probes.length) {
+                    probeBody.innerHTML = '<tr><td colspan="6">暂无自测记录</td></tr>';
+                } else {
+                    var ph = '';
+                    probes.forEach(function (p) {
+                        ph += '<tr class="' + (p.ok ? '' : 'row-danger') + '">';
+                        ph += '<td>' + esc(p.label || p.id || '—') + '</td>';
+                        ph += '<td>' + esc(p.method || 'GET') + '</td>';
+                        ph += '<td class="cell-break"><code>' + esc(p.path || '—') + '</code></td>';
+                        ph += '<td>' + esc(p.status != null ? String(p.status) : '—') + '</td>';
+                        ph += '<td>' + esc(p.latency_ms != null ? p.latency_ms + ' ms' : '—') + '</td>';
+                        ph += '<td>' + (p.ok ? '正常' : esc(p.message || '异常')) + '</td>';
+                        ph += '</tr>';
+                    });
+                    probeBody.innerHTML = ph;
                 }
             }
 
@@ -9404,6 +9461,55 @@
         if (btnRefreshServerMonitor) {
             btnRefreshServerMonitor.addEventListener('click', function () {
                 loadServerMonitor();
+            });
+        }
+        var chkMonitorAutoHeal = document.getElementById('chkMonitorAutoHeal');
+        if (chkMonitorAutoHeal) {
+            chkMonitorAutoHeal.addEventListener('change', function () {
+                var on = !!this.checked;
+                var chk = this;
+                chk.disabled = true;
+                adminFetch('api/admin/monitor/auto-heal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: on })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.code === 200 && j.data) {
+                            chk.checked = !!j.data.enabled;
+                            var healStat = document.getElementById('monitorAutoHealStat');
+                            if (healStat) {
+                                healStat.textContent = j.msg || (j.data.enabled ? '已开启自动修复' : '已关闭自动修复');
+                            }
+                        } else {
+                            chk.checked = !on;
+                            alert(j.msg || '切换失败');
+                        }
+                    })
+                    .catch(function () {
+                        chk.checked = !on;
+                        alert('网络错误');
+                    })
+                    .then(function () { chk.disabled = false; });
+            });
+        }
+        var btnMonitorRunSelftest = document.getElementById('btnMonitorRunSelftest');
+        if (btnMonitorRunSelftest) {
+            btnMonitorRunSelftest.addEventListener('click', function () {
+                var btn = this;
+                btn.disabled = true;
+                adminFetch('api/admin/monitor/run', { method: 'POST' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.code === 200 && j.data) {
+                            renderServerMonitor(j.data);
+                        } else {
+                            alert(j.msg || '自测失败');
+                        }
+                    })
+                    .catch(function () { alert('网络错误'); })
+                    .then(function () { btn.disabled = false; });
             });
         }
         var btnAddBlockedIp = document.getElementById('btnAddBlockedIp');

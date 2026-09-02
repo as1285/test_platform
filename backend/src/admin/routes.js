@@ -427,6 +427,8 @@ app.post(
   h.handleAdminAccountsDelete
 );
 app.get('/api/admin/monitor/overview', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorOverview);
+app.post('/api/admin/monitor/auto-heal', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorAutoHeal);
+app.post('/api/admin/monitor/run', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorRunTick);
 app.post('/api/admin/monitor/test-email', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorTestEmail);
 app.post('/api/admin/ops-stats/send-email', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminOpsStatsSendEmail);
 app.post(

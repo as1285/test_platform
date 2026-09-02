@@ -200,19 +200,6 @@
                     document.documentElement.classList.add('app-android-immersive-white-top');
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
-                    if (!document.getElementById('iqoo13MineFirstPaint')) {
-                        var iq13MineFp = document.createElement('style');
-                        iq13MineFp.id = 'iqoo13MineFirstPaint';
-                        iq13MineFp.setAttribute('data-iqoo13-mine-firstpaint', '1');
-                        iq13MineFp.textContent =
-                            'html.app-android-iqoo-13 body.page-mine,html.app-android-iqoo-15 body.page-mine{background:#000!important;}' +
-                            'html.app-android-iqoo-13 body.page-mine .mine-stack,html.app-android-iqoo-15 body.page-mine .mine-stack{display:flex!important;flex-direction:column!important;min-height:calc(100vh - 70px)!important;min-height:calc(100dvh - 70px)!important;background:#f4f6f9!important;}' +
-                            'html.app-android-iqoo-13 body.page-mine .mine-e1-canvas,html.app-android-iqoo-15 body.page-mine .mine-e1-canvas{flex:0 0 auto!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:auto!important;overflow:hidden!important;background-color:#f4f6f9!important;background-size:100% auto!important;background-position:top center!important;}' +
-                            'html.app-android-iqoo-13 body.page-mine .mine-e1-canvas>img,html.app-android-iqoo-13 body.page-mine .mine-e1-canvas>#headerImg,html.app-android-iqoo-15 body.page-mine .mine-e1-canvas>img,html.app-android-iqoo-15 body.page-mine .mine-e1-canvas>#headerImg{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;}' +
-                            'html.app-android-iqoo-13 body.page-mine .mine-e1-footer,html.app-android-iqoo-15 body.page-mine .mine-e1-footer{margin-top:auto!important;background:#f4f6f9!important;padding-bottom:12px!important;}' +
-                            'html.app-android-iqoo-13.mine-guest body.page-mine .mine-e1-footer,html.app-android-iqoo-15.mine-guest body.page-mine .mine-e1-footer{display:none!important;}';
-                        document.head.appendChild(iq13MineFp);
-                    }
                 }
                 if (/V2505A|I2501\b|PD2505\b|iQOO\s*15(?![a-zA-Z0-9])/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-15');
@@ -396,8 +383,6 @@
             top: 0 !important;
         }
         html.app-android-vivo-family body.page-mine,
-        html.app-android-iqoo-13 body.page-mine,
-        html.app-android-iqoo-15 body.page-mine,
         html.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oppo-reno10) body.page-mine,
         html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine,
         html.app-android-redmi-k70 body.page-mine,
@@ -768,11 +753,8 @@
             padding: 8px 16px var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
         }
 
-        /*
-         * Android @sm e1（不含 iQOO）：裁到菜单下缘。
-         * iQOO 13/15 另走 flex：内容灰底撑满，退出登录钉在底栏上方。
-         */
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-canvas {
+        /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 另走 lock。 */
+        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -780,8 +762,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -790,74 +772,11 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-iqoo-13):not(.app-android-iqoo-15) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
-        }
-
-        /* iQOO 13/15：页缘黑底；内容栈灰底 + flex，退出登录贴底栏 */
-        html.app-android-iqoo-13:has(body.page-mine),
-        html.app-android-iqoo-15:has(body.page-mine) {
-            background-color: #000 !important;
-            background-image: linear-gradient(#1677ff, #1677ff) !important;
-            background-size: 100% var(--app-shell-statusbar-top, 40px) !important;
-            background-repeat: no-repeat !important;
-            background-position: top center !important;
-        }
-        html.app-android-iqoo-13 body.page-mine,
-        html.app-android-iqoo-15 body.page-mine {
-            background: #000 !important;
-        }
-        html.app-android-iqoo-13 body.page-mine .mine-stack,
-        html.app-android-iqoo-15 body.page-mine .mine-stack {
-            display: flex !important;
-            flex-direction: column !important;
-            min-height: calc(100vh - 70px) !important;
-            min-height: calc(100dvh - 70px) !important;
-            background: #f4f6f9 !important;
-            box-sizing: border-box !important;
-        }
-        html.app-android-iqoo-13 body.page-mine .mine-e1-canvas,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas {
-            flex: 0 0 auto !important;
-            height: calc(1180 * 100vw / 750) !important;
-            max-height: calc(1180 * 100vw / 750) !important;
-            aspect-ratio: auto !important;
-            overflow: hidden !important;
-            background-color: #f4f6f9 !important;
-            background-size: 100% auto !important;
-            background-position: top center !important;
-            background-repeat: no-repeat !important;
-        }
-        html.app-android-iqoo-13 body.page-mine .mine-e1-canvas > img,
-        html.app-android-iqoo-13 body.page-mine .mine-e1-canvas > #headerImg,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas > img,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-canvas > #headerImg {
-            position: absolute !important;
-            width: 1px !important;
-            height: 1px !important;
-            margin: 0 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-        html.app-android-iqoo-13 body.page-mine .mine-e1-layer,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-layer {
-            padding-bottom: calc(1180 / 750 * 100%) !important;
-        }
-        html.app-android-iqoo-13 body.page-mine .mine-e1-footer,
-        html.app-android-iqoo-15 body.page-mine .mine-e1-footer {
-            margin-top: auto !important;
-            background: #f4f6f9 !important;
-            padding-bottom: 12px !important;
-        }
-        html.app-android-iqoo-13.mine-guest body.page-mine .mine-e1-canvas,
-        html.app-android-iqoo-15.mine-guest body.page-mine .mine-e1-canvas {
-            flex: 1 1 auto !important;
-            min-height: calc(1180 * 100vw / 750) !important;
-            height: auto !important;
-            max-height: none !important;
         }
 
         /* 游客：叠字隐藏，登录钮落在信息卡中央 */
@@ -2216,10 +2135,8 @@
                     if (sm) {
                         var canvas = document.getElementById('mineE1Canvas');
                         if (canvas) {
-                            var iqMine = document.documentElement.classList.contains('app-android-iqoo-13') ||
-                                document.documentElement.classList.contains('app-android-iqoo-15');
                             canvas.style.setProperty('background-image', 'url("' + url + '")', 'important');
-                            canvas.style.setProperty('background-size', iqMine ? '100% auto' : '100% 100%', 'important');
+                            canvas.style.setProperty('background-size', '100% auto', 'important');
                             canvas.style.setProperty('background-repeat', 'no-repeat', 'important');
                             canvas.style.setProperty('background-color', '#f4f6f9', 'important');
                             canvas.style.setProperty('background-position', 'top center', 'important');

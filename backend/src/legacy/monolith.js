@@ -22671,6 +22671,34 @@ async function handleAdminMonitorOverview(req, res) {
   }
 }
 
+/** 开关 API 自动修复 */
+async function handleAdminMonitorAutoHeal(req, res) {
+  try {
+    var body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (body.enabled == null) {
+      return res.json({
+        code: 200,
+        data: { enabled: serverMonitor.isAutoHealEnabled() }
+      });
+    }
+    var on = body.enabled === true || body.enabled === 1 || body.enabled === '1';
+    var enabled = serverMonitor.setAutoHealEnabled(on);
+    res.json({ code: 200, msg: enabled ? '已开启自动修复' : '已关闭自动修复', data: { enabled: enabled } });
+  } catch (e) {
+    res.status(500).json({ code: 500, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
+/** 立即跑一轮监控 + 接口自测 */
+async function handleAdminMonitorRunTick(req, res) {
+  try {
+    await serverMonitor.runMonitorTick();
+    res.json({ code: 200, data: serverMonitor.getMonitorOverview() });
+  } catch (e) {
+    res.status(500).json({ code: 500, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
 /** 监控测试邮件 */
 async function handleAdminMonitorTestEmail(req, res) {
   try {
@@ -22886,6 +22914,8 @@ function getHandlers() {
     handleAdminAccountsUpdate,
     handleAdminAccountsDelete,
     handleAdminMonitorOverview,
+    handleAdminMonitorAutoHeal,
+    handleAdminMonitorRunTick,
     handleAdminMonitorTestEmail,
     handleAdminOpsStatsSendEmail,
     healthHandler
@@ -22912,7 +22942,6 @@ async function startServer() {
     console.error('UPLOAD_DIR mkdir', UPLOAD_DIR, e);
   }
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
-  serverMonitor.startServerMonitor();
   scheduleDbLogRetention();
   scheduleActivationInboxPromo();
   opsStatsReport.scheduleOpsStatsReport(function () {
@@ -22923,6 +22952,7 @@ async function startServer() {
   });
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
+    serverMonitor.startServerMonitor();
   });
 }
 
