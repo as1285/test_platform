@@ -127,6 +127,33 @@
                     document.documentElement.classList.add('app-android-huawei-mate70');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                /*
+                 * Hi nova 9 SE（FIO-BD00 / PHB-AN00）：系统状态栏覆盖 WebView。
+                 * auth.js 为 defer，故在首绘脚本中同步固定顶栏、汇总栏和列表的 40px 偏移。
+                 */
+                if (/FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-hinova');
+                    document.documentElement.classList.add('app-android-hinova9se');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-hinova9se-result-firstpaint]')) {
+                        var hn9St = document.createElement('style');
+                        hn9St.setAttribute('data-hinova9se-result-firstpaint', '1');
+                        hn9St.textContent =
+                            'html.app-android-hinova9se body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;z-index:120 !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-hinova9se body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming-result .top-fixed .header .header-title{visibility:visible !important;opacity:1 !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;z-index:125 !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(hn9St);
+                    }
+                }
                 if (
                     /M2001J2[CEGI]|M2001J1[CEG]|M2102J2SC|M2007J1SC|M2007J3SC|M2007J17C/i.test(u) ||
                     (/Xiaomi\s*10|Mi\s*10(?!\s*T)|小米\s*10/i.test(u) && !/Mi\s*10\s*T|Xiaomi\s*10\s*T/i.test(u))

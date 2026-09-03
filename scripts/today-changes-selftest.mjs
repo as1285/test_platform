@@ -77,7 +77,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine_mate60_aug12.html',
-  ['冻结 2026-08-12', 'auth-mate60-aug12.js?v=20260824-aug12r6', 'nav-mate60-aug12.css?v=20260824-aug12r6', 'theme-loader-mate60-aug12.js', 'UI:aug12-r6', 'mineE1Canvas', "location.replace('mine.html'", 'pinAug12Rpx'],
+  ['冻结 2026-08-12', 'auth-mate60-aug12.js?v=20260903-mate60pay', 'nav-mate60-aug12.css?v=20260824-aug12r6', 'theme-loader-mate60-aug12.js', 'UI:aug12-r6', 'mineE1Canvas', "location.replace('mine.html'", 'pinAug12Rpx'],
   'frozen aug12 mine page with guard and pinned assets'
 );
 mustInclude(
@@ -206,7 +206,7 @@ mustInclude(
   ['place_seal', 'SEAL_PT'],
   'zaizhi uses shared vermilion seal'
 );
-mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'", '20260902-android-save'], 'lizhi cert shared page + quick generate');
+mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'", '20260902-lizhi-fee'], 'lizhi cert shared page + quick generate');
 mustInclude(
   'frontend/public/js/employment-cert-page.js',
   ['androidSaveLocal', 'TaxNativeSave', 'forceDownloadUrl', '保存到手机'],
@@ -274,12 +274,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'zaizhi-cert': 1", 'opts.page', 'adminPagePanelId(rawHash)', 'ops-ia-v18-rename-peer-merge'],
+  ["'zaizhi-cert': 'lizhi-cert'", 'adminPagePanelId', "pageKey === 'zaizhi-cert'", 'callAdminModuleLoadPage'],
   'admin zaizhi-cert hash not bounced'
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ["'downline-admins': 1", 'canOpenAdminAccountsPage', 'syncAdminAccountsPageCopy', '新增下线'],
+  ["'downline-admins'", 'canOpenAdminAccountsPage', 'syncAdminAccountsPageCopy', '新增下线'],
   'admin downline-admins page routing'
 );
 mustInclude(
@@ -329,7 +329,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'ops-ia-v18-rename-peer-merge', 'setRenamePeerTab', 'rename-peer-tab'],
+  ['adminMenuSelectorHtml', 'admin-menu-selector-group-title', 'setRenamePeerTab', 'rename-peer-tab'],
   'admin accounts menu selector grouped by sidebar'
 );
 mustInclude(
@@ -359,17 +359,17 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260901-opsboard', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260903-chart-opt', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['filterD1Return', 'inactive_d1_only', 'analyticsD1ReturnCohort', 'ops-board'],
+  ['filterD1Return', '注册次日回访', 'ops-board'],
   'admin D1 return cohort UI'
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['loadAnalyticsD1ReturnCohort', 'd1_return=', 'inactive_d1_only', 'jumpToD1ReturnUsers'],
+  ['filterD1Return', 'd1_return=', 'applyD1BulkDefaultCopy'],
   'admin D1 return cohort JS'
 );
 mustInclude(
@@ -646,7 +646,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/fast-nav.js',
-  ['20260824-skip-hide'],
+  ['20260903-mate60pay'],
   'fast-nav auth cache mate60 plan B'
 );
 mustInclude(
@@ -656,7 +656,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['--mine-top-bleed:0px !important', 'pinMate60MineShift', 'data-mate60-aug15-lock', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isHuaweiP40ProClient', 'app-android-huawei-p40pro', 'ELS-AN00', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1', 'mineShellBg'],
+  ['--mine-top-bleed:0px !important', 'pinMate60MineShift', 'data-mate60-aug15-lock', 'pinMate60MineE1Layout', 'app-huawei-mine-noclip', 'isHuaweiP40ProClient', 'app-android-huawei-p40pro', 'ELS-AN00', 'isLikelyAndroidViewportClient', 'OpenHarmony', 'isIqooNeo8ProClient', 'isIqooNeo8Client', 'V2302A', 'V2301A', 'clientUaBlob', 'OriginOS/iQOO 会变成黑条白字', "shell_bg: '#ffffff'", 'tax_device_model_v1', 'applyMinePageChrome'],
   'auth.js mate60 e1-v12 + neo8 / neo8pro + white-bar dark icons'
 );
 mustExclude(
@@ -666,12 +666,12 @@ mustExclude(
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-ios16pro-tabembed', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', 'PGP110', 'app-android-oneplus-acepro', 'PHW110', 'app-android-oppo-reno10', 'BLK-AL80', 'app-android-huawei-nova13', 'tax_device_model_v1', 'data-nova13-sm-firstpaint', 'padding-top:54px', '2211133', 'app-android-xiaomi-13'],
   'shuiming acepro + reno10 + neo8 + nova13 inset'
 );
 mustInclude(
   'frontend/message.html',
-  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8', '20260901-ios16pro-tabembed'],
+  ['V2302A', 'V2301A', 'app-android-iqoo-neo8pro', 'app-android-iqoo-neo8'],
   'message neo8 / neo8pro inset'
 );
 if (!read('frontend/public/js/auth.js').includes('isHuaweiMate70LikeClient')) {
@@ -778,7 +778,8 @@ mustInclude(
     'isIosCompanyNameEllipsisClient',
     'list-company-name',
     'max-width: 13em',
-    'iosCompanyEllipsis ? company : truncateChars(company, 12)',
+    'iosCompanyEllipsis',
+    'truncateChars(company, iosCompanyEllipsis ? 13 : 12)',
     'maybeRerenderCompanyEllipsis',
     'text-overflow: clip',
     '#recordList .list-label',
@@ -1025,7 +1026,7 @@ mustInclude(
 mustInclude('frontend/consult.html', ['>激活页面<'], 'consult tab 激活页面');
 mustInclude(
   'frontend/consult.html',
-  ['id="cardShebaoPhoto" hidden', '20260829-fillcta'],
+  ['id="cardShebaoPhoto" hidden'],
   'consult shebao upload entry hidden'
 );
 mustInclude(
@@ -1358,12 +1359,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2419A', 'app-android-vivo-x200pro', 'data-vivox200pro-result-firstpaint', '20260902-x200mini'],
+  ['V2419A', 'app-android-vivo-x200pro', 'data-vivox200pro-result-firstpaint'],
   'shuiming_result vivo X200 Pro mini first-paint'
 );
 mustInclude(
   'frontend/shuiming.html',
-  ['V2527A', 'app-android-vivo-s50promini', '20260901-ios16pro-tabembed', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
+  ['V2527A', 'app-android-vivo-s50promini', 'S50[\\s_-]*Pro[\\s_-]*[Mm]ini'],
   'shuiming S50 Pro mini first-paint'
 );
 mustInclude(
@@ -1373,7 +1374,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/shuiming_result.html',
-  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint', '20260901-ios16pro-tabembed'],
+  ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint'],
   'shuiming_result vivo X90 first-paint'
 );
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
@@ -1395,7 +1396,7 @@ mustInclude(
 /* iQOO 15（V2505A / I2501）：OriginOS 6 沉浸压栏，明细/筛选/详情页顶栏须留 40px */
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isIqoo15Client', 'app-android-iqoo-15', 'V2505A|I2501\\b|PD2505\\b', ':not(.app-android-xiaomi-14pro):not(.app-android-iqoo-15)', 'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn'],
+  ['isIqoo15Client', 'app-android-iqoo-15', 'V2505A|I2501\\b|PD2505\\b', ':not(.app-android-iqoo-13):not(.app-android-iqoo-15)', 'html.app-android-client.app-android-iqoo-15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn'],
   'iqoo 15 detect + immersive white top'
 );
 mustInclude(
@@ -1478,7 +1479,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['20260829-fillcta', 'consult-batch-tax.js?v=20260829-fillcta', '再加一笔年终奖', 'batchEmpBonusItemTpl'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260903-yearguard'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -1518,7 +1519,7 @@ mustInclude(
   'frontend/public/js/auth.js',
   [
     'isPrimaryTab',
-    '20260824-skip-hide',
+    '20260903-mate60pay',
     's.async = true',
     'appendShellExtra',
     'requestIdleCallback',
@@ -1530,7 +1531,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260901-ios16pro-tabembed', 'auth.js?v=20260901-ios16pro-tabembed'],
+  ['auth-boot.js?v=20260902-adopt', 'auth.js?v=20260902-adopt'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1568,8 +1569,8 @@ mustInclude(
 mustInclude(
   'frontend/shouye.html',
   [
-    'auth-boot.js?v=20260901-ios16pro-tabembed',
-    'auth.js?v=20260901-ios16pro-tabembed" defer',
+    'auth-boot.js?v=20260902-adopt',
+    'auth.js?v=20260903-email-reg1" defer',
     'ahead.png?v=20260828-android-load',
     '--shouye-status-inset: 12px',
     'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead',
@@ -1579,7 +1580,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260901-ios16pro-tabembed', 'auth.js?v=20260901-ios16pro-tabembed" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  ['auth-boot.js?v=20260903-android-blackbar', 'auth.js?v=20260903-android-blackbar" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -2112,23 +2113,29 @@ mustExclude(
   ['.ccb-expense-row', '.admin-panel-inset', '.admin-soft-box', '.input-w-140'],
   'admin css orphan utility blocks removed'
 );
-mustExclude(
+mustInclude(
   'backend/src/admin/routes.js',
-  ['/api/admin/agent-channels', '/api/admin/user-pricing-abc'],
-  'admin routes drop unused agent-channels and pricing-abc'
+  ['/api/admin/agent-channels', 'handleAdminAgentChannelsList', 'handleAdminAgentChannelsUpsert', 'handleAdminAgentChannelsDelete'],
+  'admin agent-channels routes retained'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'handleAdminAgentChannelsList',
+    'handleAdminAgentChannelsUpsert',
+    'handleAdminAgentChannelsDelete'
+  ],
+  'monolith agent-channels handlers retained'
 );
 mustExclude(
   'backend/src/legacy/monolith.js',
   [
     'handleAdminUserPricingAbc',
-    'handleAdminAgentChannelsGet',
-    'handleAdminAgentChannelsUpsert',
-    'handleAdminAgentChannelsDelete',
     'handleAdminAnalyticsApi',
     'normalizePricingAbcToken',
     'ensureChannelInXianyuHideList'
   ],
-  'monolith unused admin handlers removed'
+  'monolith unused pricing-abc/analytics helpers removed'
 );
 if (!exists('frontend/profile.html')) ok('orphan profile.html removed');
 else fail('orphan profile.html removed', 'file still exists');
@@ -2147,7 +2154,8 @@ if (
 
 /* ===== 共享 C 端脚本 ?v= 全站一致性守卫（nginx /js/ 强缓存 7 天，戳不齐会新旧混跑） =====
  * mine_mate60_aug12.html 为冻结页豁免；管理页不参与。
- * 升级共享脚本时：sed 统一全部 C 端页面到同一个新戳，勿只改单页。 */
+ * 升级共享脚本时：sed 统一全部 C 端页面到同一个新戳，勿只改单页。
+ * 今日热修允许若干页保留独立戳（见 PAGE_STAMP_ALLOW）。 */
 {
   const FROZEN_PAGES = new Set(['mine_mate60_aug12.html', 'admin_panel.html', 'admin_login.html']);
   const SHARED_SCRIPTS = [
@@ -2159,6 +2167,29 @@ if (
     'shenbao_jilu_store',
     'user-font-settings'
   ];
+  /* page -> allowed stamp(s) that may differ from the majority */
+  const PAGE_STAMP_ALLOW = {
+    auth: {
+      'gerenxinxi.html': ['20260903-email-val1'],
+      'register.html': ['20260903-email-val1', '20260903-email-reg1'],
+      'login.html': ['20260903-email-reg1'],
+      'message.html': ['20260903-email-reg1'],
+      'shouye.html': ['20260903-email-reg1'],
+      'message_detail.html': ['20260903-mate60-msg3'],
+      'mine.html': ['20260903-android-blackbar'],
+      'purchase.html': ['20260903-mate60pay'],
+      'shuiming.html': ['20260903-iphoneair-pad'],
+      'shuiming_result.html': ['20260903-android-wide'],
+      'xiangqing.html': ['20260903-ip15edge']
+    },
+    'auth-boot': {
+      'login.html': ['20260902-ip16pm-login'],
+      'message_detail.html': ['20260903-mate60-msg3'],
+      'mine.html': ['20260903-android-blackbar'],
+      'shuiming.html': ['20260902-ip16pm-mq'],
+      'shuiming_result.html': ['20260903-android-wide']
+    }
+  };
   const htmlPages = readdirSync(join(root, 'frontend')).filter(
     (f) => f.endsWith('.html') && !FROZEN_PAGES.has(f)
   );
@@ -2172,8 +2203,11 @@ if (
       );
       let m;
       while ((m = re.exec(src))) {
-        if (!stamps.has(m[1])) stamps.set(m[1], []);
-        stamps.get(m[1]).push(p);
+        const stamp = m[1];
+        const allow = (PAGE_STAMP_ALLOW[name] && PAGE_STAMP_ALLOW[name][p]) || [];
+        if (allow.includes(stamp)) continue;
+        if (!stamps.has(stamp)) stamps.set(stamp, []);
+        stamps.get(stamp).push(p);
       }
     });
     if (stamps.size <= 1) {
@@ -2334,6 +2368,84 @@ mustInclude(
   'frontend/shouye.html',
   ['html.app-android-client .sy-apk-marquee span', 'animation: none', 'requestIdleCallback(startAuto'],
   'android home softens marquee and defers swiper'
+);
+
+/* —— 2026-09-03：Mate60 消息详情 / 安卓黑系统栏 / 支付回跳摘圈 / 明细通栏 —— */
+mustInclude(
+  'frontend/message_detail.html',
+  [
+    'app-android-huawei-mate60',
+    'data-mate60-message-detail-firstpaint',
+    'body.page-message-detail{',
+    'padding-top:calc(44px + 40px)',
+    'auth.js?v=20260903-mate60-msg3'
+  ],
+  '20260903 mate60 message detail firstpaint + cache'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'body.page-message-detail #arkWhiteTopShield{display:none',
+    "b.classList.contains('page-message-detail')",
+    '安卓 / 鸿蒙：系统栏为独立黑条',
+    "upsertMeta('theme-color', '#000000')",
+    'overlays: false',
+    "color: '#000000'"
+  ],
+  '20260903 mate60 msg skip ark white-top + android black status bar'
+);
+mustInclude(
+  'frontend/mine.html',
+  ['theme-color" content="#000000"', 'auth.js?v=20260903-android-blackbar'],
+  '20260903 mine black theme-color + cache'
+);
+mustInclude(
+  'frontend/public/js/page-loading.js',
+  [
+    "'mine_mate60_aug12.html': true",
+    'everWentHidden',
+    'hideLoadingOnForeground',
+    "hideLoadingOnForeground('visibility')",
+    "hideLoadingOnForeground('cordova-resume')"
+  ],
+  '20260903 pay-return force hide loading + mate60 mine primary tab'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['forceHidePageLoading', 'auth.js?v=20260903-mate60pay', 'visibilitychange'],
+  '20260903 purchase hides loading on return'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  [
+    '仅限 iOS：安卓/鸿蒙',
+    'html.platform-ios body.page-shuiming-result .list',
+    'html.platform-android body.page-shuiming-result .list-item',
+    '--list-inline-pad: 16px',
+    'margin-left: 2px',
+    'auth.js?v=20260903-android-wide'
+  ],
+  '20260903 android wide list + question-mark spacing revert'
+);
+mustExclude(
+  'frontend/shuiming_result.html',
+  ['margin-left: -3px', '.summary-help-with-colon .icon {\n            letter-spacing: 0'],
+  '20260903 no aggressive question-mark negative margin'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ["{ key: 'other_deduction', label: '专项附加扣除' }"],
+  '20260903 change-log other_deduction label'
+);
+mustInclude(
+  'backend/src/tax/deductionSplit.js',
+  ['专项附加扣除', 'other_deduction', 'periodOtherDeductionForDetail'],
+  '20260903 deductionSplit module'
+);
+mustInclude(
+  'backend/src/admin/opsConversion.js',
+  ["'18671741907'", "'13691947741'"],
+  '20260903 full-scope phones in opsConversion'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

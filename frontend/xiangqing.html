@@ -48,6 +48,16 @@
                     document.documentElement.classList.add('app-android-huawei-mate70');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                /* Hi nova 9 SE：白顶栏沉浸到状态栏下，按 40px 安全区首绘。 */
+                if (/FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.add('app-android-hinova');
+                    document.documentElement.classList.add('app-android-hinova9se');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/V2502A|V2502DA|V2514|PD2502|vivo[\s_-]*X300\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-x300pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');

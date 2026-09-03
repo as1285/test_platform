@@ -610,10 +610,19 @@
    * Hi nova（中国移动定制华为系，如 nova 11=MIZ-BD00）：UA 常无 Huawei 字样，仅型号码。
    */
   function isHiNovaFamilyClient() {
-    var ua = navigator.userAgent || '';
-    return /Hi\s*nova|hinova|HINOVA|MIZ-BD00|MIZ-AL00|MIZ-AN00|MIZ-BD|MIZ-AL|MIZ-AN|BON-AL00|NCO-AL00|GIA-AL00|NAM-AL00/i.test(
+    var ua = clientUaBlob();
+    return /Hi\s*nova|hinova|HINOVA|FIO-BD00|PHB-AN00|MIZ-BD00|MIZ-AL00|MIZ-AN00|MIZ-BD|MIZ-AL|MIZ-AN|BON-AL00|NCO-AL00|GIA-AL00|NAM-AL00/i.test(
       ua
     );
+  }
+
+  /**
+   * Hi nova 9 SE（入网型号 FIO-BD00，系统/固件也可能上报 PHB-AN00）。
+   * 该机白顶栏实际为沉浸式 WebView，不能沿用 Hi nova 族的外置状态栏清零规则。
+   */
+  function isHiNova9SeClient() {
+    var ua = clientUaBlob();
+    return /FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(ua);
   }
 
   /**
@@ -1874,6 +1883,9 @@
       isHuaweiMate70Client() ||
       isHuaweiNova13Client()
     ) {
+      return true;
+    }
+    if (isHiNova9SeClient()) {
       return true;
     }
     if (isHiNovaFamilyClient() || isHuaweiPura70LikeClient()) {
@@ -3941,6 +3953,10 @@
       if (huaweiNova13Client) {
         androidClient = true;
       }
+      var hiNova9SeClient = isHiNova9SeClient();
+      if (hiNova9SeClient) {
+        androidClient = true;
+      }
       var huaweiP40ProClient = isHuaweiP40ProClient();
       if (huaweiP40ProClient) {
         androidClient = true;
@@ -4472,6 +4488,12 @@
       }
       if (hiNovaFamily) {
         document.documentElement.classList.add('app-android-hinova');
+      }
+      if (hiNova9SeClient) {
+        document.documentElement.classList.add('app-android-hinova9se');
+        document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+        document.documentElement.style.setProperty('--android-status-inset', '40px');
       }
       if (onePlus13Client) {
         document.documentElement.classList.add('app-android-oneplus-13');
