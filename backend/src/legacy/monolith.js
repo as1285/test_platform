@@ -3812,7 +3812,7 @@ var TAX_CHANGE_LOG_FIELDS = [
   { key: 'medical_insurance', label: '基本医疗保险' },
   { key: 'unemployment_insurance', label: '失业保险' },
   { key: 'housing_fund', label: '住房公积金' },
-  { key: 'other_deduction', label: '本期其他扣除' },
+  { key: 'other_deduction', label: '专项附加扣除' },
   { key: 'donation_deduction', label: '捐赠扣除' }
 ];
 
