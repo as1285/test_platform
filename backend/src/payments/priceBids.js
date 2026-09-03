@@ -259,15 +259,49 @@ function createPriceBids(deps) {
       e5.statusCode = 400;
       throw e5;
     }
-    /* 已有待审出价或 24h 超限时不再收 */
-    const [pendings] = await pool.execute(
-      "SELECT COUNT(*) AS n FROM user_price_bids WHERE username = ? AND status = 'pending'",
+    /* 已有待审出价：允许改价重提（更新原记录，不占新的每日次数） */
+    const [pendingRows] = await pool.execute(
+      "SELECT * FROM user_price_bids WHERE username = ? AND status = 'pending' ORDER BY id DESC LIMIT 1",
       [u]
     );
-    if (pendings[0].n > 0) {
-      var e6 = new Error('你有一条出价正在处理中，请等结果后再试');
-      e6.statusCode = 429;
-      throw e6;
+    var note = input && input.note != null ? String(input.note).trim().slice(0, 255) : '';
+    var floor = resolveAutoFloor(cfg, sku.id, listAmount);
+    if (pendingRows.length) {
+      var pending = plainBidRow(pendingRows[0]);
+      await pool.execute(
+        'UPDATE user_price_bids SET sku_id = ?, sku_label = ?, list_amount = ?, bid_amount = ?, note = ? WHERE id = ? AND status = \'pending\'',
+        [
+          sku.id,
+          sku.label || null,
+          isFinite(listAmount) ? sku.amount : null,
+          amount,
+          note || null,
+          pending.id
+        ]
+      );
+      var updatedBid = {
+        id: pending.id,
+        username: u,
+        sku_id: sku.id,
+        sku_label: sku.label || '',
+        bid_amount: amount
+      };
+      if (isFinite(listAmount) && num >= floor) {
+        await acceptToOffer(updatedBid, amount, 'price-bid-auto', true);
+        return {
+          status: 'accepted',
+          accepted_amount: amount,
+          sku_label: sku.label || '',
+          updated: true
+        };
+      }
+      return {
+        status: 'pending',
+        sku_label: sku.label || '',
+        floor_hint: String(Math.round(floor)),
+        updated: true,
+        bid_amount: amount
+      };
     }
     const [recent] = await pool.execute(
       'SELECT COUNT(*) AS n FROM user_price_bids WHERE username = ? AND created_at >= NOW() - INTERVAL 1 DAY',
@@ -278,7 +312,6 @@ function createPriceBids(deps) {
       e7.statusCode = 429;
       throw e7;
     }
-    var note = input && input.note != null ? String(input.note).trim().slice(0, 255) : '';
     const [ins] = await pool.execute(
       'INSERT INTO user_price_bids (username, sku_id, sku_label, list_amount, bid_amount, note) VALUES (?, ?, ?, ?, ?, ?)',
       [u, sku.id, sku.label || null, isFinite(listAmount) ? sku.amount : null, amount, note || null]
@@ -290,12 +323,17 @@ function createPriceBids(deps) {
       sku_label: sku.label || '',
       bid_amount: amount
     };
-    var floor = resolveAutoFloor(cfg, sku.id, listAmount);
     if (isFinite(listAmount) && num >= floor) {
       await acceptToOffer(bid, amount, 'price-bid-auto', true);
-      return { status: 'accepted', accepted_amount: amount, sku_label: sku.label || '' };
+      return { status: 'accepted', accepted_amount: amount, sku_label: sku.label || '', updated: false };
     }
-    return { status: 'pending', sku_label: sku.label || '', floor_hint: String(Math.round(floor)) };
+    return {
+      status: 'pending',
+      sku_label: sku.label || '',
+      floor_hint: String(Math.round(floor)),
+      updated: false,
+      bid_amount: amount
+    };
   }
 
   async function listBids(opts) {

@@ -6098,6 +6098,7 @@ async function handlePriceBidGet(req, res) {
               bid_amount: bid.bid_amount,
               accepted_amount: bid.accepted_amount,
               sku_label: bid.sku_label,
+              note: bid.note || '',
               created_at: bid.created_at
             }
           : null
@@ -6121,7 +6122,9 @@ async function handlePriceBidSubmit(req, res) {
     var msg =
       out.status === 'accepted'
         ? '已按你的心理价 ¥' + out.accepted_amount + ' 生效，现在就能按新价开通'
-        : '已提交，通过后会发站内信通知你';
+        : out.updated
+          ? '已更新出价，通过后会发站内信通知你'
+          : '已提交，通过后会发站内信通知你';
     return res.json({ code: 200, msg: msg, data: out });
   } catch (e) {
     var code = e && e.statusCode ? e.statusCode : 500;

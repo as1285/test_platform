@@ -14,6 +14,9 @@ function makeStubPool(state) {
       if (sql.indexOf('SELECT setting_value') >= 0) {
         return [state.configRow ? [{ setting_value: state.configRow }] : []];
       }
+      if (sql.indexOf("status = 'pending'") >= 0 && sql.indexOf('SELECT *') >= 0) {
+        return [state.pendingRow ? [state.pendingRow] : []];
+      }
       if (sql.indexOf("status = 'pending'") >= 0 && sql.indexOf('COUNT(*)') >= 0) {
         return [[{ n: state.pendingCount || 0 }]];
       }
@@ -118,11 +121,50 @@ describe('submitBid auto accept vs pending', () => {
     );
   });
 
-  it('blocks a second bid while one is pending', async () => {
-    const api = makeApi({ queries: [], pendingCount: 1 }, [], []);
-    await expect(api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '200' })).rejects.toThrow(
-      /正在处理中/
-    );
+  it('updates existing pending bid instead of blocking', async () => {
+    const pendingRow = {
+      id: 5,
+      username: 'u1',
+      sku_id: 'sku_300_7d',
+      sku_label: '周卡',
+      list_amount: '300.00',
+      bid_amount: '80.00',
+      status: 'pending'
+    };
+    const state = { queries: [], pendingRow: pendingRow };
+    const offerCalls = [];
+    const api = makeApi(state, offerCalls, []);
+    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '100', note: '再加点' });
+    expect(out.status).toBe('pending');
+    expect(out.updated).toBe(true);
+    expect(out.bid_amount).toBe('100.00');
+    expect(offerCalls.length).toBe(0);
+    const upd = state.queries.find(function (q) {
+      return String(q.sql || '').indexOf('UPDATE user_price_bids SET sku_id') >= 0;
+    });
+    expect(upd).toBeTruthy();
+    expect(upd.params[3]).toBe('100.00');
+  });
+
+  it('auto-accepts when revising pending bid up to floor', async () => {
+    const pendingRow = {
+      id: 6,
+      username: 'u1',
+      sku_id: 'sku_300_7d',
+      sku_label: '周卡',
+      list_amount: '300.00',
+      bid_amount: '80.00',
+      status: 'pending'
+    };
+    const offerCalls = [];
+    const notes = [];
+    const api = makeApi({ queries: [], pendingRow: pendingRow }, offerCalls, notes);
+    const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '120' });
+    expect(out.status).toBe('accepted');
+    expect(out.updated).toBe(true);
+    expect(out.accepted_amount).toBe('120.00');
+    expect(offerCalls.length).toBe(1);
+    expect(notes.length).toBe(1);
   });
 
   it('enforces daily limit', async () => {
