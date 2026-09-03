@@ -9304,6 +9304,12 @@
             if (ownerEl) ownerEl.value = '';
             var pricingEl = document.getElementById('agentChPricing');
             if (pricingEl) pricingEl.value = 'b';
+            var weekEl = document.getElementById('agentChPriceWeek');
+            if (weekEl) weekEl.value = '';
+            var biweekEl = document.getElementById('agentChPriceBiweek');
+            if (biweekEl) biweekEl.value = '';
+            var monthEl = document.getElementById('agentChPriceMonth');
+            if (monthEl) monthEl.value = '';
             var androidEl = document.getElementById('agentChAndroidUrl');
             if (androidEl) androidEl.value = '';
             var iosEl = document.getElementById('agentChIosUrl');
@@ -9325,6 +9331,12 @@
             if (ownerEl) ownerEl.value = String(c.owner_admin_username || '');
             var pricingEl = document.getElementById('agentChPricing');
             if (pricingEl) pricingEl.value = c.default_pricing_abc === 'a' ? 'a' : 'b';
+            var weekEl = document.getElementById('agentChPriceWeek');
+            if (weekEl) weekEl.value = c.price_week || '';
+            var biweekEl = document.getElementById('agentChPriceBiweek');
+            if (biweekEl) biweekEl.value = c.price_biweek || '';
+            var monthEl = document.getElementById('agentChPriceMonth');
+            if (monthEl) monthEl.value = c.price_month || '';
             var androidEl = document.getElementById('agentChAndroidUrl');
             if (androidEl) androidEl.value = String(c.android_apk_url || '');
             var iosEl = document.getElementById('agentChIosUrl');
@@ -9333,6 +9345,15 @@
             if (noteEl) noteEl.value = String(c.note || '');
             var enEl = document.getElementById('agentChEnabled');
             if (enEl) enEl.checked = c.enabled !== false;
+        }
+
+        function formatAgentChannelPrices(c) {
+            if (!c || !c.has_channel_prices) return '—';
+            var parts = [];
+            if (c.price_week) parts.push('周' + c.price_week);
+            if (c.price_biweek) parts.push('双周' + c.price_biweek);
+            if (c.price_month) parts.push('月' + c.price_month);
+            return parts.length ? parts.join('/') : '—';
         }
 
         function renderAgentChannels(list) {
@@ -9355,6 +9376,9 @@
                     '</td>' +
                     '<td>' +
                     escAgentCell(String(c.default_pricing_abc || '').toUpperCase() || '—') +
+                    '</td>' +
+                    '<td>' +
+                    escAgentCell(formatAgentChannelPrices(c)) +
                     '</td>' +
                     '<td>' +
                     (hasApk ? '有' : '—') +
@@ -9442,6 +9466,21 @@
                         channel_id: channelId,
                         owner_admin_username: String(document.getElementById('agentChOwner').value || '').trim(),
                         default_pricing_abc: document.getElementById('agentChPricing').value || 'b',
+                        price_week: String(
+                            (document.getElementById('agentChPriceWeek') &&
+                                document.getElementById('agentChPriceWeek').value) ||
+                                ''
+                        ).trim(),
+                        price_biweek: String(
+                            (document.getElementById('agentChPriceBiweek') &&
+                                document.getElementById('agentChPriceBiweek').value) ||
+                                ''
+                        ).trim(),
+                        price_month: String(
+                            (document.getElementById('agentChPriceMonth') &&
+                                document.getElementById('agentChPriceMonth').value) ||
+                                ''
+                        ).trim(),
                         android_apk_url: String(document.getElementById('agentChAndroidUrl').value || '').trim(),
                         ios_mobileconfig_url: String(document.getElementById('agentChIosUrl').value || '').trim(),
                         note: String(document.getElementById('agentChNote').value || '').trim(),

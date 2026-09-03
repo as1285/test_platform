@@ -387,6 +387,20 @@ var MODELS = [
       { page: 'mine', title: '0-bleed 完整头图（禁止负裁切）', summary: 'ArkWeb 负 margin 把头像裁进状态栏；冻在 8-12/e1 完整头图；主线 mine.html，旧 mine_v2 301 到主线。', since: '2026-08-24' },
       { page: 'mine', title: '实验层不可污染其它 Tab', summary: 'Jul23 卡片/40px 守卫曾加到没有 #mineE1Canvas 的首页/待办/消息。', since: '2026-08-21' },
       { page: 'shuiming', title: '全页避开状态栏', summary: '登录不再叠系统时间；沿用约 40px 顶距。', since: '2026-08-13' },
+      {
+        page: 'shuiming',
+        title: '明细顶距选择器修复 + 列表贴边',
+        summary:
+          'auth.js 曾把 Mate60 与小米 10 用逗号拼坏，顶距/汇总/列表规则未命中；已拆成完整选择器并强制 40px；列表左右贴边对齐汇总。',
+        since: '2026-09-03'
+      },
+      {
+        page: 'message',
+        title: '消息详情避开 ark 白顶 52/66',
+        summary:
+          'page-message-detail 被 pinArkWhiteTopInset 改成 relative+66px 并叠 body 顶距，状态栏下大块空白；改为自管 fixed+40px，跳过 ark 钉头。',
+        since: '2026-09-03'
+      },
       { page: 'shouye', title: 'ArkWeb 布局漂移自修复', summary: '全站顶距与「我的」头图多次回退（8/13、8/18、8/19）。', since: '2026-08-24' }
     ]
   },

@@ -36,13 +36,13 @@ const APP_ASSETS = [
 
 /** 混淆关键业务脚本（不改 window 全局名）；体积大的管理端只做 minify。
  * auth.js / auth-boot.js / conversion-guide.js 为登录后关键路径，强混淆易在部分环境运行期崩溃，仅 minify。
+ * page-loading.js 同理：支付返回靠 visibilitychange 摘转圈，强混淆+字符串切割易在 WebView 出问题。
  */
 const OBFUSCATE_REL = new Set([
   'js/app/ui.js',
   'js/app/nav.js',
   'js/app/core.js',
   'js/theme-loader.js',
-  'js/page-loading.js',
   'js/fast-nav.js',
   'js/tab-shell.js',
   'js/tab-shell-escape.js',

@@ -32,4 +32,15 @@ describe('agentChannels normalize', () => {
     expect(api.normalizePackageUrl('uploads/../etc/passwd.apk')).toBe('');
     expect(api.normalizePackageUrl('javascript:alert(1)')).toBe('');
   });
+
+  it('normalizeSkuPrices accepts week aliases and sku ids', () => {
+    expect(api.normalizeSkuPrices({ week: 199, biweek: '299.5', month: '399' })).toEqual({
+      sku_300_7d: '199.00',
+      sku_348_14d: '299.50',
+      sku_398_30d: '399.00'
+    });
+    expect(api.normalizeSkuPrices({ sku_300_7d: '88' })).toEqual({ sku_300_7d: '88.00' });
+    expect(api.normalizeSkuPrices({ week: '' })).toEqual({});
+    expect(api.normalizeSkuPrices({ week: -1 })).toEqual({});
+  });
 });

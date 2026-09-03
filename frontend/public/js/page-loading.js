@@ -483,4 +483,24 @@
       }
     } catch (eData) {}
   });
+
+  /*
+   * 从支付宝 / 微信等外链 App 返回：多数安卓 WebView 只触发 visibilitychange，
+   * pageshow.persisted 仍为 false，进页时盖上的转圈不会自动摘掉。
+   */
+  var pageWasHidden = false;
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      pageWasHidden = true;
+      return;
+    }
+    if (!pageWasHidden) {
+      return;
+    }
+    pageWasHidden = false;
+    forceHidePageLoading();
+    try {
+      document.documentElement.classList.remove('app-nav-leaving');
+    } catch (eVis) {}
+  });
 })();

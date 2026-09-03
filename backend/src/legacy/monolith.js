@@ -43,7 +43,7 @@ const {
   isTrialExpired,
   activationFieldsForApi
 } = require('./inviteReward');
-const { createPricingAb, DEFAULT_PRICING_AB } = require('./pricingAb');
+const { createPricingAb, DEFAULT_PRICING_AB, applyChannelCatalogPrices } = require('./pricingAb');
 const { createAgentChannels } = require('./agentChannels');
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const { createPriceBids } = require('../payments/priceBids');
@@ -1197,6 +1197,46 @@ async function resolveForcedAbcForSalesChannel(salesCh) {
     return 'b';
   }
   return null;
+}
+
+/**
+ * 按渠道专属价覆盖 offer.skus（用户账号渠道优先，其次请求 ch / header）。
+ * 用户专属报价应在本函数之后再套用。
+ */
+async function applyAgentChannelPricesToOffer(offer, username, req) {
+  if (!offer || !offer.skus) return offer;
+  var ch = '';
+  try {
+    if (username) {
+      ch = await getUserSalesPromoChannel(username);
+    }
+  } catch (e0) {
+    ch = '';
+  }
+  if (!ch && req) {
+    try {
+      ch = readSalesChannelFromRequest(req);
+    } catch (e1) {
+      ch = '';
+    }
+  }
+  ch = sanitizeSalesChannelId(ch);
+  if (!ch) return offer;
+  var pol = null;
+  try {
+    pol = await getAgentChannels().getEnabledChannelById(ch);
+  } catch (e2) {
+    pol = null;
+  }
+  if (!pol || !pol.has_channel_prices || !pol.sku_prices) return offer;
+  offer.skus = applyChannelCatalogPrices(offer.skus, pol.sku_prices);
+  offer.forced_by_channel = true;
+  offer.channel_prices = true;
+  offer.channel_id = pol.channel_id;
+  if (!offer.abc_source || offer.abc_source === 'single_plan') {
+    offer.abc_source = 'agent_channel_price';
+  }
+  return offer;
 }
 
 /**
@@ -6144,6 +6184,11 @@ async function handleAlipayConfig(req, res) {
       envProduct.subject,
       readPreferredPurchaseAbc(req)
     );
+    try {
+      offer = await applyAgentChannelPricesToOffer(offer, req.authUserId || '', req);
+    } catch (eChPrice) {
+      console.error('alipay config channel_price', eChPrice);
+    }
     var customOffer = null;
     try {
       if (req.authUserId) {
@@ -6237,6 +6282,8 @@ async function handleAlipayConfig(req, res) {
         force_client_abc: !!offer.force_client_abc,
         custom_offer: !!customOffer,
         github_entry: !!offer.github_entry,
+        channel_prices: !!offer.channel_prices,
+        channel_id: offer.channel_id || null,
         skus: skus
       }
     });
@@ -6949,6 +6996,11 @@ async function handleAlipayCreateOrder(req, res) {
   } catch (eOffer) {
     console.error('pricing offer', eOffer);
     return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
+  }
+  try {
+    offer = await applyAgentChannelPricesToOffer(offer, req.authUserId || '', req);
+  } catch (eChPriceCreate) {
+    console.error('create order channel_price', eChPriceCreate);
   }
   var customOffer = null;
   try {

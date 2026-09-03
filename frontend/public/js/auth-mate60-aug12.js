@@ -5460,7 +5460,7 @@
     window.__pageLoadingQueue.push(['show']);
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260811-bfcache-hide';
+      s.src = '/js/page-loading.js?v=20260903-payreturn';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);

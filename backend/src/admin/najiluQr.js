@@ -297,6 +297,413 @@ async function ensureNajiluQrColumns(pool) {
   } catch (eTbl) {
     console.warn('[najilu-qr] ensure override table', eTbl && eTbl.message ? eTbl.message : eTbl);
   }
+  try {
+    await ensureNajiluQrSavesTable(pool);
+  } catch (eSav) {
+    console.warn('[najilu-qr] ensure saves table', eSav && eSav.message ? eSav.message : eSav);
+  }
+}
+
+async function ensureNajiluQrSavesTable(connOrPool) {
+  if (!connOrPool) return;
+  await connOrPool.execute(`
+    CREATE TABLE IF NOT EXISTS najilu_qr_saves (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+      demo TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=未付费带水印 0=已解锁去水印',
+      mode VARCHAR(16) NOT NULL DEFAULT 'block' COMMENT 'block|qr|clear',
+      created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      KEY idx_najilu_qr_saves_user_time (username, created_at),
+      KEY idx_najilu_qr_saves_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      COMMENT='C端完税二维码替换保存记录'
+  `);
+}
+
+async function logNajiluQrSave(connOrPool, username, demo, mode) {
+  var uid = String(username || '').trim().substring(0, 64);
+  if (!uid || !connOrPool) return;
+  var m = String(mode || 'block').trim().toLowerCase();
+  if (m !== 'qr' && m !== 'block' && m !== 'clear') m = 'block';
+  try {
+    await ensureNajiluQrSavesTable(connOrPool);
+    await connOrPool.execute(
+      `INSERT INTO najilu_qr_saves (username, demo, mode) VALUES (?, ?, ?)`,
+      [uid, demo ? 1 : 0, m]
+    );
+  } catch (e) {
+    console.error('[najilu-qr] log save', e && e.message ? e.message : e);
+  }
+}
+
+function parseNajiluQrStatsDays(raw) {
+  var n = parseInt(raw, 10);
+  if (!isFinite(n) || n < 1) n = 7;
+  if (n > 366) n = 366;
+  return n;
+}
+
+function money2(n) {
+  var v = Number(n);
+  if (!isFinite(v)) v = 0;
+  return (Math.round(v * 100) / 100).toFixed(2);
+}
+
+var NAJILU_QR_SKU_ID = najiluQrFeePolicy.NAJILU_QR_SKU_ID;
+var USERNAME_JOIN_SAVES =
+  'u.username COLLATE utf8mb4_unicode_ci = g.username COLLATE utf8mb4_unicode_ci';
+
+function mapNajiluUsageUserRow(r) {
+  return {
+    username: r.username != null ? String(r.username) : '',
+    real_name: r.real_name != null ? String(r.real_name) : '',
+    unlocked: r.unlocked === true || Number(r.unlocked) === 1,
+    has_override: r.has_override === true || Number(r.has_override) === 1,
+    saves: Number(r.saves) || 0,
+    saves_demo: Number(r.saves_demo) || 0,
+    saves_unlocked: Number(r.saves_unlocked) || 0,
+    paid_orders: Number(r.paid_orders) || 0,
+    paid_amount: money2(r.paid_amount),
+    last_saved_at: r.last_saved_at ? new Date(r.last_saved_at).toISOString() : '',
+    last_paid_at: r.last_paid_at ? new Date(r.last_paid_at).toISOString() : '',
+    last_used_at: r.last_used_at ? new Date(r.last_used_at).toISOString() : ''
+  };
+}
+
+/** C 端完税二维码：付费解锁 + 替换保存次数 */
+async function handleAdminNajiluQrStats(req, res) {
+  try {
+    var days = parseNajiluQrStatsDays(req.query && req.query.days);
+    var cnPaidDay = 'DATE(DATE_ADD(paid_at, INTERVAL 8 HOUR))';
+    var cnCreatedDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var cnUpdatedDay = 'DATE(DATE_ADD(updated_at, INTERVAL 8 HOUR))';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var sinceSql = ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var gCreatedDay = cnCreatedDay.replace(/created_at/g, 'g.created_at');
+    var oPaidDay = cnPaidDay.replace(/paid_at/g, 'o.paid_at');
+    var pool = getPool();
+    await ensureNajiluQrUnlockedColumn(pool);
+    await ensureUserQrOverrideTable(pool);
+    await ensureNajiluQrSavesTable(pool);
+    const conn = await pool.getConnection();
+    try {
+      const [unlockRows] = await conn.query(
+        `SELECT COUNT(*) AS n FROM users WHERE najilu_qr_unlocked = 1`
+      );
+      var lockedQrUsers = 0;
+      try {
+        const [lockRows] = await conn.query(
+          `SELECT COUNT(*) AS n FROM user_najilu_qr_override
+           WHERE (qr_image_url IS NOT NULL AND qr_image_url <> '')
+              OR (qr_block_image_url IS NOT NULL AND qr_block_image_url <> '')`
+        );
+        lockedQrUsers = lockRows && lockRows[0] ? Number(lockRows[0].n) || 0 : 0;
+      } catch (eLock) {
+        lockedQrUsers = 0;
+      }
+      const [paidSumRows] = await conn.query(
+        `SELECT COUNT(*) AS orders,
+                COUNT(DISTINCT username) AS users,
+                COALESCE(SUM(amount), 0) AS gmv
+         FROM payment_orders
+         WHERE status = 'paid'
+           AND (sku_id = ? OR grant_kind = 'najilu_qr')
+           AND paid_at IS NOT NULL
+           AND ${cnPaidDay}${sinceSql}`,
+        [NAJILU_QR_SKU_ID, days]
+      );
+      const [pendingRows] = await conn.query(
+        `SELECT COUNT(*) AS n
+         FROM payment_orders
+         WHERE status = 'pending'
+           AND (sku_id = ? OR grant_kind = 'najilu_qr')
+           AND ${cnCreatedDay}${sinceSql}`,
+        [NAJILU_QR_SKU_ID, days]
+      );
+      var saveSummary = {
+        saves: 0,
+        save_users: 0,
+        saves_demo: 0,
+        saves_unlocked: 0
+      };
+      var dailySaveMap = {};
+      var recentSaves = [];
+      var usageUsers = [];
+      try {
+        const [saveSumRows] = await conn.query(
+          `SELECT COUNT(*) AS saves,
+                  COUNT(DISTINCT username) AS save_users,
+                  SUM(CASE WHEN demo = 1 THEN 1 ELSE 0 END) AS saves_demo,
+                  SUM(CASE WHEN demo = 0 THEN 1 ELSE 0 END) AS saves_unlocked
+           FROM najilu_qr_saves
+           WHERE ${cnCreatedDay}${sinceSql}`,
+          [days]
+        );
+        if (saveSumRows && saveSumRows[0]) {
+          saveSummary.saves = Number(saveSumRows[0].saves) || 0;
+          saveSummary.save_users = Number(saveSumRows[0].save_users) || 0;
+          saveSummary.saves_demo = Number(saveSumRows[0].saves_demo) || 0;
+          saveSummary.saves_unlocked = Number(saveSumRows[0].saves_unlocked) || 0;
+        }
+        const [dailySaveRows] = await conn.query(
+          `SELECT ${cnCreatedDay} AS d,
+                  COUNT(*) AS saves,
+                  COUNT(DISTINCT username) AS save_users,
+                  SUM(CASE WHEN demo = 1 THEN 1 ELSE 0 END) AS saves_demo,
+                  SUM(CASE WHEN demo = 0 THEN 1 ELSE 0 END) AS saves_unlocked
+           FROM najilu_qr_saves
+           WHERE ${cnCreatedDay}${sinceSql}
+           GROUP BY ${cnCreatedDay}
+           ORDER BY d ASC`,
+          [days]
+        );
+        (dailySaveRows || []).forEach(function (r) {
+          var key = r.d ? String(r.d).slice(0, 10) : '';
+          if (!key) return;
+          dailySaveMap[key] = {
+            saves: Number(r.saves) || 0,
+            save_users: Number(r.save_users) || 0,
+            saves_demo: Number(r.saves_demo) || 0,
+            saves_unlocked: Number(r.saves_unlocked) || 0
+          };
+        });
+        const [recentSaveRows] = await conn.query(
+          `SELECT g.id, g.username, g.demo, g.mode, g.created_at,
+                  u.real_name
+           FROM najilu_qr_saves g
+           LEFT JOIN users u ON ${USERNAME_JOIN_SAVES}
+           WHERE ${gCreatedDay}${sinceSql}
+           ORDER BY g.id DESC
+           LIMIT 50`,
+          [days]
+        );
+        recentSaves = (recentSaveRows || []).map(function (r) {
+          return {
+            id: r.id != null ? Number(r.id) : 0,
+            username: r.username != null ? String(r.username) : '',
+            real_name: r.real_name != null ? String(r.real_name) : '',
+            demo: r.demo === true || Number(r.demo) === 1,
+            mode: r.mode != null ? String(r.mode) : '',
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+          };
+        });
+
+        const [usageRows] = await conn.query(
+          `SELECT
+             base.username,
+             COALESCE(u.real_name, '') AS real_name,
+             COALESCE(u.najilu_qr_unlocked, 0) AS unlocked,
+             CASE WHEN ov.user_id IS NOT NULL THEN 1 ELSE 0 END AS has_override,
+             COALESCE(g.saves, 0) AS saves,
+             COALESCE(g.saves_demo, 0) AS saves_demo,
+             COALESCE(g.saves_unlocked, 0) AS saves_unlocked,
+             g.last_saved_at,
+             COALESCE(p.paid_orders, 0) AS paid_orders,
+             COALESCE(p.paid_amount, 0) AS paid_amount,
+             p.last_paid_at,
+             GREATEST(
+               COALESCE(g.last_saved_at, '1970-01-01'),
+               COALESCE(p.last_paid_at, '1970-01-01'),
+               COALESCE(ov.updated_at, '1970-01-01')
+             ) AS last_used_at
+           FROM (
+             SELECT username FROM najilu_qr_saves
+             WHERE ${cnCreatedDay}${sinceSql}
+             UNION
+             SELECT username FROM payment_orders
+             WHERE status = 'paid'
+               AND (sku_id = ? OR grant_kind = 'najilu_qr')
+               AND paid_at IS NOT NULL
+               AND ${cnPaidDay}${sinceSql}
+             UNION
+             SELECT user_id AS username FROM user_najilu_qr_override
+             WHERE (
+               (qr_image_url IS NOT NULL AND qr_image_url <> '')
+               OR (qr_block_image_url IS NOT NULL AND qr_block_image_url <> '')
+             )
+             AND ${cnUpdatedDay}${sinceSql}
+           ) base
+           LEFT JOIN users u
+             ON u.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           LEFT JOIN user_najilu_qr_override ov
+             ON ov.user_id COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           LEFT JOIN (
+             SELECT username,
+                    COUNT(*) AS saves,
+                    SUM(CASE WHEN demo = 1 THEN 1 ELSE 0 END) AS saves_demo,
+                    SUM(CASE WHEN demo = 0 THEN 1 ELSE 0 END) AS saves_unlocked,
+                    MAX(created_at) AS last_saved_at
+             FROM najilu_qr_saves
+             WHERE ${cnCreatedDay}${sinceSql}
+             GROUP BY username
+           ) g ON g.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           LEFT JOIN (
+             SELECT username,
+                    COUNT(*) AS paid_orders,
+                    COALESCE(SUM(amount), 0) AS paid_amount,
+                    MAX(paid_at) AS last_paid_at
+             FROM payment_orders
+             WHERE status = 'paid'
+               AND (sku_id = ? OR grant_kind = 'najilu_qr')
+               AND paid_at IS NOT NULL
+               AND ${cnPaidDay}${sinceSql}
+             GROUP BY username
+           ) p ON p.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           ORDER BY last_used_at DESC, base.username ASC
+           LIMIT 200`,
+          [
+            days,
+            NAJILU_QR_SKU_ID,
+            days,
+            days,
+            days,
+            NAJILU_QR_SKU_ID,
+            days
+          ]
+        );
+        usageUsers = (usageRows || []).map(mapNajiluUsageUserRow);
+      } catch (saveErr) {
+        console.error('[najilu-qr] stats saves', saveErr);
+      }
+
+      const [dailyPayRows] = await conn.query(
+        `SELECT ${cnPaidDay} AS d,
+                COUNT(*) AS paid_orders,
+                COUNT(DISTINCT username) AS paid_users,
+                COALESCE(SUM(amount), 0) AS gmv
+         FROM payment_orders
+         WHERE status = 'paid'
+           AND (sku_id = ? OR grant_kind = 'najilu_qr')
+           AND paid_at IS NOT NULL
+           AND ${cnPaidDay}${sinceSql}
+         GROUP BY ${cnPaidDay}
+         ORDER BY d ASC`,
+        [NAJILU_QR_SKU_ID, days]
+      );
+      var dayMap = {};
+      (dailyPayRows || []).forEach(function (r) {
+        var key = r.d ? String(r.d).slice(0, 10) : '';
+        if (!key) return;
+        dayMap[key] = {
+          day: key,
+          paid_orders: Number(r.paid_orders) || 0,
+          paid_users: Number(r.paid_users) || 0,
+          gmv: money2(r.gmv),
+          saves: 0,
+          save_users: 0,
+          saves_demo: 0,
+          saves_unlocked: 0
+        };
+      });
+      Object.keys(dailySaveMap).forEach(function (key) {
+        if (!dayMap[key]) {
+          dayMap[key] = {
+            day: key,
+            paid_orders: 0,
+            paid_users: 0,
+            gmv: '0.00',
+            saves: 0,
+            save_users: 0,
+            saves_demo: 0,
+            saves_unlocked: 0
+          };
+        }
+        Object.assign(dayMap[key], dailySaveMap[key]);
+      });
+      var daily = Object.keys(dayMap)
+        .sort()
+        .map(function (k) {
+          return dayMap[k];
+        });
+
+      const [recentPayRows] = await conn.query(
+        `SELECT o.out_trade_no, o.username, o.amount, o.paid_at, o.status,
+                u.real_name
+         FROM payment_orders o
+         LEFT JOIN users u ON u.username = o.username
+         WHERE o.status = 'paid'
+           AND (o.sku_id = ? OR o.grant_kind = 'najilu_qr')
+           AND o.paid_at IS NOT NULL
+           AND ${oPaidDay}${sinceSql}
+         ORDER BY o.paid_at DESC
+         LIMIT 50`,
+        [NAJILU_QR_SKU_ID, days]
+      );
+      var recentPaid = (recentPayRows || []).map(function (r) {
+        return {
+          out_trade_no: r.out_trade_no != null ? String(r.out_trade_no) : '',
+          username: r.username != null ? String(r.username) : '',
+          real_name: r.real_name != null ? String(r.real_name) : '',
+          amount: money2(r.amount),
+          paid_at: r.paid_at ? new Date(r.paid_at).toISOString() : '',
+          status: r.status != null ? String(r.status) : ''
+        };
+      });
+
+      if (!usageUsers.length && recentPaid.length) {
+        var seen = {};
+        usageUsers = recentPaid
+          .filter(function (r) {
+            if (!r.username || seen[r.username]) return false;
+            seen[r.username] = 1;
+            return true;
+          })
+          .map(function (r) {
+            return mapNajiluUsageUserRow({
+              username: r.username,
+              real_name: r.real_name,
+              unlocked: 0,
+              has_override: 0,
+              saves: 0,
+              saves_demo: 0,
+              saves_unlocked: 0,
+              paid_orders: 1,
+              paid_amount: r.amount,
+              last_saved_at: null,
+              last_paid_at: r.paid_at,
+              last_used_at: r.paid_at
+            });
+          });
+      }
+
+      var paid = paidSumRows && paidSumRows[0] ? paidSumRows[0] : {};
+      return res.json({
+        code: 200,
+        data: {
+          period: {
+            days: days,
+            label: '最近 ' + days + ' 天',
+            period_key: String(days)
+          },
+          note:
+            '使用用户 = 区间内有 C 端替换保存、付费解锁，或更新了账号锁定二维码的账号；后台本页手动替换不计入。保存次数自统计上线后累计。',
+          summary: {
+            unlocked_users: unlockRows && unlockRows[0] ? Number(unlockRows[0].n) || 0 : 0,
+            locked_qr_users: lockedQrUsers,
+            paid_orders: Number(paid.orders) || 0,
+            paid_users: Number(paid.users) || 0,
+            gmv: money2(paid.gmv),
+            pending_orders:
+              pendingRows && pendingRows[0] ? Number(pendingRows[0].n) || 0 : 0,
+            saves: saveSummary.saves,
+            save_users: saveSummary.save_users,
+            saves_demo: saveSummary.saves_demo,
+            saves_unlocked: saveSummary.saves_unlocked,
+            usage_users: usageUsers.length
+          },
+          daily: daily,
+          usage_users: usageUsers,
+          recent_paid: recentPaid,
+          recent_saves: recentSaves
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[najilu-qr] stats', e);
+    return res.status(500).json({ code: 500, msg: String(e.message || e) });
+  }
 }
 
 async function listApplicationsForUser(conn, username) {
@@ -610,16 +1017,23 @@ async function handleUserNajiluQrSave(req, res) {
     } else if (b.image_path) {
       rel = normalizeUploadRel(b.image_path);
     }
+    var mode = String(b.mode || 'block').trim().toLowerCase();
     var data = await saveUserQrOverrideCore({
       username: username,
       issueId: issueId,
       queryCode: b.query_code,
-      mode: b.mode,
+      mode: mode,
       imageRel: rel,
       requireIssue: false
     });
     data.unlocked = unlocked;
     data.watermark = !unlocked;
+    try {
+      var poolLog = getPool();
+      await logNajiluQrSave(poolLog, username, !unlocked, data.mode || mode);
+    } catch (eLog) {
+      /* stats 非关键路径，忽略 */
+    }
     res.json({ code: 200, msg: 'ok', data: data });
   } catch (e) {
     var status = (e && e.status) || 500;
@@ -635,6 +1049,7 @@ function getHandlers() {
   return {
     handleAdminNajiluQrSave: handleAdminNajiluQrSave,
     handleAdminNajiluQrList: handleAdminNajiluQrList,
+    handleAdminNajiluQrStats: handleAdminNajiluQrStats,
     handleUserNajiluQrStatus: handleUserNajiluQrStatus,
     handleUserNajiluQrList: handleUserNajiluQrList,
     handleUserNajiluQrSave: handleUserNajiluQrSave

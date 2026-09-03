@@ -2,8 +2,43 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u)) return;
+                if (!/Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(u)) return;
+                document.documentElement.classList.add('app-android-client');
+                document.documentElement.classList.add('app-android-huawei-mate60');
+                document.documentElement.classList.add('app-android-immersive-white-top');
+                document.documentElement.classList.add('app-top-safe-shell');
+                document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                document.documentElement.style.setProperty('--android-status-inset', '40px');
+                document.documentElement.style.setProperty('--safe-top', '40px');
+                if (!document.querySelector('style[data-mate60-message-detail-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-mate60-message-detail-firstpaint', '1');
+                    st.textContent =
+                        'html.app-android-huawei-mate60 body.page-message-detail{' +
+                        'padding-top:calc(44px + 40px) !important;}' +
+                        'html.app-android-huawei-mate60 body.page-message-detail > .header{' +
+                        'position:fixed !important;top:0 !important;left:0 !important;right:0 !important;' +
+                        'padding:40px 12px 11px !important;min-height:0 !important;height:auto !important;' +
+                        'box-sizing:border-box !important;background:#fff !important;z-index:100 !important;}' +
+                        'html.app-android-huawei-mate60 body.page-message-detail > .header .back-btn{' +
+                        'top:auto !important;height:auto !important;display:flex !important;align-items:center !important;}' +
+                        'html.app-android-huawei-mate60 body.page-message-detail .detail-wrap{' +
+                        'max-width:none !important;width:100% !important;margin:0 !important;' +
+                        'padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;}';
+                    (document.head || document.documentElement).appendChild(st);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth-boot.js?v=20260903-mate60-msg3"></script>
+    <script src="/js/auth.js?v=20260903-mate60-msg3" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>消息详情</title>
     <style>
@@ -113,6 +148,45 @@
             color: #969799;
             font-size: 14px;
             line-height: 20px;
+        }
+
+        /*
+         * Mate 60 / Pro（ALN-AL00）：沉浸白顶，顶栏只垫 40px，避免与 env(safe-area) 叠成大块空白；
+         * 内容区取消 520 限宽，左右铺满。
+         */
+        html.app-android-huawei-mate60 body.page-message-detail,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-message-detail {
+            padding-top: calc(44px + 40px) !important;
+        }
+        html.app-android-huawei-mate60 body.page-message-detail > .header,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-message-detail > .header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            padding: 40px 12px 11px !important;
+            min-height: 0 !important;
+            height: auto !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            z-index: 100 !important;
+        }
+        html.app-android-huawei-mate60 body.page-message-detail > .header .back-btn,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-message-detail > .header .back-btn {
+            top: auto !important;
+            height: auto !important;
+            display: flex !important;
+            align-items: center !important;
+            left: 12px !important;
+        }
+        html.app-android-huawei-mate60 body.page-message-detail .detail-wrap,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-message-detail .detail-wrap {
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            box-sizing: border-box !important;
         }
 
         /* 华为 TAS-AN00（Mate 40 等）：消息详情字号整体小两号 */

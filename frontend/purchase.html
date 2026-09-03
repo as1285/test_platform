@@ -1276,7 +1276,7 @@
             </div>
             <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，点选其他套餐即可改价。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">体验价 · 打开支付宝付款</button>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay" data-no-page-loading="1">体验价 · 打开支付宝付款</button>
             <ul class="purchase-trust" id="purchaseTrustRow" aria-label="开通保障">
                 <li>秒级开通</li>
                 <li>支付宝官方</li>
@@ -1503,7 +1503,7 @@
     <div class="purchase-sticky-cta" id="purchaseStickyCta" hidden>
         <div class="purchase-sticky-cta-inner">
             <p class="sticky-cta-note" id="purchaseStickyNote">付款后自动开通，请勿关闭页面</p>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipaySticky">体验价 · 打开支付宝付款</button>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipaySticky" data-no-page-loading="1">体验价 · 打开支付宝付款</button>
         </div>
     </div>
 
@@ -2645,6 +2645,11 @@
         if (!code) throw new Error('未获取到付款链接');
         alipayPendingPayUrl = code;
         trackPurchase('track_alipay_open_click');
+        try {
+            if (typeof window.forceHidePageLoading === 'function') {
+                window.forceHidePageLoading();
+            }
+        } catch (ePayHide) {}
         openAlipayPay(code);
         startAlipayOrderPolling();
         if (isHuaweiLikeUa() || isEmbeddedInAppShell()) {
@@ -4530,6 +4535,11 @@
     }, 900);
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) {
+            try {
+                if (typeof window.forceHidePageLoading === 'function') {
+                    window.forceHidePageLoading();
+                }
+            } catch (eVisHide) {}
             checkAlipayLatestOrder();
             completePendingBilibiliShare();
             loadBilibiliShareStatus();
@@ -4550,16 +4560,16 @@
         trackPurchase('track_purchase_page_leave');
     }
     window.addEventListener('pageshow', function () {
-        checkAlipayLatestOrder();
-        completePendingBilibiliShare();
-        loadBilibiliShareStatus();
-        loadPurchaseLizhiCertFeeCopy();
-        loadPurchaseNajiluQrFeeCopy();
         try {
             if (typeof window.forceHidePageLoading === 'function') {
                 window.forceHidePageLoading();
             }
         } catch (eHide2) {}
+        checkAlipayLatestOrder();
+        completePendingBilibiliShare();
+        loadBilibiliShareStatus();
+        loadPurchaseLizhiCertFeeCopy();
+        loadPurchaseNajiluQrFeeCopy();
     });
     loadPurchaseLizhiCertFeeCopy();
     loadPurchaseNajiluQrFeeCopy();

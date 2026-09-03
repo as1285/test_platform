@@ -15,7 +15,7 @@
   var WARM_JS = [
     '/js/auth-boot.js?v=20260828-android-load',
     '/js/auth.js?v=20260831-m60home',
-    '/js/page-loading.js?v=20260824-skip-hide',
+    '/js/page-loading.js?v=20260903-payreturn',
     '/js/theme-loader.js?v=20260828-android-load',
     '/js/toast-duration.js?v=20260529-toast-3s'
   ];

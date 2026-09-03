@@ -131,8 +131,54 @@ function createAgentChannels(deps) {
     return '';
   }
 
+  var CHANNEL_SKU_IDS = ['sku_300_7d', 'sku_348_14d', 'sku_398_30d'];
+
+  /**
+   * 清洗渠道专属价：仅允许现售三档；空对象表示跟随全站。
+   * 入参可为对象、JSON 字符串，或拆开的 week/biweek/month 字段。
+   */
+  function normalizeSkuPrices(raw) {
+    var src = raw;
+    if (src == null || src === '') return {};
+    if (typeof src === 'string') {
+      try {
+        src = JSON.parse(src);
+      } catch (e) {
+        return {};
+      }
+    }
+    if (typeof src !== 'object' || Array.isArray(src)) return {};
+    var out = {};
+    var aliases = {
+      week: 'sku_300_7d',
+      week_amount: 'sku_300_7d',
+      sku_week: 'sku_300_7d',
+      biweek: 'sku_348_14d',
+      biweek_amount: 'sku_348_14d',
+      sku_biweek: 'sku_348_14d',
+      month: 'sku_398_30d',
+      month_amount: 'sku_398_30d',
+      sku_month: 'sku_398_30d'
+    };
+    Object.keys(src).forEach(function (k) {
+      var id = aliases[k] || k;
+      if (CHANNEL_SKU_IDS.indexOf(id) < 0) return;
+      var v = src[k];
+      if (v == null || String(v).trim() === '') return;
+      var n = Number(String(v).trim().replace(/,/g, ''));
+      if (!isFinite(n) || n < 0.01 || n > 99999) return;
+      out[id] = n.toFixed(2);
+    });
+    return out;
+  }
+
+  function skuPricesHasAny(map) {
+    return !!(map && typeof map === 'object' && Object.keys(map).length);
+  }
+
   function mapChannelRow(r) {
     var abc = effectivePricingAbc(r.default_pricing_abc);
+    var prices = normalizeSkuPrices(r.sku_prices_json);
     return {
       channel_id: String(r.channel_id || ''),
       owner_admin_username: String(r.owner_admin_username || ''),
@@ -149,6 +195,11 @@ function createAgentChannels(deps) {
         r.ios_mobileconfig_url != null && String(r.ios_mobileconfig_url).trim() !== ''
           ? String(r.ios_mobileconfig_url).trim()
           : '',
+      sku_prices: prices,
+      has_channel_prices: skuPricesHasAny(prices),
+      price_week: prices.sku_300_7d || '',
+      price_biweek: prices.sku_348_14d || '',
+      price_month: prices.sku_398_30d || '',
       created_at: r.created_at,
       updated_at: r.updated_at
     };
@@ -174,6 +225,15 @@ function createAgentChannels(deps) {
     } catch (e2) {
       if (!(e2 && (e2.code === 'ER_DUP_FIELDNAME' || e2.errno === 1060))) throw e2;
     }
+    try {
+      await pool.execute(
+        `ALTER TABLE agent_channels
+         ADD COLUMN sku_prices_json TEXT NULL
+         COMMENT '渠道专属价 JSON' AFTER ios_mobileconfig_url`
+      );
+    } catch (e3) {
+      if (!(e3 && (e3.code === 'ER_DUP_FIELDNAME' || e3.errno === 1060))) throw e3;
+    }
   }
 
   async function listChannels() {
@@ -182,7 +242,8 @@ function createAgentChannels(deps) {
     var pool = getPool();
     const [rows] = await pool.execute(
       `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay,
-              enabled, note, android_apk_url, ios_mobileconfig_url, created_at, updated_at
+              enabled, note, android_apk_url, ios_mobileconfig_url, sku_prices_json,
+              created_at, updated_at
        FROM agent_channels
        ORDER BY updated_at DESC, channel_id ASC`
     );
@@ -197,7 +258,7 @@ function createAgentChannels(deps) {
     var pool = getPool();
     const [rows] = await pool.execute(
       `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note,
-              android_apk_url, ios_mobileconfig_url
+              android_apk_url, ios_mobileconfig_url, sku_prices_json
        FROM agent_channels WHERE channel_id = ? LIMIT 1`,
       [id]
     );
@@ -256,6 +317,16 @@ function createAgentChannels(deps) {
     var note = normalizeNote(input && input.note);
     var androidUrl = normalizePackageUrl(input && input.android_apk_url);
     var iosUrl = normalizePackageUrl(input && input.ios_mobileconfig_url);
+    var priceSrc =
+      input && input.sku_prices != null
+        ? input.sku_prices
+        : {
+            week: input && input.price_week,
+            biweek: input && input.price_biweek,
+            month: input && input.price_month
+          };
+    var prices = normalizeSkuPrices(priceSrc);
+    var pricesJson = skuPricesHasAny(prices) ? JSON.stringify(prices) : null;
     if (!channelId) {
       var err = new Error('渠道 ID 无效（仅字母数字下划线连字符，最长 64）');
       err.code = 'INVALID_CHANNEL';
@@ -281,8 +352,8 @@ function createAgentChannels(deps) {
     await pool.execute(
       `INSERT INTO agent_channels
          (channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note,
-          android_apk_url, ios_mobileconfig_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          android_apk_url, ios_mobileconfig_url, sku_prices_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          owner_admin_username = VALUES(owner_admin_username),
          default_pricing_abc = VALUES(default_pricing_abc),
@@ -290,7 +361,8 @@ function createAgentChannels(deps) {
          enabled = VALUES(enabled),
          note = VALUES(note),
          android_apk_url = VALUES(android_apk_url),
-         ios_mobileconfig_url = VALUES(ios_mobileconfig_url)`,
+         ios_mobileconfig_url = VALUES(ios_mobileconfig_url),
+         sku_prices_json = VALUES(sku_prices_json)`,
       [
         channelId,
         owner,
@@ -299,7 +371,8 @@ function createAgentChannels(deps) {
         enabled,
         note,
         androidUrl || null,
-        iosUrl || null
+        iosUrl || null,
+        pricesJson
       ]
     );
     return getChannelById(channelId);
@@ -373,7 +446,9 @@ function createAgentChannels(deps) {
     getUserChannelPolicy: getUserChannelPolicy,
     normalizeAbc: normalizeAbc,
     effectivePricingAbc: effectivePricingAbc,
-    normalizePackageUrl: normalizePackageUrl
+    normalizePackageUrl: normalizePackageUrl,
+    normalizeSkuPrices: normalizeSkuPrices,
+    CHANNEL_SKU_IDS: CHANNEL_SKU_IDS
   };
 }
 

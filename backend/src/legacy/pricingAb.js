@@ -644,11 +644,20 @@ var GITHUB_CHANNEL_AMOUNT_BY_SKU = {
 };
 
 function applyGithubChannelCatalogPrices(skus) {
+  return applyChannelCatalogPrices(skus, GITHUB_CHANNEL_AMOUNT_BY_SKU);
+}
+
+/** 按 sku_id → amount 覆盖货架价；无映射的 SKU 保持原价 */
+function applyChannelCatalogPrices(skus, priceMap) {
+  var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
   var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
   var i;
   for (i = 0; i < next.length; i++) {
-    var amt = GITHUB_CHANNEL_AMOUNT_BY_SKU[next[i].id];
-    if (amt) next[i].amount = amt;
+    var amt = map[next[i].id];
+    if (amt != null && String(amt).trim() !== '') {
+      next[i].amount = String(amt).trim();
+      next[i].channel_price = true;
+    }
   }
   return next;
 }
@@ -1164,6 +1173,7 @@ module.exports = {
   shouldOfferGithubEntry: shouldOfferGithubEntry,
   isGithubChannel: isGithubChannel,
   applyGithubChannelCatalogPrices: applyGithubChannelCatalogPrices,
+  applyChannelCatalogPrices: applyChannelCatalogPrices,
   GITHUB_CHANNEL_AMOUNT_BY_SKU: GITHUB_CHANNEL_AMOUNT_BY_SKU,
   prependGithubEntrySku: prependGithubEntrySku,
   SKU_98_3DAY: SKU_98_3DAY

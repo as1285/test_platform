@@ -599,6 +599,12 @@ app.get(
   mw.requireAdminMenu('najilu-qr'),
   h.handleAdminNajiluQrList
 );
+app.get(
+  '/api/admin/najilu-qr/stats',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('najilu-qr'),
+  h.handleAdminNajiluQrStats
+);
 app.post(
   '/api/admin/najilu-qr/save',
   mw.requireAdminAuth,

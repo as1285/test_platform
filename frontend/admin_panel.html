@@ -374,6 +374,18 @@
                                 </select>
                             </div>
                             <div class="form-field mt-10">
+                                <label>渠道专属价（元，留空=跟随全站「支付套餐」）</label>
+                                <div class="mine-ui-controls mt-6" style="flex-wrap:wrap;gap:8px">
+                                    <label class="hint" for="agentChPriceWeek">周卡</label>
+                                    <input class="input-flex" type="number" id="agentChPriceWeek" min="0.01" max="99999" step="0.01" placeholder="如 199" style="max-width:110px">
+                                    <label class="hint" for="agentChPriceBiweek">双周</label>
+                                    <input class="input-flex" type="number" id="agentChPriceBiweek" min="0.01" max="99999" step="0.01" placeholder="如 299" style="max-width:110px">
+                                    <label class="hint" for="agentChPriceMonth">月卡</label>
+                                    <input class="input-flex" type="number" id="agentChPriceMonth" min="0.01" max="99999" step="0.01" placeholder="如 399" style="max-width:110px">
+                                </div>
+                                <p class="hint mt-6">仅对该渠道用户生效；账号「用户专属报价」优先于渠道价。</p>
+                            </div>
+                            <div class="form-field mt-10">
                                 <label for="agentChAndroidUrl">渠道专用安卓 APK</label>
                                 <div class="mine-ui-controls mt-6">
                                     <input class="input-flex" type="text" id="agentChAndroidUrl" maxlength="2048" placeholder="uploads/… 或 https://">
@@ -408,6 +420,7 @@
                                         <th>渠道</th>
                                         <th>代理</th>
                                         <th>支付</th>
+                                        <th>专属价</th>
                                         <th>安卓包</th>
                                         <th>iOS包</th>
                                         <th>状态</th>
@@ -2465,6 +2478,23 @@
 
                 <div id="page-najilu-qr" class="page-panel" role="tabpanel">
                     <section>
+                        <h2>完税二维码使用统计</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端完税二维码：区间内<strong>使用用户</strong>（有替换保存或付费）、付费去水印解锁、已解锁用户数、当前锁定自定义二维码用户数、保存次数（含水印演示 / 去水印）。后台本页「手动替换」不计入用户使用。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="najiluQrStatsDays">统计区间</label>
+                                <select id="najiluQrStatsDays" class="filter-select">
+                                    <option value="1">今天</option>
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshNajiluQrStats">刷新统计</button>
+                        </div>
+                        <div id="najiluQrStatsMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
+                    </section>
+                    <section style="margin-top:28px;">
                         <h2>完税证明 · 二维码替换</h2>
                         <p class="hint hint-warn mt-0">先选择<strong>开具记录</strong>，再上传一张含目标二维码的<strong>完整完税证明图片</strong>；系统会按原始比例自动抠出右上角“二维码 + 16 位查询验证码”。<strong>保存后该账号锁定此码</strong>：之后用户在 App 里重新生成的纳税记录截图都用这张二维码，不再生成新码。</p>
                         <div class="form-row form-stack" style="max-width:960px;">

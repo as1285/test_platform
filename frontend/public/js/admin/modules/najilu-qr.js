@@ -792,6 +792,212 @@
     document.body.removeChild(a);
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatDt(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      var pad = function (n) {
+        return n < 10 ? '0' + n : String(n);
+      };
+      return (
+        d.getFullYear() +
+        '-' +
+        pad(d.getMonth() + 1) +
+        '-' +
+        pad(d.getDate()) +
+        ' ' +
+        pad(d.getHours()) +
+        ':' +
+        pad(d.getMinutes())
+      );
+    } catch (e0) {
+      return String(iso);
+    }
+  }
+
+  function modeLabel(mode) {
+    if (mode === 'qr') return '仅二维码';
+    if (mode === 'clear') return '清除';
+    return '整块';
+  }
+
+  function renderStats(data) {
+    var el = document.getElementById('najiluQrStatsMount');
+    if (!el) return;
+    if (!data || !data.summary) {
+      el.innerHTML = '<div class="share-stats-empty">暂无统计数据</div>';
+      return;
+    }
+    var s = data.summary;
+    var html = '';
+    if (data.period && data.period.label) {
+      html +=
+        '<p class="hint" style="margin:0 0 10px;">统计区间：' +
+        esc(data.period.label) +
+        '</p>';
+    }
+    if (data.note) {
+      html +=
+        '<p class="hint share-stats-note">' + esc(String(data.note)) + '</p>';
+    }
+    html += '<div class="share-kpi-grid">';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">已解锁用户（累计）</div><div class="ud-val">' +
+      esc(String(s.unlocked_users || 0)) +
+      '</div><div class="share-kpi-sub">najilu_qr_unlocked=1</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">锁定自定义码（累计）</div><div class="ud-val">' +
+      esc(String(s.locked_qr_users || 0)) +
+      '</div><div class="share-kpi-sub">账号默认二维码</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">付费订单</div><div class="ud-val">' +
+      esc(String(s.paid_orders || 0)) +
+      '</div><div class="share-kpi-sub">付费用户 ' +
+      esc(String(s.paid_users || 0)) +
+      ' · 待支付 ' +
+      esc(String(s.pending_orders || 0)) +
+      '</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">GMV</div><div class="ud-val">¥' +
+      esc(String(s.gmv || '0.00')) +
+      '</div><div class="share-kpi-sub">sku_najilu_qr</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">替换保存</div><div class="ud-val">' +
+      esc(String(s.saves || 0)) +
+      '</div><div class="share-kpi-sub">用户数 ' +
+      esc(String(s.save_users || 0)) +
+      ' · 水印 ' +
+      esc(String(s.saves_demo || 0)) +
+      ' · 去水印 ' +
+      esc(String(s.saves_unlocked || 0)) +
+      '</div></div>';
+    html += '</div>';
+
+    var users = data.usage_users || [];
+    html +=
+      '<div class="share-kpi-section-label">使用用户（' +
+      esc(String(users.length)) +
+      '，最多 200）</div>';
+    if (!users.length) {
+      html += '<div class="share-stats-empty">该区间暂无使用用户（无保存或付费）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>最近使用</th><th>用户</th><th>姓名</th><th>已解锁</th><th>已锁定码</th><th>保存</th><th>水印</th><th>去水印</th><th>付费单</th><th>付费金额</th></tr></thead><tbody>';
+      users.forEach(function (row) {
+        html += '<tr>';
+        html +=
+          '<td>' +
+          esc(formatDt(row.last_used_at || row.last_saved_at || row.last_paid_at)) +
+          '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + (row.unlocked ? '是' : '否') + '</td>';
+        html += '<td>' + (row.has_override ? '是' : '否') + '</td>';
+        html += '<td>' + esc(String(row.saves || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_demo || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_unlocked || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+        html += '<td>¥' + esc(String(row.paid_amount || '0.00')) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var daily = data.daily || [];
+    html += '<div class="share-kpi-section-label">按日明细</div>';
+    if (!daily.length) {
+      html += '<div class="share-stats-empty">该区间暂无按日数据</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>日期</th><th>付费单</th><th>付费用户</th><th>GMV</th><th>保存</th><th>保存用户</th><th>水印</th><th>去水印</th></tr></thead><tbody>';
+      daily.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(row.day || '—') + '</td>';
+        html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_users || 0)) + '</td>';
+        html += '<td>¥' + esc(String(row.gmv || '0.00')) + '</td>';
+        html += '<td>' + esc(String(row.saves || 0)) + '</td>';
+        html += '<td>' + esc(String(row.save_users || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_demo || 0)) + '</td>';
+        html += '<td>' + esc(String(row.saves_unlocked || 0)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var paid = data.recent_paid || [];
+    html += '<div class="share-kpi-section-label">最近付费（最多 50）</div>';
+    if (!paid.length) {
+      html += '<div class="share-stats-empty">该区间暂无付费记录</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>金额</th><th>订单号</th></tr></thead><tbody>';
+      paid.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.paid_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>¥' + esc(String(row.amount || '0.00')) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.out_trade_no || '—') + '</code></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var saves = data.recent_saves || [];
+    html += '<div class="share-kpi-section-label">最近保存（最多 50）</div>';
+    if (!saves.length) {
+      html +=
+        '<div class="share-stats-empty">该区间暂无保存记录（统计上线前无历史）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>类型</th><th>方式</th></tr></thead><tbody>';
+      saves.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + (row.demo ? '水印演示' : '去水印') + '</td>';
+        html += '<td>' + esc(modeLabel(row.mode)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  function loadStats() {
+    var el = document.getElementById('najiluQrStatsMount');
+    if (!el) return;
+    var daysEl = document.getElementById('najiluQrStatsDays');
+    var days = daysEl ? String(daysEl.value || '7') : '7';
+    el.textContent = '加载中…';
+    fetchAdmin('/api/admin/najilu-qr/stats?days=' + encodeURIComponent(days))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          el.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderStats(j.data);
+      })
+      .catch(function () {
+        el.textContent = '网络错误';
+      });
+  }
+
   var bound = false;
   function bind() {
     if (bound) return;
@@ -805,6 +1011,8 @@
     var fullFile = document.getElementById('najiluQrFullFile');
     var mode = document.getElementById('najiluQrMode');
     var sel = document.getElementById('najiluQrIssueId');
+    var refresh = document.getElementById('btnRefreshNajiluQrStats');
+    var daysEl = document.getElementById('najiluQrStatsDays');
     if (loadBtn) loadBtn.addEventListener('click', loadIssues);
     if (saveBtn) saveBtn.addEventListener('click', function () { save(false); });
     if (clearBtn) clearBtn.addEventListener('click', function () { save(true); });
@@ -814,6 +1022,8 @@
     if (fullFile) fullFile.addEventListener('change', onFullFileChange);
     if (mode) mode.addEventListener('change', onModeChange);
     if (sel) sel.addEventListener('change', onIssueChange);
+    if (refresh) refresh.addEventListener('click', loadStats);
+    if (daysEl) daysEl.addEventListener('change', loadStats);
     var cropImg = document.getElementById('najiluQrCropImg');
     if (cropImg) {
       cropImg.addEventListener('mousedown', onCropDown);
@@ -826,6 +1036,7 @@
 
   function loadPage() {
     bind();
+    loadStats();
   }
 
   global.AdminModules = global.AdminModules || {};
@@ -834,6 +1045,7 @@
     loadPage: loadPage,
     loadIssues: loadIssues,
     previewCert: previewCert,
+    loadStats: loadStats,
     _regionFromQrBox: regionFromQrBox,
     _regionForMode: regionForMode
   };
