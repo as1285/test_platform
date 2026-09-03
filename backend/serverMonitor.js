@@ -146,6 +146,13 @@ const API_PROBE_DEFS = [
   },
   { id: 'public-mine-ui', label: '我的页配置', method: 'GET', path: '/api/public/mine-ui', accept: [200] },
   {
+    id: 'public-lizhi-cert-fee',
+    label: '证明标价',
+    method: 'GET',
+    path: '/api/public/lizhi-cert-fee',
+    accept: [200]
+  },
+  {
     id: 'partner-bank',
     label: '银行合作健康',
     method: 'GET',

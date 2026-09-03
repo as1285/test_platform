@@ -17,6 +17,9 @@ function registerUserRoutes(app, deps) {
     app.post(p, authMw, h.handleMessagePost);
   });
 
+  /* 离职/在职证明标价（公开，供激活页文案） */
+  app.get('/api/public/lizhi-cert-fee', h.handlePublicLizhiCertFee);
+
   /* 离职证明：仅需登录，不要求账号已激活 */
   app.get('/api/lizhi-cert/status', mw.requireAuth, h.handleLizhiCertStatus);
   app.get('/api/lizhi-cert/prefill', mw.requireAuth, h.handleLizhiCertPrefill);
@@ -55,7 +58,7 @@ function registerUserRoutes(app, deps) {
     h.handleUserShebaoPhotoUpload
   );
 
-  /* 完税二维码替换：仅需登录；未付费不可保存 */
+  /* 完税二维码替换：仅需登录；未付费可保存/生成（带水印），付款后去水印 */
   app.get('/api/najilu-qr/status', mw.requireAuth, h.handleUserNajiluQrStatus);
   app.get('/api/najilu-qr/list', mw.requireAuth, h.handleUserNajiluQrList);
   app.post(

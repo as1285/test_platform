@@ -7,7 +7,7 @@
 
   /* 空壳模块（仅 ready:true）已删除；PAGE_MODULE 仍映射以便按页拉 Chart/QR 等依赖 */
   var MODULE_SRC = {
-    charts: '/js/admin/modules/charts.js?v=20260901-reg-merge',
+    charts: '/js/admin/modules/charts.js?v=20260903-chart-opt',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260831-xiamen',
     'gjj-demo': '/js/admin/modules/gjj-demo.js?v=20260826-deadcode',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260828-cert-survey',
@@ -120,15 +120,15 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260830-zl-blank-remark');
+    return loadScript('/js/najilu.js?v=20260903-qr-wm');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB）
    *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260902-emp-count',
-      '/js/consult-batch-tax.js?v=20260829-fillcta',
+      '/js/consult-core.js?v=20260903-cert-pub',
+      '/js/consult-batch-tax.js?v=20260903-yearguard',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

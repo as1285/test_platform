@@ -123,6 +123,22 @@ async function markLizhiUnlocked(conn, username) {
   await conn.execute('UPDATE users SET lizhi_cert_unlocked = 1 WHERE username = ?', [uname]);
 }
 
+/** 公开标价：激活页/支付页文案用，无需登录 */
+async function handlePublicLizhiCertFee(req, res) {
+  try {
+    var feeCfg = await loadLizhiCertFeeConfig(false);
+    return res.json({
+      code: 200,
+      data: {
+        fee_amount: feeCfg.amount || LIZHI_CERT_AMOUNT
+      }
+    });
+  } catch (e) {
+    console.error('[lizhi-cert] public fee', e);
+    return res.status(500).json({ code: 500, msg: '读取价格失败' });
+  }
+}
+
 async function handleLizhiCertStatus(req, res) {
   try {
     if (!req.authUserId) {
@@ -317,6 +333,7 @@ async function handleLizhiCertTempShareGet(req, res) {
 
 function getHandlers() {
   return {
+    handlePublicLizhiCertFee: handlePublicLizhiCertFee,
     handleLizhiCertStatus: handleLizhiCertStatus,
     handleLizhiCertPrefill: handleLizhiCertPrefill,
     handleLizhiCertGenerate: handleLizhiCertGenerate,

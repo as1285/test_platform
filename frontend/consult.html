@@ -2,6 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!--
+      个人中心 / 我要咨询（税务记录）：样式 css/consult.css；逻辑拆至 consult-*.js。
+      加载顺序：auth-boot → auth → TaxApp 壳 → theme-loader；
+      文末 defer：tax-edit-pay → core → batch-tax → records → tax-fill-survey。
+      TAX_APP_SHELL_* 标记供 assemble 替换为 content-hash 壳资源。
+    -->
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
     <script src="/js/auth.js?v=20260902-adopt" defer></script>
     <!-- TAX_APP_SHELL_START -->
@@ -942,9 +948,10 @@
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
+    <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 → 填税调研 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260903-cert-fee"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260901-bonus-solo"></script>
+    <script defer src="/js/consult-core.js?v=20260903-cert-pub"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260903-yearguard"></script>
     <script defer src="/js/consult-records.js?v=20260831-refundqual"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>

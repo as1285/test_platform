@@ -247,13 +247,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/najilu.html',
-  ['najilu.js?v=20260830-zl-blank-remark'],
-  'najilu zl blank remark cache'
+  ['najilu.js?v=20260903-qr-wm'],
+  'najilu qr watermark cache'
 );
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['najilu.js?v=20260830-zl-blank-remark'],
-  'admin najilu zl blank remark cache'
+  ['najilu.js?v=20260903-qr-wm'],
+  'admin najilu qr watermark cache'
 );
 if (exists('frontend/public/img/najilu_ln_seal.png')) ok('liaoning najilu seal image exists');
 else fail('liaoning najilu seal image exists', 'missing frontend/public/img/najilu_ln_seal.png');
@@ -1034,6 +1034,21 @@ mustInclude(
   'purchase shebao upload entry hidden'
 );
 mustInclude('frontend/public/js/consult-core.js', ["titleEl.textContent = '激活页面'"], 'consult title 激活页面');
+mustInclude(
+  'frontend/public/js/consult-core.js',
+  ['/api/public/lizhi-cert-fee', 'applyConsultLizhiCertFeeCopy'],
+  'consult 增值服务证明价格读后台公开标价'
+);
+mustInclude(
+  'backend/src/user/routes.js',
+  ["app.get('/api/public/lizhi-cert-fee'"],
+  'public lizhi-cert-fee route'
+);
+mustInclude(
+  'backend/src/user/lizhiCertUser.js',
+  ['handlePublicLizhiCertFee', 'loadLizhiCertFeeConfig'],
+  'public lizhi-cert-fee handler'
+);
 if (!read('frontend/consult.html').includes('>附加产品<')) ok('consult tab no 附加产品');
 else fail('consult tab no 附加产品');
 mustInclude(

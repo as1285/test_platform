@@ -2,6 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!--
+      开通/支付页（C 端）：激活码 + 支付宝当面付 + 专属价/心理价出价。
+      脚本：auth-boot（同步）→ auth.js（defer，注入 conversion-guide 等）→ 文末内联主逻辑。
+      关键：?from= 标高意向；专属价由后端 user_price_offers 覆盖套餐；ABC 以服务端为准。
+      构建会剥离本注释；请以源码为准。
+    -->
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
     <script src="/js/auth.js?v=20260903-email-reg1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1448,10 +1454,10 @@
                 <div class="card" id="cardNajiluQr">
                     <div class="card-head">
                         <div class="card-title">完税二维码替换</div>
-                        <span class="badge-auto" id="najiluQrPurchaseBadge">¥300 开通</span>
+                        <span class="badge-auto" id="najiluQrPurchaseBadge">¥300 去水印</span>
                     </div>
-                    <p class="card-hint">付费开通后，可上传完整完税证明图并锁定本账号默认二维码；之后重新生成纳税记录都用这张码。</p>
-                    <a class="btn btn-secondary" id="btnNajiluQrEntry" href="najilu_qr.html?from=purchase">去开通</a>
+                    <p class="card-hint" id="najiluQrPurchaseHint">未付款也可生成（带「演示样例」水印）。进入后按步骤上传完整完税证明图即可锁定；付 ¥300 后去水印。页内有详细用法。</p>
+                    <a class="btn btn-secondary" id="btnNajiluQrEntry" href="najilu_qr.html?from=purchase">去生成</a>
                 </div>
 
                 <div class="card download-box" id="cardDownloadApp" hidden>
@@ -1537,6 +1543,11 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script>
 (function () {
+    /* === 购买页主逻辑（内联）===
+     * 区块大致顺序：登录/激活态 → purchase ABC 清理 → 套餐渲染/专属价 →
+     * 支付宝下单轮询 → 激活码提交 → 心理价调研/出价 → 离开调研。
+     * 依赖：authFetch、localStorage.token / account_active / purchase_abc_assignment_v1。
+     */
     /* 已激活：允许进入支付页续费/延长；入口在「附加产品」，不再踢回「我的」 */
     var purchaseUserActive = false;
     try {
@@ -2156,14 +2167,73 @@
     }
 
     function loadPurchaseLizhiCertFeeCopy() {
-        if (!purchaseGetToken()) return;
-        purchaseAuthFetch('/api/lizhi-cert/status')
+        function amountFrom(j) {
+            if (!j || j.code !== 200 || !j.data) return '';
+            return j.data.fee_amount || j.data.amount || '';
+        }
+        function applyJson(j) {
+            var amt = amountFrom(j);
+            if (amt) applyPurchaseLizhiCertFeeCopy(amt);
+            return !!amt;
+        }
+        fetch('/api/public/lizhi-cert-fee', { credentials: 'same-origin' })
             .then(function (r) {
                 return r.json();
             })
             .then(function (j) {
-                if (j && j.code === 200 && j.data && j.data.fee_amount) {
-                    applyPurchaseLizhiCertFeeCopy(j.data.fee_amount);
+                if (applyJson(j)) return;
+                if (!purchaseGetToken()) return;
+                return purchaseAuthFetch('/api/lizhi-cert/status').then(function (r) {
+                    return r.json();
+                }).then(applyJson);
+            })
+            .catch(function () {
+                if (!purchaseGetToken()) return;
+                purchaseAuthFetch('/api/lizhi-cert/status')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(applyJson)
+                    .catch(function () {});
+            });
+    }
+
+    function applyPurchaseNajiluQrFeeCopy(data) {
+        data = data || {};
+        var yuan = formatPurchaseCertFeeYuan(data.fee_amount || data.amount);
+        var unlocked = !!data.unlocked;
+        var badge = document.getElementById('najiluQrPurchaseBadge');
+        var hint = document.getElementById('najiluQrPurchaseHint');
+        var btn = document.getElementById('btnNajiluQrEntry');
+        if (unlocked) {
+            if (badge) badge.textContent = '已开通 · 无水印';
+            if (hint) {
+                hint.textContent =
+                    '已开通去水印。进入后按步骤上传完整完税证明图并锁定；之后重新生成纳税记录都用这张码。页内有详细用法。';
+            }
+            if (btn) btn.textContent = '去生成';
+            return;
+        }
+        if (!yuan) return;
+        if (badge) badge.textContent = '¥' + yuan + ' 去水印';
+        if (hint) {
+            hint.textContent =
+                '未付款也可生成（带「演示样例」水印）。进入后按步骤上传完整完税证明图即可锁定；付 ¥' +
+                yuan +
+                ' 后去水印。页内有详细用法。';
+        }
+        if (btn) btn.textContent = '去生成';
+    }
+
+    function loadPurchaseNajiluQrFeeCopy() {
+        if (!purchaseGetToken()) return;
+        purchaseAuthFetch('/api/najilu-qr/status')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (j) {
+                if (j && j.code === 200 && j.data) {
+                    applyPurchaseNajiluQrFeeCopy(j.data);
                 }
             })
             .catch(function () {});
@@ -4432,6 +4502,7 @@
         completePendingBilibiliShare();
         loadBilibiliShareStatus();
         loadPurchaseLizhiCertFeeCopy();
+        loadPurchaseNajiluQrFeeCopy();
         try {
             if (typeof window.forceHidePageLoading === 'function') {
                 window.forceHidePageLoading();
@@ -4439,6 +4510,7 @@
         } catch (eHide2) {}
     });
     loadPurchaseLizhiCertFeeCopy();
+    loadPurchaseNajiluQrFeeCopy();
 })();
     </script>
 </body>

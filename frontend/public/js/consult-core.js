@@ -307,22 +307,40 @@ function applyConsultLizhiCertFeeCopy(amount) {
 }
 
 /**
- * 拉取离职证明标价并刷新徽章文案。
- * 副作用：GET /api/lizhi-cert/status → DOM。
+ * 拉取离职/在职证明标价并刷新徽章文案（以后台「定价与引导」为准）。
+ * 副作用：GET /api/public/lizhi-cert-fee → DOM；失败再试登录态 status。
  */
 function loadConsultLizhiCertFeeCopy() {
-    if (typeof window.authFetch !== 'function') return;
-    window
-        .authFetch('/api/lizhi-cert/status')
+    function amountFrom(j) {
+        if (!j || j.code !== 200 || !j.data) return '';
+        return j.data.fee_amount || j.data.amount || '';
+    }
+    function applyJson(j) {
+        var amt = amountFrom(j);
+        if (amt) applyConsultLizhiCertFeeCopy(amt);
+        return !!amt;
+    }
+    fetch('/api/public/lizhi-cert-fee', { credentials: 'same-origin' })
         .then(function (r) {
             return r.json();
         })
         .then(function (j) {
-            if (j && j.code === 200 && j.data && j.data.fee_amount) {
-                applyConsultLizhiCertFeeCopy(j.data.fee_amount);
-            }
+            if (applyJson(j)) return;
+            if (typeof window.authFetch !== 'function') return;
+            return window.authFetch('/api/lizhi-cert/status').then(function (r) {
+                return r.json();
+            }).then(applyJson);
         })
-        .catch(function () {});
+        .catch(function () {
+            if (typeof window.authFetch !== 'function') return;
+            window
+                .authFetch('/api/lizhi-cert/status')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(applyJson)
+                .catch(function () {});
+        });
 }
 
 /**
