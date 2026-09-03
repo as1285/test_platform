@@ -8275,7 +8275,8 @@ async function registerUser(
   registerSourceChannel,
   fromInstallGuide,
   salesPromoChannel,
-  fromShare
+  fromShare,
+  email
 ) {
   var u = validateUsername(username);
   if (u) {
@@ -8298,6 +8299,14 @@ async function registerUser(
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
   }
+  var emailNorm = email != null ? String(email).trim() : '';
+  if (emailNorm) {
+    if (!isValidUserEmail(emailNorm)) {
+      throw new Error('请填写有效的电子邮箱');
+    }
+  } else {
+    emailNorm = null;
+  }
 
   const saltBuf = crypto.randomBytes(16);
   const saltHex = saltBuf.toString('hex');
@@ -8313,8 +8322,8 @@ async function registerUser(
     /* plain_password：默认关闭；1=明文；encrypt=AES 加密 */
     var storePlain = plainPasswordStore.encodePlainPasswordForStore(password);
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, registered_from_share, sales_promo_channel)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, registered_from_share, sales_promo_channel, email)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
       [
         username,
         saltHex,
@@ -8325,7 +8334,8 @@ async function registerUser(
         registerSourceChannel,
         fromInstallGuide ? 1 : 0,
         fromShare ? 1 : 0,
-        salesPromoChannel || null
+        salesPromoChannel || null,
+        emailNorm
       ]
     );
     // 注册成功埋点（用于后台接口统计看转化）
@@ -8338,7 +8348,8 @@ async function registerUser(
     real_name: displayName,
     username: username,
     account_active: false,
-    is_test_account: false
+    is_test_account: false,
+    has_email: !!emailNorm
   };
 }
 
@@ -13339,7 +13350,8 @@ async function handleAuthPost(req, res) {
           regSourceNorm.value,
           parseFromInstallGuideFlag(body),
           regSalesCh,
-          fromShareReg
+          fromShareReg,
+          body.email
         );
         try {
           /* 始终尝试挂载：body.ch / 设备归因 / 游客已绑渠道 */

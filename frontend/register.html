@@ -15,7 +15,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260903-email-reg1" defer></script>
+    <script src="/js/auth.js?v=20260903-email-opt1" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -127,6 +127,12 @@
             margin-bottom: 7px;
         }
         .field label .req { color: var(--reg-accent); }
+        .field label .opt {
+            margin-left: 4px;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--reg-muted);
+        }
         .input-wrap { position: relative; }
         .field input,
         .field select {
@@ -349,6 +355,12 @@
                             <input type="password" id="password" name="password" placeholder="设一个好记的密码" minlength="1" maxlength="64" autocomplete="new-password" required>
                             <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
                         </div>
+                    </div>
+                    <div class="field">
+                        <label for="email">电子邮箱 <span class="opt">选填</span></label>
+                        <input type="email" id="email" name="email" placeholder="例如 name@qq.com，方便收优惠提醒" maxlength="255" autocomplete="email" inputmode="email">
+                        <div class="field-msg" id="emailMsg"></div>
+                        <p class="soft-tip" style="margin-top:6px;">不填也能注册；开通提醒、专属价会发到邮箱。</p>
                     </div>
                     <div class="field source-block" id="registerSourceBlock">
                         <label for="registerSourceChannel">从哪了解到的 <span class="req">*</span></label>
@@ -604,17 +616,27 @@
             markInvalid(this, false);
         });
 
+        function isValidRegisterEmail(raw) {
+            var s = raw == null ? '' : String(raw).trim();
+            if (!s || s.length > 255) return false;
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+        }
+
         function submitRegister() {
             var usernameEl = document.getElementById('username');
             var passwordEl = document.getElementById('password');
+            var emailEl = document.getElementById('email');
             var channelEl = document.getElementById('registerSourceChannel');
             var otherEl = document.getElementById('registerSourceChannelOther');
 
             var username = usernameEl.value.trim();
             var password = passwordEl.value;
+            var email = emailEl ? String(emailEl.value || '').trim() : '';
             showErr('');
+            setFieldMsg('emailMsg', '');
             markInvalid(usernameEl, false);
             markInvalid(passwordEl, false);
+            if (emailEl) markInvalid(emailEl, false);
             if (channelEl) markInvalid(channelEl, false);
             if (otherEl) markInvalid(otherEl, false);
 
@@ -622,6 +644,12 @@
                 showErr('请先填写账号和密码');
                 if (!username) markInvalid(usernameEl, true);
                 if (!password) markInvalid(passwordEl, true);
+                return;
+            }
+            if (email && !isValidRegisterEmail(email)) {
+                showErr('邮箱格式不对，请检查后再提交（也可先不填）');
+                if (emailEl) markInvalid(emailEl, true);
+                setFieldMsg('emailMsg', '请填写有效邮箱，例如 name@qq.com', false);
                 return;
             }
             var sourceChannel = channelEl ? channelEl.value.trim() : '';
@@ -708,6 +736,7 @@
                     action: 'register',
                     username: username,
                     password: password,
+                    email: email || undefined,
                     register_source_channel: sourceChannel,
                     register_source_channel_other: sourceChannelOther || undefined,
                     from_install_guide: fromInstallGuide ? 1 : 0,
@@ -807,8 +836,12 @@
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}
                         try {
-                            /* 注册成功后优先引导留邮箱（conversion-guide 读取） */
-                            sessionStorage.setItem('cg_email_nudge_after_register', '1');
+                            /* 注册时未留邮箱：进「我的」后半强制强引导（可跳过） */
+                            if (!email && !d.has_email) {
+                                sessionStorage.setItem('cg_email_nudge_after_register', '1');
+                            } else {
+                                sessionStorage.removeItem('cg_email_nudge_after_register');
+                            }
                         } catch (eEmailPend) {}
                         var goDownload = false;
                         try {

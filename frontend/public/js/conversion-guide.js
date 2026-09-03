@@ -666,15 +666,20 @@
       CG_OVERLAY_Z +
       ';display:flex;align-items:flex-end;justify-content:center;padding:0}' +
       '.cg-email-nudge-mask{position:absolute;inset:0;background:rgba(15,23,42,.4)}' +
+      '.cg-email-nudge-root.is-strong .cg-email-nudge-mask{background:rgba(15,23,42,.55)}' +
       '.cg-email-nudge-panel{position:relative;z-index:1;width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(15,23,42,.12);box-sizing:border-box}' +
+      '.cg-email-nudge-root.is-strong .cg-email-nudge-panel{padding-top:22px}' +
+      '.cg-email-nudge-badge{display:inline-block;margin:0 0 10px;padding:3px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;line-height:1.4}' +
       '.cg-email-nudge-title{margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a}' +
       '.cg-email-nudge-body{margin:0 0 12px;font-size:13px;line-height:1.55;color:#64748b}' +
+      '.cg-email-nudge-root.is-strong .cg-email-nudge-body{color:#475569;font-size:14px}' +
       '.cg-email-nudge-input{width:100%;height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;font-family:inherit;box-sizing:border-box;margin:0 0 8px}' +
       '.cg-email-nudge-err{margin:0 0 10px;font-size:12px;color:#dc2626;min-height:16px}' +
       '.cg-email-nudge-actions{display:flex;flex-direction:column;gap:8px}' +
       '.cg-email-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}' +
       '.cg-email-nudge-btn.primary{background:#1e6fff;color:#fff}' +
       '.cg-email-nudge-btn.ghost{background:#f1f5f9;color:#64748b;font-weight:500}' +
+      '.cg-email-nudge-root.is-strong .cg-email-nudge-btn.ghost{background:transparent;color:#94a3b8;font-weight:400;font-size:13px;height:36px}' +
       '.cg-pay-gate-root{position:fixed;inset:0;z-index:' +
       CG_OVERLAY_Z +
       ';display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
@@ -3035,18 +3040,21 @@
   }
 
   /**
-   * 引导填写邮箱（可跳过）。force=true 时忽略当日限制与 dismiss。
-   * @param {{force?: boolean}} [opts]
+   * 引导填写邮箱（可跳过）。
+   * @param {{force?: boolean, afterRegister?: boolean}} [opts]
+   *   force / afterRegister：忽略当日限制与 dismiss；afterRegister 用半强制强文案（点遮罩不关闭）
    * @returns {boolean} 是否成功打开
    */
   function openEmailCollectNudge(opts) {
     opts = opts || {};
+    var afterRegister = !!opts.afterRegister;
+    var bypassLimits = afterRegister || !!opts.force;
     if (!isLoggedIn() || hasEmailCached) return false;
     if (document.getElementById('cg-email-nudge-root')) return false;
     if (document.getElementById('cg-act-nudge-root') || document.getElementById('cg-tax-fill-nudge-root')) {
       return false;
     }
-    if (!opts.force) {
+    if (!bypassLimits) {
       try {
         if (localStorage.getItem(EMAIL_NUDGE_DISMISS_KEY) === '1') return false;
         if (localStorage.getItem(EMAIL_NUDGE_DAY_KEY) === beijingDayKey()) return false;
@@ -3055,26 +3063,50 @@
     ensureGateStyles();
     var root = document.createElement('div');
     root.id = 'cg-email-nudge-root';
-    root.className = 'cg-email-nudge-root';
+    root.className = 'cg-email-nudge-root' + (afterRegister ? ' is-strong' : '');
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
+    var title = afterRegister ? '建议留下邮箱，方便接收优惠' : '留下邮箱，优惠不错过';
+    var body = afterRegister
+      ? '开通提醒、专属价会发到邮箱。现在填写最省事；也可跳过，之后在「个人信息」补填。'
+      : '专属价、开通提醒会发到邮箱。可不填，随时在「个人信息」里补充。';
+    var saveLabel = afterRegister ? '保存并继续' : '保存邮箱';
+    var dismissLabel = afterRegister ? '跳过，稍后再说' : '暂时不用';
+    var badgeHtml = afterRegister
+      ? '<div class="cg-email-nudge-badge">注册成功 · 建议填写</div>'
+      : '';
     root.innerHTML =
-      '<div class="cg-email-nudge-mask" data-act="dismiss"></div>' +
+      '<div class="cg-email-nudge-mask"' +
+      (afterRegister ? '' : ' data-act="dismiss"') +
+      '></div>' +
       '<div class="cg-email-nudge-panel">' +
-      '<div class="cg-email-nudge-title">留下邮箱，优惠不错过</div>' +
-      '<p class="cg-email-nudge-body">专属价、开通提醒会发到邮箱。可不填，随时在「个人信息」里补充。</p>' +
+      badgeHtml +
+      '<div class="cg-email-nudge-title">' +
+      title +
+      '</div>' +
+      '<p class="cg-email-nudge-body">' +
+      body +
+      '</p>' +
       '<input type="email" class="cg-email-nudge-input" id="cgEmailNudgeInput" maxlength="255" placeholder="例如 name@qq.com" autocomplete="email" inputmode="email">' +
       '<div class="cg-email-nudge-err" id="cgEmailNudgeErr"></div>' +
       '<div class="cg-email-nudge-actions">' +
-      '<button type="button" class="cg-email-nudge-btn primary" data-act="save">保存邮箱</button>' +
-      '<button type="button" class="cg-email-nudge-btn ghost" data-act="dismiss">暂时不用</button>' +
+      '<button type="button" class="cg-email-nudge-btn primary" data-act="save">' +
+      saveLabel +
+      '</button>' +
+      '<button type="button" class="cg-email-nudge-btn ghost" data-act="dismiss">' +
+      dismissLabel +
+      '</button>' +
       '</div></div>';
     document.body.appendChild(root);
     try {
       localStorage.setItem(EMAIL_NUDGE_DAY_KEY, beijingDayKey());
     } catch (eMark) {}
     try {
-      if (typeof trackUserAction === 'function') trackUserAction('track_email_collect_open');
+      if (typeof trackUserAction === 'function') {
+        trackUserAction('track_email_collect_open', {
+          after_register: afterRegister ? 1 : 0
+        });
+      }
     } catch (eTr) {}
     var input = document.getElementById('cgEmailNudgeInput');
     var errEl = document.getElementById('cgEmailNudgeErr');
@@ -3085,9 +3117,20 @@
       var t = ev.target;
       var act = t && t.getAttribute ? t.getAttribute('data-act') : '';
       if (act === 'dismiss') {
-        markEmailNudgeDismissed();
+        /* 注册后强引导：跳过只记当日，不永久 dismiss，便于改天再触达 */
+        if (afterRegister) {
+          try {
+            localStorage.setItem(EMAIL_NUDGE_DAY_KEY, beijingDayKey());
+          } catch (eDay2) {}
+        } else {
+          markEmailNudgeDismissed();
+        }
         try {
-          if (typeof trackUserAction === 'function') trackUserAction('track_email_collect_dismiss');
+          if (typeof trackUserAction === 'function') {
+            trackUserAction('track_email_collect_dismiss', {
+              after_register: afterRegister ? 1 : 0
+            });
+          }
         } catch (e1) {}
         closeEmailCollectNudge();
         return;
@@ -3116,15 +3159,19 @@
           return r.json();
         })
         .then(function (data) {
-          if (data.code !== 200) {
-            throw new Error(data.msg || '保存失败');
+          if (!data || data.code !== 200) {
+            throw new Error((data && data.msg) || '保存失败');
           }
           hasEmailCached = true;
           try {
             localStorage.removeItem(EMAIL_NUDGE_DISMISS_KEY);
           } catch (e2) {}
           try {
-            if (typeof trackUserAction === 'function') trackUserAction('track_email_collect_save');
+            if (typeof trackUserAction === 'function') {
+              trackUserAction('track_email_collect_save', {
+                after_register: afterRegister ? 1 : 0
+              });
+            }
           } catch (e3) {}
           closeEmailCollectNudge();
           showCaptureToast('邮箱已保存', { duration: 1800 });
@@ -3150,9 +3197,11 @@
     var afterReg = peekEmailNudgeAfterRegisterFlag();
     setTimeout(
       function () {
-        var force = afterReg || false;
+        var afterRegister = afterReg || false;
         if (afterReg) consumeEmailNudgeAfterRegisterFlag();
-        openEmailCollectNudge({ force: force });
+        openEmailCollectNudge(
+          afterRegister ? { afterRegister: true, force: true } : {}
+        );
       },
       afterReg ? 700 : page === 'purchase.html' ? 2200 : 1600
     );
