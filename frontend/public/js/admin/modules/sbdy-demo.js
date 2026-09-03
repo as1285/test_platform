@@ -41,6 +41,36 @@
     }
   }
 
+  function getCertType() {
+    var v = val('sbdyCertType');
+    return v === 'linian' ? 'linian' : 'personal';
+  }
+
+  function isLinianMode() {
+    return getCertType() === 'linian';
+  }
+
+  function syncCertTypeUi() {
+    var linian = isLinianMode();
+    var injury = document.getElementById('sbdyStatusInjuryWrap');
+    var unemp = document.getElementById('sbdyStatusUnempWrap');
+    var cum = document.getElementById('sbdyCumulativeWrap');
+    var lab = document.getElementById('sbdyStatusPensionLabel');
+    var hint = document.getElementById('sbdySegHint');
+    if (injury) injury.style.display = linian ? 'none' : '';
+    if (unemp) unemp.style.display = linian ? 'none' : '';
+    if (cum) cum.style.display = linian ? '' : 'none';
+    if (lab) lab.textContent = linian ? '参保状态' : '养老保险状态';
+    if (hint) {
+      hint.innerHTML = linian
+        ? '历年证明按<strong>参保经历 + 缴费区间</strong>汇总为「年度缴费清单」（跨年自动拆行）。养老/失业个人缴费字段仅个人专用证明使用。'
+        : '可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。';
+    }
+    document.querySelectorAll('.sbdy-pay-fields').forEach(function (el) {
+      el.style.display = linian ? 'none' : '';
+    });
+  }
+
   function formatBjTime(raw) {
     var s = String(raw == null ? '' : raw).trim();
     if (!s) return '—';
@@ -163,11 +193,15 @@
       '<input type="number" class="sbdy-per-base" step="0.01" value="' +
       esc(base) +
       '"></div>' +
-      '<div><label>养老个人缴费</label>' +
+      '<div class="sbdy-pay-fields"' +
+      (isLinianMode() ? ' style="display:none"' : '') +
+      '><label>养老个人缴费</label>' +
       '<input type="number" class="sbdy-per-pension" step="0.01" value="' +
       esc(pension) +
       '"></div>' +
-      '<div><label>失业个人缴费</label>' +
+      '<div class="sbdy-pay-fields"' +
+      (isLinianMode() ? ' style="display:none"' : '') +
+      '><label>失业个人缴费</label>' +
       '<input type="number" class="sbdy-per-unemp" step="0.01" value="' +
       esc(unemp) +
       '"></div>' +
@@ -228,7 +262,7 @@
       '"></div>' +
       '<div><label>参保地</label>' +
       '<input type="text" class="sbdy-seg-area" maxlength="32" value="' +
-      esc(data.area || '余杭区') +
+      esc(data.area || (isLinianMode() ? '杭州市本级' : '余杭区')) +
       '"></div>' +
       '</div>' +
       '<div class="sbdy-periods"></div>' +
@@ -298,7 +332,7 @@
       list.push({
         company_name: fieldOf(seg, 'sbdy-seg-company'),
         credit_code: fieldOf(seg, 'sbdy-seg-credit'),
-        area: fieldOf(seg, 'sbdy-seg-area') || '余杭区',
+        area: fieldOf(seg, 'sbdy-seg-area') || (isLinianMode() ? '杭州市本级' : '余杭区'),
         periods: periods
       });
     });
@@ -374,16 +408,21 @@
     }
     var segments = collectSegments();
     var body = {
+      cert_type: getCertType(),
       name: val('sbdyName'),
       id_number: val('sbdyIdNumber'),
       gender: val('sbdyGender') || '女',
-      status_pension: val('sbdyStatusPension') || '正常参保',
+      status_pension: val('sbdyStatusPension') || (isLinianMode() ? '暂停缴费' : '正常参保'),
       status_medical: val('sbdyStatusInjury') || '正常参保',
       status_injury: val('sbdyStatusInjury') || '正常参保',
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate'),
       segments: segments
     };
+    if (isLinianMode()) {
+      var cum = val('sbdyCumulative');
+      if (cum) body.cumulative_text = cum;
+    }
     if (!body.name || !body.id_number) {
       var tip = tplText
         ? '模板里缺少「姓名」或「身份证号」，请补全后再点生成'
@@ -807,6 +846,69 @@
       '月' +
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
+
+    if (isLinianMode()) {
+      var linianSample = {
+        name: '李宛奕',
+        id_number: '610124199105036327',
+        gender: '女',
+        status: '暂停缴费',
+        cumulative: '4年3月',
+        print_date: printDate,
+        segments: [
+          {
+            company_name: '杭州才享人力资源有限公司',
+            credit_code: '',
+            area: '杭州市本级',
+            periods: [
+              { period_start: '2020-01', period_end: '2020-12', base_amount: 4000 },
+              { period_start: '2021-01', period_end: '2021-07', base_amount: 4000 }
+            ]
+          },
+          {
+            company_name: '浙江才享企业服务有限公司杭州分公司',
+            credit_code: '',
+            area: '杭州市本级',
+            periods: [{ period_start: '2021-08', period_end: '2021-09', base_amount: 3321.6 }]
+          },
+          {
+            company_name: '杭州般意科技有限公司',
+            credit_code: '',
+            area: '杭州市本级',
+            periods: [
+              { period_start: '2023-05', period_end: '2023-12', base_amount: 8000 },
+              { period_start: '2024-01', period_end: '2024-04', base_amount: 8000 }
+            ]
+          },
+          {
+            company_name: '杭州虎头虎脑科技有限公司',
+            credit_code: '',
+            area: '杭州市本级',
+            periods: [
+              { period_start: '2024-05', period_end: '2024-12', base_amount: 8000 },
+              { period_start: '2025-01', period_end: '2025-09', base_amount: 8000 }
+            ]
+          },
+          {
+            company_name: '杭州乔泽生物科技有限公司',
+            credit_code: '',
+            area: '杭州市本级',
+            periods: [{ period_start: '2026-05', period_end: '2026-05', base_amount: 4986 }]
+          }
+        ]
+      };
+      setField('sbdyName', linianSample.name);
+      setField('sbdyIdNumber', linianSample.id_number);
+      setField('sbdyGender', linianSample.gender);
+      setField('sbdyStatusPension', linianSample.status);
+      setField('sbdyCumulative', linianSample.cumulative);
+      setField('sbdyPrintDate', linianSample.print_date);
+      resetExperiences(linianSample.segments);
+      syncCertTypeUi();
+      setStatus('已填充历年示例：' + linianSample.name + '（对齐官方样张，可再点生成）', false);
+      return;
+    }
+
     var samples = [
       {
         name: '耿冯',
@@ -1002,6 +1104,13 @@
 
   function bind() {
     ensureOneExperience();
+    syncCertTypeUi();
+    var typeSel = document.getElementById('sbdyCertType');
+    if (typeSel) {
+      typeSel.onchange = function () {
+        syncCertTypeUi();
+      };
+    }
     var addBtn = document.getElementById('btnSbdyAddSegment');
     if (addBtn) {
       addBtn.onclick = function (ev) {

@@ -1609,6 +1609,13 @@
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="form-row flex-wrap gap-10">
                                 <div>
+                                    <label for="sbdyCertType">证明类型</label>
+                                    <select id="sbdyCertType" class="filter-select">
+                                        <option value="personal">个人专用（连续缴费）</option>
+                                        <option value="linian">历年参保证明</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label for="sbdyName">姓名</label>
                                     <input type="text" id="sbdyName" maxlength="64" placeholder="如：李晓晴">
                                 </div>
@@ -1624,23 +1631,27 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label for="sbdyStatusPension">养老保险状态</label>
-                                    <input type="text" id="sbdyStatusPension" value="正常参保">
+                                    <label for="sbdyStatusPension" id="sbdyStatusPensionLabel">养老保险状态</label>
+                                    <input type="text" id="sbdyStatusPension" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
                                 </div>
-                                <div>
+                                <div id="sbdyStatusInjuryWrap">
                                     <label for="sbdyStatusInjury">工伤保险状态</label>
                                     <input type="text" id="sbdyStatusInjury" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
                                 </div>
-                                <div>
+                                <div id="sbdyStatusUnempWrap">
                                     <label for="sbdyStatusUnemp">失业保险状态</label>
                                     <input type="text" id="sbdyStatusUnemp" value="正常参保">
+                                </div>
+                                <div id="sbdyCumulativeWrap" style="display:none;">
+                                    <label for="sbdyCumulative">累计缴费（可空自动算）</label>
+                                    <input type="text" id="sbdyCumulative" maxlength="32" placeholder="如：4年3月">
                                 </div>
                                 <div>
                                     <label for="sbdyPrintDate">打印时间文案</label>
                                     <input type="text" id="sbdyPrintDate" placeholder="默认今天，如 2026年07月22日">
                                 </div>
                             </div>
-                            <p class="hint mt-8 mb-4">可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。</p>
+                            <p class="hint mt-8 mb-4" id="sbdySegHint">可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。</p>
                             <div id="sbdySegments" class="sbdy-segments"></div>
                             <div class="form-actions" style="margin-top:8px;">
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment" onclick="if(window.sbdyDemoAddExperience){window.sbdyDemoAddExperience();}">＋ 添加参保经历</button>

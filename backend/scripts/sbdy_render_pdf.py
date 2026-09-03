@@ -137,7 +137,8 @@ def money(n):
         return '0'
     if abs(x - round(x)) < 1e-9:
         return str(int(round(x)))
-    return '%.2f' % x
+    s = '%.2f' % x
+    return s.rstrip('0').rstrip('.') if '.' in s else s
 
 
 def norm_text(text):
@@ -731,8 +732,418 @@ def draw_cert_footer(
         )
 
 
+LINIAN_TITLE = '浙江省职工基本养老保险历年参保证明'
+LINIAN_COL_X = [34.5, 112.7, 165.1, 244.3, 319.7, 487.7, 560.5]
+LINIAN_INFO_X1 = [34.5, 99.8, 164.0, 230.4, 371.6, 436.9, 501.6, 531.0, 560.5]
+LINIAN_INFO_X2 = [34.5, 99.8, 164.0, 230.4, 371.6, 436.9, 560.5]
+LINIAN_ROWS = 29
+LINIAN_ROW_H = 14.45
+LINIAN_TABLE_Y0 = 164.1
+LINIAN_HEADER_Y1 = 190.6
+LINIAN_TABLE_Y1 = 609.2
+LINIAN_X0, LINIAN_X1 = 34.5, 560.5
+# 官方 PD4ML 网格线宽约 0.535；外框/内线统一，避免叠线变粗
+LINIAN_LINE_W = 0.535
+LINIAN_VALIDATE = (
+    'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate'
+)
+
+
+def draw_linian_fill(page, y0, y1):
+    page.draw_rect(
+        fitz.Rect(34.3, y0, 560.2, y1), color=None, fill=(1, 1, 1), width=0
+    )
+
+
+def draw_linian_hline(page, y, x0=None, x1=None):
+    page.draw_line(
+        fitz.Point(LINIAN_X0 if x0 is None else x0, y),
+        fitz.Point(LINIAN_X1 if x1 is None else x1, y),
+        color=(0, 0, 0),
+        width=LINIAN_LINE_W,
+    )
+
+
+def draw_linian_vline(page, x, y0, y1):
+    page.draw_line(
+        fitz.Point(x, y0),
+        fitz.Point(x, y1),
+        color=(0, 0, 0),
+        width=LINIAN_LINE_W,
+    )
+
+
+def draw_linian_grid(page, page_idx):
+    """整表一次填充 + 统一线宽描边，交界线只画一遍（对齐官方）。"""
+    y_head0 = LINIAN_TABLE_Y0
+    y_head1 = LINIAN_HEADER_Y1
+    y_end = LINIAN_TABLE_Y1
+    if page_idx == 1:
+        y0, y1, y2, y3 = 120.8, 135.5, 149.9, 164.1
+        draw_linian_fill(page, y0, y_end)
+        # 外框
+        draw_linian_hline(page, y0)
+        draw_linian_hline(page, y_end)
+        draw_linian_vline(page, LINIAN_X0, y0, y_end)
+        draw_linian_vline(page, LINIAN_X1, y0, y_end)
+        # 信息区横线
+        draw_linian_hline(page, y1)
+        draw_linian_hline(page, y2)
+        draw_linian_hline(page, y3)
+        # 信息区竖线（跳过左右外框）
+        for x in LINIAN_INFO_X1[1:-1]:
+            draw_linian_vline(page, x, y0, y1)
+        for x in LINIAN_INFO_X2[1:-1]:
+            draw_linian_vline(page, x, y1, y2)
+    else:
+        y_sec0, y_sec1 = 149.9, 164.1
+        draw_linian_fill(page, y_sec0, y_end)
+        draw_linian_hline(page, y_sec0)
+        draw_linian_hline(page, y_end)
+        draw_linian_vline(page, LINIAN_X0, y_sec0, y_end)
+        draw_linian_vline(page, LINIAN_X1, y_sec0, y_end)
+        draw_linian_hline(page, y_sec1)
+
+    # 清单表头底线 + 数据行 + 列线
+    draw_linian_hline(page, y_head1)
+    for ri in range(1, LINIAN_ROWS):
+        draw_linian_hline(page, y_head1 + ri * LINIAN_ROW_H)
+    for x in LINIAN_COL_X[1:-1]:
+        draw_linian_vline(page, x, y_head0, y_end)
+    return y_head0, y_head1, y_end
+
+
+
+def ensure_year_rows(p):
+    rows = p.get('year_rows')
+    if isinstance(rows, list) and rows:
+        return rows
+    # 兜底：从 months 按 年+单位+基数 聚合
+    months = ensure_months(p)
+    if not months:
+        return []
+    out = []
+    cur = None
+    for m in months:
+        if not m:
+            continue
+        y = str(m.get('year') or '')
+        mon = str(m.get('month') or '').zfill(2)
+        area = str(m.get('area') or '')
+        company = str(m.get('company_name') or '')
+        base = money(m.get('pension_base') if m.get('pension_base') is not None else m.get('base_amount'))
+        key = (area, y, company, base)
+        ym = y + mon
+        if cur and cur['_key'] == key:
+            cur['range_end'] = ym
+        else:
+            if cur:
+                out.append(cur)
+            cur = {
+                '_key': key,
+                'area': area,
+                'year': y,
+                'range_start': ym,
+                'range_end': ym,
+                'base': base,
+                'company_name': company,
+                'remark': '',
+            }
+    if cur:
+        out.append(cur)
+    for r in out:
+        r['period_range'] = '%s-%s' % (r['range_start'], r['range_end'])
+        del r['_key']
+    return out
+
+
+def collect_linian_blob(p, year_rows, auth_code):
+    parts = [
+        LINIAN_TITLE,
+        '共1页，第1页',
+        '姓名社会保障号参保状态性别证件类型证件号码累计缴费',
+        '历年缴费清单参保地年度缴费起止时间月缴费基数（元）参保单位名称备注',
+        '（盖章）打印时间：',
+        '本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
+        '本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：',
+        '验证平台：',
+        LINIAN_VALIDATE,
+        '本证明妥善保管，最终解释权由参保地社保经办机构所有。',
+        '本证明如有重复缴费，需在办理退休前做重复缴费清退，重新计算累计缴费年月。',
+        '本证明未包含特殊情形补缴的记录，如需相关补缴记录证明请前往补缴地社保经办机构经办窗口开具。',
+        str(p.get('name') or ''),
+        str(p.get('id_number') or ''),
+        str(p.get('id_type') or '居民身份证'),
+        str(p.get('gender') or ''),
+        str(p.get('status_pension') or p.get('insure_status') or ''),
+        str(p.get('cumulative_text') or ''),
+        str(p.get('print_date') or ''),
+        str(auth_code or ''),
+    ]
+    for r in year_rows or []:
+        parts.extend(
+            [
+                r.get('area') or '',
+                r.get('year') or '',
+                r.get('period_range') or '',
+                str(r.get('base') if r.get('base') is not None else ''),
+                r.get('company_name') or '',
+                r.get('remark') or '',
+            ]
+        )
+    return ''.join(norm_text(x) for x in parts)
+
+
+def draw_linian_footer(page, font_body, body_name, font_title, title_name, auth_code, print_date):
+    auth = str(auth_code or '')
+    notes = [
+        '备注：1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
+        '2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：%s，' % auth,
+        None,
+        '3.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
+        '4.本证明如有重复缴费，需在办理退休前做重复缴费清退，重新计算累计缴费年月。',
+        '5.本证明未包含特殊情形补缴的记录，如需相关补缴记录证明请前往补缴地社保经办机构经办窗口开具。',
+    ]
+    ny = 619.5 + 8.6
+    line_h = 13.375
+    fs = SIZE_FOOTER
+    for i, line in enumerate(notes):
+        x = 34.3 if i == 0 else 60.0
+        y = ny + i * line_h
+        if i == 2:
+            prefix = '验证平台：'
+            page.insert_text((x, y), prefix, fontname=body_name, fontsize=fs, color=(0, 0, 0))
+            px = x + text_width(font_body, prefix, fs)
+            url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', fs))
+            us = fit_fontsize(font_body, LINIAN_VALIDATE, url_max, fs, min_size=5.0)
+            page.insert_text((px, y), LINIAN_VALIDATE, fontname=body_name, fontsize=us, color=(0, 0, 1))
+            uw = min(text_width(font_body, LINIAN_VALIDATE, us), url_max)
+            page.draw_line(
+                fitz.Point(px, y + 1.2),
+                fitz.Point(px + uw, y + 1.2),
+                color=(0, 0, 1),
+                width=0.5,
+            )
+            page.insert_link(
+                {
+                    'kind': fitz.LINK_URI,
+                    'from': fitz.Rect(px, y - 10, px + uw, y + 2),
+                    'uri': LINIAN_VALIDATE,
+                }
+            )
+            page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=fs, color=(0, 0, 0))
+        elif i == 0:
+            lab = '备注：'
+            page.insert_text((x, y), lab, fontname=title_name, fontsize=fs, color=(0, 0, 0))
+            page.insert_text(
+                (x + text_width(font_title, lab, fs), y),
+                line[len(lab) :],
+                fontname=body_name,
+                fontsize=fs,
+                color=(0, 0, 0),
+            )
+        else:
+            page.insert_text((x, y), line, fontname=body_name, fontsize=fs, color=(0, 0, 0))
+
+    stamp_y = 702.5
+    page.insert_text((492.2, stamp_y), '（盖章）', fontname=title_name, fontsize=fs, color=(0, 0, 0))
+    pd = '打印时间：' + str(print_date or '')
+    pdw = text_width(font_body, pd, fs)
+    page.insert_text(
+        ((PAGE_W - pdw) / 2.0, 712.6), pd, fontname=body_name, fontsize=fs, color=(0, 0, 0)
+    )
+    if os.path.isfile(SEAL_PNG):
+        page.insert_image(
+            fitz.Rect(432.5, stamp_y - 55, 555.5, stamp_y + 68),
+            filename=SEAL_PNG,
+            keep_proportion=True,
+            overlay=True,
+        )
+
+
+def render_linian(payload, auth_code, qr_url, out_path):
+    """浙江省职工基本养老保险历年参保证明（对齐官方样张坐标）。"""
+    p = payload or {}
+    year_rows = ensure_year_rows(p)
+    chunks = []
+    i = 0
+    while i < max(1, len(year_rows)):
+        chunks.append(year_rows[i : i + LINIAN_ROWS])
+        i += LINIAN_ROWS
+    if not chunks:
+        chunks = [[]]
+    total_pages = len(chunks)
+
+    blob = collect_linian_blob(p, year_rows, auth_code)
+    full_body = ensure_full_cjk_font()
+    full_title = ensure_bold_cjk_font()
+    subset_body = make_subset_font(full_body, blob, prefix='sbdy_linian_body_')
+    bold_blob = (
+        LINIAN_TITLE
+        + '姓名社会保障号参保状态性别证件类型证件号码累计缴费历年缴费清单'
+        + '参保地年度缴费起止时间月缴费基数（元）参保单位名称备注（盖章）'
+        + '0123456789（）()-—'
+        + ''.join('共%d页，第%d页' % (total_pages, n + 1) for n in range(total_pages))
+    )
+    subset_title = (
+        make_subset_font(full_title, bold_blob, prefix='sbdy_linian_title_')
+        if full_title != full_body
+        else subset_body
+    )
+    font_body = subset_body
+    font_title = subset_title
+    qr_path = None
+    doc = None
+
+    try:
+        doc = fitz.open()
+        qr_path = os.path.join(tempfile.gettempdir(), 'sbdy_linian_qr_%s.png' % os.getpid())
+        make_qr_png(qr_url, qr_path)
+
+        for page_idx, chunk in enumerate(chunks, start=1):
+            page = doc.new_page(width=PAGE_W, height=PAGE_H)
+            body_name, title_name = register_fonts(page, font_body, font_title)
+
+            tsize = SIZE_DOC_TITLE
+            tw = text_width(font_title, LINIAN_TITLE, tsize)
+            page.insert_text(
+                ((PAGE_W - tw) / 2.0, 72.0),
+                LINIAN_TITLE,
+                fontname=title_name,
+                fontsize=tsize,
+                color=(0, 0, 0),
+            )
+            if qr_path and os.path.isfile(qr_path):
+                page.insert_image(fitz.Rect(500.0, 17.0, 580.0, 97.0), filename=qr_path)
+            page.insert_text(
+                (496.5, 112.0),
+                '共%d页，第%d页' % (total_pages, page_idx),
+                fontname=body_name,
+                fontsize=SIZE_PAGE_NO,
+                color=(0, 0, 0),
+            )
+
+            if page_idx == 1:
+                y0, y1, y2, y3 = 120.8, 135.5, 149.9, 164.1
+                y_head0, y_head1, y_end = draw_linian_grid(page, page_idx)
+
+                r1 = [
+                    ('姓名', p.get('name') or ''),
+                    ('社会保障号', p.get('id_number') or ''),
+                    ('参保状态', p.get('status_pension') or p.get('insure_status') or ''),
+                    ('性别', p.get('gender') or ''),
+                ]
+                for i, (lab, val) in enumerate(r1):
+                    cell_center(
+                        page, font_title, title_name, lab,
+                        LINIAN_INFO_X1[i * 2], LINIAN_INFO_X1[i * 2 + 1], y0, y1, SIZE_LABEL
+                    )
+                    cell_center(
+                        page, font_body, body_name, val,
+                        LINIAN_INFO_X1[i * 2 + 1], LINIAN_INFO_X1[i * 2 + 2], y0, y1, SIZE_BODY
+                    )
+                r2 = [
+                    ('证件类型', p.get('id_type') or '居民身份证'),
+                    ('证件号码', p.get('id_number') or ''),
+                    ('累计缴费', p.get('cumulative_text') or ''),
+                ]
+                for i, (lab, val) in enumerate(r2):
+                    cell_center(
+                        page, font_title, title_name, lab,
+                        LINIAN_INFO_X2[i * 2], LINIAN_INFO_X2[i * 2 + 1], y1, y2, SIZE_LABEL
+                    )
+                    cell_center(
+                        page, font_body, body_name, val,
+                        LINIAN_INFO_X2[i * 2 + 1], LINIAN_INFO_X2[i * 2 + 2], y1, y2, SIZE_BODY
+                    )
+                cell_center(
+                    page, font_body, body_name, '历年缴费清单', LINIAN_X0, LINIAN_X1, y2, y3, SIZE_SECTION
+                )
+            else:
+                y_head0, y_head1, y_end = draw_linian_grid(page, page_idx)
+                cell_center(
+                    page,
+                    font_body,
+                    body_name,
+                    '历年缴费清单（续）',
+                    LINIAN_X0,
+                    LINIAN_X1,
+                    149.9,
+                    164.1,
+                    SIZE_SECTION,
+                )
+
+            cell_center(page, font_title, title_name, '参保地', LINIAN_COL_X[0], LINIAN_COL_X[1], y_head0, y_head1, SIZE_LABEL)
+            cell_center(page, font_title, title_name, '年度', LINIAN_COL_X[1], LINIAN_COL_X[2], y_head0, y_head1, SIZE_LABEL)
+            cell_center(page, font_title, title_name, '缴费起止时间', LINIAN_COL_X[2], LINIAN_COL_X[3], y_head0, y_head1, SIZE_LABEL)
+            cell_twoline(page, font_title, title_name, '月缴费基数', '（元）', LINIAN_COL_X[3], LINIAN_COL_X[4], y_head0, y_head1)
+            cell_center(page, font_title, title_name, '参保单位名称', LINIAN_COL_X[4], LINIAN_COL_X[5], y_head0, y_head1, SIZE_LABEL)
+            cell_center(page, font_title, title_name, '备注', LINIAN_COL_X[5], LINIAN_COL_X[6], y_head0, y_head1, SIZE_LABEL)
+
+            for ri in range(LINIAN_ROWS):
+                y_a = y_head1 + ri * LINIAN_ROW_H
+                y_b = y_a + LINIAN_ROW_H
+                row = chunk[ri] if ri < len(chunk) else None
+                if not row:
+                    continue
+                vals = [
+                    row.get('area') or '',
+                    str(row.get('year') or ''),
+                    row.get('period_range') or '',
+                    str(row.get('base') if row.get('base') is not None else ''),
+                    row.get('company_name') or '',
+                    row.get('remark') or '',
+                ]
+                for ci, val in enumerate(vals):
+                    cell_box(
+                        page,
+                        font_body,
+                        body_name,
+                        val,
+                        LINIAN_COL_X[ci],
+                        LINIAN_COL_X[ci + 1],
+                        y_a,
+                        y_b,
+                        size=SIZE_BODY,
+                        align='center',
+                        min_size=5.5,
+                    )
+
+            draw_linian_footer(
+                page,
+                font_body,
+                body_name,
+                font_title,
+                title_name,
+                auth_code,
+                p.get('print_date') or '',
+            )
+
+        doc.save(out_path, deflate=True, garbage=4)
+        doc.close()
+        doc = None
+    finally:
+        if doc is not None:
+            try:
+                doc.close()
+            except Exception:
+                pass
+        _FONT_CACHE.clear()
+        for path in (qr_path, subset_body, subset_title if subset_title != subset_body else None):
+            if path:
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
+
+
 def render(payload, auth_code, qr_url, out_path):
     p = payload or {}
+    cert_type = str(p.get('cert_type') or '').strip().lower()
+    layout = str(p.get('layout') or '').strip().lower()
+    if cert_type in ('linian', '历年') or layout in ('zj_linian_v1', 'linian'):
+        return render_linian(p, auth_code, qr_url, out_path)
+
     months = ensure_months(p)
     month_chunks = chunk_months(months, ROWS_PER_PAGE)
     total_pages = len(month_chunks)
