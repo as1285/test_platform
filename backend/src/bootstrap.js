@@ -70,6 +70,25 @@ function buildApp() {
   registerPlatformRoutes(app, deps);
   registerPartnerRoutes(app, deps);
 
+  /* Express 默认 404/5xx 是 HTML；管理端 fetch 会 JSON.parse 失败成 Unexpected token '<' */
+  app.use('/api', function jsonApiNotFound(req, res) {
+    if (res.headersSent) return;
+    res.status(404).json({
+      code: 404,
+      msg: '接口不存在：' + String(req.method || '') + ' ' + String(req.path || req.originalUrl || '')
+    });
+  });
+  app.use(function jsonApiError(err, req, res, next) {
+    var path = String((req && req.originalUrl) || '');
+    if (res.headersSent) return next(err);
+    if (path.indexOf('/api') !== 0) return next(err);
+    console.error('[api]', err);
+    return res.status(500).json({
+      code: 500,
+      msg: String((err && err.message) || '服务器错误')
+    });
+  });
+
   return app;
 }
 

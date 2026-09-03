@@ -19,6 +19,24 @@
     return fn(url, opts);
   }
 
+  /** 网关/404 常回 HTML，避免 r.json() 抛 Unexpected token '<' */
+  function parseAdminJson(r) {
+    var fn = global.adminParseJson;
+    if (typeof fn === 'function') return fn(r);
+    return r.text().then(function (text) {
+      var t = String(text == null ? '' : text).trim();
+      if (!t) throw new Error('服务器无响应（HTTP ' + r.status + '）');
+      try {
+        return JSON.parse(t);
+      } catch (e0) {
+        if (t.charAt(0) === '<') {
+          throw new Error('发信接口异常（HTTP ' + r.status + '），请强制刷新后台后重试');
+        }
+        throw new Error('接口返回无法解析（HTTP ' + r.status + '）');
+      }
+    });
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -96,7 +114,7 @@
       (q ? '&q=' + encodeURIComponent(q) : '');
     fetchAdmin(url)
       .then(function (r) {
-        return r.json();
+        return parseAdminJson(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -188,7 +206,7 @@
       (q ? '&q=' + encodeURIComponent(q) : '');
     fetchAdmin(url)
       .then(function (r) {
-        return r.json();
+        return parseAdminJson(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -349,7 +367,7 @@
       })
     })
       .then(function (r) {
-        return r.json();
+        return parseAdminJson(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -385,7 +403,7 @@
       body: JSON.stringify({ username: uname })
     })
       .then(function (r) {
-        return r.json();
+        return parseAdminJson(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200) {

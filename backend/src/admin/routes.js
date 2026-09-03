@@ -251,6 +251,10 @@ app.get(
   mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
   h.handleAdminEmailsSends
 );
+app.get('/api/admin/emails/send', function (req, res) {
+  res.set('Cache-Control', 'no-store');
+  return res.status(405).json({ code: 405, msg: '请使用 POST 发送邮件' });
+});
 app.post(
   '/api/admin/emails/send',
   mw.requireAdminAuth,

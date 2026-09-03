@@ -56,6 +56,23 @@
     return Promise.reject(new Error('unauthorized'));
   }
 
+  function adminParseJson(r) {
+    return r.text().then(function (text) {
+      var t = String(text == null ? '' : text).trim();
+      if (!t) {
+        throw new Error('服务器无响应（HTTP ' + r.status + '）');
+      }
+      try {
+        return JSON.parse(t);
+      } catch (e) {
+        if (t.charAt(0) === '<') {
+          throw new Error('接口异常（HTTP ' + r.status + '），请强制刷新后重试');
+        }
+        throw new Error('接口返回无法解析（HTTP ' + r.status + '）');
+      }
+    });
+  }
+
   function adminFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, adminHeaders(), opts.headers || {});
@@ -102,6 +119,7 @@
 
   window.adminGetToken = getToken;
   window.adminFetch = adminFetch;
+  window.adminParseJson = adminParseJson;
   window.adminUpload = adminUpload;
   window.adminLogout = adminLogout;
 

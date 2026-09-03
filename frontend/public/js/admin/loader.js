@@ -19,7 +19,7 @@
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260902-regip',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260831-refundelig',
-    'user-emails': '/js/admin/modules/user-emails.js?v=20260903-poster'
+    'user-emails': '/js/admin/modules/user-emails.js?v=20260903-sendjson'
   };
 
   var PAGE_MODULE = {
