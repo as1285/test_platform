@@ -105,7 +105,10 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/public/mine-ui` | 我的页外观 |
-| GET | `/api/public/install-packages` | 安装包链接 |
+| GET | `/api/public/install-packages` | 安装包链接（支持 `?ch=` / `X-Sales-Channel`；渠道专用包优先） |
+| GET | `/api/admin/agent-channels` | 代理专属渠道列表（含每渠道 APK / mobileconfig） |
+| POST | `/api/admin/agent-channels` | 新建/更新代理专属渠道 |
+| DELETE | `/api/admin/agent-channels/:channelId` | 删除代理专属渠道 |
 | GET | `/api/public/conversion-config` | 转化配置 |
 | GET | `/api/public/landing-ab-config` | 落地 AB |
 | GET | `/api/public/resolve-sales-channel` | 渠道解析 |

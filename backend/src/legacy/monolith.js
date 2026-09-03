@@ -550,7 +550,8 @@ const ADMIN_OPS_EXTRA_SEE_SINCE = {};
 /** 非超管但可看/操作全部注册用户与用户数据的运营账号 */
 const ADMIN_FULL_USER_SCOPE_USERNAMES = {
   '19106014552': true,
-  '13691947741': true
+  '13691947741': true,
+  '18671741907': true
 };
 
 function adminUsernameKey(admin) {
@@ -1071,6 +1072,28 @@ function sanitizeSalesChannelId(raw) {
   return s;
 }
 
+/**
+ * 从 query / body / X-Sales-Channel / UA TaxPlatformDistributor 读取渠道。
+ * 优先级：显式参数 > 请求头 > UA 分发标记。
+ */
+function readSalesChannelFromRequest(req, body) {
+  var q = (req && req.query) || {};
+  var b = body && typeof body === 'object' ? body : {};
+  var fromParam = sanitizeSalesChannelId(
+    q.sales_ch || q.ch || q.channel || b.sales_ch || b.ch || b.channel || ''
+  );
+  if (fromParam) return fromParam;
+  var h = (req && req.headers) || {};
+  var fromHeader = sanitizeSalesChannelId(
+    h['x-sales-channel'] || h['X-Sales-Channel'] || ''
+  );
+  if (fromHeader) return fromHeader;
+  var ua = String(h['user-agent'] || h['User-Agent'] || '');
+  var m = ua.match(/TaxPlatformDistributor\/([a-zA-Z0-9_-]{1,64})/);
+  if (m) return sanitizeSalesChannelId(m[1]);
+  return '';
+}
+
 /** 解析需隐藏闲鱼入口的销售渠道列表 */
 function parseXianyuHideSalesChannels(raw) {
   if (raw == null) {
@@ -1250,11 +1273,7 @@ async function attachUserFromSalesChannel(username, salesCh) {
 async function attachUserFromRequestChannel(username, req, body) {
   var u = String(username || '').trim();
   if (!u) return null;
-  var ch = sanitizeSalesChannelId(
-    (body && (body.sales_ch || body.ch)) ||
-      (req && req.query && (req.query.sales_ch || req.query.ch)) ||
-      ''
-  );
+  var ch = readSalesChannelFromRequest(req, body);
   if (!ch) {
     try {
       ch = await getUserSalesPromoChannel(u);
@@ -1688,9 +1707,7 @@ async function resolveInstallPackagesContext(req) {
       }
     });
   } catch (eHide) {}
-  var queryCh = sanitizeSalesChannelId(
-    (req.query && (req.query.sales_ch || req.query.ch)) || ''
-  );
+  var queryCh = readSalesChannelFromRequest(req);
   var uid =
     req && req.authUserId != null && String(req.authUserId).trim() !== ''
       ? String(req.authUserId).trim()
@@ -3573,15 +3590,15 @@ async function createTables() {
   /* 指定运营账号：注册用户列表 + 用户数据全量可见 */
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'users' FROM admin_accounts WHERE username IN ('19106014552', '13691947741')`
+     SELECT id, 'users' FROM admin_accounts WHERE username IN ('19106014552', '13691947741', '18671741907')`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'user-data' FROM admin_accounts WHERE username IN ('19106014552', '13691947741')`
+     SELECT id, 'user-data' FROM admin_accounts WHERE username IN ('19106014552', '13691947741', '18671741907')`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username IN ('19106014552', '13691947741')`
+     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username IN ('19106014552', '13691947741', '18671741907')`
   );
 
   /* 侧栏子页独立授权：原挂在「注册用户 / 管理登录」下的入口补权，避免已有账号丢菜单 */
@@ -8830,10 +8847,8 @@ async function handlePublicGuestSession(req, res) {
     .digest('hex');
   var salesCh = '';
   try {
-    /* 游客永久绑渠道：仅 URL 显式 ?ch= / sales_ch，禁止裸 IP 归因写进账号 */
-    salesCh = sanitizeSalesChannelId(
-      (req.query && (req.query.sales_ch || req.query.ch)) || ''
-    );
+    /* 游客永久绑渠道：显式 ?ch= / header / UA，禁止裸 IP 归因写进账号 */
+    salesCh = readSalesChannelFromRequest(req);
   } catch (eSales) {
     salesCh = '';
   }
@@ -13342,7 +13357,7 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:validation');
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
-        var regSalesCh = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+        var regSalesCh = readSalesChannelFromRequest(req, body);
         var fromShareReg = parseFromShareFlag(body);
         var out = await registerUser(
           body.username,
@@ -18774,6 +18789,100 @@ async function handleAdminActivationBatchChannels(req, res) {
   }
 }
 
+/** 代理专属渠道列表 */
+async function handleAdminAgentChannelsList(req, res) {
+  try {
+    var list = await getAgentChannels().listChannels();
+    if (!req.admin || !req.admin.is_super) {
+      var owners = adminDownline.adminScopeUsernames(req.admin);
+      var ownerSet = {};
+      (owners || []).forEach(function (o) {
+        ownerSet[String(o || '').trim()] = true;
+      });
+      list = (list || []).filter(function (c) {
+        var ow = c && c.owner_admin_username ? String(c.owner_admin_username).trim() : '';
+        return !ow || ownerSet[ow];
+      });
+    }
+    return res.json({ code: 200, data: { channels: list || [] } });
+  } catch (e) {
+    console.error('handleAdminAgentChannelsList', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 新建 / 更新代理专属渠道（含每渠道安装包） */
+async function handleAdminAgentChannelsUpsert(req, res) {
+  try {
+    var body = req.body || {};
+    var channelId = sanitizeSalesChannelId(body.channel_id || body.ch || '');
+    if (!channelId) {
+      return res.status(400).json({ code: 400, msg: '渠道 ID 无效' });
+    }
+    if (!req.admin || !req.admin.is_super) {
+      var owners = adminDownline.adminScopeUsernames(req.admin);
+      var ownerWant = String(body.owner_admin_username || '').trim();
+      if (!ownerWant) {
+        ownerWant = String((req.admin && req.admin.username) || '').trim();
+        body.owner_admin_username = ownerWant;
+      }
+      if ((owners || []).indexOf(ownerWant) < 0) {
+        return res.status(403).json({ code: 403, msg: '只能管理自己名下的渠道' });
+      }
+      var existing = await getAgentChannels().getChannelById(channelId);
+      if (existing && existing.owner_admin_username) {
+        if ((owners || []).indexOf(String(existing.owner_admin_username).trim()) < 0) {
+          return res.status(403).json({ code: 403, msg: '无权修改该渠道' });
+        }
+      }
+    }
+    var row = await getAgentChannels().upsertChannel(body);
+    try {
+      invalidateInstallPackagesResponseCache();
+    } catch (eInv) {}
+    return res.json({ code: 200, msg: '已保存', data: row });
+  } catch (e) {
+    if (e && (e.code === 'INVALID_CHANNEL' || e.code === 'INVALID_PACKAGE_URL')) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
+    console.error('handleAdminAgentChannelsUpsert', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 删除代理专属渠道 */
+async function handleAdminAgentChannelsDelete(req, res) {
+  try {
+    var channelId = sanitizeSalesChannelId(
+      (req.params && req.params.channelId) ||
+        (req.body && (req.body.channel_id || req.body.ch)) ||
+        (req.query && (req.query.channel_id || req.query.ch)) ||
+        ''
+    );
+    if (!channelId) {
+      return res.status(400).json({ code: 400, msg: '渠道 ID 无效' });
+    }
+    if (!req.admin || !req.admin.is_super) {
+      var existing = await getAgentChannels().getChannelById(channelId);
+      if (!existing) {
+        return res.json({ code: 200, msg: '已删除', data: { deleted: false } });
+      }
+      var owners = adminDownline.adminScopeUsernames(req.admin);
+      if ((owners || []).indexOf(String(existing.owner_admin_username || '').trim()) < 0) {
+        return res.status(403).json({ code: 403, msg: '无权删除该渠道' });
+      }
+    }
+    var ok = await getAgentChannels().deleteChannel(channelId);
+    try {
+      invalidateInstallPackagesResponseCache();
+    } catch (eInv2) {}
+    return res.json({ code: 200, msg: ok ? '已删除' : '渠道不存在', data: { deleted: !!ok } });
+  } catch (e) {
+    console.error('handleAdminAgentChannelsDelete', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 激活码列表 */
 async function handleAdminCodes(req, res) {
   try {
@@ -20289,7 +20398,7 @@ async function handlePublicMineUi(req, res) {
 async function handlePublicSalesChannelAttribution(req, res) {
   try {
     var body = req.body || {};
-    var ch = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+    var ch = readSalesChannelFromRequest(req, body);
     if (!ch) {
       return res.status(400).json({ code: 400, msg: 'sales_ch required' });
     }
@@ -20306,6 +20415,9 @@ async function handlePublicSalesChannelAttribution(req, res) {
 async function handlePublicResolveSalesChannel(req, res) {
   try {
     var ch = await resolveSalesChannelForRequest(req);
+    if (!ch) {
+      ch = readSalesChannelFromRequest(req);
+    }
     var defaultPricingAbc = null;
     var codeOnly = false;
     if (ch) {
@@ -20339,9 +20451,7 @@ async function handlePublicResolveSalesChannel(req, res) {
 async function handlePublicInstallPackages(req, res) {
   try {
     var uid = tryAuthUserIdFromRequest(req) || '';
-    var qCh = sanitizeSalesChannelId(
-      (req.query && (req.query.sales_ch || req.query.ch)) || ''
-    );
+    var qCh = readSalesChannelFromRequest(req);
     var cacheKey = String(uid || 'anon') + '|' + String(qCh || '');
     var now = Date.now();
     var hit = _installPackagesResponseCache.get(cacheKey);
@@ -20360,11 +20470,21 @@ async function handlePublicInstallPackages(req, res) {
     var qqGroup = toPublicInstallDownloadUrl(raw.qq_group);
     var salesCh = ctx.salesCh;
     var hideXianyu = ctx.hideXianyu;
+    var channelPolicy = ctx.channelPolicy;
+    /* 渠道专用安装包优先于全局代理包 / 公开包 */
+    if (channelPolicy) {
+      var chAndroid = toPublicInstallDownloadUrl(channelPolicy.android_apk_url || '');
+      var chIos = toPublicInstallDownloadUrl(channelPolicy.ios_mobileconfig_url || '');
+      if (chAndroid) android = chAndroid;
+      if (chIos) ios = chIos;
+    }
     if (hideXianyu) {
       xianyu = '';
-      var agentApk = toPublicInstallDownloadUrl(raw.agent_android);
-      if (agentApk) {
-        android = agentApk;
+      if (!(channelPolicy && channelPolicy.android_apk_url)) {
+        var agentApk = toPublicInstallDownloadUrl(raw.agent_android);
+        if (agentApk) {
+          android = agentApk;
+        }
       }
     }
     var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
@@ -20388,9 +20508,11 @@ async function handlePublicInstallPackages(req, res) {
       qrRef = '';
       if (!hideXianyu) {
         hideXianyu = true;
-        var agentApkCode = toPublicInstallDownloadUrl(raw.agent_android);
-        if (agentApkCode) {
-          android = agentApkCode;
+        if (!(channelPolicy && channelPolicy.android_apk_url)) {
+          var agentApkCode = toPublicInstallDownloadUrl(raw.agent_android);
+          if (agentApkCode) {
+            android = agentApkCode;
+          }
         }
       } else {
         hideXianyu = true;
@@ -20415,7 +20537,11 @@ async function handlePublicInstallPackages(req, res) {
         qq_group_url: qqGroup,
         show_qq_group: !!qqGroup,
         show_qq_add: !!qq,
-        sales_agent: salesAgentPub
+        sales_agent: salesAgentPub,
+        channel_package: !!(
+          channelPolicy &&
+          (channelPolicy.android_apk_url || channelPolicy.ios_mobileconfig_url)
+        )
       }
     };
     _installPackagesResponseCache.set(cacheKey, { t: now, body: body });
@@ -23528,6 +23654,9 @@ function getHandlers() {
     handleAdminIssueCode,
     handleAdminDeleteUnusedCodes,
     handleAdminActivationBatchChannels,
+    handleAdminAgentChannelsList,
+    handleAdminAgentChannelsUpsert,
+    handleAdminAgentChannelsDelete,
     handleAdminCodes,
     handleAdminUserActivate,
     handleAdminUserMakePermanent,

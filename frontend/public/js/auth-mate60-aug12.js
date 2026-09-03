@@ -22,6 +22,14 @@
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
   var SALES_CHANNEL_TTL_MS = 15 * 60 * 1000;
+  var SALES_CHANNEL_PERMANENT_SOURCES = {
+    url: true,
+    shell: true,
+    distributor_app: true,
+    agent_channel: true,
+    install_packages: true,
+    ua: true
+  };
   var REGISTER_SOURCE_KEY = 'register_source_channel_v1';
   var REGISTER_SOURCE_LABELS = {
     douyin: '抖音',
@@ -3141,17 +3149,42 @@
       var p = new URLSearchParams(window.location.search);
       var ch = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
       if (!ch) {
+        try {
+          var ua = String(navigator.userAgent || '');
+          var m = ua.match(/TaxPlatformDistributor\/([a-zA-Z0-9_-]{1,64})/);
+          if (m) ch = sanitizeSalesChannelId(m[1]);
+        } catch (eUa) {}
+      }
+      if (!ch) {
         return;
       }
+      var permanent = false;
+      try {
+        if (isCordovaTaxAppShell() || isDistributorApp()) permanent = true;
+        if (/TaxPlatformDistributor\//i.test(String(navigator.userAgent || ''))) permanent = true;
+      } catch (eP) {}
       localStorage.setItem(
         SALES_CHANNEL_KEY,
         JSON.stringify({
           ch: ch,
           at: Date.now(),
-          source: 'url'
+          source: permanent ? 'shell' : 'url',
+          permanent: !!permanent
         })
       );
     } catch (e) {}
+  }
+
+  function isSalesChannelStickyRecordValid(o) {
+    if (!o || !o.ch) return false;
+    if (o.permanent === true) return true;
+    if (o.source && SALES_CHANNEL_PERMANENT_SOURCES[String(o.source)]) {
+      try {
+        if (isCordovaTaxAppShell() || isDistributorApp()) return true;
+      } catch (e0) {}
+    }
+    if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) return false;
+    return true;
   }
 
   /** 校验注册来源渠道 key（与注册页下拉一致，不含 other） */
@@ -3286,7 +3319,7 @@
       if (!o || !o.ch) {
         return '';
       }
-      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
+      if (!isSalesChannelStickyRecordValid(o)) {
         return '';
       }
       /* 专属渠道依赖安装页/壳写入的 ch；不得因 source=install_packages/server_resolve 丢掉 */
@@ -3306,7 +3339,7 @@
       if (!o || !o.ch) {
         return '';
       }
-      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
+      if (!isSalesChannelStickyRecordValid(o)) {
         localStorage.removeItem(SALES_CHANNEL_KEY);
         return '';
       }
@@ -4216,7 +4249,8 @@
               JSON.stringify({
                 ch: sanitizeSalesChannelId(data.sales_channel),
                 at: Date.now(),
-                source: 'install_packages'
+                source: 'install_packages',
+                permanent: true
               })
             );
           } catch (e) {}
@@ -4710,6 +4744,10 @@
     var t = getToken();
     if (t) {
       h['Authorization'] = 'Bearer ' + t;
+    }
+    var salesCh = getSalesChannel();
+    if (salesCh) {
+      h['X-Sales-Channel'] = salesCh;
     }
     return h;
   }

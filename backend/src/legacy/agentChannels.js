@@ -108,6 +108,29 @@ function createAgentChannels(deps) {
     return false;
   }
 
+  /** 清洗安装包 URL（uploads/ 相对路径或 http(s)） */
+  function normalizePackageUrl(raw) {
+    if (raw == null) return '';
+    var s = String(raw).trim();
+    if (!s || s.length > 2048 || /[\s<>"'`]/.test(s)) return '';
+    if (/^https?:\/\//i.test(s)) {
+      try {
+        var u = new URL(s);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+        return s;
+      } catch (e) {
+        return '';
+      }
+    }
+    if (s.charAt(0) === '/' && s.indexOf('//') !== 0) {
+      if (/^\/[a-zA-Z0-9_.\-\/%]+$/.test(s)) return s;
+      return '';
+    }
+    if (s.indexOf('..') >= 0) return '';
+    if (/^uploads\/[a-zA-Z0-9_.\-\/%]+$/.test(s)) return s;
+    return '';
+  }
+
   function mapChannelRow(r) {
     var abc = effectivePricingAbc(r.default_pricing_abc);
     return {
@@ -118,17 +141,48 @@ function createAgentChannels(deps) {
       code_only: false,
       enabled: Number(r.enabled) === 1,
       note: r.note != null ? String(r.note) : '',
+      android_apk_url:
+        r.android_apk_url != null && String(r.android_apk_url).trim() !== ''
+          ? String(r.android_apk_url).trim()
+          : '',
+      ios_mobileconfig_url:
+        r.ios_mobileconfig_url != null && String(r.ios_mobileconfig_url).trim() !== ''
+          ? String(r.ios_mobileconfig_url).trim()
+          : '',
       created_at: r.created_at,
       updated_at: r.updated_at
     };
   }
 
+  async function ensurePackageUrlColumns() {
+    var pool = getPool();
+    try {
+      await pool.execute(
+        `ALTER TABLE agent_channels
+         ADD COLUMN android_apk_url VARCHAR(2048) NULL
+         COMMENT '渠道专用 APK（uploads/… 或 https）' AFTER note`
+      );
+    } catch (e) {
+      if (!(e && (e.code === 'ER_DUP_FIELDNAME' || e.errno === 1060))) throw e;
+    }
+    try {
+      await pool.execute(
+        `ALTER TABLE agent_channels
+         ADD COLUMN ios_mobileconfig_url VARCHAR(2048) NULL
+         COMMENT '渠道专用 mobileconfig（uploads/… 或 https）' AFTER android_apk_url`
+      );
+    } catch (e2) {
+      if (!(e2 && (e2.code === 'ER_DUP_FIELDNAME' || e2.errno === 1060))) throw e2;
+    }
+  }
+
   async function listChannels() {
     await ensureTable();
+    await ensurePackageUrlColumns();
     var pool = getPool();
     const [rows] = await pool.execute(
       `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay,
-              enabled, note, created_at, updated_at
+              enabled, note, android_apk_url, ios_mobileconfig_url, created_at, updated_at
        FROM agent_channels
        ORDER BY updated_at DESC, channel_id ASC`
     );
@@ -139,9 +193,11 @@ function createAgentChannels(deps) {
     var id = sanitizeSalesChannelId(channelId);
     if (!id) return null;
     await ensureTable();
+    await ensurePackageUrlColumns();
     var pool = getPool();
     const [rows] = await pool.execute(
-      `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note
+      `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note,
+              android_apk_url, ios_mobileconfig_url
        FROM agent_channels WHERE channel_id = ? LIMIT 1`,
       [id]
     );
@@ -198,24 +254,53 @@ function createAgentChannels(deps) {
     var abc = effectivePricingAbc(input && input.default_pricing_abc);
     var enabled = input && input.enabled === false ? 0 : 1;
     var note = normalizeNote(input && input.note);
+    var androidUrl = normalizePackageUrl(input && input.android_apk_url);
+    var iosUrl = normalizePackageUrl(input && input.ios_mobileconfig_url);
     if (!channelId) {
       var err = new Error('渠道 ID 无效（仅字母数字下划线连字符，最长 64）');
       err.code = 'INVALID_CHANNEL';
       throw err;
     }
+    if (
+      (input &&
+        input.android_apk_url != null &&
+        String(input.android_apk_url).trim() !== '' &&
+        !androidUrl) ||
+      (input &&
+        input.ios_mobileconfig_url != null &&
+        String(input.ios_mobileconfig_url).trim() !== '' &&
+        !iosUrl)
+    ) {
+      var errUrl = new Error('安装包地址无效（请使用 uploads/… 或 http(s) 完整链接）');
+      errUrl.code = 'INVALID_PACKAGE_URL';
+      throw errUrl;
+    }
     await ensureTable();
+    await ensurePackageUrlColumns();
     var pool = getPool();
     await pool.execute(
       `INSERT INTO agent_channels
-         (channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note)
-       VALUES (?, ?, ?, ?, ?, ?)
+         (channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note,
+          android_apk_url, ios_mobileconfig_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          owner_admin_username = VALUES(owner_admin_username),
          default_pricing_abc = VALUES(default_pricing_abc),
          hide_self_serve_pay = VALUES(hide_self_serve_pay),
          enabled = VALUES(enabled),
-         note = VALUES(note)`,
-      [channelId, owner, abc, hideSelf ? 1 : 0, enabled, note]
+         note = VALUES(note),
+         android_apk_url = VALUES(android_apk_url),
+         ios_mobileconfig_url = VALUES(ios_mobileconfig_url)`,
+      [
+        channelId,
+        owner,
+        abc,
+        hideSelf ? 1 : 0,
+        enabled,
+        note,
+        androidUrl || null,
+        iosUrl || null
+      ]
     );
     return getChannelById(channelId);
   }
@@ -276,6 +361,7 @@ function createAgentChannels(deps) {
 
   return {
     ensureTable: ensureTable,
+    ensurePackageUrlColumns: ensurePackageUrlColumns,
     listChannels: listChannels,
     getChannelById: getChannelById,
     getEnabledChannelById: getEnabledChannelById,
@@ -286,7 +372,8 @@ function createAgentChannels(deps) {
     attachUserToChannel: attachUserToChannel,
     getUserChannelPolicy: getUserChannelPolicy,
     normalizeAbc: normalizeAbc,
-    effectivePricingAbc: effectivePricingAbc
+    effectivePricingAbc: effectivePricingAbc,
+    normalizePackageUrl: normalizePackageUrl
   };
 }
 

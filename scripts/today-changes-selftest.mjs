@@ -1114,6 +1114,7 @@ mustInclude(
     "ADMIN_FULL_USER_SCOPE_USERNAMES",
     "'19106014552': true",
     "'13691947741': true",
+    "'18671741907': true",
     'function adminHasFullUserScope',
     'if (!admin || adminHasFullUserScope(admin)) return true'
   ],

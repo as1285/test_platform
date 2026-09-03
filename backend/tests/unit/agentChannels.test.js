@@ -22,4 +22,14 @@ describe('agentChannels normalize', () => {
     expect(api.effectivePricingAbc('b')).toBe('b');
     expect(api.effectivePricingAbc('a')).toBe('a');
   });
+
+  it('normalizePackageUrl accepts uploads and https', () => {
+    expect(api.normalizePackageUrl('uploads/a.apk')).toBe('uploads/a.apk');
+    expect(api.normalizePackageUrl('/uploads/a.mobileconfig')).toBe('/uploads/a.mobileconfig');
+    expect(api.normalizePackageUrl('https://cdn.example.com/x.apk')).toBe(
+      'https://cdn.example.com/x.apk'
+    );
+    expect(api.normalizePackageUrl('uploads/../etc/passwd.apk')).toBe('');
+    expect(api.normalizePackageUrl('javascript:alert(1)')).toBe('');
+  });
 });

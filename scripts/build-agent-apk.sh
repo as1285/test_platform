@@ -89,7 +89,8 @@ cat > "$DIST_FILE" <<EOF
  */
 window.__TAX_DISTRIBUTION__ = Object.freeze({
   agentSalesChannel: '${CHANNEL_LOWER}',
-  disableInAppRegister: ${DISABLE_IN_APP_REGISTER}
+  disableInAppRegister: ${DISABLE_IN_APP_REGISTER},
+  permanentChannel: true
 });
 EOF
 
@@ -127,6 +128,6 @@ echo "代理专用 APK 已生成:"
 echo "  $OUT_APK"
 echo ""
 echo "下一步："
-echo "  1. 在管理后台「引导安装」上传此 APK 到「代理专用安卓安装包」"
-echo "  2. 确认「代理推广渠道」列表包含: ${CHANNEL_LOWER}"
+echo "  1. 在管理后台「安装分发 → 代理专属渠道」为 ${CHANNEL_LOWER} 上传此 APK（或填 android_apk_url）"
+echo "  2. 同步打 iOS：./scripts/build-agent-mobileconfig.sh ${CHANNEL_LOWER}"
 echo "  3. 将 APK 或推广链接 install_guide.html?ch=${CHANNEL_LOWER} 发给代理/客户"

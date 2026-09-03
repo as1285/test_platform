@@ -188,7 +188,7 @@ function isFullScope(admin) {
   if (!admin) return false;
   if (admin.is_super) return true;
   var u = String(admin.username || '').trim();
-  return u === '19106014552' || u === '13691947741';
+  return u === '19106014552' || u === '13691947741' || u === '18671741907';
 }
 
 function appendRegisteredScope(where, params, admin, userCol) {

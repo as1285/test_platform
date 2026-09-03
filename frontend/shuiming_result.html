@@ -383,9 +383,9 @@
                             var p15St = document.createElement('style');
                             p15St.setAttribute('data-iphone15plus-result-firstpaint', '1');
                             p15St.textContent =
-                                'html.app-ios-iphone15promax body.page-shuiming-result .page-root{--list-summary-pad:72px !important;}' +
-                                'html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:12px !important;padding-right:12px !important;box-sizing:border-box !important;}' +
-                                'html.app-ios-iphone15promax body.page-shuiming-result .list-item{--list-inline-pad:16px;}' +
+                                'html.app-ios-iphone15promax body.page-shuiming-result .page-root{--list-summary-pad:96px;}' +
+                                'html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+                                'html.app-ios-iphone15promax body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:10px 0 6px !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .back-btn{left:12px !important;}' +
@@ -418,8 +418,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260903-ip15plus"></script>
-    <script src="/js/auth.js?v=20260903-ip15plus" defer></script>
+    <script src="/js/auth-boot.js?v=20260903-ip15edge"></script>
+    <script src="/js/auth.js?v=20260903-ip15edge" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1516,17 +1516,16 @@
         /*
          * 大屏 Pro Max（含 16 PM 标准 440 与显示放大 430）：
          * 贴边铺满显得过宽。宽度样式挂 app-ios-promax-wide，避免只打 16promax 时失效。
+         * 15 Plus / 15 PM 另有贴边规则，勿并入 20px。
          */
         html.app-ios-promax-wide body.page-shuiming-result .list,
-        html.app-ios-iphone16promax body.page-shuiming-result .list,
-        html.app-ios-iphone15promax body.page-shuiming-result .list {
+        html.app-ios-iphone16promax body.page-shuiming-result .list {
             padding-left: 20px !important;
             padding-right: 20px !important;
             box-sizing: border-box;
         }
         html.app-ios-promax-wide body.page-shuiming-result .list-item,
-        html.app-ios-iphone16promax body.page-shuiming-result .list-item,
-        html.app-ios-iphone15promax body.page-shuiming-result .list-item {
+        html.app-ios-iphone16promax body.page-shuiming-result .list-item {
             --list-inline-pad: 20px;
             border-radius: 10px;
             width: auto;
@@ -1534,8 +1533,7 @@
             box-sizing: border-box;
         }
         html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,
-        html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item,
-        html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item {
+        html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item {
             padding-left: 24px !important;
             padding-right: 24px !important;
         }
@@ -1927,20 +1925,26 @@
 
         /*
          * iPhone 15 Plus / 15 Pro Max（430×932）：
-         * 大屏通用 20px 左右留白过宽；汇总整块白底 + 偏大 --list-summary-pad 下拉时空一大截。
-         * 收紧左右到 12px，汇总外层改回灰底，顶距按内容贴紧。
+         * 压过 min-width:414 / promax-wide 的 20px 左右空条，列表贴边铺满对齐上方汇总白条。
+         * 顶距用 96 作首屏兜底，最终由 syncTopFixedHeight 实测写入（勿 !important 锁死）。
          */
         html.app-ios-iphone15promax body.page-shuiming-result .page-root {
-            --list-summary-pad: 72px;
+            --list-summary-pad: 96px;
         }
         html.app-ios-iphone15promax body.page-shuiming-result .list,
         html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list {
-            padding-left: 12px !important;
-            padding-right: 12px !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
         html.app-ios-iphone15promax body.page-shuiming-result .list-item,
         html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list-item {
             --list-inline-pad: 16px;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
         }
         html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item,
         html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item {
@@ -1961,8 +1965,9 @@
         }
         html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,
         html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card {
-            margin-left: 12px !important;
-            margin-right: 12px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            border-radius: 0 !important;
         }
         html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .summary,
         html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
@@ -1978,14 +1983,20 @@
         @media screen and (min-device-width: 428px) and (max-device-width: 432px) and (min-device-height: 926px) and (max-device-height: 936px),
             screen and (min-width: 428px) and (max-width: 432px) and (min-height: 926px) and (max-height: 936px) {
             body.page-shuiming-result .page-root {
-                --list-summary-pad: 72px;
+                --list-summary-pad: 96px;
             }
             body.page-shuiming-result .list {
-                padding-left: 12px !important;
-                padding-right: 12px !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
             }
             body.page-shuiming-result .list-item {
                 --list-inline-pad: 16px;
+                border-radius: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
             }
             body.page-shuiming-result .summary > .summary-item {
                 padding-left: 16px !important;
@@ -2000,6 +2011,12 @@
             }
             body.page-shuiming-result .header-right {
                 right: 12px !important;
+            }
+            body.page-shuiming-result .sm-activate-card,
+            body.page-shuiming-result .sm-refund-browse-card {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                border-radius: 0 !important;
             }
             body.page-shuiming-result .top-fixed .summary {
                 background: #f5f6fa !important;
@@ -2570,25 +2587,32 @@
                             }
                         })();
                 } catch (eA) {}
-                var pad = isAndroid ? 64 : isIphone15Wide ? 72 : 102;
+                var pad = isAndroid ? 64 : isIphone15Wide ? 96 : 102;
                 if (summary && list) {
                     var summaryRect = summary.getBoundingClientRect();
                     var listRect = list.getBoundingClientRect();
                     if (summaryRect.height > 0 && listRect.top > -1) {
                         var contentBottom = summaryContentBottom(summary, summaryRect);
                         /*
-                         * 列表内容顶应对齐「汇总可见内容底 + 灰缝」，不要用整盒 bottom 再加呼吸缝，
-                         * 否则 Android / 15 Plus 上白底汇总区下方容易空出一大截。
+                         * 15 Plus：用汇总盒底与内容底的较大值，避免灰底/内边距未计入导致首条被盖住。
+                         * 其它机型仍按内容底贴紧，减少白底下空一大截。
                          */
-                        var gap = isAndroid || isIphone15Wide ? 6 : 2;
+                        if (isIphone15Wide) {
+                            contentBottom = Math.max(contentBottom, summaryRect.bottom);
+                        }
+                        /*
+                         * 列表内容顶应对齐「汇总可见内容底 + 灰缝」，不要用整盒 bottom 再加呼吸缝，
+                         * 否则 Android 上白底汇总区下方容易空出一大截。
+                         */
+                        var gap = isAndroid ? 6 : isIphone15Wide ? 10 : 2;
                         var aligned = Math.ceil(contentBottom - listRect.top + gap);
                         if (aligned > 0) {
-                            pad = Math.max(isAndroid || isIphone15Wide ? 56 : 48, aligned);
+                            pad = Math.max(isAndroid ? 56 : isIphone15Wide ? 80 : 48, aligned);
                         }
                     }
                 }
                 if (root) {
-                    root.style.setProperty('--list-summary-pad', pad + 'px');
+                    root.style.setProperty('--list-summary-pad', pad + 'px', 'important');
                 }
                 /* 二次校正：首条与汇总末行缝过大则收回；过小/重叠则加大，避免盖住列表导致点不进详情 */
                 if (summary && list && root) {
@@ -2599,20 +2623,25 @@
                     if (firstItem) {
                         var sr = summary.getBoundingClientRect();
                         var cb = summaryContentBottom(summary, sr);
+                        if (isIphone15Wide) {
+                            cb = Math.max(cb, sr.bottom);
+                        }
                         var fr = firstItem.getBoundingClientRect();
                         var visualGap = fr.top - cb;
                         var curPad = parseFloat(root.style.getPropertyValue('--list-summary-pad')) || pad;
-                        var minPad = isAndroid || isIphone15Wide ? 56 : 48;
-                        var shrinkAt = isIphone15Wide ? 12 : 18;
+                        var minPad = isAndroid ? 56 : isIphone15Wide ? 80 : 48;
+                        /* 15 Plus 优先保证不盖住首条，缝略大也不强收 */
+                        var shrinkAt = isIphone15Wide ? 28 : 18;
                         if (visualGap > shrinkAt) {
-                            var nextPad = Math.max(minPad, Math.ceil(curPad - (visualGap - 8)));
+                            var nextPad = Math.max(minPad, Math.ceil(curPad - (visualGap - (isIphone15Wide ? 12 : 8))));
                             if (nextPad < curPad && nextPad >= minPad) {
-                                root.style.setProperty('--list-summary-pad', nextPad + 'px');
+                                root.style.setProperty('--list-summary-pad', nextPad + 'px', 'important');
                             }
-                        } else if (visualGap < 8) {
-                            var growPad = Math.max(minPad, Math.ceil(curPad + (8 - visualGap)));
+                        } else if (visualGap < (isIphone15Wide ? 10 : 8)) {
+                            var targetGap = isIphone15Wide ? 10 : 8;
+                            var growPad = Math.max(minPad, Math.ceil(curPad + (targetGap - visualGap)));
                             if (growPad > curPad) {
-                                root.style.setProperty('--list-summary-pad', growPad + 'px');
+                                root.style.setProperty('--list-summary-pad', growPad + 'px', 'important');
                             }
                         }
                     }

@@ -20,5 +20,25 @@ cp install-packages/ios/personal.mobileconfig frontend/个人.mobileconfig
 ```
 设置键：`ios_mobileconfig_download_url` → `/uploads/<文件名>.mobileconfig` 或 `/personal.mobileconfig`
 
+## 代理渠道包（每渠道独立）
+
+```bash
+# Android + iOS 一键
+./scripts/build-agent-packages.sh quan_c
+
+# 仅 iOS 描述文件（WebClip URL 带 ?ch=）
+./scripts/build-agent-mobileconfig.sh quan_c
+
+# 批量
+./scripts/build-agent-packages.sh --batch quan_c,agent_zhang
+```
+
+产物：
+- `dist/agent-apk/app-agent-<ch>-debug.apk`
+- `dist/agent-ios/app-agent-<ch>.mobileconfig`
+
+后台「安装分发 → 代理专属渠道」为该渠道填写 `android_apk_url` / `ios_mobileconfig_url`。
+公开接口 `GET /api/public/install-packages?ch=<渠道>` 优先返回该渠道包。
+
 当前站点：`https://lkj.qiyun888.top`
 APK 壳内 APP_ORIGIN：`https://lkj.qiyun888.top/`

@@ -27,6 +27,13 @@
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var SALES_CHANNEL_TTL_MS = 15 * 60 * 1000;
 
+  function isSalesChannelStickyRecordValid(o) {
+    if (!o || !o.ch) return false;
+    if (o.permanent === true) return true;
+    if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) return false;
+    return true;
+  }
+
   // === PUBLIC_PAGES / 页面判断 ===
   /** 未登录可访问的白名单；受保护页无 token 时跳登录 */
   var PUBLIC_PAGES = {
@@ -172,7 +179,7 @@
       if (!o || !o.ch) {
         return '';
       }
-      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
+      if (!isSalesChannelStickyRecordValid(o)) {
         localStorage.removeItem(SALES_CHANNEL_KEY);
         return '';
       }

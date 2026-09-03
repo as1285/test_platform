@@ -11,7 +11,11 @@ on:
   workflow_dispatch:
     inputs:
       agent_channel:
-        description: "代理渠道 ID（留空=公开包，不可在 App 内注册需单独填渠道打包）"
+        description: "代理渠道 ID（留空=公开包；填写则打渠道包）"
+        required: false
+        default: ""
+      agent_channels_batch:
+        description: "批量渠道（逗号分隔；填写则逐个打渠道包，忽略单个）"
         required: false
         default: ""
   push:
@@ -19,6 +23,8 @@ on:
     paths:
       - "cordova-app/**"
       - ".github/workflows/cordova-android.yml"
+      - "scripts/build-agent-apk.sh"
+      - "scripts/build-agent-packages.sh"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -79,7 +85,8 @@ jobs:
           cat > www/distribution-config.js <<EOF
           window.__TAX_DISTRIBUTION__ = Object.freeze({
             agentSalesChannel: '${CHANNEL_LOWER}',
-            disableInAppRegister: true
+            disableInAppRegister: false,
+            permanentChannel: true
           });
           EOF
           sed -i "s|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1\" />|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1 TaxPlatformDistributor/${CHANNEL_LOWER}\" />|" config.xml

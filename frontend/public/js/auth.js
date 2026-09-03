@@ -29,6 +29,15 @@
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
   var SALES_CHANNEL_TTL_MS = 15 * 60 * 1000;
+  /** 渠道包 / 壳内归因来源：不过期 */
+  var SALES_CHANNEL_PERMANENT_SOURCES = {
+    url: true,
+    shell: true,
+    distributor_app: true,
+    agent_channel: true,
+    install_packages: true,
+    ua: true
+  };
   var REGISTER_SOURCE_KEY = 'register_source_channel_v1';
   var REGISTER_SOURCE_LABELS = {
     douyin: '抖音',
@@ -1181,7 +1190,15 @@
       'body.page-shuiming-result .sm-activate-card,body.page-shuiming-result .sm-refund-browse-card{margin-left:20px !important;margin-right:20px !important;}' +
       'body.page-shuiming > .header{padding-left:20px !important;padding-right:20px !important;}' +
       'body.page-shuiming > .content{padding-left:8px !important;padding-right:8px !important;}' +
-      '}';
+      '}' +
+      /* 15 Plus：贴边铺满，压过上方 media 20px */
+      'html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+      'html.app-ios-iphone15promax body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+      'html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+      'html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
+      'html.app-ios-iphone15promax body.page-shuiming-result .back-btn{left:12px !important;}' +
+      'html.app-ios-iphone15promax body.page-shuiming-result .header-right{right:12px !important;}' +
+      'html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -4799,14 +4816,15 @@
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#f5f6fa !important;z-index:121 !important;padding:10px 0 6px !important;}' +
           'html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:121 !important;}' +
           'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-ios-iphone15promax body.page-shuiming-result .page-root{--list-summary-pad:72px !important;}' +
-          'html.app-ios-iphone15promax body.page-shuiming-result .list,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:12px !important;padding-right:12px !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone15promax body.page-shuiming-result .list-item,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:10px !important;}' +
+          /* 15 Plus 顶距交给 syncTopFixedHeight 实测写入，勿 !important 锁死以免盖住首条 */
+          /* 15 Plus 列表贴边铺满（压过 min-width:414 / promax-wide 的 20px） */
+          'html.app-ios-iphone15promax body.page-shuiming-result .list,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone15promax body.page-shuiming-result .list-item,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
           'html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .header,html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
           'html.app-ios-iphone15promax body.page-shuiming-result .back-btn{left:12px !important;}' +
           'html.app-ios-iphone15promax body.page-shuiming-result .header-right{right:12px !important;}' +
-          'html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card{margin-left:12px !important;margin-right:12px !important;}' +
+          'html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
           'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
           'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
           'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
@@ -4816,13 +4834,13 @@
           'html.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card{margin-left:20px !important;margin-right:20px !important;}' +
           'html.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:20px !important;padding-right:20px !important;}' +
           'html.app-ios-promax-wide body.page-shuiming .content{padding-left:8px !important;padding-right:8px !important;}' +
-          /* 15 Plus 压过 promax-wide 的 20px（class 同挂时仍走 12px） */
-          'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:12px !important;padding-right:12px !important;}' +
-          'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;}' +
+          /* 15 Plus 再次压过 promax-wide（class 同挂时仍走贴边） */
+          'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+          'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .back-btn{left:12px !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .header-right{right:12px !important;}' +
-          'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card{margin-left:12px !important;margin-right:12px !important;}' +
+          'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
@@ -6023,24 +6041,78 @@
   }
 
   /**
-   * 从 URL ?ch= / ?channel= 写入代理渠道（localStorage.sales_channel_v1，TTL 见 SALES_CHANNEL_TTL_MS）。
+   * 从 URL ?ch= / ?channel= 写入代理渠道（localStorage.sales_channel_v1）。
+   * 渠道包 / Cordova 壳写入 permanent，不过期；普通 H5 推广链仍走 TTL。
    */
   function initSalesChannelFromUrl() {
     try {
       var p = new URLSearchParams(window.location.search);
       var ch = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
       if (!ch) {
+        ch = readSalesChannelFromDistributorUa();
+      }
+      if (!ch) {
         return;
       }
+      var permanent = shouldPersistSalesChannelPermanent(p);
       localStorage.setItem(
         SALES_CHANNEL_KEY,
         JSON.stringify({
           ch: ch,
           at: Date.now(),
-          source: 'url'
+          source: permanent ? (isCordovaTaxAppShell() ? 'shell' : 'url') : 'url',
+          permanent: !!permanent
         })
       );
     } catch (e) {}
+  }
+
+  function readSalesChannelFromDistributorUa() {
+    try {
+      var ua = String(navigator.userAgent || '');
+      var m = ua.match(/TaxPlatformDistributor\/([a-zA-Z0-9_-]{1,64})/);
+      if (m) return sanitizeSalesChannelId(m[1]);
+    } catch (e0) {}
+    try {
+      var cfg =
+        (window.parent && window.parent !== window && window.parent.__TAX_DISTRIBUTION__) ||
+        window.__TAX_DISTRIBUTION__ ||
+        null;
+      if (cfg && cfg.agentSalesChannel) {
+        return sanitizeSalesChannelId(cfg.agentSalesChannel);
+      }
+    } catch (e1) {}
+    return '';
+  }
+
+  function shouldPersistSalesChannelPermanent(searchParams) {
+    try {
+      if (isCordovaTaxAppShell()) return true;
+      if (isDistributorApp()) return true;
+      var ua = String(navigator.userAgent || '');
+      if (/TaxPlatformDistributor\//i.test(ua)) return true;
+      if (searchParams && (searchParams.get('distributor_app') === '1' || searchParams.get('distributor') === '1')) {
+        return true;
+      }
+      var cfg =
+        (window.parent && window.parent !== window && window.parent.__TAX_DISTRIBUTION__) ||
+        window.__TAX_DISTRIBUTION__ ||
+        null;
+      if (cfg && (cfg.permanentChannel === true || cfg.agentSalesChannel)) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function isSalesChannelStickyRecordValid(o) {
+    if (!o || !o.ch) return false;
+    if (o.permanent === true) return true;
+    if (o.source && SALES_CHANNEL_PERMANENT_SOURCES[String(o.source)]) {
+      try {
+        if (isCordovaTaxAppShell() || isDistributorApp()) return true;
+      } catch (e0) {}
+    }
+    if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) return false;
+    return true;
   }
 
   /** 校验注册来源渠道 key（与注册页下拉一致，不含 other） */
@@ -6175,7 +6247,7 @@
       if (!o || !o.ch) {
         return '';
       }
-      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
+      if (!isSalesChannelStickyRecordValid(o)) {
         return '';
       }
       /* 专属渠道依赖安装页/壳写入的 ch；不得因 source=install_packages/server_resolve 丢掉 */
@@ -6195,7 +6267,7 @@
       if (!o || !o.ch) {
         return '';
       }
-      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
+      if (!isSalesChannelStickyRecordValid(o)) {
         localStorage.removeItem(SALES_CHANNEL_KEY);
         return '';
       }
@@ -6284,7 +6356,8 @@
                     JSON.stringify({
                       ch: ch,
                       at: Date.now(),
-                      source: 'server_resolve'
+                      source: 'server_resolve',
+                      permanent: shouldPersistSalesChannelPermanent(null)
                     })
                   );
                 } catch (e) {}
@@ -7080,7 +7153,8 @@
               JSON.stringify({
                 ch: sanitizeSalesChannelId(data.sales_channel),
                 at: Date.now(),
-                source: 'install_packages'
+                source: 'install_packages',
+                permanent: true
               })
             );
           } catch (e) {}
@@ -7588,6 +7662,10 @@
     var t = getToken();
     if (t) {
       h['Authorization'] = 'Bearer ' + t;
+    }
+    var salesCh = getSalesChannel();
+    if (salesCh) {
+      h['X-Sales-Channel'] = salesCh;
     }
     return h;
   }

@@ -312,6 +312,24 @@ app.get(
   h.handleAdminActivationBatchChannels
 );
 app.get(
+  '/api/admin/agent-channels',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide', 'settings', 'codes']),
+  h.handleAdminAgentChannelsList
+);
+app.post(
+  '/api/admin/agent-channels',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide', 'settings']),
+  h.handleAdminAgentChannelsUpsert
+);
+app.delete(
+  '/api/admin/agent-channels/:channelId',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide', 'settings']),
+  h.handleAdminAgentChannelsDelete
+);
+app.get(
   '/api/admin/codes',
   mw.requireAdminAuth,
   mw.requireAdminMenu('codes'),

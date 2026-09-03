@@ -1462,6 +1462,9 @@
         function refreshAdminPageData(pageKey) {
             if (pageKey === 'settings' || pageKey === 'appearance' || pageKey === 'install-guide') {
                 loadAdminSettings();
+                if (pageKey === 'install-guide') {
+                    loadAgentChannels();
+                }
             }
             if (pageKey === 'users') {
                 loadUsers();
@@ -9282,6 +9285,193 @@
                 .catch(function () { alert('网络错误'); })
                 .finally(function () { btn.disabled = false; });
         });
+
+        function escAgentCell(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function resetAgentChannelForm() {
+            var idEl = document.getElementById('agentChId');
+            if (idEl) {
+                idEl.value = '';
+                idEl.readOnly = false;
+            }
+            var ownerEl = document.getElementById('agentChOwner');
+            if (ownerEl) ownerEl.value = '';
+            var pricingEl = document.getElementById('agentChPricing');
+            if (pricingEl) pricingEl.value = 'b';
+            var androidEl = document.getElementById('agentChAndroidUrl');
+            if (androidEl) androidEl.value = '';
+            var iosEl = document.getElementById('agentChIosUrl');
+            if (iosEl) iosEl.value = '';
+            var noteEl = document.getElementById('agentChNote');
+            if (noteEl) noteEl.value = '';
+            var enEl = document.getElementById('agentChEnabled');
+            if (enEl) enEl.checked = true;
+        }
+
+        function fillAgentChannelForm(c) {
+            if (!c) return;
+            var idEl = document.getElementById('agentChId');
+            if (idEl) {
+                idEl.value = String(c.channel_id || '');
+                idEl.readOnly = true;
+            }
+            var ownerEl = document.getElementById('agentChOwner');
+            if (ownerEl) ownerEl.value = String(c.owner_admin_username || '');
+            var pricingEl = document.getElementById('agentChPricing');
+            if (pricingEl) pricingEl.value = c.default_pricing_abc === 'a' ? 'a' : 'b';
+            var androidEl = document.getElementById('agentChAndroidUrl');
+            if (androidEl) androidEl.value = String(c.android_apk_url || '');
+            var iosEl = document.getElementById('agentChIosUrl');
+            if (iosEl) iosEl.value = String(c.ios_mobileconfig_url || '');
+            var noteEl = document.getElementById('agentChNote');
+            if (noteEl) noteEl.value = String(c.note || '');
+            var enEl = document.getElementById('agentChEnabled');
+            if (enEl) enEl.checked = c.enabled !== false;
+        }
+
+        function renderAgentChannels(list) {
+            var tbody = document.getElementById('agentChannelsTbody');
+            var empty = document.getElementById('agentChannelsEmpty');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            list = Array.isArray(list) ? list : [];
+            if (empty) empty.style.display = list.length ? 'none' : 'block';
+            list.forEach(function (c) {
+                var tr = document.createElement('tr');
+                var hasApk = !!(c.android_apk_url && String(c.android_apk_url).trim());
+                var hasIos = !!(c.ios_mobileconfig_url && String(c.ios_mobileconfig_url).trim());
+                tr.innerHTML =
+                    '<td><code>' +
+                    escAgentCell(c.channel_id) +
+                    '</code></td>' +
+                    '<td>' +
+                    escAgentCell(c.owner_admin_username || '—') +
+                    '</td>' +
+                    '<td>' +
+                    escAgentCell(String(c.default_pricing_abc || '').toUpperCase() || '—') +
+                    '</td>' +
+                    '<td>' +
+                    (hasApk ? '有' : '—') +
+                    '</td>' +
+                    '<td>' +
+                    (hasIos ? '有' : '—') +
+                    '</td>' +
+                    '<td>' +
+                    (c.enabled ? '启用' : '停用') +
+                    '</td>' +
+                    '<td>' +
+                    '<button type="button" class="btn-sm btn-page agent-ch-edit" data-ch="' +
+                    escAgentCell(c.channel_id) +
+                    '">编辑</button> ' +
+                    '<button type="button" class="btn-sm btn-ban agent-ch-del" data-ch="' +
+                    escAgentCell(c.channel_id) +
+                    '">删除</button>' +
+                    '</td>';
+                tbody.appendChild(tr);
+            });
+            tbody.querySelectorAll('.agent-ch-edit').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var id = btn.getAttribute('data-ch');
+                    var found = null;
+                    for (var i = 0; i < list.length; i++) {
+                        if (String(list[i].channel_id) === id) {
+                            found = list[i];
+                            break;
+                        }
+                    }
+                    fillAgentChannelForm(found);
+                });
+            });
+            tbody.querySelectorAll('.agent-ch-del').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var id = btn.getAttribute('data-ch');
+                    if (!id || !confirm('确认删除渠道「' + id + '」？')) return;
+                    adminFetch('api/admin/agent-channels/' + encodeURIComponent(id), { method: 'DELETE' })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data.code === 200) {
+                                loadAgentChannels();
+                                resetAgentChannelForm();
+                            } else {
+                                alert(data.msg || '删除失败');
+                            }
+                        })
+                        .catch(function () {
+                            alert('网络错误');
+                        });
+                });
+            });
+        }
+
+        function loadAgentChannels() {
+            if (!document.getElementById('agentChannelsTbody')) return;
+            adminFetch('api/admin/agent-channels')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200 && data.data) {
+                        renderAgentChannels(data.data.channels || []);
+                    }
+                })
+                .catch(function () {});
+        }
+
+        var btnSaveAgentChannel = document.getElementById('btnSaveAgentChannel');
+        if (btnSaveAgentChannel) {
+            btnSaveAgentChannel.addEventListener('click', function () {
+                var channelId = String(document.getElementById('agentChId').value || '')
+                    .trim()
+                    .toLowerCase();
+                if (!channelId || !/^[a-z0-9_-]{1,64}$/.test(channelId)) {
+                    alert('渠道 ID 无效');
+                    return;
+                }
+                btnSaveAgentChannel.disabled = true;
+                adminFetch('api/admin/agent-channels', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        channel_id: channelId,
+                        owner_admin_username: String(document.getElementById('agentChOwner').value || '').trim(),
+                        default_pricing_abc: document.getElementById('agentChPricing').value || 'b',
+                        android_apk_url: String(document.getElementById('agentChAndroidUrl').value || '').trim(),
+                        ios_mobileconfig_url: String(document.getElementById('agentChIosUrl').value || '').trim(),
+                        note: String(document.getElementById('agentChNote').value || '').trim(),
+                        enabled: !!(document.getElementById('agentChEnabled') && document.getElementById('agentChEnabled').checked)
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('渠道已保存');
+                            loadAgentChannels();
+                            resetAgentChannelForm();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnSaveAgentChannel.disabled = false;
+                    });
+            });
+        }
+        var btnResetAgentChannel = document.getElementById('btnResetAgentChannel');
+        if (btnResetAgentChannel) {
+            btnResetAgentChannel.addEventListener('click', resetAgentChannelForm);
+        }
 
         var MINE_UI_FIELD_KEYS = [
             'header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank',

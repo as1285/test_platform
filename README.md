@@ -285,7 +285,7 @@ cp .env.example .env
 - 前端：`scripts/render-site-config.sh` 生成 `site-config.js`（分享链接 / 受信 Host）
 - 后端：读取 `PUBLIC_SITE_URL`、`SITE_TRUSTED_HOSTS`
 - Nginx：`server_name _` 接受任意 Host；直连 HTTPS 可参考 `docker-compose.override.example.yml`
-- Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`，启动 **`mine.html`**（Mate60 由页内再跳冻结页）；本机代理包用 `./scripts/build-agent-apk.sh <渠道>` 从 `.env` 的 `PUBLIC_SITE_URL`/`APP_URL` 写入。GitHub Actions（`cordova-android.yml`）打 Debug 包时用仓库内默认值，可用 Secret `APP_ORIGIN` 覆盖（见工作流步骤）
+- Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`，启动 **`mine.html`**（Mate60 由页内再跳冻结页）；渠道包用 `./scripts/build-agent-packages.sh <渠道>`（或单独 `build-agent-apk.sh` / `build-agent-mobileconfig.sh`）从 `.env` 写入。GitHub Actions：`cordova-android.yml`（APK）、`agent-ios-mobileconfig.yml`（iOS 描述文件）；Secret `APP_ORIGIN` 可覆盖域名
 - 前端生产构建：`cd frontend && npm run build` → `assemble-site.mjs` 组装静态多页与 `public/` 资源到 `site/`（无 Vite / 已下线的 Vue 脚手架）。
 
 ### 支付宝自动开通
