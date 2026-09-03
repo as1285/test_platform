@@ -375,7 +375,7 @@
                             </div>
                             <div class="form-field mt-10">
                                 <label>渠道专属套餐（可自定义价格 / 天数 / 小时；留空跟随全站）</label>
-                                <p class="hint mt-6 mb-8">最多 3 档。天数 0–3650，小时 0–23（可组合，如 3 天 12 小时）。账号「用户专属报价」优先于渠道价。</p>
+                                <p class="hint mt-6 mb-8">最多 3 档。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。账号「用户专属报价」优先于渠道价。</p>
                                 <div class="mine-ui-block max-w-760" style="overflow-x:auto">
                                     <table class="data-table" style="min-width:520px">
                                         <thead>
@@ -1533,7 +1533,7 @@
                             </div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
-                                    <label for="taxEditOther">本期其他扣除</label>
+                                    <label for="taxEditOther">专项附加扣除</label>
                                     <input type="number" id="taxEditOther" step="0.01" value="0">
                                 </div>
                                 <div>

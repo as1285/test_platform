@@ -29,7 +29,9 @@
     'daiban.html': true,
     'bancha.html': true,
     'message.html': true,
-    'mine.html': true
+    'mine.html': true,
+    /* Mate60 冻结「我的」与主线同属底栏主 Tab，返回支付页勿再盖白转圈 */
+    'mine_mate60_aug12.html': true
   };
 
   function currentPage() {
@@ -462,13 +464,15 @@
 
   /*
    * bfcache 回退：页面 DOM/数据仍在，切勿再跑 startPageLifecycle。
-   * 否则会再次 showPageLoading，并等待 appPageLoadingDataDone；
-   * 业务页不会重跑 loadData，转圈会一直挂到超时（收入纳税明细 ← 详情 即此路径）。
+   * 从支付宝等外链返回：Harmony 常冻住后台 setTimeout，且不一定先报 hidden。
+   * - visibility→visible：一律摘圈（鸿蒙关键路径）
+   * - pageshow：bfcache / 曾进过后台 / 进页较久后的再次 pageshow 才摘，避免首屏进页立刻摘掉入场转圈
+   * - resume / focus：Cordova 与部分 WebView 补刀
    */
-  window.addEventListener('pageshow', function (ev) {
-    if (!(ev && ev.persisted)) {
-      return;
-    }
+  var loadingBootAt = Date.now();
+  var everWentHidden = false;
+
+  function hideLoadingOnForeground(reason) {
     forceHidePageLoading();
     try {
       document.documentElement.classList.remove('app-nav-leaving');
@@ -482,25 +486,38 @@
         dispatchLoadingEvent('appPageLoadingDataDone', '__appPageLoadingDataDone');
       }
     } catch (eData) {}
+  }
+
+  window.addEventListener('pageshow', function (ev) {
+    if (ev && ev.persisted) {
+      hideLoadingOnForeground('bfcache');
+      return;
+    }
+    if (everWentHidden || Date.now() - loadingBootAt > 1600) {
+      hideLoadingOnForeground('pageshow-return');
+    }
   });
 
-  /*
-   * 从支付宝 / 微信等外链 App 返回：多数安卓 WebView 只触发 visibilitychange，
-   * pageshow.persisted 仍为 false，进页时盖上的转圈不会自动摘掉。
-   */
-  var pageWasHidden = false;
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
-      pageWasHidden = true;
+      everWentHidden = true;
       return;
     }
-    if (!pageWasHidden) {
-      return;
-    }
-    pageWasHidden = false;
-    forceHidePageLoading();
-    try {
-      document.documentElement.classList.remove('app-nav-leaving');
-    } catch (eVis) {}
+    /* 回前台一律摘：鸿蒙从支付宝返回时常不先触发 hidden=true */
+    hideLoadingOnForeground('visibility');
   });
+
+  window.addEventListener('focus', function () {
+    if (everWentHidden || Date.now() - loadingBootAt > 1600) {
+      hideLoadingOnForeground('focus');
+    }
+  });
+
+  document.addEventListener(
+    'resume',
+    function () {
+      hideLoadingOnForeground('cordova-resume');
+    },
+    false
+  );
 })();

@@ -49,6 +49,12 @@ const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const { createPriceBids } = require('../payments/priceBids');
 const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBulk');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
+const {
+  sumRowMoney,
+  splitBasicAndSpecialAdditionalDeduction,
+  otherDeductionForDisplay,
+  periodOtherDeductionForDetail
+} = require('../tax/deductionSplit');
 const renameFeePolicy = require('../user/renameFeePolicy');
 const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
 const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
@@ -4926,34 +4932,9 @@ function iitWithholdingBracket(cumulativeTaxable) {
   return { ratePct: 45, quick: 181920, rateStr: '45%' };
 }
 
-/** sum row money */
-function sumRowMoney(r, field) {
-  const v = r[field];
-  if (v == null || v === '') return 0;
-  const n = parseFloat(String(v).replace(/,/g, ''));
-  return Number.isNaN(n) ? 0 : n;
-}
+/** sum row money — 实现见 ../tax/deductionSplit */
 
-/** split basic and special additional deduction */
-function splitBasicAndSpecialAdditionalDeduction(rec) {
-  const sub = String(rec.income_subtype || '').trim();
-  if (sub === '全年一次性奖金收入') {
-    return { basic: sumRowMoney(rec, 'deduction_fee'), specialAdditional: 0 };
-  }
-  const df = sumRowMoney(rec, 'deduction_fee');
-  const other = sumRowMoney(rec, 'other_deduction');
-  if (other > 0) {
-    return {
-      basic: Math.min(5000, df > 0 ? df : 5000),
-      specialAdditional: other
-    };
-  }
-  if (df > 5000) {
-    const sadd = Math.max(0, Math.round((df - 5000) * 100) / 100);
-    return { basic: Math.round((df - sadd) * 100) / 100, specialAdditional: sadd };
-  }
-  return { basic: df, specialAdditional: 0 };
-}
+/** split basic and special additional deduction — 实现见 ../tax/deductionSplit */
 
 /** row period income */
 function rowPeriodIncome(r) {
@@ -5019,6 +5000,7 @@ async function getTaxCalculationData(userId, recordId) {
   let totalDeductionFee = 0;
   let totalSpecial = 0;
   let totalOther = 0;
+  let totalOtherDisplay = 0;
   let totalDonation = 0;
   let totalTaxPaidBefore = 0;
   /** 累计减除费用（基本减除 5000）与累计专项附加扣除（other_deduction，旧数据从 deduction_fee 拆分） */
@@ -5032,7 +5014,9 @@ async function getTaxCalculationData(userId, recordId) {
     const split = splitBasicAndSpecialAdditionalDeduction(r);
     totalDeductionFee += sumRowMoney(r, 'deduction_fee');
     totalSpecial += sumRowMoney(r, 'special_deduction');
-    totalOther += sumRowMoney(r, 'other_deduction');
+    const otherRaw = sumRowMoney(r, 'other_deduction');
+    totalOther += otherRaw;
+    totalOtherDisplay += otherDeductionForDisplay(r, split);
     totalDonation += sumRowMoney(r, 'donation_deduction');
     const sub = String(r.income_subtype || '').trim();
     if (sub !== '全年一次性奖金收入') {
@@ -5069,7 +5053,7 @@ async function getTaxCalculationData(userId, recordId) {
     total_deduction_fee: totalBasicDeductionFee.toFixed(2),
     total_special_deduction: totalSpecial.toFixed(2),
     total_special_additional: totalSpecialAdditional.toFixed(2),
-    total_other_deduction: totalOther.toFixed(2),
+    total_other_deduction: totalOtherDisplay.toFixed(2),
     total_personal_pension: totalPersonalPension.toFixed(2),
     total_donation: totalDonation.toFixed(2),
     total_taxable_income: totalTaxableIncome.toFixed(2),
@@ -5113,10 +5097,8 @@ function formatTaxDetailResponse(rec, userIdStr) {
       return formatTaxAmt(sp.basic, '5000.00');
     })(),
     special_deduction: formatTaxAmt(rec.special_deduction, '0.00'),
-    other_deduction: (function () {
-      var sp = splitBasicAndSpecialAdditionalDeduction(rec);
-      return formatTaxAmt(sp.specialAdditional, '0.00');
-    })(),
+    /* 专项附加存在 other_deduction：本期明细不展示（对齐温馨提示），只在税款计算看累计专项附加 */
+    other_deduction: formatTaxAmt(periodOtherDeductionForDetail(rec), '0.00'),
     donation_deduction: formatTaxAmt(rec.donation_deduction, '0.00'),
     pension_insurance: formatTaxAmt(rec.pension_insurance, '0.00'),
     medical_insurance: formatTaxAmt(rec.medical_insurance, '0.00'),

@@ -572,7 +572,7 @@
             { key: 'medical_insurance', label: '基本医疗保险', money: true },
             { key: 'unemployment_insurance', label: '失业保险', money: true },
             { key: 'housing_fund', label: '住房公积金', money: true },
-            { key: 'other_deduction', label: '本期其他扣除', money: true },
+            { key: 'other_deduction', label: '专项附加扣除', money: true },
             { key: 'donation_deduction', label: '捐赠扣除', money: true },
             { key: 'updated_at', label: '最后更新', dt: true }
         ];

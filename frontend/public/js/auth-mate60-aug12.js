@@ -5463,6 +5463,15 @@
     if (page === 'admin_panel.html') {
       return;
     }
+    var primaryTabPages = {
+      'shouye.html': true,
+      'daiban.html': true,
+      'bancha.html': true,
+      'message.html': true,
+      'mine.html': true,
+      'mine_mate60_aug12.html': true
+    };
+    var isPrimaryTab = !!primaryTabPages[page];
     window.__pageLoadingQueue = window.__pageLoadingQueue || [];
     if (typeof window.showPageLoading !== 'function') {
       window.showPageLoading = function () {
@@ -5475,10 +5484,13 @@
         window.__pageLoadingQueue.push(['force']);
       };
     }
-    window.__pageLoadingQueue.push(['show']);
+    /* 底栏主 Tab（含 Mate60 冻结「我的」）不预入队 show */
+    if (!isPrimaryTab) {
+      window.__pageLoadingQueue.push(['show']);
+    }
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260903-payreturn';
+      s.src = '/js/page-loading.js?v=20260903-mate60pay';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);

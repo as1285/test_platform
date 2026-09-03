@@ -662,6 +662,9 @@ function applyChannelCatalogPrices(skus, priceMap) {
     var touched = false;
     if (ov.amount != null && String(ov.amount).trim() !== '') {
       next[i].amount = String(ov.amount).trim();
+      /* 渠道价覆盖后不再用全站心理价划线/文案，避免仍显示「周卡·体验价」 */
+      delete next[i].list_amount;
+      delete next[i].psych_offer;
       touched = true;
     }
     if (ov.grant_days != null || ov.grant_hours != null) {
@@ -684,8 +687,8 @@ function applyChannelCatalogPrices(skus, priceMap) {
       var dd = next[i].grant_days || 0;
       var hh = next[i].grant_hours || 0;
       if (dd > 0 && hh > 0) auto = dd + '天' + hh + '小时';
-      else if (dd > 0) auto = dd + '天卡';
-      else if (hh > 0) auto = hh + '小时卡';
+      else if (dd > 0) auto = dd === 1 ? '日卡' : dd + '天卡';
+      else if (hh > 0) auto = hh === 1 ? '小时卡' : hh + '小时卡';
       if (auto) next[i].label = auto;
     }
     if (touched) {

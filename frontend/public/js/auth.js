@@ -8543,7 +8543,8 @@
       'daiban.html': true,
       'bancha.html': true,
       'message.html': true,
-      'mine.html': true
+      'mine.html': true,
+      'mine_mate60_aug12.html': true
     };
     var isPrimaryTab = !!primaryTabPages[page];
     window.__pageLoadingQueue = window.__pageLoadingQueue || [];
@@ -8558,13 +8559,13 @@
         window.__pageLoadingQueue.push(['force']);
       };
     }
-    /* 底栏主 Tab（含首页）不预入队 show，避免 Android 全页重载先白转圈再等 theme */
+    /* 底栏主 Tab（含首页 / Mate60 冻结我的）不预入队 show，避免 Android 全页重载先白转圈再等 theme */
     if (!isPrimaryTab) {
       window.__pageLoadingQueue.push(['show']);
     }
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260903-payreturn';
+      s.src = '/js/page-loading.js?v=20260903-mate60pay';
       s.setAttribute('data-app-page-loading-js', '1');
       /* 异步加载：不阻塞后续 HTML/图片解析，转圈由业务页主动触发 */
       s.async = true;
@@ -8600,7 +8601,8 @@
       'daiban.html': true,
       'bancha.html': true,
       'message.html': true,
-      'mine.html': true
+      'mine.html': true,
+      'mine_mate60_aug12.html': true
     };
     if (!primaryTabPages[page]) return;
     if (isInsideTabShellEmbed()) return;
