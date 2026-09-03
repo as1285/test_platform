@@ -336,6 +336,10 @@
     window.location.href = 'purchase.html?from=' + encodeURIComponent(src);
   }
 
+  /**
+   * 无个税时自动开编辑；已有记录且编辑关闭则提示并返回 false。
+   * @returns {boolean}
+   */
   function ensureTaxEditForFill() {
     if (isTaxEditModeOn()) return true;
     /* 尚未有个税时，引导填写应自动打开编辑，避免点了 CTA 又回到「我的」 */
@@ -804,7 +808,7 @@
   var taxEditLastPhysicalTapAt = 0;
   var TAX_EDIT_TAP_REQUIRED = 5;
   /* 连续点击间隔上限：过短在真机上很难点满 5 次 */
-  var TAX_EDIT_TAP_WINDOW_MS = 2800;
+  var TAX_EDIT_TAP_WINDOW_MS = 5000;
   /** 关闭编辑后禁止进入的个税修改相关页 */
   var TAX_EDIT_BLOCKED_PAGES = {
     'consult.html': true
@@ -952,6 +956,10 @@
     link.setAttribute('aria-label', label);
   }
 
+  /**
+   * 开关截图模式（session）；同步 html class 与「我的」按钮文案。
+   * @param {boolean} on
+   */
   function setScreenshotMode(on) {
     try {
       if (on) sessionStorage.setItem(SCREENSHOT_MODE_KEY, '1');
@@ -2833,6 +2841,9 @@
     track('track_tax_fill_banner_show', { page: 'consult', source: 'consult_strong' });
   }
 
+  /**
+   * 我的/首页：无个税时弹「请先添加个税」层（日频；注册后邮箱优先时延后）。
+   */
   function maybeShowTaxFillNudge() {
     if (!isLoggedIn() || hasTaxRecords()) return;
     if (isLightShellPage()) return;
@@ -2973,6 +2984,7 @@
     if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
+  // === 邮箱收集 Nudge ===
   function beijingDayKey() {
     try {
       return new Intl.DateTimeFormat('en-CA', {
@@ -3023,7 +3035,9 @@
   }
 
   /**
-   * 引导填写邮箱（可跳过）。force=true 时忽略当日限制。
+   * 引导填写邮箱（可跳过）。force=true 时忽略当日限制与 dismiss。
+   * @param {{force?: boolean}} [opts]
+   * @returns {boolean} 是否成功打开
    */
   function openEmailCollectNudge(opts) {
     opts = opts || {};
@@ -3155,6 +3169,9 @@
     }, 500);
   }
 
+  /**
+   * 页内启动：截图隐私 → 拉摘要 → 按页渲染引导；已激活走 skipConversionPromo 分支。
+   */
   function init() {
     initCapturePrivacy();
     guardRemoveWatermarkPayChip();
@@ -3340,6 +3357,10 @@
     }
   }
 
+  /**
+   * 后台配置的激活留存弹层：按注册时长与日频限制展示。
+   * skipConversionPromo / 游客 / 支付页不展示。
+   */
   function maybeShowActivationNudge() {
     if (!isLoggedIn() || skipConversionPromo() || isLandingGuest()) return;
     if (isLightShellPage()) return;
@@ -3408,6 +3429,7 @@
     });
   }
 
+  /** @type {Object} 对外 API：业务页 / consult 脚本调用 */
   window.ConversionGuide = {
     isAccountActive: isAccountActive,
     hasTaxRecords: hasTaxRecords,
