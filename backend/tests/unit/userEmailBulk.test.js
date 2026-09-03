@@ -6,11 +6,21 @@ const {
 
 describe('userEmailBulk helpers', () => {
   test('isValidUserEmail accepts common addresses', () => {
-    expect(isValidUserEmail('a@qq.com')).toBe(true);
+    expect(isValidUserEmail('name@qq.com')).toBe(true);
     expect(isValidUserEmail('  name@126.com ')).toBe(true);
+    expect(isValidUserEmail('user.name+tag@163.com')).toBe(true);
+    expect(isValidUserEmail('13800138000@139.com')).toBe(true);
     expect(isValidUserEmail('bad')).toBe(false);
     expect(isValidUserEmail('a@b')).toBe(false);
     expect(isValidUserEmail('')).toBe(false);
+    expect(isValidUserEmail('a@a.com')).toBe(false);
+    expect(isValidUserEmail('test@test.com')).toBe(false);
+    expect(isValidUserEmail('asdf@qq.com')).toBe(false);
+    expect(isValidUserEmail('name@example.com')).toBe(false);
+    expect(isValidUserEmail('foo..bar@qq.com')).toBe(false);
+    expect(isValidUserEmail('.name@qq.com')).toBe(false);
+    expect(isValidUserEmail('name@qq')).toBe(false);
+    expect(isValidUserEmail('name@qq.c')).toBe(false);
   });
 
   test('buildEmailBodies includes CTA and unsubscribe hint', () => {

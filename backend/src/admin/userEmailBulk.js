@@ -5,11 +5,82 @@ var MSG_EMAIL_BULK_MAX = 200;
 var MSG_EMAIL_SEND_GAP_MS = 120;
 var EMAIL_SKIP_MARKER_PREFIX = '@@email_bulk:';
 
+/**
+ * 用户邮箱格式校验（注册 / 资料 / 运营发信共用）。
+ * 比「有 @ 和点」更严：限制字符集、标签形态、连续点，并拒绝明显占位乱填。
+ */
 function isValidUserEmail(raw) {
   var s = raw == null ? '' : String(raw).trim();
   if (!s || s.length > 255) return false;
-  /* 宽松校验：有 @ 与域名点，避免过度拒绝国内邮箱 */
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  if (/\s/.test(s) || s.indexOf('..') >= 0) return false;
+  var at = s.lastIndexOf('@');
+  if (at <= 0 || at !== s.indexOf('@')) return false;
+  var local = s.slice(0, at);
+  var domain = s.slice(at + 1);
+  if (local.length < 1 || local.length > 64) return false;
+  if (domain.length < 4 || domain.length > 253) return false;
+  /* 本地部分：字母数字开头结尾（单字符亦可），中间允许 ._%+- */
+  if (local.length === 1) {
+    if (!/^[A-Za-z0-9]$/.test(local)) return false;
+  } else if (!/^[A-Za-z0-9][A-Za-z0-9._%+-]{0,62}[A-Za-z0-9]$/.test(local)) {
+    return false;
+  }
+  var labels = domain.split('.');
+  if (labels.length < 2) return false;
+  for (var i = 0; i < labels.length; i++) {
+    var lab = labels[i];
+    if (!lab || lab.length > 63) return false;
+    if (i === labels.length - 1) {
+      /* 顶级域：纯字母 2–24 */
+      if (!/^[A-Za-z]{2,24}$/.test(lab)) return false;
+    } else if (lab.length === 1) {
+      if (!/^[A-Za-z0-9]$/.test(lab)) return false;
+    } else if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,61}[A-Za-z0-9]$/.test(lab)) {
+      return false;
+    }
+  }
+  var localKey = local.toLowerCase();
+  var domainKey = domain.toLowerCase();
+  /* 明显占位 / 乱填 */
+  var blockLocal = {
+    test: 1,
+    asdf: 1,
+    qwer: 1,
+    abc: 1,
+    abcd: 1,
+    aaa: 1,
+    aaaa: 1,
+    xxx: 1,
+    xxxx: 1,
+    email: 1,
+    mail: 1,
+    none: 1,
+    null: 1,
+    undefined: 1,
+    '123': 1,
+    '1234': 1,
+    '12345': 1,
+    '123456': 1
+  };
+  var blockDomain = {
+    'example.com': 1,
+    'example.org': 1,
+    'example.net': 1,
+    'test.com': 1,
+    'test.cn': 1,
+    'test.org': 1,
+    'asdf.com': 1,
+    'aaa.com': 1,
+    'xxx.com': 1,
+    localhost: 1,
+    invalid: 1,
+    localdomain: 1
+  };
+  if (blockLocal[localKey]) return false;
+  if (blockDomain[domainKey]) return false;
+  /* a@a.com / ab@ab.com 这类极短镜像乱填 */
+  if (localKey.length <= 3 && labels[0].toLowerCase() === localKey) return false;
+  return true;
 }
 
 function sleep(ms) {

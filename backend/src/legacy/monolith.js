@@ -8319,7 +8319,7 @@ async function registerUser(
   var emailNorm = email != null ? String(email).trim() : '';
   if (emailNorm) {
     if (!isValidUserEmail(emailNorm)) {
-      throw new Error('请填写有效的电子邮箱');
+      throw new Error('邮箱格式不正确，请填写常用邮箱（如 QQ/163）');
     }
   } else {
     emailNorm = null;
@@ -9840,7 +9840,7 @@ async function handleUserPost(req, res) {
         if (pfEmail !== undefined) {
           if (pfEmail && !isValidUserEmail(pfEmail)) {
             await conn.rollback();
-            return res.status(400).json({ code: 400, msg: '请填写有效的电子邮箱' });
+            return res.status(400).json({ code: 400, msg: '邮箱格式不正确，请填写常用邮箱（如 QQ/163）' });
           }
           updateFields.push('email = ?');
           updateParams.push(pfEmail);
