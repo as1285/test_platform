@@ -388,7 +388,7 @@
             'user-data': '用户数据', 'user-behavior': '用户行为',
             'activated-user-analysis': '激活分析', 'feedback': '反馈',
             'chat': '客服', 'login-log': '管理登录', 'user-login-log': '用户登录',
-            'server-monitor': '监控', 'sbdy-demo': '社保演示',
+            'server-monitor': '监控', 'sbdy-demo': '杭州社保', 'sbdy-sichuan': '四川社保',
             'analytics-conversion': '转化', 'analytics-purchase': '支付',
             'analytics-register': '注册', 'analytics-activity': '日活',
             'analytics-tracking': '埋点', 'analytics-devices': '设备',

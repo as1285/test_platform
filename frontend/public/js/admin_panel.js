@@ -1213,6 +1213,7 @@
                 'user-login-log': 1,
                 'server-monitor': 1,
                 'sbdy-demo': 1,
+                'sbdy-sichuan': 1,
                 'user-prep-import': 1,
                 'user-remote-sync': 1,
                 'blocked-ips': 1
@@ -1336,7 +1337,7 @@
                 _adminBlockedIpsSeen = true;
                 loadBlockedIps();
             }
-            if (pageKey === 'sbdy-demo') {
+            if (pageKey === 'sbdy-demo' || pageKey === 'sbdy-sichuan') {
                 if (typeof loadSbdyDemoPage === 'function') {
                     loadSbdyDemoPage();
                 } else if (
@@ -7280,7 +7281,8 @@
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
             'server-monitor': '服务器监控',
-            'sbdy-demo': '社保演示生成',
+            'sbdy-demo': '杭州社保演示',
+            'sbdy-sichuan': '四川社保演示',
             'user-prep-import': '备数导入',
             'user-remote-sync': '同步到新服'
         };
@@ -9883,7 +9885,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v6-legacy-redirect-stats';
+                var MENU_TREE_VER = 'ops-ia-v8-sbdy-sc-menu';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

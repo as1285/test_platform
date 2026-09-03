@@ -322,13 +322,13 @@ app.post('/api/admin/monitor/test-email', mw.requireAdminAuth, mw.requireAdminMe
 app.post(
   '/api/admin/sbdy-demo/generate',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('sbdy-demo'),
+  mw.requireAdminAnyMenu(['sbdy-demo', 'sbdy-sichuan']),
   h.handleAdminSbdyDemoGenerate
 );
 app.get(
   '/api/admin/sbdy-demo/list',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('sbdy-demo'),
+  mw.requireAdminAnyMenu(['sbdy-demo', 'sbdy-sichuan']),
   h.handleAdminSbdyDemoList
 );
 app.get(

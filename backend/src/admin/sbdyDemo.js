@@ -99,6 +99,16 @@ function randDigits(n) {
   return out.slice(0, n);
 }
 
+function randSichuanVerifyCode(n) {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  var out = '';
+  var i;
+  for (i = 0; i < n; i++) {
+    out += chars[crypto.randomInt(0, chars.length)];
+  }
+  return out;
+}
+
 function randToken(n) {
   return crypto.randomBytes(Math.ceil(n / 2)).toString('hex').slice(0, n);
 }
@@ -191,7 +201,7 @@ function buildMonthRows(periodStart, periodEnd, opts) {
   var y = a.y;
   var m = a.m;
   var guard = 0;
-  var unitCode = extractUnitCode(opts.credit_code || opts.unit_code || '');
+  var unitCode = extractFlexibleUnitCode(opts.credit_code || opts.unit_code || '');
   var area = opts.area || '';
   var defaultBase = Number(opts.base_amount) || 0;
   var yearBases = opts.year_bases || null;
@@ -389,6 +399,19 @@ function extractUnitCode(raw, opts) {
   return candidates[0] || '';
 }
 
+/** 四川等省单位编号可能短于 15 位，宽松保留纯编号 */
+function extractFlexibleUnitCode(raw, opts) {
+  opts = opts || {};
+  var c = extractUnitCode(raw, opts);
+  if (c) return c;
+  var s = String(raw || '').trim();
+  var exclude = String(opts.exclude || '').trim();
+  if (/^[0-9A-Za-z]{8,20}$/.test(s) && (!exclude || s !== exclude)) {
+    return s;
+  }
+  return '';
+}
+
 function extractCreditFromCompany(company, opts) {
   return extractUnitCode(company, opts);
 }
@@ -462,8 +485,9 @@ function normalizeSegment(raw, defaults) {
   var credit = String(s.credit_code || s.creditCode || defaults.credit_code || '')
     .trim()
     .substring(0, 64);
-  credit = extractUnitCode(credit, { exclude: defaults.id_number }) ||
-    extractCreditFromCompany(company, { exclude: defaults.id_number }) ||
+  credit =
+    extractFlexibleUnitCode(credit, { exclude: defaults.id_number }) ||
+    extractFlexibleUnitCode(company, { exclude: defaults.id_number }) ||
     '';
   company = stripTrailingCreditFromCompany(company).substring(0, 128);
   var area = String(s.area || defaults.area || '余杭区')
@@ -522,6 +546,133 @@ function normalizeSegment(raw, defaults) {
   };
 }
 
+function formatYmCnFull(y, m) {
+  return String(y) + '年' + String(m).padStart(2, '0') + '月';
+}
+
+function addMonthsYmParts(y, m, add) {
+  var t = y * 12 + (m - 1) + add;
+  return { y: Math.floor(t / 12), m: (t % 12) + 1 };
+}
+
+function buildSichuanMonthsFromZjMonths(months, segments) {
+  var segByCode = {};
+  var si;
+  for (si = 0; si < (segments || []).length; si++) {
+    var sg = segments[si];
+    var code = String(sg.credit_code || '').trim();
+    if (code) segByCode[code] = sg;
+  }
+  var out = [];
+  var i;
+  for (i = 0; i < (months || []).length; i++) {
+    var m = months[i];
+    if (!m) continue;
+    var base = Number(m.pension_base != null ? m.pension_base : m.base_amount) || 0;
+    var personal =
+      m.pension_pay != null && isFinite(Number(m.pension_pay))
+        ? Number(m.pension_pay)
+        : Math.round(base * 0.08 * 100) / 100;
+    var unitPen = Math.round(base * 0.16 * 100) / 100;
+    var unempPers =
+      m.unemp_pay != null && isFinite(Number(m.unemp_pay))
+        ? Number(m.unemp_pay)
+        : Math.round(base * 0.004 * 100) / 100;
+    var unempUnit = Math.round(base * 0.006 * 100) / 100;
+    var injuryUnit =
+      base > 0
+        ? Math.round(base * (base >= 8000 ? 0.0016 : 0.007) * 100) / 100
+        : 0;
+    /* 允许段上覆盖四川特有缴费 */
+    var code = String(m.unit_code || m.credit_code || '').trim();
+    var seg = segByCode[code];
+    if (seg && seg.sc_injury_rate != null && isFinite(Number(seg.sc_injury_rate))) {
+      injuryUnit = Math.round(base * Number(seg.sc_injury_rate) * 100) / 100;
+    }
+    out.push({
+      pay_month: String(m.year) + String(m.month).padStart(2, '0'),
+      year: m.year,
+      month: m.month,
+      unit_code: code,
+      credit_code: code,
+      company_name: m.company_name || (seg && seg.company_name) || '',
+      pension_type: '企业养老',
+      pension_base: base,
+      pension_unit: unitPen,
+      pension_personal: personal,
+      pension_pay: personal,
+      unemp_base: base,
+      unemp_unit: unempUnit,
+      unemp_personal: unempPers,
+      unemp_pay: unempPers,
+      injury_base: base,
+      injury_unit: injuryUnit,
+      area: m.area || ''
+    });
+  }
+  return out;
+}
+
+function buildSichuanUnitMap(segments, months) {
+  var map = {};
+  var i;
+  for (i = 0; i < (segments || []).length; i++) {
+    var sg = segments[i];
+    var code = String(sg.credit_code || '').trim();
+    if (code) map[code] = sg.company_name || map[code] || '';
+  }
+  for (i = 0; i < (months || []).length; i++) {
+    var m = months[i];
+    var c = String((m && (m.unit_code || m.credit_code)) || '').trim();
+    if (c && !map[c] && m.company_name) map[c] = m.company_name;
+  }
+  return map;
+}
+
+function normalizeSichuanSummary(b, monthCount, statusPension, statusUnemp, statusInjury) {
+  if (Array.isArray(b.summary_rows) && b.summary_rows.length) {
+    return b.summary_rows.map(function (r) {
+      return {
+        insure_type: String((r && (r.insure_type || r.name)) || '').trim().substring(0, 64),
+        status: String((r && r.status) || '').trim().substring(0, 32),
+        months: String((r && r.months) != null ? r.months : monthCount)
+      };
+    });
+  }
+  var mp = Number(b.months_pension != null ? b.months_pension : monthCount);
+  var mu = Number(b.months_unemployment != null ? b.months_unemployment : monthCount);
+  var mi = Number(b.months_injury != null ? b.months_injury : monthCount);
+  if (!isFinite(mp)) mp = monthCount;
+  if (!isFinite(mu)) mu = monthCount;
+  if (!isFinite(mi)) mi = monthCount;
+  var rows = [
+    {
+      insure_type: '企业职工基本养老保险',
+      status: statusPension === '正常参保' ? '参保缴费' : statusPension,
+      months: mp
+    },
+    {
+      insure_type: '失业保险',
+      status: statusUnemp === '正常参保' ? '参保缴费' : statusUnemp,
+      months: mu
+    },
+    {
+      insure_type: '工伤保险',
+      status: statusInjury === '正常参保' ? '参保缴费' : statusInjury,
+      months: mi
+    }
+  ];
+  var extra = String(b.status_injury_extra || '').trim();
+  if (extra) {
+    rows.push({
+      insure_type: '工伤保险',
+      status: extra,
+      months: mi
+    });
+  }
+  return rows;
+}
+
 function normalizePayload(body) {
   var b = body && typeof body === 'object' ? body : {};
   var certTypeRaw = String(b.cert_type || b.certType || '').trim().toLowerCase();
@@ -530,19 +681,29 @@ function normalizePayload(body) {
     certTypeRaw === '历年' ||
     certTypeRaw === '历年参保证明' ||
     String(b.layout || '').trim().toLowerCase() === 'zj_linian_v1';
+  var isSichuan =
+    certTypeRaw === 'sichuan' ||
+    certTypeRaw === 'sc' ||
+    certTypeRaw === '四川' ||
+    certTypeRaw === '四川社保' ||
+    String(b.layout || '').trim().toLowerCase() === 'sc_official_v1';
   var name = String(b.name || '').trim().substring(0, 64);
   var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
   var gender = String(b.gender || '').trim().substring(0, 8) || '女';
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
   var statusPension = String(
-    b.status_pension || b.insure_status || (isLinian ? '暂停缴费' : '正常参保')
+    b.status_pension ||
+      b.insure_status ||
+      (isLinian ? '暂停缴费' : isSichuan ? '参保缴费' : '正常参保')
   )
     .trim()
     .substring(0, 32);
   var statusInjury = String(
-    b.status_injury || b.status_medical || '正常参保'
+    b.status_injury || b.status_medical || (isSichuan ? '参保缴费' : '正常参保')
   ).trim().substring(0, 32);
-  var statusUnemp = String(b.status_unemployment || '正常参保').trim().substring(0, 32);
+  var statusUnemp = String(
+    b.status_unemployment || (isSichuan ? '参保缴费' : '正常参保')
+  ).trim().substring(0, 32);
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
   }
@@ -553,7 +714,7 @@ function normalizePayload(body) {
       extractUnitCode(b.credit_code || b.creditCode || '', { exclude: idNumber }) ||
       extractCreditFromCompany(b.company_name || b.company || '', { exclude: idNumber }) ||
       '',
-    area: String(b.area || '余杭区').trim().substring(0, 32),
+    area: String(b.area || (isSichuan ? '成都市高新区' : '余杭区')).trim().substring(0, 32),
     base_amount: Number(b.base_amount != null ? b.base_amount : b.baseAmount),
     pension_pay: Number(b.pension_pay != null ? b.pension_pay : b.pensionPay),
     unemployment_pay: Number(
@@ -565,12 +726,12 @@ function normalizePayload(body) {
     0,
     128
   );
-  if (!isFinite(flatDefaults.base_amount)) flatDefaults.base_amount = 4986;
+  if (!isFinite(flatDefaults.base_amount)) flatDefaults.base_amount = isSichuan ? 5000 : 4986;
   if (!isFinite(flatDefaults.pension_pay)) {
     flatDefaults.pension_pay = Math.round(flatDefaults.base_amount * 0.08 * 100) / 100;
   }
   if (!isFinite(flatDefaults.unemployment_pay)) {
-    flatDefaults.unemployment_pay = Math.round(flatDefaults.base_amount * 0.005 * 100) / 100;
+    flatDefaults.unemployment_pay = Math.round(flatDefaults.base_amount * 0.004 * 100) / 100;
   }
 
   var segmentsIn = Array.isArray(b.segments) ? b.segments : [];
@@ -641,7 +802,7 @@ function normalizePayload(body) {
         unemployment_pay: per.unemployment_pay,
         year_bases: per.year_bases || null,
         company_name: sg.company_name,
-        maxMonths: isLinian ? 600 : 48
+        maxMonths: isLinian || isSichuan ? 600 : 48
       });
       var mi;
       for (mi = 0; mi < part.length; mi++) {
@@ -659,7 +820,7 @@ function normalizePayload(body) {
     .forEach(function (k) {
       months.push(monthsMap[k]);
     });
-  if (!isLinian && months.length > 48) {
+  if (!isLinian && !isSichuan && months.length > 48) {
     months = months.slice(months.length - 48);
   }
   if (!months.length) {
@@ -715,6 +876,55 @@ function normalizePayload(body) {
     basePayload.year_rows = yearRows;
     basePayload.cumulative_text = cumulativeText;
     basePayload.insure_status = statusPension;
+    return basePayload;
+  }
+
+  if (isSichuan) {
+    var scMonths =
+      Array.isArray(b.sc_months) && b.sc_months.length
+        ? b.sc_months
+        : buildSichuanMonthsFromZjMonths(months, segments);
+    var unitMap = buildSichuanUnitMap(segments, scMonths);
+    if (b.unit_name_map && typeof b.unit_name_map === 'object') {
+      Object.keys(b.unit_name_map).forEach(function (k) {
+        unitMap[k] = b.unit_name_map[k];
+      });
+    }
+    var detailLabel =
+      String(b.detail_period_label || '').trim() ||
+      formatYmCnFull(overallStart.year, Number(overallStart.month)) +
+        '至' +
+        formatYmCnFull(overallEnd.year, Number(overallEnd.month));
+    var validUntil = String(b.verify_valid_until || '').trim();
+    if (!validUntil) {
+      var pm = printDate.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+      if (pm) {
+        var vp = addMonthsYmParts(Number(pm[1]), Number(pm[2]), 3);
+        validUntil =
+          vp.y +
+          ' 年 ' +
+          String(vp.m).padStart(2, '0') +
+          ' 月 ' +
+          String(Number(pm[3])).padStart(2, '0') +
+          ' 日';
+      }
+    }
+    basePayload.cert_type = 'sichuan';
+    basePayload.layout = 'sc_official_v1';
+    basePayload.sc_months = scMonths;
+    basePayload.summary_rows = normalizeSichuanSummary(
+      b,
+      scMonths.length,
+      statusPension,
+      statusUnemp,
+      statusInjury
+    );
+    basePayload.unit_name_map = unitMap;
+    basePayload.detail_period_label = detailLabel;
+    basePayload.verify_valid_until = validUntil;
+    if (b.status_injury_extra) {
+      basePayload.status_injury_extra = String(b.status_injury_extra).trim().substring(0, 32);
+    }
     return basePayload;
   }
 
@@ -1373,7 +1583,11 @@ async function handleAdminSbdyDemoGenerate(req, res) {
     if (normalized.error) {
       return res.status(400).json({ code: 400, msg: normalized.error });
     }
-    var authCode = randDigits(20);
+    var authCode =
+      normalized.cert_type === 'sichuan' ? randSichuanVerifyCode(22) : randDigits(20);
+    if (normalized.cert_type === 'sichuan') {
+      normalized.verify_code = authCode;
+    }
     var token = 'SBDY' + randToken(24);
     var pool = getPool();
     await pool.execute(

@@ -3367,6 +3367,11 @@ async function createTables() {
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'sbdy-sichuan' FROM admin_account_menus WHERE menu_key = 'sbdy-demo'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'weekly-codes' FROM admin_account_menus WHERE menu_key = 'codes'`
   );
 

@@ -41,34 +41,97 @@
     }
   }
 
+  function getPageKey() {
+    return String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  }
+
+  function isSichuanPage() {
+    return getPageKey() === 'sbdy-sichuan';
+  }
+
   function getCertType() {
-    var v = val('sbdyCertType');
-    return v === 'linian' ? 'linian' : 'personal';
+    if (isSichuanPage()) return 'sichuan';
+    var el = document.getElementById('sbdyCertType');
+    var v = el ? String(el.value || '').trim() : val('sbdyCertType');
+    if (v === 'linian') return 'linian';
+    return 'personal';
   }
 
   function isLinianMode() {
     return getCertType() === 'linian';
   }
 
+  function isSichuanMode() {
+    return getCertType() === 'sichuan';
+  }
+
   function syncCertTypeUi() {
     var linian = isLinianMode();
+    var sichuan = isSichuanMode();
     var injury = document.getElementById('sbdyStatusInjuryWrap');
     var unemp = document.getElementById('sbdyStatusUnempWrap');
     var cum = document.getElementById('sbdyCumulativeWrap');
+    var extra = document.getElementById('sbdyStatusInjuryExtraWrap');
+    var mp = document.getElementById('sbdyMonthsPensionWrap');
+    var mu = document.getElementById('sbdyMonthsUnempWrap');
+    var mi = document.getElementById('sbdyMonthsInjuryWrap');
     var lab = document.getElementById('sbdyStatusPensionLabel');
     var hint = document.getElementById('sbdySegHint');
     if (injury) injury.style.display = linian ? 'none' : '';
     if (unemp) unemp.style.display = linian ? 'none' : '';
     if (cum) cum.style.display = linian ? '' : 'none';
-    if (lab) lab.textContent = linian ? '参保状态' : '养老保险状态';
+    if (extra) extra.style.display = sichuan ? '' : 'none';
+    if (mp) mp.style.display = sichuan ? '' : 'none';
+    if (mu) mu.style.display = sichuan ? '' : 'none';
+    if (mi) mi.style.display = sichuan ? '' : 'none';
+    if (lab) {
+      lab.textContent = linian ? '参保状态' : sichuan ? '当前缴费状态(养老)' : '养老保险状态';
+    }
     if (hint) {
-      hint.innerHTML = linian
-        ? '历年证明按<strong>参保经历 + 缴费区间</strong>汇总为「年度缴费清单」（跨年自动拆行）。养老/失业个人缴费字段仅个人专用证明使用。'
-        : '可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。';
+      if (linian) {
+        hint.innerHTML =
+          '历年证明按<strong>参保经历 + 缴费区间</strong>汇总为「年度缴费清单」（跨年自动拆行）。养老/失业个人缴费字段仅个人专用证明使用。';
+      } else if (sichuan) {
+        hint.innerHTML =
+          '四川证明为<strong>横向 A4</strong>：按参保经历生成缴费明细（含单位/个人缴纳）。单位编号填「统一社会信用代码」栏；可填工伤额外状态行模拟双行工伤。';
+      } else {
+        hint.innerHTML =
+          '可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。';
+      }
     }
     document.querySelectorAll('.sbdy-pay-fields').forEach(function (el) {
       el.style.display = linian ? 'none' : '';
     });
+    var typeWrap = document.getElementById('sbdyCertTypeWrap');
+    if (typeWrap) typeWrap.style.display = sichuan ? 'none' : '';
+  }
+
+  function mountFormForPage() {
+    var host = document.getElementById('sbdyDemoFormHost');
+    var hz = document.getElementById('sbdyHzFormSlot');
+    var sc = document.getElementById('sbdyScFormSlot');
+    var target = isSichuanPage() ? sc : hz;
+    if (!host || !target) return;
+    if (host.parentNode !== target) {
+      target.appendChild(host);
+    }
+    host.hidden = false;
+    var typeSel = document.getElementById('sbdyCertType');
+    if (typeSel) {
+      if (isSichuanPage()) {
+        if (!typeSel.querySelector('option[value="sichuan"]')) {
+          var opt = document.createElement('option');
+          opt.value = 'sichuan';
+          opt.textContent = '四川 · 个人参保证明';
+          typeSel.appendChild(opt);
+        }
+        typeSel.value = 'sichuan';
+      } else {
+        var scOpt = typeSel.querySelector('option[value="sichuan"]');
+        if (scOpt) scOpt.parentNode.removeChild(scOpt);
+        if (typeSel.value === 'sichuan' || !typeSel.value) typeSel.value = 'personal';
+      }
+    }
   }
 
   function formatBjTime(raw) {
@@ -262,7 +325,7 @@
       '"></div>' +
       '<div><label>参保地</label>' +
       '<input type="text" class="sbdy-seg-area" maxlength="32" value="' +
-      esc(data.area || (isLinianMode() ? '杭州市本级' : '余杭区')) +
+      esc(data.area || (isSichuanMode() ? '成都市高新区' : isLinianMode() ? '杭州市本级' : '余杭区')) +
       '"></div>' +
       '</div>' +
       '<div class="sbdy-periods"></div>' +
@@ -332,7 +395,7 @@
       list.push({
         company_name: fieldOf(seg, 'sbdy-seg-company'),
         credit_code: fieldOf(seg, 'sbdy-seg-credit'),
-        area: fieldOf(seg, 'sbdy-seg-area') || (isLinianMode() ? '杭州市本级' : '余杭区'),
+        area: fieldOf(seg, 'sbdy-seg-area') || (isSichuanMode() ? '成都市高新区' : isLinianMode() ? '杭州市本级' : '余杭区'),
         periods: periods
       });
     });
@@ -412,16 +475,25 @@
       name: val('sbdyName'),
       id_number: val('sbdyIdNumber'),
       gender: val('sbdyGender') || '女',
-      status_pension: val('sbdyStatusPension') || (isLinianMode() ? '暂停缴费' : '正常参保'),
-      status_medical: val('sbdyStatusInjury') || '正常参保',
-      status_injury: val('sbdyStatusInjury') || '正常参保',
-      status_unemployment: val('sbdyStatusUnemp') || '正常参保',
+      status_pension:
+        val('sbdyStatusPension') ||
+        (isLinianMode() ? '暂停缴费' : isSichuanMode() ? '参保缴费' : '正常参保'),
+      status_medical: val('sbdyStatusInjury') || (isSichuanMode() ? '参保缴费' : '正常参保'),
+      status_injury: val('sbdyStatusInjury') || (isSichuanMode() ? '参保缴费' : '正常参保'),
+      status_unemployment: val('sbdyStatusUnemp') || (isSichuanMode() ? '参保缴费' : '正常参保'),
       print_date: val('sbdyPrintDate'),
       segments: segments
     };
     if (isLinianMode()) {
       var cum = val('sbdyCumulative');
       if (cum) body.cumulative_text = cum;
+    }
+    if (isSichuanMode()) {
+      var extra = val('sbdyStatusInjuryExtra');
+      if (extra) body.status_injury_extra = extra;
+      if (val('sbdyMonthsPension')) body.months_pension = Number(val('sbdyMonthsPension'));
+      if (val('sbdyMonthsUnemp')) body.months_unemployment = Number(val('sbdyMonthsUnemp'));
+      if (val('sbdyMonthsInjury')) body.months_injury = Number(val('sbdyMonthsInjury'));
     }
     if (!body.name || !body.id_number) {
       var tip = tplText
@@ -554,7 +626,7 @@
       '性别:女',
       '时间:' + timeStr,
       '参保数:12个月',
-      '区域:滨江区',
+      '区域:' + (isSichuanPage() ? '成都市高新区' : '滨江区'),
       '公司名称：',
       '税号：'
     ].join('\n');
@@ -693,7 +765,7 @@
       name: name,
       id_number: idNumber,
       gender: gender === '男' || gender === '女' ? gender : gender || '女',
-      area: area || '滨江区',
+      area: area || (isSichuanPage() ? '成都市高新区' : '滨江区'),
       company_name: company,
       credit_code: credit,
       period_start: range.start,
@@ -721,18 +793,19 @@
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
     /* 模板填充：演示默认正常参保、连续缴费，不停保 */
+    var defaultStatus = isSichuanPage() ? '参保缴费' : '正常参保';
     setField('sbdyName', parsed.name);
     setField('sbdyIdNumber', parsed.id_number);
     setField('sbdyGender', parsed.gender || '女');
-    setField('sbdyStatusPension', '正常参保');
-    setField('sbdyStatusInjury', '正常参保');
-    setField('sbdyStatusUnemp', '正常参保');
+    setField('sbdyStatusPension', defaultStatus);
+    setField('sbdyStatusInjury', defaultStatus);
+    setField('sbdyStatusUnemp', defaultStatus);
     setField('sbdyPrintDate', printDate);
     resetExperiences([
       {
         company_name: parsed.company_name,
         credit_code: parsed.credit_code,
-        area: parsed.area || '滨江区',
+        area: parsed.area || (isSichuanPage() ? '成都市高新区' : '滨江区'),
         periods: [
           {
             period_start: parsed.period_start,
@@ -847,6 +920,74 @@
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
 
+    if (isSichuanMode()) {
+      var scSample = {
+        name: '马海燕',
+        id_number: '510723199208191285',
+        gender: '女',
+        status: '参保缴费',
+        status_injury_extra: '暂停缴费（中断）',
+        months_pension: 139,
+        months_unemployment: 138,
+        months_injury: 138,
+        print_date: printDate,
+        segments: [
+          {
+            company_name: '四川创智联恒科技有限公司',
+            credit_code: '10010759311',
+            area: '成都市高新区',
+            periods: [
+              {
+                period_start: '2024-10',
+                period_end: '2024-12',
+                base_amount: 13596,
+                pension_pay: 1087.68,
+                unemployment_pay: 54.38
+              },
+              {
+                period_start: '2025-01',
+                period_end: '2025-04',
+                base_amount: 10026,
+                pension_pay: 802.08,
+                unemployment_pay: 40.1
+              }
+            ]
+          },
+          {
+            company_name: '成都天微智能科技有限公司',
+            credit_code: '250215712150',
+            area: '成都市双流区',
+            periods: [
+              {
+                period_start: '2025-05',
+                period_end: '2026-09',
+                base_amount: 5000,
+                pension_pay: 400,
+                unemployment_pay: 20
+              }
+            ]
+          }
+        ]
+      };
+      setField('sbdyName', scSample.name);
+      setField('sbdyIdNumber', scSample.id_number);
+      setField('sbdyGender', scSample.gender);
+      setField('sbdyStatusPension', scSample.status);
+      setField('sbdyStatusInjury', scSample.status);
+      setField('sbdyStatusUnemp', scSample.status);
+      setField('sbdyStatusInjuryExtra', scSample.status_injury_extra);
+      setField('sbdyMonthsPension', scSample.months_pension);
+      setField('sbdyMonthsUnemp', scSample.months_unemployment);
+      setField('sbdyMonthsInjury', scSample.months_injury);
+      setField('sbdyPrintDate', scSample.print_date);
+      resetExperiences(scSample.segments);
+      syncCertTypeUi();
+      var scBox = document.getElementById('sbdyInfoTplText');
+      if (scBox) scBox.value = buildInfoTemplateFromForm();
+      setStatus('已填充四川示例：' + scSample.name + '（对齐官方样张，可再点生成）', false);
+      return;
+    }
+
     if (isLinianMode()) {
       var linianSample = {
         name: '李宛奕',
@@ -905,6 +1046,8 @@
       setField('sbdyPrintDate', linianSample.print_date);
       resetExperiences(linianSample.segments);
       syncCertTypeUi();
+      var lnBox = document.getElementById('sbdyInfoTplText');
+      if (lnBox) lnBox.value = buildInfoTemplateFromForm();
       setStatus('已填充历年示例：' + linianSample.name + '（对齐官方样张，可再点生成）', false);
       return;
     }
@@ -1099,16 +1242,24 @@
       baseCount += (s.periods && s.periods.length) || 0;
     });
     tipParts.push(baseCount + ' 个基数区间');
+    var hzBox = document.getElementById('sbdyInfoTplText');
+    if (hzBox) hzBox.value = buildInfoTemplateFromForm();
     setStatus('已填充示例：' + sample.name + '（' + tipParts.join('，') + '，可再点生成）', false);
   }
 
   function bind() {
+    mountFormForPage();
     ensureOneExperience();
     syncCertTypeUi();
     var typeSel = document.getElementById('sbdyCertType');
     if (typeSel) {
       typeSel.onchange = function () {
+        if (isSichuanPage()) {
+          typeSel.value = 'sichuan';
+        }
         syncCertTypeUi();
+        /* 杭州页内个人专用 / 历年切换时立刻换成对应示例 */
+        fillSample();
       };
     }
     var addBtn = document.getElementById('btnSbdyAddSegment');
@@ -1162,8 +1313,15 @@
     }
   }
 
+  var lastRegionPage = '';
+
   function loadPage() {
     bind();
+    var region = isSichuanPage() ? 'sichuan' : 'hangzhou';
+    if (lastRegionPage !== region) {
+      lastRegionPage = region;
+      fillSample();
+    }
     loadList();
   }
 

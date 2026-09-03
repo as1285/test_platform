@@ -167,10 +167,18 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'sbdy-demo',
     menu_key: 'sbdy-demo',
-    label: '社保演示生成',
+    label: '杭州社保演示',
     group: 'cert-tools',
     module: 'sbdy-demo',
     order: 10
+  },
+  {
+    page: 'sbdy-sichuan',
+    menu_key: 'sbdy-sichuan',
+    label: '四川社保演示',
+    group: 'cert-tools',
+    module: 'sbdy-demo',
+    order: 11
   },
 
   /* —— 数据洞察 —— */
