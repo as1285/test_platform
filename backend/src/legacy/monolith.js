@@ -549,7 +549,8 @@ const ADMIN_OPS_EXTRA_SEE_SINCE = {};
 
 /** 非超管但可看/操作全部注册用户与用户数据的运营账号 */
 const ADMIN_FULL_USER_SCOPE_USERNAMES = {
-  '19106014552': true
+  '19106014552': true,
+  '13691947741': true
 };
 
 function adminUsernameKey(admin) {
@@ -3572,15 +3573,15 @@ async function createTables() {
   /* 指定运营账号：注册用户列表 + 用户数据全量可见 */
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'users' FROM admin_accounts WHERE username = '19106014552'`
+     SELECT id, 'users' FROM admin_accounts WHERE username IN ('19106014552', '13691947741')`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'user-data' FROM admin_accounts WHERE username = '19106014552'`
+     SELECT id, 'user-data' FROM admin_accounts WHERE username IN ('19106014552', '13691947741')`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username = '19106014552'`
+     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username IN ('19106014552', '13691947741')`
   );
 
   /* 侧栏子页独立授权：原挂在「注册用户 / 管理登录」下的入口补权，避免已有账号丢菜单 */

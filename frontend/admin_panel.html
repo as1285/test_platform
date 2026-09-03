@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260903-hub-merge">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260903-chart-opt">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
 </head>
 <body>
@@ -932,7 +932,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「同行 · 高频改名」。30 天未登录按最近成功登录判断。<strong>注册次日回访</strong>：未激活且注册次日有日活；「仅次日回访」表示次日之后再无日活。<strong>填写收入</strong>：未激活，且自己填写的个税月收入（本期收入或收入取较大值）大于 1.5 万；公司名含「示例」的记录不计入。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code>、<code>13691947741</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「同行 · 高频改名」。30 天未登录按最近成功登录判断。<strong>注册次日回访</strong>：未激活且注册次日有日活；「仅次日回访」表示次日之后再无日活。<strong>填写收入</strong>：未激活，且自己填写的个税月收入（本期收入或收入取较大值）大于 1.5 万；公司名含「示例」的记录不计入。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -1666,6 +1666,19 @@
                             <h3 class="stat" style="margin:0 0 8px;">平台占比</h3>
                             <p id="registerPlatformSummary" class="hint mt-0 mb-8">—</p>
                             <div id="registerPlatformCards" class="user-data-stats mb-8"></div>
+                            <div id="registerPlatformChartsWrap" class="device-stats-charts-wrap register-platform-charts-wrap mt-12" style="display:none;">
+                                <p id="registerPlatformChartsEmpty" class="hint" style="display:none;">暂无足够数据</p>
+                                <div class="device-stats-charts register-platform-charts-grid">
+                                    <div class="device-stats-chart-card chart-card-wide">
+                                        <h4>每日注册 · 平台构成</h4>
+                                        <div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="registerPlatformDailyChart" aria-label="每日注册平台堆叠柱状图"></canvas></div>
+                                    </div>
+                                    <div class="device-stats-chart-card">
+                                        <h4>区间平台占比</h4>
+                                        <div class="chart-canvas-wrap"><canvas id="registerPlatformMixChart" aria-label="区间安卓苹果占比"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
                             <details class="page-hint-details">
                                 <summary>每日明细</summary>
                                 <div class="scroll-x mt-8">
@@ -3724,9 +3737,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260903-poster"></script>
+    <script src="/js/admin/loader.js?v=20260903-chart-opt"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260903-hub-merge"></script>
+    <script src="/js/admin_panel.js?v=20260903-chart-opt"></script>
 </body>
 </html>

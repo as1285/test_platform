@@ -187,7 +187,8 @@ function nonGuestSql(alias) {
 function isFullScope(admin) {
   if (!admin) return false;
   if (admin.is_super) return true;
-  return String(admin.username || '').trim() === '19106014552';
+  var u = String(admin.username || '').trim();
+  return u === '19106014552' || u === '13691947741';
 }
 
 function appendRegisteredScope(where, params, admin, userCol) {
