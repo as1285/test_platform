@@ -9124,8 +9124,8 @@
                         alert('请填写有效成交价');
                         return;
                     }
-                    if (!confirm('确认按 ¥' + amount + ' 通过该出价？将立即生效为该账号专属价。')) return;
-                } else if (!confirm('确认驳回该出价？会站内信告知用户。')) {
+                    if (!confirm('确认按 ¥' + amount + ' 通过该出价？将立即生效为该账号专属价；若用户已留邮箱会同步发邮件。')) return;
+                } else if (!confirm('确认驳回该出价？会站内信告知用户（有邮箱则同步邮件）。')) {
                     return;
                 }
                 btn.disabled = true;

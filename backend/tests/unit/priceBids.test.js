@@ -60,6 +60,7 @@ function makeApi(state, offerCalls, notifications) {
     offers: makeStubOffers(offerCalls),
     notifyUser: async function (username, title, body, link) {
       notifications.push({ username: username, title: title, body: body, link: link });
+      return { email_sent: false, reason: 'no_email' };
     }
   });
 }
@@ -150,6 +151,8 @@ describe('reviewBid', () => {
     const out = await api.reviewBid({ id: 9, action: 'accept', amount: '150', admin: 'boss' });
     expect(out.status).toBe('accepted');
     expect(out.accepted_amount).toBe('150.00');
+    expect(out.email_sent).toBe(false);
+    expect(out.email_reason).toBe('no_email');
     expect(offerCalls[0].input.amount).toBe('150.00');
     expect(offerCalls[0].createdBy).toBe('boss');
     expect(notes.length).toBe(1);
@@ -160,6 +163,7 @@ describe('reviewBid', () => {
     const api = makeApi({ queries: [], bidRow: Object.assign({}, pendingRow) }, [], notes);
     const out = await api.reviewBid({ id: 9, action: 'reject', admin: 'boss' });
     expect(out.status).toBe('rejected');
+    expect(out.email_sent).toBe(false);
     expect(notes.length).toBe(1);
   });
 

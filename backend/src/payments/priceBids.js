@@ -197,7 +197,7 @@ function createPriceBids(deps) {
     );
     if (notifyUser) {
       try {
-        await notifyUser(
+        var notifyOut = await notifyUser(
           bid.username,
           '你的心理价已通过',
           '你提交的「' +
@@ -207,10 +207,13 @@ function createPriceBids(deps) {
             ' 已通过，现在购买页已按该价格生效，随时可开通。',
           'purchase.html?from=price_bid'
         );
+        return notifyOut && typeof notifyOut === 'object' ? notifyOut : { email_sent: false };
       } catch (eMsg) {
         /* 消息失败不阻塞放价 */
+        return { email_sent: false, reason: 'notify_error' };
       }
     }
+    return { email_sent: false, reason: 'no_notify' };
   }
 
   /**
@@ -359,16 +362,24 @@ function createPriceBids(deps) {
         e3.statusCode = 400;
         throw e3;
       }
-      await acceptToOffer(bid, amount, admin, false);
-      return { id: id, status: 'accepted', accepted_amount: amount };
+      var acceptNotify = await acceptToOffer(bid, amount, admin, false);
+      return {
+        id: id,
+        status: 'accepted',
+        accepted_amount: amount,
+        email_sent: !!(acceptNotify && acceptNotify.email_sent),
+        email_reason: (acceptNotify && acceptNotify.reason) || ''
+      };
     }
     await pool.execute(
       "UPDATE user_price_bids SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?",
       [admin, id]
     );
+    var rejectEmailSent = false;
+    var rejectEmailReason = '';
     if (notifyUser) {
       try {
-        await notifyUser(
+        var rejectNotify = await notifyUser(
           bid.username,
           '关于你提交的心理价',
           '你提交的「' +
@@ -378,9 +389,16 @@ function createPriceBids(deps) {
             ' 与当前价差距较大，这次没有通过。现价开通即可使用全部功能。',
           'purchase.html?from=price_bid'
         );
+        rejectEmailSent = !!(rejectNotify && rejectNotify.email_sent);
+        rejectEmailReason = (rejectNotify && rejectNotify.reason) || '';
       } catch (eMsg) {}
     }
-    return { id: id, status: 'rejected' };
+    return {
+      id: id,
+      status: 'rejected',
+      email_sent: rejectEmailSent,
+      email_reason: rejectEmailReason
+    };
   }
 
   return {

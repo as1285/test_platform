@@ -643,7 +643,7 @@ function getPriceBids() {
       offers: getUserPriceOffers(),
       notifyUser: async function (username, title, body, linkUrl) {
         var uid = String(username || '').trim();
-        if (!uid) return;
+        if (!uid) return { email_sent: false, reason: 'no_user' };
         var content = String(body || '') + '\n@@link:' + sanitizeInAppMessageLink(linkUrl);
         var mid = 'msg_bid_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         await pool.execute(
@@ -652,9 +652,14 @@ function getPriceBids() {
         );
         invalidateMessageListCache(uid);
         try {
-          await getUserEmailBulk().notifyUserEmail(uid, title, body, linkUrl);
+          var mailOut = await getUserEmailBulk().notifyUserEmail(uid, title, body, linkUrl);
+          return {
+            email_sent: !!(mailOut && mailOut.sent),
+            reason: (mailOut && mailOut.reason) || (mailOut && mailOut.sent ? '' : 'send_failed')
+          };
         } catch (eMail) {
-          /* 邮件失败不阻塞站内信 */
+          console.error('[price-bid] notify email failed', uid, eMail && eMail.message);
+          return { email_sent: false, reason: 'send_error' };
         }
       }
     });
@@ -19503,12 +19508,22 @@ async function handleAdminPriceBidsReview(req, res) {
       amount: body.amount,
       admin: adminName
     });
+    var mailHint = '';
+    if (out && out.email_sent) {
+      mailHint = '，已同步邮件通知';
+    } else if (out && out.email_reason === 'no_email') {
+      mailHint = '，该用户未留有效邮箱（仅站内信）';
+    } else if (out && out.email_reason === 'no_smtp') {
+      mailHint = '，SMTP 未配置（仅站内信）';
+    } else if (out && (out.email_reason === 'send_error' || out.email_reason === 'send_failed')) {
+      mailHint = '，邮件发送失败（已站内信）';
+    }
     return res.json({
       code: 200,
       msg:
         out.status === 'accepted'
-          ? '已通过，¥' + out.accepted_amount + ' 专属价已生效（站内信；有邮箱则同步邮件）'
-          : '已驳回并站内信告知',
+          ? '已通过，¥' + out.accepted_amount + ' 专属价已生效（站内信' + mailHint + '）'
+          : '已驳回并站内信告知' + mailHint,
       data: out
     });
   } catch (e) {
