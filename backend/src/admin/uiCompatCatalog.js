@@ -180,6 +180,22 @@ var MODELS = [
     ]
   },
   {
+    id: 'iphone-air',
+    platform: 'ios',
+    family: 'apple',
+    label: 'iPhone Air',
+    match: ['iPhone\\s*Air', 'iPhone18,4'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '收入纳税明细左右贴边',
+        summary:
+          '逻辑宽 420 会命中 ≥414 的 20px 卡片留白，左右空条过大；class app-ios-iphoneair 压成贴边 16px（同 15 Plus）。',
+        since: '2026-09-03'
+      }
+    ]
+  },
+  {
     id: 'iphone-17',
     platform: 'ios',
     family: 'apple',
@@ -386,6 +402,12 @@ var MODELS = [
     issues: [
       { page: 'mine', title: '0-bleed 完整头图（禁止负裁切）', summary: 'ArkWeb 负 margin 把头像裁进状态栏；冻在 8-12/e1 完整头图；主线 mine.html，旧 mine_v2 301 到主线。', since: '2026-08-24' },
       { page: 'mine', title: '实验层不可污染其它 Tab', summary: 'Jul23 卡片/40px 守卫曾加到没有 #mineE1Canvas 的首页/待办/消息。', since: '2026-08-21' },
+      {
+        page: 'mine',
+        title: '系统栏黑条与 iOS 蓝顶区分',
+        summary: '安卓/鸿蒙蓝顶页 StatusBar 用 #000 overlays=false，勿铺 #1677ff 沉浸；苹果仍 black-translucent 头图顶入。',
+        since: '2026-09-03'
+      },
       { page: 'shuiming', title: '全页避开状态栏', summary: '登录不再叠系统时间；沿用约 40px 顶距。', since: '2026-08-13' },
       {
         page: 'shuiming',

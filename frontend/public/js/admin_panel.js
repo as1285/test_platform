@@ -9310,6 +9310,12 @@
             if (biweekEl) biweekEl.value = '';
             var monthEl = document.getElementById('agentChPriceMonth');
             if (monthEl) monthEl.value = '';
+            ['agentChDaysWeek', 'agentChHoursWeek', 'agentChLabelWeek',
+             'agentChDaysBiweek', 'agentChHoursBiweek', 'agentChLabelBiweek',
+             'agentChDaysMonth', 'agentChHoursMonth', 'agentChLabelMonth'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
             var androidEl = document.getElementById('agentChAndroidUrl');
             if (androidEl) androidEl.value = '';
             var iosEl = document.getElementById('agentChIosUrl');
@@ -9337,6 +9343,19 @@
             if (biweekEl) biweekEl.value = c.price_biweek || '';
             var monthEl = document.getElementById('agentChPriceMonth');
             if (monthEl) monthEl.value = c.price_month || '';
+            var setVal = function (id, v) {
+                var el = document.getElementById(id);
+                if (el) el.value = v != null && String(v) !== '' ? String(v) : '';
+            };
+            setVal('agentChDaysWeek', c.days_week);
+            setVal('agentChHoursWeek', c.hours_week);
+            setVal('agentChLabelWeek', c.label_week);
+            setVal('agentChDaysBiweek', c.days_biweek);
+            setVal('agentChHoursBiweek', c.hours_biweek);
+            setVal('agentChLabelBiweek', c.label_biweek);
+            setVal('agentChDaysMonth', c.days_month);
+            setVal('agentChHoursMonth', c.hours_month);
+            setVal('agentChLabelMonth', c.label_month);
             var androidEl = document.getElementById('agentChAndroidUrl');
             if (androidEl) androidEl.value = String(c.android_apk_url || '');
             var iosEl = document.getElementById('agentChIosUrl');
@@ -9349,11 +9368,31 @@
 
         function formatAgentChannelPrices(c) {
             if (!c || !c.has_channel_prices) return '—';
-            var parts = [];
-            if (c.price_week) parts.push('周' + c.price_week);
-            if (c.price_biweek) parts.push('双周' + c.price_biweek);
-            if (c.price_month) parts.push('月' + c.price_month);
-            return parts.length ? parts.join('/') : '—';
+            function one(label, price, days, hours) {
+                if (!price && days === '' && hours === '' && !label) return '';
+                var dur = '';
+                var d = days !== '' && days != null ? Number(days) : null;
+                var h = hours !== '' && hours != null ? Number(hours) : null;
+                if (d != null && !isNaN(d) || h != null && !isNaN(h)) {
+                    d = d != null && !isNaN(d) ? d : 0;
+                    h = h != null && !isNaN(h) ? h : 0;
+                    if (d > 0 && h > 0) dur = d + '天' + h + '时';
+                    else if (d > 0) dur = d + '天';
+                    else if (h > 0) dur = h + '时';
+                }
+                var name = label || '';
+                var bits = [];
+                if (name) bits.push(name);
+                if (price) bits.push('¥' + price);
+                if (dur) bits.push(dur);
+                return bits.join('');
+            }
+            var parts = [
+                one(c.label_week, c.price_week, c.days_week, c.hours_week),
+                one(c.label_biweek, c.price_biweek, c.days_biweek, c.hours_biweek),
+                one(c.label_month, c.price_month, c.days_month, c.hours_month)
+            ].filter(Boolean);
+            return parts.length ? parts.join(' / ') : '—';
         }
 
         function renderAgentChannels(list) {
@@ -9471,14 +9510,59 @@
                                 document.getElementById('agentChPriceWeek').value) ||
                                 ''
                         ).trim(),
+                        days_week: String(
+                            (document.getElementById('agentChDaysWeek') &&
+                                document.getElementById('agentChDaysWeek').value) ||
+                                ''
+                        ).trim(),
+                        hours_week: String(
+                            (document.getElementById('agentChHoursWeek') &&
+                                document.getElementById('agentChHoursWeek').value) ||
+                                ''
+                        ).trim(),
+                        label_week: String(
+                            (document.getElementById('agentChLabelWeek') &&
+                                document.getElementById('agentChLabelWeek').value) ||
+                                ''
+                        ).trim(),
                         price_biweek: String(
                             (document.getElementById('agentChPriceBiweek') &&
                                 document.getElementById('agentChPriceBiweek').value) ||
                                 ''
                         ).trim(),
+                        days_biweek: String(
+                            (document.getElementById('agentChDaysBiweek') &&
+                                document.getElementById('agentChDaysBiweek').value) ||
+                                ''
+                        ).trim(),
+                        hours_biweek: String(
+                            (document.getElementById('agentChHoursBiweek') &&
+                                document.getElementById('agentChHoursBiweek').value) ||
+                                ''
+                        ).trim(),
+                        label_biweek: String(
+                            (document.getElementById('agentChLabelBiweek') &&
+                                document.getElementById('agentChLabelBiweek').value) ||
+                                ''
+                        ).trim(),
                         price_month: String(
                             (document.getElementById('agentChPriceMonth') &&
                                 document.getElementById('agentChPriceMonth').value) ||
+                                ''
+                        ).trim(),
+                        days_month: String(
+                            (document.getElementById('agentChDaysMonth') &&
+                                document.getElementById('agentChDaysMonth').value) ||
+                                ''
+                        ).trim(),
+                        hours_month: String(
+                            (document.getElementById('agentChHoursMonth') &&
+                                document.getElementById('agentChHoursMonth').value) ||
+                                ''
+                        ).trim(),
+                        label_month: String(
+                            (document.getElementById('agentChLabelMonth') &&
+                                document.getElementById('agentChLabelMonth').value) ||
                                 ''
                         ).trim(),
                         android_apk_url: String(document.getElementById('agentChAndroidUrl').value || '').trim(),

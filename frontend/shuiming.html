@@ -238,7 +238,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260902-ip16pm-mq"></script>
-    <script src="/js/auth.js?v=20260903-ip15edge" defer></script>
+    <script src="/js/auth.js?v=20260903-iphoneair-pad" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -325,6 +325,15 @@
                 padding-left: 8px;
                 padding-right: 8px;
             }
+        }
+        /* iPhone Air：压过 ≥414 顶栏左右 20px，与结果页贴边一致 */
+        html.app-ios-iphoneair body.page-shuiming > .header {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming > .content {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
 
         /* Cordova iOS：壳内需 statusbar 占位；Android Cordova 黑条在 WebView 外，勿叠 */

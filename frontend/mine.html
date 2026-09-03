@@ -136,7 +136,8 @@
                         mate60Fp.setAttribute('data-mate60-aug15-firstpaint', '1');
                         mate60Fp.textContent =
                             'html.app-android-huawei-mate60,html.app-android-huawei-mate60 body.page-mine{background:#f5f6fa!important;}' +
-                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:52px!important;--mine-rpx:calc(100vw / 750)!important;padding-top:0!important;background-image:linear-gradient(#1677ff 0px,#1677ff 52px,#f5f6fa 52px)!important;}' +
+                            /* 安卓/鸿蒙：顶 52px 黑条（独立系统栏），勿铺 iOS 式蓝顶 */
+                            'html.app-android-huawei-mate60 body.page-mine{--mine-top-bleed:0px!important;--app-shell-statusbar-top:52px!important;--mine-rpx:calc(100vw / 750)!important;padding-top:0!important;background-image:linear-gradient(#000000 0px,#000000 52px,#f5f6fa 52px)!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-stack{transform:translateY(52px)!important;-webkit-transform:translateY(52px)!important;margin-top:0!important;}' +
                             'html.app-android-huawei-mate60 #mate60MineStatusSpacer{display:none!important;height:0!important;}' +
                             'html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;container-type:normal!important;width:100%!important;--mine-rpx:calc(100vw / 750)!important;}' +
@@ -229,8 +230,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260902-p40pro"></script>
-    <script src="/js/auth.js?v=20260903-email-reg1" defer></script>
+    <script src="/js/auth-boot.js?v=20260903-android-blackbar"></script>
+    <script src="/js/auth.js?v=20260903-android-blackbar" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -240,7 +241,7 @@
     <!-- TAX_APP_SHELL_END -->
     <script src="/js/browser-install-prompt.js?v=20260827-cend-sync" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#1677ff">
+    <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

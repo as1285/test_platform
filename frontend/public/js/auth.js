@@ -1171,6 +1171,7 @@
   /**
    * 大屏宽度一次性方案：不依赖机型 class。
    * 视口/设备逻辑宽 ≥414（含 16 Pro Max 标准 440 与放大 430）即加左右留白。
+   * iPhone Air（420）也会命中，需用 app-ios-iphoneair 贴边规则压过。
    */
   function injectIosLargeViewportWidthCss() {
     if (document.querySelector('style[data-ios-large-viewport-width]')) {
@@ -1198,11 +1199,21 @@
       'html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
       'html.app-ios-iphone15promax body.page-shuiming-result .back-btn{left:12px !important;}' +
       'html.app-ios-iphone15promax body.page-shuiming-result .header-right{right:12px !important;}' +
-      'html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}';
+      'html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+      /* iPhone Air（420×912）：同上贴边，压过 ≥414 的 20px 卡片留白 */
+      'html.app-ios-iphoneair body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .back-btn{left:12px !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .header-right{right:12px !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .sm-activate-card,html.app-ios-iphoneair body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming > .content{padding-left:0 !important;padding-right:0 !important;}';
     (document.head || document.documentElement).appendChild(st);
   }
 
-  /** iPhone 17 / 17 Pro / 17 Air 等 6.3 寸档逻辑屏约 402×874（容差）。 */
+  /** iPhone 17 / 17 Pro 等 6.3 寸档逻辑屏约 402×874（容差）。iPhone Air 为 420×912，勿混入。 */
   function isIPhone402x874Viewport() {
     try {
       var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
@@ -1250,21 +1261,53 @@
     }
   }
 
+  /** iPhone Air（6.5 寸）：逻辑屏约 420×912（容差）。 */
+  function isIPhone420x912Viewport() {
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 416 && shortSide <= 424 && longSide >= 904 && longSide <= 920;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /**
-   * iPhone 17 系列 6.3 寸（17 / 17 Pro / 17 Air 等，非 Max）：收入纳税明细顶栏「返回」「批量申诉」字号单独放大。
-   * 仅 UA 含 17 系列型号时命中；勿用 iOS 26 + 402×874 兜底（会误伤 16 Pro）。
+   * iPhone Air（iPhone18,4，420×912）：宽 ≥414 会误吃大屏 20px 卡片留白，需单独贴边。
+   * UA 含 Air / iPhone18,4 优先；Safari 无型号时用 iOS 26+ 且 420×912 兜底。
+   */
+  function isIPhoneAirClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = clientUaBlob();
+    if (/iPhone\s*Air\b|iPhone18,4\b/i.test(ua)) {
+      return true;
+    }
+    return getIOSMajorVersion() >= 26 && isIPhone420x912Viewport();
+  }
+
+  /**
+   * iPhone 17 系列 6.3 寸（17 / 17 Pro，非 Max / 非 Air）：收入纳税明细顶栏「返回」「批量申诉」字号单独放大。
+   * 仅 UA 含 17 系列型号时命中；勿用 iOS 26 + 402×874 兜底（会误伤 16 Pro）；Air 走 isIPhoneAirClient。
    */
   function isIPhone17ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
     }
     var ua = clientUaBlob();
+    if (/iPhone\s*Air\b|iPhone18,4\b/i.test(ua)) {
+      return false;
+    }
     if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2|iPhone19,2/i.test(ua)) {
       return false;
     }
-    return /iPhone\s*17(?:\s*Pro)?\b|iPhone\s*17\s*Air\b|iPhone18,1\b|iPhone18,3\b|iPhone18,4\b|iPhone19,1\b/i.test(
-      ua
-    );
+    return /iPhone\s*17(?:\s*Pro)?\b|iPhone18,1\b|iPhone18,3\b|iPhone19,1\b/i.test(ua);
   }
 
   /**
@@ -2652,19 +2695,16 @@
 
   /** Cordova / iOS：沉浸状态栏 + 浅色图标，避免白条（对齐原版 immersed + light）
    * topColor：仅状态栏/theme-color；shellBg：壳层与 iframe 外底色（默认浅灰，勿用顶栏蓝铺满，否则 iOS 底栏下露蓝）
-   * Android 外置状态栏（OPPO/小米/vivo 等）：overlays=false，用顶栏同色实底，避免透出壳层浅灰造成「两截蓝」。 */
+   * 安卓 / 鸿蒙：系统栏为独立黑条，与 iOS「蓝顶 translucent + 头图顶入」区分，勿把顶栏蓝铺进 StatusBar。 */
   function applyImmersiveBlueStatusBar(topColor, shellBg) {
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
-      /* 一加 Ace 2V / 小米 14：外置黑条，系统栏保持黑色，勿把蓝顶栏色铺进状态栏（避免时间栏与标题重叠） */
-      if (
-        isLikelyAndroidViewportClient() &&
-        (isOnePlusAce2VClient() ||
-          isXiaomi14LikeClient() ||
-          document.documentElement.classList.contains('app-android-xiaomi-14') ||
-          document.documentElement.classList.contains('app-cordova-xiaomi-23127'))
-      ) {
+      /* 安卓 / 鸿蒙（含 Mate60）：黑条 + overlays=false；壳层勿再用顶栏蓝，避免像苹果蓝顶或黑蓝两截 */
+      if (isLikelyAndroidViewportClient()) {
+        if (pageBg === topColor || pageBg === '#1677ff' || pageBg === '#2b81f2' || pageBg === '#1e8fff') {
+          pageBg = '#f5f6fa';
+        }
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
         setStatusBarStyleMeta('black');
@@ -2680,13 +2720,9 @@
       upsertMeta('theme-color', topColor);
       upsertMeta('msapplication-navbutton-color', topColor);
       setStatusBarStyleMeta('black-translucent');
-      var androidOuterSolid =
-        isLikelyAndroidViewportClient() &&
-        isAndroidOuterStatusBarClient() &&
-        !isHuaweiPura70LikeClient();
       requestShellStatusBar({
         style: 'light',
-        overlays: !androidOuterSolid,
+        overlays: true,
         color: topColor,
         paint_shell: true,
         shell_bg: pageBg
@@ -2704,6 +2740,9 @@
       var mineBlue = '#1677ff';
       var mineGrad =
         'linear-gradient(90deg,#2d4cf2 0%,#094ee9 12%,#0b56ed 25%,#0972e8 38%,#0c8ef0 50%,#0e9fee 63%,#30b1f2 75%,#64c3f3 88%,#97caf5 100%)';
+      /* 安卓/鸿蒙：顶条用纯黑（独立系统栏观感）；iOS 仍用蓝顶渐变沉浸 */
+      var androidMineBar = isLikelyAndroidViewportClient();
+      var htmlTopStrip = androidMineBar ? 'linear-gradient(#000000,#000000)' : mineGrad;
       /* 覆盖 setupMobileStatusBar 注入的 html 白底 */
       try {
         var old = document.querySelector('style[data-mine-chrome]');
@@ -2711,12 +2750,13 @@
         var st = document.createElement('style');
         st.setAttribute('data-mine-chrome', '1');
         st.textContent =
-          /* 顶蓝底灰：html 底色浅灰，仅顶部 background-image 画状态栏高度蓝带，避免 iOS 底栏下露蓝 */
+          /* 顶条底灰：iOS 蓝渐变沉浸；安卓/鸿蒙黑条，与苹果区分 */
           'html{background-color:#f5f6fa !important;background-image:' +
-          mineGrad +
+          htmlTopStrip +
           ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;' +
           /* 用 100vh（大视口）。100dvh 在 16 Pro 会少一截刘海，fixed 底栏会整条抬高 */
           'min-height:100vh !important;height:auto !important;}' +
+          'html.app-android-client{background-image:linear-gradient(#000000,#000000) !important;}' +
           'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;' +
           'min-height:100vh !important;}' +
           'html.app-top-safe-shell body.page-mine::before,' +
@@ -2749,7 +2789,12 @@
           /*
            * Mate60「我的」：WebView 在系统栏下时勿再 bleed 裁头图；壳层蓝底消除白缝。
            */
-          'html.app-android-huawei-mate60.app-top-safe-shell{background-color:#1677ff !important;background-image:none !important;}' +
+          /* Mate60：顶条黑（与 iOS 蓝顶沉浸区分），页底浅灰 */
+          'html.app-android-huawei-mate60.app-top-safe-shell{' +
+          'background-color:#f5f6fa !important;' +
+          'background-image:linear-gradient(#000000,#000000) !important;' +
+          'background-size:100% var(--app-shell-statusbar-top,52px) !important;' +
+          'background-repeat:no-repeat !important;background-position:top center !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;background-color:#f5f6fa !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-stack{transform:none !important;-webkit-transform:none !important;margin-top:0 !important;padding-top:0 !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine{--mine-top-bleed:0px !important;}' +
@@ -2820,12 +2865,8 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinNova13MineE1Layout();
-      var mineShellBg =
-        isHuaweiMate60Client() ||
-        document.documentElement.classList.contains('app-android-huawei-mate60')
-          ? '#1677ff'
-          : undefined;
-      applyImmersiveBlueStatusBar(mineBlue, mineShellBg);
+      /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
+      applyImmersiveBlueStatusBar(mineBlue, '#f5f6fa');
       try {
         schedulePinTabBottomNav();
       } catch (ePin) {}
@@ -3935,6 +3976,7 @@
         !huaweiNova13Client &&
         !onePlusAce2Immersive;
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
+      var iosIPhoneAir = iosClient && isIPhoneAirClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
       var iosIPhone17ProMax = iosClient && isIPhone17ProMaxClient();
       var iosIPhone16ProMax = iosClient && isIPhone16ProMaxClient();
@@ -3979,21 +4021,30 @@
        */
       var lightRootChrome = cordovaShell || iosClient || androidClient;
       var immersiveBlueTop = getImmersiveBlueTopColor();
-      var rootChromeBg = cordovaXiaomi23127 || xiaomi14Client
-        ? '#000000'
-        : immersiveBlueTop
-          ? immersiveBlueTop
-          : androidClient
-            ? '#f5f6fa'
-            : lightRootChrome
-              ? '#ffffff'
-              : APP_STATUS_BAR_COLOR;
+      /*
+       * 安卓 / 鸿蒙蓝顶页：系统栏用黑条（theme-color=#000），与 iOS black-translucent 蓝顶区分。
+       * 小米 14 / 23127 等同黑条。
+       */
+      var rootChromeBg =
+        androidClient && (immersiveBlueTop || cordovaXiaomi23127 || xiaomi14Client)
+          ? '#000000'
+          : immersiveBlueTop
+            ? immersiveBlueTop
+            : androidClient
+              ? '#f5f6fa'
+              : lightRootChrome
+                ? '#ffffff'
+                : APP_STATUS_BAR_COLOR;
       upsertMeta('theme-color', rootChromeBg);
       upsertMeta('msapplication-navbutton-color', rootChromeBg);
       upsertMeta('apple-mobile-web-app-capable', 'yes');
       upsertMeta('mobile-web-app-capable', 'yes');
       setStatusBarStyleMeta(
-        immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'
+        androidClient && immersiveBlueTop
+          ? 'black'
+          : immersiveBlueTop || !lightRootChrome
+            ? 'black-translucent'
+            : 'default'
       );
       (function ensureAppIconLinks() {
         function upsertLink(rel, href, attrs) {
@@ -4308,6 +4359,9 @@
       }
       if (iosIPhone11Pro) {
         document.documentElement.classList.add('app-ios-iphone11pro');
+      }
+      if (iosIPhoneAir) {
+        document.documentElement.classList.add('app-ios-iphoneair');
       }
       if (iosIPhone17Pro) {
         document.documentElement.classList.add('app-ios-iphone17pro');
@@ -4842,6 +4896,17 @@
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .header-right{right:12px !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
+          /* iPhone Air（420×912）：压过 min-width:414 / promax-wide 的 20px 左右空条，列表贴边 */
+          'html.app-ios-iphoneair body.page-shuiming-result .list,html.app-ios-iphoneair.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .list-item,html.app-ios-iphoneair.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .summary > .summary-item,html.app-ios-iphoneair.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .top-fixed .header,html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .back-btn{left:12px !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .header-right{right:12px !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .sm-activate-card,html.app-ios-iphoneair body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+          'html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
+          'html.app-ios-iphoneair.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming .content{padding-left:0 !important;padding-right:0 !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +

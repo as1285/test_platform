@@ -11,6 +11,7 @@ const {
   shouldOfferGithubEntry,
   isGithubChannel,
   applyGithubChannelCatalogPrices,
+  applyChannelCatalogPrices,
   prependGithubEntrySku,
   SKU_98_3DAY
 } = require('../../src/legacy/pricingAb');
@@ -303,5 +304,40 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(out.find((s) => s.id === 'sku_348_14d').amount).toBe('300.00');
     expect(out.find((s) => s.id === 'sku_398_30d').amount).toBe('398.00');
     expect(out.find((s) => s.id === 'sku_98_3d').amount).toBe('98.00');
+  });
+
+  it('applyChannelCatalogPrices overlays only mapped skus', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
+        { id: 'sku_348_14d', amount: '348.00', label: '双周卡', grant_days: 14, grant_hours: 0 },
+        { id: 'sku_398_30d', amount: '398.00', label: '月卡', grant_days: 30, grant_hours: 0 }
+      ],
+      { sku_300_7d: '199.00', sku_398_30d: '350.00' }
+    );
+    expect(out.find((s) => s.id === 'sku_300_7d').amount).toBe('199.00');
+    expect(out.find((s) => s.id === 'sku_300_7d').channel_price).toBe(true);
+    expect(out.find((s) => s.id === 'sku_348_14d').amount).toBe('348.00');
+    expect(out.find((s) => s.id === 'sku_398_30d').amount).toBe('350.00');
+  });
+
+  it('applyChannelCatalogPrices overlays grant days and hours', () => {
+    const out = applyChannelCatalogPrices(
+      [{ id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 }],
+      {
+        sku_300_7d: {
+          amount: '88.00',
+          grant_days: 1,
+          grant_hours: 12,
+          label: '体验'
+        }
+      }
+    );
+    const s = out[0];
+    expect(s.amount).toBe('88.00');
+    expect(s.grant_days).toBe(1);
+    expect(s.grant_hours).toBe(12);
+    expect(s.label).toBe('体验');
+    expect(s.subject).toContain('体验');
   });
 });

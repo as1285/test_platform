@@ -132,10 +132,40 @@ function createAgentChannels(deps) {
   }
 
   var CHANNEL_SKU_IDS = ['sku_300_7d', 'sku_348_14d', 'sku_398_30d'];
+  var CHANNEL_SKU_META = {
+    sku_300_7d: { key: 'week', default_days: 7, default_label: '档位1' },
+    sku_348_14d: { key: 'biweek', default_days: 14, default_label: '档位2' },
+    sku_398_30d: { key: 'month', default_days: 30, default_label: '档位3' }
+  };
+
+  function parseNonNegInt(raw, max) {
+    if (raw == null || String(raw).trim() === '') return null;
+    var n = parseInt(String(raw).trim(), 10);
+    if (!isFinite(n) || n < 0) return null;
+    if (max != null && n > max) n = max;
+    return n;
+  }
+
+  function parseAmount(raw) {
+    if (raw == null || String(raw).trim() === '') return '';
+    var n = Number(String(raw).trim().replace(/,/g, ''));
+    if (!isFinite(n) || n < 0.01 || n > 99999) return '';
+    return n.toFixed(2);
+  }
+
+  function formatGrantLabel(days, hours) {
+    var d = parseInt(days, 10) || 0;
+    var h = parseInt(hours, 10) || 0;
+    if (d <= 0 && h <= 0) return '';
+    if (d > 0 && h > 0) return d + '天' + h + '小时';
+    if (d > 0) return d + '天';
+    return h + '小时';
+  }
 
   /**
-   * 清洗渠道专属价：仅允许现售三档；空对象表示跟随全站。
-   * 入参可为对象、JSON 字符串，或拆开的 week/biweek/month 字段。
+   * 清洗渠道专属套餐覆盖：金额 / 天数 / 小时 / 名称。
+   * 兼容旧格式 { sku_id: "199.00" }；新格式 { sku_id: { amount, grant_days, grant_hours, label } }。
+   * 也可传拆开字段 price_week / days_week / hours_week / label_week …
    */
   function normalizeSkuPrices(raw) {
     var src = raw;
@@ -148,26 +178,95 @@ function createAgentChannels(deps) {
       }
     }
     if (typeof src !== 'object' || Array.isArray(src)) return {};
-    var out = {};
-    var aliases = {
-      week: 'sku_300_7d',
-      week_amount: 'sku_300_7d',
-      sku_week: 'sku_300_7d',
-      biweek: 'sku_348_14d',
-      biweek_amount: 'sku_348_14d',
-      sku_biweek: 'sku_348_14d',
-      month: 'sku_398_30d',
-      month_amount: 'sku_398_30d',
-      sku_month: 'sku_398_30d'
-    };
+
+    var bucket = {};
+    function ensure(id) {
+      if (!bucket[id]) bucket[id] = {};
+      return bucket[id];
+    }
+
+    /* 拆开字段：price_week / days_week / hours_week / label_week */
+    CHANNEL_SKU_IDS.forEach(function (id) {
+      var meta = CHANNEL_SKU_META[id];
+      var key = meta.key;
+      var amt = parseAmount(src['price_' + key] != null ? src['price_' + key] : src[key]);
+      var days = parseNonNegInt(src['days_' + key], 3650);
+      var hours = parseNonNegInt(src['hours_' + key], 23);
+      var label =
+        src['label_' + key] != null ? String(src['label_' + key]).trim().slice(0, 32) : '';
+      if (amt) ensure(id).amount = amt;
+      if (days != null) ensure(id).grant_days = days;
+      if (hours != null) ensure(id).grant_hours = hours;
+      if (label) ensure(id).label = label;
+    });
+
+    /* sku_slots: [{ id|slot, amount, grant_days, grant_hours, label }] */
+    if (Array.isArray(src.sku_slots)) {
+      src.sku_slots.forEach(function (slot, idx) {
+        if (!slot || typeof slot !== 'object') return;
+        var id = String(slot.id || CHANNEL_SKU_IDS[idx] || '').trim();
+        if (CHANNEL_SKU_IDS.indexOf(id) < 0) return;
+        var amt = parseAmount(slot.amount);
+        var days = parseNonNegInt(slot.grant_days, 3650);
+        var hours = parseNonNegInt(slot.grant_hours, 23);
+        var label = slot.label != null ? String(slot.label).trim().slice(0, 32) : '';
+        if (amt) ensure(id).amount = amt;
+        if (days != null) ensure(id).grant_days = days;
+        if (hours != null) ensure(id).grant_hours = hours;
+        if (label) ensure(id).label = label;
+      });
+    }
+
     Object.keys(src).forEach(function (k) {
+      var aliases = {
+        week: 'sku_300_7d',
+        week_amount: 'sku_300_7d',
+        sku_week: 'sku_300_7d',
+        biweek: 'sku_348_14d',
+        biweek_amount: 'sku_348_14d',
+        sku_biweek: 'sku_348_14d',
+        month: 'sku_398_30d',
+        month_amount: 'sku_398_30d',
+        sku_month: 'sku_398_30d'
+      };
+      if (k.indexOf('price_') === 0 || k.indexOf('days_') === 0 || k.indexOf('hours_') === 0 || k.indexOf('label_') === 0) {
+        return;
+      }
+      if (k === 'sku_slots') return;
       var id = aliases[k] || k;
       if (CHANNEL_SKU_IDS.indexOf(id) < 0) return;
       var v = src[k];
-      if (v == null || String(v).trim() === '') return;
-      var n = Number(String(v).trim().replace(/,/g, ''));
-      if (!isFinite(n) || n < 0.01 || n > 99999) return;
-      out[id] = n.toFixed(2);
+      if (v == null || v === '') return;
+      if (typeof v === 'object' && !Array.isArray(v)) {
+        var amtO = parseAmount(v.amount);
+        var daysO = parseNonNegInt(v.grant_days, 3650);
+        var hoursO = parseNonNegInt(v.grant_hours, 23);
+        var labelO = v.label != null ? String(v.label).trim().slice(0, 32) : '';
+        if (amtO) ensure(id).amount = amtO;
+        if (daysO != null) ensure(id).grant_days = daysO;
+        if (hoursO != null) ensure(id).grant_hours = hoursO;
+        if (labelO) ensure(id).label = labelO;
+        return;
+      }
+      /* 旧格式：纯金额字符串 */
+      var amtS = parseAmount(v);
+      if (amtS) ensure(id).amount = amtS;
+    });
+
+    var out = {};
+    Object.keys(bucket).forEach(function (id) {
+      var o = bucket[id];
+      var hasAmt = !!o.amount;
+      var hasDur = o.grant_days != null || o.grant_hours != null;
+      var hasLabel = !!o.label;
+      if (!hasAmt && !hasDur && !hasLabel) return;
+      /* 只改时长时也要落库 */
+      if (hasDur) {
+        if (o.grant_days == null) o.grant_days = 0;
+        if (o.grant_hours == null) o.grant_hours = 0;
+        if ((o.grant_days || 0) + (o.grant_hours || 0) <= 0 && !hasAmt && !hasLabel) return;
+      }
+      out[id] = o;
     });
     return out;
   }
@@ -176,9 +275,45 @@ function createAgentChannels(deps) {
     return !!(map && typeof map === 'object' && Object.keys(map).length);
   }
 
+  /** API/表单展示用扁平字段 */
+  function flattenSkuPrices(prices) {
+    var p = prices || {};
+    function slot(id) {
+      var o = p[id];
+      if (o == null) return { amount: '', grant_days: '', grant_hours: '', label: '' };
+      if (typeof o !== 'object') {
+        return { amount: String(o), grant_days: '', grant_hours: '', label: '' };
+      }
+      return {
+        amount: o.amount != null ? String(o.amount) : '',
+        grant_days: o.grant_days != null ? String(o.grant_days) : '',
+        grant_hours: o.grant_hours != null ? String(o.grant_hours) : '',
+        label: o.label != null ? String(o.label) : ''
+      };
+    }
+    var w = slot('sku_300_7d');
+    var b = slot('sku_348_14d');
+    var m = slot('sku_398_30d');
+    return {
+      price_week: w.amount,
+      days_week: w.grant_days,
+      hours_week: w.grant_hours,
+      label_week: w.label,
+      price_biweek: b.amount,
+      days_biweek: b.grant_days,
+      hours_biweek: b.grant_hours,
+      label_biweek: b.label,
+      price_month: m.amount,
+      days_month: m.grant_days,
+      hours_month: m.grant_hours,
+      label_month: m.label
+    };
+  }
+
   function mapChannelRow(r) {
     var abc = effectivePricingAbc(r.default_pricing_abc);
     var prices = normalizeSkuPrices(r.sku_prices_json);
+    var flat = flattenSkuPrices(prices);
     return {
       channel_id: String(r.channel_id || ''),
       owner_admin_username: String(r.owner_admin_username || ''),
@@ -197,9 +332,18 @@ function createAgentChannels(deps) {
           : '',
       sku_prices: prices,
       has_channel_prices: skuPricesHasAny(prices),
-      price_week: prices.sku_300_7d || '',
-      price_biweek: prices.sku_348_14d || '',
-      price_month: prices.sku_398_30d || '',
+      price_week: flat.price_week,
+      days_week: flat.days_week,
+      hours_week: flat.hours_week,
+      label_week: flat.label_week,
+      price_biweek: flat.price_biweek,
+      days_biweek: flat.days_biweek,
+      hours_biweek: flat.hours_biweek,
+      label_biweek: flat.label_biweek,
+      price_month: flat.price_month,
+      days_month: flat.days_month,
+      hours_month: flat.hours_month,
+      label_month: flat.label_month,
       created_at: r.created_at,
       updated_at: r.updated_at
     };
@@ -321,9 +465,19 @@ function createAgentChannels(deps) {
       input && input.sku_prices != null
         ? input.sku_prices
         : {
-            week: input && input.price_week,
-            biweek: input && input.price_biweek,
-            month: input && input.price_month
+            price_week: input && input.price_week,
+            days_week: input && input.days_week,
+            hours_week: input && input.hours_week,
+            label_week: input && input.label_week,
+            price_biweek: input && input.price_biweek,
+            days_biweek: input && input.days_biweek,
+            hours_biweek: input && input.hours_biweek,
+            label_biweek: input && input.label_biweek,
+            price_month: input && input.price_month,
+            days_month: input && input.days_month,
+            hours_month: input && input.hours_month,
+            label_month: input && input.label_month,
+            sku_slots: input && input.sku_slots
           };
     var prices = normalizeSkuPrices(priceSrc);
     var pricesJson = skuPricesHasAny(prices) ? JSON.stringify(prices) : null;
@@ -448,6 +602,7 @@ function createAgentChannels(deps) {
     effectivePricingAbc: effectivePricingAbc,
     normalizePackageUrl: normalizePackageUrl,
     normalizeSkuPrices: normalizeSkuPrices,
+    formatGrantLabel: formatGrantLabel,
     CHANNEL_SKU_IDS: CHANNEL_SKU_IDS
   };
 }

@@ -36,6 +36,12 @@ function makeStubPool(state) {
         return [[{ pending: 0, accepted: 0, rejected: 0 }]];
       }
       if (sql.indexOf('SELECT * FROM user_price_bids') >= 0) return [[]];
+      if (sql.indexOf('SELECT created_at FROM users') >= 0) {
+        return [state.userCreatedAt ? [{ created_at: state.userCreatedAt }] : []];
+      }
+      if (sql.indexOf('user_page_events') >= 0 && sql.indexOf('COUNT(*)') >= 0) {
+        return [[{ n: state.purchaseViewCount != null ? state.purchaseViewCount : 0 }]];
+      }
       return [[]];
     }
   };
@@ -213,5 +219,50 @@ describe('reviewBid', () => {
     const settled = Object.assign({}, pendingRow, { status: 'accepted' });
     const api = makeApi({ queries: [], bidRow: settled }, [], []);
     await expect(api.reviewBid({ id: 9, action: 'reject' })).rejects.toThrow(/已处理/);
+  });
+});
+
+describe('getBackPromptContext', () => {
+  it('marks eligible within 48h after 2+ purchase views', async () => {
+    const api = makeApi(
+      {
+        queries: [],
+        userCreatedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+        purchaseViewCount: 2
+      },
+      [],
+      []
+    );
+    const out = await api.getBackPromptContext('u1');
+    expect(out.within_48h).toBe(true);
+    expect(out.visit_count).toBe(2);
+    expect(out.eligible).toBe(true);
+  });
+
+  it('not eligible on first visit or after 48h', async () => {
+    const apiFresh = makeApi(
+      {
+        queries: [],
+        userCreatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        purchaseViewCount: 1
+      },
+      [],
+      []
+    );
+    const fresh = await apiFresh.getBackPromptContext('u1');
+    expect(fresh.eligible).toBe(false);
+
+    const apiOld = makeApi(
+      {
+        queries: [],
+        userCreatedAt: new Date(Date.now() - 60 * 3600 * 1000).toISOString(),
+        purchaseViewCount: 5
+      },
+      [],
+      []
+    );
+    const old = await apiOld.getBackPromptContext('u1');
+    expect(old.within_48h).toBe(false);
+    expect(old.eligible).toBe(false);
   });
 });

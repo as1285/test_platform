@@ -92,5 +92,7 @@ describe('C 端完税二维码使用说明', () => {
     expect(html).toContain('id="cardNajiluQrFaq"');
     expect(html).toContain('必须先付款才能用吗');
     expect(html).toContain('自动识别框偏了怎么办');
+    expect(html).toContain('替换完成后可用官方 APP 扫码查验');
+    expect(html).toContain('替换完成后能扫码查验吗');
   });
 });

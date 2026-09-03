@@ -647,16 +647,50 @@ function applyGithubChannelCatalogPrices(skus) {
   return applyChannelCatalogPrices(skus, GITHUB_CHANNEL_AMOUNT_BY_SKU);
 }
 
-/** 按 sku_id → amount 覆盖货架价；无映射的 SKU 保持原价 */
+/** 按渠道覆盖货架：金额 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
 function applyChannelCatalogPrices(skus, priceMap) {
   var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
   var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
   var i;
   for (i = 0; i < next.length; i++) {
-    var amt = map[next[i].id];
-    if (amt != null && String(amt).trim() !== '') {
-      next[i].amount = String(amt).trim();
+    var raw = map[next[i].id];
+    if (raw == null || raw === '') continue;
+    var ov =
+      typeof raw === 'object' && !Array.isArray(raw)
+        ? raw
+        : { amount: String(raw).trim() };
+    var touched = false;
+    if (ov.amount != null && String(ov.amount).trim() !== '') {
+      next[i].amount = String(ov.amount).trim();
+      touched = true;
+    }
+    if (ov.grant_days != null || ov.grant_hours != null) {
+      var d = ov.grant_days != null ? parseInt(ov.grant_days, 10) || 0 : next[i].grant_days || 0;
+      var h = ov.grant_hours != null ? parseInt(ov.grant_hours, 10) || 0 : next[i].grant_hours || 0;
+      if (d < 0) d = 0;
+      if (h < 0) h = 0;
+      if (h > 23) h = 23;
+      next[i].grant_days = d;
+      next[i].grant_hours = h;
+      next[i].grant_minutes = 0;
+      next[i].grant_kind = 'trial';
+      touched = true;
+    }
+    if (ov.label != null && String(ov.label).trim() !== '') {
+      next[i].label = String(ov.label).trim().slice(0, 32);
+      touched = true;
+    } else if (ov.grant_days != null || ov.grant_hours != null) {
+      var auto = '';
+      var dd = next[i].grant_days || 0;
+      var hh = next[i].grant_hours || 0;
+      if (dd > 0 && hh > 0) auto = dd + '天' + hh + '小时';
+      else if (dd > 0) auto = dd + '天卡';
+      else if (hh > 0) auto = hh + '小时卡';
+      if (auto) next[i].label = auto;
+    }
+    if (touched) {
       next[i].channel_price = true;
+      next[i].subject = '激活码·' + (next[i].label || next[i].id);
     }
   }
   return next;

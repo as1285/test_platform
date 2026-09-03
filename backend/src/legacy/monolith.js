@@ -6122,16 +6122,31 @@ async function handleBilibiliShareStatus(req, res) {
   }
 }
 
-/** C 端：查询我的心理价出价状态（enabled + 最近一条） */
+/** C 端：查询我的心理价出价状态（enabled + 最近一条 + 返回拦截资格） */
 async function handlePriceBidGet(req, res) {
   try {
     var cfg = await getPriceBids().loadConfig();
     var bid = await getPriceBids().getLatestBid(req.authUserId || '');
+    var backCtx = { within_48h: false, hours_since_register: null, visit_count: 0, eligible: false };
+    try {
+      if (typeof getPriceBids().getBackPromptContext === 'function') {
+        backCtx = await getPriceBids().getBackPromptContext(req.authUserId || '');
+      }
+    } catch (eCtx) {
+      /* ignore */
+    }
     return res.json({
       code: 200,
       data: {
         enabled: !!cfg.enabled,
         min_amount: cfg.min_amount,
+        back_prompt: {
+          eligible: !!(cfg.enabled && backCtx.eligible && !(bid && bid.status === 'accepted')),
+          within_48h: !!backCtx.within_48h,
+          hours_since_register: backCtx.hours_since_register,
+          visit_count: Number(backCtx.visit_count) || 0,
+          registered_at: backCtx.registered_at || null
+        },
         bid: bid
           ? {
               status: bid.status,

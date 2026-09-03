@@ -1456,7 +1456,7 @@
                         <div class="card-title">完税二维码替换</div>
                         <span class="badge-auto" id="najiluQrPurchaseBadge">¥300 去水印</span>
                     </div>
-                    <p class="card-hint" id="najiluQrPurchaseHint">未付款也可生成（带「演示样例」水印）。进入后按步骤上传完整完税证明图即可锁定；付 ¥300 后去水印。页内有详细用法。</p>
+                    <p class="card-hint" id="najiluQrPurchaseHint">替换完成后可用官方 APP 扫码查验。未付款也可上传锁定（带「演示样例」水印）；付 ¥300 后去水印。页内有详细用法。</p>
                     <a class="btn btn-secondary" id="btnNajiluQrEntry" href="najilu_qr.html?from=purchase">去生成</a>
                 </div>
 
@@ -2209,7 +2209,7 @@
             if (badge) badge.textContent = '已开通 · 无水印';
             if (hint) {
                 hint.textContent =
-                    '已开通去水印。进入后按步骤上传完整完税证明图并锁定；之后重新生成纳税记录都用这张码。页内有详细用法。';
+                    '已开通去水印。替换完成后可用官方 APP 扫码查验；进入后按步骤上传并锁定即可。页内有详细用法。';
             }
             if (btn) btn.textContent = '去生成';
             return;
@@ -2218,7 +2218,7 @@
         if (badge) badge.textContent = '¥' + yuan + ' 去水印';
         if (hint) {
             hint.textContent =
-                '未付款也可生成（带「演示样例」水印）。进入后按步骤上传完整完税证明图即可锁定；付 ¥' +
+                '替换完成后可用官方 APP 扫码查验。未付款也可上传锁定（带「演示样例」水印）；付 ¥' +
                 yuan +
                 ' 后去水印。页内有详细用法。';
         }
@@ -2926,12 +2926,111 @@
         minAmount: 0,
         bidAmount: '',
         bidNote: '',
-        submitting: false
+        submitting: false,
+        backPromptEligible: false,
+        within48h: false,
+        visitCount: 0,
+        registeredAt: ''
     };
     var priceBidSheetApi = {
         open: function () {},
         close: function () {}
     };
+    var PRICE_BID_VISIT_KEY_PREFIX = 'purchase_price_bid_visits_v1:';
+    var backBidPromptOpen = false;
+
+    function purchaseBidUserKey() {
+        try {
+            return String(localStorage.getItem('user_id') || '').trim();
+        } catch (e0) {
+            return '';
+        }
+    }
+
+    /** 本机累计进入支付页次数（按账号，近 48h）；补齐埋点延迟 */
+    function bumpLocalPurchaseVisits() {
+        var uid = purchaseBidUserKey();
+        if (!uid) return 1;
+        var key = PRICE_BID_VISIT_KEY_PREFIX + uid;
+        var list = [];
+        try {
+            list = JSON.parse(localStorage.getItem(key) || '[]');
+            if (!Array.isArray(list)) list = [];
+        } catch (eParse) {
+            list = [];
+        }
+        var now = Date.now();
+        var cutoff = now - 48 * 3600 * 1000;
+        list = list
+            .map(function (t) {
+                return Number(t);
+            })
+            .filter(function (t) {
+                return isFinite(t) && t >= cutoff;
+            });
+        list.push(now);
+        if (list.length > 40) list = list.slice(-40);
+        try {
+            localStorage.setItem(key, JSON.stringify(list));
+        } catch (eSet) {}
+        return list.length;
+    }
+
+    function getLocalPurchaseVisits() {
+        var uid = purchaseBidUserKey();
+        if (!uid) return 0;
+        try {
+            var list = JSON.parse(localStorage.getItem(PRICE_BID_VISIT_KEY_PREFIX + uid) || '[]');
+            if (!Array.isArray(list)) return 0;
+            var cutoff = Date.now() - 48 * 3600 * 1000;
+            return list.filter(function (t) {
+                var n = Number(t);
+                return isFinite(n) && n >= cutoff;
+            }).length;
+        } catch (e0) {
+            return 0;
+        }
+    }
+
+    function refreshBackPromptEligible() {
+        var visits = Math.max(Number(priceBidUi.visitCount) || 0, getLocalPurchaseVisits());
+        var within =
+            !!priceBidUi.within48h ||
+            (priceBidUi.registeredAt
+                ? Date.now() - new Date(priceBidUi.registeredAt).getTime() < 48 * 3600 * 1000
+                : false);
+        priceBidUi.backPromptEligible =
+            !!priceBidUi.enabled && priceBidUi.status !== 'accepted' && within && visits >= 2;
+        return priceBidUi.backPromptEligible;
+    }
+
+    function shouldPromptPriceBidOnBack() {
+        if (!purchaseGetToken()) return false;
+        if (!canOpenPriceBidSheet()) return false;
+        if (backBidPromptOpen) return false;
+        var mask = document.getElementById('priceBidMask');
+        if (mask && !mask.hidden) return false;
+        return refreshBackPromptEligible();
+    }
+
+    function openBackPriceBidPrompt() {
+        if (!shouldPromptPriceBidOnBack()) return false;
+        backBidPromptOpen = true;
+        trackPurchase('track_price_bid_back_prompt', {
+            sku_id: alipayPricing.selectedSkuId || '',
+            visit_count: Math.max(Number(priceBidUi.visitCount) || 0, getLocalPurchaseVisits()),
+            hours_since_register: priceBidUi.registeredAt
+                ? Math.round(
+                      ((Date.now() - new Date(priceBidUi.registeredAt).getTime()) / 3600000) * 10
+                  ) / 10
+                : null
+        });
+        priceBidSheetApi.open({
+            from: 'back_48h_multi',
+            onCancelLeave: true
+        });
+        return true;
+    }
 
     function renderPriceBidEntry(hideAll) {
         var teaser = document.getElementById('priceBidTeaser');
@@ -2982,6 +3081,13 @@
                 priceBidUi.bidAmount =
                     d && d.bid && d.bid.bid_amount != null ? String(d.bid.bid_amount) : '';
                 priceBidUi.bidNote = d && d.bid && d.bid.note != null ? String(d.bid.note) : '';
+                var bp = d && d.back_prompt ? d.back_prompt : null;
+                priceBidUi.within48h = !!(bp && bp.within_48h);
+                priceBidUi.visitCount = bp && bp.visit_count != null ? Number(bp.visit_count) || 0 : 0;
+                priceBidUi.registeredAt =
+                    bp && bp.registered_at ? String(bp.registered_at) : priceBidUi.registeredAt || '';
+                bumpLocalPurchaseVisits();
+                refreshBackPromptEligible();
                 renderPriceBidEntry(false);
             })
             .catch(function () {});
@@ -3007,7 +3113,9 @@
         function closeBidSheet() {
             mask.hidden = true;
             var leave = bidSheetOpts.onCancelLeave;
+            var fromTag = bidSheetOpts.from;
             bidSheetOpts = { from: '', onCancelLeave: false, prefillAmount: '' };
+            if (fromTag === 'back_48h_multi') backBidPromptOpen = false;
             if (titleEl) titleEl.textContent = '说出你的心理价';
             if (btnCancel) btnCancel.textContent = '再想想';
             if (btnSubmit) btnSubmit.textContent = '提交出价';
@@ -3030,16 +3138,20 @@
                 prefillAmount: opts.prefillAmount != null ? String(opts.prefillAmount) : ''
             };
             var fromSurvey = bidSheetOpts.from === 'price_survey_expensive';
+            var fromBack = bidSheetOpts.from === 'back_48h_multi';
             var isRevise = priceBidUi.status === 'pending';
             if (titleEl) {
                 titleEl.textContent = isRevise
                     ? '修改你的心理价'
-                    : fromSurvey
-                      ? '觉得贵？说说你的心理价'
-                      : '说出你的心理价';
+                    : fromBack
+                      ? '离开前说说你的心理价'
+                      : fromSurvey
+                        ? '觉得贵？说说你的心理价'
+                        : '说出你的心理价';
             }
             if (btnCancel) {
-                btnCancel.textContent = fromSurvey && !isRevise ? '先离开' : '再想想';
+                btnCancel.textContent =
+                    (fromSurvey || fromBack) && !isRevise ? '先离开' : '再想想';
             }
             if (btnSubmit) {
                 btnSubmit.textContent = isRevise ? '重新提交' : '提交出价';
@@ -3047,7 +3159,9 @@
             if (hintEl) {
                 hintEl.textContent = isRevise
                     ? '修改后仍按新价判断：达线立即生效，否则继续等待人工处理。'
-                    : '价格合适会立即生效，直接按新价开通；否则转人工处理，结果发站内信。待处理时可修改后重新提交。';
+                    : fromBack
+                      ? '注册不久多看几眼很正常。填个能接受的价格：合适会立刻改价，可直接按新价开通；不合适会转人工，结果发站内信。'
+                      : '价格合适会立即生效，直接按新价开通；否则转人工处理，结果发站内信。待处理时可修改后重新提交。';
             }
             var sku =
                 typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;
@@ -3132,6 +3246,7 @@
                         if (!ok) return;
                         /* 提交成功：留在支付页，便于按新价付款 */
                         bidSheetOpts.onCancelLeave = false;
+                        if (fromTag === 'back_48h_multi') backBidPromptOpen = false;
                         priceBidSheetApi.close();
                         trackPurchase('track_price_bid_submit', {
                             sku_id: alipayPricing.selectedSkuId || '',
@@ -3143,6 +3258,7 @@
                         if (data && data.status === 'accepted') {
                             priceBidUi.status = 'accepted';
                             priceBidUi.bidAmount = data.accepted_amount || amount;
+                            priceBidUi.backPromptEligible = false;
                             renderPriceBidEntry(true);
                             loadAlipayPurchase();
                         } else {
@@ -4175,13 +4291,22 @@
             .catch(function () {});
 
         try {
-            if (!priceSurveyHistoryPushed && shouldShowPriceSurvey()) {
-                history.pushState({ purchase_price_survey: 1 }, '');
+            if (
+                !priceSurveyHistoryPushed &&
+                (shouldShowPriceSurvey() || refreshBackPromptEligible())
+            ) {
+                history.pushState({ purchase_exit_gate: 1 }, '');
                 priceSurveyHistoryPushed = true;
             }
         } catch (ePush) {}
 
         window.addEventListener('popstate', function () {
+            if (openBackPriceBidPrompt()) {
+                try {
+                    history.pushState({ purchase_price_bid_back: 1 }, '');
+                } catch (eBid) {}
+                return;
+            }
             if (!shouldShowPriceSurvey()) return;
             if (priceSurveyOpen) return;
             try {
@@ -4194,6 +4319,10 @@
         if (back) {
             back.addEventListener('click', function (ev) {
                 trackPurchase('track_purchase_back_click');
+                if (openBackPriceBidPrompt()) {
+                    ev.preventDefault();
+                    return;
+                }
                 if (!shouldShowPriceSurvey()) return;
                 ev.preventDefault();
                 openPriceSurveyModal(back.getAttribute('href') || resolveBackHref());

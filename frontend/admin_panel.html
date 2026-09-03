@@ -374,16 +374,44 @@
                                 </select>
                             </div>
                             <div class="form-field mt-10">
-                                <label>渠道专属价（元，留空=跟随全站「支付套餐」）</label>
-                                <div class="mine-ui-controls mt-6" style="flex-wrap:wrap;gap:8px">
-                                    <label class="hint" for="agentChPriceWeek">周卡</label>
-                                    <input class="input-flex" type="number" id="agentChPriceWeek" min="0.01" max="99999" step="0.01" placeholder="如 199" style="max-width:110px">
-                                    <label class="hint" for="agentChPriceBiweek">双周</label>
-                                    <input class="input-flex" type="number" id="agentChPriceBiweek" min="0.01" max="99999" step="0.01" placeholder="如 299" style="max-width:110px">
-                                    <label class="hint" for="agentChPriceMonth">月卡</label>
-                                    <input class="input-flex" type="number" id="agentChPriceMonth" min="0.01" max="99999" step="0.01" placeholder="如 399" style="max-width:110px">
+                                <label>渠道专属套餐（可自定义价格 / 天数 / 小时；留空跟随全站）</label>
+                                <p class="hint mt-6 mb-8">最多 3 档。天数 0–3650，小时 0–23（可组合，如 3 天 12 小时）。账号「用户专属报价」优先于渠道价。</p>
+                                <div class="mine-ui-block max-w-760" style="overflow-x:auto">
+                                    <table class="data-table" style="min-width:520px">
+                                        <thead>
+                                            <tr>
+                                                <th>档位</th>
+                                                <th>名称</th>
+                                                <th>价格(元)</th>
+                                                <th>天数</th>
+                                                <th>小时</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>1</td>
+                                                <td><input class="input-block" type="text" id="agentChLabelWeek" maxlength="32" placeholder="如 体验卡"></td>
+                                                <td><input class="input-block" type="number" id="agentChPriceWeek" min="0.01" max="99999" step="0.01" placeholder="199"></td>
+                                                <td><input class="input-block" type="number" id="agentChDaysWeek" min="0" max="3650" step="1" placeholder="7"></td>
+                                                <td><input class="input-block" type="number" id="agentChHoursWeek" min="0" max="23" step="1" placeholder="0"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>2</td>
+                                                <td><input class="input-block" type="text" id="agentChLabelBiweek" maxlength="32" placeholder="如 双周卡"></td>
+                                                <td><input class="input-block" type="number" id="agentChPriceBiweek" min="0.01" max="99999" step="0.01" placeholder="299"></td>
+                                                <td><input class="input-block" type="number" id="agentChDaysBiweek" min="0" max="3650" step="1" placeholder="14"></td>
+                                                <td><input class="input-block" type="number" id="agentChHoursBiweek" min="0" max="23" step="1" placeholder="0"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>3</td>
+                                                <td><input class="input-block" type="text" id="agentChLabelMonth" maxlength="32" placeholder="如 月卡"></td>
+                                                <td><input class="input-block" type="number" id="agentChPriceMonth" min="0.01" max="99999" step="0.01" placeholder="399"></td>
+                                                <td><input class="input-block" type="number" id="agentChDaysMonth" min="0" max="3650" step="1" placeholder="30"></td>
+                                                <td><input class="input-block" type="number" id="agentChHoursMonth" min="0" max="23" step="1" placeholder="0"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <p class="hint mt-6">仅对该渠道用户生效；账号「用户专属报价」优先于渠道价。</p>
                             </div>
                             <div class="form-field mt-10">
                                 <label for="agentChAndroidUrl">渠道专用安卓 APK</label>

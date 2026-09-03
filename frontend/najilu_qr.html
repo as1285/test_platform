@@ -51,7 +51,29 @@
             background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
             box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
         }
-        .hero h1 { font-size: 20px; margin: 0 0 6px; }
+        .hero h1 { font-size: 20px; margin: 0 0 8px; }
+        .hero-benefit {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 0 10px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.35;
+            color: #0b3d7a;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 1px 0 rgba(15, 76, 154, 0.08);
+        }
+        .hero-benefit::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #16a34a;
+            flex-shrink: 0;
+        }
         .hero p { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.88); margin: 0; }
         .card {
             padding: 16px;
@@ -280,12 +302,13 @@
     <div class="page">
         <div class="hero">
             <h1>替换完税二维码</h1>
-            <p id="najiluQrHeroDesc">未付款也可上传、锁定并生成；结果带「演示样例」水印。付款后去掉水印，之后重新生成纳税记录都用这张码。</p>
+            <div class="hero-benefit" id="najiluQrHeroBenefit">替换完成后可用官方 APP 扫码查验</div>
+            <p id="najiluQrHeroDesc">未付款也可上传、锁定并生成；结果带「演示样例」水印。付款后去掉水印，之后重新生成纳税记录都用这张码，可用个人所得税 APP 扫码查验。</p>
         </div>
 
         <div class="card" id="cardNajiluQrGuide">
             <div class="card-title">怎么用（约 1 分钟）</div>
-            <p class="guide-lead">把你已有的完税证明上的二维码，锁到本账号。之后在「纳税记录开具」里重新生成，右上角都会用这张码。未付款也能做完，图上会带「演示样例」水印；付一次后终身去水印。</p>
+            <p class="guide-lead">把你已有的完税证明上的二维码，锁到本账号。之后在「纳税记录开具」里重新生成，右上角都会用这张码，可用官方个人所得税 APP 扫码查验。未付款也能做完，图上会带「演示样例」水印；付一次后终身去水印。</p>
             <ol class="guide-steps">
                 <li>
                     <span class="guide-n">1</span>
@@ -412,12 +435,16 @@
                 <p>再上传一张新的完整图并保存，就会覆盖。点「清除自定义二维码」后，之后生成会恢复系统自动出码。</p>
             </details>
             <details class="faq-item">
+                <summary>替换完成后能扫码查验吗？</summary>
+                <p>可以。锁的是你原完税证明上的二维码，重新生成纳税记录后，可用官方个人所得税 APP（或电子税务局）扫右上角二维码查验。未付款图带「演示样例」水印，付完去水印后再生成一次即可。</p>
+            </details>
+            <details class="faq-item">
                 <summary>这是不是税务机关出的正式完税证明？</summary>
                 <p>不是。本页用来把你指定的二维码用在本平台生成的纳税记录上，方便对照演示。对外正式完税请仍在电子税务局或个人所得税 APP 开具。</p>
             </details>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
-    <script src="/js/najilu-qr-user.js?v=20260903-guide"></script>
+    <script src="/js/najilu-qr-user.js?v=20260903-scan-benefit"></script>
 </body>
 </html>

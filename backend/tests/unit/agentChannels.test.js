@@ -35,12 +35,37 @@ describe('agentChannels normalize', () => {
 
   it('normalizeSkuPrices accepts week aliases and sku ids', () => {
     expect(api.normalizeSkuPrices({ week: 199, biweek: '299.5', month: '399' })).toEqual({
-      sku_300_7d: '199.00',
-      sku_348_14d: '299.50',
-      sku_398_30d: '399.00'
+      sku_300_7d: { amount: '199.00' },
+      sku_348_14d: { amount: '299.50' },
+      sku_398_30d: { amount: '399.00' }
     });
-    expect(api.normalizeSkuPrices({ sku_300_7d: '88' })).toEqual({ sku_300_7d: '88.00' });
+    expect(api.normalizeSkuPrices({ sku_300_7d: '88' })).toEqual({
+      sku_300_7d: { amount: '88.00' }
+    });
     expect(api.normalizeSkuPrices({ week: '' })).toEqual({});
     expect(api.normalizeSkuPrices({ week: -1 })).toEqual({});
+  });
+
+  it('normalizeSkuPrices accepts custom days and hours', () => {
+    const out = api.normalizeSkuPrices({
+      price_week: '99',
+      days_week: 3,
+      hours_week: 12,
+      label_week: '体验卡',
+      days_month: 0,
+      hours_month: 6,
+      price_month: '50'
+    });
+    expect(out.sku_300_7d).toEqual({
+      amount: '99.00',
+      grant_days: 3,
+      grant_hours: 12,
+      label: '体验卡'
+    });
+    expect(out.sku_398_30d).toEqual({
+      amount: '50.00',
+      grant_days: 0,
+      grant_hours: 6
+    });
   });
 });

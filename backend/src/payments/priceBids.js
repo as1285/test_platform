@@ -179,6 +179,50 @@ function createPriceBids(deps) {
     return rows.length ? plainBidRow(rows[0]) : null;
   }
 
+  /**
+   * 返回拦截出价：注册 48h 内且多次进入支付页。
+   * visit_count 统计 track_purchase_page_view（含本页已上报的）。
+   */
+  async function getBackPromptContext(username) {
+    var u = String(username || '').trim();
+    var out = {
+      within_48h: false,
+      hours_since_register: null,
+      visit_count: 0,
+      eligible: false,
+      registered_at: null
+    };
+    if (!u) return out;
+    try {
+      const [urows] = await pool.execute(
+        'SELECT created_at FROM users WHERE username = ? LIMIT 1',
+        [u]
+      );
+      if (!urows.length || !urows[0].created_at) return out;
+      var created = new Date(urows[0].created_at);
+      if (isNaN(created.getTime())) return out;
+      out.registered_at = created.toISOString();
+      var hours = (Date.now() - created.getTime()) / 3600000;
+      out.hours_since_register = Math.round(hours * 10) / 10;
+      out.within_48h = hours >= 0 && hours < 48;
+    } catch (eUser) {
+      return out;
+    }
+    try {
+      const [vrows] = await pool.execute(
+        `SELECT COUNT(*) AS n FROM user_page_events
+         WHERE username = ?
+           AND route_key LIKE '%track_purchase_page_view%'`,
+        [u]
+      );
+      out.visit_count = vrows[0] && vrows[0].n != null ? Number(vrows[0].n) || 0 : 0;
+    } catch (eVis) {
+      out.visit_count = 0;
+    }
+    out.eligible = !!(out.within_48h && out.visit_count >= 2);
+    return out;
+  }
+
   async function acceptToOffer(bid, amount, reviewer, isAuto) {
     var label = (bid.sku_label ? String(bid.sku_label) : '') + '·心理价特惠';
     await offers.upsertOffer(
@@ -444,6 +488,7 @@ function createPriceBids(deps) {
     saveConfig: saveConfig,
     submitBid: submitBid,
     getLatestBid: getLatestBid,
+    getBackPromptContext: getBackPromptContext,
     listBids: listBids,
     reviewBid: reviewBid
   };

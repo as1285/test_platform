@@ -609,7 +609,7 @@
     return m ? parseInt(m[1], 10) : 0;
   }
 
-  /** iPhone 17 / 17 Pro / 17 Air 等 6.3 寸档逻辑屏约 402×874（容差）。 */
+  /** iPhone 17 / 17 Pro 等 6.3 寸档逻辑屏约 402×874（容差）。iPhone Air 为 420×912，勿混入。 */
   function isIPhone402x874Viewport() {
     try {
       var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
@@ -658,18 +658,21 @@
   }
 
   /**
-   * iPhone 17 系列 6.3 寸（17 / 17 Pro / 17 Air 等，非 Max）：收入纳税明细顶栏「返回」「批量申诉」字号单独放大。
-   * UA 含型号时优先；Safari 无型号时用 iOS 26+ 且 402×874 视口与 16 Pro 区分。
+   * iPhone 17 系列 6.3 寸（17 / 17 Pro，非 Max / 非 Air）：收入纳税明细顶栏「返回」「批量申诉」字号单独放大。
+   * UA 含型号时优先；Safari 无型号时用 iOS 26+ 且 402×874 视口与 16 Pro 区分。Air 勿并入。
    */
   function isIPhone17ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
     }
     var ua = navigator.userAgent || '';
+    if (/iPhone\s*Air\b|iPhone18,4\b/i.test(ua)) {
+      return false;
+    }
     if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2|iPhone19,2/i.test(ua)) {
       return false;
     }
-    if (/iPhone\s*17(?:\s*Pro)?\b|iPhone\s*17\s*Air\b|iPhone18,1\b|iPhone18,3\b|iPhone18,4\b|iPhone19,1\b/i.test(ua)) {
+    if (/iPhone\s*17(?:\s*Pro)?\b|iPhone18,1\b|iPhone18,3\b|iPhone19,1\b/i.test(ua)) {
       return true;
     }
     if (getIOSMajorVersion() >= 26 && (isIPhone393x852Viewport() || isIPhone402x874Viewport())) {
@@ -1162,21 +1165,33 @@
 
   /** Cordova / iOS：沉浸状态栏 + 浅色图标，避免白条（对齐原版 immersed + light）
    * topColor：仅状态栏/theme-color；shellBg：壳层与 iframe 外底色（默认浅灰，勿用顶栏蓝铺满，否则 iOS 底栏下露蓝）
-   * Android 外置状态栏（OPPO/小米/vivo 等）：overlays=false，用顶栏同色实底，避免透出壳层浅灰造成「两截蓝」。 */
+   * 安卓 / 鸿蒙：系统栏为独立黑条，与 iOS「蓝顶 translucent + 头图顶入」区分，勿把顶栏蓝铺进 StatusBar。 */
   function applyImmersiveBlueStatusBar(topColor, shellBg) {
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
+      if (isLikelyAndroidViewportClient()) {
+        if (pageBg === topColor || pageBg === '#1677ff' || pageBg === '#2b81f2' || pageBg === '#1e8fff') {
+          pageBg = '#f5f6fa';
+        }
+        upsertMeta('theme-color', '#000000');
+        upsertMeta('msapplication-navbutton-color', '#000000');
+        setStatusBarStyleMeta('black');
+        requestShellStatusBar({
+          style: 'light',
+          overlays: false,
+          color: '#000000',
+          paint_shell: true,
+          shell_bg: pageBg
+        });
+        return;
+      }
       upsertMeta('theme-color', topColor);
       upsertMeta('msapplication-navbutton-color', topColor);
       setStatusBarStyleMeta('black-translucent');
-      var androidOuterSolid =
-        isLikelyAndroidViewportClient() &&
-        isAndroidOuterStatusBarClient() &&
-        !isHuaweiPura70LikeClient();
       requestShellStatusBar({
         style: 'light',
-        overlays: !androidOuterSolid,
+        overlays: true,
         color: topColor,
         paint_shell: true,
         shell_bg: pageBg
@@ -1194,6 +1209,8 @@
       var mineBlue = '#1677ff';
       var mineGrad =
         'linear-gradient(90deg,#2d4cf2 0%,#094ee9 12%,#0b56ed 25%,#0972e8 38%,#0c8ef0 50%,#0e9fee 63%,#30b1f2 75%,#64c3f3 88%,#97caf5 100%)';
+      /* Mate60 冻结页仅安卓：顶条纯黑，与 iOS 蓝顶沉浸区分 */
+      var htmlTopStrip = 'linear-gradient(#000000,#000000)';
       /* 覆盖 setupMobileStatusBar 注入的 html 白底 */
       try {
         var old = document.querySelector('style[data-mine-chrome]');
@@ -1201,10 +1218,10 @@
         var st = document.createElement('style');
         st.setAttribute('data-mine-chrome', '1');
         st.textContent =
-          /* 顶蓝底灰：html 底色浅灰，仅顶部 background-image 画状态栏高度蓝带，避免 iOS 底栏下露蓝 */
+          /* 安卓/鸿蒙黑条 + 浅灰底；勿铺 iOS 式蓝顶渐变 */
           'html{background-color:#f5f6fa !important;background-image:' +
-          mineGrad +
-          ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;' +
+          htmlTopStrip +
+          ' !important;background-size:100% var(--app-shell-statusbar-top,52px) !important;background-repeat:no-repeat !important;background-position:top center !important;' +
           /* html 给百分比高度基准；body 必须用 vh/dvh 撑满视口，否则短文档上 fixed 底栏会悬空 */
           'min-height:100% !important;height:100% !important;}' +
           'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;' +
@@ -1213,10 +1230,11 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+          /* 安卓不 bleed；头图画布顶色仍用蓝，系统栏区域由 html 黑条承担 */
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:0 !important;background:' +
           mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
           /*
            * 叠层绝对定位相对 padding edge：top:0 与负 margin 上拉后的头图顶对齐。
            * 勿再写 top:-bleed，否则姓名/税号相对米色卡整体上移（Hi nova/华为/三星等均中招）。

@@ -422,6 +422,30 @@
                             (document.head || document.documentElement).appendChild(p15St);
                         }
                     }
+                    /* iPhone Air（420×912）：≥414 会吃 20px 卡片留白，首屏即贴边压过 */
+                    var isAirLike =
+                        /iPhone\s*Air\b|iPhone18,4\b/i.test(blob16) ||
+                        (short16 >= 416 &&
+                            short16 <= 424 &&
+                            long16 >= 904 &&
+                            long16 <= 920);
+                    if (isAirLike) {
+                        document.documentElement.classList.add('app-ios-iphoneair');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                        if (!document.querySelector('style[data-iphoneair-result-firstpaint]')) {
+                            var airSt = document.createElement('style');
+                            airSt.setAttribute('data-iphoneair-result-firstpaint', '1');
+                            airSt.textContent =
+                                'html.app-ios-iphoneair body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+                                'html.app-ios-iphoneair body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+                                'html.app-ios-iphoneair body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+                                'html.app-ios-iphoneair body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
+                                'html.app-ios-iphoneair body.page-shuiming-result .back-btn{left:12px !important;}' +
+                                'html.app-ios-iphoneair body.page-shuiming-result .header-right{right:12px !important;}' +
+                                'html.app-ios-iphoneair body.page-shuiming-result .sm-activate-card,html.app-ios-iphoneair body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}';
+                            (document.head || document.documentElement).appendChild(airSt);
+                        }
+                    }
                     if (is16pmUa || is16pmVp || isLargePmVp || seenWide) {
                         document.documentElement.classList.add('app-ios-promax-wide');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
@@ -447,8 +471,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260903-mate60"></script>
-    <script src="/js/auth.js?v=20260903-mate60" defer></script>
+    <script src="/js/auth-boot.js?v=20260903-sum-colon"></script>
+    <script src="/js/auth.js?v=20260903-sum-colon" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -820,19 +844,28 @@
             opacity: 0.75;
         }
 
-        /* 问号与冒号紧贴；与「收入合计」仅留极小间距，贴近官方 */
+        /* 问号与冒号紧贴；抵消全角「：」左侧字怀，避免「收入合计」后像多了空格 */
         .summary-help-with-colon {
             display: inline-flex;
             align-items: center;
             gap: 0;
-            margin-left: 2px;
+            margin-left: 1px;
             line-height: 20px;
             position: relative;
             z-index: 2;
+            letter-spacing: 0;
+        }
+
+        .summary-help-with-colon .icon {
+            margin: 0;
+            padding: 0;
+            letter-spacing: 0;
         }
 
         .summary-help-with-colon .summary-colon {
+            margin-left: -3px;
             line-height: 20px;
+            letter-spacing: 0;
         }
 
         .summary-value {
@@ -1065,6 +1098,15 @@
             font-synthesis: none;
             -webkit-font-smoothing: antialiased;
             flex-shrink: 0;
+        }
+
+        /* iOS PingFang 全角冒号左承托更大，再收一点，避免「收入合计」后空一截 */
+        html.platform-ios body.page-shuiming-result .summary-help-with-colon {
+            margin-left: 1px;
+        }
+
+        html.platform-ios body.page-shuiming-result .summary-help-with-colon .summary-colon {
+            margin-left: -4px;
         }
 
         .list-date {
@@ -2009,6 +2051,48 @@
             padding-bottom: 2px !important;
         }
 
+        /*
+         * iPhone Air（420×912）：
+         * 宽 ≥414 会命中上方 20px 卡片留白，左右空条相对官方明细过大；压过 media / promax-wide，列表贴边。
+         */
+        html.app-ios-iphoneair body.page-shuiming-result .list,
+        html.app-ios-iphoneair.app-ios-promax-wide body.page-shuiming-result .list {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming-result .list-item,
+        html.app-ios-iphoneair.app-ios-promax-wide body.page-shuiming-result .list-item {
+            --list-inline-pad: 16px;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming-result .summary > .summary-item,
+        html.app-ios-iphoneair.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming-result .top-fixed .header,
+        html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming-result .back-btn {
+            left: 12px !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming-result .header-right {
+            right: 12px !important;
+        }
+        html.app-ios-iphoneair body.page-shuiming-result .sm-activate-card,
+        html.app-ios-iphoneair body.page-shuiming-result .sm-refund-browse-card {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            border-radius: 0 !important;
+        }
+
         @media screen and (min-device-width: 428px) and (max-device-width: 432px) and (min-device-height: 926px) and (max-device-height: 936px),
             screen and (min-width: 428px) and (max-width: 432px) and (min-height: 926px) and (max-height: 936px) {
             body.page-shuiming-result .page-root {
@@ -2050,6 +2134,44 @@
             body.page-shuiming-result .top-fixed .summary {
                 background: #f5f6fa !important;
                 padding: 10px 0 6px !important;
+            }
+        }
+
+        /* iPhone Air 420×912：无 class 时也压过 ≥414 留白 */
+        @media screen and (min-device-width: 416px) and (max-device-width: 424px) and (min-device-height: 904px) and (max-device-height: 920px),
+            screen and (min-width: 416px) and (max-width: 424px) and (min-height: 904px) and (max-height: 920px) {
+            body.page-shuiming-result .list {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            body.page-shuiming-result .list-item {
+                --list-inline-pad: 16px;
+                border-radius: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+            }
+            body.page-shuiming-result .summary > .summary-item {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+            body.page-shuiming-result .top-fixed .header {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+            body.page-shuiming-result .back-btn {
+                left: 12px !important;
+            }
+            body.page-shuiming-result .header-right {
+                right: 12px !important;
+            }
+            body.page-shuiming-result .sm-activate-card,
+            body.page-shuiming-result .sm-refund-browse-card {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                border-radius: 0 !important;
             }
         }
 
