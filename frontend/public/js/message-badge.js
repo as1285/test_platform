@@ -1,9 +1,11 @@
 /**
- * 底部导航「消息」未读角标（依赖 auth.js 的 authFetch）
+ * 底部导航「消息」未读角标（由 auth.js 动态注入）。
+ * 依赖 authFetch 拉未读数；无底栏或接口失败时静默。
  */
 (function () {
   'use strict';
 
+  // === DOM：定位消息 Tab / 渲染角标 ===
   function findMsgNavItem() {
     return document.querySelector(
       '.bottom-nav .nav-item[href="message.html"], .bottom-nav a[href="message.html"]'

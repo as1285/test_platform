@@ -1,10 +1,12 @@
 /**
  * 离职/在职证明页共用壳：支付、预填、一键生成、PDF 预览与系统分享。
- * 用法：window.initEmploymentCertPage(config)
+ * 入口页：lizhi_cert.html / zaizhi_cert.html；用法 window.initEmploymentCertPage(config)。
+ * 费用文案可与后台 lizhi_cert_fee 等设置联动；演示水印付费去除。
  */
 (function (global) {
   'use strict';
 
+  // === DOM / 鉴权辅助 ===
   function el(id) {
     return id ? document.getElementById(id) : null;
   }

@@ -1,4 +1,9 @@
+/**
+ * 纳税记录开具（najilu.html）：列表、预览、本地草稿前缀 tax_issue_records:。
+ * 依赖 authFetch；完税二维码等扩展见 najilu-qr-user.js。
+ */
 (function () {
+  // === 本地存储 / 工具 ===
   var STORAGE_PREFIX = 'tax_issue_records:';
 
   function pad2(n) {
@@ -351,6 +356,82 @@
     } catch (e) {}
   }
 
+  /* 完税二维码去水印权益：未开通时，使用自定义码的纳税记录出图带「演示样例」水印 */
+  var najiluQrUnlockedCache = null;
+  var najiluQrUnlockPromise = null;
+
+  function setNajiluQrUnlocked(v) {
+    najiluQrUnlockedCache = v === true || v === 1 || v === '1';
+  }
+
+  function ensureNajiluQrUnlockStatus() {
+    if (najiluQrUnlockedCache !== null) {
+      return Promise.resolve(najiluQrUnlockedCache);
+    }
+    if (najiluQrUnlockPromise) return najiluQrUnlockPromise;
+    if (typeof window.authFetch !== 'function') {
+      najiluQrUnlockedCache = false;
+      return Promise.resolve(false);
+    }
+    najiluQrUnlockPromise = window
+      .authFetch('/api/najilu-qr/status')
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        setNajiluQrUnlocked(!!(j && j.data && j.data.unlocked));
+        return najiluQrUnlockedCache;
+      })
+      .catch(function () {
+        najiluQrUnlockedCache = false;
+        return false;
+      })
+      .then(function (v) {
+        najiluQrUnlockPromise = null;
+        return v;
+      });
+    return najiluQrUnlockPromise;
+  }
+
+  function appHasCustomQr(app) {
+    return !!(app && (app.qr_block_image_url || app.qr_image_url));
+  }
+
+  function shouldWatermarkCustomQr(app, options) {
+    if (options && Object.prototype.hasOwnProperty.call(options, 'demoWatermark')) {
+      return options.demoWatermark === true;
+    }
+    if (!isNajiluPage()) return false;
+    if (!appHasCustomQr(app)) return false;
+    return najiluQrUnlockedCache !== true;
+  }
+
+  function drawDemoSampleWatermark(ctx, width, height) {
+    if (!ctx || !width || !height) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(219, 41, 41, 0.13)';
+    ctx.font = 'bold 42px SimSun, STSong, "PingFang SC", "Microsoft YaHei", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var stepX = 280;
+    var stepY = 180;
+    var row = 0;
+    var y;
+    var x;
+    for (y = 40; y < height + 80; y += stepY) {
+      var offset = row % 2 ? stepX / 2 : 0;
+      for (x = -40 + offset; x < width + 80; x += stepX) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((-28 * Math.PI) / 180);
+        ctx.fillText('演示样例', 0, 0);
+        ctx.restore();
+      }
+      row += 1;
+    }
+    ctx.restore();
+  }
+
   function stickyQrFromApps(apps) {
     var list = Array.isArray(apps) ? apps : [];
     for (var i = 0; i < list.length; i++) {
@@ -436,6 +517,9 @@
         if (j && j.code === 200 && j.data && Array.isArray(j.data.applications)) {
           if (j.data && Object.prototype.hasOwnProperty.call(j.data, 'qr_override')) {
             saveCachedQrOverride(j.data.qr_override);
+          }
+          if (Object.prototype.hasOwnProperty.call(j.data, 'najilu_qr_unlocked')) {
+            setNajiluQrUnlocked(j.data.najilu_qr_unlocked);
           }
           return j.data.applications;
         }
@@ -1734,6 +1818,19 @@
     if (options.query_code) {
       app = Object.assign({}, app, { query_code: options.query_code });
     }
+    var needUnlock =
+      isNajiluPage() &&
+      appHasCustomQr(app) &&
+      !Object.prototype.hasOwnProperty.call(options, 'demoWatermark') &&
+      najiluQrUnlockedCache === null;
+    var unlockReady = needUnlock ? ensureNajiluQrUnlockStatus() : Promise.resolve();
+    return unlockReady.then(function () {
+      return renderCertificateDataUrlAfterUnlock(app, options, showStamp);
+    });
+  }
+
+  function renderCertificateDataUrlAfterUnlock(app, options, showStamp) {
+    var demoWatermark = shouldWatermarkCustomQr(app, options);
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
     var qrBlockUrl = resolveCertAssetUrl(
@@ -1933,6 +2030,9 @@
       if (showStamp) {
         /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
         drawStamp(ctx, width - 238, explainY + 122, resolveStampAuthority(allRows, app), stampImg);
+      }
+      if (demoWatermark) {
+        drawDemoSampleWatermark(ctx, width, height);
       }
       return canvas.toDataURL('image/png');
     }
@@ -2551,6 +2651,7 @@
   };
 
   if (isNajiluPage()) {
+    ensureNajiluQrUnlockStatus();
     var view = getParam('view');
     if (view === 'records') {
       renderApplicationsPage();

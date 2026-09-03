@@ -1,14 +1,16 @@
 /**
- * C 端跳转加速：
+ * C 端跳转加速（由 auth.js 动态注入，HTML 无静态引用）：
  * - 底栏 / 常用链接触摸即预取 HTML（配合 nginx 短缓存）
  * - Chrome Speculation Rules 预渲染底栏页
  * - 预热关键 JS（已强缓存时几乎无成本）
+ * data-fast-nav=1 防重复注入。
  */
 (function () {
   if (typeof document === 'undefined') return;
   if (document.documentElement.getAttribute('data-fast-nav') === '1') return;
   document.documentElement.setAttribute('data-fast-nav', '1');
 
+  // === 预取目标 / 预热脚本 ===
   var TAB_PAGES = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
   var WARM_JS = [
     '/js/auth-boot.js?v=20260828-android-load',

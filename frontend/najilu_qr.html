@@ -189,6 +189,87 @@
             font-size: 13px;
         }
         .link-row a { color: var(--accent); text-decoration: none; font-weight: 600; }
+        .guide-lead {
+            font-size: 13px;
+            color: var(--ink-soft);
+            line-height: 1.55;
+            margin: 0 0 14px;
+        }
+        .guide-steps {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .guide-steps li {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .guide-steps li:last-child { margin-bottom: 0; }
+        .guide-n {
+            flex: 0 0 22px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1px;
+        }
+        .guide-steps strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 2px;
+        }
+        .guide-steps p {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+        .field-help {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.4;
+            margin: -6px 0 10px;
+        }
+        .faq-item {
+            border-top: 1px solid var(--line);
+        }
+        .faq-item:first-of-type { border-top: 0; }
+        .faq-item summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 2px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary::after {
+            content: "＋";
+            color: var(--muted);
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .faq-item[open] summary::after { content: "－"; }
+        .faq-item p {
+            font-size: 13px;
+            color: var(--ink-soft);
+            line-height: 1.55;
+            margin: 0 0 12px;
+        }
     </style>
 </head>
 <body>
@@ -199,34 +280,79 @@
     <div class="page">
         <div class="hero">
             <h1>替换完税二维码</h1>
-            <p id="najiluQrHeroDesc">付费开通后，可上传完整完税证明图并锁定为本账号默认二维码；之后重新生成纳税记录都用这张码。</p>
+            <p id="najiluQrHeroDesc">未付款也可上传、锁定并生成；结果带「演示样例」水印。付款后去掉水印，之后重新生成纳税记录都用这张码。</p>
         </div>
 
-        <div class="card" id="cardNajiluQrPay" hidden>
-            <div class="card-title" id="najiluQrPayTitle">开通权益 · ¥300</div>
-            <p class="card-hint">付一次终身可用。开通后即可替换并锁定完税二维码。</p>
-            <button type="button" class="btn" id="btnNajiluQrPay">支付宝付款开通</button>
+        <div class="card" id="cardNajiluQrGuide">
+            <div class="card-title">怎么用（约 1 分钟）</div>
+            <p class="guide-lead">把你已有的完税证明上的二维码，锁到本账号。之后在「纳税记录开具」里重新生成，右上角都会用这张码。未付款也能做完，图上会带「演示样例」水印；付一次后终身去水印。</p>
+            <ol class="guide-steps">
+                <li>
+                    <span class="guide-n">1</span>
+                    <div>
+                        <strong>准备一张完整完税证明图</strong>
+                        <p>用个人所得税 APP 或电子税务局开出的整页截图 / 照片。右上角要能看清二维码，下面最好还能看清 16 位查询验证码。不要只截一小块。</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="guide-n">2</span>
+                    <div>
+                        <strong>点「选择完整完税证明图片」上传</strong>
+                        <p>系统会自动框出右上角二维码。红框位置不对时，用手指在源图上拖一下，重新框住「二维码 + 验证码」整块即可。</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="guide-n">3</span>
+                    <div>
+                        <strong>核对验证码（能看清就填）</strong>
+                        <p>图上 16 位查询验证码能看清就填上；看不清可留空。替换方式默认选「整块」，一般不用改。</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="guide-n">4</span>
+                    <div>
+                        <strong>先预览，再保存为我的默认二维码</strong>
+                        <p>预览确认贴回去的位置对了，再点保存。保存后本账号重新生成纳税记录都用这张码。</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="guide-n">5</span>
+                    <div>
+                        <strong>去纳税记录开具里重新生成</strong>
+                        <p>保存只是锁定这张码，不会自动改旧图。打开「纳税记录开具」再生成一次，才能看到效果。要去水印，在本页付一次即可，付完再生成一遍。</p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+        <div class="card" id="cardNajiluQrPay">
+            <div class="card-title" id="najiluQrPayTitle">去水印开通 · ¥300</div>
+            <p class="card-hint" id="najiluQrPayHint">未开通也能上传、锁定并生成；结果带「演示样例」水印。付一次终身去掉水印。</p>
+            <button type="button" class="btn" id="btnNajiluQrPay">支付宝付款去水印</button>
             <div id="najiluQrPayQrWrap" style="margin-top:12px;text-align:center;" hidden></div>
             <p class="status" id="najiluQrPayStatus" hidden></p>
         </div>
 
-        <div class="card" id="cardNajiluQrTool" hidden>
+        <div class="card" id="cardNajiluQrTool">
             <div class="ok-box" id="najiluQrLockedBox" hidden>当前账号已锁定自定义二维码。重新上传并保存可覆盖；也可清除后恢复自动出码。</div>
-            <div class="warn-box">请使用标准完税证明整图。识别不准时可在下方源图上拖动框选二维码区域。</div>
+            <div class="warn-box">请上传完整整页完税证明图（不要只截二维码）。识别不准时，在下方源图上拖动重新框选即可。</div>
 
             <label class="field-label" for="najiluQrIssueId">开具记录（可选）</label>
             <select class="field-select" id="najiluQrIssueId">
                 <option value="">加载中…</option>
             </select>
+            <span class="field-help">一般不用选。保存后会作为本账号默认码，之后新生成的记录都用它。</span>
 
             <label class="field-label" for="najiluQrQueryCode">查询验证码（16 位，可选）</label>
             <input class="field" id="najiluQrQueryCode" maxlength="32" placeholder="如 NSXJU5RLD55KET4M" autocomplete="off" autocapitalize="characters">
+            <span class="field-help">图上右上角二维码下方那串字母数字。能看清就填；看不清可留空。</span>
 
             <label class="field-label" for="najiluQrMode">替换方式</label>
             <select class="field-select" id="najiluQrMode">
                 <option value="block" selected>整块（二维码 + 验证码图）</option>
                 <option value="qr">仅二维码方块</option>
             </select>
+            <span class="field-help">推荐「整块」：一次换掉二维码和下面的 16 位验证码。只有想只换小方块码时才选「仅二维码」。</span>
 
             <label class="file-btn" for="najiluQrFullFile">选择完整完税证明图片</label>
             <input type="file" id="najiluQrFullFile" accept="image/png,image/jpeg,image/jpg,image/webp">
@@ -242,7 +368,8 @@
                 <input type="file" id="najiluQrFile" accept="image/png,image/jpeg,image/jpg,image/webp">
             </details>
 
-            <button type="button" class="btn" id="najiluQrPreviewBtn">预览结果</button>
+            <button type="button" class="btn" id="najiluQrPreviewBtn">预览 / 生成结果图</button>
+            <button type="button" class="btn btn-secondary" id="najiluQrDownloadBtn" style="display:none;">下载结果图</button>
             <button type="button" class="btn" id="najiluQrSaveBtn">保存为我的默认二维码</button>
             <button type="button" class="btn btn-danger" id="najiluQrClearBtn">清除自定义二维码</button>
             <p class="status" id="najiluQrStatus" aria-live="polite"></p>
@@ -250,10 +377,47 @@
             <div class="card-title" style="margin-top:8px;">替换素材预览</div>
             <img class="preview-img" id="najiluQrAssetPreview" alt="素材预览">
             <div id="najiluQrCertPreview"></div>
-            <p class="link-row">保存后可去 <a href="najilu.html">纳税记录开具</a> 重新生成验证效果。</p>
+            <p class="link-row">保存后请去 <a href="najilu.html">纳税记录开具</a> 重新生成一次，才能看到新码。旧记录不会自动改。</p>
+        </div>
+
+        <div class="card" id="cardNajiluQrFaq">
+            <div class="card-title">常见问题</div>
+            <p class="card-hint">先看这几条，大多数操作疑问都能对上。</p>
+            <details class="faq-item" open>
+                <summary>这功能具体是做什么的？</summary>
+                <p>把你手里已有完税证明上的二维码（以及可选的 16 位查询验证码）锁定到当前账号。之后在本平台重新生成纳税记录时，右上角不再自动出新码，而是一直用你锁的这张。</p>
+            </details>
+            <details class="faq-item">
+                <summary>必须先付款才能用吗？</summary>
+                <p>不用。上传、框选、预览、保存都可以先做。未付款生成的图会带「演示样例」水印；支付宝付一次（当前 ¥<span class="najiluQrFeeYuan">300</span>）后终身去掉水印。付款后请再预览或再生成一次纳税记录。</p>
+            </details>
+            <details class="faq-item">
+                <summary>该上传什么样的图片？</summary>
+                <p>请上传完整整页完税证明，不要只截右上角。手机相册、截图都可以，支持 jpg / png / webp，单张不超过 8MB。照片尽量端正、别裁掉二维码和下面的验证码。</p>
+            </details>
+            <details class="faq-item">
+                <summary>自动识别框偏了怎么办？</summary>
+                <p>上传后源图上会出现红框。位置不对就用手指在图上拖出新框，把二维码和下面 16 位验证码一起框进去。框太小会提示重新框选。</p>
+            </details>
+            <details class="faq-item">
+                <summary>「整块」和「仅二维码」怎么选？</summary>
+                <p>默认「整块」即可：替换右上角整块（二维码 + 验证码文字）。只有你只想换那个小方块码、验证码仍用系统生成的，才选「仅二维码」。</p>
+            </details>
+            <details class="faq-item">
+                <summary>保存之后为什么旧图还是原来的码？</summary>
+                <p>保存只是锁定以后用哪张码，不会改已经生成过的图。请到「纳税记录开具」再点一次生成。换过码或付完款去水印，都要重新生成才生效。</p>
+            </details>
+            <details class="faq-item">
+                <summary>以后想换一张码，或不要自定义码了？</summary>
+                <p>再上传一张新的完整图并保存，就会覆盖。点「清除自定义二维码」后，之后生成会恢复系统自动出码。</p>
+            </details>
+            <details class="faq-item">
+                <summary>这是不是税务机关出的正式完税证明？</summary>
+                <p>不是。本页用来把你指定的二维码用在本平台生成的纳税记录上，方便对照演示。对外正式完税请仍在电子税务局或个人所得税 APP 开具。</p>
+            </details>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
-    <script src="/js/najilu-qr-user.js?v=20260903-pay300"></script>
+    <script src="/js/najilu-qr-user.js?v=20260903-guide"></script>
 </body>
 </html>

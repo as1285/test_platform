@@ -1,6 +1,8 @@
 /**
+ * 【冻结副本 · 2026-08-12】仅配合 mine_mate60_aug12.html / nav-mate60-aug12.css。
+ * 勿与主线 theme-loader.js 同步期望。
+ *
  * 从服务端拉取「个人中心 / 底栏 / 各 TAB 页配图」主题与路径，写入 documentElement。
- * 各页在 nav.css 之后引入；个人中心 mine.html 另监听 mineUiConfig 更新配图。
  */
 (function () {
   var STORAGE_KEY = 'public_mine_ui_v1';

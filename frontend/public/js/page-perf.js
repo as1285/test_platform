@@ -1,6 +1,8 @@
 /**
- * C 端页面加载性能埋点：Navigation Timing + FCP，上报 track_page_load_perf。
- * 依赖 auth.js 提供的 trackUserAction / trackPublicAction（异步加载时会重试）。
+ * C 端页面加载性能埋点（由 auth.js 动态注入）：
+ * Navigation Timing + FCP，上报 track_page_load_perf。
+ * 依赖 auth.js 的 trackUserAction / trackPublicAction（异步加载时会重试）。
+ * 跳过管理后台页。
  */
 (function (global) {
   if (global.__pagePerfBoot) {
@@ -8,6 +10,7 @@
   }
   global.__pagePerfBoot = 1;
 
+  // === 页面名 / 采样过滤 ===
   function pageName() {
     try {
       if (typeof global.currentPageName === 'function') {

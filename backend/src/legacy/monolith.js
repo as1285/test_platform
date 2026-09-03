@@ -3976,6 +3976,18 @@ async function saveRecordInConn(conn, userId, record, opts) {
   opts = opts || {};
   var deferChangeLog = !!opts.deferChangeLog;
   record = normalizeTaxRecordForSql(record);
+  var yearGate = Number(record.year);
+  var monthGate = Number(record.month);
+  if (!isFinite(yearGate) || yearGate < 2000 || yearGate > 2100) {
+    var yearErr = new Error('年份无效（须为 2000–2100）');
+    yearErr.code = 'TAX_YEAR_INVALID';
+    throw yearErr;
+  }
+  if (!isFinite(monthGate) || monthGate < 1 || monthGate > 12) {
+    var monthErr = new Error('月份无效');
+    monthErr.code = 'TAX_MONTH_INVALID';
+    throw monthErr;
+  }
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
 
   const [existing] = await conn.execute(
@@ -6565,7 +6577,7 @@ async function handleAlipayCreateOrder(req, res) {
   var isNajiluQr =
     product === 'najilu_qr' || isNajiluQrSkuId(skuIdReq) || skuIdReq === 'najilu_qr';
 
-  /* —— 完税二维码替换终身权益（不走开通激活逻辑） —— */
+  /* —— 完税二维码去水印终身权益（不走开通激活逻辑） —— */
   if (isNajiluQr) {
     if (!req.authUserId) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
@@ -6580,7 +6592,7 @@ async function handleAlipayCreateOrder(req, res) {
       unlockedNajilu = false;
     }
     if (unlockedNajilu) {
-      return res.status(409).json({ code: 409, msg: '完税二维码替换权益已开通，无需重复购买' });
+      return res.status(409).json({ code: 409, msg: '完税二维码去水印权益已开通，无需重复购买' });
     }
     var najiluFeeCfg = await najiluQrMod.loadNajiluQrFeeConfig(false);
     var najiluAmount = alipay.normalizeAmount(
@@ -10417,6 +10429,9 @@ function classifyAnalyticsRoute(req) {
   if (path === '/api/public/mine-ui') {
     return { route_key: method + ' /api/public/mine-ui', biz_category: '公开配置' };
   }
+  if (path === '/api/public/lizhi-cert-fee') {
+    return { route_key: method + ' /api/public/lizhi-cert-fee', biz_category: '公开配置' };
+  }
   if (path === '/api/public/install-packages') {
     return { route_key: method + ' /api/public/install-packages', biz_category: '公开配置' };
   }
@@ -12157,15 +12172,27 @@ async function handleTaxGet(req, res) {
           };
         });
         var qrOverride = null;
+        var najiluQrUnlocked = false;
         try {
           var najiluQrList = require('../admin/najiluQr');
           if (najiluQrList && typeof najiluQrList.resolveUserQrOverride === 'function') {
             qrOverride = await najiluQrList.resolveUserQrOverride(connList, String(uidIssues));
           }
+          if (najiluQrList && typeof najiluQrList.userHasNajiluQrUnlocked === 'function') {
+            najiluQrUnlocked = await najiluQrList.userHasNajiluQrUnlocked(String(uidIssues));
+          }
         } catch (eOvList) {
           qrOverride = null;
         }
-        return res.json({ code: 200, data: { applications: issueOut, qr_override: qrOverride } });
+        return res.json({
+          code: 200,
+          data: {
+            applications: issueOut,
+            qr_override: qrOverride,
+            najilu_qr_unlocked: najiluQrUnlocked,
+            watermark: !najiluQrUnlocked
+          }
+        });
       } finally {
         connList.release();
       }
@@ -17494,7 +17521,9 @@ async function handleAdminUsers(req, res) {
       /* 有个税记录修改的不同北京日历天数（tax_record_change_logs）≥ N */
       whereClauses.push(
         `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
-          WHERE tcl.user_id = users.username) >= ?`
+          WHERE tcl.user_id = users.username AND ` +
+          TAX_CHANGE_LOG_VALID_YEAR_SQL +
+          ') >= ?'
       );
       params.push(qTaxModDaysGt);
     }
@@ -17512,7 +17541,9 @@ async function handleAdminUsers(req, res) {
       }
       whereClauses.push(
         `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
-            WHERE tcl.user_id = users.username) > ?`
+            WHERE tcl.user_id = users.username AND ` +
+          TAX_CHANGE_LOG_VALID_YEAR_SQL +
+          ') > ?'
       );
       params.push(peerDaysGt);
     }
@@ -17611,12 +17642,14 @@ async function handleAdminUsers(req, res) {
         nameChangeCountMap[String(row.username || '')] = Number(row.cnt) || 0;
       });
       const [taxModDaysRows] = await conn.query(
-        `SELECT user_id, COUNT(DISTINCT DATE(DATE_ADD(changed_at, INTERVAL 8 HOUR))) AS days_cnt
-         FROM tax_record_change_logs
-         WHERE user_id IN (` +
+        `SELECT tcl.user_id, COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) AS days_cnt
+         FROM tax_record_change_logs tcl
+         WHERE tcl.user_id IN (` +
           nameChangePlaceholders +
-          `)
-         GROUP BY user_id`,
+          `) AND ` +
+          TAX_CHANGE_LOG_VALID_YEAR_SQL +
+          `
+         GROUP BY tcl.user_id`,
         usernamesForRisk
       );
       (taxModDaysRows || []).forEach(function (row) {
@@ -17845,12 +17878,19 @@ async function handleAdminUsers(req, res) {
 /** 改名超过免费次数、或个税修改天数超阈值、且未永久免改名费的用户：按日统计个税修改次数 */
 var RENAME_WATCH_NAME_CHANGES_GT = 5;
 var RENAME_WATCH_TAX_MOD_DAYS_GT = 8;
+/** 热力图/修改天数：排除非法年份（如两位年 23 被展开成 23–2026）产生的刷量日志 */
+var TAX_CHANGE_LOG_YEAR_EXPR =
+  "CAST(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(tcl.after_json, tcl.before_json), '$.year')) AS UNSIGNED)";
+var TAX_CHANGE_LOG_VALID_YEAR_SQL =
+  '(' + TAX_CHANGE_LOG_YEAR_EXPR + ' BETWEEN 2000 AND 2100)';
 var RENAME_WATCH_NAME_CHANGE_COUNT_SQL =
   `(SELECT COUNT(*) FROM user_profile_change_logs upc
     WHERE upc.username = users.username AND upc.field_key = 'real_name')`;
 var RENAME_WATCH_TAX_MOD_DAYS_SQL =
   `(SELECT COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) FROM tax_record_change_logs tcl
-    WHERE tcl.user_id = users.username)`;
+    WHERE tcl.user_id = users.username AND ` +
+  TAX_CHANGE_LOG_VALID_YEAR_SQL +
+  ')';
 
 async function handleAdminRenameTaxDaily(req, res) {
   try {
@@ -17918,6 +17958,7 @@ async function handleAdminRenameTaxDaily(req, res) {
                   COUNT(DISTINCT DATE(DATE_ADD(tcl.changed_at, INTERVAL 8 HOUR))) AS days_cnt
            FROM tax_record_change_logs tcl
            WHERE tcl.user_id IN (${placeholders})
+             AND ${TAX_CHANGE_LOG_VALID_YEAR_SQL}
            GROUP BY tcl.user_id`,
           usernames
         );
@@ -17932,6 +17973,7 @@ async function handleAdminRenameTaxDaily(req, res) {
           `SELECT tcl.user_id AS username, ${cnDayExpr} AS d, COUNT(*) AS cnt
            FROM tax_record_change_logs tcl
            WHERE tcl.user_id IN (${placeholders})
+             AND ${TAX_CHANGE_LOG_VALID_YEAR_SQL}
              AND ${cnDayExpr} >= ? AND ${cnDayExpr} <= ?
            GROUP BY tcl.user_id, ${cnDayExpr}`,
           usernames.concat([startYmd, endYmd])

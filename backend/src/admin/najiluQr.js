@@ -527,7 +527,7 @@ async function handleAdminNajiluQrList(req, res) {
   }
 }
 
-/** C 端：权益状态 + 价格 */
+/** C 端：权益状态 + 价格。未付费也可生成，结果带水印；付款后去水印。 */
 async function handleUserNajiluQrStatus(req, res) {
   try {
     var username = String(req.authUserId || '').trim().substring(0, 255);
@@ -542,6 +542,7 @@ async function handleUserNajiluQrStatus(req, res) {
       code: 200,
       data: {
         unlocked: unlocked,
+        watermark: !unlocked,
         fee_amount: feeCfg.amount || najiluQrFeePolicy.NAJILU_QR_FEE_DEFAULT_AMOUNT,
         fee_subject: najiluQrFeePolicy.NAJILU_QR_SUBJECT,
         sku_id: najiluQrFeePolicy.NAJILU_QR_SKU_ID,
@@ -555,7 +556,7 @@ async function handleUserNajiluQrStatus(req, res) {
   }
 }
 
-/** C 端：当前登录账号的开具记录 + 账号锁定二维码 */
+/** C 端：当前登录账号的开具记录 + 账号锁定二维码（未付费也可读） */
 async function handleUserNajiluQrList(req, res) {
   try {
     var username = String(req.authUserId || '').trim().substring(0, 255);
@@ -563,13 +564,6 @@ async function handleUserNajiluQrList(req, res) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
     var unlocked = await userHasNajiluQrUnlocked(username);
-    if (!unlocked) {
-      return res.status(403).json({
-        code: 403,
-        msg: '请先开通完税二维码替换权益',
-        need_pay: true
-      });
-    }
     var pool = getPool();
     await ensureNajiluQrColumns(pool);
     const conn = await pool.getConnection();
@@ -587,7 +581,8 @@ async function handleUserNajiluQrList(req, res) {
           applications: list,
           qr_override: qrOverride,
           username: username,
-          unlocked: true
+          unlocked: unlocked,
+          watermark: !unlocked
         }
       });
     } finally {
@@ -599,7 +594,7 @@ async function handleUserNajiluQrList(req, res) {
   }
 }
 
-/** C 端：保存/清除本人账号默认二维码 */
+/** C 端：保存/清除本人账号默认二维码（未付费也可保存；出图带水印） */
 async function handleUserNajiluQrSave(req, res) {
   try {
     var username = String(req.authUserId || '').trim().substring(0, 255);
@@ -607,13 +602,6 @@ async function handleUserNajiluQrSave(req, res) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
     var unlocked = await userHasNajiluQrUnlocked(username);
-    if (!unlocked) {
-      return res.status(403).json({
-        code: 403,
-        msg: '请先开通完税二维码替换权益',
-        need_pay: true
-      });
-    }
     var b = req.body || {};
     var issueId = String(b.issue_id || b.id || '').trim().substring(0, 128);
     var rel = '';
@@ -630,6 +618,8 @@ async function handleUserNajiluQrSave(req, res) {
       imageRel: rel,
       requireIssue: false
     });
+    data.unlocked = unlocked;
+    data.watermark = !unlocked;
     res.json({ code: 200, msg: 'ok', data: data });
   } catch (e) {
     var status = (e && e.status) || 500;

@@ -38,7 +38,9 @@ describe('vivo S50 Pro mini status-bar inset', () => {
     expect(auth).toMatch(/isVivoImmersiveTopClient\(\)[\s\S]*isVivoS50ProMiniClient\(\)/);
     expect(auth).toContain('app-android-vivo-s50promini');
     expect(auth).toContain(':not(.app-android-vivo-s50promini)');
-    expect(auth).toMatch(/html\.app-android-vivo-s50promini\.app-top-safe-shell\{--app-shell-statusbar-top:40px/);
+    expect(auth).toMatch(
+      /html\.app-android-vivo-s50promini\.app-top-safe-shell(?:[^{]|,)*\{[^}]*--app-shell-statusbar-top:40px/
+    );
   });
 
   it('first-paints tax pages so 返回 is not under the system clock', () => {

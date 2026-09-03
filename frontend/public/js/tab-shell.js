@@ -1,12 +1,15 @@
 /**
- * 底栏 Tab 单页壳：主 Tab 切换走 iframe 缓存，避免整页重载（Android / Cordova 卡顿根因）。
+ * 底栏 Tab 单页壳（由 auth.js 动态注入）：
+ * 主 Tab 切换走 iframe 缓存，避免整页重载（Android / Cordova 卡顿根因）。
  * 嵌入页带 ?tab_embed=1，隐藏子页底栏，不在 iframe 内再套壳。
+ * 子页逃逸见 tab-shell-escape.js；与 TaxAppNav 高亮互补。
  */
 (function (global) {
   if (typeof document === 'undefined') return;
   if (document.documentElement.getAttribute('data-tab-shell-js') === '1') return;
   document.documentElement.setAttribute('data-tab-shell-js', '1');
 
+  // === Tab 路由表 / 子页白名单 ===
   var TAB_BY_FILE = {
     'shouye.html': 'shouye',
     'daiban.html': 'daiban',

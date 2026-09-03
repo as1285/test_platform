@@ -353,7 +353,10 @@ function markTaxPayGuideDismissedToday() {
     } catch (e3) {}
 }
 
-/** 未激活且已有记录时，在列表上方展示去支付引导 */
+/**
+ * 未激活且已有记录时，在列表上方展示去支付引导。
+ * 副作用：显隐横幅、绑定 CTA/关闭（只绑一次）。
+ */
 function syncTaxPayGuideBanner(list) {
     var banner = document.getElementById('taxPayGuideBanner');
     if (!banner) return;

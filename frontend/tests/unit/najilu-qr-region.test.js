@@ -49,3 +49,48 @@ describe('完税二维码默认提取框', () => {
     expect(edge.sx + edge.sw).toBe(1240);
   });
 });
+
+const userModuleCode = readFileSync(
+  resolve(__dirname, '../../public/js/najilu-qr-user.js'),
+  'utf8'
+);
+
+describe('C 端完税二维码未付费水印', () => {
+  beforeEach(() => {
+    delete window.NajiluQrUser;
+    // eslint-disable-next-line no-eval
+    eval(userModuleCode);
+  });
+
+  it('导出水印绘制，缺画布时不抛错', () => {
+    const user = window.NajiluQrUser;
+    expect(typeof user._drawDemoWatermark).toBe('function');
+    expect(function () {
+      user._drawDemoWatermark(null, 100, 100);
+    }).not.toThrow();
+  });
+
+  it('与管理端使用同一套提取框', () => {
+    const user = window.NajiluQrUser;
+    expect(user._regionForMode('block', 1240, 1754)).toEqual({
+      sx: 961,
+      sy: 33,
+      sw: 229,
+      sh: 352
+    });
+  });
+});
+
+describe('C 端完税二维码使用说明', () => {
+  const html = readFileSync(resolve(__dirname, '../../najilu_qr.html'), 'utf8');
+
+  it('页内有分步用法和常见问题', () => {
+    expect(html).toContain('id="cardNajiluQrGuide"');
+    expect(html).toContain('怎么用（约 1 分钟）');
+    expect(html).toContain('准备一张完整完税证明图');
+    expect(html).toContain('去纳税记录开具里重新生成');
+    expect(html).toContain('id="cardNajiluQrFaq"');
+    expect(html).toContain('必须先付款才能用吗');
+    expect(html).toContain('自动识别框偏了怎么办');
+  });
+});

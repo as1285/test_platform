@@ -93,30 +93,52 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | **256** 个源文件、约 **10.1 万** 行代码（`cloc`，不含 `node_modules`、`.venv`、Cordova 编译产物、`package-lock.json`、JSON/SVG、`.mobileconfig`） |
-| **前端页面** | **62** 个 HTML 页面（`frontend/*.html`） |
+| **源码规模（约）** | 前端 HTML **69** 页；JS/HTML/CSS 等合计约十余万行（不含 `node_modules`、`site/` 产物、Cordova 编译产物） |
+| **前端页面** | **69** 个 HTML（`frontend/*.html`；含管理端与验证页） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
 | **GitHub Actions** | 3 个工作流：单元测试、Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，2026-08-03）
+### 代码规模（按语言，约 2026-09-03）
 
-| 语言 | 文件 | 代码行 |
-|------|------|--------|
-| JavaScript | 115 | 61,096 |
-| HTML | 62 | 30,852 |
-| CSS | 10 | 4,577 |
-| Shell | 17 | 1,516 |
-| Python | 4 | 1,279 |
-| Markdown | 18 | 1,106 |
-| SQL | 23 | 532 |
-| 其它（YAML/Dockerfile/Text） | 7 | 260 |
-| **合计** | **256** | **101,218** |
+以下为目录内文本行粗算（含注释/空行；不含 `node_modules` / `site/`），供体感参考：
 
-按目录（`cloc` code）：`frontend/` ≈ 6.9 万 · `backend/` ≈ 3.0 万 · `scripts/` / `docs/` / 其它约占余量。
+| 语言 | 约文件数 | 约行数 |
+|------|----------|--------|
+| JavaScript | ~200 | ~11.4 万 |
+| HTML | ~69 | ~4.7 万 |
+| CSS | ~10 | ~0.6 万 |
+| Python / Shell / SQL / Markdown | — | 余量 |
 
-核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（样式/逻辑已拆至 `css/consult.css`、`js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`、`frontend/lizhi_cert.html`、`backend/scripts/lizhi_render_pdf.py`。
+核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（`css/consult.css` + `js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`、`frontend/lizhi_cert.html`、`backend/scripts/lizhi_render_pdf.py`。
+
+### C 端前端结构（维护者）
+
+**源码 vs 产物**
+
+| 路径 | 说明 |
+|------|------|
+| `frontend/*.html`、`frontend/public/js/`、`frontend/css/` | **源码**；改这里 |
+| `frontend/site/` | `npm run build`（`scripts/assemble-site.mjs`）产物；**勿手改**，下次 build 覆盖 |
+| 构建 | **无 Vite**；仅 assemble（minify / 部分混淆 / content-hash 壳）。阶段 3 文档若仍写 Vite，以本说明为准 |
+
+**运行时链路**
+
+1. 页头同步加载 `auth-boot.js`（公开页判断、轻量门禁）
+2. `auth.js`（defer）：机型 class、渠道归因、`authFetch`、并**动态注入** `conversion-guide.js`、`fast-nav.js`、`page-loading.js`、`page-perf.js`、`tab-shell.js`、`message-badge.js`（HTML 无静态引用，勿当死文件删）
+3. 业务页：`consult-*.js`、`purchase.html` 内联、`najilu.js` 等
+
+优先页（assemble 注入 TaxApp 壳）：`mine.html`、`shouye.html`、`consult.html`、`install_guide.html`。
+
+**「我的」页与机型**
+
+| 入口 | 用途 |
+|------|------|
+| `mine.html` | **主线**；Cordova 壳启动页；Mate60 检测后跳冻结页 |
+| `mine_mate60_aug12.html` + `auth-mate60-aug12.js` | Mate60 **冻结分叉**（勿与主线 auth 同步期望） |
+| `mine_jul23_mate60.html` | 旧缓存跳转桩（保留） |
+| ~~`mine_v2.html`~~ | **已退役**；nginx `301` → `mine.html` |
 
 ### 技术栈
 
@@ -135,6 +157,7 @@ https://www.installguide1.top/
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
 | 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
+| 前端组装产物 | `cd frontend && npm run build`（→ `site/`） |
 | 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 15 分钟、保留 48h / 最多 200 份） |
 | 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql[.gz]` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
@@ -151,6 +174,8 @@ https://www.installguide1.top/
 
 - **激活码**：单码生成；超管可 **按渠道批量生成**（内置闲鱼 / 酷发卡，可自定义渠道），导出 TXT；列表可按渠道 / 归属管理员筛选
 - **用户管理**：注册/删除/封禁、激活、**修改密码**、退款；列表展示 **上线**（激活码 `owner_admin_username`）
+- **邮箱运营**：已留邮箱列表 / 定向或人群群发（SMTP）；人群含「未激活且已留邮箱」「有专属价未开通」
+- **专属价 / 心理价**：账号 SKU 特价；出价达线自动通过或人工审
 - **数据统计**：注册转化率、7 日漏斗、渠道分析、安装页统计、API 调用 / 用户接口 5xx
 - **用户数据**：扣缴义务人分析、工资分布、未填个税行为导出
 - **引导安装**：APK / 描述文件、代理推广链接；落地页 A/B
@@ -162,20 +187,23 @@ https://www.installguide1.top/
 - [阶段 0 基线](docs/architecture-phase0/README.md)
 - [阶段 1 后端切块](docs/architecture-phase1/README.md)（已完成）
 - [阶段 2 管理端解耦](docs/architecture-phase2/README.md)（已完成；可选 DNS：`admin.geshui.vip`）
+- [阶段 3 C 端壳](docs/architecture-phase3/README.md)（TaxApp 壳 + assemble；构建以 `assemble-site.mjs` 为准）
 
-### 近期产品要点（2026-07 ~ 2026-08）
+### 近期产品要点（2026-07 ~ 2026-09）
 
 - **安装引导页**：首屏精简；`?download=1` 聚焦下载
 - **咨询 · 税务记录**：工具栏降噪、空状态 / 折叠、成功后滚到列表；样式与脚本拆分为 `consult.css` + `consult-core/batch-tax/records.js`
 - **咨询 · 回收站**：按公司筛选与分组；支持全部恢复 / 按公司恢复（已去掉导出 JSON）
-- **离职证明**：C 端 `lizhi_cert.html` 生成 PDF（圆形公章、演示样例水印）；付费去水印；表单含「担任岗位」
+- **离职 / 在职证明**：C 端生成 PDF（公章、演示水印）；付费去水印；费用可后台配置
 - **咨询页入口精简**：去掉「在线客服」Tab；登录成功后不再弹操作教程引导
 - **批量激活码多渠道**：闲鱼 / 酷发卡 / 自定义；备注「渠道名+批量」
 - **游客 / 落地漏斗**：落地 A/B、游客样例数据（见 `docs/user-conversion-plan.md`）
 - **支付宝当面付**：购买页扫码；付款成功自动开通；自动发卡归属 **admin（上线）**；酷发卡渠道激活码同样归属 admin
+- **专属价 / 半价运营**：后台为账号设 SKU 特价；可对「未激活且已留邮箱」群发半价开通邮件
+- **邮箱收集**：转化引导邮箱 nudge；个人信息可补邮箱
 - **C 端跳转加速**：`/js/` 强缓存（`?v=` 换版本）、HTML 短缓存 + SWR、底栏预取 / Speculation Rules、`fast-nav.js`
-- **机型适配**：荣耀 Magic V3 / Vs3 折叠外屏去掉首页多余安全区蓝带；「我的」页女版头图修复；多款小米 / 华为 / iPhone 顶栏单独适配
-- **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
+- **机型适配**：荣耀 Magic / 小米 HyperOS / 华为 Mate60 冻结页 / 多款 iPhone 顶栏单独适配；已退役并行 `mine_v2`
+- **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示；壳启动主线 `mine.html`
 
 ### 数据库备份
 
@@ -257,8 +285,8 @@ cp .env.example .env
 - 前端：`scripts/render-site-config.sh` 生成 `site-config.js`（分享链接 / 受信 Host）
 - 后端：读取 `PUBLIC_SITE_URL`、`SITE_TRUSTED_HOSTS`
 - Nginx：`server_name _` 接受任意 Host；直连 HTTPS 可参考 `docker-compose.override.example.yml`
-- Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`；本机代理包用 `./scripts/build-agent-apk.sh <渠道>` 从 `.env` 的 `PUBLIC_SITE_URL`/`APP_URL` 写入。GitHub Actions（`cordova-android.yml`）打 Debug 包时用仓库内默认值，可用 Secret `APP_ORIGIN` 覆盖（见工作流步骤）
-- 前端生产构建直接组装静态 HTML 多页与 `public/` 资源，不依赖已下线的 Vue 演示脚手架。
+- Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`，启动 **`mine.html`**（Mate60 由页内再跳冻结页）；本机代理包用 `./scripts/build-agent-apk.sh <渠道>` 从 `.env` 的 `PUBLIC_SITE_URL`/`APP_URL` 写入。GitHub Actions（`cordova-android.yml`）打 Debug 包时用仓库内默认值，可用 Secret `APP_ORIGIN` 覆盖（见工作流步骤）
+- 前端生产构建：`cd frontend && npm run build` → `assemble-site.mjs` 组装静态多页与 `public/` 资源到 `site/`（无 Vite / 已下线的 Vue 脚手架）。
 
 ### 支付宝自动开通
 

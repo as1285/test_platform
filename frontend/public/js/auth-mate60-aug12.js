@@ -1,4 +1,8 @@
 /**
+ * 【冻结副本 · 2026-08-12】仅供 mine_mate60_aug12.html 使用。
+ * 勿与主线 auth.js 同步期望：缺主线后续注入（page-perf / tab-shell / email-reg 等）。
+ * Mate60「我的」布局问题请改冻结页或此文件；其它机型走 mine.html + auth.js。
+ *
  * 登录态：JWT 存 localStorage.token；未登录访问受保护页面时跳转登录页。
  * 受保护接口请使用 authFetch（自动带 Authorization + X-Client-Device，401 时清理并跳转）。
  * WebView / App 可设置 window.CLIENT_APP_VERSION；可选 window.buildClientDevicePayloadHook(base) 合并字段。

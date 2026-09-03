@@ -12,7 +12,11 @@
  */
 
 // === API：批量写税入口（C 端 / 管理端 / 付费墙） ===
-/** C 端走 /api/tax；管理端个税维护走 /api/admin/user-tax-records（带 username） */
+/**
+ * 统一批量写税请求：C 端 /api/tax；管理端 /api/admin/user-tax-records（带 username）。
+ * 优先走 ConsultTaxEditPay / consultTaxPost（402 付费墙）。
+ * 副作用：HTTP 写税；可能弹付费窗。
+ */
 function consultTaxApiFetch(body) {
     var ctx = window.__adminTaxBatchCtx;
     if (ctx && ctx.username && typeof ctx.fetch === 'function') {
@@ -740,6 +744,10 @@ function getBatchCompanyProfile(companyName) {
 
 /** 从已有税务记录补全本地公司档案（税号、机关） */
 
+/**
+ * 记住公司全称及纳税人识别号、主管税务机关（点选历史或生成记录时写入）。
+ * 副作用：更新 localStorage 公司档案列表。
+ */
 function rememberBatchCompanyProfile(entry) {
     var p = normalizeBatchCompanyProfile(entry);
     if (!p) return;
@@ -1049,7 +1057,10 @@ function parseBatchRatioPct(el) {
 }
 
 // === 工作经历行：三险一金 / 增删行 ===
-/** 按社保/公积金基数与比例写入本段三险一金月扣款 */
+/**
+ * 按社保/公积金基数与比例写入本段三险一金月扣款。
+ * 副作用：写该行扣款 input。
+ */
 function syncBatchEmpDeductionsFromBase(row) {
     if (!row) return;
     var ssBaseEl = row.querySelector('.batch-emp-ss-base');
@@ -1193,7 +1204,10 @@ function initBatchEmploymentRows() {
     addBatchEmpRow();
 }
 
-/** 将示例或预设数据写入单段工作经历行（仅更新 data 中显式提供的字段） */
+/**
+ * 将示例或预设数据写入单段工作经历行（仅更新 data 中显式提供的字段）。
+ * 副作用：写各 input / 奖金列表 / 按月工资 map。
+ */
 function setBatchEmpRowValues(row, data) {
     if (!row || !data) return;
     function has(k) {
@@ -1617,7 +1631,10 @@ function prepareBatchAddEmploymentsFromDom() {
     return { ok: true, employments: employments };
 }
 
-/** 示例填写：一段完整公司工作经历（不自动提交；公司名与月薪每次随机） */
+/**
+ * 示例填写：一段完整公司工作经历（不自动提交；公司名与月薪每次随机）。
+ * 副作用：改批量 DOM；可能移除冲突示例行。
+ */
 function fillBatchTaxExample(opts) {
     var list = document.getElementById('batch_employment_list');
     if (!list) return;
@@ -1662,7 +1679,10 @@ function fillBatchTaxExample(opts) {
     exitBatchTaxEditMode();
 }
 
-/** 分步降负：仅公司 + 当月一条工资（单月） */
+/**
+ * 分步降负：仅公司 + 当月一条工资（单月）。
+ * 副作用：改批量 DOM。
+ */
 function fillBatchTaxQuickMinimal() {
     var list = document.getElementById('batch_employment_list');
     if (!list) return;
@@ -1697,7 +1717,10 @@ function fillBatchTaxQuickMinimal() {
     exitBatchTaxEditMode();
 }
 
-/** 场景模板：上班族 1 家公司、当年 1 月至当前月 */
+/**
+ * 场景模板：上班族 1 家公司、当年 1 月至当前月。
+ * 副作用：改批量 DOM；silent 时少提示。
+ */
 function fillBatchTaxOfficeWorkerTemplate(silent) {
     var list = document.getElementById('batch_employment_list');
     if (!list) return;
@@ -1741,7 +1764,10 @@ function fillBatchTaxOfficeWorkerTemplate(silent) {
     exitBatchTaxEditMode();
 }
 
-/** 工具栏：无有效工作经历时先填上班族模板，再提交生成 */
+/**
+ * 工具栏：无有效工作经历时先填上班族模板，再提交生成。
+ * 副作用：可能填表 + 调用 batchAddEmploymentTaxRecords。
+ */
 function oneClickGenerateBatchTaxRecords() {
     var parsed = parseBatchEmploymentsFromDom();
     if (!parsed.ok) {
@@ -2194,7 +2220,10 @@ function afterBatchTaxWriteSuccess() {
     setTimeout(scrollToTaxRecordsList, 120);
 }
 
-/** ConversionGuide 为 async 注入：生成成功时可能尚未就绪，短重试避免成功弹窗丢失 */
+/**
+ * 调用 ConversionGuide.afterTaxRecordsCreated（async 注入未就绪时短重试）。
+ * 副作用：可能弹转化成功引导。
+ */
 function invokeAfterTaxRecordsCreated(opts) {
     var tries = 0;
     function run() {
@@ -2662,11 +2691,11 @@ function parseOneBatchEmpRow(row, rowIdx) {
     if (!company) {
         return { ok: false, error: '第 ' + seg + ' 段工作经历请填写扣缴义务人（公司全称）' };
     }
-    if (!sy || sy < 1 || sy > 9999 || !sm || sm < 1 || sm > 12) {
-        return { ok: false, error: '第 ' + seg + ' 段起始年月不合法' };
+    if (!sy || sy < 2000 || sy > 2100 || !sm || sm < 1 || sm > 12) {
+        return { ok: false, error: '第 ' + seg + ' 段起始年月不合法（年份须为 2000–2100）' };
     }
-    if (!ey || ey < 1 || ey > 9999 || !em || em < 1 || em > 12) {
-        return { ok: false, error: '第 ' + seg + ' 段结束年月不合法' };
+    if (!ey || ey < 2000 || ey > 2100 || !em || em < 1 || em > 12) {
+        return { ok: false, error: '第 ' + seg + ' 段结束年月不合法（年份须为 2000–2100）' };
     }
     if (Number.isNaN(salaryMin) || salaryMin < 0) {
         return { ok: false, error: '第 ' + seg + ' 段月薪下限须为非负数字' };
@@ -2702,6 +2731,12 @@ function parseOneBatchEmpRow(row, rowIdx) {
     if (!months.length) {
         return { ok: false, error: '第 ' + seg + ' 段在职区间无效（结束应不早于起始）' };
     }
+    if (months.length > 240) {
+        return {
+            ok: false,
+            error: '第 ' + seg + ' 段在职区间过长（' + months.length + ' 个月），请检查起止年份是否误填成两位年（如 23 应为 2023）'
+        };
+    }
     var collectedBonuses = collectBatchEmpBonusesFromRow(row);
     if (Array.isArray(row._extraBonuses) && row._extraBonuses.length) {
         collectedBonuses = collectedBonuses.concat(row._extraBonuses);
@@ -2714,8 +2749,8 @@ function parseOneBatchEmpRow(row, rowIdx) {
         if (!bonusItem.month || bonusItem.month < 1 || bonusItem.month > 12) {
             return { ok: false, error: '第 ' + seg + ' 段第 ' + (bi + 1) + ' 笔年终奖归属月份不合法（1–12 月）' };
         }
-        if (!bonusItem.year || bonusItem.year < 1 || bonusItem.year > 9999) {
-            return { ok: false, error: '第 ' + seg + ' 段第 ' + (bi + 1) + ' 笔年终奖归属年度不合法' };
+        if (!bonusItem.year || bonusItem.year < 2000 || bonusItem.year > 2100) {
+            return { ok: false, error: '第 ' + seg + ' 段第 ' + (bi + 1) + ' 笔年终奖归属年度不合法（须为 2000–2100）' };
         }
         var bonusYmKey = bonusItem.year + '-' + bonusItem.month;
         if (bonusYmSeen[bonusYmKey]) {
@@ -2926,7 +2961,10 @@ function openBatchMonthSalaryModal(row) {
     root.classList.add('is-open');
 }
 
-/** 把当前页输入框的值回写草稿（翻页/保存前必须调用） */
+/**
+ * 把当前页输入框的值回写草稿（翻页/保存前必须调用）。
+ * 副作用：更新 batchMsModalDraft。
+ */
 function syncBatchMsPageToDraft() {
     var bodyEl = document.getElementById('batchMsModalBody');
     if (!bodyEl) {
@@ -4052,8 +4090,9 @@ function applyProfilePasteImport() {
  * consult-records.js 里，在本文件执行时尚不存在，此前的 typeof 守卫会静默跳过导致按钮全部失效。 */
 
 // === 批量记录构建 / 分块保存 ===
-/** monthEntries: [{ year, month, salary }, …] 已在时段内按时间顺序；按自然年度分段累计预扣 */
+/** monthEntries: [{ year, month, salary }, …] 已在时段内按时间顺序；按自然年度分段累计预扣（见 core taxesMap*） */
 
+/** 区间内随机月薪（分）。 */
 function batchEmpRandomSalaryInRange(minV, maxV) {
     var lo = Number(minV);
     var hi = Number(maxV);
@@ -4264,7 +4303,10 @@ function randomChineseCompanyName() {
     );
 }
 
-/** 演示：两段工作经历 + 一键写入（仍弹出确认框） */
+/**
+ * 演示：两段工作经历 + 一键写入（仍弹出确认框）。
+ * 副作用：重建行、延迟调用 batchAddEmploymentTaxRecords。
+ */
 function quickGenerateBatchTaxDemo() {
     switchTab('records', true);
     var list = document.getElementById('batch_employment_list');

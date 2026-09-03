@@ -312,8 +312,35 @@
     return fallback;
   }
 
-  /** 把替换图贴到原始完整完税证明右上角 */
-  function compositeOntoFull(fullImg, patchImg, mode) {
+  /** 未付费演示：平铺「演示样例」斜向水印（与离职/社保演示同款） */
+  function drawDemoWatermark(ctx, width, height) {
+    if (!ctx || !width || !height) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(219, 41, 41, 0.14)';
+    ctx.font = 'bold 36px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var stepX = 260;
+    var stepY = 170;
+    var row = 0;
+    var y;
+    var x;
+    for (y = 50; y < height + 80; y += stepY) {
+      var offset = row % 2 ? stepX / 2 : 0;
+      for (x = -40 + offset; x < width + 80; x += stepX) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((-28 * Math.PI) / 180);
+        ctx.fillText('演示样例', 0, 0);
+        ctx.restore();
+      }
+      row += 1;
+    }
+    ctx.restore();
+  }
+
+  /** 把替换图贴到原始完整完税证明右上角；未付费时盖演示水印 */
+  function compositeOntoFull(fullImg, patchImg, mode, withWatermark) {
     var region = regionForMode(mode, fullImg.naturalWidth, fullImg.naturalHeight);
     var canvas = document.createElement('canvas');
     canvas.width = fullImg.naturalWidth;
@@ -329,6 +356,9 @@
       ctx.imageSmoothingQuality = 'high';
     }
     ctx.drawImage(patchImg, region.sx, region.sy, region.sw, region.sh);
+    if (withWatermark) {
+      drawDemoWatermark(ctx, canvas.width, canvas.height);
+    }
     return canvas.toDataURL('image/png');
   }
 
@@ -692,7 +722,9 @@
         setStatus(
           clear
             ? '已清除自定义二维码，之后重新生成将自动出码'
-            : '已保存为我的默认二维码，之后重新生成都用这张码',
+            : unlocked
+              ? '已保存为我的默认二维码，之后重新生成都用这张码'
+              : '已保存为我的默认二维码。未付款版本带「演示样例」水印，付款后重新生成即可去水印',
           false
         );
         loadIssues();
@@ -717,9 +749,14 @@
 
     function showComposite(fullImg, patchImg) {
       var mode = val('najiluQrMode') || 'block';
-      var dataUrl = compositeOntoFull(fullImg, patchImg, mode);
+      var dataUrl = compositeOntoFull(fullImg, patchImg, mode, !unlocked);
       showResultPreview(dataUrl);
-      setStatus('预览已生成（基于上传原图合成）；确认后可保存', false);
+      setStatus(
+        unlocked
+          ? '预览已生成（无水印）；确认后可保存'
+          : '预览已生成（带「演示样例」水印）。付款后可生成无水印版本',
+        false
+      );
     }
 
     if (full && patch) {
@@ -783,17 +820,28 @@
     var payCard = document.getElementById('cardNajiluQrPay');
     var toolCard = document.getElementById('cardNajiluQrTool');
     if (payCard) payCard.hidden = unlocked;
-    if (toolCard) toolCard.hidden = !unlocked;
+    if (toolCard) toolCard.hidden = false;
     var yuan = formatFeeYuan(feeAmount) || feeAmount;
     var payTitle = document.getElementById('najiluQrPayTitle');
-    if (payTitle) payTitle.textContent = '开通权益 · ¥' + yuan;
+    if (payTitle) payTitle.textContent = '去水印开通 · ¥' + yuan;
+    var payHint = document.getElementById('najiluQrPayHint');
+    if (payHint) {
+      payHint.textContent =
+        '未开通也能上传、锁定并生成；结果带「演示样例」水印。付 ¥' + yuan + ' 一次，终身去掉水印。';
+    }
     var payBtn = document.getElementById('btnNajiluQrPay');
-    if (payBtn) payBtn.textContent = '支付宝付款开通 ¥' + yuan;
+    if (payBtn) payBtn.textContent = '支付宝付款去水印 ¥' + yuan;
+    var feeSpans = document.querySelectorAll('.najiluQrFeeYuan');
+    for (var i = 0; i < feeSpans.length; i++) {
+      feeSpans[i].textContent = yuan;
+    }
     var hero = document.getElementById('najiluQrHeroDesc');
     if (hero) {
       hero.textContent = unlocked
-        ? '上传含目标二维码的完整完税证明图，系统自动抠出右上角「二维码 + 16 位查询验证码」，保存后本账号重新生成纳税记录都用这张码。'
-        : ('支付宝付 ¥' + yuan + ' 开通后，可上传并锁定本账号默认完税二维码；之后重新生成纳税记录都用这张码。');
+        ? '已开通去水印。上传含目标二维码的完整完税证明图，系统自动抠出右上角「二维码 + 16 位查询验证码」，保存后本账号重新生成纳税记录都用这张码。'
+        : ('未付款也可上传、锁定并生成（带「演示样例」水印）。支付宝付 ¥' +
+          yuan +
+          ' 后去掉水印；之后重新生成纳税记录都用这张码。');
     }
   }
 
@@ -809,12 +857,13 @@
         if (j.data.fee_amount) feeAmount = String(j.data.fee_amount);
         if (j.data.sku_id) NAJILU_QR_SKU_ID = String(j.data.sku_id);
         applyUnlockedUi(!!j.data.unlocked);
-        if (unlocked) loadIssues();
-        else setPayStatus('');
+        loadIssues();
+        if (unlocked) setPayStatus('');
       })
       .catch(function (e) {
         applyUnlockedUi(false);
         setPayStatus((e && e.message) || '读取权益失败', true);
+        loadIssues();
       });
   }
 
@@ -835,7 +884,7 @@
             pollTimer = null;
           }
           pendingOtn = '';
-          setPayStatus('支付成功，权益已开通');
+          setPayStatus('支付成功，已去掉水印。请重新预览或生成纳税记录');
           applyUnlockedUi(true);
           loadIssues();
         }
@@ -920,6 +969,8 @@
     if (saveBtn) saveBtn.addEventListener('click', function () { save(false); });
     if (clearBtn) clearBtn.addEventListener('click', function () { save(true); });
     if (previewBtn) previewBtn.addEventListener('click', previewCert);
+    var dlBtn = document.getElementById('najiluQrDownloadBtn');
+    if (dlBtn) dlBtn.addEventListener('click', downloadResult);
     if (file) file.addEventListener('change', onFileChange);
     if (fullFile) fullFile.addEventListener('change', onFullFileChange);
     if (mode) mode.addEventListener('change', onModeChange);
@@ -974,6 +1025,7 @@
     loadIssues: loadIssues,
     previewCert: previewCert,
     _regionFromQrBox: regionFromQrBox,
-    _regionForMode: regionForMode
+    _regionForMode: regionForMode,
+    _drawDemoWatermark: drawDemoWatermark
   };
 })(window);

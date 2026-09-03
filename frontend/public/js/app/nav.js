@@ -1,7 +1,9 @@
 /**
  * TaxApp 底栏：激活态与 data-page 归一（阶段 3）
+ * 由 assemble 哈希注入；与 tab-shell.js（iframe 单页壳）分工：本模块只负责高亮态，不接管跳转。
  */
 (function (global) {
+  // === Tab 文件名 → data-page key ===
   var TAB_PAGES = {
     'shouye.html': 'shouye',
     'daiban.html': 'daiban',

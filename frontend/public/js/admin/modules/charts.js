@@ -1,10 +1,12 @@
 /** 管理端图表辅助（按需加载）
  * 安装统计（install-guide）图表由 admin_panel.js 本地创建/销毁，不在本模块。 */
         var _registerTimeChartInstances = [];
+        var _platformChartInstances = [];
         var DEVICE_CHART_FALLBACK = [
-            '#1e6fff', '#3ddc84', '#ff6900', '#cf0a2c', '#415fff', '#1428a0', '#0078d4', '#9aa5b1'
+            '#1e6fff', '#22a06b', '#ef6c00', '#0d9488', '#415fff', '#64748b', '#cf0a2c', '#94a3b8'
         ];
         var _channelAnalysisChartInstances = [];
+        var _adminChartDefaultsApplied = false;
 
         function chartColorAtIndex(index) {
             var i = Number(index) || 0;
@@ -12,29 +14,79 @@
             return DEVICE_CHART_FALLBACK[i % DEVICE_CHART_FALLBACK.length];
         }
 
-        function destroyRegisterTimeCharts() {
-            _registerTimeChartInstances.forEach(function (c) {
+        function applyAdminChartDefaults() {
+            if (_adminChartDefaultsApplied || typeof Chart === 'undefined' || !Chart.defaults) return;
+            _adminChartDefaultsApplied = true;
+            Chart.defaults.font.family =
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+            Chart.defaults.font.size = 12;
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.plugins.legend.labels.boxWidth = 12;
+            Chart.defaults.plugins.legend.labels.padding = 10;
+            Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.92)';
+            Chart.defaults.plugins.tooltip.padding = 10;
+            Chart.defaults.plugins.tooltip.cornerRadius = 6;
+            Chart.defaults.elements.line.borderJoinStyle = 'round';
+            Chart.defaults.elements.point.hitRadius = 8;
+        }
+
+        function scheduleChartResize(instances) {
+            var list = (instances || []).slice();
+            if (!list.length) return;
+            requestAnimationFrame(function () {
+                list.forEach(function (c) {
+                    try {
+                        if (c && typeof c.resize === 'function') c.resize();
+                    } catch (e0) {}
+                });
+            });
+        }
+
+        function destroyChartList(listRef) {
+            (listRef || []).forEach(function (c) {
                 try {
                     c.destroy();
                 } catch (e0) {}
             });
+        }
+
+        function destroyRegisterTimeCharts() {
+            destroyChartList(_registerTimeChartInstances);
             _registerTimeChartInstances = [];
+        }
+
+        function destroyPlatformCharts() {
+            destroyChartList(_platformChartInstances);
+            _platformChartInstances = [];
         }
 
         var REGISTER_TIME_PERIOD_COLORS = {
             late_night: '#64748b',
             morning: '#f5a623',
             afternoon: '#1e6fff',
-            evening: '#6b4ce6'
+            evening: '#334155'
         };
 
         function destroyChannelAnalysisCharts() {
-            _channelAnalysisChartInstances.forEach(function (c) {
-                try {
-                    c.destroy();
-                } catch (e0) {}
-            });
+            destroyChartList(_channelAnalysisChartInstances);
             _channelAnalysisChartInstances = [];
+        }
+
+        function lineSeriesStyle(color, opts) {
+            opts = opts || {};
+            return {
+                borderColor: color,
+                backgroundColor: opts.fill
+                    ? opts.fillColor || color
+                    : color,
+                tension: opts.tension != null ? opts.tension : 0.3,
+                fill: !!opts.fill,
+                borderWidth: opts.borderWidth != null ? opts.borderWidth : 2,
+                borderDash: opts.borderDash || [],
+                pointRadius: opts.pointRadius != null ? opts.pointRadius : 0,
+                pointHoverRadius: opts.pointHoverRadius != null ? opts.pointHoverRadius : 4,
+                pointHitRadius: 8
+            };
         }
 
         function renderChannelDailyTrendChart(data, regItems) {
@@ -86,38 +138,40 @@
             var labels = byDay.map(function (d) {
                 return d.date ? String(d.date).slice(5) : '';
             });
+            applyAdminChartDefaults();
             var datasets = topKeys.map(function (ck, idx) {
-                return {
-                    label: labelMap[ck] || ck,
-                    data: byDay.map(function (d) {
-                        var found = (d.channels || []).find(function (c) {
-                            return c.key === ck;
-                        });
-                        return found ? found.count : 0;
-                    }),
-                    borderColor: chartColorAtIndex(idx),
-                    backgroundColor: chartColorAtIndex(idx),
-                    tension: 0.3,
-                    fill: false,
+                var style = lineSeriesStyle(chartColorAtIndex(idx), {
                     borderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                };
+                    tension: 0.28
+                });
+                return Object.assign(
+                    {
+                        label: labelMap[ck] || ck,
+                        data: byDay.map(function (d) {
+                            var found = (d.channels || []).find(function (c) {
+                                return c.key === ck;
+                            });
+                            return found ? found.count : 0;
+                        })
+                    },
+                    style
+                );
             });
-            datasets.push({
-                label: '合计',
-                data: byDay.map(function (d) {
-                    return Number(d.total) || 0;
-                }),
-                borderColor: '#94a3b8',
-                backgroundColor: '#94a3b8',
-                borderDash: [6, 4],
-                tension: 0.3,
-                fill: false,
-                borderWidth: 2,
-                pointRadius: 2,
-                pointHoverRadius: 4
-            });
+            datasets.push(
+                Object.assign(
+                    {
+                        label: '合计',
+                        data: byDay.map(function (d) {
+                            return Number(d.total) || 0;
+                        })
+                    },
+                    lineSeriesStyle('#64748b', {
+                        borderDash: [6, 4],
+                        borderWidth: 2.5,
+                        tension: 0.28
+                    })
+                )
+            );
             _channelAnalysisChartInstances.push(
                 new Chart(trendCanvas, {
                     type: 'line',
@@ -127,7 +181,10 @@
                         maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { position: 'bottom' },
+                            legend: {
+                                position: 'bottom',
+                                labels: { usePointStyle: true, pointStyle: 'line' }
+                            },
                             tooltip: {
                                 callbacks: {
                                     title: function (items) {
@@ -146,6 +203,7 @@
                         },
                         scales: {
                             x: {
+                                grid: { display: false },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 0,
@@ -153,11 +211,16 @@
                                     maxTicksLimit: byDay.length > 60 ? 20 : 31
                                 }
                             },
-                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                            }
                         }
                     }
                 })
             );
+            scheduleChartResize(_channelAnalysisChartInstances);
         }
 
         function renderChannelAnalysis(data) {
@@ -290,6 +353,7 @@
                 return;
             }
 
+            applyAdminChartDefaults();
             renderChannelDailyTrendChart(data, regItems);
             if (chartsWrap) chartsWrap.style.display = 'block';
             var pieReg = document.getElementById('channelChartRegisterPie');
@@ -310,15 +374,21 @@
                                     backgroundColor: regItems.map(function (it, idx) {
                                         return chartColorAtIndex(idx);
                                     }),
-                                    borderWidth: 0
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff',
+                                    hoverOffset: 4
                                 }
                             ]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            cutout: '58%',
                             plugins: {
-                                legend: { position: 'bottom' },
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { usePointStyle: true, pointStyle: 'circle' }
+                                },
                                 tooltip: {
                                     callbacks: {
                                         label: function (ctx) {
@@ -350,7 +420,8 @@
                                     backgroundColor: regItems.map(function (it, idx) {
                                         return chartColorAtIndex(idx);
                                     }),
-                                    borderRadius: 4
+                                    borderRadius: 6,
+                                    maxBarThickness: 42
                                 }
                             ]
                         },
@@ -359,7 +430,12 @@
                             maintainAspectRatio: false,
                             plugins: { legend: { display: false } },
                             scales: {
-                                y: { beginAtZero: true, ticks: { precision: 0 } }
+                                x: { grid: { display: false } },
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { precision: 0 },
+                                    grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                                }
                             }
                         }
                     })
@@ -385,19 +461,28 @@
                                         backgroundColor: actItems.map(function (it, idx) {
                                             return chartColorAtIndex(idx + 2);
                                         }),
-                                        borderWidth: 0
+                                        borderWidth: 2,
+                                        borderColor: '#ffffff',
+                                        hoverOffset: 4
                                     }
                                 ]
                             },
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                plugins: { legend: { position: 'bottom' } }
+                                cutout: '58%',
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: { usePointStyle: true, pointStyle: 'circle' }
+                                    }
+                                }
                             }
                         })
                     );
                 }
             }
+            scheduleChartResize(_channelAnalysisChartInstances);
         }
 
         function loadChannelAnalysis() {
@@ -561,6 +646,7 @@
                 return;
             }
 
+            applyAdminChartDefaults();
             chartsWrap.style.display = 'block';
             var periodCanvas = document.getElementById('registerTimeChartPeriods');
             var hourCanvas = document.getElementById('registerTimeChartHourly');
@@ -583,7 +669,8 @@
                                     return REGISTER_TIME_PERIOD_COLORS[p.key] || chartColorAtIndex(0);
                                 }),
                                 borderWidth: 0,
-                                borderRadius: 6
+                                borderRadius: 8,
+                                maxBarThickness: 48
                             }
                         ]
                     },
@@ -603,14 +690,25 @@
                             }
                         },
                         scales: {
-                            x: { ticks: { maxRotation: 0 } },
-                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                            x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                            }
                         }
                     }
                 })
             );
 
             var byHour = (data && data.by_hour) || [];
+            var peakCount = peak && peak.count ? Number(peak.count) || 0 : 0;
+            if (!peakCount) {
+                byHour.forEach(function (h) {
+                    var n = Number(h.count) || 0;
+                    if (n > peakCount) peakCount = n;
+                });
+            }
             _registerTimeChartInstances.push(
                 new Chart(hourCanvas, {
                     type: 'bar',
@@ -624,9 +722,14 @@
                                 data: byHour.map(function (h) {
                                     return h.count;
                                 }),
-                                backgroundColor: 'rgba(30, 111, 255, 0.65)',
+                                backgroundColor: byHour.map(function (h) {
+                                    var n = Number(h.count) || 0;
+                                    var alpha = peakCount > 0 ? 0.35 + 0.5 * (n / peakCount) : 0.65;
+                                    return 'rgba(30, 111, 255, ' + Math.min(0.9, alpha).toFixed(2) + ')';
+                                }),
                                 borderWidth: 0,
-                                borderRadius: 3
+                                borderRadius: 3,
+                                maxBarThickness: 18
                             }
                         ]
                     },
@@ -646,19 +749,33 @@
                             }
                         },
                         scales: {
-                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                            }
                         }
                     }
                 })
             );
+            scheduleChartResize(_registerTimeChartInstances);
         }
 
         function renderRegisterPlatformAnalysis(data) {
             var summaryEl = document.getElementById('registerPlatformSummary');
             var cardsEl = document.getElementById('registerPlatformCards');
             var tbody = document.getElementById('registerPlatformDailyTbody');
+            var chartsWrap = document.getElementById('registerPlatformChartsWrap');
+            var chartsEmpty = document.getElementById('registerPlatformChartsEmpty');
             if (!summaryEl || !cardsEl || !tbody) return;
+
+            destroyPlatformCharts();
+            if (chartsWrap) chartsWrap.style.display = 'none';
+            if (chartsEmpty) chartsEmpty.style.display = 'none';
 
             var platformSummary = (data && data.platform_summary) || {};
             var platformDaily = Array.isArray(data && data.platform_daily) ? data.platform_daily : [];
@@ -678,6 +795,13 @@
                 summaryEl.textContent = daysHint + '内暂无注册用户。';
                 cardsEl.innerHTML = '';
                 tbody.innerHTML = '<tr><td colspan="7">暂无数据</td></tr>';
+                if (chartsWrap) {
+                    chartsWrap.style.display = 'block';
+                    if (chartsEmpty) {
+                        chartsEmpty.style.display = 'block';
+                        chartsEmpty.textContent = '暂无足够数据生成图表';
+                    }
+                }
                 return;
             }
 
@@ -733,6 +857,134 @@
                     );
                 })
                 .join('');
+
+            if (!chartsWrap || typeof Chart === 'undefined' || !platformDaily.length) {
+                return;
+            }
+            applyAdminChartDefaults();
+            chartsWrap.style.display = 'block';
+            var dailyCanvas = document.getElementById('registerPlatformDailyChart');
+            var mixCanvas = document.getElementById('registerPlatformMixChart');
+            if (dailyCanvas) {
+                _platformChartInstances.push(
+                    new Chart(dailyCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: platformDaily.map(function (row) {
+                                return row.date ? String(row.date).slice(5) : '';
+                            }),
+                            datasets: [
+                                {
+                                    label: '安卓',
+                                    data: platformDaily.map(function (row) {
+                                        return Number(row.android) || 0;
+                                    }),
+                                    backgroundColor: '#22a06b',
+                                    stack: 'plat',
+                                    borderRadius: 2,
+                                    maxBarThickness: 28
+                                },
+                                {
+                                    label: '苹果',
+                                    data: platformDaily.map(function (row) {
+                                        return Number(row.ios) || 0;
+                                    }),
+                                    backgroundColor: '#1e6fff',
+                                    stack: 'plat',
+                                    borderRadius: 2,
+                                    maxBarThickness: 28
+                                },
+                                {
+                                    label: '其他',
+                                    data: platformDaily.map(function (row) {
+                                        return Number(row.other) || 0;
+                                    }),
+                                    backgroundColor: '#94a3b8',
+                                    stack: 'plat',
+                                    borderRadius: 2,
+                                    maxBarThickness: 28
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { usePointStyle: true, pointStyle: 'rectRounded' }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        footer: function (items) {
+                                            if (!items || !items.length) return '';
+                                            var sum = items.reduce(function (acc, it) {
+                                                return acc + (Number(it.parsed.y) || 0);
+                                            }, 0);
+                                            return '合计 ' + sum + ' 人';
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { stacked: true, grid: { display: false } },
+                                y: {
+                                    stacked: true,
+                                    beginAtZero: true,
+                                    ticks: { precision: 0 },
+                                    grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                                }
+                            }
+                        }
+                    })
+                );
+            }
+            if (mixCanvas && platformSummary.total > 0) {
+                _platformChartInstances.push(
+                    new Chart(mixCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['安卓', '苹果', '其他'],
+                            datasets: [
+                                {
+                                    data: [
+                                        Number(platformSummary.android) || 0,
+                                        Number(platformSummary.ios) || 0,
+                                        Number(platformSummary.other) || 0
+                                    ],
+                                    backgroundColor: ['#22a06b', '#1e6fff', '#94a3b8'],
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff',
+                                    hoverOffset: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '58%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { usePointStyle: true, pointStyle: 'circle' }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            var v = ctx.parsed || 0;
+                                            var t = Number(platformSummary.total) || 0;
+                                            var pct = t ? ((v / t) * 100).toFixed(1) : '0';
+                                            return ' ' + v + ' 人 (' + pct + '%)';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    })
+                );
+            }
+            scheduleChartResize(_platformChartInstances);
         }
 
         function installGuideStatsDaysEl() {
@@ -748,6 +1000,7 @@
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (cardsEl) cardsEl.innerHTML = '';
             if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+            destroyPlatformCharts();
             adminFetch('api/admin/analytics/register-time?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
@@ -796,6 +1049,7 @@
 
         window.destroyRegisterTimeCharts = destroyRegisterTimeCharts;
         window.destroyChannelAnalysisCharts = destroyChannelAnalysisCharts;
+        window.destroyPlatformCharts = destroyPlatformCharts;
         window.loadChannelAnalysis = loadChannelAnalysis;
         window.loadAnalyticsRegisterPlatform = loadAnalyticsRegisterPlatform;
         window.loadAnalyticsRegisterTime = loadAnalyticsRegisterTime;

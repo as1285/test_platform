@@ -15,6 +15,7 @@
         /* charts: /js/admin/modules/charts.js (lazy) — 挂 window 供懒加载覆盖 */
         window.destroyRegisterTimeCharts = function () {};
         window.destroyChannelAnalysisCharts = function () {};
+        window.destroyPlatformCharts = function () {};
         window.loadChannelAnalysis = function () {};
         window.loadAnalyticsRegisterPlatform = function () {};
         window.loadAnalyticsRegisterTime = function () {};
@@ -36,6 +37,9 @@
         }
         function destroyChannelAnalysisCharts() {
             return window.destroyChannelAnalysisCharts.apply(this, arguments);
+        }
+        function destroyPlatformCharts() {
+            return window.destroyPlatformCharts.apply(this, arguments);
         }
         function loadChannelAnalysis() {
             return window.loadChannelAnalysis.apply(this, arguments);
@@ -3960,7 +3964,7 @@
 
             html += '<p class="stat" style="margin:0 0 8px;">每日访问与注册趋势</p>';
             html +=
-                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideVisitRegChart" aria-label="安装页每日访问与注册折线图"></canvas></div></div>';
+                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="device-stats-chart-card chart-card-wide install-guide-trend-card"><h4>访问 / 注册 / 注册率</h4><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideVisitRegChart" aria-label="安装页每日访问与注册折线图"></canvas></div></div></div>';
 
             var hourly = data.hourly || null;
             var hourBuckets = hourly && Array.isArray(hourly.detail_buckets) ? hourly.detail_buckets : [];
@@ -4012,7 +4016,7 @@
             }
             html += '</div>';
             html +=
-                '<div class="device-stats-charts-wrap" style="margin-bottom:12px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideHourlyChart" aria-label="安装页24小时访客分布"></canvas></div></div>';
+                '<div class="device-stats-charts-wrap" style="margin-bottom:12px;"><div class="device-stats-chart-card chart-card-wide install-guide-hourly-card"><h4>24 小时访客分布</h4><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideHourlyChart" aria-label="安装页24小时访客分布"></canvas></div></div></div>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
             html +=
                 '<th>时段</th><th>时间范围</th><th>浏览量</th><th>独立访客</th><th>总注册</th><th>占比</th></tr></thead><tbody>';
@@ -4148,12 +4152,14 @@
                                             return Number(row.unique_visitors) || 0;
                                         }),
                                         borderColor: '#1e6fff',
-                                        backgroundColor: '#1e6fff',
+                                        backgroundColor: 'rgba(30, 111, 255, 0.12)',
                                         yAxisID: 'yCount',
-                                        tension: 0.3,
-                                        fill: false,
-                                        borderWidth: 2,
-                                        pointRadius: 3
+                                        tension: 0.28,
+                                        fill: true,
+                                        borderWidth: 2.5,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4,
+                                        pointHitRadius: 8
                                     },
                                     {
                                         label: '归因注册',
@@ -4163,37 +4169,43 @@
                                         borderColor: '#22a06b',
                                         backgroundColor: '#22a06b',
                                         yAxisID: 'yCount',
-                                        tension: 0.3,
+                                        tension: 0.28,
                                         fill: false,
                                         borderWidth: 2,
-                                        pointRadius: 3
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4,
+                                        pointHitRadius: 8
                                     },
                                     {
                                         label: '总注册',
                                         data: daily.map(function (row) {
                                             return Number(row.registered) || 0;
                                         }),
-                                        borderColor: '#94a3b8',
-                                        backgroundColor: '#94a3b8',
+                                        borderColor: '#64748b',
+                                        backgroundColor: '#64748b',
                                         yAxisID: 'yCount',
                                         borderDash: [6, 4],
-                                        tension: 0.3,
+                                        tension: 0.28,
                                         fill: false,
                                         borderWidth: 2,
-                                        pointRadius: 2
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4,
+                                        pointHitRadius: 8
                                     },
                                     {
                                         label: '新增游客',
                                         data: daily.map(function (row) {
                                             return Number(row.new_guests) || 0;
                                         }),
-                                        borderColor: '#9333ea',
-                                        backgroundColor: '#9333ea',
+                                        borderColor: '#0d9488',
+                                        backgroundColor: '#0d9488',
                                         yAxisID: 'yCount',
-                                        tension: 0.3,
+                                        tension: 0.28,
                                         fill: false,
-                                        borderWidth: 2,
-                                        pointRadius: 2
+                                        borderWidth: 1.5,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4,
+                                        pointHitRadius: 8
                                     },
                                     {
                                         label: '注册率 (%)',
@@ -4201,10 +4213,12 @@
                                         borderColor: '#ef6c00',
                                         backgroundColor: '#ef6c00',
                                         yAxisID: 'yRate',
-                                        tension: 0.3,
+                                        tension: 0.28,
                                         fill: false,
                                         borderWidth: 2,
-                                        pointRadius: 2,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4,
+                                        pointHitRadius: 8,
                                         spanGaps: true
                                     }
                                 ]
@@ -4214,8 +4228,14 @@
                                 maintainAspectRatio: false,
                                 interaction: { mode: 'index', intersect: false },
                                 plugins: {
-                                    legend: { position: 'bottom' },
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: { usePointStyle: true, pointStyle: 'line' }
+                                    },
                                     tooltip: {
+                                        backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                                        padding: 10,
+                                        cornerRadius: 6,
                                         callbacks: {
                                             title: function (items) {
                                                 if (!items || !items.length || !daily[items[0].dataIndex]) {
@@ -4236,11 +4256,14 @@
                                     }
                                 },
                                 scales: {
+                                    x: { grid: { display: false } },
                                     yCount: {
                                         type: 'linear',
                                         position: 'left',
                                         beginAtZero: true,
-                                        title: { display: true, text: '人数' }
+                                        title: { display: true, text: '人数' },
+                                        grid: { color: 'rgba(148, 163, 184, 0.25)' },
+                                        ticks: { precision: 0 }
                                     },
                                     yRate: {
                                         type: 'linear',
@@ -4277,10 +4300,11 @@
                                         data: byHour.map(function (row) {
                                             return Number(row.page_views) || 0;
                                         }),
-                                        backgroundColor: 'rgba(30, 111, 255, 0.75)',
+                                        backgroundColor: 'rgba(30, 111, 255, 0.72)',
                                         borderColor: '#1e6fff',
                                         borderWidth: 0,
                                         borderRadius: 3,
+                                        maxBarThickness: 16,
                                         yAxisID: 'y'
                                     },
                                     {
@@ -4288,10 +4312,11 @@
                                         data: byHour.map(function (row) {
                                             return Number(row.unique_visitors) || 0;
                                         }),
-                                        backgroundColor: 'rgba(34, 160, 107, 0.65)',
+                                        backgroundColor: 'rgba(34, 160, 107, 0.62)',
                                         borderColor: '#22a06b',
                                         borderWidth: 0,
                                         borderRadius: 3,
+                                        maxBarThickness: 16,
                                         yAxisID: 'y'
                                     },
                                     {
@@ -4302,10 +4327,12 @@
                                         type: 'line',
                                         borderColor: '#ef6c00',
                                         backgroundColor: '#ef6c00',
-                                        tension: 0.25,
+                                        tension: 0.28,
                                         fill: false,
                                         borderWidth: 2,
-                                        pointRadius: 2,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4,
+                                        pointHitRadius: 8,
                                         yAxisID: 'y'
                                     }
                                 ]
@@ -4315,19 +4342,38 @@
                                 maintainAspectRatio: false,
                                 interaction: { mode: 'index', intersect: false },
                                 plugins: {
-                                    legend: { position: 'bottom' }
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: { usePointStyle: true }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                                        padding: 10,
+                                        cornerRadius: 6
+                                    }
                                 },
                                 scales: {
+                                    x: { grid: { display: false } },
                                     y: {
                                         beginAtZero: true,
                                         title: { display: true, text: '次数 / 人数' },
-                                        ticks: { precision: 0 }
+                                        ticks: { precision: 0 },
+                                        grid: { color: 'rgba(148, 163, 184, 0.25)' }
                                     }
                                 }
                             }
                         })
                     );
                 }
+            }
+            if (_installGuideChartInstances.length) {
+                requestAnimationFrame(function () {
+                    _installGuideChartInstances.forEach(function (c) {
+                        try {
+                            if (c && typeof c.resize === 'function') c.resize();
+                        } catch (eResize) {}
+                    });
+                });
             }
         }
 

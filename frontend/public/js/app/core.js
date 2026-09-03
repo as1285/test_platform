@@ -1,8 +1,15 @@
 /**
  * TaxApp 设计系统壳入口（阶段 3）
  * 门面包装现有 auth.js 全局能力，供核心页统一引用。
+ *
+ * 构建约定（assemble-site.mjs）：
+ * - 本文件与 nav.js / ui.js / app-shell.css 会 content-hash 后注入优先页
+ *   （mine / shouye / consult / install_guide）；源码路径保持 js/app/*.js。
+ * - 产物在 site/js/app/*.HASH.js，勿手改 site/。
+ * - 依赖顺序：ui.js → nav.js → core.js；auth-boot / auth 可并行 defer。
  */
 (function (global) {
+  // === 门面：把 window 上 auth/UI 能力收拢到 TaxApp ===
   function pick(name, fallback) {
     return function () {
       var fn = global[name];

@@ -3,7 +3,7 @@
 var NAJILU_QR_FEE_DEFAULT_AMOUNT = '300.00';
 var SETTING_KEY_NAJILU_QR_FEE = 'najilu_qr_fee_json';
 var NAJILU_QR_SKU_ID = 'sku_najilu_qr_300';
-var NAJILU_QR_SUBJECT = '完税二维码替换（终身）';
+var NAJILU_QR_SUBJECT = '完税二维码去水印（终身）';
 
 function normalizeNajiluQrFeeAmount(raw) {
   var s = String(raw == null ? '' : raw).replace(/,/g, '').replace(/，/g, '').trim();

@@ -1,6 +1,16 @@
 /**
- * 组装生产静态站点：content-hash 核心壳 + 压缩/混淆以提高复制成本。
- * 用法：node scripts/assemble-site.mjs（由 npm run build 调用）
+ * 组装生产静态站点（无 Vite）：content-hash 核心壳 + minify/混淆以提高复制成本。
+ * 用法：node scripts/assemble-site.mjs（npm run build / assemble）
+ *
+ * 流程概要：
+ * 1. 清空并重建 site/（部署产物；源码在 frontend 根 HTML、public/js、css）
+ * 2. 拷贝 HTML/资源；public/js → site/js
+ * 3. minify 全站 JS/CSS；OBFUSCATE_REL 内脚本再混淆（auth / conversion-guide 仅 minify）
+ * 4. app/{ui,nav,core}.js + app-shell.css → content-hash + manifest.json
+ * 5. 注入 site-config.js、forensic-mark.js；优先页注入哈希壳
+ * 6. 压缩内联脚本、剥离 HTML 注释
+ *
+ * 切勿手改 site/：下次 build 会覆盖。
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -16,6 +26,7 @@ const DIST = path.join(ROOT, 'dist');
 
 const PRIORITY_PAGES = ['mine.html', 'shouye.html', 'consult.html', 'install_guide.html'];
 
+/** content-hash 的壳资源；注入到 PRIORITY_PAGES 的 TAX_APP_SHELL_* 占位 */
 const APP_ASSETS = [
   { siteSrc: 'js/app/ui.js', outDir: 'js/app', base: 'ui' },
   { siteSrc: 'js/app/nav.js', outDir: 'js/app', base: 'nav' },
@@ -175,6 +186,8 @@ async function protectCssFile(abs) {
 }
 
 async function protectAssets() {
+  // === minify + 可选混淆 site/ 下 JS/CSS ===
+
   const jsFiles = walkFiles(path.join(SITE, 'js'), (full, name) => name.endsWith('.js'));
   for (const abs of jsFiles) {
     await protectJsFile(abs);
