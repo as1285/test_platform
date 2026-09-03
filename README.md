@@ -93,23 +93,23 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模（约）** | 前端 HTML **69** 页；JS/HTML/CSS 等合计约十余万行（不含 `node_modules`、`site/` 产物、Cordova 编译产物） |
+| **源码规模（约）** | 前端 HTML **69** 页；JS/HTML/CSS 合计约 **17.4 万**行（不含 `node_modules`、`site/` 产物、Cordova 编译产物、lock 文件） |
 | **前端页面** | **69** 个 HTML（`frontend/*.html`；含管理端与验证页） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
 | **GitHub Actions** | 3 个工作流：单元测试、Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，约 2026-09-03）
+### 代码规模（按语言，约 2026-09-03 重计）
 
-以下为目录内文本行粗算（含注释/空行；不含 `node_modules` / `site/`），供体感参考：
+以下为目录内文本行粗算（含注释/空行；不含 `node_modules` / `site/` / Cordova `platforms|plugins|www` / lock 文件），供体感参考：
 
 | 语言 | 约文件数 | 约行数 |
 |------|----------|--------|
-| JavaScript | ~200 | ~11.4 万 |
-| HTML | ~69 | ~4.7 万 |
+| JavaScript | ~212 | ~12.0 万 |
+| HTML | ~69 | ~4.8 万 |
 | CSS | ~10 | ~0.6 万 |
-| Python / Shell / SQL / Markdown | — | 余量 |
+| Python / Shell / SQL / Markdown | ~126 | ~1.6 万 |
 
 核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（`css/consult.css` + `js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`、`frontend/lizhi_cert.html`、`backend/scripts/lizhi_render_pdf.py`。
 

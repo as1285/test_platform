@@ -471,8 +471,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260903-sum-colon"></script>
-    <script src="/js/auth.js?v=20260903-sum-colon" defer></script>
+    <script src="/js/auth-boot.js?v=20260903-android-wide"></script>
+    <script src="/js/auth.js?v=20260903-android-wide" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -844,28 +844,19 @@
             opacity: 0.75;
         }
 
-        /* 问号与冒号紧贴；抵消全角「：」左侧字怀，避免「收入合计」后像多了空格 */
+        /* 问号与冒号紧贴；与「收入合计」仅留极小间距，贴近官方 */
         .summary-help-with-colon {
             display: inline-flex;
             align-items: center;
             gap: 0;
-            margin-left: 1px;
+            margin-left: 2px;
             line-height: 20px;
             position: relative;
             z-index: 2;
-            letter-spacing: 0;
-        }
-
-        .summary-help-with-colon .icon {
-            margin: 0;
-            padding: 0;
-            letter-spacing: 0;
         }
 
         .summary-help-with-colon .summary-colon {
-            margin-left: -3px;
             line-height: 20px;
-            letter-spacing: 0;
         }
 
         .summary-value {
@@ -1100,13 +1091,13 @@
             flex-shrink: 0;
         }
 
-        /* iOS PingFang 全角冒号左承托更大，再收一点，避免「收入合计」后空一截 */
+        /* iOS PingFang 全角冒号：保持与安卓一致的问号间距，勿再负 margin 收紧 */
         html.platform-ios body.page-shuiming-result .summary-help-with-colon {
-            margin-left: 1px;
+            margin-left: 2px;
         }
 
         html.platform-ios body.page-shuiming-result .summary-help-with-colon .summary-colon {
-            margin-left: -4px;
+            margin-left: 0;
         }
 
         .list-date {
@@ -1671,44 +1662,61 @@
         }
 
         /*
-         * 一次性宽度：不看机型 class。逻辑宽 ≥414 即加留白
-         * （16 Pro Max 440、显示放大 430、15 Pro Max 430 都会命中）。
+         * iOS 大屏宽度：逻辑宽 ≥414 加左右留白
+         * （16 Pro Max 440、显示放大 430、15 Pro Max 430）。
+         * 仅限 iOS：安卓/鸿蒙（Mate60 等）CSS 宽常 ≥414，套用会左右空一截、列表变窄。
          */
         @media screen and (min-width: 414px), screen and (min-device-width: 414px) {
-            body.page-shuiming-result .list {
+            html.platform-ios body.page-shuiming-result .list {
                 padding-left: 20px !important;
                 padding-right: 20px !important;
                 box-sizing: border-box;
             }
-            body.page-shuiming-result .list-item {
+            html.platform-ios body.page-shuiming-result .list-item {
                 --list-inline-pad: 20px;
                 border-radius: 10px;
                 width: auto;
                 max-width: 100%;
                 box-sizing: border-box;
             }
-            body.page-shuiming-result .summary > .summary-item {
+            html.platform-ios body.page-shuiming-result .summary > .summary-item {
                 padding-left: 24px !important;
                 padding-right: 24px !important;
             }
-            body.page-shuiming-result .top-fixed .header {
+            html.platform-ios body.page-shuiming-result .top-fixed .header {
                 padding-left: 20px !important;
                 padding-right: 20px !important;
             }
-            body.page-shuiming-result .back-btn {
+            html.platform-ios body.page-shuiming-result .back-btn {
                 left: 20px !important;
             }
-            body.page-shuiming-result .header-right {
+            html.platform-ios body.page-shuiming-result .header-right {
                 right: 20px !important;
             }
-            body.page-shuiming-result .list-company-name {
+            html.platform-ios body.page-shuiming-result .list-company-name {
                 max-width: 20em !important;
             }
-            body.page-shuiming-result .sm-activate-card,
-            body.page-shuiming-result .sm-refund-browse-card {
+            html.platform-ios body.page-shuiming-result .sm-activate-card,
+            html.platform-ios body.page-shuiming-result .sm-refund-browse-card {
                 margin-left: 20px;
                 margin-right: 20px;
             }
+        }
+
+        /* 安卓/鸿蒙：压过历史 ≥414 通配，列表恢复贴边宽度 */
+        html.platform-android body.page-shuiming-result .list {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        html.platform-android body.page-shuiming-result .list-item {
+            --list-inline-pad: 16px;
+            width: 100% !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+        }
+        html.platform-android body.page-shuiming-result .summary > .summary-item {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
         }
 
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root {
