@@ -2916,25 +2916,8 @@
   }
 
   function renderShuimingHint() {
-    if (currentPage() !== 'shuiming.html') return;
-    if (!isLoggedIn() || hasTaxRecords()) return;
-    if (document.getElementById('cg-shuiming-hint')) return;
-    ensureGateStyles();
-    var content = document.querySelector('body.page-shuiming > .content');
-    if (!content) return;
-    var hint = document.createElement('div');
-    hint.id = 'cg-shuiming-hint';
-    hint.className = 'cg-inline-hint';
-    hint.innerHTML =
-      '暂无个税演示数据。建议先在 <strong>我要咨询 → 示例填写</strong> 一键生成，再查询本页明细。' +
-      '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgShuimingGoTax" style="padding:8px 14px;font-size:13px;">去添加税务记录</button></div>';
-    content.insertBefore(hint, content.firstChild);
-    var btn = document.getElementById('cgShuimingGoTax');
-    if (btn) {
-      btn.onclick = function () {
-        goFillTaxRecords();
-      };
-    }
+    /* 收入纳税明细页顶部不再显示个税引导框 */
+    return;
   }
 
   function removeShouyeRetentionCard() {
