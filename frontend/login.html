@@ -148,7 +148,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Logo：APK .login-img img = 2.34666667rem ≈ 88px；资源为 geshuiicon.svg（自带圆角方） */
+        /* Logo：对齐目标 UI——浅蓝圆底 + 深蓝人像剪影 + 白色微笑曲线 */
         .avatar-section {
             display: flex;
             justify-content: center;
@@ -158,8 +158,8 @@
         .avatar {
             width: 88px;
             height: 88px;
-            border-radius: 0;
-            overflow: visible;
+            border-radius: 50%;
+            overflow: hidden;
             background: transparent;
             flex-shrink: 0;
             line-height: 0;
@@ -169,7 +169,6 @@
             display: block;
             width: 88px;
             height: 88px;
-            object-fit: contain;
         }
         
         /* 表单：APK .login-input 底部分割线 #c4c6cf */
@@ -458,6 +457,59 @@
             background: #eaf4ff;
         }
 
+        /* 其他登录方式分隔线 + 数字身份入口（对齐目标 UI） */
+        .other-login-section {
+            padding: 28px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+            max-width: 343px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .other-login-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #c4c6cf;
+            font-size: 13px;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+        .other-login-divider::before,
+        .other-login-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e3e4e8;
+        }
+        .other-login-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #e53935;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 1.15;
+            text-align: center;
+            text-decoration: none;
+            letter-spacing: 0.02em;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            box-sizing: border-box;
+            padding: 0 2px;
+        }
+        .other-login-icon:active {
+            opacity: 0.85;
+        }
+        .other-login-icon b {
+            display: block;
+            font-weight: 500;
+        }
+
         #activateSection {
             display: none;
             padding: 0 24px 32px;
@@ -709,8 +761,13 @@
     <div id="loginMainWrap">
         <!-- 头像区域 -->
         <div class="avatar-section">
-            <div class="avatar">
-                <img class="avatar-img" src="geshuiicon.svg?v=20260811-apk" width="88" height="88" alt="个人所得税" decoding="async">
+            <div class="avatar" aria-hidden="true">
+                <svg class="avatar-img" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="44" cy="44" r="44" fill="#cfe6fb"/>
+                    <path d="M16 80 C16 63 28 57 44 57 C60 57 72 63 72 80 Z" fill="#4a90e2"/>
+                    <circle cx="44" cy="39" r="14" fill="#4a90e2"/>
+                    <path d="M37 41 Q44 48 51 41" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
             </div>
         </div>
 
@@ -757,6 +814,14 @@
         <div class="btn-section">
             <button type="button" class="login-btn login-btn--locked" id="loginSubmitBtn" onclick="doLogin()">登录</button>
             <a href="register.html" class="register-btn">注册</a>
+        </div>
+
+        <!-- 其他登录方式 -->
+        <div class="other-login-section">
+            <div class="other-login-divider">其他登录方式</div>
+            <a href="javascript:void(0)" class="other-login-icon" id="linkDigitalIdentity" aria-label="数字身份登录">
+                <b>数字</b><b>身份</b>
+            </a>
         </div>
     </div>
 
@@ -864,7 +929,7 @@
                 body: JSON.stringify({ action: 'activate', code: code })
             })
                 .then(function (r) {
-                    return r.json().then(function (j) {
+                    return window.authParseJson(r).then(function (j) {
                         return { status: r.status, body: j };
                     });
                 })
@@ -1043,6 +1108,12 @@
         if (linkFaceLogin) {
             linkFaceLogin.addEventListener('click', function () {
                 alert('扫脸登录功能暂未开放，请使用账号密码登录。');
+            });
+        }
+        var linkDigitalIdentity = document.getElementById('linkDigitalIdentity');
+        if (linkDigitalIdentity) {
+            linkDigitalIdentity.addEventListener('click', function () {
+                alert('数字身份登录功能暂未开放，请使用账号密码登录。');
             });
         }
         function buildRegisterPageUrl(account) {
@@ -1227,7 +1298,7 @@
                     from_share: fromShareLogin ? 1 : 0
                 })
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return window.authParseJson(r); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;
