@@ -165,7 +165,7 @@ var MODELS = [
     platform: 'ios',
     family: 'apple',
     label: 'iPhone 15 Pro Max / 15 Plus',
-    match: ['iPhone\\s*15\\s*Pro\\s*Max', 'iPhone\\s*15\\s*Plus', 'iPhone16,2', 'iPhone16,1', 'iPhone15,5'],
+    match: ['iPhone\\s*15\\s*Pro\\s*Max', 'iPhone\\s*15\\s*Plus', 'iPhone16,2', 'iPhone15,5'],
     issues: [
       { page: 'shuiming', title: '扣缴义务人箭头贴字底', summary: '公司名行「>」偏下；底边与公司名同一水平线。', since: '2026-09-04' },
       { page: 'shuiming', title: '滑动时状态栏防透出', summary: '列表上滑不能从刘海透出内容。', since: '2026-05-27' },
