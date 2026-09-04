@@ -521,7 +521,7 @@ html.app-ios-iphone15promax .container {
 #panel-records .tax-start-chooser[hidden] { display: none !important; }
 
 /* ===== 个税 FAQ ===== */
-#taxFaqCard { padding: 0; overflow: hidden; }
+#taxFaqCard { padding: 0; overflow: hidden; margin-bottom: 0; }
 #taxFaqCard .tax-faq-toggle {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
@@ -612,6 +612,79 @@ html.app-ios-iphone15promax .container {
 #panel-products .consult-purchase-entry {
     border: 1px solid #bfdbfe;
     background: linear-gradient(135deg, #eff6ff, #f8fbff);
+}
+/* 完税二维码：增值服务首位高亮入口（从支付页折叠区迁入） */
+#panel-products .consult-najilu-qr-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 14px 14px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #fcd34d;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 55%, #fff7ed 100%);
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.14);
+    -webkit-tap-highlight-color: transparent;
+}
+#panel-products .consult-najilu-qr-entry:active {
+    opacity: 0.92;
+}
+#panel-products .consult-najilu-qr-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b45309;
+    background: #fff;
+    border: 1px solid #fde68a;
+}
+#panel-products .consult-najilu-qr-body {
+    flex: 1;
+    min-width: 0;
+}
+#panel-products .consult-najilu-qr-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+#panel-products .consult-najilu-qr-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #92400e;
+}
+#panel-products .consult-najilu-qr-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #92400e;
+    background: #fde68a;
+}
+#panel-products .consult-najilu-qr-sub {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #a16207;
+}
+#panel-products .consult-najilu-qr-cta {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #b45309;
+}
+#panel-products .consult-najilu-qr-arrow {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #d97706;
+    line-height: 1;
 }
 #panel-records #consultRefundAdEntry.is-refund-qualified,
 #panel-products #consultRefundAdProductEntry.is-refund-qualified {
