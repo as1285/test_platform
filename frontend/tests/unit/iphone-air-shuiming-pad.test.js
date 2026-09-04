@@ -42,13 +42,15 @@ describe('iPhone Air 收入纳税明细左右贴边', () => {
 });
 
 describe('收入纳税明细切年份二次进入顶空白', () => {
-  it('关掉路径级滚动恢复，只在回顶且列表贴齐顶栏时写入 --list-summary-pad', () => {
+  it('关掉路径级滚动恢复；列表接到汇总底下，padding-top 置 0，避免使劲回弹拽出灰垫', () => {
     expect(shuimingResult).toContain("history.scrollRestoration = 'manual'");
     expect(shuimingResult).toContain('function resetShuimingScrollTop');
     expect(shuimingResult).toContain('function shuimingPageScrolled');
-    expect(shuimingResult).toContain('listAtChrome');
-    expect(shuimingResult).toContain('listRect.top >= headerBottom - 8');
-    expect(shuimingResult).toContain('!scrolled && listAtChrome');
+    expect(shuimingResult).toContain('function shuimingChromeUnstable');
+    expect(shuimingResult).toContain("setProperty('--list-summary-pad', '0px', 'important')");
+    expect(shuimingResult).toContain("setProperty('padding-top', '0px', 'important')");
+    expect(shuimingResult).toContain("setProperty('margin-top', listTop + 'px', 'important')");
+    expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('resetShuimingScrollTop();');
     expect(shuimingResult).toContain('auth.js?v=20260904-air-gap');
   });

@@ -629,6 +629,13 @@
             box-sizing: border-box;
         }
 
+        /* iOS：禁止整页使劲橡皮筋把汇总与列表之间的空档拽大（轻拖仍由系统处理） */
+        html.platform-ios,
+        html.platform-ios body.page-shuiming-result,
+        html.platform-ios body.page-shuiming-result .page-root {
+            overscroll-behavior-y: none;
+        }
+
         html,
         body {
             width: 100%;
@@ -1064,7 +1071,7 @@
             box-sizing: border-box !important;
         }
 
-        /* 列表顶部留白：避开固定汇总区（高度用 JS 实测写入 --list-summary-pad） */
+        /* 列表顶部留白：避开固定汇总区。JS 把列表接到汇总底下并把 padding-top 置 0，避免使劲回弹拽出整块灰垫 */
         .list {
             margin-top: calc(var(--safe-top) + var(--header-height));
             padding-top: var(--list-summary-pad, 102px);
@@ -3042,6 +3049,8 @@
                 window.scrollTo(0, 0);
                 if (document.documentElement) document.documentElement.scrollTop = 0;
                 if (document.body) document.body.scrollTop = 0;
+                var rootEl = document.querySelector('.page-root');
+                if (rootEl) rootEl.scrollTop = 0;
             } catch (e1) {}
         }
 
@@ -3052,9 +3061,27 @@
                     document.documentElement.scrollTop ||
                     (document.body && document.body.scrollTop) ||
                     0;
+                var rootEl = document.querySelector('.page-root');
+                if (rootEl && rootEl.scrollTop > y) y = rootEl.scrollTop;
                 if (y > 4) return true;
                 if (window.visualViewport && window.visualViewport.offsetTop > 4) return true;
             } catch (eScr) {}
+            return false;
+        }
+
+        /* 橡皮筋时 fixed 顶栏/汇总会跟着走，rect 不能用来写 margin */
+        function shuimingChromeUnstable() {
+            if (shuimingPageScrolled()) return true;
+            try {
+                if (window.visualViewport && Math.abs(window.visualViewport.offsetTop || 0) > 2) {
+                    return true;
+                }
+                var headerEl = document.querySelector('.top-fixed .header');
+                if (headerEl) {
+                    var ht = headerEl.getBoundingClientRect().top;
+                    if (ht > 2 || ht < -8) return true;
+                }
+            } catch (eU) {}
             return false;
         }
 
@@ -3107,9 +3134,7 @@
                 if (headerBottom <= 0) return null;
                 /* 汇总顶边必须贴齐顶栏底，消除红框空隙 */
                 summary.style.setProperty('top', headerBottom + 'px', 'important');
-                if (list) {
-                    list.style.setProperty('margin-top', headerBottom + 'px', 'important');
-                }
+                /* 列表 margin 由 measureAndApply 接到汇总底；此处勿写成顶栏底，否则 padding-top 会在使劲回弹时整块露出来 */
                 if (root) {
                     var barHVar = parseFloat(
                         (window.getComputedStyle(root).getPropertyValue('--header-height') || '48').replace(/px/i, '')
@@ -3179,82 +3204,40 @@
                             }
                         })();
                 } catch (eA) {}
-                var pad = isAndroid ? 64 : isIphone15Wide ? 96 : 102;
-                var scrolled = shuimingPageScrolled();
-                var listAtChrome = false;
-                var summaryRect = null;
-                if (summary && list) {
-                    summaryRect = summary.getBoundingClientRect();
-                    var listRect = list.getBoundingClientRect();
-                    listAtChrome =
-                        headerBottom > 0 &&
-                        listRect.top >= headerBottom - 8 &&
-                        listRect.top <= headerBottom + 32;
-                    /*
-                     * 切年份二次进入时 iOS 常按路径恢复滚动。list.top 仍 > -1，
-                     * 但列表已上移，aligned 会把 --list-summary-pad 写成汇总底≈整段顶空白。
-                     * 只在回顶且列表贴齐顶栏时写入。
-                     */
-                    if (summaryRect.height > 0 && !scrolled && listAtChrome) {
-                        var contentBottom = summaryContentBottom(summary, summaryRect);
-                        /*
-                         * 15 Plus：用汇总盒底与内容底的较大值，避免灰底/内边距未计入导致首条被盖住。
-                         * 其它机型仍按内容底贴紧，减少白底下空一大截。
-                         */
-                        if (isIphone15Wide) {
-                            contentBottom = Math.max(contentBottom, summaryRect.bottom);
-                        }
-                        /*
-                         * 列表内容顶应对齐「汇总可见内容底 + 灰缝」，不要用整盒 bottom 再加呼吸缝，
-                         * 否则 Android 上白底汇总区下方容易空出一大截。
-                         */
-                        var gap = isAndroid ? 6 : isIphone15Wide ? 10 : 2;
-                        var aligned = Math.ceil(contentBottom - listRect.top + gap);
-                        if (aligned > 0) {
-                            pad = Math.max(isAndroid ? 56 : isIphone15Wide ? 80 : 48, aligned);
-                        }
-                        var maxPad = Math.max(
-                            isAndroid ? 56 : isIphone15Wide ? 80 : 48,
-                            Math.ceil((summaryRect.height || 80) + 24)
-                        );
-                        if (pad > maxPad) pad = maxPad;
+                /*
+                 * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
+                 * 旧方案把汇总高度写进 padding-top：轻拖还好，使劲橡皮筋会把那一整截灰垫拽出来。
+                 */
+                if (shuimingChromeUnstable() || !(headerBottom > 0) || !summary || !list) return;
+                var summaryRect = summary.getBoundingClientRect();
+                if (!(summaryRect.height > 0)) return;
+                var contentBottom = summaryContentBottom(summary, summaryRect);
+                if (isIphone15Wide) {
+                    contentBottom = Math.max(contentBottom, summaryRect.bottom);
+                }
+                var gap = isAndroid ? 8 : isIphone15Wide ? 10 : 8;
+                var listTop = Math.ceil(contentBottom + gap);
+                if (listTop < headerBottom + 24) listTop = headerBottom + 24;
+                if (root) {
+                    root.style.setProperty('--list-summary-pad', '0px', 'important');
+                }
+                list.style.setProperty('padding-top', '0px', 'important');
+                list.style.setProperty('margin-top', listTop + 'px', 'important');
+                var firstItem =
+                    list.querySelector('.list-item') ||
+                    list.querySelector('.list-empty') ||
+                    list.querySelector('.list-empty-state');
+                if (firstItem) {
+                    var sr = summary.getBoundingClientRect();
+                    var cb = summaryContentBottom(summary, sr);
+                    if (isIphone15Wide) {
+                        cb = Math.max(cb, sr.bottom);
                     }
-                }
-                if (root && !scrolled && listAtChrome) {
-                    root.style.setProperty('--list-summary-pad', pad + 'px', 'important');
-                }
-                /* 二次校正：首条与汇总末行缝过大则收回；过小/重叠则加大，避免盖住列表导致点不进详情 */
-                if (summary && list && root && !scrolled && listAtChrome) {
-                    var firstItem =
-                        list.querySelector('.list-item') ||
-                        list.querySelector('.list-empty') ||
-                        list.querySelector('.list-empty-state');
-                    if (firstItem) {
-                        var sr = summary.getBoundingClientRect();
-                        var cb = summaryContentBottom(summary, sr);
-                        if (isIphone15Wide) {
-                            cb = Math.max(cb, sr.bottom);
-                        }
-                        var fr = firstItem.getBoundingClientRect();
-                        var visualGap = fr.top - cb;
-                        var curPad = parseFloat(root.style.getPropertyValue('--list-summary-pad')) || pad;
-                        var minPad = isAndroid ? 56 : isIphone15Wide ? 80 : 48;
-                        var maxPadFix = Math.max(minPad, Math.ceil((sr.height || 80) + 24));
-                        /* 15 Plus 优先保证不盖住首条，缝略大也不强收 */
-                        var shrinkAt = isIphone15Wide ? 28 : 18;
-                        if (visualGap > shrinkAt) {
-                            var nextPad = Math.max(minPad, Math.ceil(curPad - (visualGap - (isIphone15Wide ? 12 : 8))));
-                            if (nextPad < curPad && nextPad >= minPad) {
-                                root.style.setProperty('--list-summary-pad', nextPad + 'px', 'important');
-                            }
-                        } else if (visualGap < (isIphone15Wide ? 10 : 8)) {
-                            var targetGap = isIphone15Wide ? 10 : 8;
-                            var growPad = Math.max(minPad, Math.ceil(curPad + (targetGap - visualGap)));
-                            if (growPad > maxPadFix) growPad = maxPadFix;
-                            if (growPad > curPad) {
-                                root.style.setProperty('--list-summary-pad', growPad + 'px', 'important');
-                            }
-                        }
+                    var visualGap = firstItem.getBoundingClientRect().top - cb;
+                    if (Math.abs(visualGap - gap) >= 2) {
+                        var nextTop = Math.ceil(listTop + (gap - visualGap));
+                        if (nextTop < headerBottom + 24) nextTop = headerBottom + 24;
+                        list.style.setProperty('margin-top', nextTop + 'px', 'important');
                     }
                 }
             }

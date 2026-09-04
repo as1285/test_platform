@@ -155,7 +155,7 @@ var MODELS = [
         page: 'shuiming',
         title: '切年份二次进入顶空白',
         summary:
-          'iOS 按路径恢复滚动后，syncTopFixedHeight 在 list.top 仍 > -1 时按上移后的列表重算 --list-summary-pad，回顶会出现大块灰空。回顶后再测，并关掉 scrollRestoration。',
+          'iOS 按路径恢复滚动后重算顶距，或列表 padding-top 吃进汇总高度，使劲回弹会把灰垫整块拽出。列表接到汇总底下、padding-top 置 0，橡皮筋时不写 margin。',
         since: '2026-09-04'
       }
     ]
