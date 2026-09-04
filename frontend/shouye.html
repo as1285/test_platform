@@ -97,6 +97,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>个人所得税</title>
+    <!-- 首屏关键图预加载：固定顶栏背景（CSS 背景图，否则需等 CSS 解析后才发起请求） -->
+    <link rel="preload" as="image" href="/img/home/apk-home-header-bg.png?v=20260828-android-load" fetchpriority="high">
     <meta name="description" content="模拟器APP，打开即可体验首页服务。">
     <meta property="og:type" content="website">
     <meta property="og:title" content="模拟器APP">
@@ -1029,7 +1031,7 @@
         <div class="sy-apk-stack" id="syApkStack">
             <!-- a1 通知条 -->
             <div class="sy-apk-block sy-apk-a1">
-                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260811-header-blue" alt="" width="1284" height="223" decoding="async">
+                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260811-header-blue" alt="" width="1284" height="223" decoding="async" fetchpriority="high">
                 <div class="sy-apk-marquee" aria-hidden="true">
                     <span>国家税务总局令第57号:《个人所得税综合所得汇算清缴管理办法》</span>
                 </div>
@@ -1045,6 +1047,7 @@
                         width="1179"
                         height="610"
                         decoding="async"
+                        fetchpriority="high"
                         style="pointer-events:auto"
                     >
                     <script>
@@ -1112,10 +1115,10 @@
 
             <!-- a6 横向入口 -->
             <div class="sy-apk-hscroll" id="syHScroll">
-                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260901-home-compress" alt=""></a>
-                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260901-home-compress" alt=""></a>
-                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260901-home-compress" alt=""></a>
-                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260901-home-compress" alt=""></a>
+                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
             </div>
 
             <!-- 轮播 a4_*：整块常在首屏下，全部 lazy -->

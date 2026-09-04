@@ -140,7 +140,8 @@
     <title>个人所得税 · 下载安装</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap"></noscript>
     <style>
         :root {
             --ink: #07131f;
@@ -175,7 +176,8 @@
             --font-body: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html.landing-ab-pending body { visibility: hidden; }
+        /* 安装页视觉不依赖 A/B 分支，不再隐藏 body 等待 landing-ab-config，
+           避免弱网下 FCP 被 700ms 超时地板卡住；A/B 仍在后台跑用于埋点。 */
         html, body {
             overflow-x: hidden;
             scrollbar-width: none;
