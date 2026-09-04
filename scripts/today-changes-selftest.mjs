@@ -1834,12 +1834,23 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['心理价出价', 'bidTbody', 'btnSaveBidCfg', 'bidCfgFloorPct', 'bidCfgFloorWeek', 'bidCfgFloorTwoWeek', 'bidCfgFloorMonth'],
+  [
+    '心理价出价',
+    'bidTbody',
+    'btnSaveBidCfg',
+    'bidCfgFloorPct',
+    'bidCfgFloorWeek',
+    'bidCfgFloorTwoWeek',
+    'bidCfgFloorMonth',
+    'bidPsychPriceBar',
+    '当前心理价位',
+    'sectionPriceBids'
+  ],
   'admin price bids section'
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['api/admin/price-bids', 'bid-accept', 'bid-reject', 'api/admin/price-bids/config'],
+  ['api/admin/price-bids', 'bid-accept', 'bid-reject', 'api/admin/price-bids/config', 'renderBidPsychPriceBar'],
   'admin price bids wiring'
 );
 mustInclude(

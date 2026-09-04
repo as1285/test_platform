@@ -23,6 +23,8 @@ var OPS_SKU_LABELS = {
   sku_300_7d: '周卡',
   sku_348_14d: '双周卡',
   sku_398_30d: '月卡',
+  sku_ch_t4: '档位4',
+  sku_ch_t5: '档位5',
   sku_98_3d: '体验卡',
   sku_99_1h: '小时卡',
   sku_249_1d: '天卡',

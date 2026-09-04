@@ -340,4 +340,42 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(s.label).toBe('体验');
     expect(s.subject).toContain('体验');
   });
+
+  it('applyChannelCatalogPrices appends 4th and 5th channel tiers', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
+        { id: 'sku_348_14d', amount: '348.00', label: '双周卡', grant_days: 14, grant_hours: 0 },
+        { id: 'sku_398_30d', amount: '398.00', label: '月卡', grant_days: 30, grant_hours: 0 }
+      ],
+      {
+        sku_ch_t4: { amount: '598.00', grant_days: 90, grant_hours: 0, label: '季卡' },
+        sku_ch_t5: { amount: '998.00', grant_days: 365, grant_hours: 0, label: '年卡' }
+      }
+    );
+    expect(out.map((s) => s.id)).toEqual([
+      'sku_300_7d',
+      'sku_348_14d',
+      'sku_398_30d',
+      'sku_ch_t4',
+      'sku_ch_t5'
+    ]);
+    const t4 = out.find((s) => s.id === 'sku_ch_t4');
+    expect(t4.amount).toBe('598.00');
+    expect(t4.grant_days).toBe(90);
+    expect(t4.label).toBe('季卡');
+    expect(t4.channel_price).toBe(true);
+    expect(out.find((s) => s.id === 'sku_ch_t5').label).toBe('年卡');
+  });
+
+  it('applyChannelCatalogPrices skips extra tier without amount or duration', () => {
+    const out = applyChannelCatalogPrices(
+      [{ id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 }],
+      {
+        sku_ch_t4: { amount: '598.00', grant_days: 0, grant_hours: 0, label: '空档' },
+        sku_ch_t5: { grant_days: 365, grant_hours: 0, label: '年卡' }
+      }
+    );
+    expect(out.map((s) => s.id)).toEqual(['sku_300_7d']);
+  });
 });

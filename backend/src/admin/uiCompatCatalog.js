@@ -204,7 +204,7 @@ var MODELS = [
     issues: [
       { page: 'shuiming', title: '问号改 Helvetica/SVG', summary: '描边在 Retina 上看不清；17 标准版问号缩到 13px。', since: '2026-06-13' },
       { page: 'shuiming', title: '大屏字号与顶栏字号', summary: '12/17 Pro Max 正文放大；17 Pro 返回/批量申诉字号放大。', since: '2026-05-21' },
-      { page: 'shuiming', title: '17 Pro Max 贴边与箭头右齐', summary: '大屏 20px 左右空条改为贴边；公司名与「>」flex 右对齐，勿靠截 11 字。', since: '2026-09-04' }
+      { page: 'shuiming', title: '17 Pro Max 贴边与箭头右齐', summary: 'UA 无型号时会落到 ≥414 的 20px 留白；≥428 贴边。箭头与公司名同一行垂直居中并加大。', since: '2026-09-04' }
     ]
   },
 

@@ -488,12 +488,12 @@
                             var wideSt = document.createElement('style');
                             wideSt.setAttribute('data-promax-wide-firstpaint', '1');
                             wideSt.textContent =
-                                'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
-                                'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
-                                'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
                                 'html.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
-                                'html.app-ios-promax-wide body.page-shuiming-result .back-btn{left:20px !important;}' +
-                                'html.app-ios-promax-wide body.page-shuiming-result .header-right{right:20px !important;}';
+                                'html.app-ios-promax-wide body.page-shuiming-result .back-btn{left:12px !important;}' +
+                                'html.app-ios-promax-wide body.page-shuiming-result .header-right{right:12px !important;}';
                             (document.head || document.documentElement).appendChild(wideSt);
                         }
                     }
@@ -513,9 +513,19 @@
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-arrow{margin-left:auto !important;flex-shrink:0 !important;}' +
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}';
                         (document.head || document.documentElement).appendChild(p17St);
+                    }
+                    /* 不依赖 17 Pro Max class：首屏即贴边 + CSS「>」，避免 UA 无型号时仍走旧 20px / jt.jpg */
+                    if (!document.querySelector('style[data-shuiming-flush-firstpaint]')) {
+                        var flushSt = document.createElement('style');
+                        flushSt.setAttribute('data-shuiming-flush-firstpaint', '1');
+                        flushSt.textContent =
+                            'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+                            'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
+                            'body.page-shuiming-result .list-row-company{display:flex !important;align-items:center !important;}' +
+                            'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:3px solid #c7c7cc !important;border-right:3px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}';
+                        (document.head || document.documentElement).appendChild(flushSt);
                     }
                 } catch (e16pm) {}
             } catch (e) {}
@@ -523,7 +533,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260903-android-wide"></script>
-    <script src="/js/auth.js?v=20260904-17pm-edge" defer></script>
+    <script src="/js/auth.js?v=20260904-17pm-ship" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1104,7 +1114,7 @@
         }
 
         html.platform-ios .list-arrow {
-            margin-top: 2px;
+            margin-top: 0;
         }
 
         /*
@@ -1627,44 +1637,45 @@
         }
 
         /*
-         * 大屏 Pro Max（含 16 PM 标准 440 与显示放大 430）：
-         * 贴边铺满显得过宽。宽度样式挂 app-ios-promax-wide，避免只打 16promax 时失效。
-         * 15 Plus / 15 PM 另有贴边规则，勿并入 20px。
+         * 大屏 Pro Max（16/17 PM 同宽 440；UA 常无型号，17 PM 会落到本档）：
+         * 20px 卡片留白左右空条过大，改为贴边铺满（同 15 Plus）。
          */
         html.app-ios-promax-wide body.page-shuiming-result .list,
         html.app-ios-iphone16promax body.page-shuiming-result .list {
-            padding-left: 20px !important;
-            padding-right: 20px !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
             box-sizing: border-box;
         }
         html.app-ios-promax-wide body.page-shuiming-result .list-item,
         html.app-ios-iphone16promax body.page-shuiming-result .list-item {
-            --list-inline-pad: 20px;
-            border-radius: 10px;
-            width: auto;
-            max-width: 100%;
+            --list-inline-pad: 16px;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
             box-sizing: border-box;
         }
         html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,
         html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item {
-            padding-left: 24px !important;
-            padding-right: 24px !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
         }
         html.app-ios-promax-wide body.page-shuiming-result .top-fixed .header,
         html.app-ios-promax-wide.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-ios-iphone16promax body.page-shuiming-result .top-fixed .header,
         html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-ios-iphone16promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
-            padding-left: 20px !important;
-            padding-right: 20px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
         }
         html.app-ios-promax-wide body.page-shuiming-result .back-btn,
         html.app-ios-iphone16promax body.page-shuiming-result .back-btn {
-            left: 20px !important;
+            left: 12px !important;
         }
         html.app-ios-promax-wide body.page-shuiming-result .header-right,
         html.app-ios-iphone16promax body.page-shuiming-result .header-right {
-            right: 20px !important;
+            right: 12px !important;
         }
         html.app-ios-promax-wide body.page-shuiming-result .list-company-name,
         html.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-company-name,
@@ -1764,11 +1775,21 @@
             white-space: nowrap !important;
         }
         html.app-ios-iphone17promax body.page-shuiming-result .list-arrow,
-        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-arrow {
-            margin-left: auto !important;
-            margin-right: 0 !important;
+        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-arrow,
+        html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow {
+            display: block !important;
+            width: 10px !important;
+            height: 10px !important;
+            margin: 2px 2px 0 auto !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-top: 3px solid #c7c7cc !important;
+            border-right: 3px solid #c7c7cc !important;
+            background: none !important;
+            transform: translateY(2px) rotate(45deg);
             flex-shrink: 0 !important;
-            align-self: flex-start !important;
+            align-self: center !important;
+            box-sizing: content-box !important;
         }
         html.app-ios-iphone17promax body.page-shuiming-result .list-date,
         html.app-ios-iphone17promax.app-ios-iphone16promax body.page-shuiming-result .list-date {
@@ -1794,89 +1815,112 @@
             font-size: 17px;
         }
         html.app-ios-iphone16promax body.page-shuiming-result .list-date {
-            margin-right: 20px;
+            margin-right: 0 !important;
         }
         html.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,
         html.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card,
         html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,
         html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card {
-            margin-left: 20px;
-            margin-right: 20px;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            border-radius: 0 !important;
         }
 
         /*
-         * iOS 大屏宽度：逻辑宽 ≥414 加左右留白
-         * （16 Pro Max 440、显示放大 430、15 Pro Max 430）。
-         * 仅限 iOS：安卓/鸿蒙（Mate60 等）CSS 宽常 ≥414，套用会左右空一截、列表变窄。
+         * iOS 大屏：不再加 20px 卡片留白。17 Pro Max 与 16 PM 同宽且 UA 无型号，
+         * 旧规则会左右空一截。贴边铺满对齐官方个税 App。
          */
         @media screen and (min-width: 414px), screen and (min-device-width: 414px) {
             html.platform-ios body.page-shuiming-result .list {
-                padding-left: 20px !important;
-                padding-right: 20px !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
                 box-sizing: border-box;
             }
             html.platform-ios body.page-shuiming-result .list-item {
-                --list-inline-pad: 20px;
-                border-radius: 10px;
-                width: auto;
-                max-width: 100%;
-                box-sizing: border-box;
-            }
-            html.platform-ios body.page-shuiming-result .summary > .summary-item {
-                padding-left: 24px !important;
-                padding-right: 24px !important;
-            }
-            html.platform-ios body.page-shuiming-result .top-fixed .header {
-                padding-left: 20px !important;
-                padding-right: 20px !important;
-            }
-            html.platform-ios body.page-shuiming-result .back-btn {
-                left: 20px !important;
-            }
-            html.platform-ios body.page-shuiming-result .header-right {
-                right: 20px !important;
-            }
-            html.platform-ios body.page-shuiming-result .list-company-name {
-                max-width: 20em !important;
-            }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list,
-            html.app-ios-iphone17promax.app-ios-promax-wide.platform-ios body.page-shuiming-result .list {
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-            }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-item,
-            html.app-ios-iphone17promax.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-item {
                 --list-inline-pad: 16px;
                 border-radius: 0 !important;
                 margin-left: 0 !important;
                 margin-right: 0 !important;
                 width: 100% !important;
                 max-width: none !important;
+                box-sizing: border-box;
             }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .summary > .summary-item {
+            html.platform-ios body.page-shuiming-result .summary > .summary-item {
                 padding-left: 16px !important;
                 padding-right: 16px !important;
             }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .sm-activate-card,
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .sm-refund-browse-card {
-                margin-left: 0 !important;
-                margin-right: 0 !important;
+            html.platform-ios body.page-shuiming-result .top-fixed .header {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
             }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name {
-                max-width: none !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
+            html.platform-ios body.page-shuiming-result .back-btn {
+                left: 12px !important;
             }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-arrow {
-                margin-left: auto !important;
+            html.platform-ios body.page-shuiming-result .header-right {
+                right: 12px !important;
             }
-            html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-date {
-                margin-right: 0 !important;
+            html.platform-ios body.page-shuiming-result .list-company-name {
+                max-width: 20em !important;
             }
             html.platform-ios body.page-shuiming-result .sm-activate-card,
             html.platform-ios body.page-shuiming-result .sm-refund-browse-card {
-                margin-left: 20px;
-                margin-right: 20px;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            html.platform-ios body.page-shuiming-result .list-date {
+                margin-right: 0 !important;
+            }
+        }
+
+        /*
+         * iOS 逻辑宽 ≥428（12/15/16/17 Pro Max）：压过上方 ≥414 的 20px。
+         * 17 Pro Max 与 16 PM 同为 440 且 Safari UA 无型号，不能只靠 app-ios-iphone17promax。
+         */
+        @media screen and (min-width: 428px), screen and (min-device-width: 428px) {
+            html.platform-ios body.page-shuiming-result .list {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            html.platform-ios body.page-shuiming-result .list-item {
+                --list-inline-pad: 16px;
+                border-radius: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+            }
+            html.platform-ios body.page-shuiming-result .summary > .summary-item {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+            html.platform-ios body.page-shuiming-result .top-fixed .header {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+            html.platform-ios body.page-shuiming-result .back-btn {
+                left: 12px !important;
+            }
+            html.platform-ios body.page-shuiming-result .header-right {
+                right: 12px !important;
+            }
+            html.platform-ios body.page-shuiming-result .sm-activate-card,
+            html.platform-ios body.page-shuiming-result .sm-refund-browse-card {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                border-radius: 0 !important;
+            }
+            html.platform-ios body.page-shuiming-result .list-date {
+                margin-right: 0 !important;
+            }
+            html.platform-ios body.page-shuiming-result .list-row-company .list-arrow {
+                display: block !important;
+                width: 10px !important;
+                height: 10px !important;
+                margin: 2px 2px 0 auto !important;
+                border-top: 3px solid #c7c7cc !important;
+                border-right: 3px solid #c7c7cc !important;
+                transform: translateY(2px) rotate(45deg);
             }
         }
 
@@ -2388,6 +2432,38 @@
             margin-top: 4px;
             display: block;
             pointer-events: none;
+        }
+
+        /* 箭头与「扣缴义务人」同一行；CSS 角标避免 jt.jpg 上偏，并略大于旧 10px 图 */
+        .list-row-company {
+            align-items: center;
+            gap: 8px;
+        }
+        .list-row-company .list-company {
+            flex: 1;
+            min-width: 0;
+        }
+        .list-row-company .list-arrow,
+        html.platform-ios .list-row-company .list-arrow,
+        html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow {
+            display: block !important;
+            width: 10px !important;
+            height: 10px !important;
+            margin: 2px 2px 0 auto !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-top: 3px solid #c7c7cc !important;
+            border-right: 3px solid #c7c7cc !important;
+            background: none !important;
+            box-shadow: none !important;
+            transform: translateY(2px) rotate(45deg);
+            flex-shrink: 0 !important;
+            align-self: center !important;
+            box-sizing: content-box !important;
+            object-fit: unset;
+        }
+        html.platform-ios .list-row-company .list-company {
+            overflow: hidden !important;
         }
 
         .list-empty {
@@ -3226,17 +3302,16 @@
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
                 listHtml +=
-                    '<div class="list-row"><span class="list-company">扣缴义务人：<span class="list-company-name"' +
+                    '<div class="list-row list-row-company"><span class="list-company">扣缴义务人：<span class="list-company-name"' +
                     companyTitleAttr +
                     '>' +
                     escapeHtml(companyShow) +
-                    '</span></span></div>';
+                    '</span></span><span class="list-arrow" aria-hidden="true"></span></div>';
                 listHtml +=
                     '<div class="list-row"><span class="list-label">收入：<span class="list-amount">' +
                     escapeHtml(String(record.income)) +
                     '</span>元</span></div>';
                 listHtml += '</div>';
-                listHtml += '<img class="list-arrow" src="/jt.jpg" alt="" width="10" loading="lazy" decoding="async">';
                 listHtml += '</div>';
                 listHtml +=
                     '<div class="list-row list-row-tax"><span class="list-label">已申报税额：<span class="list-amount">' +

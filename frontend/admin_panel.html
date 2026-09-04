@@ -52,7 +52,85 @@
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、改名费用、个税修改收费与激活引导弹窗</p></div>
-                    <section>
+                    <section id="sectionPriceBids">
+                        <h2>心理价出价</h2>
+                        <p class="stat mt-0" style="margin-bottom:8px;">当前心理价位（支付页「心理价特惠」实付价）</p>
+                        <div id="bidPsychPriceBar" class="user-data-stats" style="margin:0 0 12px;">
+                            <div class="user-data-stat-card">
+                                <div class="ud-label">周卡心理价</div>
+                                <div class="ud-val" id="bidPsychWeekDisplay">—</div>
+                                <div class="hint" id="bidPsychWeekSub"></div>
+                            </div>
+                            <div class="user-data-stat-card">
+                                <div class="ud-label">双周卡心理价</div>
+                                <div class="ud-val" id="bidPsychTwoWeekDisplay">—</div>
+                                <div class="hint" id="bidPsychTwoWeekSub"></div>
+                            </div>
+                            <div class="user-data-stat-card">
+                                <div class="ud-label">月卡心理价</div>
+                                <div class="ud-val" id="bidPsychMonthDisplay">—</div>
+                                <div class="hint" id="bidPsychMonthSub"></div>
+                            </div>
+                        </div>
+                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知（有邮箱则同步邮件）；低于线的进入下方待处理。上方卡片为支付页默认「心理价特惠」；要改请到下方「支付套餐 → 心理价」<button type="button" class="btn-sm btn-page" id="btnJumpSkuPsych" style="margin-left:6px;">去修改</button>。此处为议价自动通过线。无套餐金额时回退为「目录价 × 百分比」。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field form-field-narrow">
+                                <label><input type="checkbox" id="bidCfgEnabled" checked> 开放出价入口</label>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorWeek">周卡自动通过（元）</label>
+                                <input type="number" id="bidCfgFloorWeek" min="1" max="99999" step="1" placeholder="120">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorTwoWeek">双周卡自动通过（元）</label>
+                                <input type="number" id="bidCfgFloorTwoWeek" min="1" max="99999" step="1" placeholder="199">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorMonth">月卡自动通过（元）</label>
+                                <input type="number" id="bidCfgFloorMonth" min="1" max="99999" step="1" placeholder="298">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgFloorPct">无套餐金额时回退（目录价 %）</label>
+                                <input type="number" id="bidCfgFloorPct" min="1" max="100" step="1" placeholder="60">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgMin">最低出价（元）</label>
+                                <input type="number" id="bidCfgMin" min="1" max="99999" step="1" placeholder="30">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="bidCfgDaily">每人每日次数</label>
+                                <input type="number" id="bidCfgDaily" min="1" max="10" step="1" placeholder="1">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveBidCfg">保存出价配置</button>
+                                <span class="hint" id="bidCfgHint" style="margin-left:8px;"></span>
+                            </div>
+                        </div>
+                        <div class="form-row" style="align-items:center;gap:12px;">
+                            <label><input type="radio" name="bidStatusFilter" value="pending" checked> 待处理</label>
+                            <label><input type="radio" name="bidStatusFilter" value="accepted"> 已通过</label>
+                            <label><input type="radio" name="bidStatusFilter" value="rejected"> 已驳回</label>
+                            <button type="button" class="btn-sm btn-page" id="btnReloadBids">刷新</button>
+                            <span class="hint" id="bidCounts"></span>
+                        </div>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>账号</th>
+                                        <th>套餐</th>
+                                        <th>目录价</th>
+                                        <th>出价</th>
+                                        <th>留言</th>
+                                        <th>状态 / 操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bidTbody"><tr><td colspan="7" class="hint">加载中…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section id="skuCatalogSection">
                         <h2>支付套餐</h2>
                         <div class="form-row form-stack">
                             <p class="hint mt-0">「价格」为对照原价；「心理价」有填且低于原价时，支付页按心理价收款并显示「·心理价特惠」（划线为原价）。留空则仍按「价格」收款。改完立即对未下单用户生效；已生成的待支付订单仍按原金额和原时长。小时卡、天卡、3天卡已下架，不再出现在购买页。</p>
@@ -177,66 +255,6 @@
                                 <button type="button" class="btn-sm btn-ban" id="btnClearPriceOffer">取消专属价</button>
                                 <span class="hint" id="priceOfferHint" style="margin-left:8px;"></span>
                             </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>心理价出价</h2>
-                        <p class="hint mt-0">用户在购买页可提交理想价：出价 ≥ 该套餐自动通过线时立即生效为专属价并站内信通知（有邮箱则同步邮件）；低于线的进入下方待处理。支付页默认展示的「心理价特惠」实付价请在上方「支付套餐 → 心理价」填写。此处为议价自动通过线（当前默认：周卡 ¥120、双周卡 ¥199、月卡 ¥298）。无套餐金额时回退为「目录价 × 百分比」。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field form-field-narrow">
-                                <label><input type="checkbox" id="bidCfgEnabled" checked> 开放出价入口</label>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bidCfgFloorWeek">周卡自动通过（元）</label>
-                                <input type="number" id="bidCfgFloorWeek" min="1" max="99999" step="1" placeholder="120">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bidCfgFloorTwoWeek">双周卡自动通过（元）</label>
-                                <input type="number" id="bidCfgFloorTwoWeek" min="1" max="99999" step="1" placeholder="199">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bidCfgFloorMonth">月卡自动通过（元）</label>
-                                <input type="number" id="bidCfgFloorMonth" min="1" max="99999" step="1" placeholder="298">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bidCfgFloorPct">无套餐金额时回退（目录价 %）</label>
-                                <input type="number" id="bidCfgFloorPct" min="1" max="100" step="1" placeholder="60">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bidCfgMin">最低出价（元）</label>
-                                <input type="number" id="bidCfgMin" min="1" max="99999" step="1" placeholder="30">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="bidCfgDaily">每人每日次数</label>
-                                <input type="number" id="bidCfgDaily" min="1" max="10" step="1" placeholder="1">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveBidCfg">保存出价配置</button>
-                                <span class="hint" id="bidCfgHint" style="margin-left:8px;"></span>
-                            </div>
-                        </div>
-                        <div class="form-row" style="align-items:center;gap:12px;">
-                            <label><input type="radio" name="bidStatusFilter" value="pending" checked> 待处理</label>
-                            <label><input type="radio" name="bidStatusFilter" value="accepted"> 已通过</label>
-                            <label><input type="radio" name="bidStatusFilter" value="rejected"> 已驳回</label>
-                            <button type="button" class="btn-sm btn-page" id="btnReloadBids">刷新</button>
-                            <span class="hint" id="bidCounts"></span>
-                        </div>
-                        <div class="scroll-x">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>时间</th>
-                                        <th>账号</th>
-                                        <th>套餐</th>
-                                        <th>目录价</th>
-                                        <th>出价</th>
-                                        <th>留言</th>
-                                        <th>状态 / 操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="bidTbody"><tr><td colspan="7" class="hint">加载中…</td></tr></tbody>
-                            </table>
                         </div>
                     </section>
                     <section>
@@ -375,7 +393,7 @@
                             </div>
                             <div class="form-field mt-10">
                                 <label>渠道专属套餐（可自定义价格 / 天数 / 小时；留空跟随全站）</label>
-                                <p class="hint mt-6 mb-8">最多 3 档。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。账号「用户专属报价」优先于渠道价。</p>
+                                <p class="hint mt-6 mb-8">最多 5 档。前 3 档对应全站周卡/双周卡/月卡（留空跟随全站）。第 4、5 档需填写<strong>价格</strong>和<strong>天数或小时</strong>才会出现在支付页。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。账号「用户专属报价」优先于渠道价。</p>
                                 <div class="mine-ui-block max-w-760" style="overflow-x:auto">
                                     <table class="data-table" style="min-width:520px">
                                         <thead>
@@ -408,6 +426,20 @@
                                                 <td><input class="input-block" type="number" id="agentChPriceMonth" min="0.01" max="99999" step="0.01" placeholder="399"></td>
                                                 <td><input class="input-block" type="number" id="agentChDaysMonth" min="0" max="3650" step="1" placeholder="30"></td>
                                                 <td><input class="input-block" type="number" id="agentChHoursMonth" min="0" max="23" step="1" placeholder="0"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>4</td>
+                                                <td><input class="input-block" type="text" id="agentChLabelT4" maxlength="32" placeholder="如 季卡"></td>
+                                                <td><input class="input-block" type="number" id="agentChPriceT4" min="0.01" max="99999" step="0.01" placeholder="598"></td>
+                                                <td><input class="input-block" type="number" id="agentChDaysT4" min="0" max="3650" step="1" placeholder="90"></td>
+                                                <td><input class="input-block" type="number" id="agentChHoursT4" min="0" max="23" step="1" placeholder="0"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>5</td>
+                                                <td><input class="input-block" type="text" id="agentChLabelT5" maxlength="32" placeholder="如 年卡"></td>
+                                                <td><input class="input-block" type="number" id="agentChPriceT5" min="0.01" max="99999" step="0.01" placeholder="998"></td>
+                                                <td><input class="input-block" type="number" id="agentChDaysT5" min="0" max="3650" step="1" placeholder="365"></td>
+                                                <td><input class="input-block" type="number" id="agentChHoursT5" min="0" max="23" step="1" placeholder="0"></td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -3900,6 +3932,6 @@
     <script src="/js/admin/loader.js?v=20260904-abc-stats"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260904-abc-stats"></script>
+    <script src="/js/admin_panel.js?v=20260904-psych-top"></script>
 </body>
 </html>

@@ -68,4 +68,35 @@ describe('agentChannels normalize', () => {
       grant_hours: 6
     });
   });
+
+  it('normalizeSkuPrices accepts 4th and 5th channel tiers', () => {
+    expect(api.CHANNEL_SKU_IDS).toEqual([
+      'sku_300_7d',
+      'sku_348_14d',
+      'sku_398_30d',
+      'sku_ch_t4',
+      'sku_ch_t5'
+    ]);
+    const out = api.normalizeSkuPrices({
+      price_t4: '598',
+      days_t4: 90,
+      hours_t4: 0,
+      label_t4: '季卡',
+      price_t5: '998',
+      days_t5: 365,
+      label_t5: '年卡'
+    });
+    expect(out.sku_ch_t4).toEqual({
+      amount: '598.00',
+      grant_days: 90,
+      grant_hours: 0,
+      label: '季卡'
+    });
+    expect(out.sku_ch_t5).toEqual({
+      amount: '998.00',
+      grant_days: 365,
+      grant_hours: 0,
+      label: '年卡'
+    });
+  });
 });

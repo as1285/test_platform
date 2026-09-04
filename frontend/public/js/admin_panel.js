@@ -8679,6 +8679,7 @@
                 }
             });
             updateSkuCatalogPriceLabels(map);
+            renderBidPsychPriceBar();
         }
 
         function formatSkuYuan(raw) {
@@ -8730,6 +8731,34 @@
                 skuSel.appendChild(opt);
             });
             if (current) skuSel.value = current;
+            renderBidPsychPriceBar();
+        }
+
+        function renderBidPsychPriceBar() {
+            var specs = [
+                { sku: 'sku_300_7d', valId: 'bidPsychWeekDisplay', subId: 'bidPsychWeekSub' },
+                { sku: 'sku_348_14d', valId: 'bidPsychTwoWeekDisplay', subId: 'bidPsychTwoWeekSub' },
+                { sku: 'sku_398_30d', valId: 'bidPsychMonthDisplay', subId: 'bidPsychMonthSub' }
+            ];
+            if (!document.getElementById('bidPsychPriceBar')) return;
+            var catalog = collectSkuCatalogFromForm();
+            specs.forEach(function (spec) {
+                var valEl = document.getElementById(spec.valId);
+                var subEl = document.getElementById(spec.subId);
+                var entry = catalog[spec.sku] || {};
+                var psych = formatSkuYuan(entry.psych_amount);
+                var list = formatSkuYuan(entry.amount);
+                if (valEl) valEl.textContent = psych ? '¥' + psych : '未填';
+                if (subEl) {
+                    subEl.textContent = list
+                        ? psych
+                            ? '目录价 ¥' + list
+                            : '未填则按目录价 ¥' + list + ' 收款'
+                        : psych
+                          ? '已启用心理价特惠'
+                          : '支付套餐未填价格';
+                }
+            });
         }
 
         function applyRenameFeeToForm(cfg) {
@@ -9396,6 +9425,26 @@
             });
             var btnReload = document.getElementById('btnReloadBids');
             if (btnReload) btnReload.addEventListener('click', loadBids);
+            var btnJumpSku = document.getElementById('btnJumpSkuPsych');
+            if (btnJumpSku) {
+                btnJumpSku.addEventListener('click', function () {
+                    var el = document.getElementById('skuCatalogSection');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+            var skuTable = document.getElementById('skuCatalogTable');
+            if (skuTable && !skuTable.getAttribute('data-psych-bar-bound')) {
+                skuTable.setAttribute('data-psych-bar-bound', '1');
+                skuTable.addEventListener('input', function (ev) {
+                    if (ev.target && ev.target.classList && ev.target.classList.contains('sku-catalog-psych')) {
+                        renderBidPsychPriceBar();
+                    }
+                    if (ev.target && ev.target.classList && ev.target.classList.contains('sku-catalog-amount')) {
+                        renderBidPsychPriceBar();
+                    }
+                });
+            }
+            renderBidPsychPriceBar();
             var btnSaveCfg = document.getElementById('btnSaveBidCfg');
             if (btnSaveCfg) {
                 btnSaveCfg.addEventListener('click', function () {
@@ -9536,6 +9585,19 @@
                 .replace(/"/g, '&quot;');
         }
 
+        var AGENT_CH_SKU_SLOTS = [
+            { key: 'week', priceId: 'agentChPriceWeek', daysId: 'agentChDaysWeek', hoursId: 'agentChHoursWeek', labelId: 'agentChLabelWeek' },
+            { key: 'biweek', priceId: 'agentChPriceBiweek', daysId: 'agentChDaysBiweek', hoursId: 'agentChHoursBiweek', labelId: 'agentChLabelBiweek' },
+            { key: 'month', priceId: 'agentChPriceMonth', daysId: 'agentChDaysMonth', hoursId: 'agentChHoursMonth', labelId: 'agentChLabelMonth' },
+            { key: 't4', priceId: 'agentChPriceT4', daysId: 'agentChDaysT4', hoursId: 'agentChHoursT4', labelId: 'agentChLabelT4' },
+            { key: 't5', priceId: 'agentChPriceT5', daysId: 'agentChDaysT5', hoursId: 'agentChHoursT5', labelId: 'agentChLabelT5' }
+        ];
+
+        function agentChFieldVal(id) {
+            var el = document.getElementById(id);
+            return el ? String(el.value || '').trim() : '';
+        }
+
         function resetAgentChannelForm() {
             var idEl = document.getElementById('agentChId');
             if (idEl) {
@@ -9546,17 +9608,11 @@
             if (ownerEl) ownerEl.value = '';
             var pricingEl = document.getElementById('agentChPricing');
             if (pricingEl) pricingEl.value = 'b';
-            var weekEl = document.getElementById('agentChPriceWeek');
-            if (weekEl) weekEl.value = '';
-            var biweekEl = document.getElementById('agentChPriceBiweek');
-            if (biweekEl) biweekEl.value = '';
-            var monthEl = document.getElementById('agentChPriceMonth');
-            if (monthEl) monthEl.value = '';
-            ['agentChDaysWeek', 'agentChHoursWeek', 'agentChLabelWeek',
-             'agentChDaysBiweek', 'agentChHoursBiweek', 'agentChLabelBiweek',
-             'agentChDaysMonth', 'agentChHoursMonth', 'agentChLabelMonth'].forEach(function (id) {
-                var el = document.getElementById(id);
-                if (el) el.value = '';
+            AGENT_CH_SKU_SLOTS.forEach(function (slot) {
+                [slot.priceId, slot.daysId, slot.hoursId, slot.labelId].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
             });
             var androidEl = document.getElementById('agentChAndroidUrl');
             if (androidEl) androidEl.value = '';
@@ -9579,25 +9635,16 @@
             if (ownerEl) ownerEl.value = String(c.owner_admin_username || '');
             var pricingEl = document.getElementById('agentChPricing');
             if (pricingEl) pricingEl.value = c.default_pricing_abc === 'a' ? 'a' : 'b';
-            var weekEl = document.getElementById('agentChPriceWeek');
-            if (weekEl) weekEl.value = c.price_week || '';
-            var biweekEl = document.getElementById('agentChPriceBiweek');
-            if (biweekEl) biweekEl.value = c.price_biweek || '';
-            var monthEl = document.getElementById('agentChPriceMonth');
-            if (monthEl) monthEl.value = c.price_month || '';
             var setVal = function (id, v) {
                 var el = document.getElementById(id);
                 if (el) el.value = v != null && String(v) !== '' ? String(v) : '';
             };
-            setVal('agentChDaysWeek', c.days_week);
-            setVal('agentChHoursWeek', c.hours_week);
-            setVal('agentChLabelWeek', c.label_week);
-            setVal('agentChDaysBiweek', c.days_biweek);
-            setVal('agentChHoursBiweek', c.hours_biweek);
-            setVal('agentChLabelBiweek', c.label_biweek);
-            setVal('agentChDaysMonth', c.days_month);
-            setVal('agentChHoursMonth', c.hours_month);
-            setVal('agentChLabelMonth', c.label_month);
+            AGENT_CH_SKU_SLOTS.forEach(function (slot) {
+                setVal(slot.priceId, c['price_' + slot.key]);
+                setVal(slot.daysId, c['days_' + slot.key]);
+                setVal(slot.hoursId, c['hours_' + slot.key]);
+                setVal(slot.labelId, c['label_' + slot.key]);
+            });
             var androidEl = document.getElementById('agentChAndroidUrl');
             if (androidEl) androidEl.value = String(c.android_apk_url || '');
             var iosEl = document.getElementById('agentChIosUrl');
@@ -9629,11 +9676,9 @@
                 if (dur) bits.push(dur);
                 return bits.join('');
             }
-            var parts = [
-                one(c.label_week, c.price_week, c.days_week, c.hours_week),
-                one(c.label_biweek, c.price_biweek, c.days_biweek, c.hours_biweek),
-                one(c.label_month, c.price_month, c.days_month, c.hours_month)
-            ].filter(Boolean);
+            var parts = AGENT_CH_SKU_SLOTS.map(function (slot) {
+                return one(c['label_' + slot.key], c['price_' + slot.key], c['days_' + slot.key], c['hours_' + slot.key]);
+            }).filter(Boolean);
             return parts.length ? parts.join(' / ') : '—';
         }
 
@@ -9741,77 +9786,24 @@
                     return;
                 }
                 btnSaveAgentChannel.disabled = true;
+                var payload = {
+                    channel_id: channelId,
+                    owner_admin_username: String(document.getElementById('agentChOwner').value || '').trim(),
+                    default_pricing_abc: document.getElementById('agentChPricing').value || 'b',
+                    android_apk_url: String(document.getElementById('agentChAndroidUrl').value || '').trim(),
+                    ios_mobileconfig_url: String(document.getElementById('agentChIosUrl').value || '').trim(),
+                    note: String(document.getElementById('agentChNote').value || '').trim(),
+                    enabled: !!(document.getElementById('agentChEnabled') && document.getElementById('agentChEnabled').checked)
+                };
+                AGENT_CH_SKU_SLOTS.forEach(function (slot) {
+                    payload['price_' + slot.key] = agentChFieldVal(slot.priceId);
+                    payload['days_' + slot.key] = agentChFieldVal(slot.daysId);
+                    payload['hours_' + slot.key] = agentChFieldVal(slot.hoursId);
+                    payload['label_' + slot.key] = agentChFieldVal(slot.labelId);
+                });
                 adminFetch('api/admin/agent-channels', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        channel_id: channelId,
-                        owner_admin_username: String(document.getElementById('agentChOwner').value || '').trim(),
-                        default_pricing_abc: document.getElementById('agentChPricing').value || 'b',
-                        price_week: String(
-                            (document.getElementById('agentChPriceWeek') &&
-                                document.getElementById('agentChPriceWeek').value) ||
-                                ''
-                        ).trim(),
-                        days_week: String(
-                            (document.getElementById('agentChDaysWeek') &&
-                                document.getElementById('agentChDaysWeek').value) ||
-                                ''
-                        ).trim(),
-                        hours_week: String(
-                            (document.getElementById('agentChHoursWeek') &&
-                                document.getElementById('agentChHoursWeek').value) ||
-                                ''
-                        ).trim(),
-                        label_week: String(
-                            (document.getElementById('agentChLabelWeek') &&
-                                document.getElementById('agentChLabelWeek').value) ||
-                                ''
-                        ).trim(),
-                        price_biweek: String(
-                            (document.getElementById('agentChPriceBiweek') &&
-                                document.getElementById('agentChPriceBiweek').value) ||
-                                ''
-                        ).trim(),
-                        days_biweek: String(
-                            (document.getElementById('agentChDaysBiweek') &&
-                                document.getElementById('agentChDaysBiweek').value) ||
-                                ''
-                        ).trim(),
-                        hours_biweek: String(
-                            (document.getElementById('agentChHoursBiweek') &&
-                                document.getElementById('agentChHoursBiweek').value) ||
-                                ''
-                        ).trim(),
-                        label_biweek: String(
-                            (document.getElementById('agentChLabelBiweek') &&
-                                document.getElementById('agentChLabelBiweek').value) ||
-                                ''
-                        ).trim(),
-                        price_month: String(
-                            (document.getElementById('agentChPriceMonth') &&
-                                document.getElementById('agentChPriceMonth').value) ||
-                                ''
-                        ).trim(),
-                        days_month: String(
-                            (document.getElementById('agentChDaysMonth') &&
-                                document.getElementById('agentChDaysMonth').value) ||
-                                ''
-                        ).trim(),
-                        hours_month: String(
-                            (document.getElementById('agentChHoursMonth') &&
-                                document.getElementById('agentChHoursMonth').value) ||
-                                ''
-                        ).trim(),
-                        label_month: String(
-                            (document.getElementById('agentChLabelMonth') &&
-                                document.getElementById('agentChLabelMonth').value) ||
-                                ''
-                        ).trim(),
-                        android_apk_url: String(document.getElementById('agentChAndroidUrl').value || '').trim(),
-                        ios_mobileconfig_url: String(document.getElementById('agentChIosUrl').value || '').trim(),
-                        note: String(document.getElementById('agentChNote').value || '').trim(),
-                        enabled: !!(document.getElementById('agentChEnabled') && document.getElementById('agentChEnabled').checked)
-                    })
+                    body: JSON.stringify(payload)
                 })
                     .then(function (r) {
                         return r.json();

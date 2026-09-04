@@ -647,6 +647,73 @@ function applyGithubChannelCatalogPrices(skus) {
   return applyChannelCatalogPrices(skus, GITHUB_CHANNEL_AMOUNT_BY_SKU);
 }
 
+/** 渠道专属第 4/5 档：不进全站货架，仅渠道覆盖时追加到支付页 */
+var SKU_CH_T4 = {
+  id: 'sku_ch_t4',
+  amount: '598.00',
+  label: '档位4',
+  subject: '激活码·档位4',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 90,
+  grant_minutes: 0
+};
+var SKU_CH_T5 = {
+  id: 'sku_ch_t5',
+  amount: '998.00',
+  label: '档位5',
+  subject: '激活码·档位5',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 365,
+  grant_minutes: 0
+};
+var CHANNEL_EXTRA_SKU_IDS = [SKU_CH_T4.id, SKU_CH_T5.id];
+
+function channelOverrideObject(raw) {
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  var amt = String(raw).trim();
+  if (!amt) return null;
+  return { amount: amt };
+}
+
+function autoChannelGrantLabel(days, hours) {
+  var d = parseInt(days, 10) || 0;
+  var h = parseInt(hours, 10) || 0;
+  if (d > 0 && h > 0) return d + '天' + h + '小时';
+  if (d > 0) return d === 1 ? '日卡' : d + '天卡';
+  if (h > 0) return h === 1 ? '小时卡' : h + '小时卡';
+  return '';
+}
+
+function buildChannelExtraSku(id, ov) {
+  if (!ov) return null;
+  var amount = ov.amount != null ? String(ov.amount).trim() : '';
+  if (!amount) return null;
+  var d = ov.grant_days != null ? parseInt(ov.grant_days, 10) || 0 : 0;
+  var h = ov.grant_hours != null ? parseInt(ov.grant_hours, 10) || 0 : 0;
+  if (d < 0) d = 0;
+  if (h < 0) h = 0;
+  if (h > 23) h = 23;
+  if (d + h <= 0) return null;
+  var label =
+    ov.label != null && String(ov.label).trim() !== ''
+      ? String(ov.label).trim().slice(0, 32)
+      : autoChannelGrantLabel(d, h) || String(id);
+  return {
+    id: String(id),
+    amount: amount,
+    label: label,
+    subject: '激活码·' + label,
+    grant_kind: 'trial',
+    grant_hours: h,
+    grant_days: d,
+    grant_minutes: 0,
+    channel_price: true
+  };
+}
+
 /** 按渠道覆盖货架：金额 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
 function applyChannelCatalogPrices(skus, priceMap) {
   var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
@@ -683,12 +750,7 @@ function applyChannelCatalogPrices(skus, priceMap) {
       next[i].label = String(ov.label).trim().slice(0, 32);
       touched = true;
     } else if (ov.grant_days != null || ov.grant_hours != null) {
-      var auto = '';
-      var dd = next[i].grant_days || 0;
-      var hh = next[i].grant_hours || 0;
-      if (dd > 0 && hh > 0) auto = dd + '天' + hh + '小时';
-      else if (dd > 0) auto = dd === 1 ? '日卡' : dd + '天卡';
-      else if (hh > 0) auto = hh === 1 ? '小时卡' : hh + '小时卡';
+      var auto = autoChannelGrantLabel(next[i].grant_days, next[i].grant_hours);
       if (auto) next[i].label = auto;
     }
     if (touched) {
@@ -696,6 +758,19 @@ function applyChannelCatalogPrices(skus, priceMap) {
       next[i].subject = '激活码·' + (next[i].label || next[i].id);
     }
   }
+  var present = {};
+  for (i = 0; i < next.length; i++) present[next[i].id] = true;
+  var extraOrder = CHANNEL_EXTRA_SKU_IDS.slice();
+  Object.keys(map).forEach(function (id) {
+    if (extraOrder.indexOf(id) < 0) extraOrder.push(id);
+  });
+  extraOrder.forEach(function (id) {
+    if (present[id]) return;
+    var extra = buildChannelExtraSku(id, channelOverrideObject(map[id]));
+    if (!extra) return;
+    next.push(extra);
+    present[id] = true;
+  });
   return next;
 }
 
@@ -729,7 +804,7 @@ function findSkuById(cfg, skuId) {
   var lists = [
     cfg.control_skus || [],
     cfg.treatment_skus || [],
-    [SKU_98_3DAY, SKU_99_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_300_WEEK, SKU_348_2WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM].concat(
+    [SKU_98_3DAY, SKU_99_HOUR, SKU_249_DAY, SKU_268_3DAY, SKU_300_WEEK, SKU_348_2WEEK, SKU_398_MONTH, SKU_999_PERM, SKU_298_DAY, SKU_398_PERM, SKU_268_DAY, SKU_199_HOUR, SKU_328_WEEK, SKU_600_PERM, SKU_CH_T4, SKU_CH_T5].concat(
       LEGACY_CATALOG_SKUS
     )
   ];

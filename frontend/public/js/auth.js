@@ -1190,16 +1190,23 @@
     st.setAttribute('data-ios-large-viewport-width', '1');
     st.textContent =
       '@media screen and (min-width:414px),screen and (min-device-width:414px){' +
-      'body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
-      'body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
-      'body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
-      'body.page-shuiming-result .top-fixed .header{padding-left:20px !important;padding-right:20px !important;}' +
-      'body.page-shuiming-result .back-btn{left:20px !important;}' +
-      'body.page-shuiming-result .header-right{right:20px !important;}' +
+      'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+      'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+      'body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+      'body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
+      'body.page-shuiming-result .back-btn{left:12px !important;}' +
+      'body.page-shuiming-result .header-right{right:12px !important;}' +
       'body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
-      'body.page-shuiming-result .sm-activate-card,body.page-shuiming-result .sm-refund-browse-card{margin-left:20px !important;margin-right:20px !important;}' +
-      'body.page-shuiming > .header{padding-left:20px !important;padding-right:20px !important;}' +
-      'body.page-shuiming > .content{padding-left:8px !important;padding-right:8px !important;}' +
+      'body.page-shuiming-result .sm-activate-card,body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;}' +
+      'body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
+      'body.page-shuiming > .content{padding-left:0 !important;padding-right:0 !important;}' +
+      '}' +
+      '@media screen and (min-width:428px),screen and (min-device-width:428px){' +
+      'html.platform-ios body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+      'html.platform-ios body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+      'html.platform-ios body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+      'html.platform-ios body.page-shuiming-result .sm-activate-card,html.platform-ios body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;}' +
+      'html.platform-ios body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;border-top:3px solid #c7c7cc !important;border-right:3px solid #c7c7cc !important;transform:translateY(2px) rotate(45deg);}' +
       '}' +
       /* 15 Plus：贴边铺满，压过上方 media 20px */
       'html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
@@ -1231,8 +1238,10 @@
       'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
       'html.app-ios-iphone17promax body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
       'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-arrow{margin-left:auto !important;flex-shrink:0 !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}';
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
+      'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+      'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+      'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:3px solid #c7c7cc !important;border-right:3px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -4915,15 +4924,15 @@
           'html.app-ios-iphone15promax body.page-shuiming-result .back-btn{left:12px !important;}' +
           'html.app-ios-iphone15promax body.page-shuiming-result .header-right{right:12px !important;}' +
           'html.app-ios-iphone15promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone15promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:20px !important;padding-right:20px !important;box-sizing:border-box !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:20px;border-radius:10px !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item{padding-left:24px !important;padding-right:24px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone16promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone16promax body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone16promax body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
           'html.app-ios-promax-wide.platform-ios body.page-shuiming-result .list-company-name,html.app-ios-iphone16promax.platform-ios body.page-shuiming-result .list-company-name{max-width:20em !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming-result .back-btn,html.app-ios-iphone16promax body.page-shuiming-result .back-btn{left:20px !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming-result .header-right,html.app-ios-iphone16promax body.page-shuiming-result .header-right{right:20px !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card{margin-left:20px !important;margin-right:20px !important;}' +
-          'html.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:20px !important;padding-right:20px !important;}' +
-          'html.app-ios-promax-wide body.page-shuiming .content{padding-left:8px !important;padding-right:8px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .back-btn,html.app-ios-iphone16promax body.page-shuiming-result .back-btn{left:12px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .header-right,html.app-ios-iphone16promax body.page-shuiming-result .header-right{right:12px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone16promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+          'html.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
+          'html.app-ios-promax-wide body.page-shuiming .content{padding-left:0 !important;padding-right:0 !important;}' +
           /* 15 Plus 再次压过 promax-wide（class 同挂时仍走贴边） */
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
           'html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
@@ -4975,8 +4984,16 @@
           'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
           'html.app-ios-iphone17promax body.page-shuiming-result .list-company,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
           'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-arrow{margin-left:auto !important;flex-shrink:0 !important;}' +
           'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
+          '@media screen and (min-width:428px),screen and (min-device-width:428px){' +
+          'html.platform-ios body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+          'html.platform-ios body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+          'html.platform-ios body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
+          'html.platform-ios body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;border-top:3px solid #c7c7cc !important;border-right:3px solid #c7c7cc !important;transform:translateY(2px) rotate(45deg);}' +
+          '}' +
+          'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
+          'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+          'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:3px solid #c7c7cc !important;border-right:3px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
           /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位（小米 14 Pro / iQOO 15 仍沉浸压栏，排除） */
           'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
           'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
