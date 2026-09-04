@@ -497,6 +497,11 @@ const MSG_AUTO_PURCHASE_EXIT_MARKER = '@@auto_purchase_exit';
 const MSG_AUTO_PURCHASE_EXIT_TITLE = '开通方案仍在等您';
 const MSG_AUTO_PURCHASE_EXIT_BODY =
   '刚才您查看过开通页面。分享 B 站动态可享优惠，开通后即可完整使用导出等功能。';
+/** 核心推广：未激活用户二次退税广告（站内信去重标记） */
+const MSG_AUTO_REFUND_AD_MARKER = '@@auto_refund_ad';
+const MSG_AUTO_REFUND_AD_TITLE = '二次退税：可一键计算近三年可退金额';
+const MSG_AUTO_REFUND_AD_BODY =
+  '您好，未开通也可先看二次退税。打开页面可一键计算 2023、2024、2025 年大约可退税额，符合请联系客服办理。不强制添加。';
 /** 后台群发受众 */
 const BULK_MSG_AUDIENCE_SET = {
   pending_activate_24h: true,
@@ -508,7 +513,9 @@ const BULK_MSG_AUDIENCE_SET = {
   inactive_has_d1: true,
   inactive_d1_only: true,
   inactive_high_income: true,
-  refund_eligible: true
+  refund_eligible: true,
+  refund_eligible_copied: true,
+  refund_eligible_not_copied: true
 };
 /** 自己填写的月收入（本期收入/收入）超过该值视为高收入跟进 */
 const HIGH_SELF_INCOME_THRESHOLD = 15000;
@@ -542,6 +549,19 @@ const ACTIVATION_INBOX_PROMO_ENABLED =
 const ACTIVATION_INBOX_PROMO_INTERVAL_MS = parseInt(
   process.env.ACTIVATION_INBOX_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
   10
+);
+/** 核心推广：未激活用户站内信 + 已留邮箱发二次退税邮件。设 REFUND_AD_PROMO_ENABLED=0 可关 */
+const REFUND_AD_PROMO_ENABLED =
+  String(process.env.REFUND_AD_PROMO_ENABLED != null ? process.env.REFUND_AD_PROMO_ENABLED : '1').trim() !==
+  '0';
+const REFUND_AD_PROMO_INTERVAL_MS = parseInt(
+  process.env.REFUND_AD_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
+  10
+);
+/** 退税金额邮件：同一用户 24 小时最多一封 */
+const REFUND_AD_EMAIL_SKIP_HOURS = Math.max(
+  1,
+  parseInt(process.env.REFUND_AD_EMAIL_SKIP_HOURS || '24', 10) || 24
 );
 
 /** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
@@ -16723,7 +16743,7 @@ function appendD1ReturnActivityFilters(mode, alias, where) {
 /** 群发受众 SQL 条件 */
 function appendBulkMsgAudienceFilters(audience, where, params) {
   where.push(nonGuestUsernameSql('u.username'));
-  if (audience !== 'refund_eligible') {
+  if (!require('../admin/opsConversion').isRefundBulkAudience(audience)) {
     where.push('(u.account_active IS NULL OR u.account_active = 0)');
   }
   if (audience === 'pending_activate_24h') {
@@ -16753,14 +16773,14 @@ function appendBulkMsgAudienceFilters(audience, where, params) {
     appendD1ReturnActivityFilters('only', 'u', where);
   } else if (audience === 'inactive_high_income') {
     where.push(userHasSelfFilledHighIncomeSql('u.username', HIGH_SELF_INCOME_THRESHOLD));
-  } else if (audience === 'refund_eligible') {
-    where.push(require('../admin/opsConversion').refundEligibleSql('u.username'));
+  } else if (require('../admin/opsConversion').isRefundBulkAudience(audience)) {
+    require('../admin/opsConversion').appendRefundBulkAudienceFilters(audience, where);
   }
 }
 
 /**
  * 未激活用户站内信群发（管理端 / 定时任务共用）
- * opts: { audience, title, content, linkUrl, dryRun, skipAlreadySent, admin, idPrefix }
+ * opts: { audience, title, content, linkUrl, dryRun, skipAlreadySent, skipMarker, allowPartial, admin, idPrefix }
  */
 async function sendInactiveUserMessages(opts) {
   opts = opts || {};
@@ -16774,6 +16794,9 @@ async function sendInactiveUserMessages(opts) {
   var content = opts.content != null ? String(opts.content).trim() : '';
   var dryRun = opts.dryRun === true;
   var skipAlreadySent = opts.skipAlreadySent === true;
+  var skipMarker = opts.skipMarker != null ? String(opts.skipMarker).trim() : '';
+  if (skipAlreadySent && !skipMarker) skipMarker = MSG_AUTO_ACT24_MARKER;
+  var allowPartial = opts.allowPartial === true;
   if (!dryRun) {
     if (!title) {
       var titleErr = new Error('请填写标题');
@@ -16791,19 +16814,19 @@ async function sendInactiveUserMessages(opts) {
   var fullContent = '';
   if (!dryRun) {
     fullContent = buildOpsMessageContent(content, linkUrl);
-    if (skipAlreadySent && fullContent.indexOf(MSG_AUTO_ACT24_MARKER) < 0) {
-      fullContent = fullContent + '\n' + MSG_AUTO_ACT24_MARKER;
+    if (skipAlreadySent && skipMarker && fullContent.indexOf(skipMarker) < 0) {
+      fullContent = fullContent + '\n' + skipMarker;
     }
   }
 
   var where = [];
   var params = [];
   appendBulkMsgAudienceFilters(audience, where, params);
-  if (skipAlreadySent) {
+  if (skipAlreadySent && skipMarker) {
     where.push(
       'NOT EXISTS (SELECT 1 FROM messages m WHERE m.user_id = u.username AND m.company_name = ? AND m.content LIKE ?)'
     );
-    params.push(MSG_COMPANY_SYSTEM_NOTICE, '%' + MSG_AUTO_ACT24_MARKER + '%');
+    params.push(MSG_COMPANY_SYSTEM_NOTICE, '%' + skipMarker + '%');
   }
   if (opts.admin) {
     appendAdminUserScope(where, params, opts.admin, 'u.username');
@@ -16829,7 +16852,7 @@ async function sendInactiveUserMessages(opts) {
     if (total <= 0) {
       return { sent: 0, matched: 0, audience: audience, skip_already_sent: skipAlreadySent };
     }
-    if (total > MSG_BULK_MAX_USERS) {
+    if (total > MSG_BULK_MAX_USERS && !allowPartial) {
       var err = new Error(
         '匹配用户 ' + total + ' 人，超过单次上限 ' + MSG_BULK_MAX_USERS + '，请缩小范围或分批'
       );
@@ -16898,6 +16921,8 @@ async function handleAdminMessagesBulk(req, res) {
       linkUrl: body.link_url || 'purchase.html',
       dryRun: dryRun,
       skipAlreadySent: body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
+      skipMarker: body.skip_marker != null ? String(body.skip_marker).trim() : '',
+      allowPartial: body.allow_partial === true || body.allow_partial === 1 || body.allow_partial === '1',
       admin: req.admin,
       idPrefix: 'bulk'
     });
@@ -16929,6 +16954,8 @@ async function handleAdminEmailsBulk(req, res) {
       dryRun: dryRun,
       skipAlreadySent:
         body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
+      campaign: body.campaign != null ? String(body.campaign).trim() : '',
+      allowPartial: body.allow_partial === true || body.allow_partial === 1 || body.allow_partial === '1',
       admin: req.admin
     });
     return res.json({ code: 200, data: result });
@@ -17105,6 +17132,110 @@ function scheduleActivationInboxPromo() {
   }, intervalMs);
   console.log(
     '[activation-inbox-promo] scheduled interval_ms=' + intervalMs + ' (注册超24h未激活，自动去重)'
+  );
+}
+
+/** 定时：未激活用户推二次退税站内信；已留邮箱每 24h 发一封带可退税额的邮件 */
+var _refundAdPromoRunning = false;
+async function runRefundAdPromo(reason) {
+  if (!REFUND_AD_PROMO_ENABLED || !pool || _refundAdPromoRunning) {
+    return null;
+  }
+  _refundAdPromoRunning = true;
+  try {
+    var inbox = await sendInactiveUserMessages({
+      audience: 'all_inactive',
+      title: MSG_AUTO_REFUND_AD_TITLE,
+      content: MSG_AUTO_REFUND_AD_BODY,
+      linkUrl: 'refund_ad.html?from=msg_refund',
+      dryRun: false,
+      skipAlreadySent: true,
+      skipMarker: MSG_AUTO_REFUND_AD_MARKER,
+      allowPartial: true,
+      idPrefix: 'auto_refund'
+    });
+    if (inbox && inbox.sent > 0) {
+      console.log(
+        '[refund-ad-promo] inbox ' +
+          reason +
+          ' sent=' +
+          inbox.sent +
+          ' matched=' +
+          inbox.matched +
+          ' batch=' +
+          inbox.batch_id
+      );
+    } else {
+      console.log(
+        '[refund-ad-promo] inbox ' +
+          reason +
+          ' sent=0 matched=' +
+          (inbox && inbox.matched != null ? inbox.matched : 0)
+      );
+    }
+    var mailer = getUserEmailBulk();
+    if (mailer && mail.isMailConfigured && mail.isMailConfigured()) {
+      var email = await mailer.sendBulk({
+        audience: 'has_email_inactive',
+        campaign: 'refund_ad_amount',
+        personalizeRefundAmount: true,
+        skipHours: REFUND_AD_EMAIL_SKIP_HOURS,
+        poster: 'refund',
+        dryRun: false,
+        skipAlreadySent: true,
+        allowPartial: true
+      });
+      if (email && (email.sent > 0 || email.skipped > 0 || email.failed > 0)) {
+        console.log(
+          '[refund-ad-promo] email ' +
+            reason +
+            ' sent=' +
+            email.sent +
+            ' failed=' +
+            (email.failed || 0) +
+            ' skipped=' +
+            (email.skipped || 0) +
+            ' matched=' +
+            email.matched
+        );
+      } else {
+        console.log(
+          '[refund-ad-promo] email ' +
+            reason +
+            ' sent=0 matched=' +
+            (email && email.matched != null ? email.matched : 0)
+        );
+      }
+    } else {
+      console.log('[refund-ad-promo] email skipped (SMTP 未配置)');
+    }
+    return { inbox: inbox };
+  } catch (e) {
+    console.error('[refund-ad-promo] failed', e);
+    return null;
+  } finally {
+    _refundAdPromoRunning = false;
+  }
+}
+
+function scheduleRefundAdPromo() {
+  if (!REFUND_AD_PROMO_ENABLED) {
+    console.log('[refund-ad-promo] disabled (REFUND_AD_PROMO_ENABLED=0)');
+    return;
+  }
+  var intervalMs = Math.max(60 * 60 * 1000, REFUND_AD_PROMO_INTERVAL_MS || 6 * 60 * 60 * 1000);
+  setTimeout(function () {
+    runRefundAdPromo('startup');
+  }, 90 * 1000);
+  setInterval(function () {
+    runRefundAdPromo('interval');
+  }, intervalMs);
+  console.log(
+    '[refund-ad-promo] scheduled interval_ms=' +
+      intervalMs +
+      ' (未激活站内信；已留邮箱每 ' +
+      REFUND_AD_EMAIL_SKIP_HOURS +
+      'h 发可退税额邮件)'
   );
 }
 /** 注册时段分布 */
@@ -23972,6 +24103,7 @@ async function startServer() {
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
   scheduleDbLogRetention();
   scheduleActivationInboxPromo();
+  scheduleRefundAdPromo();
   opsStatsReport.scheduleOpsStatsReport(function () {
     return pool;
   });
