@@ -148,9 +148,16 @@ var MODELS = [
     platform: 'ios',
     family: 'apple',
     label: 'iPhone 15',
-    match: ['iPhone\\s*15\\b(?!\\s*Plus)(?!\\s*Pro)', 'iPhone15,4'],
+    match: ['iPhone\\s*15\\b(?!\\s*Plus)(?!\\s*Pro\\s*Max)', 'iPhone15,4', 'iPhone16,1'],
     issues: [
-      { page: 'shuiming', title: '扣缴义务人箭头贴字底', summary: '公司名行「>」偏下；底边与公司名同一水平线。', since: '2026-09-04' }
+      { page: 'shuiming', title: '扣缴义务人箭头贴字底', summary: '公司名行「>」偏下；底边与公司名同一水平线。', since: '2026-09-04' },
+      {
+        page: 'shuiming',
+        title: '切年份二次进入顶空白',
+        summary:
+          'iOS 按路径恢复滚动后，syncTopFixedHeight 在 list.top 仍 > -1 时按上移后的列表重算 --list-summary-pad，回顶会出现大块灰空。回顶后再测，并关掉 scrollRestoration。',
+        since: '2026-09-04'
+      }
     ]
   },
   {
@@ -201,8 +208,8 @@ var MODELS = [
         page: 'shuiming',
         title: '收入纳税明细左右贴边',
         summary:
-          '逻辑宽 420 会命中 ≥414 的 20px 卡片留白，左右空条过大；class app-ios-iphoneair 压成贴边 16px（同 15 Plus）。',
-        since: '2026-09-03'
+          '逻辑宽 420 会命中 ≥414 的 20px 卡片留白，左右空条过大；class app-ios-iphoneair 压成贴边 16px（同 15 Plus）。420 还会误挂 promax-font 把汇总刷成白底，汇总与首条之间的灰缝消失，须压回 #f5f6fa。',
+        since: '2026-09-04'
       }
     ]
   },
