@@ -4389,12 +4389,25 @@
         if (back) {
             back.addEventListener('click', function (ev) {
                 trackPurchase('track_purchase_back_click');
+                /* page-loading.js 的 capture 阶段点击监听已为本页站内链接盖了白底转圈遮罩；
+                   若下面要 preventDefault 留在本页弹问卷/出价，必须立刻摘掉遮罩，
+                   否则遮罩永远没人清 → 白屏转圈一直加载不出页面。 */
+                function cancelNavCover() {
+                    try {
+                        document.documentElement.classList.remove('app-nav-leaving');
+                    } catch (eNav) {}
+                    if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    }
+                }
                 if (openBackPriceBidPrompt()) {
                     ev.preventDefault();
+                    cancelNavCover();
                     return;
                 }
                 if (!shouldShowPriceSurvey()) return;
                 ev.preventDefault();
+                cancelNavCover();
                 openPriceSurveyModal(back.getAttribute('href') || resolveBackHref());
             });
         }
