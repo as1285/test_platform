@@ -162,7 +162,8 @@
         }
         [hidden] { display: none !important; }
         .sbdy-zj-only[hidden], .sbdy-zj-hn[hidden], .sbdy-sz-only[hidden], .sbdy-wh-only[hidden],
-        .sbdy-wh-hn[hidden], .sbdy-sz-wh-hn[hidden], .sbdy-js-only[hidden], .sbdy-zj-js[hidden] { display: none !important; }
+        .sbdy-wh-hn[hidden], .sbdy-sz-wh-hn[hidden], .sbdy-js-only[hidden], .sbdy-zj-js[hidden],
+        .sbdy-sc-only[hidden] { display: none !important; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
 </head>
@@ -199,6 +200,7 @@
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj">北京</label>
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionSh" value="sh">上海</label>
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionXm" value="xm">厦门</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSc" value="sc">四川</label>
             </div>
 
             <div class="grid-2">
@@ -299,6 +301,16 @@
                     <label class="field-label" for="sbdyStatusUnemp">失业保险状态</label>
                     <input class="field" type="text" id="sbdyStatusUnemp" value="参保缴费">
                 </div>
+                <div class="sbdy-sc-only" hidden>
+                    <label class="field-label" for="sbdyStatusInjuryExtra">工伤额外状态行（可空）</label>
+                    <input class="field" type="text" id="sbdyStatusInjuryExtra" placeholder="如：暂停缴费（中断）">
+                    <label class="field-label" for="sbdyMonthsPension">养老累计月数</label>
+                    <input class="field" type="number" id="sbdyMonthsPension" placeholder="空则按明细月数">
+                    <label class="field-label" for="sbdyMonthsUnemp">失业累计月数</label>
+                    <input class="field" type="number" id="sbdyMonthsUnemp" placeholder="空则按明细月数">
+                    <label class="field-label" for="sbdyMonthsInjury">工伤累计月数</label>
+                    <input class="field" type="number" id="sbdyMonthsInjury" placeholder="空则按明细月数">
+                </div>
                 <label class="field-label" for="sbdyPrintDate">打印时间文案</label>
                 <input class="field" type="text" id="sbdyPrintDate" placeholder="默认今天">
             </details>
@@ -325,7 +337,7 @@
     <script>
 window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
     </script>
-    <script src="/js/admin/modules/sbdy-demo.js?v=20260831-xiamen"></script>
+    <script src="/js/admin/modules/sbdy-demo.js?v=20260904-sichuan"></script>
     <script>
 (function () {
     function token() {

@@ -204,6 +204,12 @@ app.get(
   h.handleAdminInstallGuideStats
 );
 app.get(
+  '/api/admin/analytics/abc-install-stats',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide-stats', 'insights-growth', 'channel-analysis']),
+  h.handleAdminAbcInstallStats
+);
+app.get(
   '/api/admin/analytics/ad-page-stats',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),

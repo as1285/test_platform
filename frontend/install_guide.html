@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/site-config.js"></script>
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth-boot.js?v=20260904-abc-stats"></script>
+    <script src="/js/auth.js?v=20260904-abc-stats" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -25,7 +25,9 @@
             var entry = {
                 referrer: String(document.referrer || '').substring(0, 500),
                 utm_source: query ? String(query.get('utm_source') || '').substring(0, 80) : '',
-                sales_ch: query ? String(query.get('ch') || '').substring(0, 64) : ''
+                sales_ch: query
+                    ? String(query.get('ch') || query.get('channel') || query.get('sales_ch') || '').substring(0, 64)
+                    : ''
             };
             try {
                 var previousEntry = sessionStorage.getItem('landing_bc_entry_v1');
@@ -1208,6 +1210,29 @@
             return isHarmonyOsLikeClient();
         }
 
+        function currentInstallSalesCh() {
+            try {
+                if (typeof window.getSalesChannel === 'function') {
+                    var ch = String(window.getSalesChannel() || '').trim();
+                    if (ch) return ch;
+                }
+            } catch (e0) {}
+            try {
+                var p = new URLSearchParams(window.location.search || '');
+                return String(p.get('ch') || p.get('channel') || p.get('sales_ch') || '').trim();
+            } catch (e1) {}
+            return '';
+        }
+
+        function withInstallSalesCh(meta) {
+            var out = meta && typeof meta === 'object' ? meta : {};
+            var ch = currentInstallSalesCh();
+            if (ch && !out.sales_ch) {
+                out.sales_ch = ch;
+            }
+            return out;
+        }
+
         function isInAppShell() {
             if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
                 return true;
@@ -1419,10 +1444,9 @@
                     return;
                 } catch (eClick) {}
                 if (typeof window.trackPublicAction === 'function') {
-                    var meta = { page: 'install_guide', via: 'sticky' };
                     window.trackPublicAction(
                         isLikelyIOSClient() ? 'track_install_ios_click' : 'track_install_apk_click',
-                        meta
+                        withInstallSalesCh({ page: 'install_guide', via: 'sticky' })
                     );
                 }
                 advanceInstallStepsAfterDownload();
@@ -1454,7 +1478,7 @@
                 if (typeof window.trackPublicAction === 'function') {
                     window.trackPublicAction(
                         isLikelyIOSClient() ? 'track_install_ios_click' : 'track_install_apk_click',
-                        { page: 'install_guide', via: via || 'hero' }
+                        withInstallSalesCh({ page: 'install_guide', via: via || 'hero' })
                     );
                 }
                 if (isInAppShell()) {
@@ -1833,10 +1857,13 @@
                             : '描述文件安装';
                         bindDownloadClick(ia, ia.href, function () {
                             if (typeof window.trackPublicAction === 'function') {
-                                window.trackPublicAction('track_install_ios_click', {
-                                    page: 'install_guide',
-                                    via: 'install_ios_guide'
-                                });
+                                window.trackPublicAction(
+                                    'track_install_ios_click',
+                                    withInstallSalesCh({
+                                        page: 'install_guide',
+                                        via: 'install_ios_guide'
+                                    })
+                                );
                             }
                         });
                         row.appendChild(ia);
@@ -1855,10 +1882,13 @@
                         }
                         bindDownloadClick(ia, ia.href, function () {
                             if (typeof window.trackPublicAction === 'function') {
-                                window.trackPublicAction('track_install_ios_click', {
-                                    page: 'install_guide',
-                                    via: href ? 'mobileconfig' : 'install_ios_guide'
-                                });
+                                window.trackPublicAction(
+                                    'track_install_ios_click',
+                                    withInstallSalesCh({
+                                        page: 'install_guide',
+                                        via: href ? 'mobileconfig' : 'install_ios_guide'
+                                    })
+                                );
                             }
                         });
                         row.appendChild(ia);
@@ -2261,10 +2291,10 @@
                 if (sec > 86400) {
                     sec = 86400;
                 }
-                window.trackPublicAction('track_install_page_leave', {
+                window.trackPublicAction('track_install_page_leave', withInstallSalesCh({
                     page: 'install_guide',
                     dwell_seconds: sec
-                });
+                }));
             }
             window.trackPublicAction('track_install_page_view', (function () {
                 var meta = { page: 'install_guide' };

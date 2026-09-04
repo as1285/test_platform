@@ -892,4 +892,51 @@ describe('sbdyDemo', () => {
     expect(html).toContain('&lt;b&gt;李&lt;/b&gt;');
     expect(html).not.toMatch(/<td[^>]*>\s*<b>李<\/b>/);
   });
+
+  it('Sichuan payload reuses segments and builds official sc_months', () => {
+    const p = normalizePayload({
+      region: 'sc',
+      name: '马海燕',
+      id_number: '510723199208191285',
+      gender: '女',
+      area: '成都市高新区',
+      status_injury_extra: '暂停缴费（中断）',
+      months_pension: 139,
+      months_unemployment: 138,
+      months_injury: 138,
+      print_date: '2026年09月04日',
+      segments: [
+        {
+          company_name: '四川创智联恒科技有限公司',
+          credit_code: '10010759311',
+          area: '成都市高新区',
+          base_amount: 13596,
+          period_start: '2024-10',
+          period_end: '2024-12'
+        },
+        {
+          company_name: '成都天微智能科技有限公司',
+          credit_code: '250215712150',
+          area: '成都市双流区',
+          base_amount: 5000,
+          period_start: '2025-05',
+          period_end: '2025-06'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('sc');
+    expect(p.layout).toBe('sc_official_v1');
+    expect(p.cert_type).toBe('sichuan');
+    expect(p.sc_months.length).toBe(5);
+    expect(p.sc_months[0].unit_code).toBe('10010759311');
+    expect(p.sc_months[0].pension_unit).toBe(2175.36);
+    expect(p.sc_months[4].unit_code).toBe('250215712150');
+    expect(p.unit_name_map['10010759311']).toBe('四川创智联恒科技有限公司');
+    expect(p.summary_rows[0].months).toBe(139);
+    expect(p.summary_rows[3].status).toBe('暂停缴费（中断）');
+    expect(p.verify_valid_until).toContain('2026');
+    const html = renderCertHtml(p, { show_url: '/show.pdf' });
+    expect(html).toContain('请查看 PDF');
+  });
 });

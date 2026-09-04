@@ -16108,6 +16108,167 @@ async function handleAdminInstallGuideStats(req, res) {
   }
 }
 
+/** 安装页埋点是否 abc 渠道（只认 meta.sales_ch / ch，与账号绑定无关） */
+function abcInstallTrackMetaSql(alias) {
+  var col = alias ? String(alias) + '.meta_json' : 'meta_json';
+  return (
+    '(LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(' +
+    col +
+    ", '$.sales_ch')), ''))) = 'abc' OR LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(" +
+    col +
+    ", '$.ch')), ''))) = 'abc')"
+  );
+}
+
+/** ABC 渠道下载页：浏览与下载 */
+async function handleAdminAbcInstallStats(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var sinceSql = pf.sql;
+    var sinceParams = pf.params.slice();
+    var abcSql = abcInstallTrackMetaSql('');
+    var visitorExpr = "COALESCE(NULLIF(TRIM(ip), ''), NULLIF(client_id, ''), device_fp)";
+    var cnHour = 'HOUR(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var downloadKeys = "event_key IN ('track_install_apk_click', 'track_install_ios_click')";
+    const conn = await pool.getConnection();
+    try {
+      const [sumRows] = await conn.query(
+        `SELECT
+            COUNT(CASE WHEN event_key = 'track_install_page_view' THEN 1 END) AS view_pv,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS view_uv,
+            COUNT(CASE WHEN event_key = 'track_install_apk_click' THEN 1 END) AS apk_clicks,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_apk_click' THEN ${visitorExpr} END) AS apk_uv,
+            COUNT(CASE WHEN event_key = 'track_install_ios_click' THEN 1 END) AS ios_clicks,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_ios_click' THEN ${visitorExpr} END) AS ios_uv,
+            COUNT(CASE WHEN ${downloadKeys} THEN 1 END) AS download_clicks,
+            COUNT(DISTINCT CASE WHEN ${downloadKeys} THEN ${visitorExpr} END) AS download_uv
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}`,
+        sinceParams
+      );
+      const [dailyRows] = await conn.query(
+        `SELECT ${cnDay} AS d,
+                COUNT(CASE WHEN event_key = 'track_install_page_view' THEN 1 END) AS view_pv,
+                COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS view_uv,
+                COUNT(CASE WHEN event_key = 'track_install_apk_click' THEN 1 END) AS apk_clicks,
+                COUNT(CASE WHEN event_key = 'track_install_ios_click' THEN 1 END) AS ios_clicks,
+                COUNT(CASE WHEN ${downloadKeys} THEN 1 END) AS download_clicks,
+                COUNT(DISTINCT CASE WHEN ${downloadKeys} THEN ${visitorExpr} END) AS download_uv
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}
+         GROUP BY ${cnDay}
+         ORDER BY d ASC`,
+        sinceParams
+      );
+      const [hourlyRows] = await conn.query(
+        `SELECT ${cnHour} AS h,
+                COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS view_uv,
+                COUNT(DISTINCT CASE WHEN ${downloadKeys} THEN ${visitorExpr} END) AS download_uv,
+                COUNT(CASE WHEN event_key = 'track_install_page_view' THEN 1 END) AS view_pv,
+                COUNT(CASE WHEN ${downloadKeys} THEN 1 END) AS download_clicks
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}
+         GROUP BY ${cnHour}
+         ORDER BY h ASC`,
+        sinceParams
+      );
+      const [recentRows] = await conn.query(
+        `SELECT id, event_key, created_at, ip, client_id, user_agent, meta_json
+         FROM install_guide_track_events
+         WHERE ${sinceSql} AND ${abcSql}
+           AND event_key IN (
+             'track_install_page_view',
+             'track_install_apk_click',
+             'track_install_ios_click'
+           )
+         ORDER BY created_at DESC
+         LIMIT 40`,
+        sinceParams
+      );
+      var sum = sumRows[0] || {};
+      var viewPv = Number(sum.view_pv) || 0;
+      var viewUv = Number(sum.view_uv) || 0;
+      var apkClicks = Number(sum.apk_clicks) || 0;
+      var apkUv = Number(sum.apk_uv) || 0;
+      var iosClicks = Number(sum.ios_clicks) || 0;
+      var iosUv = Number(sum.ios_uv) || 0;
+      var dlClicks = Number(sum.download_clicks) || 0;
+      var dlUv = Number(sum.download_uv) || 0;
+      var daily = (dailyRows || []).map(function (r) {
+        return {
+          date: formatDateKey(r.d),
+          view_pv: Number(r.view_pv) || 0,
+          view_uv: Number(r.view_uv) || 0,
+          apk_clicks: Number(r.apk_clicks) || 0,
+          ios_clicks: Number(r.ios_clicks) || 0,
+          download_clicks: Number(r.download_clicks) || 0,
+          download_uv: Number(r.download_uv) || 0
+        };
+      });
+      var hourMap = {};
+      (hourlyRows || []).forEach(function (r) {
+        hourMap[Number(r.h)] = r;
+      });
+      var byHour = [];
+      for (var h = 0; h < 24; h++) {
+        var hr = hourMap[h] || {};
+        byHour.push({
+          hour: h,
+          view_uv: Number(hr.view_uv) || 0,
+          view_pv: Number(hr.view_pv) || 0,
+          download_uv: Number(hr.download_uv) || 0,
+          download_clicks: Number(hr.download_clicks) || 0
+        });
+      }
+      var recent = (recentRows || []).map(function (r) {
+        var key = String(r.event_key || '');
+        return {
+          id: r.id,
+          event_key: key,
+          event_label: INSTALL_GUIDE_EVENT_LABELS[key] || key,
+          created_at: r.created_at,
+          ip: r.ip || '',
+          client_id: r.client_id || '',
+          user_agent: r.user_agent ? String(r.user_agent).substring(0, 180) : ''
+        };
+      });
+      res.json({
+        code: 200,
+        data: Object.assign(
+          {
+            channel: 'abc',
+            definition:
+              '只统计安装下载页埋点 meta.sales_ch=abc（用户打开的 URL 带 ?ch=abc 或 ABC 渠道包）。按 IP 优先去重 UV；浏览次数为原始 PV。下载含 Android 安装包与 iOS 描述文件点击。',
+            landing_url: 'install_guide.html?ch=abc',
+            summary: {
+              view_pv: viewPv,
+              view_uv: viewUv,
+              download_clicks: dlClicks,
+              download_uv: dlUv,
+              download_rate_pct: pctRateText(dlUv, viewUv),
+              apk_clicks: apkClicks,
+              apk_uv: apkUv,
+              ios_clicks: iosClicks,
+              ios_uv: iosUv
+            },
+            daily: daily,
+            hourly: { timezone: 'Asia/Shanghai (UTC+8)', by_hour: byHour },
+            recent: recent
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 安装追踪统计 */
 async function handleAdminInstallTrackStats(req, res) {
   try {
@@ -23704,6 +23865,7 @@ function getHandlers() {
     handleAdminAnalyticsPurchaseEvents,
     handleAdminAnalyticsPurchaseEventUsers,
     handleAdminInstallGuideStats,
+    handleAdminAbcInstallStats,
     handleAdminInstallTrackStats,
     handleAdminPageLoadPerfStats,
     handleAdminAnalyticsOverview,

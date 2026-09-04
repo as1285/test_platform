@@ -54,6 +54,18 @@ describe('menuRegistry', () => {
       tab: 'user',
       contentPage: 'user-login-log'
     });
+    expect(parseAdminRoute('insights-growth/abc')).toEqual({
+      page: 'insights-growth',
+      hub: 'insights-growth',
+      tab: 'abc',
+      contentPage: 'abc-install-stats'
+    });
+    expect(parseAdminRoute('abc-install-stats')).toEqual({
+      page: 'insights-growth',
+      hub: 'insights-growth',
+      tab: 'abc',
+      contentPage: 'abc-install-stats'
+    });
   });
 
   it('getPageDef finds appearance under ops-config', () => {
@@ -155,6 +167,24 @@ describe('menuRegistry', () => {
     );
     expect(insightPages).not.toContain('channel-analysis');
     expect(insightPages).not.toContain('analytics-activity');
+    expect(insightPages).not.toContain('abc-install-stats');
+    expect(ADMIN_HUB_DEFS['insights-growth'].tabs.map((t) => t.page)).toEqual(
+      expect.arrayContaining(['channel-analysis', 'install-guide-stats', 'abc-install-stats'])
+    );
+    expect(getPageDef('abc-install-stats').label).toBe('ABC渠道');
+    expect(getPageDef('abc-install-stats').menu_key).toBe('install-guide-stats');
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ['install-guide-stats'] },
+        'abc-install-stats'
+      )
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['insights-growth'] }, 'abc-install-stats')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'abc-install-stats')
+    ).toBe(false);
     expect(getPageDef('tax-fill-survey').label).toBe('填写调研');
     expect(ADMIN_HUB_DEFS.settings).toBeTruthy();
   });

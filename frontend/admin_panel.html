@@ -1831,11 +1831,26 @@
                     </section>
                 </div>
 
+                <div id="page-abc-install-stats" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>ABC 渠道下载页</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">只统计打开 <a href="install_guide.html?ch=abc" target="_blank" rel="noopener">install_guide.html?ch=abc</a>（或 ABC 渠道包）的浏览和下载。UV 按同一 IP 去重（无 IP 用设备）。不看账号是否绑过 abc。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="abcInstallStatsDays">统计区间</label>
+                                <select id="abcInstallStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
+                            </div>
+                            <button type="button" class="btn-page" id="btnRefreshAbcInstallStats">刷新</button>
+                        </div>
+                        <div id="abcInstallStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                    </section>
+                </div>
+
                 <div id="page-sbdy-demo" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>、<strong>上海城镇职工养老保险参保情况</strong>或<strong>厦门基本养老个人历年缴费明细表</strong>（版式分别对齐浙里办 / 深圳清单 / 广州清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月 / 厦门社保参保证明样张）。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>、<strong>上海城镇职工养老保险参保情况</strong>、<strong>厦门基本养老个人历年缴费明细表</strong>或<strong>四川社会保险个人参保证明</strong>（版式分别对齐浙里办 / 深圳清单 / 广州清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月 / 厦门社保参保证明 / 四川人社横向样张）。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
@@ -1847,7 +1862,8 @@
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js"> 江苏</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj"> 北京</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSh" value="sh"> 上海</label>
-                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionXm" value="xm"> 厦门</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionXm" value="xm"> 厦门</label>
+                                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSc" value="sc"> 四川</label>
                             </div>
                         </div>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
@@ -1983,6 +1999,22 @@
                                     <div class="sbdy-zj-only">
                                         <label for="sbdyStatusUnemp">失业保险状态</label>
                                         <input type="text" id="sbdyStatusUnemp" value="参保缴费">
+                                    </div>
+                                    <div class="sbdy-sc-only" hidden>
+                                        <label for="sbdyStatusInjuryExtra">工伤额外状态行（可空）</label>
+                                        <input type="text" id="sbdyStatusInjuryExtra" placeholder="如：暂停缴费（中断）">
+                                    </div>
+                                    <div class="sbdy-sc-only" hidden>
+                                        <label for="sbdyMonthsPension">养老累计月数</label>
+                                        <input type="number" id="sbdyMonthsPension" placeholder="空则按明细月数">
+                                    </div>
+                                    <div class="sbdy-sc-only" hidden>
+                                        <label for="sbdyMonthsUnemp">失业累计月数</label>
+                                        <input type="number" id="sbdyMonthsUnemp" placeholder="空则按明细月数">
+                                    </div>
+                                    <div class="sbdy-sc-only" hidden>
+                                        <label for="sbdyMonthsInjury">工伤累计月数</label>
+                                        <input type="number" id="sbdyMonthsInjury" placeholder="空则按明细月数">
                                     </div>
                                     <div>
                                         <label for="sbdyPrintDate">打印时间文案</label>
@@ -3865,9 +3897,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260903-yearguard"></script>
+    <script src="/js/admin/loader.js?v=20260904-abc-stats"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260903-chart-opt"></script>
+    <script src="/js/admin_panel.js?v=20260904-abc-stats"></script>
 </body>
 </html>

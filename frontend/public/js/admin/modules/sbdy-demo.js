@@ -186,7 +186,7 @@
   }
 
   function usesZjCompanySegments(region) {
-    return region === 'zj' || region === 'gz';
+    return region === 'zj' || region === 'gz' || region === 'sc';
   }
 
   function currentRegion() {
@@ -198,6 +198,8 @@
     var bj = document.getElementById('sbdyRegionBj');
     var sh = document.getElementById('sbdyRegionSh');
     var xm = document.getElementById('sbdyRegionXm');
+    var sc = document.getElementById('sbdyRegionSc');
+    if (sc && sc.checked) return 'sc';
     if (xm && xm.checked) return 'xm';
     if (sh && sh.checked) return 'sh';
     if (bj && bj.checked) return 'bj';
@@ -212,10 +214,13 @@
   function syncRegionUi() {
     var region = currentRegion();
     document.querySelectorAll('.sbdy-zj-only').forEach(function (el) {
-      el.hidden = region !== 'zj';
+      el.hidden = region !== 'zj' && region !== 'sc';
     });
     document.querySelectorAll('.sbdy-zj-hn').forEach(function (el) {
-      el.hidden = region !== 'zj' && region !== 'hn' && region !== 'gz';
+      el.hidden = region !== 'zj' && region !== 'hn' && region !== 'gz' && region !== 'sc';
+    });
+    document.querySelectorAll('.sbdy-sc-only').forEach(function (el) {
+      el.hidden = region !== 'sc';
     });
     document.querySelectorAll('.sbdy-sz-only').forEach(function (el) {
       el.hidden = !isSzStyle(region);
@@ -242,7 +247,8 @@
         region !== 'js' &&
         region !== 'bj' &&
         region !== 'sh' &&
-        region !== 'xm';
+        region !== 'xm' &&
+        region !== 'sc';
     });
     document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
       el.hidden = region !== 'js';
@@ -254,7 +260,8 @@
         region !== 'bj' &&
         region !== 'sh' &&
         region !== 'gz' &&
-        region !== 'xm';
+        region !== 'xm' &&
+        region !== 'sc';
     });
     var regionDefaults = {
       zj: { area: '余杭区', base: '4986' },
@@ -265,7 +272,8 @@
       js: { area: '溧水区', base: '4494' },
       bj: { area: '朝阳区', base: '6821' },
       sh: { area: '上海市', base: '7313' },
-      xm: { area: '湖里区', base: '1800' }
+      xm: { area: '湖里区', base: '1800' },
+      sc: { area: '成都市高新区', base: '5000' }
     };
     var defaultAreas = [];
     var defaultBases = ['6120', '4308'];
@@ -288,6 +296,14 @@
     }
     var med = document.getElementById('sbdyMedicalBase');
     if (isSzStyle(region) && med && !med.value) med.value = base ? base.value : '4492';
+    var creditLabel = document.querySelector('label[for="sbdyCredit"]');
+    if (creditLabel) {
+      creditLabel.textContent = region === 'sc' ? '单位编号' : '统一社会信用代码';
+    }
+    var creditInput = document.getElementById('sbdyCredit');
+    if (creditInput) {
+      creditInput.placeholder = region === 'sc' ? '如 10010759311' : '9131…';
+    }
   }
 
   function setBusy(busy) {
@@ -325,7 +341,8 @@
       js: '320102',
       bj: '110105',
       sh: '310115',
-      xm: '350206'
+      xm: '350206',
+      sc: '510107'
     };
     var prefix =
       (areaCodes[region] || areaCodes.zj) +
@@ -598,10 +615,24 @@
         text
       )
     );
-    if (looksXm && /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海/.test(text) && !/厦门/.test(text)) {
+    if (looksXm && /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海|四川|成都/.test(text) && !/厦门/.test(text)) {
       looksXm = false;
     }
-    var region = looksXm
+    var looksSc = !!(
+      /四川|成都|绵阳|德阳|南充|宜宾|泸州|达州|乐山|眉山|资阳|内江|自贡|广安|遂宁|广元|攀枝花|雅安|巴中|凉山|阿坝|甘孜|高新区|双流/.test(
+        text
+      )
+    );
+    if (
+      looksSc &&
+      /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海|厦门/.test(text) &&
+      !/四川|成都/.test(text)
+    ) {
+      looksSc = false;
+    }
+    var region = looksSc
+      ? 'sc'
+      : looksXm
       ? 'xm'
       : looksSh
       ? 'sh'
@@ -645,13 +676,15 @@
                       ? 7313
                       : region === 'xm'
                         ? 1800
-                        : 4986;
+                        : region === 'sc'
+                          ? 5000
+                          : 4986;
     }
     var pension = Math.round(base * 0.08 * 100) / 100;
     var unemp = Math.round(base * (isSzStyle(region) ? 0.002 : 0.005) * 100) / 100;
 
     var active = wantsActiveStatus(text);
-    var status = active ? (region === 'zj' ? '参保缴费' : '正常参保') : '暂停缴费';
+    var status = active ? (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保') : '暂停缴费';
     var totalMonthsRaw = pickLabeled(text, ['累计缴费月数', '累计月数', '缴费月数']);
     var totalMonths = totalMonthsRaw
       ? Number(String(totalMonthsRaw).replace(/[^\d]/g, ''))
@@ -690,7 +723,11 @@
                   ? '朝阳区'
                   : region === 'sh'
                     ? '上海市'
-                    : '余杭区'),
+                    : region === 'xm'
+                      ? '湖里区'
+                      : region === 'sc'
+                        ? '成都市高新区'
+                        : '余杭区'),
       period_start: period.start,
       period_end: period.end,
       month_count: monthCountBetween(period.start, period.end),
@@ -731,6 +768,9 @@
     } else if (parsed.region === 'xm') {
       var xmRadio = document.getElementById('sbdyRegionXm');
       if (xmRadio) xmRadio.checked = true;
+    } else if (parsed.region === 'sc') {
+      var scRadio = document.getElementById('sbdyRegionSc');
+      if (scRadio) scRadio.checked = true;
     } else if (parsed.region === 'zj') {
       var zjRadio = document.getElementById('sbdyRegionZj');
       if (zjRadio) zjRadio.checked = true;
@@ -758,7 +798,9 @@
                     ? '上海市'
                     : parsed.region === 'xm'
                       ? '湖里区'
-                      : '余杭区')
+                      : parsed.region === 'sc'
+                        ? '成都市高新区'
+                        : '余杭区')
     );
     setField('sbdyUnitCode', parsed.unit_code || '');
     setField('sbdyComputerNo', parsed.computer_no || '');
@@ -954,7 +996,9 @@
                     ? '上海'
                     : row.region === 'xm'
                       ? '厦门'
-                      : '浙江';
+                      : row.region === 'sc'
+                        ? '四川'
+                        : '浙江';
       html +=
         '<tr>' +
         '<td>' +
@@ -1152,7 +1196,9 @@
                   ? 7313
                   : region === 'xm'
                     ? 1800
-                    : 4986;
+                    : region === 'sc'
+                      ? 5000
+                      : 4986;
     var defaultArea =
       region === 'gz'
         ? '广州市'
@@ -1170,7 +1216,9 @@
                   ? '上海市'
                   : region === 'xm'
                     ? '湖里区'
-                    : '余杭区';
+                    : region === 'sc'
+                      ? '成都市高新区'
+                      : '余杭区';
     var formGender =
       val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女';
     var formIdNumber = val('sbdyIdNumber');
@@ -1197,10 +1245,10 @@
       medical_base: num('sbdyMedicalBase', num('sbdyBase', 4492)),
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
-      status_pension: val('sbdyStatusPension') || (region === 'zj' ? '参保缴费' : '正常参保'),
-      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || (region === 'zj' ? '参保缴费' : '正常参保'),
-      status_injury: val('sbdyStatusInjury') || (region === 'zj' ? '参保缴费' : '正常参保'),
-      status_unemployment: val('sbdyStatusUnemp') || (region === 'zj' ? '参保缴费' : '正常参保'),
+      status_pension: val('sbdyStatusPension') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
+      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
+      status_injury: val('sbdyStatusInjury') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
+      status_unemployment: val('sbdyStatusUnemp') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
       print_date: val('sbdyPrintDate')
     };
     /* 武汉版：打印时间始终用当天，覆盖表单里可能残留的示例日期 */
@@ -1221,7 +1269,7 @@
       }
     }
     /* 浙江版：养老/失业个人按各段缴费基数自动算，不再手填统一金额 */
-    if (region === 'zj') {
+    if (region === 'zj' || region === 'sc') {
       delete body.pension_pay;
       delete body.unemployment_pay;
       promoteJoinedCompanyField();
@@ -1242,7 +1290,10 @@
           }
           if (!s.credit_code) {
             badSeg = s;
-            badMsg = '分段「' + label + '」缺统一社会信用代码（单位编号列会空白）';
+            badMsg =
+              region === 'sc'
+                ? '分段「' + label + '」缺单位编号（明细单位编号列会空白）'
+                : '分段「' + label + '」缺统一社会信用代码（单位编号列会空白）';
             return;
           }
           if (seenStart[s.period_start]) {
@@ -1271,6 +1322,15 @@
       } else if (prefillMonthUnits && Object.keys(prefillMonthUnits).length) {
         body.month_units = prefillMonthUnits;
       }
+    }
+    if (region === 'sc') {
+      body.status_injury_extra = val('sbdyStatusInjuryExtra');
+      var mp = val('sbdyMonthsPension');
+      var mu = val('sbdyMonthsUnemp');
+      var mi = val('sbdyMonthsInjury');
+      if (mp) body.months_pension = Number(mp);
+      if (mu) body.months_unemployment = Number(mu);
+      if (mi) body.months_injury = Number(mi);
     }
     if (region === 'bj') {
       var bjSegs = readSegments();
@@ -1450,6 +1510,53 @@
         }
       ]);
       setStatus('已填充上海示例：陈思远（近60个月参保情况，两家单位，可再点生成）', false);
+      return;
+    }
+    if (currentRegion() === 'sc') {
+      setField('sbdyName', '马海燕');
+      setField('sbdyIdNumber', '510723199208191285');
+      setField('sbdyGender', '女');
+      setField('sbdyCompany', '');
+      setField('sbdyArea', '成都市高新区');
+      setField('sbdyBase', 5000);
+      setField('sbdyPeriodStart', '2024-10');
+      setField('sbdyPeriodEnd', '2026-09');
+      setField('sbdyStatusPension', '参保缴费');
+      setField('sbdyStatusInjury', '参保缴费');
+      setField('sbdyStatusUnemp', '参保缴费');
+      setField('sbdyStatusMedical', '参保缴费');
+      setField('sbdyStatusInjuryExtra', '暂停缴费（中断）');
+      setField('sbdyMonthsPension', 139);
+      setField('sbdyMonthsUnemp', 138);
+      setField('sbdyMonthsInjury', 138);
+      setField('sbdyPrintDate', printDate);
+      renderSegments([
+        {
+          company_name: '四川创智联恒科技有限公司',
+          credit_code: '10010759311',
+          area: '成都市高新区',
+          base_amount: 13596,
+          period_start: '2024-10',
+          period_end: '2024-12'
+        },
+        {
+          company_name: '四川创智联恒科技有限公司',
+          credit_code: '10010759311',
+          area: '成都市高新区',
+          base_amount: 10026,
+          period_start: '2025-01',
+          period_end: '2025-04'
+        },
+        {
+          company_name: '成都天微智能科技有限公司',
+          credit_code: '250215712150',
+          area: '成都市双流区',
+          base_amount: 5000,
+          period_start: '2025-05',
+          period_end: '2026-09'
+        }
+      ]);
+      setStatus('已填充四川示例：马海燕（对齐官方样张，两家单位，可再点生成）', false);
       return;
     }
     if (currentRegion() === 'xm') {
@@ -1657,6 +1764,11 @@
     }
     if (region === 'gz') {
       return /广州/.test(text);
+    }
+    if (region === 'sc') {
+      return /(四川|成都|绵阳|德阳|南充|宜宾|泸州|达州|乐山|眉山|资阳|内江|自贡|广安|遂宁|广元|攀枝花|雅安|巴中|凉山|阿坝|甘孜)/.test(
+        text
+      );
     }
     return true;
   }
@@ -2114,7 +2226,9 @@
           setStatus(
             currentRegion() === 'gz'
               ? '所选区间没有广州税务机关记录，外地记录未计入广州社保'
-              : '所选区间没有浙江税务机关记录，外地记录未计入浙江社保',
+              : currentRegion() === 'sc'
+                ? '所选区间没有四川税务机关记录，外地记录未计入四川社保'
+                : '所选区间没有浙江税务机关记录，外地记录未计入浙江社保',
             true
           );
           return;
@@ -2165,7 +2279,15 @@
         var parts = [isApp ? '已按我的资料预填' : '已预填「' + username + '」'];
         if (info.companies.length) parts.push(info.companies.length + ' 家单位');
         if (info.regionScoped) {
-          parts.push((currentRegion() === 'gz' ? '广州记录 ' : '浙江记录 ') + info.monthCount + ' 个月');
+          parts.push(
+            (currentRegion() === 'gz'
+              ? '广州记录 '
+              : currentRegion() === 'sc'
+                ? '四川记录 '
+                : '浙江记录 ') +
+              info.monthCount +
+              ' 个月'
+          );
           if (info.excludedMonthCount) {
             parts.push('已排除外地 ' + info.excludedMonthCount + ' 个月');
           }

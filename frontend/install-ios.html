@@ -252,10 +252,16 @@
                     }
                     try {
                         if (typeof window.trackPublicAction === 'function') {
-                            window.trackPublicAction('track_install_ios_click', {
-                                page: 'install-ios',
-                                via: 'mobileconfig'
-                            });
+                            window.trackPublicAction('track_install_ios_click', (function () {
+                                var meta = { page: 'install-ios', via: 'mobileconfig' };
+                                try {
+                                    if (typeof window.getSalesChannel === 'function') {
+                                        var ch = String(window.getSalesChannel() || '').trim();
+                                        if (ch) meta.sales_ch = ch;
+                                    }
+                                } catch (eCh) {}
+                                return meta;
+                            })());
                         }
                         if (typeof window.persistSalesChannelAttribution === 'function') {
                             window.persistSalesChannelAttribution('install_ios_mobileconfig_click');

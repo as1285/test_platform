@@ -530,6 +530,33 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
 
 def render(payload, auth_code, qr_url, out_path):
     p = payload or {}
+    cert_type = str(p.get('cert_type') or p.get('certType') or '').strip().lower()
+    layout = str(p.get('layout') or '').strip().lower()
+    region = str(p.get('region') or '').strip().lower()
+    if (
+        cert_type in ('sichuan', 'sc', '四川', '四川社保')
+        or layout in ('sc_official_v1', 'sichuan')
+        or region in ('sc', 'sichuan')
+    ):
+        from sbdy_render_sichuan import render_sichuan
+
+        return render_sichuan(
+            p,
+            auth_code,
+            qr_url,
+            out_path,
+            {
+                'make_subset_font': make_subset_font,
+                'ensure_full_cjk_font': ensure_full_cjk_font,
+                'ensure_bold_cjk_font': ensure_bold_cjk_font,
+                'make_qr_png': make_qr_png,
+                'register_fonts': register_fonts,
+                'text_width': text_width,
+                'cell_box': cell_box,
+                '_FONT_CACHE': _FONT_CACHE,
+            },
+        )
+
     months = ensure_months(p)
     month_chunks = chunk_months(months, ROWS_PER_PAGE)
     total_pages = len(month_chunks)

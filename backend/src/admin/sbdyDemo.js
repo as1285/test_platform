@@ -218,6 +218,17 @@ function randDigits(n) {
   return out.slice(0, n);
 }
 
+/** 四川人社在线验证码：大小写字母 + 数字（去掉易混淆字符） */
+function randSichuanVerifyCode(n) {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  var out = '';
+  var i;
+  for (i = 0; i < n; i++) {
+    out += chars[crypto.randomInt(0, chars.length)];
+  }
+  return out;
+}
+
 function randToken(n) {
   return crypto.randomBytes(Math.ceil(n / 2)).toString('hex').slice(0, n);
 }
@@ -336,6 +347,21 @@ function isXmRegion(body) {
   return r === 'xm' || r === 'xiamen' || r === 'xm_official_v1';
 }
 
+function isScRegion(body) {
+  var r = String(
+    (body && (body.region || body.layout || body.cert_type || body.certType)) || ''
+  )
+    .trim()
+    .toLowerCase();
+  return (
+    r === 'sc' ||
+    r === 'sichuan' ||
+    r === '四川' ||
+    r === '四川社保' ||
+    r === 'sc_official_v1'
+  );
+}
+
 function regionKeyOf(payload) {
   var r = String((payload && payload.region) || '').toLowerCase();
   if (
@@ -346,7 +372,8 @@ function regionKeyOf(payload) {
     r === 'js' ||
     r === 'bj' ||
     r === 'sh' ||
-    r === 'xm'
+    r === 'xm' ||
+    r === 'sc'
   ) {
     return r;
   }
@@ -364,6 +391,7 @@ function isZjStylePayload(p) {
     p.region !== 'bj' &&
     p.region !== 'sh' &&
     p.region !== 'xm' &&
+    p.region !== 'sc' &&
     p.layout !== 'sz_official_v1' &&
     p.layout !== 'gz_official_v1' &&
     p.layout !== 'wh_official_v1' &&
@@ -371,7 +399,8 @@ function isZjStylePayload(p) {
     p.layout !== 'js_official_v1' &&
     p.layout !== 'bj_official_v1' &&
     p.layout !== 'sh_official_v1' &&
-    p.layout !== 'xm_official_v1'
+    p.layout !== 'xm_official_v1' &&
+    p.layout !== 'sc_official_v1'
   );
 }
 
@@ -2338,7 +2367,195 @@ function normalizeXmPayload(body) {
   };
 }
 
+function buildSichuanMonthsFromZjMonths(months, segments) {
+  var segByCode = {};
+  var si;
+  for (si = 0; si < (segments || []).length; si++) {
+    var sg = segments[si];
+    var code = String(sg.credit_code || '').trim();
+    if (code) segByCode[code] = sg;
+  }
+  var out = [];
+  var i;
+  for (i = 0; i < (months || []).length; i++) {
+    var m = months[i];
+    if (!m) continue;
+    var base = Number(m.pension_base != null ? m.pension_base : m.base_amount) || 0;
+    var personal =
+      m.pension_pay != null && isFinite(Number(m.pension_pay))
+        ? Number(m.pension_pay)
+        : Math.round(base * 0.08 * 100) / 100;
+    var unitPen = Math.round(base * 0.16 * 100) / 100;
+    var unempPers = Math.round(base * 0.004 * 100) / 100;
+    var unempUnit = Math.round(base * 0.006 * 100) / 100;
+    var injuryUnit = base > 0 ? Math.round(base * (base >= 8000 ? 0.0016 : 0.007) * 100) / 100 : 0;
+    var unitCode = String(m.unit_code || m.credit_code || '').trim();
+    var seg = segByCode[unitCode];
+    if (seg && seg.sc_injury_rate != null && isFinite(Number(seg.sc_injury_rate))) {
+      injuryUnit = Math.round(base * Number(seg.sc_injury_rate) * 100) / 100;
+    }
+    out.push({
+      pay_month: String(m.year) + String(m.month).padStart(2, '0'),
+      year: m.year,
+      month: m.month,
+      unit_code: unitCode,
+      credit_code: unitCode,
+      company_name: m.company_name || (seg && seg.company_name) || '',
+      pension_type: '企业养老',
+      pension_base: base,
+      pension_unit: unitPen,
+      pension_personal: personal,
+      pension_pay: personal,
+      unemp_base: base,
+      unemp_unit: unempUnit,
+      unemp_personal: unempPers,
+      unemp_pay: unempPers,
+      injury_base: base,
+      injury_unit: injuryUnit,
+      area: m.area || ''
+    });
+  }
+  return out;
+}
+
+function buildSichuanUnitMap(segments, months) {
+  var map = {};
+  var i;
+  for (i = 0; i < (segments || []).length; i++) {
+    var sg = segments[i];
+    var code = String(sg.credit_code || '').trim();
+    if (code) map[code] = sg.company_name || map[code] || '';
+  }
+  for (i = 0; i < (months || []).length; i++) {
+    var m = months[i];
+    var c = String((m && (m.unit_code || m.credit_code)) || '').trim();
+    if (c && !map[c] && m.company_name) map[c] = m.company_name;
+  }
+  return map;
+}
+
+function normalizeSichuanSummary(b, monthCount, statusPension, statusUnemp, statusInjury) {
+  if (Array.isArray(b.summary_rows) && b.summary_rows.length) {
+    return b.summary_rows.map(function (r) {
+      return {
+        insure_type: String((r && (r.insure_type || r.name)) || '').trim().substring(0, 64),
+        status: String((r && r.status) || '').trim().substring(0, 32),
+        months: String((r && r.months) != null ? r.months : monthCount)
+      };
+    });
+  }
+  var mp = Number(b.months_pension != null ? b.months_pension : monthCount);
+  var mu = Number(b.months_unemployment != null ? b.months_unemployment : monthCount);
+  var mi = Number(b.months_injury != null ? b.months_injury : monthCount);
+  if (!isFinite(mp)) mp = monthCount;
+  if (!isFinite(mu)) mu = monthCount;
+  if (!isFinite(mi)) mi = monthCount;
+  var rows = [
+    {
+      insure_type: '企业职工基本养老保险',
+      status: statusPension === '正常参保' ? '参保缴费' : statusPension,
+      months: mp
+    },
+    {
+      insure_type: '失业保险',
+      status: statusUnemp === '正常参保' ? '参保缴费' : statusUnemp,
+      months: mu
+    },
+    {
+      insure_type: '工伤保险',
+      status: statusInjury === '正常参保' ? '参保缴费' : statusInjury,
+      months: mi
+    }
+  ];
+  var extra = String(b.status_injury_extra || '').trim();
+  if (extra) {
+    rows.push({
+      insure_type: '工伤保险',
+      status: extra,
+      months: mi
+    });
+  }
+  return rows;
+}
+
+/**
+ * 四川：沿用浙江表单字段（单位/编号/参保地/基数/起止月/分段），
+ * 再转成横向官方参保证明所需的 sc_months / 汇总行。
+ */
+function normalizeScPayload(body) {
+  var raw = body && typeof body === 'object' ? body : {};
+  var b = Object.assign({}, raw);
+  if (!String(b.area || '').trim()) b.area = '成都市高新区';
+  if (b.base_amount == null && b.baseAmount == null) b.base_amount = 5000;
+  if (!String(b.status_pension || b.insure_status || '').trim()) b.status_pension = '参保缴费';
+  if (!String(b.status_injury || b.status_medical || '').trim()) b.status_injury = '参保缴费';
+  if (!String(b.status_unemployment || '').trim()) b.status_unemployment = '参保缴费';
+  delete b.region;
+  delete b.layout;
+  delete b.cert_type;
+  delete b.certType;
+  var zj = normalizePayload(b);
+  if (zj.error) return zj;
+  var scMonths =
+    Array.isArray(raw.sc_months) && raw.sc_months.length
+      ? raw.sc_months
+      : buildSichuanMonthsFromZjMonths(zj.months, zj.segments);
+  var unitMap = buildSichuanUnitMap(zj.segments, scMonths);
+  if (raw.unit_name_map && typeof raw.unit_name_map === 'object') {
+    Object.keys(raw.unit_name_map).forEach(function (k) {
+      unitMap[k] = raw.unit_name_map[k];
+    });
+  }
+  var first = scMonths[0];
+  var last = scMonths[scMonths.length - 1];
+  var detailLabel =
+    String(raw.detail_period_label || '').trim() ||
+    (first && last
+      ? formatYmCn(first.year, Number(first.month)) +
+        '至' +
+        formatYmCn(last.year, Number(last.month))
+      : zj.period_label || '');
+  var validUntil = String(raw.verify_valid_until || '').trim();
+  if (!validUntil) {
+    var pm = String(zj.print_date || '').match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if (pm) {
+      var next = addMonthsYm(pm[1] + '-' + pad2(pm[2]), 3);
+      var np = parseYm(next);
+      if (np) {
+        validUntil =
+          np.y +
+          ' 年 ' +
+          pad2(np.m) +
+          ' 月 ' +
+          String(Number(pm[3])).padStart(2, '0') +
+          ' 日';
+      }
+    }
+  }
+  zj.region = 'sc';
+  zj.layout = 'sc_official_v1';
+  zj.cert_type = 'sichuan';
+  zj.sc_months = scMonths;
+  zj.summary_rows = normalizeSichuanSummary(
+    raw,
+    scMonths.length,
+    zj.status_pension,
+    zj.status_unemployment,
+    zj.status_injury
+  );
+  zj.unit_name_map = unitMap;
+  zj.detail_period_label = detailLabel;
+  zj.verify_valid_until = validUntil;
+  if (raw.status_injury_extra) {
+    zj.status_injury_extra = String(raw.status_injury_extra).trim().substring(0, 32);
+  }
+  return zj;
+}
+
 function normalizePayload(body) {
+  if (isScRegion(body)) {
+    return normalizeScPayload(body);
+  }
   if (isXmRegion(body)) {
     return normalizeXmPayload(body);
   }
@@ -3816,6 +4033,18 @@ function TITLE_SAFE(p) {
 function renderCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
+  if (p.region === 'sc' || p.layout === 'sc_official_v1') {
+    var pdfHref = (links && (links.show_url || links.show_api_url)) || '#';
+    return (
+      '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>四川参保证明</title></head>' +
+      '<body style="font-family:sans-serif;padding:24px;">' +
+      '<p>四川社会保险个人参保证明为横向官方版式，请查看 PDF。</p>' +
+      '<p><a href="' +
+      String(pdfHref).replace(/"/g, '&quot;') +
+      '">打开 PDF</a></p>' +
+      '</body></html>'
+    );
+  }
   if (p.region === 'xm' || p.layout === 'xm_official_v1') {
     return renderXmCertHtml(p, links, opts);
   }
@@ -4068,6 +4297,9 @@ async function createSbdyDemoCert(req, body, creator) {
     authCode = randToken(16);
   } else if (normalized.region === 'xm') {
     authCode = randToken(16);
+  } else if (normalized.region === 'sc') {
+    authCode = randSichuanVerifyCode(22);
+    normalized.verify_code = authCode;
   } else {
     authCode = randDigits(20);
   }

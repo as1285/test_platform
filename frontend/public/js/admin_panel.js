@@ -1046,7 +1046,7 @@
                 'sbdy-demo': ['gjj-demo'],
                 'login-log': ['user-login-log'],
                 'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey'],
-                'insights-growth': ['channel-analysis', 'install-guide-stats']
+                'insights-growth': ['channel-analysis', 'install-guide-stats', 'abc-install-stats']
             };
             if (hubAlias[menuKey]) {
                 for (var hi = 0; hi < hubAlias[menuKey].length; hi++) {
@@ -1063,9 +1063,11 @@
                 'analytics-devices': 'insights-product',
                 'tax-fill-survey': 'insights-product',
                 'channel-analysis': 'insights-growth',
-                'install-guide-stats': 'insights-growth'
+                'install-guide-stats': 'insights-growth',
+                'abc-install-stats': 'insights-growth'
             };
             if (contentHub[menuKey] && menus.indexOf(contentHub[menuKey]) >= 0) return true;
+            if (menuKey === 'abc-install-stats' && menus.indexOf('install-guide-stats') >= 0) return true;
             /* 侧栏已渲染的页应可进入（避免 menus 缓存落后于 menu_tree） */
             try {
                 var tree = window.AdminNav && AdminNav.getMenuTree ? AdminNav.getMenuTree() : [];
@@ -1261,7 +1263,8 @@
                 defaultTab: 'channel',
                 tabs: [
                     { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
-                    { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' }
+                    { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
+                    { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
                 ]
             }
         };
@@ -1517,6 +1520,9 @@
             }
             if (pageKey === 'install-guide-stats') {
                 loadInstallGuideStats();
+            }
+            if (pageKey === 'abc-install-stats') {
+                loadAbcInstallStats();
             }
             if (pageKey === 'tax-records-edit') {
                 initTaxRecordsEditPage();
@@ -4402,6 +4408,241 @@
                     el.textContent = '加载失败';
                     loadInstallRegisterAnalysis();
                 });
+        }
+
+        var _abcInstallChartInstances = [];
+        function destroyAbcInstallCharts() {
+            _abcInstallChartInstances.forEach(function (c) {
+                try {
+                    if (c && typeof c.destroy === 'function') c.destroy();
+                } catch (e0) {}
+            });
+            _abcInstallChartInstances = [];
+        }
+
+        function loadAbcInstallStats() {
+            var el = document.getElementById('abcInstallStatsMount');
+            if (!el) return;
+            var daysEl = document.getElementById('abcInstallStatsDays');
+            var days = analyticsPeriodVal(daysEl);
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/abc-install-stats?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    renderAbcInstallStats(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
+        }
+
+        function renderAbcInstallStats(data) {
+            var el = document.getElementById('abcInstallStatsMount');
+            if (!el) return;
+            destroyAbcInstallCharts();
+            if (!data || !data.summary) {
+                el.textContent = '暂无 ABC 渠道下载页数据';
+                return;
+            }
+            var s = data.summary;
+            var html = analyticsPeriodHintHtml(data);
+            if (data.definition) {
+                html += '<p class="hint" style="margin:0 0 12px;">' + esc(data.definition) + '</p>';
+            }
+            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">浏览次数 (PV)</div><div class="ud-val">' +
+                esc(String(s.view_pv != null ? s.view_pv : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">下载页打开次数</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">独立访客 (UV)</div><div class="ud-val">' +
+                esc(String(s.view_uv != null ? s.view_uv : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">按同一 IP 去重</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">下载点击</div><div class="ud-val">' +
+                esc(String(s.download_clicks != null ? s.download_clicks : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">安卓 ' +
+                esc(String(s.apk_clicks != null ? s.apk_clicks : 0)) +
+                ' · iOS ' +
+                esc(String(s.ios_clicks != null ? s.ios_clicks : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">下载人数</div><div class="ud-val">' +
+                esc(String(s.download_uv != null ? s.download_uv : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">安卓 UV ' +
+                esc(String(s.apk_uv != null ? s.apk_uv : 0)) +
+                ' · iOS UV ' +
+                esc(String(s.ios_uv != null ? s.ios_uv : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">下载率</div><div class="ud-val">' +
+                esc(s.download_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">下载人数 / UV</div></div>';
+            html += '</div>';
+
+            var daily = Array.isArray(data.daily) ? data.daily : [];
+            html +=
+                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="device-stats-chart-card chart-card-wide"><h4>浏览 / 下载</h4><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="abcInstallDailyChart" aria-label="ABC渠道每日浏览与下载"></canvas></div></div></div>';
+
+            var hourly = data.hourly && Array.isArray(data.hourly.by_hour) ? data.hourly.by_hour : [];
+            html +=
+                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="device-stats-chart-card chart-card-wide"><h4>24 小时访客 / 下载</h4><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="abcInstallHourlyChart" aria-label="ABC渠道24小时分布"></canvas></div></div></div>';
+
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html +=
+                '<th>日期</th><th>浏览 PV</th><th>访客 UV</th><th>下载点击</th><th>下载人数</th><th>安卓</th><th>iOS</th></tr></thead><tbody>';
+            if (!daily.length) {
+                html += '<tr><td colspan="7">区间内暂无 abc 下载页数据</td></tr>';
+            } else {
+                daily.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(String(row.view_pv != null ? row.view_pv : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.view_uv != null ? row.view_uv : 0)) + '</td>';
+                    html +=
+                        '<td>' +
+                        esc(String(row.download_clicks != null ? row.download_clicks : 0)) +
+                        '</td>';
+                    html +=
+                        '<td>' + esc(String(row.download_uv != null ? row.download_uv : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.apk_clicks != null ? row.apk_clicks : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.ios_clicks != null ? row.ios_clicks : 0)) + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
+            var recent = Array.isArray(data.recent) ? data.recent : [];
+            html += '<details class="page-hint-details"><summary>最近浏览 / 下载</summary>';
+            html += '<div class="scroll-x" style="margin-top:8px;"><table><thead><tr>';
+            html += '<th>时间</th><th>事件</th><th>IP</th><th>设备</th></tr></thead><tbody>';
+            if (!recent.length) {
+                html += '<tr><td colspan="4">暂无明细</td></tr>';
+            } else {
+                recent.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.created_at ? String(row.created_at) : '—') + '</td>';
+                    html += '<td>' + esc(row.event_label || row.event_key || '—') + '</td>';
+                    html += '<td>' + esc(row.ip || '—') + '</td>';
+                    html += '<td>' + esc(row.user_agent || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div></details>';
+            el.innerHTML = html;
+
+            if (typeof Chart !== 'undefined' && daily.length) {
+                var dailyCanvas = document.getElementById('abcInstallDailyChart');
+                if (dailyCanvas) {
+                    _abcInstallChartInstances.push(
+                        new Chart(dailyCanvas, {
+                            type: 'line',
+                            data: {
+                                labels: daily.map(function (row) {
+                                    return row.date ? String(row.date).slice(5) : '';
+                                }),
+                                datasets: [
+                                    {
+                                        label: '访客 UV',
+                                        data: daily.map(function (row) {
+                                            return Number(row.view_uv) || 0;
+                                        }),
+                                        borderColor: '#1e6fff',
+                                        backgroundColor: 'rgba(30, 111, 255, 0.12)',
+                                        tension: 0.28,
+                                        fill: true,
+                                        borderWidth: 2.5,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4
+                                    },
+                                    {
+                                        label: '下载人数',
+                                        data: daily.map(function (row) {
+                                            return Number(row.download_uv) || 0;
+                                        }),
+                                        borderColor: '#0f9f6e',
+                                        backgroundColor: 'rgba(15, 159, 110, 0.10)',
+                                        tension: 0.28,
+                                        fill: true,
+                                        borderWidth: 2.5,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 4
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { usePointStyle: true } }
+                                },
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { precision: 0 },
+                                        grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                                    }
+                                }
+                            }
+                        })
+                    );
+                }
+            }
+            if (typeof Chart !== 'undefined' && hourly.length) {
+                var hourCanvas = document.getElementById('abcInstallHourlyChart');
+                if (hourCanvas) {
+                    _abcInstallChartInstances.push(
+                        new Chart(hourCanvas, {
+                            type: 'bar',
+                            data: {
+                                labels: hourly.map(function (row) {
+                                    return String(row.hour).padStart(2, '0') + ':00';
+                                }),
+                                datasets: [
+                                    {
+                                        label: '访客 UV',
+                                        data: hourly.map(function (row) {
+                                            return Number(row.view_uv) || 0;
+                                        }),
+                                        backgroundColor: 'rgba(30, 111, 255, 0.55)'
+                                    },
+                                    {
+                                        label: '下载人数',
+                                        data: hourly.map(function (row) {
+                                            return Number(row.download_uv) || 0;
+                                        }),
+                                        backgroundColor: 'rgba(15, 159, 110, 0.55)'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { usePointStyle: true } }
+                                },
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { precision: 0 },
+                                        grid: { color: 'rgba(148, 163, 184, 0.25)' }
+                                    }
+                                }
+                            }
+                        })
+                    );
+                }
+            }
         }
 
         /* ========== 个税记录维护 ========== */
@@ -7333,6 +7574,7 @@
             'analytics-devices': '机型',
             'analytics-tracking': '埋点分析',
             'install-guide-stats': '安装统计',
+            'abc-install-stats': 'ABC渠道',
             'channel-analysis': '渠道分析',
             'insights-product': '产品洞察',
             'insights-growth': '增长洞察',
@@ -10007,6 +10249,18 @@
                 loadInstallGuideStats();
             });
         }
+        var btnRefreshAbcInstallStats = document.getElementById('btnRefreshAbcInstallStats');
+        if (btnRefreshAbcInstallStats) {
+            btnRefreshAbcInstallStats.onclick = function () {
+                loadAbcInstallStats();
+            };
+        }
+        var abcInstallStatsDays = document.getElementById('abcInstallStatsDays');
+        if (abcInstallStatsDays) {
+            abcInstallStatsDays.addEventListener('change', function () {
+                loadAbcInstallStats();
+            });
+        }
         var btnRefreshPurchaseEvents = document.getElementById('btnRefreshPurchaseEvents');
         if (btnRefreshPurchaseEvents) {
             btnRefreshPurchaseEvents.onclick = function () {
@@ -10686,7 +10940,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v19-hub-merge';
+                var MENU_TREE_VER = 'ops-ia-v20-abc-stats';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

@@ -250,7 +250,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 19,
-    alias_menus: ['channel-analysis', 'install-guide-stats']
+    alias_menus: ['channel-analysis', 'install-guide-stats', 'abc-install-stats']
   },
   {
     page: 'analytics-activity',
@@ -307,6 +307,16 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 60,
+    assignable: false,
+    nav_hidden: true
+  },
+  {
+    page: 'abc-install-stats',
+    menu_key: 'install-guide-stats',
+    label: 'ABC渠道',
+    group: 'insights',
+    module: 'analytics',
+    order: 61,
     assignable: false,
     nav_hidden: true
   },
@@ -432,7 +442,8 @@ const ADMIN_HUB_DEFS = {
     defaultTab: 'channel',
     tabs: [
       { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
-      { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' }
+      { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
+      { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
     ]
   }
 };
