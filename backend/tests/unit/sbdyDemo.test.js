@@ -523,6 +523,123 @@ describe('sbdyDemo', () => {
     expect(p.detail_rows[2].person_pay).toBeCloseTo(324.24, 2);
   });
 
+  it('normalizePayload builds Henan rights record months', () => {
+    const p = normalizePayload({
+      region: 'ha',
+      name: '蒋飞龙',
+      id_number: '341281199112124710',
+      gender: '男',
+      company_name: '人力宝科技有限公司郑州分公司',
+      area: '郑州市郑东新区',
+      period_start: '2026-01',
+      period_end: '2026-06',
+      base_amount: 4200,
+      work_start_date: '2015-09-01',
+      prev_balance: 69916.97,
+      year_principal: 3212.4,
+      year_interest: 0,
+      account_months: 82,
+      total_balance: 73129.37,
+      ha_months: [
+        { month: '01', pension_base: 19155, unemp_base: 19155, injury_base: 19155 },
+        { month: '02', pension_base: 4200 },
+        { month: '03', pension_base: 4200 },
+        { month: '04', pension_base: 4200 },
+        { month: '05', pension_base: 4200 },
+        { month: '06', pension_base: 4200 }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('ha');
+    expect(p.layout).toBe('ha_official_v1');
+    expect(p.record_year).toBe(2026);
+    expect(p.work_start_date).toBe('2015-09-01');
+    expect(p.ha_months.length).toBe(12);
+    expect(p.ha_months[0].pension_base).toBe(19155);
+    expect(p.ha_months[0].injury_flag).toBe('-');
+    expect(p.ha_months[5].paid).toBe(true);
+    expect(p.ha_months[6].paid).toBe(false);
+    expect(p.account.prev_balance).toBeCloseTo(69916.97, 2);
+    expect(p.account.year_principal).toBeCloseTo(3212.4, 2);
+    expect(p.form_verify_code).toMatch(/^[a-f0-9]{32}$/);
+    expect(p.status_pension).toBe('参保缴费');
+  });
+
+  it('normalizePayload builds Henan months from period and base like Zhejiang ops', () => {
+    const p = normalizePayload({
+      region: 'ha',
+      name: '蒋飞龙',
+      id_number: '341281199112124710',
+      gender: '男',
+      company_name: '人力宝科技有限公司郑州分公司',
+      area: '郑州市郑东新区',
+      period_start: '2026-01',
+      period_end: '2026-06',
+      base_amount: 4200
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.record_year).toBe(2026);
+    expect(p.status_pension).toBe('参保缴费');
+    expect(p.status_injury).toBe('参保缴费');
+    expect(p.ha_months.length).toBe(12);
+    expect(p.ha_months[0].paid).toBe(true);
+    expect(p.ha_months[0].pension_base).toBe(4200);
+    expect(p.ha_months[5].paid).toBe(true);
+    expect(p.ha_months[6].paid).toBe(false);
+  });
+
+  it('normalizePayload maps Henan 暂停缴费 to official 暂停缴费（中断）', () => {
+    const p = normalizePayload({
+      region: 'ha',
+      name: '蒋飞龙',
+      id_number: '341281199112124710',
+      company_name: '人力宝科技有限公司郑州分公司',
+      period_start: '2026-01',
+      period_end: '2026-06',
+      base_amount: 4200,
+      status_pension: '暂停缴费'
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.status_pension).toBe('暂停缴费（中断）');
+    expect(p.enroll.pension.status).toBe('暂停缴费（中断）');
+  });
+
+  it('normalizePayload builds Henan months from Zhejiang-style segments', () => {
+    const p = normalizePayload({
+      region: 'ha',
+      name: '蒋飞龙',
+      id_number: '341281199112124710',
+      period_start: '2026-01',
+      period_end: '2026-06',
+      base_amount: 4200,
+      area: '郑州市',
+      segments: [
+        {
+          company_name: '郑州前段劳务有限公司',
+          period_start: '2026-01',
+          period_end: '2026-01',
+          base_amount: 19155
+        },
+        {
+          company_name: '人力宝科技有限公司郑州分公司',
+          credit_code: '91410100MA9TEST001',
+          area: '郑州市郑东新区',
+          period_start: '2026-02',
+          period_end: '2026-06',
+          base_amount: 4200
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.company_name).toBe('人力宝科技有限公司郑州分公司');
+    expect(p.area).toBe('郑州市郑东新区');
+    expect(p.credit_code).toBe('91410100MA9TEST001');
+    expect(p.ha_months[0].pension_base).toBe(19155);
+    expect(p.ha_months[1].pension_base).toBe(4200);
+    expect(p.ha_months[5].paid).toBe(true);
+    expect(p.ha_months[6].paid).toBe(false);
+  });
+
   it('normalizePayload builds Jiangsu per-month rows (single period)', () => {
     const p = normalizePayload({
       region: 'js',

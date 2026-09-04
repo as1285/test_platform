@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="stylesheet" href="/css/device-tokens.css?v=20260904-tokens">
     <script>
         (function () {
             try {
@@ -446,11 +447,16 @@
                         short16 = Math.min(sw16, sh16);
                         long16 = Math.max(sw16, sh16);
                     } catch (eVp16) {}
+                    var cssW16 = 0;
+                    try {
+                        cssW16 = window.innerWidth ? Number(window.innerWidth) : 0;
+                    } catch (eCssW16) {}
                     var isLargePmVp =
-                        short16 >= 428 &&
-                        short16 <= 444 &&
-                        long16 >= 920 &&
-                        long16 <= 962;
+                        (short16 >= 414 &&
+                            short16 <= 520 &&
+                            long16 >= 880 &&
+                            long16 <= 1100) ||
+                        cssW16 >= 414;
                     var is16pmVp =
                         short16 >= 436 &&
                         short16 <= 444 &&
@@ -460,7 +466,13 @@
                     if (is16pmUa || is16pmVp) {
                         document.documentElement.classList.add('app-ios-iphone16promax');
                     }
-                    var is17pmLike = /iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
+                    var is17pmLike =
+                        /iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16) ||
+                        (short16 >= 436 &&
+                            short16 <= 520 &&
+                            long16 >= 920 &&
+                            long16 <= 1100 &&
+                            !/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blob16));
                     if (is17pmLike) {
                         document.documentElement.classList.add('app-ios-iphone17promax');
                     }
@@ -475,6 +487,14 @@
                         !is16pmUa &&
                         !is16pmVp &&
                         !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
+                    var is15Like =
+                        /iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))|iPhone15,4\b/i.test(blob16) &&
+                        !is15pmLike &&
+                        !is17pmLike &&
+                        !is16pmUa;
+                    if (is15Like) {
+                        document.documentElement.classList.add('app-ios-iphone15');
+                    }
                     if (is15pmLike) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
@@ -542,19 +562,11 @@
                         var p17St = document.createElement('style');
                         p17St.setAttribute('data-iphone17promax-result-firstpaint', '1');
                         p17St.textContent =
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .top-fixed .header,html.app-ios-iphone17promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .back-btn{left:12px !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .header-right{right:12px !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone17promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-row-with-arrow{display:flex !important;width:100% !important;box-sizing:border-box !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(1px) rotate(45deg) !important;}';
+                            'html.app-ios-iphone17promax{--device-arrow-ty:-6px;--device-list-edge:0px;--device-list-inline-pad:16px;--device-header-inline:12px;}' +
+                            'html.app-ios-iphone17promax body.page-shuiming-result .list{padding-left:var(--device-list-edge,0px) !important;padding-right:var(--device-list-edge,0px) !important;box-sizing:border-box !important;}' +
+                            'html.app-ios-iphone17promax body.page-shuiming-result .list-item{--list-inline-pad:var(--device-list-inline-pad,16px);border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
+                            'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company{align-items:flex-end !important;}' +
+                            'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(var(--device-arrow-ty,-6px)) rotate(45deg) !important;}';
                         (document.head || document.documentElement).appendChild(p17St);
                     }
                     /* 不依赖 17 Pro Max class：首屏即贴边 + CSS「>」，避免 UA 无型号时仍走旧 20px / jt.jpg */
@@ -562,11 +574,23 @@
                         var flushSt = document.createElement('style');
                         flushSt.setAttribute('data-shuiming-flush-firstpaint', '1');
                         flushSt.textContent =
-                            'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+                            'html,body{width:100% !important;max-width:none !important;}' +
+                            'body.page-shuiming-result .page-root{width:100% !important;max-width:none !important;}' +
+                            'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;width:100vw !important;max-width:100vw !important;margin-left:0 !important;margin-right:0 !important;}' +
                             'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
                             'body.page-shuiming-result .list-row-company{display:flex !important;align-items:center !important;}' +
-                            'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}';
+                            'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}';
                         (document.head || document.documentElement).appendChild(flushSt);
+                    }
+                    /* 15 / 15 Plus·Pro Max / 17 Pro Max：「>」底边贴公司名，勿再下压 */
+                    if (!document.querySelector('style[data-shuiming-arrow-baseline]')) {
+                        var arrowBaseSt = document.createElement('style');
+                        arrowBaseSt.setAttribute('data-shuiming-arrow-baseline', '1');
+                        arrowBaseSt.textContent =
+                            'html.app-ios-iphone15 body.page-shuiming-result .list-row-company,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company{align-items:flex-end !important;}' +
+                            'html.app-ios-iphone15,html.app-ios-iphone15promax,html.app-ios-iphone17promax{--device-arrow-ty:-6px;}' +
+                            'html.app-ios-iphone15 body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow{margin:0 2px 0 auto !important;align-self:flex-end !important;transform:translateY(var(--device-arrow-ty,-6px)) rotate(45deg) !important;}';
+                        (document.head || document.documentElement).appendChild(arrowBaseSt);
                     }
                 } catch (e16pm) {}
             } catch (e) {}
@@ -574,7 +598,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260904-android-inset"></script>
-    <script src="/js/auth.js?v=20260904-17pm-arrow" defer></script>
+    <script src="/js/auth.js?v=20260904-tokens" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1025,6 +1049,13 @@
 
         body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, 0px)) !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
         }
 
         /* 列表顶部留白：避开固定汇总区（高度用 JS 实测写入 --list-summary-pad） */
@@ -1034,6 +1065,9 @@
             padding-left: 0;
             padding-right: 0;
             padding-bottom: 20px;
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
             background: #f5f6fa;
             position: relative;
             /* 必须低于 .shuiming-chrome-shield(99) / header(100) / summary(125) */
@@ -1045,7 +1079,7 @@
             display: block;
             width: 100%;
             background: #fff;
-            border-radius: 8px;
+            border-radius: 0;
             --list-inline-pad: 16px;
             padding: 16px var(--list-inline-pad);
             margin-top: 11px;
@@ -1821,15 +1855,15 @@
             display: block !important;
             width: 10px !important;
             height: 10px !important;
-            margin: 2px 2px 0 auto !important;
+            margin: 0 2px 0 auto !important;
             padding: 0 !important;
             border: 0 !important;
             border-top: 1.5px solid #c7c7cc !important;
             border-right: 1.5px solid #c7c7cc !important;
             background: none !important;
-            transform: translateY(1px) rotate(45deg) !important;
+            transform: translateY(var(--device-arrow-ty, -6px)) rotate(45deg) !important;
             flex-shrink: 0 !important;
-            align-self: center !important;
+            align-self: flex-end !important;
             box-sizing: content-box !important;
         }
         html.app-ios-iphone17promax body.page-shuiming-result .list-date,
@@ -1961,7 +1995,7 @@
                 margin: 2px 2px 0 auto !important;
                 border-top: 1.5px solid #c7c7cc !important;
                 border-right: 1.5px solid #c7c7cc !important;
-                transform: translateY(2px) rotate(45deg);
+                transform: translateY(var(--device-arrow-ty, 2px)) rotate(45deg);
             }
         }
 
@@ -2520,15 +2554,32 @@
             border-right: 1.5px solid #c7c7cc !important;
             background: none !important;
             box-shadow: none !important;
-            transform: translateY(2px) rotate(45deg);
+            transform: translateY(var(--device-arrow-ty, 2px)) rotate(45deg);
             flex-shrink: 0 !important;
             align-self: center !important;
             box-sizing: content-box !important;
             object-fit: unset;
         }
+        /*
+         * iPhone 15 / 15 Plus·Pro Max / 17 Pro Max：
+         * 默认 margin-top 2px + translateY 下压，旋转后「>」底边低于公司名。
+         * 行内按底对齐，再上移 2px 抵消 45° 角标外溢，底边与公司名同一水平线。
+         */
+        html.app-ios-iphone15 body.page-shuiming-result .list-row-company,
+        html.app-ios-iphone15promax body.page-shuiming-result .list-row-company,
+        html.app-ios-iphone17promax body.page-shuiming-result .list-row-company,
+        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company {
+            align-items: flex-end !important;
+        }
+        html.app-ios-iphone15 body.page-shuiming-result .list-row-company .list-arrow,
+        html.app-ios-iphone15.platform-ios body.page-shuiming-result .list-row-company .list-arrow,
+        html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,
+        html.app-ios-iphone15promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow,
         html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,
         html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow {
-            transform: translateY(1px) rotate(45deg) !important;
+            margin: 0 2px 0 auto !important;
+            align-self: flex-end !important;
+            transform: translateY(var(--device-arrow-ty, -6px)) rotate(45deg) !important;
         }
         html.platform-ios .list-row-company .list-company {
             overflow: hidden !important;
@@ -3330,6 +3381,36 @@
         var __shuimingLastListRecords = null;
         var __shuimingLastListYear = null;
 
+        /** 17 Pro Max 等大屏：文档流若被收窄，把列表钉回视口全宽，去掉左右灰边。 */
+        function flushShuimingListToViewport() {
+            try {
+                var list = document.getElementById('recordList');
+                if (!list) return;
+                var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+                if (vw < 360) return;
+                var rect = list.getBoundingClientRect();
+                var leftGap = Math.round(rect.left);
+                var rightGap = Math.round(vw - rect.right);
+                if (leftGap > 1 || rightGap > 1) {
+                    list.style.marginLeft = -leftGap + 'px';
+                    list.style.width = vw + 'px';
+                    list.style.maxWidth = 'none';
+                    list.style.paddingLeft = '0';
+                    list.style.paddingRight = '0';
+                    list.style.boxSizing = 'border-box';
+                }
+                var items = list.querySelectorAll('.list-item');
+                for (var i = 0; i < items.length; i++) {
+                    items[i].style.borderRadius = '0';
+                    items[i].style.marginLeft = '0';
+                    items[i].style.marginRight = '0';
+                    items[i].style.width = '100%';
+                    items[i].style.maxWidth = 'none';
+                    items[i].style.boxSizing = 'border-box';
+                }
+            } catch (eFlush) {}
+        }
+
         function renderList(records, listYear) {
             var listHtml = '';
             var iosCompanyEllipsis = isIosCompanyNameEllipsisClient();
@@ -3390,6 +3471,7 @@
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
             syncRecordEmptyUi(records.length > 0);
             bindRecordListNavigation();
+            flushShuimingListToViewport();
             if (
                 records.length === 0 &&
                 window.ConversionGuide &&
@@ -3852,6 +3934,13 @@
             }
         });
         loadData();
+        window.addEventListener('resize', flushShuimingListToViewport);
+        window.addEventListener('orientationchange', function () {
+            setTimeout(flushShuimingListToViewport, 80);
+        });
+        [0, 120, 400, 1200].forEach(function (ms) {
+            setTimeout(flushShuimingListToViewport, ms);
+        });
 
         (function bindIphone13CompanyRerender() {
             function tick() {

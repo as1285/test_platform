@@ -395,6 +395,49 @@
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
+        var YUEFU_REMARK = '月付大额';
+
+        function loadAdPagesConfig() {
+            if (window.__adPagesConfigPromise) return window.__adPagesConfigPromise;
+            window.__adPagesConfigPromise = fetch('/api/public/ad-pages', { credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    return j && j.code === 200 ? j.data : null;
+                })
+                .catch(function () {
+                    return null;
+                });
+            return window.__adPagesConfigPromise;
+        }
+
+        function applyAdPages(cfg) {
+            if (!cfg) return;
+            if (cfg.wechat_id) {
+                WECHAT_ID = cfg.wechat_id;
+                var idNode = document.getElementById('dyWechatId');
+                if (idNode) idNode.textContent = WECHAT_ID;
+            }
+            if (!cfg.yuefu) {
+                var wxBlock = document.getElementById('dyWxBlock');
+                if (wxBlock) wxBlock.hidden = true;
+                var promoBtn = document.getElementById('btnDyPromoWx');
+                if (promoBtn) promoBtn.hidden = true;
+                return;
+            }
+            if (cfg.yuefu.lede) {
+                var sub = document.querySelector('.dy-promo-sub');
+                if (sub) sub.textContent = cfg.yuefu.lede;
+            }
+            if (cfg.yuefu.remark) {
+                YUEFU_REMARK = cfg.yuefu.remark;
+                var label = document.querySelector('.dy-wx-label');
+                if (label) label.textContent = '加微信咨询（备注：' + YUEFU_REMARK + '）';
+            }
+        }
+
+        loadAdPagesConfig().then(applyAdPages);
         var copyBtn = document.getElementById('btnCopyDyWechat');
         var promoBtn = document.getElementById('btnDyPromoWx');
         var idEl = document.getElementById('dyWechatId');

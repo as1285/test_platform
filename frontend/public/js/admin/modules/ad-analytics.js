@@ -341,7 +341,7 @@
     if (!tbody) return;
     var users = (data && data.users) || [];
     if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="10">没有匹配的退税合格用户</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11">没有匹配的退税合格用户</td></tr>';
       return;
     }
     tbody.innerHTML = users
@@ -368,6 +368,9 @@
           '</td>' +
           '<td>' +
           esc(refundReasonLabel(r.reason)) +
+          '</td>' +
+          '<td>' +
+          esc(r.has_email ? '是' : '否') +
           '</td>' +
           '<td>' +
           esc(r.viewed ? '是' : '否') +
@@ -451,9 +454,404 @@
       });
   }
 
+  function currentHubTab() {
+    var hash = String(location.hash || '')
+      .replace(/^#/, '')
+      .trim()
+      .toLowerCase();
+    if (hash === 'ops-ad-analytics/data') return 'data';
+    if (hash === 'ops-ad-analytics/reach') return 'reach';
+    return 'config';
+  }
+
+  function applyHubPanes() {
+    var tab = currentHubTab();
+    var map = {
+      config: document.getElementById('opsAdHubConfig'),
+      data: document.getElementById('opsAdHubData'),
+      reach: document.getElementById('opsAdHubReach')
+    };
+    Object.keys(map).forEach(function (k) {
+      if (!map[k]) return;
+      if (k === tab) map[k].removeAttribute('hidden');
+      else map[k].setAttribute('hidden', '');
+    });
+    return tab;
+  }
+
+  function setInput(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.value = value != null ? String(value) : '';
+  }
+
+  function setChecked(id, on) {
+    var el = document.getElementById(id);
+    if (el) el.checked = !!on;
+  }
+
+  function posterSrc(url) {
+    var s = String(url || '').trim();
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s) || s.charAt(0) === '/') return s;
+    return '/' + s;
+  }
+
+  function setPosterPreview(inputId, imgId) {
+    var input = document.getElementById(inputId);
+    var img = document.getElementById(imgId);
+    if (!img) return;
+    var src = posterSrc(input && input.value);
+    if (!src) {
+      img.removeAttribute('src');
+      img.style.display = 'none';
+      return;
+    }
+    img.src = src;
+    img.style.display = '';
+  }
+
+  function fillAdPagesForm(cfg) {
+    if (!cfg) return;
+    setInput('adPagesWechatId', cfg.wechat_id || 'Tangdong6832');
+    var pages = [
+      { key: 'refund', prefix: 'Refund' },
+      { key: 'gjj', prefix: 'Gjj' },
+      { key: 'yuefu', prefix: 'Yuefu' }
+    ];
+    pages.forEach(function (p) {
+      var block = cfg[p.key] || {};
+      setChecked('adPages' + p.prefix + 'Enabled', block.enabled !== false);
+      setInput('adPages' + p.prefix + 'Lede', block.lede || '');
+      setInput('adPages' + p.prefix + 'Remark', block.remark || '');
+      setInput('adPages' + p.prefix + 'Poster', block.poster_url || '');
+      setPosterPreview('adPages' + p.prefix + 'Poster', 'adPages' + p.prefix + 'PosterPreview');
+    });
+  }
+
+  function readAdPagesForm() {
+    function page(prefix) {
+      return {
+        enabled: !!(document.getElementById('adPages' + prefix + 'Enabled') || {}).checked,
+        lede: val('adPages' + prefix + 'Lede'),
+        remark: val('adPages' + prefix + 'Remark'),
+        poster_url: val('adPages' + prefix + 'Poster')
+      };
+    }
+    return {
+      wechat_id: val('adPagesWechatId') || 'Tangdong6832',
+      refund: page('Refund'),
+      gjj: page('Gjj'),
+      yuefu: page('Yuefu')
+    };
+  }
+
+  function setAdPagesStatus(text) {
+    var el = document.getElementById('adPagesSaveStatus');
+    if (el) el.textContent = text || '';
+  }
+
+  function loadAdPagesConfig() {
+    setAdPagesStatus('加载中…');
+    fetchAdmin('api/admin/ad-pages')
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j.code !== 200 || !j.data) {
+          setAdPagesStatus(j.msg || '加载失败');
+          return;
+        }
+        fillAdPagesForm(j.data);
+        setAdPagesStatus('');
+      })
+      .catch(function () {
+        setAdPagesStatus('加载失败');
+      });
+  }
+
+  function saveAdPagesConfig() {
+    setAdPagesStatus('保存中…');
+    var btn = document.getElementById('btnAdPagesSave');
+    if (btn) btn.disabled = true;
+    fetchAdmin('api/admin/ad-pages', {
+      method: 'POST',
+      body: JSON.stringify(readAdPagesForm())
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j.code !== 200 || !j.data) {
+          setAdPagesStatus(j.msg || '保存失败');
+          alert(j.msg || '保存失败');
+          return;
+        }
+        fillAdPagesForm(j.data);
+        setAdPagesStatus('已保存');
+      })
+      .catch(function () {
+        setAdPagesStatus('保存失败');
+        alert('保存失败');
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  function bindPosterField(prefix) {
+    var pick = document.getElementById('adPages' + prefix + 'PosterPick');
+    var file = document.getElementById('adPages' + prefix + 'PosterFile');
+    var input = document.getElementById('adPages' + prefix + 'Poster');
+    if (pick && file) {
+      pick.addEventListener('click', function () {
+        file.click();
+      });
+      file.addEventListener('change', function () {
+        var f = file.files && file.files[0];
+        if (!f) return;
+        var upload = global.adminUpload;
+        if (typeof upload !== 'function') {
+          alert('上传不可用');
+          return;
+        }
+        pick.disabled = true;
+        upload('api/admin/upload-asset', f)
+          .then(function (data) {
+            if (data && data.code === 200 && data.data && data.data.path) {
+              if (input) input.value = data.data.path;
+              setPosterPreview('adPages' + prefix + 'Poster', 'adPages' + prefix + 'PosterPreview');
+            } else {
+              alert((data && data.msg) || '上传失败');
+            }
+          })
+          .catch(function () {
+            alert('上传失败');
+          })
+          .finally(function () {
+            pick.disabled = false;
+            file.value = '';
+          });
+      });
+    }
+    if (input) {
+      input.addEventListener('change', function () {
+        setPosterPreview('adPages' + prefix + 'Poster', 'adPages' + prefix + 'PosterPreview');
+      });
+    }
+  }
+
+  var REACH_EMAIL_TEMPLATES = {
+    refund: {
+      subject: '二次退税：一键计算 2023–2025 可退税额，符合可联系客服',
+      content:
+        '你好，\n\n未开通也可以先看二次退税。打开页面可一键计算 2023、2024、2025 年大约可退税额。\n符合的话，复制微信号备注「二次退税」联系客服办理；同一顾问也可问公积金提取。\n不强制，不符合可忽略本邮件。',
+      link_url: 'refund_ad.html?from=email_refund',
+      cta_label: '打开二次退税说明',
+      poster: 'refund'
+    },
+    activate: {
+      subject: '开通后去除水印，完整查看收入纳税明细',
+      content:
+        '你好，\n\n开通后可去除演示水印，完整查看与导出收入纳税明细、纳税记录。\n付款一般几秒内自动到账，点下方按钮即可前往开通。',
+      link_url: 'purchase.html?from=email_activate',
+      cta_label: '立即开通',
+      poster: 'activate'
+    },
+    offer: {
+      subject: '你的专属优惠仍有效，打开即可按优惠价开通',
+      content:
+        '你好，\n\n你的专属优惠价仍然有效。打开支付页将按该价格下单；开通后去除水印，完整使用收入明细与纳税记录。\n优惠可能随时调整，建议尽早开通。',
+      link_url: 'purchase.html?from=email_offer',
+      cta_label: '按优惠价开通',
+      poster: 'offer'
+    },
+    soft_recall: {
+      subject: '你的演示账号还在，开通即可完整体验',
+      content:
+        '你好，\n\n你之前留下的演示账号仍可继续使用。开通后去除水印，可完整查看收入纳税明细并导出纳税记录。\n若暂时不需要，忽略本邮件即可。',
+      link_url: 'purchase.html?from=email_recall',
+      cta_label: '去开通页看看',
+      poster: 'activate'
+    }
+  };
+
+  function applyReachEmailTemplate(id) {
+    var t = REACH_EMAIL_TEMPLATES[id] || REACH_EMAIL_TEMPLATES.refund;
+    setInput('adReachEmailSubject', t.subject);
+    setInput('adReachEmailContent', t.content);
+    setInput('adReachEmailLink', t.link_url);
+    setInput('adReachEmailCta', t.cta_label);
+    setInput('adReachEmailPoster', t.poster);
+  }
+
+  function setReachMsgStatus(text) {
+    var el = document.getElementById('adReachMsgStatus');
+    if (el) el.textContent = text || '';
+  }
+
+  function setReachEmailStatus(text) {
+    var el = document.getElementById('adReachEmailStatus');
+    if (el) el.textContent = text || '';
+  }
+
+  function reachMsgPayload(dryRun) {
+    var skipEl = document.getElementById('adReachMsgSkipSent');
+    return {
+      audience: val('adReachMsgAudience') || 'all_inactive',
+      title: val('adReachMsgTitle'),
+      content: String((document.getElementById('adReachMsgContent') || {}).value || '').trim(),
+      link_url: val('adReachMsgLink') || 'refund_ad.html?from=msg_refund',
+      skip_already_sent: !!(skipEl && skipEl.checked),
+      skip_marker: '@@auto_refund_ad',
+      allow_partial: true,
+      dry_run: !!dryRun
+    };
+  }
+
+  function reachEmailPayload(dryRun) {
+    var skipEl = document.getElementById('adReachEmailSkipSent');
+    return {
+      audience: val('adReachEmailAudience') || 'has_email_inactive',
+      subject: val('adReachEmailSubject'),
+      content: String((document.getElementById('adReachEmailContent') || {}).value || '').trim(),
+      link_url: val('adReachEmailLink') || 'refund_ad.html?from=email_refund',
+      cta_label: val('adReachEmailCta') || '打开二次退税说明',
+      poster: val('adReachEmailPoster') || 'refund',
+      skip_already_sent: !!(skipEl && skipEl.checked),
+      campaign: 'refund_ad_auto',
+      allow_partial: true,
+      dry_run: !!dryRun
+    };
+  }
+
+  function reachAudienceLabel(audience) {
+    if (audience === 'all_inactive') return '全部未激活';
+    if (audience === 'inactive_has_tax') return '未激活且有个税';
+    if (audience === 'has_email_inactive') return '未激活且已留邮箱';
+    if (audience === 'refund_eligible_copied') return '退税合格·已复制';
+    if (audience === 'refund_eligible_not_copied') return '退税合格·未复制';
+    return '退税合格';
+  }
+
+  function postReach(url, payload, previewBtn, sendBtn, setStatus, kind) {
+    setStatus(payload.dry_run ? '预览中…' : '发送中…');
+    if (previewBtn) previewBtn.disabled = true;
+    if (sendBtn && !payload.dry_run) sendBtn.disabled = true;
+    fetchAdmin(url, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j.code !== 200 || !j.data) {
+          setStatus(j.msg || (payload.dry_run ? '预览失败' : '发送失败'));
+          if (!payload.dry_run) alert(j.msg || '发送失败');
+          return;
+        }
+        if (payload.dry_run) {
+          var matched = j.data.matched != null ? j.data.matched : 0;
+          var extra = kind === 'email' && !j.data.smtp_ready ? '（SMTP 未配置，无法实发）' : '';
+          setStatus('匹配 ' + matched + ' 人' + extra);
+          return;
+        }
+        var n = j.data.sent;
+        var msg = '已发送 ' + (n != null ? n : 0) + (kind === 'email' ? ' 封' : ' 条');
+        setStatus(msg);
+        alert(msg);
+      })
+      .catch(function (e) {
+        setStatus(e && e.message ? e.message : '请求失败');
+        if (!payload.dry_run) alert(e && e.message ? e.message : '发送失败');
+      })
+      .finally(function () {
+        if (previewBtn) previewBtn.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
+      });
+  }
+
+  function bindReach() {
+    var msgPreview = document.getElementById('btnAdReachMsgPreview');
+    var msgSend = document.getElementById('btnAdReachMsgSend');
+    if (msgPreview) {
+      msgPreview.addEventListener('click', function () {
+        postReach(
+          'api/admin/messages/bulk',
+          reachMsgPayload(true),
+          msgPreview,
+          msgSend,
+          setReachMsgStatus,
+          'msg'
+        );
+      });
+    }
+    if (msgSend) {
+      msgSend.addEventListener('click', function () {
+        var payload = reachMsgPayload(false);
+        if (
+          !window.confirm(
+            '向「' + reachAudienceLabel(payload.audience) + '」发送站内信？请先预览人数。'
+          )
+        ) {
+          setReachMsgStatus('已取消');
+          return;
+        }
+        postReach('api/admin/messages/bulk', payload, msgPreview, msgSend, setReachMsgStatus, 'msg');
+      });
+    }
+    var emailTpl = document.getElementById('adReachEmailTemplate');
+    if (emailTpl) {
+      emailTpl.addEventListener('change', function () {
+        applyReachEmailTemplate(emailTpl.value);
+      });
+    }
+    var emailPreview = document.getElementById('btnAdReachEmailPreview');
+    var emailSend = document.getElementById('btnAdReachEmailSend');
+    if (emailPreview) {
+      emailPreview.addEventListener('click', function () {
+        postReach(
+          'api/admin/emails/bulk',
+          reachEmailPayload(true),
+          emailPreview,
+          emailSend,
+          setReachEmailStatus,
+          'email'
+        );
+      });
+    }
+    if (emailSend) {
+      emailSend.addEventListener('click', function () {
+        var payload = reachEmailPayload(false);
+        if (
+          !window.confirm(
+            '向「' + reachAudienceLabel(payload.audience) + '」中已留邮箱的人发邮件？请先预览人数。'
+          )
+        ) {
+          setReachEmailStatus('已取消');
+          return;
+        }
+        postReach(
+          'api/admin/emails/bulk',
+          payload,
+          emailPreview,
+          emailSend,
+          setReachEmailStatus,
+          'email'
+        );
+      });
+    }
+  }
+
   function bind() {
     if (bound) return;
     bound = true;
+    bindPosterField('Refund');
+    bindPosterField('Gjj');
+    bindPosterField('Yuefu');
+    var saveBtn = document.getElementById('btnAdPagesSave');
+    if (saveBtn) saveBtn.addEventListener('click', saveAdPagesConfig);
+    bindReach();
     var search = document.getElementById('btnOpsAdSearch');
     var refresh = document.getElementById('btnOpsAdRefresh');
     var prev = document.getElementById('opsAdPrev');
@@ -538,8 +936,50 @@
     }
   }
 
+  function loadCampaignStats() {
+    var el = document.getElementById('adReachCampaignStats');
+    if (!el) return;
+    el.textContent = '加载金额邮件失败率…';
+    fetchAdmin('api/admin/emails/campaign-stats?campaign=refund_ad_amount&days=7')
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j.code !== 200 || !j.data) {
+          el.textContent = j.msg || '加载失败率失败';
+          return;
+        }
+        var d = j.data;
+        var rate = d.fail_rate != null ? d.fail_rate : 0;
+        el.textContent =
+          '近 ' +
+          d.days +
+          ' 天金额邮件（' +
+          d.campaign +
+          '）：成功 ' +
+          d.sent +
+          '，失败 ' +
+          d.failed +
+          '，失败率 ' +
+          rate +
+          '%。无 2023–2025 记录的用户已跳过，不计入上数。';
+      })
+      .catch(function () {
+        el.textContent = '加载失败率失败';
+      });
+  }
+
   function loadPage() {
     bind();
+    var tab = applyHubPanes();
+    if (tab === 'config') {
+      loadAdPagesConfig();
+      return;
+    }
+    if (tab === 'reach') {
+      loadCampaignStats();
+      return;
+    }
     page = 1;
     refundPage = 1;
     loadPageData();

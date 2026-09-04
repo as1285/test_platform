@@ -2119,18 +2119,16 @@ function openTaxStartPath(path) {
         showTaxStartChooser({ scroll: true });
         return;
     }
-    showBatchTaxManualForm({ scroll: true });
-    if (p === 'example') {
-        startExampleAndGenerate();
-        return;
-    }
     if (p === 'paste') {
         if (typeof openTaxPasteImportModal === 'function') {
             openTaxPasteImportModal();
         }
         return;
     }
-    /* manual: form already shown */
+    showBatchTaxManualForm({ scroll: true });
+    if (p === 'example') {
+        startExampleAndGenerate();
+    }
 }
 
 /**
@@ -3166,18 +3164,11 @@ function clearBatchMonthSalaryModal() {
 
 // === 个税粘贴导入弹窗 ===
 var TAX_PASTE_IMPORT_TEMPLATE =
-    '某某有限公司\n' +
-    '纳税人识别号：91xxxxxxxxxxxx\n' +
-    '入职：2023年12月\n' +
+    '公司名称：某某有限公司\n' +
+    '2023年全年\n' +
     '2024年全年\n' +
-    '一直到2026年6月\n' +
-    '月薪：20000元\n' +
-    '2024年2月发21350.5提成\n' +
-    '每月专项扣除\n' +
-    '养老保险：800\n' +
-    '医疗保险：200\n' +
-    '失业保险：50\n' +
-    '住房公积金：1200';
+    '2025年全年\n' +
+    '月薪：20000元';
 
 var _taxPasteImportLastParsed = null;
 
@@ -3197,11 +3188,27 @@ function copyTextFallbackLocal(text) {
     }
 }
 
-/** 复制粘贴导入模板到剪贴板。 */
+/** 把模板填进输入框（打开弹窗时默认带出，避免先复制再粘贴）。 */
+function fillTaxPasteTemplateIntoBox(opts) {
+    var ta = document.getElementById('taxPasteImportText');
+    if (!ta) return false;
+    ta.value = TAX_PASTE_IMPORT_TEMPLATE;
+    previewTaxPasteImport({ silent: true });
+    if (opts && opts.focus) {
+        try {
+            ta.focus();
+            ta.setSelectionRange(0, ta.value.length);
+        } catch (e0) {}
+    }
+    return true;
+}
+
+/** 复制粘贴导入模板到剪贴板，并填入输入框。 */
 function copyTaxPasteImportTemplate() {
+    fillTaxPasteTemplateIntoBox({ focus: true });
     var text = TAX_PASTE_IMPORT_TEMPLATE;
     function done(ok) {
-        showMsg(ok ? '模板内容已复制' : '复制失败，请长按输入框内文案手动复制', !!ok);
+        showMsg(ok ? '已填入模板，改公司名和月薪后点生成' : '已填入模板，可直接修改后生成', true);
     }
     if (typeof window.copyTextToClipboard === 'function') {
         window.copyTextToClipboard(text).then(done, function () {
@@ -3221,6 +3228,24 @@ function copyTaxPasteImportTemplate() {
         return;
     }
     done(copyTextFallbackLocal(text));
+}
+
+function clearTaxPasteImportText() {
+    var ta = document.getElementById('taxPasteImportText');
+    var preview = document.getElementById('taxPasteImportPreview');
+    _taxPasteImportLastParsed = null;
+    if (ta) {
+        ta.value = '';
+        try {
+            ta.focus();
+        } catch (e0) {}
+    }
+    if (preview) {
+        preview.hidden = true;
+        preview.textContent = '';
+        preview.classList.remove('is-ok', 'is-err');
+    }
+    showMsg('已清空，可粘贴个税 APP 明细', true);
 }
 
 
@@ -3531,21 +3556,25 @@ function parseTaxPasteText(rawText) {
 }
 
 
-/** 打开个税粘贴导入弹窗。 */
+/** 打开个税粘贴导入弹窗。空框时自动带出模板并预览。 */
 function openTaxPasteImportModal() {
     var root = document.getElementById('taxPasteImportModal');
     var ta = document.getElementById('taxPasteImportText');
     var preview = document.getElementById('taxPasteImportPreview');
     if (!root) return;
-    showBatchTaxManualForm({ scroll: false });
     _taxPasteImportLastParsed = null;
     if (preview) {
         preview.hidden = true;
         preview.textContent = '';
+        preview.classList.remove('is-ok', 'is-err');
     }
     root.classList.add('is-open');
     if (ta) {
         ta.setAttribute('placeholder', TAX_PASTE_IMPORT_TEMPLATE);
+        if (!String(ta.value || '').trim()) {
+            ta.value = TAX_PASTE_IMPORT_TEMPLATE;
+        }
+        previewTaxPasteImport({ silent: true });
         setTimeout(function () {
             try {
                 ta.focus();
@@ -3563,7 +3592,8 @@ function closeTaxPasteImportModal() {
 }
 
 /** 预览粘贴解析结果。副作用：写预览区、缓存 parsed。 */
-function previewTaxPasteImport() {
+function previewTaxPasteImport(opts) {
+    opts = opts || {};
     var ta = document.getElementById('taxPasteImportText');
     var preview = document.getElementById('taxPasteImportPreview');
     var parsed = parseTaxPasteText(ta ? ta.value : '');
@@ -3571,11 +3601,23 @@ function previewTaxPasteImport() {
     if (preview) {
         preview.hidden = false;
         preview.textContent = formatTaxPastePreview(parsed);
+        preview.classList.toggle('is-ok', !!parsed.ok);
+        preview.classList.toggle('is-err', !parsed.ok);
     }
-    if (!parsed.ok) {
+    if (!parsed.ok && !opts.silent) {
         showConsultStrongAlert(parsed.error || '解析失败');
     }
     return parsed;
+}
+
+var _taxPastePreviewTimer = null;
+function scheduleTaxPasteLivePreview() {
+    if (_taxPastePreviewTimer) {
+        clearTimeout(_taxPastePreviewTimer);
+    }
+    _taxPastePreviewTimer = setTimeout(function () {
+        previewTaxPasteImport({ silent: true });
+    }, 280);
 }
 
 
@@ -3622,6 +3664,7 @@ function fillTaxPasteImportToForm() {
         showConsultStrongAlert('填入表单失败，请刷新后重试');
         return;
     }
+    showBatchTaxManualForm({ scroll: true });
     closeTaxPasteImportModal();
     var nEmp = (parsed.employments && parsed.employments.length) || 1;
     var nMon = parsed.month_total || parsed.months.length;
@@ -3652,27 +3695,16 @@ function generateTaxPasteImportDirect() {
         .join('、');
     var taxNote = parsed.tax_locked
         ? '税额使用粘贴值（不重算）。'
-        : '摘要模式：税额将按公式重算。';
-    if (
-        !confirm(
-            '将为「' +
-                names +
-                '」写入约 ' +
-                nMon +
-                ' 条工资薪金记录（共 ' +
-                nEmp +
-                ' 家）。\n' +
-                taxNote +
-                '\n是否写入？'
-        )
-    ) {
-        return;
-    }
+        : '税额将按公式计算。';
     if (!applyTaxPasteParsedToForm(parsed)) {
         showConsultStrongAlert('准备写入失败，请刷新后重试');
         return;
     }
     closeTaxPasteImportModal();
+    showMsg(
+        '正在生成「' + names + '」约 ' + nMon + ' 条记录（' + nEmp + ' 家）。' + taxNote,
+        true
+    );
     batchAddEmploymentTaxRecords();
 }
 
@@ -3682,15 +3714,25 @@ function generateTaxPasteImportDirect() {
     var cx = document.getElementById('taxPasteImportCloseX');
     var cancel = document.getElementById('taxPasteImportCancel');
     var copyTplBtn = document.getElementById('taxPasteImportCopyTplBtn');
+    var clearBtn = document.getElementById('taxPasteImportClearBtn');
     var parseBtn = document.getElementById('taxPasteImportParseBtn');
     var fillBtn = document.getElementById('taxPasteImportFillBtn');
     var genBtn = document.getElementById('taxPasteImportGenerateBtn');
     var taInit = document.getElementById('taxPasteImportText');
     if (taInit) {
         taInit.setAttribute('placeholder', TAX_PASTE_IMPORT_TEMPLATE);
+        taInit.addEventListener('input', scheduleTaxPasteLivePreview);
+        taInit.addEventListener('paste', function () {
+            setTimeout(function () {
+                previewTaxPasteImport({ silent: true });
+            }, 0);
+        });
     }
     if (copyTplBtn) {
         copyTplBtn.addEventListener('click', copyTaxPasteImportTemplate);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearTaxPasteImportText);
     }
     if (mask) {
         mask.addEventListener('click', closeTaxPasteImportModal);

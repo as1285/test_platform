@@ -3711,8 +3711,24 @@
         });
     }
 
+    function loadAdPagesConfig() {
+        if (window.__adPagesConfigPromise) return window.__adPagesConfigPromise;
+        window.__adPagesConfigPromise = fetch('/api/public/ad-pages', { credentials: 'same-origin' })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (j) {
+                return j && j.code === 200 ? j.data : null;
+            })
+            .catch(function () {
+                return null;
+            });
+        return window.__adPagesConfigPromise;
+    }
+
     (function initPurchaseRefundAd() {
         var WECHAT_ID = 'Tangdong6832';
+        var REFUND_REMARK = '二次退税';
         var WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
         var ad = document.getElementById('purchaseRefundAd');
         var copyBtn = document.getElementById('btnCopyRefundWechat');
@@ -3725,14 +3741,14 @@
             } catch (eMark) {}
             if (copyBtn) {
                 copyBtn.classList.add('is-copied');
-                copyBtn.textContent = '已复制 · 打开微信添加（备注二次退税）';
+                copyBtn.textContent = '已复制 · 打开微信添加（备注' + REFUND_REMARK + '）';
             }
         }
 
         function copyWechat() {
             copyTextFallback(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「二次退税」');
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「' + REFUND_REMARK + '」');
                     markCopied();
                     trackPurchase('track_purchase_refund_ad_copy', { wechat_id: WECHAT_ID });
                 })
@@ -3762,6 +3778,32 @@
         } else {
             trackPurchase('track_purchase_refund_ad_view', { wechat_id: WECHAT_ID });
         }
+
+        loadAdPagesConfig().then(function (cfg) {
+            if (!cfg) return;
+            if (!cfg.refund) {
+                ad.hidden = true;
+                return;
+            }
+            if (cfg.wechat_id) {
+                WECHAT_ID = cfg.wechat_id;
+                if (idEl) idEl.textContent = WECHAT_ID;
+            }
+            if (cfg.refund.remark) REFUND_REMARK = cfg.refund.remark;
+            if (cfg.refund.poster_url) {
+                var poster = ad.querySelector('.purchase-refund-ad-poster');
+                if (poster) poster.src = cfg.refund.poster_url;
+            }
+            var label = ad.querySelector('.purchase-refund-ad-wx-label');
+            if (label) label.textContent = '符合二次退税？一键复制顾问微信';
+            if (copyBtn && cfg.refund.remark) {
+                var already = false;
+                try {
+                    already = localStorage.getItem(WECHAT_COPIED_KEY) === '1';
+                } catch (eC) {}
+                if (!already) copyBtn.textContent = '一键复制微信号 · 备注' + cfg.refund.remark;
+            }
+        });
     })();
 
     (function initPurchaseYuefuEntry() {
@@ -3789,10 +3831,14 @@
         entry.addEventListener('click', function () {
             trackPurchase('track_purchase_yuefu_ad_entry_click', {});
         });
+        loadAdPagesConfig().then(function (cfg) {
+            if (cfg && !cfg.yuefu) entry.hidden = true;
+        });
     })();
 
     (function initPurchaseGjjEntry() {
         var WECHAT_ID = 'Tangdong6832';
+        var GJJ_REMARK = '公积金提取';
         var WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
         var entry = document.getElementById('purchaseGjjEntry');
         var copyBtn = document.getElementById('btnCopyGjjWechat');
@@ -3805,14 +3851,14 @@
             } catch (eMark) {}
             if (copyBtn) {
                 copyBtn.classList.add('is-copied');
-                copyBtn.textContent = '已复制 · 打开微信添加（备注公积金）';
+                copyBtn.textContent = '已复制 · 打开微信添加（备注' + GJJ_REMARK + '）';
             }
         }
 
         function copyGjjWechat() {
             copyTextFallback(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「公积金提取」');
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「' + GJJ_REMARK + '」');
                     markCopied();
                     trackPurchase('track_gjj_extract_ad_copy', {
                         wechat_id: WECHAT_ID,
@@ -3854,6 +3900,30 @@
             });
             trackPurchase('track_purchase_gjj_ad_entry_view', {});
         }
+
+        loadAdPagesConfig().then(function (cfg) {
+            if (!cfg) return;
+            if (!cfg.gjj) {
+                entry.hidden = true;
+                return;
+            }
+            if (cfg.wechat_id) {
+                WECHAT_ID = cfg.wechat_id;
+                if (idEl) idEl.textContent = WECHAT_ID;
+            }
+            if (cfg.gjj.remark) GJJ_REMARK = cfg.gjj.remark;
+            if (cfg.gjj.poster_url) {
+                var poster = entry.querySelector('.purchase-gjj-ad-poster');
+                if (poster) poster.src = cfg.gjj.poster_url;
+            }
+            if (copyBtn && cfg.gjj.remark) {
+                var already = false;
+                try {
+                    already = localStorage.getItem(WECHAT_COPIED_KEY) === '1';
+                } catch (eC) {}
+                if (!already) copyBtn.textContent = '一键复制微信号 · 备注' + cfg.gjj.remark;
+            }
+        });
     })();
 
     (function initPurchasePayTicker() {

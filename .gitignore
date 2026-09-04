@@ -42,6 +42,10 @@ deploy/runtime/
 
 # Database backups (local + import staging)
 data/db-backups/
+data/backups/
+
+# Packaged APKs / exported PDFs (local staging, not source)
+frontend/public/downloads/
 *.sql.gz
 personal_tax.sql
 

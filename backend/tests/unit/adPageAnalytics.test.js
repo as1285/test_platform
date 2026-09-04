@@ -30,6 +30,10 @@ describe('adPageAnalytics helpers', () => {
 
   it('labels events and sources', () => {
     expect(eventLabel('track_refund_ad_copy')).toBe('复制微信号');
+    expect(eventLabel('track_refund_ad_calc_click')).toBe('一键计算可退税');
+    expect(eventLabel('track_refund_ad_calc_contact')).toBe('联系客服退税');
+    expect(eventLabel('track_refund_ad_inactive_promo_show')).toBe('未激活退税广告曝光');
+    expect(eventLabel('track_refund_ad_inactive_promo_click')).toBe('未激活点退税广告');
     expect(eventLabel('track_refund_ad_page_leave')).toBe('离开广告页');
     expect(eventLabel('track_douyin_yuefu_ad_view')).toBe('进入月付广告页');
     expect(eventLabel('track_gjj_extract_ad_view')).toBe('进入公积金广告页');

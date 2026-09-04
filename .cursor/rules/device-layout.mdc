@@ -1,0 +1,15 @@
+---
+description: 新机型适配用 token，禁止复制 17 Pro Max 选择器
+globs: frontend/public/js/auth.js,frontend/shuiming_result.html,frontend/css/device-tokens.css,frontend/tests/e2e/ui-smoke-devices.mjs
+alwaysApply: false
+---
+
+# 机型布局
+
+收入纳税明细的贴边、顶距、箭头只改这三枚 token，写在 `frontend/css/device-tokens.css` 与对应 `html.app-*` class 上：
+
+- `--device-safe-top`：顶栏/汇总避让
+- `--device-list-edge`：列表左右贴边（0 = 铺满）
+- `--device-arrow-ty`：扣缴义务人行箭头 `translateY`
+
+不要再把 17 Pro Max 选择器复制进 `auth.js` 两处注入、页内 firstpaint、页内 CSS。新机型：加 class → 覆盖 token → 在 `ui-smoke-devices.mjs` 加档 → `UI_SMOKE_DEVICES=<id>` 跑冒烟。像素级对齐用 17 Pro Max 截图/几何断言，不要来回改裸 `translateY(Npx)`。

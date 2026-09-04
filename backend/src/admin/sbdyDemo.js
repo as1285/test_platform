@@ -16,6 +16,7 @@ const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.p
 const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
 const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
 const SBDY_HN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_hn_render_pdf.py');
+const SBDY_HENAN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_henan_render_pdf.py');
 const SBDY_JS_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_js_render_pdf.py');
 const SBDY_BJ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_bj_render_pdf.py');
 const SBDY_SH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sh_render_pdf.py');
@@ -60,6 +61,13 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
     var script = SBDY_RENDER_SCRIPT;
     if (region === 'hn' || region === 'hunan' || region === 'hn_official_v1') {
       script = SBDY_HN_RENDER_SCRIPT;
+    } else if (
+      region === 'ha' ||
+      region === 'henan' ||
+      region === 'ha_official_v1' ||
+      region === '豫'
+    ) {
+      script = SBDY_HENAN_RENDER_SCRIPT;
     } else if (region === 'wh' || region === 'wuhan' || region === 'hubei' || region === 'hb') {
       script = SBDY_WH_RENDER_SCRIPT;
     } else if (
@@ -327,6 +335,21 @@ function isHnRegion(body) {
   return r === 'hn' || r === 'hunan' || r === 'hn_official_v1';
 }
 
+function isHaRegion(body) {
+  var r = String(
+    (body && (body.region || body.layout || body.cert_type || body.certType)) || ''
+  )
+    .trim()
+    .toLowerCase();
+  return (
+    r === 'ha' ||
+    r === 'henan' ||
+    r === '河南' ||
+    r === '河南社保' ||
+    r === 'ha_official_v1'
+  );
+}
+
 function isJsRegion(body) {
   var r = String((body && (body.region || body.layout)) || '').toLowerCase();
   return r === 'js' || r === 'jiangsu' || r === 'js_official_v1';
@@ -369,6 +392,7 @@ function regionKeyOf(payload) {
     r === 'gz' ||
     r === 'wh' ||
     r === 'hn' ||
+    r === 'ha' ||
     r === 'js' ||
     r === 'bj' ||
     r === 'sh' ||
@@ -387,6 +411,7 @@ function isZjStylePayload(p) {
     p.region !== 'gz' &&
     p.region !== 'wh' &&
     p.region !== 'hn' &&
+    p.region !== 'ha' &&
     p.region !== 'js' &&
     p.region !== 'bj' &&
     p.region !== 'sh' &&
@@ -396,6 +421,7 @@ function isZjStylePayload(p) {
     p.layout !== 'gz_official_v1' &&
     p.layout !== 'wh_official_v1' &&
     p.layout !== 'hn_official_v1' &&
+    p.layout !== 'ha_official_v1' &&
     p.layout !== 'js_official_v1' &&
     p.layout !== 'bj_official_v1' &&
     p.layout !== 'sh_official_v1' &&
@@ -1222,6 +1248,392 @@ function normalizeHnPayload(body) {
     relations: relations,
     detail_rows: detailRows,
     months: detailRows
+  };
+}
+
+function round2Ha(n) {
+  var x = Number(n);
+  if (!isFinite(x)) return 0;
+  return Math.round(x * 100) / 100;
+}
+
+function formatHaDate(raw) {
+  var s = String(raw || '')
+    .trim()
+    .replace(/[./年]/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .replace(/\s+/g, '');
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return m[1] + '-' + pad2(m[2]) + '-' + pad2(m[3]);
+  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = s.match(/^(\d{4})-(\d{1,2})$/);
+  if (m) return m[1] + '-' + pad2(m[2]) + '-01';
+  return '';
+}
+
+function formatHaDataAsOf(raw) {
+  var s = String(raw || '').trim();
+  if (!s) {
+    var now = new Date(Date.now() + 8 * 3600 * 1000);
+    return (
+      now.getUTCFullYear() +
+      '.' +
+      pad2(now.getUTCMonth() + 1) +
+      '.' +
+      pad2(now.getUTCDate()) +
+      ' ' +
+      pad2(now.getUTCHours()) +
+      ':' +
+      pad2(now.getUTCMinutes()) +
+      ':' +
+      pad2(now.getUTCSeconds())
+    );
+  }
+  s = s.replace(/年/g, '.').replace(/月/g, '.').replace(/日/g, '');
+  return s.substring(0, 32);
+}
+
+function formatHaPrintDate(raw) {
+  var s = String(raw || '').trim();
+  if (!s) {
+    var now = new Date(Date.now() + 8 * 3600 * 1000);
+    return (
+      now.getUTCFullYear() +
+      '-' +
+      pad2(now.getUTCMonth() + 1) +
+      '-' +
+      pad2(now.getUTCDate())
+    );
+  }
+  var m = s.match(/(\d{4})\s*[年.-]\s*(\d{1,2})\s*[月.-]\s*(\d{1,2})/);
+  if (m) return m[1] + '-' + pad2(m[2]) + '-' + pad2(m[3]);
+  return s.replace(/^打印时间[:：]?\s*/, '').substring(0, 32);
+}
+
+function ymInRange(y, m, startYm, endYm) {
+  var a = parseYm(startYm);
+  var b = parseYm(endYm);
+  if (!a || !b) return false;
+  var t = y * 12 + m;
+  return t >= a.y * 12 + a.m && t <= b.y * 12 + b.m;
+}
+
+/** 与浙江表单对齐：空/正常参保 → 参保缴费；暂停缴费 → 官方「暂停缴费（中断）」 */
+function normalizeHaStatusLabel(value, fallback) {
+  var status = String(value != null && value !== '' ? value : fallback || '').trim();
+  if (!status || status === '正常参保') return '参保缴费';
+  if (status === '暂停缴费' || status === '中断缴费') return '暂停缴费（中断）';
+  return status.substring(0, 24);
+}
+
+/** 分段覆盖当年月份；后写的段覆盖重叠月。无覆盖月时返回 null，回退到起止月。 */
+function haRawMonthsFromSegments(recordYear, segments, baseAmt) {
+  var byM = {};
+  (Array.isArray(segments) ? segments : []).forEach(function (s) {
+    if (!s) return;
+    var st = s.period_start || s.periodStart;
+    var en = s.period_end || s.periodEnd;
+    if (!parseYm(st) || !parseYm(en)) return;
+    var b = Number(s.base_amount != null ? s.base_amount : s.baseAmount);
+    if (!isFinite(b) || b <= 0) b = baseAmt;
+    eachYmInclusive(st, en, function (ym) {
+      var p = parseYm(ym);
+      if (!p || p.y !== recordYear) return;
+      var mm = pad2(p.m);
+      byM[mm] = {
+        month: mm,
+        pension_base: b,
+        unemp_base: b,
+        injury_base: b
+      };
+    });
+  });
+  if (!Object.keys(byM).length) return null;
+  var raw = [];
+  var i;
+  for (i = 1; i <= 12; i++) {
+    var mm = pad2(i);
+    if (byM[mm]) raw.push(byM[mm]);
+    else raw.push({ month: mm, paid: false });
+  }
+  return raw;
+}
+
+function buildHaMonths(recordYear, periodStart, periodEnd, baseAmt, rawMonths) {
+  var byM = {};
+  if (Array.isArray(rawMonths)) {
+    rawMonths.forEach(function (r) {
+      if (!r) return;
+      var m = String(r.month != null ? r.month : '').replace(/\D/g, '');
+      if (m.length === 1) m = '0' + m;
+      if (m.length !== 2) return;
+      byM[m] = r;
+    });
+  }
+  var out = [];
+  var i;
+  for (i = 1; i <= 12; i++) {
+    var mm = pad2(i);
+    var raw = byM[mm] || {};
+    var paid =
+      raw.paid === true ||
+      raw.paid === 1 ||
+      raw.paid === '1' ||
+      (raw.pension_base != null &&
+        raw.pension_base !== '' &&
+        Number(raw.pension_base) > 0);
+    if (!paid && raw.paid == null && raw.pension_base == null) {
+      paid = ymInRange(recordYear, i, periodStart, periodEnd);
+    }
+    var base = Number(
+      raw.pension_base != null
+        ? raw.pension_base
+        : raw.base_amount != null
+          ? raw.base_amount
+          : paid
+            ? baseAmt
+            : 0
+    );
+    if (!isFinite(base) || base < 0) base = paid ? baseAmt : 0;
+    var ub = Number(raw.unemp_base != null ? raw.unemp_base : base);
+    var ib = Number(raw.injury_base != null ? raw.injury_base : base);
+    out.push({
+      month: mm,
+      paid: !!paid,
+      pension_base: paid ? round2Ha(base) : '',
+      unemp_base: paid ? round2Ha(isFinite(ub) ? ub : base) : '',
+      injury_base: paid ? round2Ha(isFinite(ib) ? ib : base) : '',
+      pension_flag: raw.pension_flag || (paid ? '●' : '-'),
+      unemp_flag: raw.unemp_flag || (paid ? '●' : '-'),
+      injury_flag: raw.injury_flag || '-'
+    });
+  }
+  return out;
+}
+
+function normalizeHaPayload(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var name = String(b.name || '').trim().substring(0, 64);
+  var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
+  var gender = String(b.gender || '').trim().substring(0, 8);
+  if (!gender) {
+    var id = String(idNumber);
+    if (id.length === 18 && /^\d{17}[\dXx]$/.test(id)) {
+      gender = Number(id.charAt(16)) % 2 === 0 ? '女' : '男';
+    } else if (id.length === 15 && /^\d{15}$/.test(id)) {
+      gender = Number(id.charAt(14)) % 2 === 0 ? '女' : '男';
+    } else {
+      gender = '男';
+    }
+  }
+  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
+  var area = String(b.area || '郑州市郑东新区').trim().substring(0, 32) || '郑州市郑东新区';
+  var periodStart = String(b.period_start || b.periodStart || '').trim();
+  var periodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
+  if (!isFinite(baseAmt) || baseAmt <= 0) baseAmt = 4200;
+  if (!name || !idNumber) {
+    return { error: '姓名与证件号码必填' };
+  }
+  if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+    return { error: '缴费起止月份格式应为 YYYY-MM' };
+  }
+  var a0 = parseYm(periodStart);
+  var b0 = parseYm(periodEnd);
+  if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
+    var tmp = periodStart;
+    periodStart = periodEnd;
+    periodEnd = tmp;
+    a0 = parseYm(periodStart);
+    b0 = parseYm(periodEnd);
+  }
+  var recordYear = Number(b.record_year != null ? b.record_year : b.year);
+  if (!isFinite(recordYear) || recordYear < 1990) {
+    recordYear = b0 ? b0.y : bjNowParts().y;
+  }
+  var workStart =
+    formatHaDate(b.work_start_date || b.work_start || b.workStartDate || b.workStart) ||
+    '';
+  if (!workStart) {
+    if (idNumber.length === 18) {
+      var by = Number(idNumber.substring(6, 10));
+      workStart = String(by + 22) + '-09-01';
+    } else {
+      workStart = '2015-09-01';
+    }
+  }
+  var segs = normalizeSegments(b.segments, { area: area, base: baseAmt });
+  if (segs.length) {
+    var lastSeg = segs[segs.length - 1];
+    if (lastSeg.company_name) company = lastSeg.company_name;
+    if (lastSeg.area) area = lastSeg.area;
+  }
+  var explicitMonths = b.ha_months || b.months || b.detail_rows;
+  var monthSource = null;
+  if (Array.isArray(explicitMonths) && explicitMonths.length) {
+    monthSource = explicitMonths;
+  } else if (segs.length) {
+    monthSource = haRawMonthsFromSegments(recordYear, segs, baseAmt);
+  }
+  var haMonths = buildHaMonths(recordYear, periodStart, periodEnd, baseAmt, monthSource);
+  var paidMonths = haMonths.filter(function (r) {
+    return r.paid;
+  });
+  var yearPrincipal = Number(
+    b.year_principal != null
+      ? b.year_principal
+      : b.account && b.account.year_principal != null
+        ? b.account.year_principal
+        : NaN
+  );
+  if (!isFinite(yearPrincipal)) {
+    yearPrincipal = round2Ha(
+      paidMonths.reduce(function (sum, r) {
+        return sum + Number(r.pension_base || 0) * 0.08;
+      }, 0)
+    );
+  }
+  var yearInterest = Number(
+    b.year_interest != null
+      ? b.year_interest
+      : b.account && b.account.year_interest != null
+        ? b.account.year_interest
+        : 0
+  );
+  if (!isFinite(yearInterest)) yearInterest = 0;
+  var yearOut = Number(
+    b.year_out_interest != null
+      ? b.year_out_interest
+      : b.account && b.account.year_out_interest != null
+        ? b.account.year_out_interest
+        : yearPrincipal
+  );
+  if (!isFinite(yearOut)) yearOut = yearPrincipal;
+  var prevBal = Number(
+    b.prev_balance != null
+      ? b.prev_balance
+      : b.account && b.account.prev_balance != null
+        ? b.account.prev_balance
+        : NaN
+  );
+  var acctMonths = Number(
+    b.account_months != null
+      ? b.account_months
+      : b.account && b.account.account_months != null
+        ? b.account.account_months
+        : NaN
+  );
+  if (!isFinite(acctMonths) || acctMonths <= 0) {
+    var ws = parseYm(workStart.substring(0, 7));
+    if (ws) {
+      acctMonths = Math.max(paidMonths.length, (recordYear - ws.y) * 12 + 1 - ws.m + 1);
+    } else {
+      acctMonths = Math.max(paidMonths.length, 12);
+    }
+  }
+  if (!isFinite(prevBal) || prevBal < 0) {
+    prevBal = round2Ha(baseAmt * 0.08 * Math.max(0, acctMonths - paidMonths.length) * 1.05);
+  }
+  var totalBal = Number(
+    b.total_balance != null
+      ? b.total_balance
+      : b.account && b.account.total_balance != null
+        ? b.account.total_balance
+        : NaN
+  );
+  if (!isFinite(totalBal)) {
+    totalBal = round2Ha(prevBal + yearPrincipal + yearInterest);
+  }
+  var statusDefault = normalizeHaStatusLabel(
+    b.status || b.status_pension || b.insure_status,
+    '参保缴费'
+  );
+  var statusPension = normalizeHaStatusLabel(b.status_pension, statusDefault);
+  var statusUnemp = normalizeHaStatusLabel(
+    b.status_unemployment || b.status_unemp,
+    statusDefault
+  );
+  var statusInjury = normalizeHaStatusLabel(b.status_injury, statusDefault);
+  var creditCode = String(
+    b.credit_code || b.creditCode || (segs.length ? segs[segs.length - 1].credit_code : '') || ''
+  )
+    .trim()
+    .substring(0, 32);
+  var penDate =
+    formatHaDate(b.pension_enroll_date || b.pensionEnrollDate) ||
+    formatHaDate(workStart) ||
+    '2017-07-01';
+  var uneDate =
+    formatHaDate(b.unemp_enroll_date || b.unempEnrollDate) || penDate;
+  var injDate =
+    formatHaDate(b.injury_enroll_date || b.injuryEnrollDate) || uneDate;
+  var formCode = String(b.form_verify_code || b.formVerifyCode || b.verify_code || '')
+    .replace(/[^a-fA-F0-9]/g, '')
+    .toLowerCase()
+    .substring(0, 32);
+  if (formCode.length < 32) formCode = randHexLower(32);
+  return {
+    region: 'ha',
+    layout: 'ha_official_v1',
+    name: name,
+    id_number: idNumber,
+    social_no: String(b.social_no || b.social_security_no || idNumber).trim().substring(0, 32),
+    gender: gender,
+    id_type: String(b.id_type || '居民身份证(户口簿)').trim().substring(0, 32) || '居民身份证(户口簿)',
+    address: String(b.address || '').trim().substring(0, 128),
+    postal_code: String(b.postal_code || b.postalCode || '').replace(/\D/g, '').substring(0, 6),
+    company_name: company,
+    credit_code: creditCode,
+    work_start_date: workStart,
+    area: area,
+    record_year: recordYear,
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_label:
+      formatYmCn(a0.y, a0.m) + '-' + formatYmCn(b0.y, b0.m),
+    base_amount: baseAmt,
+    status_pension: statusPension,
+    status_unemployment: statusUnemp,
+    status_injury: statusInjury,
+    pension_enroll_date: penDate,
+    unemp_enroll_date: uneDate,
+    injury_enroll_date: injDate,
+    enroll: {
+      pension: {
+        date: penDate,
+        status: statusPension
+      },
+      unemp: {
+        date: uneDate,
+        status: statusUnemp
+      },
+      injury: {
+        date: injDate,
+        status: statusInjury
+      }
+    },
+    segments: segs.length ? segs : undefined,
+    account: {
+      prev_balance: round2Ha(prevBal),
+      year_principal: round2Ha(yearPrincipal),
+      year_interest: round2Ha(yearInterest),
+      account_months: Math.round(acctMonths),
+      year_out_interest: round2Ha(yearOut),
+      total_balance: round2Ha(totalBal)
+    },
+    prev_balance: round2Ha(prevBal),
+    year_principal: round2Ha(yearPrincipal),
+    year_interest: round2Ha(yearInterest),
+    account_months: Math.round(acctMonths),
+    year_out_interest: round2Ha(yearOut),
+    total_balance: round2Ha(totalBal),
+    ha_months: haMonths,
+    months: haMonths,
+    form_verify_code: formCode,
+    data_as_of: formatHaDataAsOf(b.data_as_of || b.dataAsOf || b.data_cutoff),
+    print_date: formatHaPrintDate(b.print_date || b.printDate)
   };
 }
 
@@ -2570,6 +2982,9 @@ function normalizePayload(body) {
   }
   if (isHnRegion(body)) {
     return normalizeHnPayload(body);
+  }
+  if (isHaRegion(body)) {
+    return normalizeHaPayload(body);
   }
   if (isWhRegion(body)) {
     return normalizeWhPayload(body);
@@ -4289,6 +4704,9 @@ async function createSbdyDemoCert(req, body, creator) {
     normalized.watermark_id = stamp + '-' + randDigits(10);
   } else if (normalized.region === 'hn') {
     authCode = randToken(16);
+  } else if (normalized.region === 'ha') {
+    authCode = String(normalized.form_verify_code || randHexLower(32)).substring(0, 32);
+    normalized.form_verify_code = authCode;
   } else if (normalized.region === 'js') {
     authCode = randToken(16);
   } else if (normalized.region === 'bj') {

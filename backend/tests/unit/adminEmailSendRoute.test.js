@@ -18,6 +18,12 @@ describe('admin emails/send HTML-safe API surface', () => {
     expect(routes).toContain('handleAdminEmailsSend');
   });
 
+  it('exposes campaign-stats for SMTP fail rate on the ad hub', () => {
+    expect(routes).toContain("'/api/admin/emails/campaign-stats'");
+    expect(routes).toContain('handleAdminEmailsCampaignStats');
+    expect(routes).toContain('ops-ad-analytics');
+  });
+
   it('API unknown routes respond with JSON 404', () => {
     expect(boot).toContain('jsonApiNotFound');
     expect(boot).toContain('code: 404');

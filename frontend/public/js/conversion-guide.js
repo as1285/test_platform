@@ -10,7 +10,7 @@
  * 主要 localStorage / sessionStorage 键（详见下方「状态/缓存」段）：
  * - account_active / tax_record_count / employer_count（与业务页共享）
  * - cg_*：转化 dismiss、日频、截图/编辑模式、收入访问计数等
- * - refund_ad_*：填完强制跳转 / 年收入软推荐 / 微信已复制
+ * - refund_ad_*：填完强制弹框 / 测算金额 / 年收入软推荐 / 微信已复制
  * - cg_profile_summary_v2（sessionStorage）：用户摘要短缓存
  * - cg_post_activate_pending / cg_email_nudge_after_register（sessionStorage）
  *
@@ -49,10 +49,17 @@
   var REFUND_AD_INCOME_RECOMMEND_SHOW_DAY_KEY = 'refund_ad_income_recommend_show_day_v1';
   /** 用户已复制过顾问微信后，不再推收入推荐卡/弹窗 */
   var REFUND_AD_WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
+  /** 填完个税后测算金额，广告页读取 */
+  var REFUND_AD_ESTIMATE_KEY = 'refund_ad_estimate_v1';
   /** 填完个税后引导二次退税：23/24/25 任一年税额>5000 或年收入≥15万 */
   var REFUND_AD_TAX_YEARS = [2025, 2024, 2023];
   var REFUND_AD_MIN_TAX_REPORTED = 5000;
   var REFUND_AD_MIN_YEAR_INCOME = 150000;
+  /** 营销换算：3 个子女 4500 元/月 + 赡养父母 3000 元/月 */
+  var REFUND_CHILD_MONTH = 4500;
+  var REFUND_PARENT_MONTH = 3000;
+  var REFUND_MONTHLY_EXTRA = REFUND_CHILD_MONTH + REFUND_PARENT_MONTH;
+  var REFUND_BASIC_DEDUCTION = 60000;
   var hoursSinceRegisterCached = 0;
   var hasEmailCached = false;
   var DEMO_DISCLAIMER =
@@ -283,7 +290,7 @@
   function removeActivationPromoUi() {
     /* 已激活用户仍需保留「添加个税」强提示；此处只清激活营销类 UI */
     hideLegacyShuimingRefundWechatCard();
-    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast', 'smActivateCard'].forEach(
+    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast', 'smActivateCard', 'cg-inactive-refund-promo'].forEach(
       function (id) {
         var el = document.getElementById(id);
         if (!el) return;
@@ -600,6 +607,15 @@
       '.cg-value-panel .cg-btn{display:block;width:100%;margin-bottom:8px;padding:11px;border-radius:8px;border:none;font-size:15px;cursor:pointer;font-family:inherit}' +
       '.cg-value-panel .cg-btn-primary{background:#1e6fff;color:#fff}' +
       '.cg-value-panel .cg-btn-ghost{background:#f5f6fa;color:#333}' +
+      '.cg-value-panel.is-refund-force{max-width:360px;padding:20px 18px 16px}' +
+      '.cg-value-panel.is-refund-force .cg-refund-force-kicker{margin:0 0 8px;font-size:12px;font-weight:600;color:#c2410c;text-align:center;line-height:1.45}' +
+      '.cg-value-panel.is-refund-force h3{margin:0 0 6px;font-size:18px;text-align:center}' +
+      '.cg-value-panel.is-refund-force .cg-refund-force-amt{margin:4px 0 6px;font-size:30px;font-weight:800;color:#c2410c;text-align:center;letter-spacing:-0.02em;line-height:1.15}' +
+      '.cg-value-panel.is-refund-force .cg-refund-force-years{margin:0 0 12px;font-size:12px;color:#9a3412;text-align:center;line-height:1.5}' +
+      '.cg-refund-force-why{margin:0 0 10px;padding:10px 12px;background:#fff7ed;border-radius:10px;font-size:13px;color:#7c2d12;line-height:1.55}' +
+      '.cg-refund-force-why strong{display:block;margin:0 0 4px;color:#c2410c}' +
+      '.cg-value-panel.is-refund-force .cg-refund-force-note{margin:0 0 14px;font-size:11px;color:#94a3b8;line-height:1.45;text-align:center}' +
+      '.cg-value-panel.is-refund-force .cg-btn-primary{background:#ff6a00;font-weight:700;font-size:16px;margin-bottom:0}' +
       '.cg-help-qq-card{margin:12px 16px 0;padding:14px;background:#eefbf6;border:1px solid #b7ebdc;border-radius:10px}' +
       '.cg-help-qq-card h4{margin:0 0 6px;font-size:15px;color:#333}' +
       '.cg-help-qq-card p{margin:0 0 10px;font-size:13px;color:#666;line-height:1.45}' +
@@ -1716,7 +1732,7 @@
       (guest
         ? '已生成个税演示数据。建议立即下载 App 并注册，同步当前填写内容，避免清缓存后丢失。'
         : inactive
-          ? '开通后可去水印、完整查看详情，并导出纳税证明。也可先预览收入明细。'
+          ? '可先测算近三年大约可退税额。开通后可去水印、完整查看详情并导出纳税证明。也可先预览收入明细。'
           : '可立即查看收入纳税明细，或分享给好友体验。') +
       '</p>' +
       '<p style="font-size:12px;color:#666;margin-bottom:10px;">' +
@@ -1729,7 +1745,7 @@
         ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDownload">下载 App 保存资料</button>'
         : '') +
       (inactive
-        ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoPay">去开通完整功能</button>'
+        ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoRefund">查看可退税额</button>'
         : '') +
       (guest || inactive
         ? ''
@@ -1754,12 +1770,16 @@
         goGuestDownloadSave('value_confirm');
       };
     }
-    var payBtn = document.getElementById('cgValueGoPay');
-    if (payBtn) {
-      payBtn.onclick = function () {
-        track('track_tax_pay_guide_cta', { page: currentPage(), from: 'tax_done', source: 'value_confirm' });
-        closeOv('pay');
-        goActivate('tax_done');
+    var refundBtn = document.getElementById('cgValueGoRefund');
+    if (refundBtn) {
+      refundBtn.onclick = function () {
+        track('track_tax_pay_guide_cta', {
+          page: currentPage(),
+          from: 'tax_done',
+          source: 'value_confirm'
+        });
+        closeOv('refund_ad');
+        window.location.href = refundAdAfterTaxHref(year);
       };
     }
     var shareBtn = document.getElementById('cgValueShareFriend');
@@ -1828,10 +1848,16 @@
     } catch (eMark) {}
   }
 
-  function refundAdAfterTaxHref(year, reason) {
+  function refundAdAfterTaxHref(year, reason, estimate) {
     var href =
       'refund_ad.html?from=tax_done&year=' + encodeURIComponent(String(year || ''));
     if (reason) href += '&reason=' + encodeURIComponent(String(reason));
+    if (estimate && estimate.total > 0) {
+      href += '&est=' + encodeURIComponent(String(Math.round(estimate.total)));
+    }
+    if (estimate && estimate.year_list) {
+      href += '&years=' + encodeURIComponent(String(estimate.year_list));
+    }
     return href;
   }
 
@@ -1862,23 +1888,32 @@
    * 汇总某年非示例记录的税额与月收入，并打 tax/income/both 资格标记。
    * @param {Array} records
    * @param {number|string} year
-   * @returns {{year:number,tax_sum:number,income_sum:number,tax_hit:boolean,income_hit:boolean,reason:string}}
+   * @returns {{year:number,tax_sum:number,income_sum:number,month_count:number,record_count:number,tax_hit:boolean,income_hit:boolean,reason:string}}
    */
   function yearRefundTotals(records, year) {
     var y = parseInt(String(year), 10);
     var tax = 0;
     var income = 0;
+    var recordCount = 0;
+    var months = {};
     if (!y || !records || !records.length) {
       return emptyYearRefundTotals(y);
     }
     records.forEach(function (r) {
       if (!r || isExampleCompanyRecord(r)) return;
       if (parseInt(String(r.year), 10) !== y) return;
+      recordCount += 1;
       tax += parseTaxReportedAmount(r.tax_reported);
       income += recordMonthIncome(r);
+      var m = parseInt(String(r.month), 10);
+      if (m >= 1 && m <= 12) months[m] = true;
     });
     tax = Math.round(tax * 100) / 100;
     income = Math.round(income * 100) / 100;
+    var monthCount = Object.keys(months).length;
+    if (!monthCount && recordCount > 0) {
+      monthCount = Math.min(12, recordCount);
+    }
     var taxHit = tax > REFUND_AD_MIN_TAX_REPORTED;
     var incomeHit = income >= REFUND_AD_MIN_YEAR_INCOME;
     var reason = '';
@@ -1889,6 +1924,8 @@
       year: y,
       tax_sum: tax,
       income_sum: income,
+      month_count: monthCount,
+      record_count: recordCount,
       tax_hit: taxHit,
       income_hit: incomeHit,
       reason: reason
@@ -1900,10 +1937,106 @@
       year: year || 0,
       tax_sum: 0,
       income_sum: 0,
+      month_count: 0,
+      record_count: 0,
       tax_hit: false,
       income_hit: false,
       reason: ''
     };
+  }
+
+  function roundRefundMoney(n) {
+    return Math.round((Number(n) || 0) * 100) / 100;
+  }
+
+  /** 综合所得年度税率表：应纳税额 = 应纳税所得额 × 税率 − 速算扣除数 */
+  function iitComprehensiveTax(taxable) {
+    var t = Math.max(0, Number(taxable) || 0);
+    var rate;
+    var quick;
+    if (t <= 36000) {
+      rate = 0.03;
+      quick = 0;
+    } else if (t <= 144000) {
+      rate = 0.1;
+      quick = 2520;
+    } else if (t <= 300000) {
+      rate = 0.2;
+      quick = 16920;
+    } else if (t <= 420000) {
+      rate = 0.25;
+      quick = 31920;
+    } else if (t <= 660000) {
+      rate = 0.3;
+      quick = 52920;
+    } else if (t <= 960000) {
+      rate = 0.35;
+      quick = 85920;
+    } else {
+      rate = 0.45;
+      quick = 181920;
+    }
+    return Math.max(0, roundRefundMoney(t * rate - quick));
+  }
+
+  function formatRefundYuan(n) {
+    var v = Math.round(Number(n) || 0);
+    var s = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (v < 0 ? '-¥' : '¥') + s;
+  }
+
+  /**
+   * 按 3 个子女 4500/月 + 赡养父母 3000/月，对照 2023–2025 记录估算可退税额。
+   * 有已缴税额时不超过该年已缴；测算仅供转化展示。
+   */
+  function specialDeductionRefundEstimate(records) {
+    var years = [];
+    var total = 0;
+    REFUND_AD_TAX_YEARS.forEach(function (y) {
+      var row = yearRefundTotals(records, y);
+      if (!(row.income_sum > 0 || row.tax_sum > 0)) return;
+      var months = row.month_count || 0;
+      if (!months) months = 12;
+      var extra = REFUND_MONTHLY_EXTRA * months;
+      var beforeTaxable = Math.max(0, row.income_sum - REFUND_BASIC_DEDUCTION);
+      var afterTaxable = Math.max(0, row.income_sum - REFUND_BASIC_DEDUCTION - extra);
+      var saved = roundRefundMoney(
+        iitComprehensiveTax(beforeTaxable) - iitComprehensiveTax(afterTaxable)
+      );
+      if (row.tax_sum > 0) saved = Math.min(saved, row.tax_sum);
+      saved = Math.max(0, roundRefundMoney(saved));
+      years.push({
+        year: y,
+        months: months,
+        income: row.income_sum,
+        tax_reported: row.tax_sum,
+        extra: extra,
+        saved: saved
+      });
+      total += saved;
+    });
+    years.sort(function (a, b) {
+      return b.year - a.year;
+    });
+    total = roundRefundMoney(total);
+    return {
+      total: total,
+      years: years,
+      year_list: years
+        .map(function (r) {
+          return r.year;
+        })
+        .join(','),
+      child_month: REFUND_CHILD_MONTH,
+      parent_month: REFUND_PARENT_MONTH,
+      monthly_extra: REFUND_MONTHLY_EXTRA
+    };
+  }
+
+  function persistRefundEstimate(estimate) {
+    try {
+      localStorage.setItem(REFUND_AD_ESTIMATE_KEY, JSON.stringify(estimate || {}));
+    } catch (eEst) {}
   }
 
   function refundAdYearHits(records) {
@@ -2043,19 +2176,22 @@
   }
 
   function isInactiveRefundCardUser() {
-    if (!isLoggedIn() || isLandingGuest()) return false;
-    /* 未确认前不出卡，避免已开通账号先闪未开通 */
+    if (!isLoggedIn() || isLandingGuest() || isAccountActive()) return false;
     if (typeof window.__smAccountActiveConfirmed === 'boolean') {
       return window.__smAccountActiveConfirmed === false;
     }
-    return false;
+    try {
+      return localStorage.getItem('account_active') === '0';
+    } catch (eSeen) {
+      return false;
+    }
   }
 
   function refundAdInactivePromptCopy(hit) {
     if (hit && hit.year) {
-      return refundAdHitCardCopy(hit) + '。激活后可咨询并复制微信，开通后这张卡会消失。';
+      return refundAdHitCardCopy(hit) + '。可一键计算 2023–2025 可退税额，联系客服办理。';
     }
-    return '激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。';
+    return '未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。';
   }
 
   function syncShuimingInactivePrompt(records) {
@@ -2077,8 +2213,8 @@
     if (title) title.textContent = '二次退税咨询';
     if (desc) desc.textContent = refundAdInactivePromptCopy(hit);
     if (btn) {
-      btn.textContent = '去开通';
-      btn.setAttribute('href', 'purchase.html?from=shuiming_result');
+      btn.textContent = '去计算可退税额';
+      btn.setAttribute('href', refundAdRecommendHref('shuiming_result', hit));
     }
   }
 
@@ -2091,7 +2227,7 @@
   }
 
   /**
-   * 同步咨询页退税入口卡：未激活推开通；已激活且年收入≥15万推广告浏览（可抑制）。
+   * 同步咨询页退税入口卡：未激活一律推二次退税广告；已激活且年收入≥15万推广告浏览。
    * @param {Array} [records]
    */
   function syncRefundAdRecommendCards(records) {
@@ -2102,8 +2238,7 @@
     var incomeHit = primaryIncomeRefundHit(records);
     var inactive = isInactiveRefundCardUser();
     var loggedIn = isLoggedIn() && !isLandingGuest();
-    /* 未激活：仍推开通；已开通且年收入≥15万：推广告页浏览（展示在咨询填写区） */
-    var showInactive = inactive && !!hit;
+    var showInactive = inactive;
     var showActiveBrowse =
       loggedIn && !inactive && !!incomeHit && !shouldSuppressIncomeRefundRecommend();
     var show = showInactive || showActiveBrowse;
@@ -2155,8 +2290,8 @@
       if (hint) hint.textContent = copy;
       var badge = spec.badge ? document.getElementById(spec.badge) : null;
       if (badge) {
-        badge.textContent = showActiveBrowse ? '建议浏览' : '开通后消失';
-        badge.hidden = !!showActiveBrowse;
+        badge.textContent = showActiveBrowse ? '建议浏览' : '未开通可看';
+        badge.hidden = false;
       }
       var btn = document.getElementById(spec.btn);
       if (btn) {
@@ -2177,8 +2312,18 @@
             });
           }
         } else {
-          btn.textContent = '去开通';
-          btn.setAttribute('href', 'purchase.html?from=' + encodeURIComponent(spec.from));
+          btn.textContent = '去计算可退税额';
+          btn.setAttribute('href', refundAdRecommendHref(spec.from, hit));
+          if (!btn.getAttribute('data-inactive-refund-bound')) {
+            btn.setAttribute('data-inactive-refund-bound', '1');
+            btn.addEventListener('click', function () {
+              track('track_refund_ad_inactive_promo_click', {
+                page: currentPage(),
+                source: 'consult_card',
+                from: spec.from
+              });
+            });
+          }
         }
       }
     });
@@ -2189,6 +2334,12 @@
         tax_year_gate: incomeHit && incomeHit.year,
         income_sum_gate: incomeHit && incomeHit.income_sum,
         reason: incomeHit && incomeHit.reason
+      });
+    } else if (showInactive && !window.__refundAdInactivePromoTracked) {
+      window.__refundAdInactivePromoTracked = true;
+      track('track_refund_ad_inactive_promo_show', {
+        page: currentPage(),
+        source: 'consult_card'
       });
     }
   }
@@ -2295,7 +2446,96 @@
     });
   }
 
-  /** 2023–2025 任一年税额>5000 或年收入≥15万，填完后带去一次广告页 */
+  /**
+   * 填完 2023–2025 后强制弹框：展示专项附加扣除测算金额，只能去广告页。
+   * 无「稍后再说」，点击遮罩不关闭。
+   */
+  function showSpecialDeductionRefundDialog(estimate, hit, opts, year) {
+    opts = opts || {};
+    if (document.getElementById('cg-refund-force-overlay')) return false;
+    ensureGateStyles();
+    persistRefundEstimate(estimate);
+    var total = estimate && estimate.total > 0 ? Math.round(estimate.total) : 0;
+    var yearLines = '';
+    if (estimate && estimate.years && estimate.years.length) {
+      yearLines = estimate.years
+        .filter(function (r) {
+          return r && r.saved > 0;
+        })
+        .map(function (r) {
+          return r.year + ' 年约 ' + formatRefundYuan(r.saved);
+        })
+        .join('  ·  ');
+    }
+    var ov = document.createElement('div');
+    ov.id = 'cg-refund-force-overlay';
+    ov.className = 'cg-value-overlay';
+    ov.setAttribute('data-cg-lock', '1');
+    ov.innerHTML =
+      '<div class="cg-value-panel is-refund-force" role="dialog" aria-modal="true" aria-labelledby="cgRefundForceTitle">' +
+      '<p class="cg-refund-force-kicker">3 个子女 4500 元/月 + 赡养父母 3000 元/月</p>' +
+      '<h3 id="cgRefundForceTitle">二次退税测算</h3>' +
+      '<p class="cg-refund-force-amt" id="cgRefundForceAmt"></p>' +
+      '<p class="cg-refund-force-years" id="cgRefundForceYears"></p>' +
+      '<div class="cg-refund-force-why">' +
+      '<strong>怎么退回来的</strong>' +
+      '年度汇算清缴可以补报专项附加扣除。每月多扣 7500 元会降低应纳税所得额，已经多缴的个税符合条件可以退回。' +
+      '</div>' +
+      '<p class="cg-refund-force-note">测算仅供参考，实际金额以汇算清缴结果为准。</p>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgRefundForceGo">查看可退金额与办理说明</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+    var amtEl = document.getElementById('cgRefundForceAmt');
+    if (amtEl) {
+      amtEl.textContent = total > 0 ? '约可退 ' + formatRefundYuan(total) : '顾问按记录核对金额';
+    }
+    var yEl = document.getElementById('cgRefundForceYears');
+    if (yEl) yEl.textContent = yearLines;
+    var allHits = refundAdYearHits((opts && opts._refundRecords) || window.__consultRecordsCache || []);
+    track('track_refund_ad_after_tax_show', {
+      page: currentPage(),
+      source: opts.source || 'batch',
+      estimate_total: total,
+      tax_year_gate: hit && hit.year,
+      reason: hit && hit.reason
+    });
+    var goBtn = document.getElementById('cgRefundForceGo');
+    if (goBtn) {
+      goBtn.onclick = function () {
+        markRefundAdAfterTaxSeen();
+        markIncomeRefundRecommendDismissed();
+        track('track_refund_ad_after_tax_go', {
+          page: currentPage(),
+          source: opts.source || 'batch',
+          tax_count: taxRecordCount(),
+          tax_sum_gate: hit && hit.tax_sum,
+          income_sum_gate: hit && hit.income_sum,
+          tax_year_gate: hit && hit.year,
+          reason: (hit && hit.reason) || 'estimate',
+          estimate_total: total,
+          tax_year_hits: allHits
+            .map(function (h) {
+              return h.year;
+            })
+            .join(',')
+        });
+        window.location.href = refundAdAfterTaxHref(
+          (hit && hit.year) || year,
+          hit && hit.reason,
+          estimate
+        );
+      };
+    }
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    return true;
+  }
+
+  /** 2023–2025 填完后强制弹框去广告页：有测算金额，或税额/收入达原门槛 */
   function maybeGoRefundAdAfterTax(opts, year, records) {
     if (isLandingGuest()) return false;
     if (!isLoggedIn()) return false;
@@ -2303,30 +2543,18 @@
     /* 单条保存多半还在补记录，等批量「填完」再带去，少中途打断 */
     if (opts && opts.source === 'single_save') return false;
     var list = records || window.__consultRecordsCache || [];
+    var estimate = specialDeductionRefundEstimate(list);
     var hit = primaryRefundAdTaxHit(list);
-    if (!hit) return false;
-    markRefundAdAfterTaxSeen();
+    if (!(estimate && estimate.total > 0) && !hit) return false;
     markIncomeRefundRecommendDismissed();
-    var allHits = refundAdYearHits(list);
-    track('track_refund_ad_after_tax_go', {
-      page: currentPage(),
-      source: (opts && opts.source) || 'batch',
-      tax_count: taxRecordCount(),
-      tax_sum_gate: hit.tax_sum,
-      income_sum_gate: hit.income_sum,
-      tax_year_gate: hit.year,
-      reason: hit.reason,
-      tax_year_hits: allHits.map(function (h) {
-        return h.year;
-      }).join(',')
-    });
-    if (typeof showCaptureToast === 'function') {
-      showCaptureToast(refundAdHitToastCopy(hit), { duration: 1800 });
+    var dialogOpts = {};
+    if (opts) {
+      Object.keys(opts).forEach(function (k) {
+        dialogOpts[k] = opts[k];
+      });
     }
-    setTimeout(function () {
-      window.location.href = refundAdAfterTaxHref(hit.year || year, hit.reason);
-    }, 420);
-    return true;
+    dialogOpts._refundRecords = list;
+    return showSpecialDeductionRefundDialog(estimate, hit, dialogOpts, year);
   }
 
   /**
@@ -2768,6 +2996,47 @@
     } else {
       link.setAttribute('href', 'consult.html?tab=records');
       link.setAttribute('aria-label', '我要咨询');
+    }
+  }
+
+  function removeInactiveRefundAdPromo() {
+    var el = document.getElementById('cg-inactive-refund-promo');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  /** 首页：每个未激活用户展示二次退税广告入口 */
+  function renderInactiveRefundAdPromo() {
+    removeInactiveRefundAdPromo();
+    if (currentPage() !== 'shouye.html') return;
+    if (!isLoggedIn() || isLandingGuest() || skipConversionPromo()) return;
+    if (!isInactiveRefundCardUser()) return;
+    ensureGateStyles();
+    var card = document.createElement('div');
+    card.id = 'cg-inactive-refund-promo';
+    card.className = 'cg-shouye-card is-tax-strong';
+    card.innerHTML =
+      '<h4>二次退税</h4>' +
+      '<p>未开通也可先看。打开页面可一键计算 2023、2024、2025 大约可退税额，符合请联系客服办理。</p>' +
+      '<a class="cg-btn cg-btn-primary" id="cgInactiveRefundGo" href="' +
+      refundAdRecommendHref('shouye') +
+      '">去计算可退税额</a>';
+    var host =
+      document.getElementById('guestExperienceBar') ||
+      document.getElementById('syHScroll') ||
+      document.querySelector('.shouye-page') ||
+      document.getElementById('syApkStack');
+    if (!host) return;
+    if (host.id === 'guestExperienceBar' || host.id === 'syHScroll') {
+      host.parentNode.insertBefore(card, host);
+    } else {
+      host.insertBefore(card, host.firstChild);
+    }
+    track('track_refund_ad_inactive_promo_show', { page: 'shouye', source: 'home_card' });
+    var btn = document.getElementById('cgInactiveRefundGo');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        track('track_refund_ad_inactive_promo_click', { page: 'shouye', source: 'home_card' });
+      });
     }
   }
 
@@ -3285,6 +3554,7 @@
       removeShuimingResultValueBar();
       syncMineConsultEntryForTax();
       renderShouyeTaxManageEntry();
+      renderInactiveRefundAdPromo();
       renderMineTaxStrongPrompt();
       renderConsultTaxStrongPrompt();
       renderShouyeRetentionCard();
@@ -3448,12 +3718,13 @@
 
   /**
    * 后台配置的激活留存弹层：按注册时长与日频限制展示。
-   * skipConversionPromo / 游客 / 支付页不展示。
+   * skipConversionPromo / 游客 / 未激活 / 支付页 / 测算页不展示（未激活主 CTA 走测算页）。
    */
   function maybeShowActivationNudge() {
     if (!isLoggedIn() || skipConversionPromo() || isLandingGuest()) return;
+    if (!isAccountActive()) return;
     if (isLightShellPage()) return;
-    if (currentPage() === 'purchase.html') return;
+    if (currentPage() === 'purchase.html' || currentPage() === 'refund_ad.html') return;
     var nudge = conversionCfg && conversionCfg.activation_nudge;
     if (!nudge || nudge.enabled === false) return;
     if (!canShowActNudgeToday(nudge.max_per_day)) return;
@@ -3539,6 +3810,9 @@
     afterTaxRecordsCreated: afterTaxRecordsCreated,
     maybeGoRefundAdAfterTax: maybeGoRefundAdAfterTax,
     maybeRecommendIncomeRefundAd: maybeRecommendIncomeRefundAd,
+    specialDeductionRefundEstimate: specialDeductionRefundEstimate,
+    iitComprehensiveTax: iitComprehensiveTax,
+    formatRefundYuan: formatRefundYuan,
     primaryIncomeRefundHit: primaryIncomeRefundHit,
     taxReportedSumForYear: taxReportedSumForYear,
     yearIncomeSumForYear: yearIncomeSumForYear,

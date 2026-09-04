@@ -143,8 +143,26 @@ describe('menuRegistry', () => {
     );
     expect(deskPages).not.toContain('ops-research');
     expect(deskPages).not.toContain('ops-lift');
-    expect(getPageDef('ops-ad-analytics').label).toBe('广告数据');
+    expect(getPageDef('ops-ad-analytics').label).toBe('广告页');
     expect(getPageDef('ops-ad-analytics').module).toBe('ad-analytics');
+    expect(parseAdminRoute('ops-ad-analytics')).toEqual({
+      page: 'ops-ad-analytics',
+      hub: 'ops-ad-analytics',
+      tab: 'config',
+      contentPage: 'ops-ad-analytics'
+    });
+    expect(parseAdminRoute('ops-ad-analytics/data')).toEqual({
+      page: 'ops-ad-analytics',
+      hub: 'ops-ad-analytics',
+      tab: 'data',
+      contentPage: 'ops-ad-analytics'
+    });
+    expect(parseAdminRoute('ops-ad-analytics/reach').tab).toBe('reach');
+    expect(ADMIN_HUB_DEFS['ops-ad-analytics'].tabs.map((t) => t.id)).toEqual([
+      'config',
+      'data',
+      'reach'
+    ]);
     const settings = tree.flatMap((g) => g.items || []).find((i) => i.page === 'settings');
     expect(settings.label).toBe('内容配置');
     const configGroup = tree.find((g) => g.id === 'ops-config');

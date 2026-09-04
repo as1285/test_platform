@@ -502,6 +502,27 @@
             if (k === 'track_refund_ad_guide_tax') {
                 return { button: '广告页去补税务', page: '二次退税广告页' };
             }
+            if (k === 'track_refund_ad_calc_click') {
+                return { button: '一键计算可退税', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_calc_done') {
+                return { button: '算出可退税额', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_calc_contact') {
+                return { button: '联系客服退税', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_calc_login') {
+                return { button: '计算前去登录', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_calc_fill') {
+                return { button: '计算前去填税', page: '二次退税广告页' };
+            }
+            if (k === 'track_refund_ad_inactive_promo_show') {
+                return { button: '未激活退税广告曝光', page: '咨询/首页' };
+            }
+            if (k === 'track_refund_ad_inactive_promo_click') {
+                return { button: '未激活点退税广告', page: '咨询/首页' };
+            }
             if (k === 'track_refund_ad_consult_entry') {
                 return { button: '咨询页进广告', page: '我要咨询' };
             }
@@ -1266,14 +1287,27 @@
                     { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
                     { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
                 ]
+            },
+            'ops-ad-analytics': {
+                nav: 'ops-ad-analytics',
+                defaultTab: 'config',
+                tabs: [
+                    { id: 'config', label: '配置', page: 'ops-ad-analytics' },
+                    { id: 'data', label: '数据', page: 'ops-ad-analytics' },
+                    { id: 'reach', label: '触达', page: 'ops-ad-analytics' }
+                ]
             }
         };
         var ADMIN_CONTENT_TO_HUB = {};
-        Object.keys(ADMIN_HUB_DEFS).forEach(function (hub) {
-            ADMIN_HUB_DEFS[hub].tabs.forEach(function (t) {
-                ADMIN_CONTENT_TO_HUB[t.page] = { hub: hub, tab: t.id };
+        function rebuildAdminHubMaps() {
+            ADMIN_CONTENT_TO_HUB = {};
+            Object.keys(ADMIN_HUB_DEFS).forEach(function (hub) {
+                ADMIN_HUB_DEFS[hub].tabs.forEach(function (t) {
+                    ADMIN_CONTENT_TO_HUB[t.page] = { hub: hub, tab: t.id };
+                });
             });
-        });
+        }
+        rebuildAdminHubMaps();
         var _adminRouteState = { hub: null, tab: null, contentPage: '', navKey: '' };
 
         function parseAdminRouteClient(raw) {
@@ -1678,6 +1712,13 @@
             'track_refund_ad_consult_entry',
             'track_refund_ad_guide_employer',
             'track_refund_ad_guide_tax',
+            'track_refund_ad_calc_click',
+            'track_refund_ad_calc_done',
+            'track_refund_ad_calc_contact',
+            'track_refund_ad_calc_login',
+            'track_refund_ad_calc_fill',
+            'track_refund_ad_inactive_promo_show',
+            'track_refund_ad_inactive_promo_click',
             'track_douyin_yuefu_ad_view',
             'track_douyin_yuefu_ad_copy',
             'track_douyin_yuefu_ad_page_leave',
@@ -1725,6 +1766,13 @@
             track_refund_ad_consult_entry: '咨询进广告',
             track_refund_ad_guide_employer: '去加任职',
             track_refund_ad_guide_tax: '去补税务',
+            track_refund_ad_calc_click: '一键计算',
+            track_refund_ad_calc_done: '算出金额',
+            track_refund_ad_calc_contact: '联系客服退税',
+            track_refund_ad_calc_login: '计算去登录',
+            track_refund_ad_calc_fill: '计算去填税',
+            track_refund_ad_inactive_promo_show: '未激活退税曝光',
+            track_refund_ad_inactive_promo_click: '未激活点退税',
             track_douyin_yuefu_ad_view: '月付广告',
             track_douyin_yuefu_ad_copy: '月付复制',
             track_douyin_yuefu_ad_page_leave: '离开月付',
@@ -7566,7 +7614,7 @@
             analytics: '数据统计（旧）',
             'ops-board': '运营看板',
             'ops-inactive': '未激活用户',
-            'ops-ad-analytics': '广告数据',
+            'ops-ad-analytics': '广告页',
             'analytics-conversion': '转化概览',
             'analytics-purchase': '支付分析',
             'analytics-activity': '用户活跃',
@@ -10276,7 +10324,9 @@
                 inactive_has_d1: '未激活·有注册次日日活',
                 inactive_d1_only: '未激活·仅次日回访（之后未再活跃）',
                 inactive_high_income: '未激活·自己填月收入>1.5万',
-                refund_eligible: '退税合格'
+                refund_eligible: '退税合格',
+                refund_eligible_copied: '退税合格·已复制',
+                refund_eligible_not_copied: '退税合格·未复制'
             };
             return labels[audience] || audience;
         }
@@ -10309,7 +10359,11 @@
                     applyD1BulkDefaultCopy();
                 } else if (v === 'inactive_high_income') {
                     applyHighIncomeBulkDefaultCopy();
-                } else if (v === 'refund_eligible') {
+                } else if (
+                    v === 'refund_eligible' ||
+                    v === 'refund_eligible_copied' ||
+                    v === 'refund_eligible_not_copied'
+                ) {
                     applyRefundEligibleBulkDefaultCopy();
                 } else if (v === 'inactive_has_tax') {
                     applyHasTaxBulkDefaultCopy();
@@ -10423,7 +10477,9 @@
                 inactive_visited_purchase: '未激活且去过支付页',
                 inactive_purchase_no_pay: '未激活、去过支付页、未支付',
                 inactive_high_income: '未激活·月收入>1.5万',
-                refund_eligible: '退税合格'
+                refund_eligible: '退税合格',
+                refund_eligible_copied: '退税合格·已复制',
+                refund_eligible_not_copied: '退税合格·未复制'
             };
             return labels[audience] || audience;
         }
@@ -10524,7 +10580,11 @@
                 if (v === 'price_offer_unpaid') {
                     if (tpl) tpl.value = 'offer';
                     applyEmailCopyTemplate('bulk', 'offer');
-                } else if (v === 'refund_eligible') {
+                } else if (
+                    v === 'refund_eligible' ||
+                    v === 'refund_eligible_copied' ||
+                    v === 'refund_eligible_not_copied'
+                ) {
                     var subj = document.getElementById('bulkEmailSubject');
                     var body = document.getElementById('bulkEmailContent');
                     var link = document.getElementById('bulkEmailLink');
@@ -10927,12 +10987,20 @@
                 adminMenuKeyList = data.menu_defs.map(function (d) { return d.key; });
             }
             if (data.first_page) window._adminFirstPage = String(data.first_page);
+            if (data.hubs && typeof data.hubs === 'object') {
+                Object.keys(data.hubs).forEach(function (k) {
+                    if (data.hubs[k] && Array.isArray(data.hubs[k].tabs)) {
+                        ADMIN_HUB_DEFS[k] = data.hubs[k];
+                    }
+                });
+                rebuildAdminHubMaps();
+            }
         }
 
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v20-abc-stats';
+                var MENU_TREE_VER = 'ops-ia-v21-ad-pages';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

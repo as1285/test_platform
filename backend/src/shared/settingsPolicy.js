@@ -4,6 +4,7 @@
 const OPS_SETTING_KEYS = [
   'test_account_company_name',
   'mine_ui_json',
+  'ad_pages_json',
   'android_apk_download_url',
   'agent_android_apk_download_url',
   'ios_mobileconfig_download_url',

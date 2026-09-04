@@ -1,0 +1,11 @@
+---
+description: 管理台新菜单进模块；全量用户权限只改一份名单
+globs: frontend/admin_panel.html,frontend/public/js/admin/**/*.js,frontend/public/js/admin_panel.js,backend/src/admin/**/*.js
+alwaysApply: false
+---
+
+# 管理台
+
+新菜单、新工作台写进 `frontend/public/js/admin/modules/` 和 `menuRegistry.js`，不要往 `admin_panel.js` 堆业务。
+
+非超管但可看全部注册用户的账号只维护 `backend/src/admin/fullUserScope.js`（当前：`19106014552`、`13691947741`、`18671741907`）。不要在 monolith / opsConversion 再写死手机号。

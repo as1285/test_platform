@@ -144,12 +144,23 @@ var MODELS = [
     ]
   },
   {
+    id: 'iphone-15',
+    platform: 'ios',
+    family: 'apple',
+    label: 'iPhone 15',
+    match: ['iPhone\\s*15\\b(?!\\s*Plus)(?!\\s*Pro)', 'iPhone15,4'],
+    issues: [
+      { page: 'shuiming', title: '扣缴义务人箭头贴字底', summary: '公司名行「>」偏下；底边与公司名同一水平线。', since: '2026-09-04' }
+    ]
+  },
+  {
     id: 'iphone-15-promax',
     platform: 'ios',
     family: 'apple',
     label: 'iPhone 15 Pro Max / 15 Plus',
     match: ['iPhone\\s*15\\s*Pro\\s*Max', 'iPhone\\s*15\\s*Plus', 'iPhone16,2', 'iPhone16,1', 'iPhone15,5'],
     issues: [
+      { page: 'shuiming', title: '扣缴义务人箭头贴字底', summary: '公司名行「>」偏下；底边与公司名同一水平线。', since: '2026-09-04' },
       { page: 'shuiming', title: '滑动时状态栏防透出', summary: '列表上滑不能从刘海透出内容。', since: '2026-05-27' },
       { page: 'nav', title: '底栏铺满盖住 Home Indicator', summary: '胶囊底下会透出页面；须 bottom:0、圆角 0。其它 iPhone 仍保持 8px 胶囊。', since: '2026-08-22' },
       { page: 'shouye', title: '首页状态栏铺蓝', summary: '刘海接缝处铺搜索顶栏蓝。', since: '2026-07-16' }
@@ -204,7 +215,7 @@ var MODELS = [
     issues: [
       { page: 'shuiming', title: '问号改 Helvetica/SVG', summary: '描边在 Retina 上看不清；17 标准版问号缩到 13px。', since: '2026-06-13' },
       { page: 'shuiming', title: '大屏字号与顶栏字号', summary: '12/17 Pro Max 正文放大；17 Pro 返回/批量申诉字号放大。', since: '2026-05-21' },
-      { page: 'shuiming', title: '17 Pro Max 贴边与箭头右齐', summary: 'UA 无型号时会落到 ≥414 的 20px 留白；≥428 贴边。箭头与公司名同一行垂直居中并加大。', since: '2026-09-04' }
+      { page: 'shuiming', title: '17 Pro Max 贴边与箭头右齐', summary: 'UA 无型号时按 440×956 识别；列表 100vw 钉满并实测去灰边。箭头底边与公司名同一水平线。', since: '2026-09-04' }
     ]
   },
 

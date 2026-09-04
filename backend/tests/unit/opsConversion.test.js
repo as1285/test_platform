@@ -6,7 +6,10 @@ const {
   HIGH_INCOME,
   REFUND_AD_MIN_INCOME,
   REFUND_AD_MIN_TAX,
-  refundEligibleSql
+  refundEligibleSql,
+  refundCopiedExistsSql,
+  isRefundBulkAudience,
+  appendRefundBulkAudienceFilters
 } = require('../../src/admin/opsConversion');
 
 describe('opsConversion helpers', () => {
@@ -36,5 +39,21 @@ describe('opsConversion helpers', () => {
     expect(sql).toContain('150000');
     expect(sql).toContain('示例');
     expect(sql).toContain('users.username');
+  });
+
+  it('refund copied audiences share eligible sql', () => {
+    expect(isRefundBulkAudience('refund_eligible')).toBe(true);
+    expect(isRefundBulkAudience('refund_eligible_copied')).toBe(true);
+    expect(isRefundBulkAudience('refund_eligible_not_copied')).toBe(true);
+    expect(isRefundBulkAudience('all_inactive')).toBe(false);
+    expect(refundCopiedExistsSql('u.username')).toContain('track_refund_ad_copy');
+    expect(refundCopiedExistsSql('u.username')).toContain('track_purchase_refund_ad_copy');
+    var copied = [];
+    appendRefundBulkAudienceFilters('refund_eligible_copied', copied);
+    expect(copied.join(' ')).toContain('EXISTS (SELECT 1 FROM (');
+    expect(copied.join(' ')).toContain('track_refund_ad_copy');
+    var notCopied = [];
+    appendRefundBulkAudienceFilters('refund_eligible_not_copied', notCopied);
+    expect(notCopied.join(' ')).toContain('NOT EXISTS');
   });
 });

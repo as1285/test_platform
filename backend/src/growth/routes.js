@@ -44,6 +44,7 @@ function registerGrowthRoutes(app, deps) {
   app.get('/api/public/resolve-sales-channel', h.handlePublicResolveSalesChannel);
   app.post('/api/public/sales-channel-attribution', h.handlePublicSalesChannelAttribution);
   app.get('/api/public/conversion-config', h.handlePublicConversionConfig);
+  app.get('/api/public/ad-pages', h.handlePublicAdPages);
   app.get('/api/public/landing-ab-config', h.handlePublicLandingAbConfig);
   app.post('/api/public/guest-session', h.handlePublicGuestSession);
   app.get('/api/public/sbdy-demo/verify', h.handlePublicSbdyDemoVerify);

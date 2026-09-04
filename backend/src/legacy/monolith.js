@@ -25,6 +25,11 @@ const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const adminDownline = require('../admin/downline');
+const {
+  adminUsernameKey,
+  adminHasFullUserScope,
+  fullUserScopeUsernameSqlIn
+} = require('../admin/fullUserScope');
 const settingsPolicy = require('../shared/settingsPolicy');
 const { addDaysToYmd, analyticsPeriodDateKeys } = require('../shared/ymd');
 const {
@@ -553,25 +558,6 @@ const ADMIN_OPS_SEE_REGISTERED_SINCE = String(
 
 /** 额外运营子账号 → 新注册可见起始时间（UTC） */
 const ADMIN_OPS_EXTRA_SEE_SINCE = {};
-
-/** 非超管但可看/操作全部注册用户与用户数据的运营账号 */
-const ADMIN_FULL_USER_SCOPE_USERNAMES = {
-  '19106014552': true,
-  '13691947741': true,
-  '18671741907': true
-};
-
-function adminUsernameKey(admin) {
-  return String((admin && admin.username) || '')
-    .trim()
-    .toLowerCase();
-}
-
-function adminHasFullUserScope(admin) {
-  if (!admin) return false;
-  if (admin.is_super) return true;
-  return !!ADMIN_FULL_USER_SCOPE_USERNAMES[adminUsernameKey(admin)];
-}
 
 function isOpsNamedAdmin(admin) {
   var u = adminUsernameKey(admin);
@@ -3642,18 +3628,25 @@ async function createTables() {
     `DELETE FROM admin_account_menus WHERE menu_key = 'sales-contacts'`
   );
 
-  /* 指定运营账号：注册用户列表 + 用户数据全量可见 */
+  /* 指定运营账号：注册用户列表 + 用户数据全量可见（名单见 fullUserScope.js） */
+  var fullScopeIn = fullUserScopeUsernameSqlIn();
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'users' FROM admin_accounts WHERE username IN ('19106014552', '13691947741', '18671741907')`
+     SELECT id, 'users' FROM admin_accounts WHERE username IN (` +
+      fullScopeIn +
+      `)`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'user-data' FROM admin_accounts WHERE username IN ('19106014552', '13691947741', '18671741907')`
+     SELECT id, 'user-data' FROM admin_accounts WHERE username IN (` +
+      fullScopeIn +
+      `)`
   );
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username IN ('19106014552', '13691947741', '18671741907')`
+     SELECT id, 'tax-records-edit' FROM admin_accounts WHERE username IN (` +
+      fullScopeIn +
+      `)`
   );
 
   /* 侧栏子页独立授权：原挂在「注册用户 / 管理登录」下的入口补权，避免已有账号丢菜单 */
@@ -16984,6 +16977,22 @@ async function handleAdminEmailsSends(req, res) {
   }
 }
 
+/** 邮件 campaign 近 N 天成功/失败率 */
+async function handleAdminEmailsCampaignStats(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().campaignStats({
+      campaign: q.campaign,
+      days: q.days,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails campaign-stats]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 向勾选用户发送邮件 */
 async function handleAdminEmailsSend(req, res) {
   try {
@@ -23883,6 +23892,7 @@ function getHandlers() {
     handleAdminEmailsBulk,
     handleAdminEmailsUsers,
     handleAdminEmailsSends,
+    handleAdminEmailsCampaignStats,
     handleAdminEmailsSend,
     handleAdminEmailsClear,
     handleAdminRegisterTimeDistribution,

@@ -383,6 +383,10 @@
 }
 #batchMsModalClear { margin-right: auto; }
 
-.tax-paste-import-toolbar { display: flex; justify-content: flex-end; margin: 0 0 8px; }
-.tax-paste-import-textarea { width: 100%; box-sizing: border-box; min-height: 220px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
+.tax-paste-import-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; }
+.tax-paste-import-textarea { width: 100%; box-sizing: border-box; min-height: 180px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; line-height: 1.55; font-family: inherit; resize: vertical; }
 .tax-paste-import-preview { margin: 0 0 10px; padding: 10px 12px; background: var(--color-surface-alt); border-radius: 8px; font-size: 13px; color: var(--color-text); max-height: 160px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.tax-paste-import-preview.is-ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+.tax-paste-import-preview.is-err { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.tax-paste-import-footer { flex-wrap: wrap; gap: 8px; }
+.tax-paste-import-footer #taxPasteImportGenerateBtn { flex: 1 1 140px; min-height: 44px; font-weight: 700; }

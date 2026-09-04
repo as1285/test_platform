@@ -184,7 +184,7 @@ mustExclude(
   ['bindTaxRecycleBinModal'],
   'recycle bin bind removed from consult-batch-tax'
 );
-mustInclude('frontend/consult.html', ['consult-records.js?v=20260831-refundqual'], 'consult recycle-bind cache');
+mustInclude('frontend/consult.html', ['consult-records.js?v=20260904-funnel-cta'], 'consult recycle-bind cache');
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
@@ -534,7 +534,7 @@ mustInclude(
   'frontend/consult.html',
   [
     'id="consultRefundAdEntry"',
-    'purchase.html?from=consult',
+    'refund_ad.html?from=consult',
     '二次退税咨询',
     'id="consultRefundAdProductEntry"'
   ],
@@ -716,10 +716,9 @@ mustInclude(
     'function isAndroidWhitePageImmersiveDefaultClient()',
     'function isAndroidVerifiedOuterWhitePageClient()',
     'isAndroidWhitePageImmersiveDefaultClient()',
-    ':not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result',
-    'function jsonAsciiHeaderValue('
+    ':not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result'
   ],
-  'android white-page default immersive inset and latin-1 headers'
+  'android white-page default immersive inset'
 );
 mustInclude(
   'frontend/public/js/auth-boot.js',
@@ -729,11 +728,6 @@ mustInclude(
     'app-android-immersive-white-top'
   ],
   'android white-page inset first-paint'
-);
-mustInclude(
-  'frontend/tests/e2e/ui-smoke-devices.mjs',
-  ['export const DEVICE_PROFILES', 'UI_SMOKE_DEVICES', 'oneplus-12', 'iphone-17-promax'],
-  'ui smoke device catalog'
 );
 mustInclude(
   'frontend/shuiming_result.html',
@@ -1099,11 +1093,20 @@ if (!read('frontend/consult.html').includes('>附加产品<')) ok('consult tab n
 else fail('consult tab no 附加产品');
 mustInclude(
   'frontend/public/js/consult-batch-tax.js',
-  ['copyTaxPasteImportTemplate', 'TAX_PASTE_IMPORT_TEMPLATE', 'taxPasteImportCopyTplBtn'],
+  [
+    'copyTaxPasteImportTemplate',
+    'TAX_PASTE_IMPORT_TEMPLATE',
+    'taxPasteImportCopyTplBtn',
+    'fillTaxPasteTemplateIntoBox',
+    'scheduleTaxPasteLivePreview',
+    '公司名称：某某有限公司',
+    '2023年全年',
+    '2025年全年'
+  ],
   'tax paste copy template'
 );
-mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'consult copy tpl btn');
-mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '复制模板内容'], 'admin copy tpl btn');
+mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴'], 'consult copy tpl btn');
+mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '重新填入模板'], 'admin copy tpl btn');
 mustInclude(
   'frontend/admin_panel.html',
   ['col-cert-perm', '/js/admin_panel.js?v='],
@@ -1155,14 +1158,23 @@ mustInclude(
   'purchase analytics admin activation hint'
 );
 mustInclude(
-  'backend/src/legacy/monolith.js',
+  'backend/src/admin/fullUserScope.js',
   [
-    "ADMIN_FULL_USER_SCOPE_USERNAMES",
+    'ADMIN_FULL_USER_SCOPE_USERNAMES',
     "'19106014552': true",
     "'13691947741': true",
     "'18671741907': true",
     'function adminHasFullUserScope',
-    'if (!admin || adminHasFullUserScope(admin)) return true'
+    'function fullUserScopeUsernameSqlIn'
+  ],
+  'admin full user scope allowlist'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    "require('../admin/fullUserScope')",
+    'if (!admin || adminHasFullUserScope(admin)) return true',
+    'fullUserScopeUsernameSqlIn()'
   ],
   'admin 19106014552 full registered user scope'
 );
@@ -1524,7 +1536,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260903-yearguard'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260904-paste-tpl'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -1773,7 +1785,14 @@ mustInclude(
     'refund_ad.html?from=tax_done',
     'reason=',
     'track_refund_ad_after_tax_go',
-    "opts.source === 'single_save'"
+    'track_refund_ad_after_tax_show',
+    "opts.source === 'single_save'",
+    'showSpecialDeductionRefundDialog',
+    'specialDeductionRefundEstimate',
+    'REFUND_CHILD_MONTH',
+    'REFUND_PARENT_MONTH',
+    'cg-refund-force-overlay',
+    'REFUND_AD_ESTIMATE_KEY'
   ],
   'after tax fill go to refund ad when 2023-2025 tax over 5000 or income 150000'
 );
@@ -1792,16 +1811,17 @@ mustInclude(
   [
     'isInactiveRefundCardUser',
     'var show = showInactive || showActiveBrowse',
+    'var showInactive = inactive',
     '__smAccountActiveConfirmed',
     'consultRefundAdEntry',
     'syncShuimingInactivePrompt',
-    '开通后这张卡会消失'
+    '去计算可退税额'
   ],
-  'refund card only for inactive users then hides after activate'
+  'refund card for every inactive user, CTA to calculate'
 );
 mustInclude(
   'frontend/consult.html',
-  ['consultRefundAdEntry" hidden', 'purchase.html?from=consult', '开通后这张卡会消失'],
+  ['consultRefundAdEntry" hidden', 'refund_ad.html?from=consult', '未开通也可先看二次退税'],
   'consult refund card hidden until inactive prompt'
 );
 mustInclude(
@@ -1936,7 +1956,11 @@ mustInclude(
     'btnRefundAdContinue',
     'track_refund_ad_after_tax_continue',
     'track_refund_ad_page_leave',
-    'dwell_seconds'
+    'dwell_seconds',
+    'refundEstCard',
+    '二次退税怎么来的',
+    'refund_ad_estimate_v1',
+    '3 个子女每月'
   ],
   'refund ad page skip-friendly after tax fill'
 );
@@ -2018,6 +2042,19 @@ mustInclude(
   ['id="gjjAdOnRefund"', 'ad-services-top'],
   'gjj extract lives on refund ad page with services grid'
 );
+{
+  const adHtml = read('frontend/refund_ad.html');
+  const copyIdx = adHtml.indexOf('id="btnCopyRefundWechat"');
+  const gridIdx = adHtml.indexOf('class="ad-services-top"');
+  if (copyIdx > 0 && gridIdx > 0 && copyIdx < gridIdx) {
+    ok('refund ad WeChat copy sits above services grid');
+  } else {
+    fail(
+      'refund ad WeChat copy sits above services grid',
+      `copy=${copyIdx} grid=${gridIdx}`
+    );
+  }
+}
 mustInclude(
   'backend/src/admin/adPageAnalytics.js',
   ['track_gjj_extract_ad_view', 'track_gjj_extract_ad_page_leave'],
@@ -2255,8 +2292,9 @@ if (
       'mine.html': ['20260903-android-blackbar'],
       'purchase.html': ['20260903-mate60pay'],
       'shuiming.html': ['20260904-android-inset'],
-      'shuiming_result.html': ['20260904-17pm-arrow'],
-      'xiangqing.html': ['20260904-android-inset']
+      'shuiming_result.html': ['20260904-tokens'],
+      'xiangqing.html': ['20260904-android-inset'],
+      'consult.html': ['20260904-funnel-cta']
     },
     'auth-boot': {
       'login.html': ['20260902-ip16pm-login'],

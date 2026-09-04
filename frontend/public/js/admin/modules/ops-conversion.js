@@ -580,7 +580,7 @@
   function todoCard(segOrHref, label, num, hint, isAd) {
     if (isAd) {
       return (
-        '<a href="#ops-ad-analytics"><div class="todo-label">' +
+        '<a href="#ops-ad-analytics/data"><div class="todo-label">' +
         esc(label) +
         '</div><div class="todo-num">' +
         esc(String(num != null ? num : 0)) +

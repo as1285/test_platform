@@ -60,7 +60,7 @@
     <script src="/js/app/nav.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ff9a1f">
-    <title>二次退税 · 公积金</title>
+    <title>二次退税</title>
     <style>
         :root {
             --safe-t: env(safe-area-inset-top, 0px);
@@ -158,6 +158,13 @@
             padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
             background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, #f8fafc 28%, #f8fafc 100%);
             pointer-events: none;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.18s ease, visibility 0.18s ease;
+        }
+        .refund-ad-sticky-cta.is-visible {
+            visibility: visible;
+            opacity: 1;
         }
         .refund-ad-sticky-cta-btn {
             pointer-events: auto;
@@ -180,6 +187,11 @@
         .refund-ad-sticky-cta-btn:active { opacity: 0.92; }
         .refund-ad-sticky-cta-btn.is-copied {
             background: #059669;
+        }
+        #refundEstCard[hidden],
+        #refundHeroWx[hidden],
+        #refundAdStickyCta[hidden] {
+            display: none !important;
         }
         .refund-ad-page {
             padding: 12px 12px calc(var(--bottom-nav-clearance, 86px) + 64px);
@@ -306,18 +318,304 @@
             height: auto;
             vertical-align: middle;
         }
+        .refund-est {
+            margin: 0 0 12px;
+            padding: 16px 14px 14px;
+            border-radius: 16px;
+            background: linear-gradient(165deg, #fff7ed 0%, #fff 42%);
+            border: 2px solid #fb923c;
+            box-shadow: 0 10px 24px rgba(194, 65, 12, 0.12);
+        }
+        .refund-est-kicker {
+            margin: 0 0 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #c2410c;
+            letter-spacing: 0.02em;
+        }
+        .refund-est-label {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #7c2d12;
+        }
+        .refund-est-amt {
+            margin: 4px 0 8px;
+            font-size: 36px;
+            font-weight: 800;
+            color: #c2410c;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+        }
+        .refund-est-years {
+            display: none;
+            margin: 0 0 12px;
+            font-size: 12px;
+            color: #9a3412;
+            line-height: 1.5;
+            min-height: 0;
+        }
+        .refund-est-year-rows {
+            list-style: none;
+            margin: 0 0 12px;
+            padding: 0;
+            border: 1px solid #fed7aa;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .refund-est-year-rows li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #ffedd5;
+            font-size: 14px;
+            color: #7c2d12;
+        }
+        .refund-est-year-rows li:last-child { border-bottom: 0; }
+        .refund-est-year-rows strong {
+            font-size: 16px;
+            font-weight: 800;
+            color: #c2410c;
+        }
+        .refund-est-calc-btn {
+            display: block;
+            width: 100%;
+            min-height: 48px;
+            margin: 0 0 12px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 12px;
+            background: #ea580c;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 800;
+            font-family: inherit;
+            box-shadow: 0 8px 18px rgba(234, 88, 12, 0.28);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-est-calc-btn:active { opacity: 0.92; }
+        .refund-est-calc-btn:disabled {
+            opacity: 0.72;
+            cursor: wait;
+        }
+        .refund-est-calc-note {
+            margin: -6px 2px 12px;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #9a3412;
+            text-align: center;
+        }
+        .refund-calc-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000030;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.48);
+        }
+        .refund-calc-overlay[hidden] { display: none !important; }
+        .refund-calc-panel {
+            width: 100%;
+            max-width: 360px;
+            max-height: min(86vh, 640px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px 16px 16px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+        }
+        .refund-calc-kicker {
+            margin: 0 0 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #c2410c;
+            text-align: center;
+            line-height: 1.45;
+        }
+        .refund-calc-panel h3 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            font-weight: 800;
+            text-align: center;
+            color: #111827;
+        }
+        .refund-calc-total {
+            margin: 0 0 12px;
+            font-size: 32px;
+            font-weight: 800;
+            color: #c2410c;
+            text-align: center;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            min-height: 1.15em;
+        }
+        .refund-calc-years {
+            list-style: none;
+            margin: 0 0 12px;
+            padding: 0;
+            border: 1px solid #ffedd5;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .refund-calc-years li {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #ffedd5;
+            font-size: 14px;
+            color: #7c2d12;
+        }
+        .refund-calc-years li:last-child { border-bottom: 0; }
+        .refund-calc-years strong {
+            font-weight: 800;
+            color: #c2410c;
+        }
+        .refund-calc-hint {
+            margin: 0 0 14px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #64748b;
+            text-align: center;
+        }
+        .refund-calc-primary,
+        .refund-calc-secondary {
+            display: block;
+            width: 100%;
+            min-height: 46px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 800;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-calc-primary {
+            border: none;
+            background: #07c160;
+            color: #fff;
+        }
+        .refund-calc-primary:active { opacity: 0.92; }
+        .refund-calc-secondary {
+            margin-top: 8px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #475569;
+        }
+        .refund-est-why h2 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            font-weight: 800;
+            color: #111827;
+        }
+        .refund-est-why ol {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .refund-est-why li {
+            margin: 0 0 6px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #334155;
+        }
+        .refund-est-why li:last-child { margin-bottom: 0; }
+        .refund-est-why strong { color: #c2410c; }
+        .refund-est-note {
+            margin: 10px 0 0;
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.45;
+        }
+        .refund-hero-wx {
+            margin: 0 0 12px;
+            overflow: hidden;
+            border-radius: 16px;
+            background: #fff;
+            border: 2px solid #07c160;
+            box-shadow: 0 8px 20px rgba(7, 193, 96, 0.16);
+        }
+        .refund-hero-wx .refund-ad-wx {
+            margin: 0;
+            padding: 14px;
+            background: #fff;
+        }
+        .refund-hero-wx .refund-ad-copy {
+            min-height: 48px;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .refund-ad-poster-fold {
+            margin: 0 0 12px;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .refund-ad-poster-fold summary {
+            list-style: none;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #334155;
+            cursor: pointer;
+        }
+        .refund-ad-poster-fold summary::-webkit-details-marker { display: none; }
         .refund-ad-lede {
             margin: 0 2px 12px;
             padding: 10px 12px;
             border-radius: 12px;
             background: #fff;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
             font-size: 13px;
             line-height: 1.55;
             color: #475569;
         }
         .refund-ad-lede strong {
             color: #9a3412;
+        }
+        .refund-ad-more {
+            margin: 12px 0 0;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .refund-ad-more > summary {
+            cursor: pointer;
+            padding: 12px 14px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            list-style: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-ad-more > summary::-webkit-details-marker { display: none; }
+        .refund-ad-more[open] > summary {
+            border-radius: 12px 12px 0 0;
+            border-bottom: none;
+        }
+        .refund-ad-more-body {
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            background: #f8fafc;
+            padding: 0 0 12px;
+        }
+        .refund-ad-more-body .refund-ad-lede,
+        .refund-ad-more-body .gjj-ad-lede,
+        .refund-ad-more-body .ad-services-top,
+        .refund-ad-more-body .refund-ad,
+        .refund-ad-more-body .gjj-ad-on-refund {
+            margin: 12px 12px 0;
+            box-shadow: none;
         }
         .refund-ad-guide {
             margin-top: 12px;
@@ -441,76 +739,108 @@
 <body class="page-refund-ad has-bottom-nav">
     <header class="refund-ad-header">
         <a href="consult.html" class="refund-ad-back" id="refundAdBackLink">返回咨询</a>
-        <h1 id="refundAdTitle">二次退税 · 公积金</h1>
-        <p class="refund-ad-header-sub" id="refundAdSub">根据你刚填的记录，先看是否符合二次退税；符合就复制微信咨询。</p>
+        <h1 id="refundAdTitle">二次退税</h1>
+        <p class="refund-ad-header-sub" id="refundAdSub">先看可退金额，再复制微信办理。</p>
     </header>
     <main class="refund-ad-page">
         <div class="refund-ad-wrap">
-            <div class="ad-services-top" aria-label="支持平台与服务">
-                <img
-                    src="/img/ad-services-grid.jpg?v=20260831-grid"
-                    width="1080"
-                    height="1350"
-                    alt="支持小红书、拼多多、京东、得物、美团、抖音、快手、淘宝、花呗、公积金等多平台秒到与货到服务"
-                >
-            </div>
-            <p class="refund-ad-lede" id="refundAdLede">先对照：<strong>2023–2025 任一年已缴税额超过 5000 元</strong>，或<strong>任一年收入达到 15 万</strong>。符合就复制微信号，备注「二次退税」咨询。</p>
-            <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
-                <h2 class="refund-ad-visually-hidden">哪些人可以做二次退税</h2>
-                <img
-                    class="refund-ad-poster"
-                    src="/img/refund-ad.jpg?v=20260831-poster"
-                    width="768"
-                    height="1024"
-                    alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
-                >
+            <section class="refund-est" id="refundEstCard" aria-labelledby="refundEstAmtLabel">
+                <p class="refund-est-kicker">专项附加扣除 · 二次退税</p>
+                <p class="refund-est-label" id="refundEstAmtLabel">2023–2025 大约可退</p>
+                <p class="refund-est-amt" id="refundEstAmt">点下方按钮自动计算</p>
+                <p class="refund-est-years" id="refundEstYears"></p>
+                <ul class="refund-est-year-rows" id="refundEstYearRows" aria-label="2023至2025可退税额">
+                    <li><span>2023 年</span><strong data-year="2023">待计算</strong></li>
+                    <li><span>2024 年</span><strong data-year="2024">待计算</strong></li>
+                    <li><span>2025 年</span><strong data-year="2025">待计算</strong></li>
+                </ul>
+                <button type="button" class="refund-est-calc-btn" id="btnCalcRefundEst">一键自动计算可退税额</button>
+                <p class="refund-est-calc-note">按你填的个税记录测算。算出后复制微信办理。</p>
+                <div class="refund-est-why">
+                    <h2>二次退税怎么来的</h2>
+                    <ol>
+                        <li>汇算清缴可补报专项附加扣除，覆盖 <strong>2023、2024、2025</strong>。</li>
+                        <li>3 个子女每月 <strong>4500 元</strong> + 赡养父母每月 <strong>3000 元</strong> = 每月多扣 <strong>7500 元</strong>。</li>
+                        <li>应纳税所得额降低后，已经多缴的个税符合条件可以退回。</li>
+                    </ol>
+                    <p class="refund-est-note">测算仅供参考，实际以汇算清缴为准。</p>
+                </div>
+            </section>
+            <div class="refund-hero-wx" id="refundHeroWx">
                 <div class="refund-ad-wx is-stack">
                     <div class="refund-ad-wx-meta">
-                        <span class="refund-ad-wx-label">加微信咨询（备注：二次退税）</span>
+                        <span class="refund-ad-wx-label">加微信办理（备注：二次退税）</span>
                         <strong class="refund-ad-wx-id" id="refundWechatId">Tangdong6832</strong>
                     </div>
                     <button type="button" class="refund-ad-copy" id="btnCopyRefundWechat">一键复制微信号 · 去微信咨询</button>
                 </div>
-            </aside>
+            </div>
             <div class="refund-ad-continue" id="refundAdContinue">
                 <button type="button" class="refund-ad-continue-btn" id="btnRefundAdContinue" disabled>查看我刚填的记录</button>
-                <p class="refund-ad-continue-note" id="refundAdContinueNote">先看是否符合二次退税；约 3 秒后可跳过</p>
+                <p class="refund-ad-continue-note" id="refundAdContinueNote">先看可退金额并复制微信；约 3 秒后可跳过</p>
             </div>
-            <p class="gjj-ad-lede" id="gjjAdLede">同一顾问也可问公积金：<strong>在职 / 离职 / 封存、大额 / 小额</strong>都可操作，不成功不收费，当天到账。复制微信号，备注「公积金提取」。</p>
-            <aside class="gjj-ad-on-refund" id="gjjAdOnRefund" aria-label="公积金提取">
-                <img
-                    class="gjj-ad-on-refund-img"
-                    id="gjjAdPoster"
-                    src="/img/gjj-extract-ad.jpg?v=20260831-poster"
-                    width="768"
-                    height="1024"
-                    alt="公积金提取：在职离职封存大额小额皆可操作，不成功不收费，当天到账"
-                >
-                <div class="refund-ad-wx is-stack">
-                    <div class="refund-ad-wx-meta">
-                        <span class="refund-ad-wx-label">加微信咨询（备注：公积金提取）</span>
-                        <strong class="refund-ad-wx-id" id="gjjWechatId">Tangdong6832</strong>
+            <details class="refund-ad-more">
+                <summary>更多说明（海报 / 平台 / 公积金）</summary>
+                <div class="refund-ad-more-body">
+                    <p class="refund-ad-lede" id="refundAdLede">先对照专项附加扣除：<strong>3 个子女每月 4500 元</strong>，<strong>赡养父母每月 3000 元</strong>。汇算清缴补报后，已经多缴的个税符合条件可以退回。复制微信号，备注「二次退税」咨询。</p>
+                    <aside class="refund-ad" id="refundAd" aria-label="二次退税咨询">
+                        <details class="refund-ad-poster-fold">
+                            <summary>哪些人可以做二次退税（海报）</summary>
+                            <h2 class="refund-ad-visually-hidden">哪些人可以做二次退税</h2>
+                            <img
+                                class="refund-ad-poster"
+                                id="refundAdPoster"
+                                src="/img/refund-ad.jpg?v=20260831-poster"
+                                width="768"
+                                height="1024"
+                                alt="哪些人可以做二次退税：月薪≥5000元，过去三年正常缴纳过个人所得税，覆盖全行业"
+                            >
+                        </details>
+                    </aside>
+                    <div class="ad-services-top" aria-label="支持平台与服务">
+                        <img
+                            src="/img/ad-services-grid.jpg?v=20260831-grid"
+                            width="1080"
+                            height="1350"
+                            alt="支持小红书、拼多多、京东、得物、美团、抖音、快手、淘宝、花呗、公积金等多平台秒到与货到服务"
+                        >
                     </div>
-                    <button type="button" class="refund-ad-copy" id="btnCopyGjjWechat">一键复制微信号 · 备注公积金</button>
+                    <p class="gjj-ad-lede" id="gjjAdLede">同一顾问也可问公积金：<strong>在职 / 离职 / 封存、大额 / 小额</strong>都可操作，不成功不收费，当天到账。复制微信号，备注「公积金提取」。</p>
+                    <aside class="gjj-ad-on-refund" id="gjjAdOnRefund" aria-label="公积金提取">
+                        <img
+                            class="gjj-ad-on-refund-img"
+                            id="gjjAdPoster"
+                            src="/img/gjj-extract-ad.jpg?v=20260831-poster"
+                            width="768"
+                            height="1024"
+                            alt="公积金提取：在职离职封存大额小额皆可操作，不成功不收费，当天到账"
+                        >
+                        <div class="refund-ad-wx is-stack">
+                            <div class="refund-ad-wx-meta">
+                                <span class="refund-ad-wx-label">加微信咨询（备注：公积金提取）</span>
+                                <strong class="refund-ad-wx-id" id="gjjWechatId">Tangdong6832</strong>
+                            </div>
+                            <button type="button" class="refund-ad-copy" id="btnCopyGjjWechat">一键复制微信号 · 备注公积金</button>
+                        </div>
+                    </aside>
                 </div>
-            </aside>
+            </details>
             <section class="refund-ad-guide" id="refundAdGuide" aria-labelledby="refundAdGuideTitle">
                 <h2 id="refundAdGuideTitle">怎么判断、怎么咨询</h2>
-                <p class="refund-ad-guide-intro">海报上的条件在手机上容易看不全。按下面对照即可，不用先懂税法。本页只做咨询入口，能不能办、能办多少以沟通结果为准。</p>
+                <p class="refund-ad-guide-intro">不用先懂税法。算出金额后复制微信即可，能不能办、能办多少以沟通结果为准。</p>
                 <div class="refund-ad-guide-block">
                     <h3>谁可以先问</h3>
                     <ul>
-                        <li>2023、2024、2025 任一年<strong>已缴税额超过 5000 元</strong>。</li>
-                        <li>或者这三年里任一年<strong>收入合计达到 15 万</strong>。</li>
-                        <li>公务员、医生、教师、程序员、设计师、销售、国企员工、高管、主播、自由职业等，各行业都可以先问。</li>
+                        <li>2023–2025 已填个税，可按 <strong>3 个子女 4500 元/月 + 赡养父母 3000 元/月</strong>测算。</li>
+                        <li>这三年任一年<strong>已缴税超 5000 元</strong>，或<strong>收入合计达 15 万</strong>，也可以先问。</li>
                     </ul>
                 </div>
                 <div class="refund-ad-guide-block is-white">
                     <h3>建议按这 3 步</h3>
                     <ol>
-                        <li>先看 2023–2025 是否有一年缴税超 5000，或一年收入达到 15 万。</li>
-                        <li>心里有个数：任职单位、近 1–3 年工资和已缴个税。没有记录的，先在本产品里补一条，顾问对照更快。</li>
-                        <li>点「复制微信号」，打开微信添加，<strong>备注「二次退税」</strong>，把单位和缴税情况发给顾问。</li>
+                        <li>点上方「一键自动计算可退税额」，算出 <strong>2023、2024、2025</strong> 大约可退金额。</li>
+                        <li>复制微信号，打开微信添加，<strong>备注「二次退税」</strong>办理。</li>
+                        <li>顾问会对照任职单位和个税记录；没有记录可先在本产品补一条。</li>
                     </ol>
                 </div>
                 <div class="refund-ad-guide-block is-tip" id="refundAdNeedEmployer" hidden>
@@ -530,6 +860,21 @@
             </section>
         </div>
     </main>
+    <div class="refund-calc-overlay" id="refundCalcOverlay" hidden>
+        <div class="refund-calc-panel" role="dialog" aria-modal="true" aria-labelledby="refundCalcTitle">
+            <p class="refund-calc-kicker" id="refundCalcKicker">2023 · 2024 · 2025 专项附加扣除测算</p>
+            <h3 id="refundCalcTitle">可退税额</h3>
+            <p class="refund-calc-total" id="refundCalcTotal"></p>
+            <ul class="refund-calc-years" id="refundCalcYearList">
+                <li><span>2023 年</span><strong data-year="2023">—</strong></li>
+                <li><span>2024 年</span><strong data-year="2024">—</strong></li>
+                <li><span>2025 年</span><strong data-year="2025">—</strong></li>
+            </ul>
+            <p class="refund-calc-hint" id="refundCalcHint">测算仅供参考。请联系客服办理二次退税。</p>
+            <button type="button" class="refund-calc-primary" id="btnRefundCalcPrimary">联系客服进行退税</button>
+            <button type="button" class="refund-calc-secondary" id="btnRefundCalcSecondary">先看看说明</button>
+        </div>
+    </div>
     <div class="refund-ad-toast" id="refundAdToast" role="status" aria-live="polite"></div>
     <div class="refund-ad-sticky-cta" id="refundAdStickyCta">
         <button type="button" class="refund-ad-sticky-cta-btn" id="btnStickyCopyRefundWechat">一键复制微信号 · 去微信咨询</button>
@@ -556,10 +901,97 @@
             <span class="nav-text">我的</span>
         </a>
     </div>
+    <script src="/js/refund-estimate.js?v=20260904-calc"></script>
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
+        var REFUND_REMARK = '二次退税';
+        var GJJ_REMARK = '公积金提取';
         var WECHAT_COPIED_KEY = 'refund_ad_wechat_copied_v1';
+
+        function loadAdPagesConfig() {
+            if (window.__adPagesConfigPromise) return window.__adPagesConfigPromise;
+            window.__adPagesConfigPromise = fetch('/api/public/ad-pages', { credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    return j && j.code === 200 ? j.data : null;
+                })
+                .catch(function () {
+                    return null;
+                });
+            return window.__adPagesConfigPromise;
+        }
+
+        function setNodeText(el, text) {
+            if (el && text != null && String(text) !== '') el.textContent = String(text);
+        }
+
+        function hideNode(el, hide) {
+            if (!el) return;
+            el.hidden = !!hide;
+        }
+
+        function applyAdPages(cfg) {
+            if (!cfg) return;
+            if (cfg.wechat_id) {
+                WECHAT_ID = cfg.wechat_id;
+                setNodeText(document.getElementById('refundWechatId'), WECHAT_ID);
+                setNodeText(document.getElementById('refundWechatIdGuide'), WECHAT_ID);
+                setNodeText(document.getElementById('gjjWechatId'), WECHAT_ID);
+            }
+            var refundOn = !!cfg.refund;
+            hideNode(document.getElementById('refundEstCard'), !refundOn);
+            hideNode(document.getElementById('refundHeroWx'), !refundOn);
+            hideNode(document.getElementById('refundAdLede'), !refundOn);
+            hideNode(document.getElementById('refundAd'), !refundOn);
+            hideNode(document.getElementById('refundAdGuide'), !refundOn);
+            hideNode(document.getElementById('refundAdStickyCta'), !refundOn);
+            if (cfg.refund) {
+                setNodeText(document.getElementById('refundAdLede'), cfg.refund.lede);
+                if (cfg.refund.poster_url) {
+                    var posterEl = document.getElementById('refundAdPoster');
+                    if (posterEl) posterEl.src = cfg.refund.poster_url;
+                }
+                var remark = cfg.refund.remark || '二次退税';
+                REFUND_REMARK = remark;
+                var wxLabel = document.querySelector('#refundHeroWx .refund-ad-wx-label');
+                setNodeText(wxLabel, '加微信办理（备注：' + remark + '）');
+                var copied = false;
+                try {
+                    copied = localStorage.getItem(WECHAT_COPIED_KEY) === '1';
+                } catch (eCopied) {}
+                if (!copied) {
+                    setNodeText(document.getElementById('btnCopyRefundWechat'), '一键复制微信号 · 备注' + remark);
+                    setNodeText(document.getElementById('btnCopyRefundWechatGuide'), '一键复制微信号 · 备注' + remark);
+                    setNodeText(document.getElementById('btnStickyCopyRefundWechat'), '一键复制微信号 · 备注' + remark);
+                }
+            }
+            var gjjOn = !!cfg.gjj;
+            hideNode(document.getElementById('gjjAdLede'), !gjjOn);
+            hideNode(document.getElementById('gjjAdOnRefund'), !gjjOn);
+            if (cfg.gjj) {
+                setNodeText(document.getElementById('gjjAdLede'), cfg.gjj.lede);
+                if (cfg.gjj.poster_url) {
+                    var gjjPoster = document.getElementById('gjjAdPoster');
+                    if (gjjPoster) gjjPoster.src = cfg.gjj.poster_url;
+                }
+                var gjjRemark = cfg.gjj.remark || '公积金提取';
+                GJJ_REMARK = gjjRemark;
+                var gjjLabel = document.querySelector('#gjjAdOnRefund .refund-ad-wx-label');
+                setNodeText(gjjLabel, '加微信咨询（备注：' + gjjRemark + '）');
+                var gjjCopied = false;
+                try {
+                    gjjCopied = localStorage.getItem(WECHAT_COPIED_KEY) === '1';
+                } catch (eGjj) {}
+                if (!gjjCopied) {
+                    setNodeText(document.getElementById('btnCopyGjjWechat'), '一键复制微信号 · 备注' + gjjRemark);
+                }
+            }
+        }
+
+        loadAdPagesConfig().then(applyAdPages);
         var copyBtn = document.getElementById('btnCopyRefundWechat');
         var stickyCopyBtn = document.getElementById('btnStickyCopyRefundWechat');
         var idEl = document.getElementById('refundWechatId');
@@ -664,7 +1096,7 @@
         function copyWechat(copyFrom) {
             copyText(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「二次退税」');
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「' + REFUND_REMARK + '」');
                     copiedThisVisit += 1;
                     markWechatCopied();
                     track('track_refund_ad_copy', {
@@ -687,6 +1119,27 @@
                 copyWechat('sticky');
             });
         }
+        (function bindStickyAfterHeroLeaves() {
+            var sticky = document.getElementById('refundAdStickyCta');
+            var hero = document.getElementById('refundHeroWx') || copyBtn;
+            if (!sticky || !hero) return;
+            function setStickyVisible(on) {
+                if (on) sticky.classList.add('is-visible');
+                else sticky.classList.remove('is-visible');
+            }
+            if (typeof IntersectionObserver !== 'function') {
+                setStickyVisible(true);
+                return;
+            }
+            var io = new IntersectionObserver(
+                function (entries) {
+                    var hit = entries && entries[0] && entries[0].isIntersecting;
+                    setStickyVisible(!hit);
+                },
+                { threshold: 0.4 }
+            );
+            io.observe(hero);
+        })();
         if (idEl) {
             idEl.addEventListener('click', function () {
                 copyWechat('wx_id');
@@ -749,6 +1202,8 @@
         var fromRaw = '';
         var year = '';
         var reason = '';
+        var estQs = 0;
+        var yearsQs = '';
         try {
             var qs = new URLSearchParams(window.location.search || '');
             fromRaw = String(qs.get('from') || '').trim();
@@ -763,10 +1218,72 @@
             }
             year = String(qs.get('year') || '').trim();
             reason = String(qs.get('reason') || '').trim();
+            estQs = parseFloat(String(qs.get('est') || '').replace(/,/g, ''));
+            if (!isFinite(estQs) || estQs < 0) estQs = 0;
+            yearsQs = String(qs.get('years') || '').trim();
         } catch (eFrom) {}
+        function formatRefundYuan(n) {
+            var v = Math.round(Number(n) || 0);
+            var s = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return (v < 0 ? '-¥' : '¥') + s;
+        }
+        function loadStoredEstimate() {
+            try {
+                var raw = localStorage.getItem('refund_ad_estimate_v1');
+                if (!raw) return null;
+                var obj = JSON.parse(raw);
+                return obj && typeof obj === 'object' ? obj : null;
+            } catch (eEst) {
+                return null;
+            }
+        }
+        function applyRefundEstimateCard() {
+            var stored = loadStoredEstimate();
+            var total = estQs;
+            if ((!total || total <= 0) && stored && stored.total > 0) {
+                total = Number(stored.total) || 0;
+            }
+            var amtEl = document.getElementById('refundEstAmt');
+            var yearsEl = document.getElementById('refundEstYears');
+            var labelEl = document.getElementById('refundEstAmtLabel');
+            if (amtEl && total > 0) {
+                amtEl.textContent = formatRefundYuan(total);
+                document.body.classList.add('has-refund-est');
+            }
+            if (labelEl) {
+                labelEl.textContent = '2023、2024、2025 大约可退';
+            }
+            if (yearsEl && stored && stored.years && stored.years.length) {
+                yearsEl.textContent = stored.years
+                    .filter(function (row) {
+                        return row && row.saved > 0;
+                    })
+                    .map(function (row) {
+                        return row.year + ' 年约 ' + formatRefundYuan(row.saved);
+                    })
+                    .join('  ·  ');
+            }
+            if (window.RefundEstimate && stored) {
+                window.RefundEstimate.fillYearLabels(
+                    document.getElementById('refundEstYearRows'),
+                    stored,
+                    total > 0 ? '暂无记录' : '待计算'
+                );
+            }
+            return total;
+        }
+        var estimateTotal = applyRefundEstimateCard();
         function applyRefundAdQualifiedLede() {
             var lede = document.getElementById('refundAdLede');
-            if (!lede || !year) return;
+            if (!lede) return;
+            if (estimateTotal > 0) {
+                lede.innerHTML =
+                    '按 3 个子女每月 <strong>4500 元</strong>、赡养父母每月 <strong>3000 元</strong>测算，大约可退 <strong>' +
+                    formatRefundYuan(estimateTotal) +
+                    '</strong>。请联系客服办理二次退税，复制微信号备注「二次退税」。';
+                return;
+            }
+            if (!year) return;
             if (reason === 'income') {
                 lede.innerHTML =
                     '根据你填写的记录，<strong>' +
@@ -789,6 +1306,22 @@
             }
         }
         applyRefundAdQualifiedLede();
+        if (window.RefundEstimate && typeof window.RefundEstimate.bindAdPage === 'function') {
+            window.RefundEstimate.bindAdPage({
+                track: track,
+                copyWechat: copyWechat,
+                showToast: showToast,
+                stickyBtn: stickyCopyBtn,
+                consultHref: function () {
+                    return consultHref('records');
+                },
+                onEstimate: function (est) {
+                    if (!est) return;
+                    estimateTotal = Number(est.total) || 0;
+                    applyRefundAdQualifiedLede();
+                }
+            });
+        }
         if (fromTaxDone) {
             document.body.classList.add('is-from-tax-done');
             var titleEl = document.getElementById('refundAdTitle');
@@ -835,7 +1368,8 @@
                 track('track_refund_ad_after_tax_view', {
                     wechat_id: WECHAT_ID,
                     year: year || undefined,
-                    reason: reason || undefined
+                    reason: reason || undefined,
+                    estimate_total: estimateTotal > 0 ? Math.round(estimateTotal) : undefined
                 });
             } else {
                 track('track_refund_ad_view', {
@@ -895,7 +1429,7 @@
         function copyGjjWechat(copyFrom) {
             copyText(WECHAT_ID)
                 .then(function () {
-                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「公积金提取」');
+                    showToast('已复制 ' + WECHAT_ID + '，请打开微信添加并备注「' + GJJ_REMARK + '」');
                     copiedThisVisit += 1;
                     markWechatCopied();
                     track('track_gjj_extract_ad_copy', {
@@ -965,6 +1499,8 @@
                     fromRaw === 'gjj_legacy';
             } catch (eHash) {}
             if (wantGjjFocus) {
+                var moreFold = document.querySelector('.refund-ad-more');
+                if (moreFold) moreFold.open = true;
                 setTimeout(function () {
                     try {
                         gjjBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });

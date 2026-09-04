@@ -6,6 +6,7 @@
  * 机型：见 ui-smoke-devices.mjs
  *   UI_SMOKE_DEVICES=all|full|iphone-12,oneplus-12,...
  */
+import { mkdirSync } from 'fs';
 import { chromium, devices } from 'playwright';
 import {
   DEVICE_PROFILES,
@@ -332,16 +333,24 @@ async function assertIosShuimingResultLayout(page, profile, tag) {
   } catch (eList) {}
   const layout = await page.evaluate(() => {
     const list = document.querySelector('.list');
-    const item = document.querySelector('.list-item');
     const arrow = document.querySelector('.list-row-company .list-arrow, .list-arrow');
+    const name = document.querySelector('.list-company-name');
     const csList = list ? getComputedStyle(list) : null;
+    const nameRect = name ? name.getBoundingClientRect() : null;
+    const arrowRect = arrow ? arrow.getBoundingClientRect() : null;
+    const arrowTy = getComputedStyle(document.documentElement)
+      .getPropertyValue('--device-arrow-ty')
+      .trim();
     return {
       classes: Array.from(document.documentElement.classList),
       innerWidth: window.innerWidth,
       listPadL: csList ? parseFloat(csList.paddingLeft) || 0 : null,
       listPadR: csList ? parseFloat(csList.paddingRight) || 0 : null,
       arrowTag: arrow ? arrow.tagName : '',
-      arrowHasImg: !!(arrow && arrow.tagName === 'IMG')
+      arrowHasImg: !!(arrow && arrow.tagName === 'IMG'),
+      arrowTy: arrowTy,
+      nameBottom: nameRect ? nameRect.bottom : null,
+      arrowBottom: arrowRect ? arrowRect.bottom : null
     };
   });
   if (layout.innerWidth >= 414) {
@@ -357,8 +366,32 @@ async function assertIosShuimingResultLayout(page, profile, tag) {
   if (profile.id === 'iphone-17-promax' && !layout.classes.includes('app-ios-iphone17promax')) {
     fail(`${tag} missing app-ios-iphone17promax: ${layout.classes.join(' ')}`);
   }
+  if (profile.id === 'iphone-17-promax') {
+    if (layout.arrowTy !== '-6px') {
+      fail(`${tag} --device-arrow-ty expected -6px got ${layout.arrowTy || '(empty)'}`);
+    }
+    if (layout.nameBottom != null && layout.arrowBottom != null) {
+      const dy = layout.arrowBottom - layout.nameBottom;
+      /* 真机 PingFang 字面高于行盒底；箭头底可比名字盒略高，但不能再低于名字 */
+      if (dy > 2 || dy < -8) {
+        fail(
+          `${tag} company chevron baseline dy=${dy.toFixed(2)} (arrowBottom-nameBottom, need -8..2)`
+        );
+      }
+    }
+    try {
+      const row = page.locator('.list-row-company').first();
+      await row.waitFor({ state: 'visible', timeout: 5000 });
+      mkdirSync('/tmp/ui-smoke-shots', { recursive: true });
+      const shotPath = '/tmp/ui-smoke-shots/iphone-17-promax-company-arrow.png';
+      await row.screenshot({ path: shotPath });
+      log(`${tag} screenshot ${shotPath}`);
+    } catch (eShot) {
+      log(`${tag} skip arrow screenshot: ${eShot && eShot.message ? eShot.message : eShot}`);
+    }
+  }
   log(
-    `${tag} ok ios tax-list pad=${layout.listPadL}/${layout.listPadR} arrow=${layout.arrowTag || 'none'} w=${layout.innerWidth}`
+    `${tag} ok ios tax-list pad=${layout.listPadL}/${layout.listPadR} arrow=${layout.arrowTag || 'none'} ty=${layout.arrowTy || '-'} w=${layout.innerWidth}`
   );
 }
 

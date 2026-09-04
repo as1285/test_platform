@@ -6,6 +6,8 @@
 const { getPool } = require('../shared/db');
 const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
+const { isValidUserEmail } = require('./userEmailBulk');
+const { adminHasFullUserScope } = require('./fullUserScope');
 
 var HIGH_INCOME = 15000;
 var GUEST_PREFIX = '__guest_';
@@ -99,6 +101,31 @@ function refundEligibleSql(userCol) {
   );
 }
 
+function refundCopiedExistsSql(userCol) {
+  return (
+    'EXISTS (SELECT 1 FROM ad_page_track_events e WHERE e.username = ' +
+    userCol +
+    " AND e.event_key IN ('track_refund_ad_copy', 'track_purchase_refund_ad_copy'))"
+  );
+}
+
+function isRefundBulkAudience(audience) {
+  return (
+    audience === 'refund_eligible' ||
+    audience === 'refund_eligible_copied' ||
+    audience === 'refund_eligible_not_copied'
+  );
+}
+
+function appendRefundBulkAudienceFilters(audience, where) {
+  where.push(refundEligibleSql('u.username'));
+  if (audience === 'refund_eligible_copied') {
+    where.push(refundCopiedExistsSql('u.username'));
+  } else if (audience === 'refund_eligible_not_copied') {
+    where.push('NOT ' + refundCopiedExistsSql('u.username'));
+  }
+}
+
 function refundHitReasonExpr(taxCol, incomeCol) {
   return (
     'CASE WHEN ' +
@@ -188,10 +215,7 @@ function nonGuestSql(alias) {
 }
 
 function isFullScope(admin) {
-  if (!admin) return false;
-  if (admin.is_super) return true;
-  var u = String(admin.username || '').trim();
-  return u === '19106014552' || u === '13691947741' || u === '18671741907';
+  return adminHasFullUserScope(admin);
 }
 
 function appendRegisteredScope(where, params, admin, userCol) {
@@ -1035,7 +1059,7 @@ async function handleOpsRefundEligible(req, res) {
         params
       );
       const [pageRows] = await conn.query(
-        `SELECT users.username, users.real_name, users.account_active,
+        `SELECT users.username, users.real_name, users.account_active, users.email,
                 users.register_source_channel, users.last_login_city,
                 hit.hit_year, hit.tax_sum, hit.income_sum, hit.hit_reason
          ${fromSql} ${whereSql}
@@ -1105,6 +1129,7 @@ async function handleOpsRefundEligible(req, res) {
               tax_sum: Math.round((Number(r.tax_sum) || 0) * 100) / 100,
               income_sum: Math.round((Number(r.income_sum) || 0) * 100) / 100,
               reason: r.hit_reason != null ? String(r.hit_reason) : '',
+              has_email: isValidUserEmail(r.email),
               viewed: n(f, 'views') > 0,
               copies: n(f, 'copies'),
               last_at: f.last_at || ''
@@ -1223,6 +1248,9 @@ module.exports = {
   REFUND_AD_MIN_INCOME: REFUND_AD_MIN_INCOME,
   refundEligibleSql: refundEligibleSql,
   refundYearAggSql: refundYearAggSql,
+  refundCopiedExistsSql: refundCopiedExistsSql,
+  isRefundBulkAudience: isRefundBulkAudience,
+  appendRefundBulkAudienceFilters: appendRefundBulkAudienceFilters,
   parseSegment: parseSegment,
   parseDays: parseDays,
   opsSkuGmvLabel: opsSkuGmvLabel

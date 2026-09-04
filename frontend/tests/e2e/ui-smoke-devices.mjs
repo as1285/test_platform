@@ -95,6 +95,14 @@ export const DEVICE_PROFILES = [
     deviceModel: 'iPhone 14 Pro Max'
   },
   {
+    id: 'iphone-15',
+    label: 'iPhone 15',
+    playwrightDevice: 'iPhone 15',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone 15'
+  },
+  {
     id: 'iphone-15-promax',
     label: 'iPhone 15 Pro Max',
     playwrightDevice: 'iPhone 15 Pro Max',

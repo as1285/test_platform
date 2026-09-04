@@ -1,0 +1,127 @@
+/**
+ * 机型布局 token。新机型只加 html class，再覆盖这三枚变量，不要复制 17 Pro Max 选择器。
+ *
+ * --device-safe-top    顶栏 / 汇总避让（可与 --safe-top、--app-shell-statusbar-top 同源）
+ * --device-list-edge   收入纳税明细列表左右贴边（0 = 铺满）
+ * --device-arrow-ty    「扣缴义务人」行 CSS 箭头的 translateY
+ */
+html {
+  --device-safe-top: env(safe-area-inset-top, 0px);
+  --device-list-edge: 0px;
+  --device-list-inline-pad: 16px;
+  --device-header-inline: 12px;
+  --device-arrow-ty: 2px;
+}
+
+html.app-ios-iphone15,
+html.app-ios-iphone15promax,
+html.app-ios-iphone17promax {
+  --device-arrow-ty: -6px;
+  --device-list-edge: 0px;
+  --device-header-inline: 12px;
+  --device-list-inline-pad: 16px;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list,
+html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list {
+  padding-left: var(--device-list-edge) !important;
+  padding-right: var(--device-list-edge) !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list-item,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list-item,
+html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list-item {
+  --list-inline-pad: var(--device-list-inline-pad);
+  border-radius: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .summary > .summary-item,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item {
+  padding-left: var(--device-list-inline-pad) !important;
+  padding-right: var(--device-list-inline-pad) !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .top-fixed .header,
+html.app-ios-iphone17promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+html.app-ios-iphone17promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+  padding-left: var(--device-header-inline) !important;
+  padding-right: var(--device-header-inline) !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .back-btn,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .back-btn {
+  left: var(--device-header-inline) !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .header-right,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .header-right {
+  right: var(--device-header-inline) !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .sm-activate-card,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,
+html.app-ios-iphone17promax body.page-shuiming-result .sm-refund-browse-card,
+html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-radius: 0 !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list-row-with-arrow {
+  display: flex !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list-row-left {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list-company,
+html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company {
+  display: flex !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,
+html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html.app-ios-iphone17promax body.page-shuiming-result .list-date {
+  margin-right: 0 !important;
+}
+
+html.app-ios-iphone15 body.page-shuiming-result .list-row-company,
+html.app-ios-iphone15promax body.page-shuiming-result .list-row-company,
+html.app-ios-iphone17promax body.page-shuiming-result .list-row-company {
+  align-items: flex-end !important;
+}
+
+html.app-ios-iphone15 body.page-shuiming-result .list-row-company .list-arrow,
+html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,
+html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,
+html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow {
+  margin: 0 2px 0 auto !important;
+  align-self: flex-end !important;
+  transform: translateY(var(--device-arrow-ty)) rotate(45deg) !important;
+}

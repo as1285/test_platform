@@ -19,6 +19,7 @@ const certPageSurvey = require('./growth/certPageSurvey');
 const taxFillSurvey = require('./growth/taxFillSurvey');
 const opsConversion = require('./admin/opsConversion');
 const adPageAnalytics = require('./admin/adPageAnalytics');
+const adPages = require('./admin/adPages');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
 const { registerTaxRoutes } = require('./tax/routes');
@@ -53,6 +54,7 @@ function buildApp() {
       taxFillSurvey.getHandlers(),
       opsConversion.getHandlers(),
       adPageAnalytics.getHandlers(),
+      adPages.getHandlers(),
       bankSalaryFlow.getHandlers()
     ),
     middleware: Object.assign({}, getMiddleware(), {

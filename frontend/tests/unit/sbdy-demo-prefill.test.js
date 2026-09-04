@@ -38,6 +38,7 @@ describe('社保演示预填分段', () => {
     document.body.innerHTML = `
       <input id="sbdyRegionZj" type="radio" checked>
       <input id="sbdyRegionJs" type="radio">
+      <input id="sbdyRegionHa" type="radio">
       <input id="sbdyPrefillUser" value="13555226712">
       <input id="sbdyPrefillStart" type="month" value="2024-08">
       <input id="sbdyPrefillEnd" type="month" value="2026-07">
@@ -265,6 +266,77 @@ describe('社保演示预填分段', () => {
     );
   });
 
+  it('河南版排除外地税务记录并写入分段', async () => {
+    document.getElementById('sbdyRegionZj').checked = false;
+    document.getElementById('sbdyRegionHa').checked = true;
+    document.getElementById('sbdyPrefillStart').value = '2026-01';
+    document.getElementById('sbdyPrefillEnd').value = '2026-06';
+    const taxRecords = recordsFor(
+      '人力宝科技有限公司郑州分公司',
+      '91410100MA9TEST001',
+      '国家税务总局郑州市郑东新区税务局',
+      '2026-02',
+      '2026-06',
+      { income: '4200.00', pension_insurance: '336.00', income_subtype: '正常工资薪金' }
+    ).concat(
+      recordsFor(
+        '杭州华鲜高新技术有限公司',
+        '91330110MADG8JH092',
+        '国家税务总局杭州市余杭区税务局',
+        '2026-01',
+        '2026-01',
+        { income: '5000.00', pension_insurance: '400.00', income_subtype: '正常工资薪金' }
+      )
+    );
+
+    window.adminFetch = vi.fn((url) => {
+      if (String(url).includes('/prefill?')) {
+        return Promise.resolve({
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              code: 200,
+              data: {
+                user: {
+                  real_name: '蒋飞龙',
+                  user_tax_id: '341281199112124710'
+                },
+                employers: [],
+                tax_records: taxRecords
+              }
+            })
+        });
+      }
+      return Promise.resolve({
+        status: 200,
+        json: () => Promise.resolve({ code: 200, data: { list: [] } })
+      });
+    });
+
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    window.AdminModules['sbdy-demo'].loadPage();
+    document.getElementById('sbdyPrefillBtn').click();
+
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll('.sbdy-seg-row')).toHaveLength(1);
+    });
+
+    const localRow = document.querySelector('.sbdy-seg-row');
+    expect(localRow.querySelector('.seg-company').value).toBe(
+      '人力宝科技有限公司郑州分公司'
+    );
+    expect(localRow.querySelector('.seg-start').value).toBe('2026-02');
+    expect(localRow.querySelector('.seg-end').value).toBe('2026-06');
+    expect(Number(localRow.querySelector('.seg-base').value)).toBe(4200);
+    expect(document.getElementById('sbdyDemoStatus').textContent).toContain(
+      '河南记录 5 个月'
+    );
+    expect(document.getElementById('sbdyDemoStatus').textContent).toContain(
+      '已排除外地 1 个月'
+    );
+  });
+
   it('粘贴模版缺少身份证号时按地区和性别生成合法默认值', () => {
     // eslint-disable-next-line no-eval
     eval(sbdyCode);
@@ -305,6 +377,28 @@ describe('社保演示预填分段', () => {
     expect(parsed.region).toBe('gz');
     expect(parsed.area).toBe('广州市');
     expect(parsed.id_number).toMatch(/^440103\d{11}[\dX]$/);
+  });
+
+  it('粘贴河南社保模版识别为河南并默认参保缴费', () => {
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    const parsed = window.AdminModules['sbdy-demo'].parsePasteTemplate(`
+姓名：蒋飞龙
+身份证号341281199112124710
+性别：男
+时间：2026.1-2026.6
+缴费基数:4200
+河南社保
+区域：郑州市郑东新区
+公司名称：人力宝科技有限公司郑州分公司
+写参保缴费 不要停保
+`);
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.region).toBe('ha');
+    expect(parsed.area).toBe('郑州市郑东新区');
+    expect(parsed.status).toBe('参保缴费');
+    expect(parsed.base_amount).toBe(4200);
   });
 
   it('最近生成列表可删除并刷新', async () => {

@@ -20,7 +20,7 @@ app.get(
 app.post(
   '/api/admin/upload-asset',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide', 'appearance']),
+  mw.requireAdminAnyMenu(['install-guide', 'appearance', 'ops-ad-analytics']),
   function (req, res, next) {
     mw.adminUpload.single('file')(req, res, function (err) {
       if (err) {
@@ -210,6 +210,18 @@ app.get(
   h.handleAdminAbcInstallStats
 );
 app.get(
+  '/api/admin/ad-pages',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  h.handleAdminAdPagesGet
+);
+app.post(
+  '/api/admin/ad-pages',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  h.handleAdminAdPagesPost
+);
+app.get(
   '/api/admin/analytics/ad-page-stats',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
@@ -236,13 +248,13 @@ app.get(
 app.post(
   '/api/admin/messages/bulk',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-ad-analytics', 'ops-board']),
   h.handleAdminMessagesBulk
 );
 app.post(
   '/api/admin/emails/bulk',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board', 'user-emails']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board', 'user-emails', 'ops-ad-analytics']),
   h.handleAdminEmailsBulk
 );
 app.get(
@@ -254,8 +266,14 @@ app.get(
 app.get(
   '/api/admin/emails/sends',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
+  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
   h.handleAdminEmailsSends
+);
+app.get(
+  '/api/admin/emails/campaign-stats',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
+  h.handleAdminEmailsCampaignStats
 );
 app.get('/api/admin/emails/send', function (req, res) {
   res.set('Cache-Control', 'no-store');

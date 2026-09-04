@@ -74,7 +74,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'ops-ad-analytics',
     menu_key: 'ops-ad-analytics',
-    label: '广告数据',
+    label: '广告页',
     group: 'ops-desk',
     module: 'ad-analytics',
     order: 35,
@@ -444,6 +444,15 @@ const ADMIN_HUB_DEFS = {
       { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
       { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
       { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
+    ]
+  },
+  'ops-ad-analytics': {
+    nav: 'ops-ad-analytics',
+    defaultTab: 'config',
+    tabs: [
+      { id: 'config', label: '配置', page: 'ops-ad-analytics' },
+      { id: 'data', label: '数据', page: 'ops-ad-analytics' },
+      { id: 'reach', label: '触达', page: 'ops-ad-analytics' }
     ]
   }
 };

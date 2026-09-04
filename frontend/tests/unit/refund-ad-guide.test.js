@@ -10,6 +10,8 @@ describe('refund_ad bottom guide copy', () => {
     expect(html).toContain('怎么判断、怎么咨询');
     expect(html).toContain('谁可以先问');
     expect(html).toContain('建议按这 3 步');
+    expect(html).toContain('一键自动计算可退税额');
+    expect(html).toContain('联系客服进行退税');
     expect(html).toContain('备注「二次退税」');
     expect(html).toContain('id="refundAdNeedEmployer"');
     expect(html).toContain('去添加任职受雇');
@@ -20,6 +22,8 @@ describe('refund_ad bottom guide copy', () => {
     expect(html).toContain('/img/gjj-extract-ad.jpg');
     expect(html).toContain('track_gjj_extract_ad_view');
     expect(html).toContain('track_gjj_extract_ad_copy');
+    expect(html).toContain('id="refundEstCard"');
+    expect(html).toContain('二次退税怎么来的');
   });
 
   it('shows empty-employer tip from local count and tracks guide jumps', () => {

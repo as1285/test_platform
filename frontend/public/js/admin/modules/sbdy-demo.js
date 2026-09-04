@@ -186,11 +186,17 @@
   }
 
   function usesZjCompanySegments(region) {
-    return region === 'zj' || region === 'gz' || region === 'sc';
+    return region === 'zj' || region === 'gz' || region === 'sc' || region === 'ha';
+  }
+
+  /** 浙江式操作：信用代码 + 分段任职 + 四险状态「参保缴费」；河南只换权益记录单版式 */
+  function isZjOpsRegion(region) {
+    return region === 'zj' || region === 'sc' || region === 'ha';
   }
 
   function currentRegion() {
     var hn = document.getElementById('sbdyRegionHn');
+    var ha = document.getElementById('sbdyRegionHa');
     var sz = document.getElementById('sbdyRegionSz');
     var gz = document.getElementById('sbdyRegionGz');
     var wh = document.getElementById('sbdyRegionWh');
@@ -204,6 +210,7 @@
     if (sh && sh.checked) return 'sh';
     if (bj && bj.checked) return 'bj';
     if (js && js.checked) return 'js';
+    if (ha && ha.checked) return 'ha';
     if (hn && hn.checked) return 'hn';
     if (gz && gz.checked) return 'gz';
     if (sz && sz.checked) return 'sz';
@@ -214,10 +221,15 @@
   function syncRegionUi() {
     var region = currentRegion();
     document.querySelectorAll('.sbdy-zj-only').forEach(function (el) {
-      el.hidden = region !== 'zj' && region !== 'sc';
+      el.hidden = region !== 'zj' && region !== 'sc' && region !== 'ha';
     });
     document.querySelectorAll('.sbdy-zj-hn').forEach(function (el) {
-      el.hidden = region !== 'zj' && region !== 'hn' && region !== 'gz' && region !== 'sc';
+      el.hidden =
+        region !== 'zj' &&
+        region !== 'hn' &&
+        region !== 'gz' &&
+        region !== 'sc' &&
+        region !== 'ha';
     });
     document.querySelectorAll('.sbdy-sc-only').forEach(function (el) {
       el.hidden = region !== 'sc';
@@ -248,7 +260,8 @@
         region !== 'bj' &&
         region !== 'sh' &&
         region !== 'xm' &&
-        region !== 'sc';
+        region !== 'sc' &&
+        region !== 'ha';
     });
     document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
       el.hidden = region !== 'js';
@@ -261,7 +274,8 @@
         region !== 'sh' &&
         region !== 'gz' &&
         region !== 'xm' &&
-        region !== 'sc';
+        region !== 'sc' &&
+        region !== 'ha';
     });
     var regionDefaults = {
       zj: { area: '余杭区', base: '4986' },
@@ -269,6 +283,7 @@
       gz: { area: '广州市', base: '4492' },
       wh: { area: '武汉市', base: '4224' },
       hn: { area: '常德市鼎城区', base: '4053' },
+      ha: { area: '郑州市郑东新区', base: '4200' },
       js: { area: '溧水区', base: '4494' },
       bj: { area: '朝阳区', base: '6821' },
       sh: { area: '上海市', base: '7313' },
@@ -338,6 +353,7 @@
       gz: '440103',
       wh: '420106',
       hn: '430703',
+      ha: '410105',
       js: '320102',
       bj: '110105',
       sh: '310115',
@@ -570,6 +586,11 @@
       (personNo && /^4312/.test(personNo)) ||
       (unitCode && /^4311/.test(unitCode))
     );
+    var looksHa = !!(
+      /河南|郑州|郑东|开封|洛阳|平顶山|安阳|鹤壁|新乡|焦作|濮阳|许昌|漯河|三门峡|南阳|商丘|信阳|周口|驻马店|济源|河南省社会保险个人权益记录单/.test(
+        text
+      )
+    );
     var looksGz = !!(
       /广州市社会保险|广州社保/.test(text) ||
       (/广州/.test(text) &&
@@ -584,19 +605,25 @@
     );
     if (looksWh && /深圳|广州/.test(text) && !/武汉|湖北/.test(text)) looksWh = false;
     if (looksHn && /武汉|湖北/.test(text) && !/湖南|常德/.test(text)) looksHn = false;
+    if (looksHn && looksHa) looksHn = false;
     var looksJs = !!(
       /江苏|权益记录单|南京|苏州|无锡|常州|徐州|南通|扬州|盐城|泰州|镇江|淮安|连云港|宿迁/.test(text)
     );
-    if (looksJs && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|常德|北京|上海/.test(text)) looksJs = false;
+    if (looksJs && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|常德|北京|上海|河南|郑州/.test(text))
+      looksJs = false;
     var looksBj = !!(
       /北京市社会保险|个人权益记录|查询流水号|查询时间段|补充资料|校验码|朝阳区社会保险|海淀区社会保险|fuwu\.rsj\.beijing/.test(
         text
       ) ||
       (/北京/.test(text) &&
         /社保|参保|缴费/.test(text) &&
-        !/浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|南京|上海/.test(text))
+        !/浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|南京|上海|河南/.test(text))
     );
-    if (looksBj && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|江苏|上海/.test(text) && !/北京/.test(text)) {
+    if (
+      looksBj &&
+      (/河南|郑州|郑东/.test(text) ||
+        (/浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|江苏|上海/.test(text) && !/北京/.test(text)))
+    ) {
       looksBj = false;
     }
     var looksSh = !!(
@@ -605,9 +632,9 @@
       ) ||
       (/上海/.test(text) &&
         /社保|参保|缴费/.test(text) &&
-        !/浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|南京|北京/.test(text))
+        !/浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|南京|北京|河南/.test(text))
     );
-    if (looksSh && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|江苏|北京/.test(text) && !/上海/.test(text)) {
+    if (looksSh && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|江苏|北京|河南/.test(text) && !/上海/.test(text)) {
       looksSh = false;
     }
     var looksXm = !!(
@@ -615,7 +642,11 @@
         text
       )
     );
-    if (looksXm && /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海|四川|成都/.test(text) && !/厦门/.test(text)) {
+    if (
+      looksXm &&
+      /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海|四川|成都|河南/.test(text) &&
+      !/厦门/.test(text)
+    ) {
       looksXm = false;
     }
     var looksSc = !!(
@@ -625,12 +656,14 @@
     );
     if (
       looksSc &&
-      /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海|厦门/.test(text) &&
+      /浙江|杭州|深圳|广州|武汉|湖北|湖南|江苏|北京|上海|厦门|河南/.test(text) &&
       !/四川|成都/.test(text)
     ) {
       looksSc = false;
     }
-    var region = looksSc
+    var region = looksHa
+      ? 'ha'
+      : looksSc
       ? 'sc'
       : looksXm
       ? 'xm'
@@ -668,7 +701,9 @@
               ? 4224
               : region === 'hn'
                 ? 4053
-                : region === 'js'
+                : region === 'ha'
+                  ? 4200
+                  : region === 'js'
                   ? 4494
                   : region === 'bj'
                     ? 6821
@@ -684,7 +719,11 @@
     var unemp = Math.round(base * (isSzStyle(region) ? 0.002 : 0.005) * 100) / 100;
 
     var active = wantsActiveStatus(text);
-    var status = active ? (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保') : '暂停缴费';
+    var status = active
+      ? isZjOpsRegion(region)
+        ? '参保缴费'
+        : '正常参保'
+      : '暂停缴费';
     var totalMonthsRaw = pickLabeled(text, ['累计缴费月数', '累计月数', '缴费月数']);
     var totalMonths = totalMonthsRaw
       ? Number(String(totalMonthsRaw).replace(/[^\d]/g, ''))
@@ -717,7 +756,9 @@
             ? '武汉市'
             : region === 'hn'
               ? '常德市鼎城区'
-              : region === 'js'
+              : region === 'ha'
+                ? '郑州市郑东新区'
+                : region === 'js'
                 ? '南京市'
                 : region === 'bj'
                   ? '朝阳区'
@@ -756,6 +797,9 @@
     } else if (parsed.region === 'hn') {
       var hnRadio = document.getElementById('sbdyRegionHn');
       if (hnRadio) hnRadio.checked = true;
+    } else if (parsed.region === 'ha') {
+      var haRadio = document.getElementById('sbdyRegionHa');
+      if (haRadio) haRadio.checked = true;
     } else if (parsed.region === 'js') {
       var jsRadio = document.getElementById('sbdyRegionJs');
       if (jsRadio) jsRadio.checked = true;
@@ -790,7 +834,9 @@
             ? '武汉市'
             : parsed.region === 'hn'
               ? '常德市鼎城区'
-              : parsed.region === 'js'
+              : parsed.region === 'ha'
+                ? '郑州市郑东新区'
+                : parsed.region === 'js'
                 ? '南京市'
                 : parsed.region === 'bj'
                   ? '朝阳区'
@@ -988,7 +1034,9 @@
             ? '武汉'
             : row.region === 'hn'
               ? '湖南'
-              : row.region === 'js'
+              : row.region === 'ha'
+                ? '河南'
+                : row.region === 'js'
                 ? '江苏'
                 : row.region === 'bj'
                   ? '北京'
@@ -1188,7 +1236,9 @@
           ? 4224
           : region === 'hn'
             ? 4053
-            : region === 'js'
+            : region === 'ha'
+              ? 4200
+              : region === 'js'
               ? 4494
               : region === 'bj'
                 ? 6821
@@ -1208,7 +1258,9 @@
           ? '武汉市'
           : region === 'hn'
             ? '常德市鼎城区'
-            : region === 'js'
+            : region === 'ha'
+              ? '郑州市郑东新区'
+              : region === 'js'
               ? '溧水区'
               : region === 'bj'
                 ? '朝阳区'
@@ -1245,12 +1297,15 @@
       medical_base: num('sbdyMedicalBase', num('sbdyBase', 4492)),
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
-      status_pension: val('sbdyStatusPension') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
-      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
-      status_injury: val('sbdyStatusInjury') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
-      status_unemployment: val('sbdyStatusUnemp') || (region === 'zj' || region === 'sc' ? '参保缴费' : '正常参保'),
+      status_pension: val('sbdyStatusPension') || (isZjOpsRegion(region) ? '参保缴费' : '正常参保'),
+      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || (isZjOpsRegion(region) ? '参保缴费' : '正常参保'),
+      status_injury: val('sbdyStatusInjury') || (isZjOpsRegion(region) ? '参保缴费' : '正常参保'),
+      status_unemployment: val('sbdyStatusUnemp') || (isZjOpsRegion(region) ? '参保缴费' : '正常参保'),
       print_date: val('sbdyPrintDate')
     };
+    if (region === 'ha') {
+      body.record_year = Number(String(body.period_end || '').slice(0, 4)) || undefined;
+    }
     /* 武汉版：打印时间始终用当天，覆盖表单里可能残留的示例日期 */
     if (region === 'wh') {
       var todayCn = defaultPrintDateCn();
@@ -1268,8 +1323,8 @@
         body.company_name = cleanCompanyName(body.company_name);
       }
     }
-    /* 浙江版：养老/失业个人按各段缴费基数自动算，不再手填统一金额 */
-    if (region === 'zj' || region === 'sc') {
+    /* 浙江/四川/河南：养老/失业个人按各段缴费基数自动算；河南只换权益记录单版式 */
+    if (isZjOpsRegion(region)) {
       delete body.pension_pay;
       delete body.unemployment_pay;
       promoteJoinedCompanyField();
@@ -1288,7 +1343,12 @@
             badMsg = '分段「' + label + '」缺起止月，请补全后再生成';
             return;
           }
-          if (!s.credit_code) {
+          if (region === 'ha' && !s.company_name && !s.credit_code) {
+            badSeg = s;
+            badMsg = '分段「' + label + '」请填写参保单位';
+            return;
+          }
+          if (region !== 'ha' && !s.credit_code) {
             badSeg = s;
             badMsg =
               region === 'sc'
@@ -1632,6 +1692,24 @@
       setStatus('已填充湖南示例：杨坤斌（可再点生成）', false);
       return;
     }
+    if (currentRegion() === 'ha') {
+      setField('sbdyName', '蒋飞龙');
+      setField('sbdyIdNumber', '341281199112124710');
+      setField('sbdyGender', '男');
+      setField('sbdyCompany', '人力宝科技有限公司郑州分公司');
+      setField('sbdyCredit', '');
+      setField('sbdyArea', '郑州市郑东新区');
+      setField('sbdyPeriodStart', '2026-01');
+      setField('sbdyPeriodEnd', '2026-06');
+      setField('sbdyBase', 4200);
+      setField('sbdyStatusPension', '参保缴费');
+      setField('sbdyStatusMedical', '参保缴费');
+      setField('sbdyStatusInjury', '参保缴费');
+      setField('sbdyStatusUnemp', '参保缴费');
+      setField('sbdyPrintDate', printDate);
+      setStatus('已填充河南示例：蒋飞龙（操作同浙江，可再点生成）', false);
+      return;
+    }
     if (currentRegion() === 'wh') {
       setField('sbdyName', '杨大富');
       setField('sbdyIdNumber', '420881196305166819');
@@ -1770,7 +1848,19 @@
         text
       );
     }
+    if (region === 'ha') {
+      return /(河南|郑州|开封|洛阳|平顶山|安阳|鹤壁|新乡|焦作|濮阳|许昌|漯河|三门峡|南阳|商丘|信阳|周口|驻马店|济源|郑东)/.test(
+        text
+      );
+    }
     return true;
+  }
+
+  function regionTaxLabel(region) {
+    if (region === 'gz') return '广州';
+    if (region === 'sc') return '四川';
+    if (region === 'ha') return '河南';
+    return '浙江';
   }
 
   function areaFromTaxAuthority(authority) {
@@ -2224,11 +2314,11 @@
           setField('sbdyPeriodStart', '');
           setField('sbdyPeriodEnd', '');
           setStatus(
-            currentRegion() === 'gz'
-              ? '所选区间没有广州税务机关记录，外地记录未计入广州社保'
-              : currentRegion() === 'sc'
-                ? '所选区间没有四川税务机关记录，外地记录未计入四川社保'
-                : '所选区间没有浙江税务机关记录，外地记录未计入浙江社保',
+            '所选区间没有' +
+              regionTaxLabel(currentRegion()) +
+              '税务机关记录，外地记录未计入' +
+              regionTaxLabel(currentRegion()) +
+              '社保',
             true
           );
           return;
@@ -2279,15 +2369,7 @@
         var parts = [isApp ? '已按我的资料预填' : '已预填「' + username + '」'];
         if (info.companies.length) parts.push(info.companies.length + ' 家单位');
         if (info.regionScoped) {
-          parts.push(
-            (currentRegion() === 'gz'
-              ? '广州记录 '
-              : currentRegion() === 'sc'
-                ? '四川记录 '
-                : '浙江记录 ') +
-              info.monthCount +
-              ' 个月'
-          );
+          parts.push(regionTaxLabel(currentRegion()) + '记录 ' + info.monthCount + ' 个月');
           if (info.excludedMonthCount) {
             parts.push('已排除外地 ' + info.excludedMonthCount + ' 个月');
           }

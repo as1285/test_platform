@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/admin_panel.css?v=20260903-chart-opt">
-    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260813-copy-tpl">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260904-paste-tpl">
 </head>
 <body>
     <div class="layout">
@@ -1882,7 +1882,7 @@
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>、<strong>上海城镇职工养老保险参保情况</strong>、<strong>厦门基本养老个人历年缴费明细表</strong>或<strong>四川社会保险个人参保证明</strong>（版式分别对齐浙里办 / 深圳清单 / 广州清单 / 湖北证明 / 湖南参保证明 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月 / 厦门社保参保证明 / 四川人社横向样张）。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>河南社会保险个人权益记录单</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>、<strong>上海城镇职工养老保险参保情况</strong>、<strong>厦门基本养老个人历年缴费明细表</strong>或<strong>四川社会保险个人参保证明</strong>（版式分别对齐浙里办 / 深圳清单 / 广州清单 / 湖北证明 / 湖南参保证明 / 河南权益记录单 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月 / 厦门社保参保证明 / 四川人社横向样张）。<strong>河南与浙江后台操作相同</strong>（姓名 / 证件 / 单位 / 信用代码 / 分段任职 / 起止月 / 基数 / 四险状态），地区只换 PDF 版式。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
@@ -1891,6 +1891,7 @@
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionGz" value="gz"> 广州</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionHa" value="ha"> 河南</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionJs" value="js"> 江苏</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionBj" value="bj"> 北京</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSh" value="sh"> 上海</label>
@@ -1914,7 +1915,7 @@
                             <div style="align-self:flex-end;">
                                 <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
                             </div>
-                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江版只采用浙江税务机关记录，外省记录不计入缴费月；若指定查询起止月，证明括号内保留该查询区间，但“前 N 个月”按浙江实际缴费月数显示。</p>
+                            <p class="hint mt-4 mb-0" style="flex-basis:100%;">预填拉取姓名、身份证号、参保单位与统一社会信用代码；<strong>实际缴费段写入下方「分段任职」</strong>。浙江 / 河南 / 四川 / 广州只采用对应税务机关记录，外省记录不计入缴费月；若指定查询起止月，证明括号内保留该查询区间，但实际缴费月按本地记录显示。</p>
                         </div>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
@@ -1929,7 +1930,7 @@
 公司名称：杭州千雨千寻文化科技有限公司
 税号：91330102MA7E2YNM2R
 写参保缴费 不要停保"></textarea>
-                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳/广州清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>；上海参保情况可写<strong>上海 / 浦东 / 累计缴费月数</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳/广州清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；河南权益记录单可写<strong>河南 / 郑州 / 郑东新区</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>；上海参保情况可写<strong>上海 / 浦东 / 累计缴费月数</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>
@@ -1990,7 +1991,7 @@
                             </div>
                             <div class="sbdy-zj-js" id="sbdySegmentsWrap">
                                 <div class="admin-tool-step">分段任职（多单位 / 多参保地，可选）</div>
-                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>。浙江版缴费明细按月用各段自己的<strong>缴费基数</strong>算养老/失业个人缴费，预填会按各公司个税推算各段基数，不再共用一组统一金额；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」；上海版写入「近60个月缴费单位信息」并生成三栏参保情况表。预填 2 家及以上会自动填入下方分段。</p>
+                                <p class="hint mt-0 mb-4">多家单位或不同参保地时，点「+ 添加一段」分别填，<strong>不要把多家写进上方同一个「参保单位」框</strong>。<strong>填了分段则以分段为准</strong>。浙江 / 河南 / 四川版缴费明细按月用各段自己的<strong>缴费基数</strong>；河南权益记录单把分段写入<strong>当年 12 个月</strong>格（未覆盖月为空）。预填会按各公司个税推算各段基数，不再共用一组统一金额；江苏版按月展开各段单位全称，并在上方保留最近一家作为“现参保单位全称”，段与段之间留空的月份视为断缴；北京版写入「养老保险单位变动记录」；上海版写入「近60个月缴费单位信息」并生成三栏参保情况表。预填 2 家及以上会自动填入下方分段。</p>
                                 <div id="sbdySegments"></div>
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment">+ 添加一段</button>
                             </div>
@@ -2698,7 +2699,7 @@
                         <h2>快捷入口</h2>
                         <div class="ops-hub-grid mb-12">
                             <a class="ops-hub-card" href="#ops-inactive"><strong>未激活名单</strong><span>筛人群、导出、点进用户</span></a>
-                            <a class="ops-hub-card" href="#ops-ad-analytics"><strong>广告数据</strong><span>退税合格、停留与复制微信</span></a>
+                            <a class="ops-hub-card" href="#ops-ad-analytics/data"><strong>广告页</strong><span>配置微信号、看数据、给合格用户发信</span></a>
                             <a class="ops-hub-card" href="#codes"><strong>发激活码</strong><span>开码、查码</span></a>
                             <a class="ops-hub-card" href="#settings"><strong>内容配置</strong><span>套餐价、安装包、外观</span></a>
                             <a class="ops-hub-card" href="#analytics-purchase"><strong>支付分析</strong><span>漏斗与 GMV 明细</span></a>
@@ -2727,6 +2728,8 @@
                                         <option value="inactive_d1_only">未激活·仅次日回访（之后未再活跃）</option>
                                         <option value="inactive_high_income">未激活·自己填月收入&gt;1.5万</option>
                                         <option value="refund_eligible">退税合格（23–25年税额&gt;5000或年收入≥15万，含已开通）</option>
+                                        <option value="refund_eligible_copied">退税合格·已复制微信</option>
+                                        <option value="refund_eligible_not_copied">退税合格·未复制微信</option>
                                     </select>
                                 </div>
                                 <div class="form-field">
@@ -2778,6 +2781,8 @@
                                         <option value="inactive_purchase_no_pay">未激活、去过支付页、未支付</option>
                                         <option value="inactive_high_income">未激活·月收入&gt;1.5万</option>
                                         <option value="refund_eligible">退税合格</option>
+                                        <option value="refund_eligible_copied">退税合格·已复制微信</option>
+                                        <option value="refund_eligible_not_copied">退税合格·未复制微信</option>
                                     </select>
                                 </div>
                                 <div class="form-field">
@@ -2905,6 +2910,101 @@
                 </div>
 
                 <div id="page-ops-ad-analytics" class="page-panel" role="tabpanel">
+                    <div id="opsAdHubConfig" class="ad-hub-pane" hidden>
+                    <div class="page-lede"><p class="page-lede-text">配置二次退税、公积金、抖音月付三页的微信号、开关、导语和海报。保存后 C 端按公开接口读取，失败则回退到页面写死值。</p></div>
+                    <section>
+                        <h2>共用微信号</h2>
+                        <div class="form-row form-stack">
+                            <div class="form-field form-field-narrow">
+                                <label for="adPagesWechatId">微信号</label>
+                                <input type="text" id="adPagesWechatId" maxlength="32" value="Tangdong6832" autocomplete="off">
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>二次退税页</h2>
+                        <p class="hint mt-0"><code>refund_ad.html</code> 与开通页退税入口</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label class="checkbox-inline"><input type="checkbox" id="adPagesRefundEnabled" checked> 启用</label>
+                            </div>
+                            <div class="form-field">
+                                <label for="adPagesRefundLede">导语</label>
+                                <textarea id="adPagesRefundLede" class="textarea-block" rows="3" maxlength="800"></textarea>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adPagesRefundRemark">备注文案</label>
+                                <input type="text" id="adPagesRefundRemark" maxlength="40" value="二次退税">
+                            </div>
+                            <div class="form-field">
+                                <label for="adPagesRefundPoster">海报 URL</label>
+                                <div class="mine-ui-controls">
+                                    <input type="text" id="adPagesRefundPoster" maxlength="500" placeholder="uploads/… 或 https://…">
+                                    <input type="file" id="adPagesRefundPosterFile" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+                                    <button type="button" class="btn-file" id="adPagesRefundPosterPick">本地上传</button>
+                                </div>
+                                <img id="adPagesRefundPosterPreview" alt="" style="max-width:180px;margin-top:8px;display:none">
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>公积金页</h2>
+                        <p class="hint mt-0">退税页下半与开通页公积金入口</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label class="checkbox-inline"><input type="checkbox" id="adPagesGjjEnabled" checked> 启用</label>
+                            </div>
+                            <div class="form-field">
+                                <label for="adPagesGjjLede">导语</label>
+                                <textarea id="adPagesGjjLede" class="textarea-block" rows="3" maxlength="800"></textarea>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adPagesGjjRemark">备注文案</label>
+                                <input type="text" id="adPagesGjjRemark" maxlength="40" value="公积金提取">
+                            </div>
+                            <div class="form-field">
+                                <label for="adPagesGjjPoster">海报 URL</label>
+                                <div class="mine-ui-controls">
+                                    <input type="text" id="adPagesGjjPoster" maxlength="500" placeholder="uploads/… 或 https://…">
+                                    <input type="file" id="adPagesGjjPosterFile" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+                                    <button type="button" class="btn-file" id="adPagesGjjPosterPick">本地上传</button>
+                                </div>
+                                <img id="adPagesGjjPosterPreview" alt="" style="max-width:180px;margin-top:8px;display:none">
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>抖音月付页</h2>
+                        <p class="hint mt-0"><code>douyin_yuefu_ad.html</code> 与开通页月付入口</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label class="checkbox-inline"><input type="checkbox" id="adPagesYuefuEnabled" checked> 启用</label>
+                            </div>
+                            <div class="form-field">
+                                <label for="adPagesYuefuLede">导语</label>
+                                <textarea id="adPagesYuefuLede" class="textarea-block" rows="2" maxlength="800"></textarea>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adPagesYuefuRemark">备注文案</label>
+                                <input type="text" id="adPagesYuefuRemark" maxlength="40" value="月付大额">
+                            </div>
+                            <div class="form-field">
+                                <label for="adPagesYuefuPoster">海报 URL（可选）</label>
+                                <div class="mine-ui-controls">
+                                    <input type="text" id="adPagesYuefuPoster" maxlength="500" placeholder="uploads/… 或 https://…">
+                                    <input type="file" id="adPagesYuefuPosterFile" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+                                    <button type="button" class="btn-file" id="adPagesYuefuPosterPick">本地上传</button>
+                                </div>
+                                <img id="adPagesYuefuPosterPreview" alt="" style="max-width:180px;margin-top:8px;display:none">
+                            </div>
+                        </div>
+                    </section>
+                    <div class="flex-actions gap-10 mt-14">
+                        <button type="button" class="btn-primary" id="btnAdPagesSave">保存广告页配置</button>
+                        <span class="hint" id="adPagesSaveStatus" aria-live="polite"></span>
+                    </div>
+                    </div>
+                    <div id="opsAdHubData" class="ad-hub-pane" hidden>
                     <div class="page-lede"><p class="page-lede-text">看用户在广告页（二次退税 / 抖音月付 / 公积金提取）停了多久、有没有复制微信、从哪进来、离开时做了什么。退税只圈 23–25 年税额超 5000 或年收入超 15 万的人。</p></div>
                     <section>
                         <h2>退税合格名单</h2>
@@ -2952,7 +3052,7 @@
                                 <div class="flex-actions">
                                     <button type="button" class="btn-primary" id="btnOpsRefundSearch">查询</button>
                                     <button type="button" class="btn-page" id="btnOpsRefundRefresh">刷新</button>
-                                    <a class="btn-page" href="#ops-board" id="btnOpsRefundGotoBulk">去发站内信</a>
+                                    <a class="btn-page" href="#ops-ad-analytics/reach" id="btnOpsRefundGotoBulk">去触达</a>
                                 </div>
                             </div>
                         </div>
@@ -2968,12 +3068,13 @@
                                         <th>该年税额</th>
                                         <th>该年收入</th>
                                         <th>原因</th>
+                                        <th>有邮箱</th>
                                         <th>看过广告</th>
                                         <th>复制</th>
                                         <th>最近活跃</th>
                                     </tr>
                                 </thead>
-                                <tbody id="opsRefundUserTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
+                                <tbody id="opsRefundUserTbody"><tr><td colspan="11">进入本页后加载…</td></tr></tbody>
                             </table>
                         </div>
                         <div class="pagination">
@@ -3090,6 +3191,118 @@
                             <div id="opsAdUserDetail" class="mt-16" hidden></div>
                         </details>
                     </section>
+                    </div>
+                    <div id="opsAdHubReach" class="ad-hub-pane" hidden>
+                    <div class="page-lede"><p class="page-lede-text">核心推广：向每位未激活用户发二次退税站内信；已留有效邮箱的再发退税邮件。没填邮箱的只走站内信。默认跳转二次退税页。</p></div>
+                    <section>
+                        <h2>金额邮件（近 7 天）</h2>
+                        <p class="hint mt-0" id="adReachCampaignStats">打开本页时加载 SMTP 成功/失败率（campaign=refund_ad_amount）。无记录用户已跳过，不计入失败。</p>
+                    </section>
+                    <section>
+                        <h2>站内信群发</h2>
+                        <p class="hint mt-0">复用运营看板同一套接口。单次最多 5000 人。发送前先预览人数。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label for="adReachMsgAudience">发送对象</label>
+                                <select id="adReachMsgAudience" class="filter-select">
+                                    <option value="all_inactive" selected>全部未激活</option>
+                                    <option value="inactive_has_tax">未激活且有个税记录</option>
+                                    <option value="refund_eligible">退税合格（含已开通）</option>
+                                    <option value="refund_eligible_copied">退税合格·已复制微信</option>
+                                    <option value="refund_eligible_not_copied">退税合格·未复制微信</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="adReachMsgTitle">标题</label>
+                                <input type="text" id="adReachMsgTitle" maxlength="120" value="二次退税：可一键计算近三年可退金额">
+                            </div>
+                            <div class="form-field">
+                                <label for="adReachMsgContent">正文</label>
+                                <textarea id="adReachMsgContent" class="textarea-block" rows="4" maxlength="4000">您好，未开通也可先看二次退税。打开页面可一键计算 2023、2024、2025 年大约可退税额，符合请联系客服办理。不强制添加。</textarea>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adReachMsgLink">跳转页面</label>
+                                <input type="text" id="adReachMsgLink" maxlength="200" value="refund_ad.html?from=msg_refund">
+                            </div>
+                            <div class="form-field">
+                                <label class="checkbox-inline">
+                                    <input type="checkbox" id="adReachMsgSkipSent" checked>
+                                    跳过已收过本条退税推广信的用户
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="btnAdReachMsgPreview">预览人数</button>
+                                <button type="button" class="btn-primary" id="btnAdReachMsgSend">确认群发</button>
+                                <span class="hint" id="adReachMsgStatus" aria-live="polite"></span>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>邮件群发</h2>
+                        <p class="hint mt-0">只发给已留有效邮箱的人。单次最多 200 人。建议先预览。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label for="adReachEmailTemplate">文案模板</label>
+                                <select id="adReachEmailTemplate" class="filter-select">
+                                    <option value="refund" selected>二次退税广告</option>
+                                    <option value="activate">开通去水印</option>
+                                    <option value="offer">专属优惠提醒</option>
+                                    <option value="soft_recall">轻量召回</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="adReachEmailAudience">发送对象（仅含已留邮箱）</label>
+                                <select id="adReachEmailAudience" class="filter-select">
+                                    <option value="has_email_inactive" selected>未激活且已留邮箱</option>
+                                    <option value="all_inactive">全部未激活（仅含已留邮箱）</option>
+                                    <option value="refund_eligible">退税合格</option>
+                                    <option value="refund_eligible_copied">退税合格·已复制微信</option>
+                                    <option value="refund_eligible_not_copied">退税合格·未复制微信</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="adReachEmailSubject">邮件标题</label>
+                                <input type="text" id="adReachEmailSubject" maxlength="120" value="二次退税：一键计算 2023–2025 可退税额，符合可联系客服">
+                            </div>
+                            <div class="form-field">
+                                <label for="adReachEmailContent">正文</label>
+                                <textarea id="adReachEmailContent" class="textarea-block" rows="5" maxlength="4000">你好，
+
+未开通也可以先看二次退税。打开页面可一键计算 2023、2024、2025 年大约可退税额。
+符合的话，复制微信号备注「二次退税」联系客服办理；同一顾问也可问公积金提取。
+不强制，不符合可忽略本邮件。</textarea>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adReachEmailLink">跳转页面</label>
+                                <input type="text" id="adReachEmailLink" maxlength="200" value="refund_ad.html?from=email_refund">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adReachEmailCta">按钮文案</label>
+                                <input type="text" id="adReachEmailCta" maxlength="40" value="打开二次退税说明">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="adReachEmailPoster">海报图</label>
+                                <select id="adReachEmailPoster" class="filter-select">
+                                    <option value="refund" selected>二次退税</option>
+                                    <option value="activate">开通去水印</option>
+                                    <option value="offer">专属优惠</option>
+                                    <option value="none">不配图</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label class="checkbox-inline">
+                                    <input type="checkbox" id="adReachEmailSkipSent" checked>
+                                    跳过已收过二次退税推广邮件的用户
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="btnAdReachEmailPreview">预览人数</button>
+                                <button type="button" class="btn-primary" id="btnAdReachEmailSend">确认发邮件</button>
+                                <span class="hint" id="adReachEmailStatus" aria-live="polite"></span>
+                            </div>
+                        </div>
+                    </section>
+                    </div>
                 </div>
 
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
@@ -3886,20 +4099,20 @@
         <div class="batch-ms-modal-mask" id="taxPasteImportMask"></div>
         <div class="batch-ms-modal-panel" style="max-width:560px;">
             <div class="batch-ms-modal-head">
-                <span id="taxPasteImportTitle">粘贴导入税务信息</span>
+                <span id="taxPasteImportTitle">按模板生成个税</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint">解析引擎 v0721d。支持：① 个税 APP 月明细；② 聊天摘要（公司/税号/入职、全年区间、月薪、奖金、每月专项扣除三险一金）。标签可带【】[]。可一次粘贴多家公司；「改为」「数字改为」会覆盖原金额。</p>
+            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪后点生成。也可清空后粘贴个税 APP 明细。</p>
             <div class="tax-paste-import-toolbar">
-                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">复制模板内容</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">重新填入模板</button>
+                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
             </div>
-            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="11" placeholder="某某有限公司&#10;纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月&#10;2024年全年&#10;一直到2026年6月&#10;月薪：20000元&#10;2024年2月发21350.5提成&#10;每月专项扣除&#10;养老保险：800&#10;医疗保险：200&#10;失业保险：50&#10;住房公积金：1200"></textarea>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="9" placeholder="公司名称：某某有限公司&#10;2023年全年&#10;2024年全年&#10;2025年全年&#10;月薪：20000元"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
-            <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
+            <div class="batch-ms-modal-footer tax-paste-import-footer">
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
-                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportParseBtn">解析预览</button>
-                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportFillBtn">填入表单</button>
-                <button type="button" class="btn btn-primary btn-sm" id="taxPasteImportGenerateBtn">直接生成记录</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportFillBtn">先填入表单</button>
+                <button type="button" class="btn btn-primary btn-sm" id="taxPasteImportGenerateBtn">生成记录</button>
             </div>
         </div>
     </div>
@@ -3929,9 +4142,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260904-abc-stats"></script>
+    <script src="/js/admin/loader.js?v=20260904-adpages"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260904-psych-top"></script>
+    <script src="/js/admin_panel.js?v=20260904-adpages"></script>
 </body>
 </html>

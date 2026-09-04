@@ -34,6 +34,13 @@ var EVENT_LABELS = {
   track_refund_ad_after_tax_go: '填完跳转广告页',
   track_refund_ad_after_tax_view: '填完后看广告',
   track_refund_ad_after_tax_continue: '跳过广告回记录',
+  track_refund_ad_calc_click: '一键计算可退税',
+  track_refund_ad_calc_done: '算出可退税额',
+  track_refund_ad_calc_contact: '联系客服退税',
+  track_refund_ad_calc_login: '计算前去登录',
+  track_refund_ad_calc_fill: '计算前去填税',
+  track_refund_ad_inactive_promo_show: '未激活退税广告曝光',
+  track_refund_ad_inactive_promo_click: '未激活点退税广告',
   track_purchase_refund_ad_view: '开通页看到广告',
   track_purchase_refund_ad_copy: '开通页复制微信',
   track_douyin_yuefu_ad_view: '进入月付广告页',
@@ -60,6 +67,8 @@ var SOURCE_LABELS = {
   gjj_legacy: '公积金旧页跳转',
   shuiming_result: '收入明细',
   msg_refund: '退税站内信',
+  email_refund: '退税邮件',
+  shouye: '首页',
   direct: '直接访问'
 };
 

@@ -1257,10 +1257,11 @@
       return false;
     }
     return (
-      sides.shortSide >= 428 &&
-      sides.shortSide <= 444 &&
-      sides.longSide >= 920 &&
-      sides.longSide <= 962
+      (sides.shortSide >= 414 &&
+        sides.shortSide <= 520 &&
+        sides.longSide >= 880 &&
+        sides.longSide <= 1100) ||
+      (typeof window !== 'undefined' && Number(window.innerWidth || 0) >= 414)
     );
   }
 
@@ -1269,6 +1270,30 @@
       document.documentElement.classList.add('app-ios-promax-wide');
       sessionStorage.setItem('tax_ios_promax_wide_v1', '1');
     } catch (eWide) {}
+  }
+
+  /**
+   * 17 Pro Max 明细页：只覆盖 token，规则与 css/device-tokens.css 同源。
+   * 两处注入、页内 firstpaint 都调这里，禁止再复制选择器。
+   */
+  function cssDeviceShuiming17ProMax() {
+    return (
+      'html.app-ios-iphone17promax,html.app-ios-iphone15,html.app-ios-iphone15promax{--device-arrow-ty:-6px;--device-list-edge:0px;--device-list-inline-pad:16px;--device-header-inline:12px;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list{padding-left:var(--device-list-edge,0px) !important;padding-right:var(--device-list-edge,0px) !important;box-sizing:border-box !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list-item{--list-inline-pad:var(--device-list-inline-pad,16px);border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:var(--device-list-inline-pad,16px) !important;padding-right:var(--device-list-inline-pad,16px) !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .top-fixed .header,html.app-ios-iphone17promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-iphone17promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header{padding-left:var(--device-header-inline,12px) !important;padding-right:var(--device-header-inline,12px) !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .back-btn,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .back-btn{left:var(--device-header-inline,12px) !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .header-right,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .header-right{right:var(--device-header-inline,12px) !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-iphone17promax body.page-shuiming-result .sm-refund-browse-card,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-with-arrow{display:flex !important;width:100% !important;box-sizing:border-box !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-company,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
+      'html.app-ios-iphone15 body.page-shuiming-result .list-row-company,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company{align-items:flex-end !important;}' +
+      'html.app-ios-iphone15 body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{margin:0 2px 0 auto !important;align-self:flex-end !important;transform:translateY(var(--device-arrow-ty,-6px)) rotate(45deg) !important;}'
+    );
   }
 
   /**
@@ -1284,7 +1309,7 @@
     st.setAttribute('data-ios-large-viewport-width', '1');
     st.textContent =
       '@media screen and (min-width:414px),screen and (min-device-width:414px){' +
-      'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
+      'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;width:100vw !important;max-width:100vw !important;margin-left:0 !important;margin-right:0 !important;}' +
       'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
       'body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
       'body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
@@ -1300,7 +1325,7 @@
       'html.platform-ios body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
       'html.platform-ios body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
       'html.platform-ios body.page-shuiming-result .sm-activate-card,html.platform-ios body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;}' +
-      'html.platform-ios body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;transform:translateY(2px) rotate(45deg);}' +
+      'html.platform-ios body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);}' +
       '}' +
       /* 15 Plus：贴边铺满，压过上方 media 20px */
       'html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
@@ -1320,24 +1345,11 @@
       'html.app-ios-iphoneair body.page-shuiming-result .sm-activate-card,html.app-ios-iphoneair body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
       'html.app-ios-iphoneair body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
       'html.app-ios-iphoneair body.page-shuiming > .content{padding-left:0 !important;padding-right:0 !important;}' +
-      /* 17 Pro Max：贴边 + 「>」靠右，压过 ≥414 / promax-wide 的 20px 空条 */
-      'html.app-ios-iphone17promax body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .top-fixed .header,html.app-ios-iphone17promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .back-btn{left:12px !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .header-right{right:12px !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone17promax body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-with-arrow{display:flex !important;width:100% !important;box-sizing:border-box !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(1px) rotate(45deg) !important;}' +
+      cssDeviceShuiming17ProMax() +
       'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
       'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
-      'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
-      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(1px) rotate(45deg) !important;}';
+      'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
+      cssDeviceShuiming17ProMax();
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -1554,6 +1566,27 @@
   }
 
   /**
+   * iPhone 15 / 15 Pro（393×852，不含 Plus / Pro Max）。
+   * Safari UA 常无型号；Cordova device.model 为 iPhone15,4。
+   */
+  function isIPhone15LikeClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    if (isIPhone15PlusProMaxLikeClient() || isIPhone16ProMaxClient() || isIPhone17ProMaxClient()) {
+      return false;
+    }
+    var ua = clientUaBlob();
+    if (/iPhone15,4\b/i.test(ua)) {
+      return true;
+    }
+    if (/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max/i.test(ua)) {
+      return false;
+    }
+    return /iPhone\s*15\b/i.test(ua);
+  }
+
+  /**
    * iPhone 15 Pro Max / 15 Plus：悬浮胶囊底下会透出页面，须铺满底边盖住 Home Indicator。
    * 其它 iPhone 仍保持 8px 胶囊，勿套用此档。
    */
@@ -1584,16 +1617,23 @@
   }
 
   /**
-   * iPhone 17 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大。
-   * 仅 UA 明确 17 Pro Max / iPhone18,2 等时命中。
-   * 勿用「iOS 26 + 440×956」兜底——真机 16 Pro Max 升到 iOS 26 同分辨率会被误判。
+   * iPhone 17 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大并贴边。
+   * UA 明确 17 Pro Max / iPhone18,2 时命中；Safari 无型号时 440×956 也走本档贴边。
+   * 明确的 16 Pro Max UA 仍排除，避免把已标机型改档。
    */
   function isIPhone17ProMaxClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
     }
     var ua = clientUaBlob();
-    return /iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(ua);
+    if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(ua)) {
+      return true;
+    }
+    if (/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(ua)) {
+      return false;
+    }
+    /* Safari 常无型号：6.9 寸逻辑屏按 17 Pro Max 贴边（16 PM 同宽也走贴边） */
+    return isIPhone440x956Viewport();
   }
 
   function isIPhoneProMaxLargeFontClient() {
@@ -4153,6 +4193,7 @@
       var iosIPhone13 = iosClient && isIPhone13Client();
       var iosIPhone13ProMax = iosClient && isIPhone13ProMaxClient();
       var iosIPhone12Pro = iosClient && isIPhone12ProLikeClient();
+      var iosIPhone15 = iosClient && isIPhone15LikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
       var iosIPhone12ProMax = iosClient && isIPhone12ProMaxClient();
       var iosIPhoneProMaxFont = iosClient && isIPhoneProMaxLargeFontClient();
@@ -4582,6 +4623,9 @@
       }
       if (iosIPhone12Pro) {
         document.documentElement.classList.add('app-ios-iphone12pro');
+      }
+      if (iosIPhone15) {
+        document.documentElement.classList.add('app-ios-iphone15');
       }
       if (iosIPhone15ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
@@ -5117,30 +5161,17 @@
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          /* 17 Pro Max：贴边 + 箭头靠右（压过 promax-wide 20px 与 promax-font 顶栏 16px） */
-          'html.app-ios-iphone17promax body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list-item,html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .summary > .summary-item,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .top-fixed .header,html.app-ios-iphone17promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-iphone17promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header{padding-left:12px !important;padding-right:12px !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .back-btn,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .back-btn{left:12px !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .header-right,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .header-right{right:12px !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .sm-activate-card,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .sm-activate-card,html.app-ios-iphone17promax body.page-shuiming-result .sm-refund-browse-card,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-row-with-arrow{display:flex !important;width:100% !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-company,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(1px) rotate(45deg) !important;}' +
-          '@media screen and (min-width:428px),screen and (min-device-width:428px){' +
+          cssDeviceShuiming17ProMax() +
+                    '@media screen and (min-width:428px),screen and (min-device-width:428px){' +
           'html.platform-ios body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
           'html.platform-ios body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
           'html.platform-ios body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
-          'html.platform-ios body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;transform:translateY(2px) rotate(45deg);}' +
+          'html.platform-ios body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);}' +
           '}' +
           'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
           'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
-          'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
-          'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(1px) rotate(45deg) !important;}' +
+          'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
+          cssDeviceShuiming17ProMax() +
           /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位（小米 14 Pro / iQOO 15 仍沉浸压栏，排除） */
           'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
           'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
@@ -8713,7 +8744,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260904-refund-promo';
+      s.src = '/js/conversion-guide.js?v=20260904-funnel-cta';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

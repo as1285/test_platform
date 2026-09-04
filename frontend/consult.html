@@ -9,7 +9,7 @@
       TAX_APP_SHELL_* 标记供 assemble 替换为 content-hash 壳资源。
     -->
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth.js?v=20260904-funnel-cta" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260901-bonus-solo">
+    <link rel="stylesheet" href="/css/consult.css?v=20260904-paste-tpl">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -100,22 +100,22 @@
 
     <div id="taxPasteImportModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="taxPasteImportTitle">
         <div class="batch-ms-modal-mask" id="taxPasteImportMask"></div>
-        <div class="batch-ms-modal-panel" style="max-width:560px;">
+        <div class="batch-ms-modal-panel tax-paste-import-panel" style="max-width:560px;">
             <div class="batch-ms-modal-head">
-                <span id="taxPasteImportTitle">粘贴导入税务信息</span>
+                <span id="taxPasteImportTitle">按模板生成个税</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint">解析引擎 v0721d。支持：① 个税 APP 月明细；② 聊天摘要（公司/税号/入职、全年区间、月薪、奖金、每月专项扣除三险一金）。标签可带【】[]。可一次粘贴多家公司；「改为」「数字改为」会覆盖原金额。</p>
+            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪，点生成即可。也可以清空后粘贴个税 APP 明细。</p>
             <div class="tax-paste-import-toolbar">
-                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">复制模板内容</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">重新填入模板</button>
+                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
             </div>
-            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="11" placeholder="某某有限公司&#10;纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月&#10;2024年全年&#10;一直到2026年6月&#10;月薪：20000元&#10;2024年2月发21350.5提成&#10;每月专项扣除&#10;养老保险：800&#10;医疗保险：200&#10;失业保险：50&#10;住房公积金：1200"></textarea>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="9" placeholder="公司名称：某某有限公司&#10;2023年全年&#10;2024年全年&#10;2025年全年&#10;月薪：20000元"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
-            <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
+            <div class="batch-ms-modal-footer tax-paste-import-footer">
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
-                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportParseBtn">解析预览</button>
-                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportFillBtn">填入表单</button>
-                <button type="button" class="btn btn-primary btn-sm" id="taxPasteImportGenerateBtn">直接生成记录</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportFillBtn">先填入表单</button>
+                <button type="button" class="btn btn-primary btn-sm" id="taxPasteImportGenerateBtn">生成记录</button>
             </div>
         </div>
     </div>
@@ -264,16 +264,16 @@
                     <div class="card-title" id="consultRefundAdTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
                     <span class="consult-product-badge" id="consultRefundAdBadge">建议咨询</span>
                 </div>
-                <p class="hint" id="consultRefundAdHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
-                <a class="btn btn-primary btn-block" id="btnConsultRefundAd" href="purchase.html?from=consult">去开通</a>
+                <p class="hint" id="consultRefundAdHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。</p>
+                <a class="btn btn-primary btn-block" id="btnConsultRefundAd" href="refund_ad.html?from=consult">去计算可退税额</a>
             </div>
 
             <div class="tax-flow-steps" id="taxFlowSteps" aria-label="税务记录流程">
-                <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">选方式</span></div>
+                <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">填模板</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
-                <div class="tax-flow-step"><span class="tax-flow-num">2</span><span class="tax-flow-label">一键生成</span></div>
+                <div class="tax-flow-step"><span class="tax-flow-num">2</span><span class="tax-flow-label">生成</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
-                <div class="tax-flow-step"><span class="tax-flow-num">3</span><span class="tax-flow-label">核对列表</span></div>
+                <div class="tax-flow-step"><span class="tax-flow-num">3</span><span class="tax-flow-label">核对</span></div>
             </div>
 
             <div class="card" id="batchTaxCard">
@@ -283,12 +283,12 @@
                 </div>
                 <div id="batchTaxCardBody">
                 <div class="tax-start-chooser" id="taxStartChooser">
-                    <p class="tax-start-chooser-title">怎么开始？</p>
-                    <p class="tax-start-chooser-desc">点第一项马上生成今年的示例记录；要自己填再选下面两项。</p>
+                    <p class="tax-start-chooser-title">怎么填写个税？</p>
+                    <p class="tax-start-chooser-desc">推荐先改模板生成 2023–2025 记录；有个税 APP 明细也可以直接粘贴。</p>
                     <div class="tax-start-chooser-actions">
-                        <button type="button" class="btn btn-primary btn-block tax-start-btn" id="btnTaxStartExample" onclick="openTaxStartPath('example')">一键生成示例记录</button>
-                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartPaste" onclick="openTaxStartPath('paste')">粘贴个税 APP 文本导入</button>
-                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartManual" onclick="openTaxStartPath('manual')">手动填写公司与月薪</button>
+                        <button type="button" class="btn btn-primary btn-block tax-start-btn" id="btnTaxStartPaste" onclick="openTaxStartPath('paste')">按模板生成个税</button>
+                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartManual" onclick="openTaxStartPath('manual')">自己填公司与月薪</button>
+                        <button type="button" class="btn btn-default btn-block tax-start-btn tax-start-btn-quiet" id="btnTaxStartExample" onclick="openTaxStartPath('example')">先用示例看看</button>
                     </div>
                 </div>
                 <div id="batchTaxFormSection" class="batch-tax-form-section" hidden>
@@ -296,7 +296,7 @@
                 <div class="batch-tax-empty" id="batchTaxEmptyState" hidden></div>
                 <div class="batch-tax-toolbar" id="batchTaxToolbar">
                     <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="openTaxStartPath('example')">示例填写</button>
-                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxPasteImport" onclick="openTaxStartPath('paste')">粘贴导入</button>
+                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxPasteImport" onclick="openTaxStartPath('paste')">按模板生成</button>
                     <div class="batch-tax-more-wrap">
                         <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxMore" aria-expanded="false">更多</button>
                         <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
@@ -500,10 +500,10 @@
                 <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>
                     <div class="tax-pay-guide-banner-text">
                         <strong id="taxPayGuideBannerTitle">记录已生成</strong>
-                        <span id="taxPayGuideBannerDesc">开通后可完整查看、去水印并导出纳税证明。</span>
+                        <span id="taxPayGuideBannerDesc">可先测算近三年大约可退税额；开通后可去水印并导出纳税证明。</span>
                     </div>
                     <div class="tax-pay-guide-banner-actions">
-                        <a class="btn btn-primary btn-sm" id="taxPayGuideBannerCta" href="purchase.html?from=tax_done">去开通</a>
+                        <a class="btn btn-primary btn-sm" id="taxPayGuideBannerCta" href="refund_ad.html?from=tax_done">查看可退税额</a>
                         <button type="button" class="tax-pay-guide-banner-dismiss" id="taxPayGuideBannerDismiss" aria-label="今日不再提示">×</button>
                     </div>
                 </div>
@@ -587,7 +587,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>本页三步怎么走最快？</summary>
-                        <p>① 在上方选「示例填写 / 粘贴导入 / 手动填写」；② 核对公司与月薪后点「一键生成」；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
+                        <p>① 点「按模板生成个税」，改公司名和月薪后生成；② 或自己填公司与起止年月；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>示例填写适合谁？</summary>
@@ -595,7 +595,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>粘贴导入怎么用？</summary>
-                        <p>在个税 APP 打开相关收入明细，复制文本后点「粘贴个税 APP 文本导入」粘贴即可尝试解析。字段不全时可再手动补公司、月薪或扣除项后生成。</p>
+                        <p>点「按模板生成个税」会带出一份 2023–2025 的填写模板。改公司名和月薪后点「生成记录」即可。有个税 APP 明细时，可点「清空去粘贴」再粘贴文本。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>如何核对列表里的税额是否合理？</summary>
@@ -884,8 +884,8 @@
                     <div class="card-title" id="consultRefundAdProductTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
                     <span class="consult-product-badge" id="consultRefundAdProductBadge">建议咨询</span>
                 </div>
-                <p class="hint" id="consultRefundAdProductHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
-                <a class="btn btn-primary btn-block" id="btnConsultRefundAdProducts" href="purchase.html?from=consult_products">去开通</a>
+                <p class="hint" id="consultRefundAdProductHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。</p>
+                <a class="btn btn-primary btn-block" id="btnConsultRefundAdProducts" href="refund_ad.html?from=consult_products">去计算可退税额</a>
             </div>
             <div class="card consult-product-card" id="lizhiCertEntryCard">
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
@@ -951,8 +951,8 @@
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 → 填税调研 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
     <script defer src="/js/consult-core.js?v=20260903-cert-pub"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260903-yearguard"></script>
-    <script defer src="/js/consult-records.js?v=20260831-refundqual"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260904-paste-tpl"></script>
+    <script defer src="/js/consult-records.js?v=20260904-funnel-cta"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>
     (function () {

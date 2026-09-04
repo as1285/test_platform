@@ -13,7 +13,7 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
     expect(shuimingResult).toMatch(/iPhone\\s\*17\\s\*Pro\\s\*Max\|iPhone18,2\\b\|iPhone19,2\\b/);
     expect(shuimingResult).toContain('!is15pmLike && !is17pmLike');
     expect(shuimingResult).toMatch(
-      /html\.app-ios-iphone17promax body\.page-shuiming-result \.list[\s\S]{0,180}padding-left:\s*0/
+      /html\.app-ios-iphone17promax body\.page-shuiming-result \.list[\s\S]{0,220}padding-left:var\(--device-list-edge/
     );
     expect(shuimingResult).toContain(
       'html.app-ios-iphone17promax body.page-shuiming-result .list-item'
@@ -28,8 +28,11 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
     expect(shuimingResult).toContain('<span class="list-arrow" aria-hidden="true"></span>');
     expect(shuimingResult).not.toMatch(/<img class="list-arrow"/);
     expect(shuimingResult).toContain('border-top: 1.5px solid #c7c7cc');
-    expect(shuimingResult).toContain('translateY(2px) rotate(45deg)');
-    expect(shuimingResult).toContain('translateY(1px) rotate(45deg)');
+    expect(shuimingResult).toContain('translateY(var(--device-arrow-ty, 2px))');
+    expect(shuimingResult).toContain('translateY(var(--device-arrow-ty, -6px))');
+    expect(shuimingResult).toContain('align-items: flex-end');
+    expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
+    expect(shuimingResult).toContain('data-shuiming-arrow-baseline');
     expect(shuimingResult).toContain('flex: 1 1 0%');
     expect(shuimingResult).not.toContain('function isIPhone17ProMaxCompanyEllipsisClient');
     expect(shuimingResult).not.toContain('companyMaxChars = 11');
@@ -37,8 +40,9 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
   });
 
   it('auth.js forces flush gutters and CSS chevron without 17 Pro Max class', () => {
+    expect(auth).toContain('function cssDeviceShuiming17ProMax');
     expect(auth).toContain(
-      'html.app-ios-iphone17promax body.page-shuiming-result .list,html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list{padding-left:0'
+      'html.app-ios-iphone17promax,html.app-ios-iphone15,html.app-ios-iphone15promax{--device-arrow-ty:-6px'
     );
     expect(auth).toContain(
       'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}'
@@ -46,12 +50,19 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
     expect(auth).toContain(
       'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow'
     );
-    expect(auth).toContain('translateY(1px) rotate(45deg) !important');
+    expect(auth).toContain('translateY(var(--device-arrow-ty,-6px)) rotate(45deg) !important');
+    expect(auth).toContain('align-items:flex-end !important');
+    expect(auth).toContain("classList.add('app-ios-iphone15')");
+    expect(auth).toContain('function isIPhone15LikeClient');
     expect(auth).toContain('border-top:1.5px solid #c7c7cc');
     expect(auth).not.toMatch(
       /page-shuiming-result \.list\{padding-left:20px/
     );
     expect(auth).toContain('@media screen and (min-width:428px)');
-    expect(shuimingResult).toContain('auth.js?v=20260904-17pm-arrow');
+    expect(shuimingResult).toContain('auth.js?v=20260904-tokens');
+    expect(shuimingResult).toContain('device-tokens.css?v=20260904-tokens');
+    expect(shuimingResult).toContain('function flushShuimingListToViewport');
+    expect(shuimingResult).toContain('width: 100vw !important');
+    expect(auth).toContain('isIPhone440x956Viewport()');
   });
 });
