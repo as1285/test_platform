@@ -47,6 +47,7 @@ const { createPricingAb, DEFAULT_PRICING_AB, applyChannelCatalogPrices } = requi
 const { createAgentChannels } = require('./agentChannels');
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const { createPriceBids } = require('../payments/priceBids');
+const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
 const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBulk');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 const {
@@ -667,6 +668,9 @@ function getPriceBids() {
           console.error('[price-bid] notify email failed', uid, eMail && eMail.message);
           return { email_sent: false, reason: 'send_error' };
         }
+      },
+      onBidRecorded: function (username, amount) {
+        return purchasePriceSurvey.attachExpectedPriceFromBid(username, amount);
       }
     });
   }
@@ -22443,13 +22447,18 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         priceSurvey.fair_pct = pctRate(priceSurvey.fair, priceSurvey.submitted);
         priceSurvey.cheap_pct = pctRate(priceSurvey.cheap, priceSurvey.submitted);
         priceSurvey.skipped_pct = pctRate(priceSurvey.skipped, priceSurvey.total);
+        var surveyBidJoin = purchasePriceSurvey.latestBidJoinSql('s', 'bid');
+        var surveyExpectSql = purchasePriceSurvey.coalescedExpectedPriceSql('s', 'bid');
+        var cnSurveyDayAliased = 'DATE(DATE_ADD(s.created_at, INTERVAL 8 HOUR))';
+        var surveyPfAliased = analyticsPeriodCnDateFilter(cnSurveyDayAliased, period);
         const [priceAgg] = await conn.execute(
-          `SELECT COUNT(*) AS with_price, AVG(expected_price) AS avg_price
-           FROM purchase_price_survey
-           WHERE ${surveyPf.sql}
-             AND skipped = 0
-             AND expected_price IS NOT NULL`,
-          surveyPf.params
+          `SELECT COUNT(*) AS with_price, AVG(${surveyExpectSql}) AS avg_price
+           FROM purchase_price_survey s
+           ${surveyBidJoin}
+           WHERE ${surveyPfAliased.sql}
+             AND s.skipped = 0
+             AND ${surveyExpectSql} IS NOT NULL`,
+          surveyPfAliased.params
         );
         if (priceAgg && priceAgg[0]) {
           priceSurvey.with_expected_price = Number(priceAgg[0].with_price) || 0;
@@ -22457,15 +22466,16 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           priceSurvey.avg_expected_price = isFinite(avgP) ? Math.round(avgP * 100) / 100 : null;
         }
         const [bucketRows] = await conn.execute(
-          `SELECT expected_price AS price, COUNT(*) AS cnt
-           FROM purchase_price_survey
-           WHERE ${surveyPf.sql}
-             AND skipped = 0
-             AND expected_price IS NOT NULL
-           GROUP BY expected_price
+          `SELECT ${surveyExpectSql} AS price, COUNT(*) AS cnt
+           FROM purchase_price_survey s
+           ${surveyBidJoin}
+           WHERE ${surveyPfAliased.sql}
+             AND s.skipped = 0
+             AND ${surveyExpectSql} IS NOT NULL
+           GROUP BY ${surveyExpectSql}
            ORDER BY cnt DESC, price ASC
            LIMIT 40`,
-          surveyPf.params
+          surveyPfAliased.params
         );
         var knownPrices = { 50: 1, 98: 1, 148: 1, 198: 1, 199: 1 };
         var bucketMap = { '50': 0, '98': 0, '148': 0, '198': 0, '199': 0, other: 0 };
@@ -22486,21 +22496,20 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           { label: '其他', price: null, count: bucketMap.other }
         ];
         const [recentRows] = await conn.execute(
-          `SELECT username, sentiment, expected_price, skipped, created_at
-           FROM purchase_price_survey
-           WHERE ${surveyPf.sql}
-           ORDER BY created_at DESC
+          `SELECT s.username, s.sentiment, s.expected_price, s.skipped, s.created_at,
+                  bid.bid_amount AS bid_amount
+           FROM purchase_price_survey s
+           ${surveyBidJoin}
+           WHERE ${surveyPfAliased.sql}
+           ORDER BY s.created_at DESC
            LIMIT 30`,
-          surveyPf.params
+          surveyPfAliased.params
         );
         priceSurvey.recent = (recentRows || []).map(function (r) {
           return {
             username: r.username != null ? String(r.username) : '',
             sentiment: r.sentiment != null ? String(r.sentiment) : '',
-            expected_price:
-              r.expected_price != null && isFinite(Number(r.expected_price))
-                ? Math.round(Number(r.expected_price) * 100) / 100
-                : null,
+            expected_price: purchasePriceSurvey.effectiveExpectedPrice(r, r.bid_amount),
             skipped: Number(r.skipped) === 1,
             created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
           };

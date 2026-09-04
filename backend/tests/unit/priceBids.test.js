@@ -62,7 +62,7 @@ function makeStubOffers(calls) {
   };
 }
 
-function makeApi(state, offerCalls, notifications) {
+function makeApi(state, offerCalls, notifications, onBidRecorded) {
   return createPriceBids({
     pool: makeStubPool(state),
     normalizeAmount: normalizeAmount,
@@ -70,7 +70,8 @@ function makeApi(state, offerCalls, notifications) {
     notifyUser: async function (username, title, body, link) {
       notifications.push({ username: username, title: title, body: body, link: link });
       return { email_sent: false, reason: 'no_email' };
-    }
+    },
+    onBidRecorded: onBidRecorded
   });
 }
 
@@ -107,10 +108,14 @@ describe('submitBid auto accept vs pending', () => {
   it('queues below-floor bids as pending without touching offers', async () => {
     const state = { queries: [] };
     const offerCalls = [];
-    const api = makeApi(state, offerCalls, []);
+    const recorded = [];
+    const api = makeApi(state, offerCalls, [], async function (username, amount) {
+      recorded.push({ username: username, amount: amount });
+    });
     const out = await api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '100' });
     expect(out.status).toBe('pending');
     expect(offerCalls.length).toBe(0);
+    expect(recorded).toEqual([{ username: 'u1', amount: '100.00' }]);
   });
 
   it('rejects bids at or above list price', async () => {

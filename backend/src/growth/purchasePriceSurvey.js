@@ -22,6 +22,71 @@ function parseMoney(v) {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * 点「偏贵」会先落调研（此时无金额），真正的心理价在出价表。
+ * 仅用出价补 expensive 且调研未填价的行，不覆盖芯片/手填金额。
+ */
+function effectiveExpectedPrice(row, bidAmount) {
+  var own = parseMoney(row && row.expected_price);
+  if (own != null) return own;
+  if (!row || Number(row.skipped) === 1) return null;
+  if (String(row.sentiment || '').toLowerCase() !== 'expensive') return null;
+  return parseMoney(bidAmount);
+}
+
+/** 最新一条出价 JOIN（按 username） */
+function latestBidJoinSql(surveyAlias, bidAlias) {
+  var s = surveyAlias || 's';
+  var b = bidAlias || 'bid';
+  return (
+    'LEFT JOIN (' +
+    ' SELECT ub.username, ub.bid_amount FROM user_price_bids ub' +
+    ' INNER JOIN (SELECT username, MAX(id) AS max_id FROM user_price_bids GROUP BY username) latest' +
+    ' ON latest.max_id = ub.id' +
+    ') ' +
+    b +
+    ' ON ' +
+    b +
+    '.username COLLATE utf8mb4_unicode_ci = ' +
+    s +
+    '.username COLLATE utf8mb4_unicode_ci'
+  );
+}
+
+function coalescedExpectedPriceSql(surveyAlias, bidAlias) {
+  var s = surveyAlias || 's';
+  var b = bidAlias || 'bid';
+  return (
+    'COALESCE(' +
+    s +
+    '.expected_price, CASE WHEN ' +
+    s +
+    '.skipped = 0 AND LOWER(' +
+    s +
+    ".sentiment) = 'expensive' THEN " +
+    b +
+    '.bid_amount END)'
+  );
+}
+
+/** 出价成功后回写离开调研的 expected_price（每账号最多 1 条） */
+async function attachExpectedPriceFromBid(username, amount, db) {
+  var expected = parseMoney(amount);
+  var uname = String(username || '').trim();
+  if (!expected || !uname) return { updated: 0 };
+  var pool = db || getPool();
+  const [r] = await pool.execute(
+    `UPDATE purchase_price_survey
+        SET expected_price = ?
+      WHERE username = ?
+        AND skipped = 0
+        AND sentiment = 'expensive'
+        AND (expected_price IS NULL OR expected_price <> ?)`,
+    [expected, uname, expected]
+  );
+  return { updated: r && r.affectedRows ? Number(r.affectedRows) : 0 };
+}
+
 async function handlePurchasePriceSurveyStatus(req, res) {
   try {
     if (!req.authUserId) {
@@ -107,5 +172,9 @@ module.exports = {
   /* 供单测 / 管理端口径复用 */
   SENTIMENTS: SENTIMENTS,
   SKIP_SENTIMENT: SKIP_SENTIMENT,
-  parseMoney: parseMoney
+  parseMoney: parseMoney,
+  effectiveExpectedPrice: effectiveExpectedPrice,
+  latestBidJoinSql: latestBidJoinSql,
+  coalescedExpectedPriceSql: coalescedExpectedPriceSql,
+  attachExpectedPriceFromBid: attachExpectedPriceFromBid
 };

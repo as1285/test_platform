@@ -1878,6 +1878,26 @@ mustInclude(
   'purchase page price bid entry and expensive survey handoff'
 );
 mustInclude(
+  'backend/src/growth/purchasePriceSurvey.js',
+  [
+    'function attachExpectedPriceFromBid',
+    'function effectiveExpectedPrice',
+    'function latestBidJoinSql',
+    "sentiment = 'expensive'"
+  ],
+  'price survey backfill from bid'
+);
+mustInclude(
+  'backend/src/payments/priceBids.js',
+  ['onBidRecorded', 'rememberSurveyExpectedPrice'],
+  'price bid notifies survey expected_price'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['点「偏贵」后金额记在心理价出价里', '本表会一并显示'],
+  'admin purchase survey shows bid amounts'
+);
+mustInclude(
   'frontend/admin_panel.html',
   [
     '心理价出价',

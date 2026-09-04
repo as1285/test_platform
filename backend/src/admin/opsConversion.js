@@ -4,6 +4,7 @@
 'use strict';
 
 const { getPool } = require('../shared/db');
+const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
 
 var HIGH_INCOME = 15000;
@@ -724,18 +725,18 @@ async function loadInactiveUserFlags(conn, names) {
   });
   try {
     const [priceRows] = await conn.query(
-      `SELECT username, sentiment, expected_price
-       FROM purchase_price_survey
-       WHERE username COLLATE utf8mb4_unicode_ci IN (${ph})`,
+      `SELECT s.username, s.sentiment, s.expected_price, s.skipped, bid.bid_amount AS bid_amount
+       FROM purchase_price_survey s
+       ${purchasePriceSurvey.latestBidJoinSql('s', 'bid')}
+       WHERE s.username COLLATE utf8mb4_unicode_ci IN (${ph})`,
       names
     );
     (priceRows || []).forEach(function (row) {
       var u = String(row.username || '');
       if (!out[u]) return;
       out[u].price_sentiment = row.sentiment != null ? String(row.sentiment) : '';
-      if (row.expected_price != null && isFinite(Number(row.expected_price))) {
-        out[u].expected_price = Math.round(Number(row.expected_price) * 100) / 100;
-      }
+      var expect = purchasePriceSurvey.effectiveExpectedPrice(row, row.bid_amount);
+      if (expect != null) out[u].expected_price = expect;
     });
   } catch (e0) {}
   try {
@@ -803,8 +804,9 @@ async function handleOpsConversionResearch(req, res) {
       var price = { expensive: 0, fair: 0, cheap: 0, skipped: 0, expected: [] };
       try {
         const [priceRows] = await conn.query(
-          `SELECT p.sentiment, p.skipped, p.expected_price
+          `SELECT p.sentiment, p.skipped, p.expected_price, bid.bid_amount AS bid_amount
            FROM purchase_price_survey p
+           ${purchasePriceSurvey.latestBidJoinSql('p', 'bid')}
            INNER JOIN users u
              ON u.username COLLATE utf8mb4_unicode_ci = p.username COLLATE utf8mb4_unicode_ci
            WHERE p.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)
@@ -819,8 +821,9 @@ async function handleOpsConversionResearch(req, res) {
           }
           var s = String(row.sentiment || '').toLowerCase();
           if (price[s] != null) price[s] += 1;
-          if (row.expected_price != null && isFinite(Number(row.expected_price))) {
-            price.expected.push(Math.round(Number(row.expected_price) * 100) / 100);
+          var expect = purchasePriceSurvey.effectiveExpectedPrice(row, row.bid_amount);
+          if (expect != null) {
+            price.expected.push(expect);
           }
         });
       } catch (ePrice) {}

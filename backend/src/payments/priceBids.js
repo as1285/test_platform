@@ -101,6 +101,7 @@ function createPriceBids(deps) {
   var normalizeAmount = deps.normalizeAmount;
   var offers = deps.offers;
   var notifyUser = typeof deps.notifyUser === 'function' ? deps.notifyUser : null;
+  var onBidRecorded = typeof deps.onBidRecorded === 'function' ? deps.onBidRecorded : null;
   var tableReady = false;
 
   async function ensureTable() {
@@ -260,6 +261,13 @@ function createPriceBids(deps) {
     return { email_sent: false, reason: 'no_notify' };
   }
 
+  async function rememberSurveyExpectedPrice(username, amount) {
+    if (!onBidRecorded) return;
+    try {
+      await onBidRecorded(username, amount);
+    } catch (eSync) {}
+  }
+
   /**
    * 提交心理价。
    * 返回 { status: 'accepted'|'pending', accepted_amount?, floor_hint? }
@@ -332,6 +340,7 @@ function createPriceBids(deps) {
       };
       if (isFinite(listAmount) && num >= floor) {
         await acceptToOffer(updatedBid, amount, 'price-bid-auto', true);
+        await rememberSurveyExpectedPrice(u, amount);
         return {
           status: 'accepted',
           accepted_amount: amount,
@@ -339,6 +348,7 @@ function createPriceBids(deps) {
           updated: true
         };
       }
+      await rememberSurveyExpectedPrice(u, amount);
       return {
         status: 'pending',
         sku_label: sku.label || '',
@@ -369,8 +379,10 @@ function createPriceBids(deps) {
     };
     if (isFinite(listAmount) && num >= floor) {
       await acceptToOffer(bid, amount, 'price-bid-auto', true);
+      await rememberSurveyExpectedPrice(u, amount);
       return { status: 'accepted', accepted_amount: amount, sku_label: sku.label || '', updated: false };
     }
+    await rememberSurveyExpectedPrice(u, amount);
     return {
       status: 'pending',
       sku_label: sku.label || '',
