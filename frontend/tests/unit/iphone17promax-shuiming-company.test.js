@@ -27,7 +27,7 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
     expect(shuimingResult).toContain('list-row-company');
     expect(shuimingResult).toContain('<span class="list-arrow" aria-hidden="true"></span>');
     expect(shuimingResult).not.toMatch(/<img class="list-arrow"/);
-    expect(shuimingResult).toContain('border-top: 3px solid #c7c7cc');
+    expect(shuimingResult).toContain('border-top: 1.5px solid #c7c7cc');
     expect(shuimingResult).toContain('translateY(2px) rotate(45deg)');
     expect(shuimingResult).toContain('flex: 1 1 0%');
     expect(shuimingResult).not.toContain('function isIPhone17ProMaxCompanyEllipsisClient');
@@ -45,11 +45,11 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
     expect(auth).toContain(
       'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px'
     );
-    expect(auth).toContain('border-top:3px solid #c7c7cc');
+    expect(auth).toContain('border-top:1.5px solid #c7c7cc');
     expect(auth).not.toMatch(
       /page-shuiming-result \.list\{padding-left:20px/
     );
     expect(auth).toContain('@media screen and (min-width:428px)');
-    expect(shuimingResult).toContain('auth.js?v=20260904-17pm-ship');
+    expect(shuimingResult).toContain('auth.js?v=20260904-op12-top');
   });
 });

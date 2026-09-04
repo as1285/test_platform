@@ -581,6 +581,22 @@ var MODELS = [
     issues: [{ page: 'shuiming', title: '避开系统时间栏', summary: 'ColorOS 沉浸压栏。', since: '2026-08-14' }]
   },
   {
+    id: 'oneplus-12',
+    platform: 'android',
+    family: 'oppo',
+    label: '一加 12',
+    match: ['PJD110', 'CPH2573', 'CPH2581', 'CPH2583', '(?:OnePlus|一加)[\\s_-]*12(?![\\s_-]*R)(?![A-Za-z0-9])'],
+    issues: [{ page: 'shuiming', title: '避开系统时间栏', summary: 'ColorOS 16 沉浸 WebView 仍压在状态栏下，顶栏「返回/批量申诉」须留 40px。', since: '2026-09-04' }]
+  },
+  {
+    id: 'oneplus-ace6',
+    platform: 'android',
+    family: 'oppo',
+    label: '一加 Ace 6',
+    match: ['Ace\\s*6\\b(?!\\s*Pro)', 'PLQ110'],
+    issues: [{ page: 'shuiming', title: '避开系统时间栏', summary: 'ColorOS 16 沉浸 WebView 仍压在状态栏下，顶栏「返回/批量申诉」须留 40px。', since: '2026-09-04' }]
+  },
+  {
     id: 'oppo-reno10',
     platform: 'android',
     family: 'oppo',

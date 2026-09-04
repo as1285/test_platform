@@ -188,6 +188,46 @@
                     document.documentElement.classList.add('app-android-oneplus-ace2v');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (/PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-oneplus-ace6-result-firstpaint]')) {
+                        var ace6St = document.createElement('style');
+                        ace6St.setAttribute('data-oneplus-ace6-result-firstpaint', '1');
+                        ace6St.textContent =
+                            'html.app-android-oneplus-ace6 body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+                            'html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;z-index:120 !important;}' +
+                            'html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header .header-title{visibility:visible !important;opacity:1 !important;}' +
+                            'html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;z-index:125 !important;}' +
+                            'html.app-android-oneplus-ace6 body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(ace6St);
+                    }
+                }
+                if (/PJD110|CPH2573|CPH2581|CPH2583|(?:OnePlus|一加)[\s_-]*12(?![\s_-]*R)(?![A-Za-z0-9])/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-12');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-oneplus-12-result-firstpaint]')) {
+                        var op12St = document.createElement('style');
+                        op12St.setAttribute('data-oneplus-12-result-firstpaint', '1');
+                        op12St.textContent =
+                            'html.app-android-oneplus-12 body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+                            'html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;z-index:120 !important;}' +
+                            'html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header .header-title{visibility:visible !important;opacity:1 !important;}' +
+                            'html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;z-index:125 !important;}' +
+                            'html.app-android-oneplus-12 body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(op12St);
+                    }
+                }
                 if (/PHW110|CPH2531|CPH2525/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -524,7 +564,7 @@
                             'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
                             'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
                             'body.page-shuiming-result .list-row-company{display:flex !important;align-items:center !important;}' +
-                            'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:3px solid #c7c7cc !important;border-right:3px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}';
+                            'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(2px) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}';
                         (document.head || document.documentElement).appendChild(flushSt);
                     }
                 } catch (e16pm) {}
@@ -533,7 +573,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260903-android-wide"></script>
-    <script src="/js/auth.js?v=20260904-17pm-ship" defer></script>
+    <script src="/js/auth.js?v=20260904-op12-top" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1783,8 +1823,8 @@
             margin: 2px 2px 0 auto !important;
             padding: 0 !important;
             border: 0 !important;
-            border-top: 3px solid #c7c7cc !important;
-            border-right: 3px solid #c7c7cc !important;
+            border-top: 1.5px solid #c7c7cc !important;
+            border-right: 1.5px solid #c7c7cc !important;
             background: none !important;
             transform: translateY(2px) rotate(45deg);
             flex-shrink: 0 !important;
@@ -1918,8 +1958,8 @@
                 width: 10px !important;
                 height: 10px !important;
                 margin: 2px 2px 0 auto !important;
-                border-top: 3px solid #c7c7cc !important;
-                border-right: 3px solid #c7c7cc !important;
+                border-top: 1.5px solid #c7c7cc !important;
+                border-right: 1.5px solid #c7c7cc !important;
                 transform: translateY(2px) rotate(45deg);
             }
         }
@@ -1973,6 +2013,10 @@
         html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2v body.page-shuiming-result .page-root,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-oneplus-ace6 body.page-shuiming-result .page-root,
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-oneplus-12 body.page-shuiming-result .page-root,
+        html.app-android-oneplus-12.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8 body.page-shuiming-result .page-root,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .page-root,
         html.app-android-iqoo-13 body.page-shuiming-result .page-root,html.app-android-iqoo-15 body.page-shuiming-result .page-root,
@@ -2019,6 +2063,10 @@
         html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-12.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header,
         html.app-android-iqoo-13 body.page-shuiming-result .top-fixed .header,html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header,
@@ -2091,6 +2139,14 @@
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-12.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-12.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-iqoo-neo8 body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-neo8pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-iqoo-13 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-iqoo-15 body.page-shuiming-result .top-fixed .header .back-btn,
@@ -2145,6 +2201,10 @@
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-ace2v body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-oneplus-ace6 body.page-shuiming-result .top-fixed .summary,
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-oneplus-12 body.page-shuiming-result .top-fixed .summary,
+        html.app-android-oneplus-12.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .summary,
         html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 48px) + 40px) !important;
@@ -2174,6 +2234,10 @@
         html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-oneplus-ace2v body.page-shuiming-result .list,
         html.app-android-oneplus-ace2v.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-oneplus-ace6 body.page-shuiming-result .list,
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-oneplus-12 body.page-shuiming-result .list,
+        html.app-android-oneplus-12.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-oneplus-acepro body.page-shuiming-result .list,
         html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
@@ -2452,8 +2516,8 @@
             margin: 2px 2px 0 auto !important;
             padding: 0 !important;
             border: 0 !important;
-            border-top: 3px solid #c7c7cc !important;
-            border-right: 3px solid #c7c7cc !important;
+            border-top: 1.5px solid #c7c7cc !important;
+            border-right: 1.5px solid #c7c7cc !important;
             background: none !important;
             box-shadow: none !important;
             transform: translateY(2px) rotate(45deg);

@@ -702,6 +702,26 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
+  ['isOnePlusAce6Client', 'PLQ110', 'app-android-oneplus-ace6'],
+  'oneplus ace 6 immersive top'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['isOnePlus12Client', 'PJD110', 'app-android-oneplus-12'],
+  'oneplus 12 immersive top'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['PLQ110', 'app-android-oneplus-ace6', 'data-oneplus-ace6-result-firstpaint'],
+  'shuiming_result ace 6 first-paint'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['PJD110', 'app-android-oneplus-12', 'data-oneplus-12-result-firstpaint'],
+  'shuiming_result oneplus 12 first-paint'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
   ['isOppoReno10Client', 'PHW110', 'CPH2531', 'app-android-oppo-reno10'],
   'oppo reno10 5g immersive top'
 );

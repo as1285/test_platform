@@ -23,6 +23,9 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(catalog.modelMatchesBlob(iphone13pm, 'iPhone 13 iPhone14,5')).toBe(false);
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 2211133C')).toBe(true);
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 Pro 2210132C')).toBe(false);
+    const oneplus12 = catalog.listCatalogModels().find((m) => m.id === 'oneplus-12');
+    expect(catalog.modelMatchesBlob(oneplus12, '一加 12 PJD110')).toBe(true);
+    expect(catalog.modelMatchesBlob(oneplus12, 'OnePlus 12R CPH2585')).toBe(false);
   });
 
   it('matches Mate 30 without taking Mate 30 Pro or Mate 60', () => {
