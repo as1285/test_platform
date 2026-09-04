@@ -553,7 +553,8 @@
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-row-left{flex:1 1 0% !important;min-width:0 !important;overflow:hidden !important;}' +
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-company{display:flex !important;max-width:100% !important;overflow:hidden !important;}' +
                             'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
-                            'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}';
+                            'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
+                            'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow{transform:translateY(1px) rotate(45deg) !important;}';
                         (document.head || document.documentElement).appendChild(p17St);
                     }
                     /* 不依赖 17 Pro Max class：首屏即贴边 + CSS「>」，避免 UA 无型号时仍走旧 20px / jt.jpg */
@@ -572,8 +573,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260903-android-wide"></script>
-    <script src="/js/auth.js?v=20260904-op12-top" defer></script>
+    <script src="/js/auth-boot.js?v=20260904-android-inset"></script>
+    <script src="/js/auth.js?v=20260904-17pm-arrow" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1826,7 +1827,7 @@
             border-top: 1.5px solid #c7c7cc !important;
             border-right: 1.5px solid #c7c7cc !important;
             background: none !important;
-            transform: translateY(2px) rotate(45deg);
+            transform: translateY(1px) rotate(45deg) !important;
             flex-shrink: 0 !important;
             align-self: center !important;
             box-sizing: content-box !important;
@@ -2508,8 +2509,7 @@
             min-width: 0;
         }
         .list-row-company .list-arrow,
-        html.platform-ios .list-row-company .list-arrow,
-        html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow {
+        html.platform-ios .list-row-company .list-arrow {
             display: block !important;
             width: 10px !important;
             height: 10px !important;
@@ -2525,6 +2525,10 @@
             align-self: center !important;
             box-sizing: content-box !important;
             object-fit: unset;
+        }
+        html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,
+        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow {
+            transform: translateY(1px) rotate(45deg) !important;
         }
         html.platform-ios .list-row-company .list-company {
             overflow: hidden !important;
@@ -2941,8 +2945,8 @@
             </div>
             <div class="sm-activate-card" id="smActivateCard" hidden>
                 <p class="sm-activate-title" id="smActivateTitle">二次退税咨询</p>
-                <p class="sm-activate-desc" id="smActivateDesc">激活后可咨询是否符合二次退税并复制微信。开通后这张卡会消失。</p>
-                <a href="purchase.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">去开通</a>
+                <p class="sm-activate-desc" id="smActivateDesc">未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。</p>
+                <a href="refund_ad.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">去计算可退税额</a>
             </div>
             <!-- 15万推荐卡已移至 consult.html「我要咨询 / 填写个税」；保留空壳避免旧缓存脚本报错 -->
             <div class="sm-refund-browse-card" id="smRefundBrowseCard" hidden aria-hidden="true"></div>
@@ -3758,7 +3762,7 @@
                 btn.addEventListener('click', function () {
                     try {
                         if (typeof window.trackUserAction === 'function') {
-                            window.trackUserAction('track_activate_prompt_open', {
+                            window.trackUserAction('track_refund_ad_inactive_promo_click', {
                                 page: 'shuiming_result',
                                 source: 'summary_activate_card'
                             });
@@ -3766,7 +3770,7 @@
                             window.ConversionGuide &&
                             typeof ConversionGuide.track === 'function'
                         ) {
-                            ConversionGuide.track('track_activate_prompt_open', {
+                            ConversionGuide.track('track_refund_ad_inactive_promo_click', {
                                 page: 'shuiming_result',
                                 source: 'summary_activate_card'
                             });

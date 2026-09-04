@@ -471,7 +471,79 @@
     } catch (eObs) {}
   })();
 
+  /**
+   * App 内 Android 白顶栏：首屏默认 40px，避免 defer 的 auth.js 解析前标题压进系统时间。
+   * 已核实外置黑条（A58 / Find X9 / 荣耀折叠 / 三星 / Pura70 / 小米 14）不打沉浸 class。
+   */
+  function applyAndroidWhitePageInsetFirstPaint() {
+    try {
+      var page = currentPageName();
+      if (page !== 'shuiming.html' && page !== 'shuiming_result.html' && page !== 'xiangqing.html') {
+        return;
+      }
+      var root = document.documentElement;
+      var ua = '';
+      try {
+        ua = String(navigator.userAgent || '');
+      } catch (eUa) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+      } catch (eStoredUa) {}
+      if (!/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(ua)) {
+        return;
+      }
+      var inApp = /TaxPlatformCordovaApp\//i.test(ua);
+      try {
+        inApp = inApp || window.top !== window.self;
+      } catch (eFrame) {
+        inApp = true;
+      }
+      try {
+        inApp =
+          inApp ||
+          !!(localStorage.getItem('tax_platform_in_app_v1') || sessionStorage.getItem('tax_platform_in_app_v1'));
+      } catch (eFlag) {}
+      if (!inApp) {
+        return;
+      }
+      if (
+        /PHJ110|OPPO\s*A58|Find\s*X\s*9|CPH2797|CPH2791|CPH2841|CPH2873|PLJ110|PLG110|PMA110|PME110|OPG07/i.test(ua) ||
+        /FLC-AN00|FLC-AN10|FCP-AN00|FCP-AN10|Magic\s*Vs3|MagicVS3/i.test(ua) ||
+        /Samsung|SM-[A-Z]\d{3}|Galaxy/i.test(ua) ||
+        /HBN-AL00|HBN-AL80|HBN-AL10|Pura\s*70|Pura70|ADY-AL00|ADY-AL80/i.test(ua) ||
+        /23127PN0CC|23127PN0CG|23127PN\b/i.test(ua)
+      ) {
+        return;
+      }
+      if (root.classList.contains('app-android-xiaomi-14')) {
+        return;
+      }
+      if (root.classList.contains('app-android-redmi-note11-5g')) {
+        return;
+      }
+      root.classList.add('app-android-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-android-immersive-white-top');
+      try {
+        root.classList.remove('app-android-white-page-outer');
+      } catch (eOuter) {}
+      var cur = '';
+      try {
+        cur = root.style.getPropertyValue('--app-shell-statusbar-top') || '';
+      } catch (eCur) {}
+      if (cur !== '70px' && cur !== '48px' && cur !== '52px') {
+        root.style.setProperty('--app-shell-statusbar-top', '40px');
+        root.style.setProperty('--android-status-inset', '40px');
+        root.style.setProperty('--safe-top', '40px');
+      }
+    } catch (ePaint) {}
+  }
+
   markViewportChromeClasses();
+  applyAndroidWhitePageInsetFirstPaint();
   primeAndroidMineE1SmFirstPaint();
 
   // === 登录门禁跳转 ===

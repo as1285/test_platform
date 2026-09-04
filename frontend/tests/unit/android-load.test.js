@@ -63,6 +63,7 @@ describe('android first-paint load', () => {
     expect(boot).toContain('window.buildLoginPageUrl');
     expect(boot).toContain('markViewportChromeClasses()');
     expect(boot).toContain('primeAndroidMineE1SmFirstPaint');
+    expect(boot).toContain('applyAndroidWhitePageInsetFirstPaint');
     expect(boot).toContain('app-android-mine-e1-sm');
     expect(boot).not.toContain('setupMobileStatusBar');
     expect(boot).not.toContain('conversion-guide.js');

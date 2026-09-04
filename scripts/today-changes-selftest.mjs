@@ -711,6 +711,31 @@ mustInclude(
   'oneplus 12 immersive top'
 );
 mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'function isAndroidWhitePageImmersiveDefaultClient()',
+    'function isAndroidVerifiedOuterWhitePageClient()',
+    'isAndroidWhitePageImmersiveDefaultClient()',
+    ':not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result',
+    'function jsonAsciiHeaderValue('
+  ],
+  'android white-page default immersive inset and latin-1 headers'
+);
+mustInclude(
+  'frontend/public/js/auth-boot.js',
+  [
+    'function applyAndroidWhitePageInsetFirstPaint()',
+    "setProperty('--app-shell-statusbar-top', '40px')",
+    'app-android-immersive-white-top'
+  ],
+  'android white-page inset first-paint'
+);
+mustInclude(
+  'frontend/tests/e2e/ui-smoke-devices.mjs',
+  ['export const DEVICE_PROFILES', 'UI_SMOKE_DEVICES', 'oneplus-12', 'iphone-17-promax'],
+  'ui smoke device catalog'
+);
+mustInclude(
   'frontend/shuiming_result.html',
   ['PLQ110', 'app-android-oneplus-ace6', 'data-oneplus-ace6-result-firstpaint'],
   'shuiming_result ace 6 first-paint'
@@ -2209,16 +2234,17 @@ if (
       'message_detail.html': ['20260903-mate60-msg3'],
       'mine.html': ['20260903-android-blackbar'],
       'purchase.html': ['20260903-mate60pay'],
-      'shuiming.html': ['20260903-iphoneair-pad'],
-      'shuiming_result.html': ['20260903-android-wide'],
-      'xiangqing.html': ['20260903-ip15edge']
+      'shuiming.html': ['20260904-android-inset'],
+      'shuiming_result.html': ['20260904-17pm-arrow'],
+      'xiangqing.html': ['20260904-android-inset']
     },
     'auth-boot': {
       'login.html': ['20260902-ip16pm-login'],
       'message_detail.html': ['20260903-mate60-msg3'],
       'mine.html': ['20260903-android-blackbar'],
-      'shuiming.html': ['20260902-ip16pm-mq'],
-      'shuiming_result.html': ['20260903-android-wide']
+      'shuiming.html': ['20260904-android-inset'],
+      'shuiming_result.html': ['20260904-android-inset'],
+      'xiangqing.html': ['20260904-android-inset']
     }
   };
   const htmlPages = readdirSync(join(root, 'frontend')).filter(

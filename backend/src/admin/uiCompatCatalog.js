@@ -217,9 +217,10 @@ var MODELS = [
     issues: [
       {
         page: 'shuiming',
-        title: '先判断外置栏还是沉浸栏',
-        summary: 'env(safe-area) 常为 0。该留不留会顶进系统时间；不该留却留会空出大块蓝/白带。沉浸机约 40px。',
-        since: '2026-05'
+        title: '白顶栏默认沉浸 40px',
+        summary:
+          'App 内 Cordova 多数仍画到系统栏下。收入纳税明细/筛选/详情默认留 40px，不再按 ColorOS/OriginOS/HyperOS 族名清零。仅 A58、Find X9、荣耀折叠、三星、Pura70、小米 14 等已核实外置栏清零。重叠优先于一条细缝。',
+        since: '2026-09-04'
       },
       {
         page: 'shouye',

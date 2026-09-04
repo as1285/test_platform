@@ -29,6 +29,7 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
     expect(shuimingResult).not.toMatch(/<img class="list-arrow"/);
     expect(shuimingResult).toContain('border-top: 1.5px solid #c7c7cc');
     expect(shuimingResult).toContain('translateY(2px) rotate(45deg)');
+    expect(shuimingResult).toContain('translateY(1px) rotate(45deg)');
     expect(shuimingResult).toContain('flex: 1 1 0%');
     expect(shuimingResult).not.toContain('function isIPhone17ProMaxCompanyEllipsisClient');
     expect(shuimingResult).not.toContain('companyMaxChars = 11');
@@ -43,13 +44,14 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
       'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}'
     );
     expect(auth).toContain(
-      'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px'
+      'html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow'
     );
+    expect(auth).toContain('translateY(1px) rotate(45deg) !important');
     expect(auth).toContain('border-top:1.5px solid #c7c7cc');
     expect(auth).not.toMatch(
       /page-shuiming-result \.list\{padding-left:20px/
     );
     expect(auth).toContain('@media screen and (min-width:428px)');
-    expect(shuimingResult).toContain('auth.js?v=20260904-op12-top');
+    expect(shuimingResult).toContain('auth.js?v=20260904-17pm-arrow');
   });
 });
