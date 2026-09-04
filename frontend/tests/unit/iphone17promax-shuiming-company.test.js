@@ -59,7 +59,7 @@ describe('iPhone 17 Pro Max 收入纳税明细贴边与箭头', () => {
       /page-shuiming-result \.list\{padding-left:20px/
     );
     expect(auth).toContain('@media screen and (min-width:428px)');
-    expect(shuimingResult).toContain('auth.js?v=20260904-tokens');
+    expect(shuimingResult).toContain('auth.js?v=20260904-air-gap');
     expect(shuimingResult).toContain('device-tokens.css?v=20260904-tokens');
     expect(shuimingResult).toContain('function flushShuimingListToViewport');
     expect(shuimingResult).toContain('width: 100vw !important');

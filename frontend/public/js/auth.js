@@ -1345,6 +1345,7 @@
       'html.app-ios-iphoneair body.page-shuiming-result .sm-activate-card,html.app-ios-iphoneair body.page-shuiming-result .sm-refund-browse-card{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
       'html.app-ios-iphoneair body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
       'html.app-ios-iphoneair body.page-shuiming > .content{padding-left:0 !important;padding-right:0 !important;}' +
+      'html.app-ios-iphoneair body.page-shuiming-result .top-fixed .summary,html.app-ios-iphoneair.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;}' +
       cssDeviceShuiming17ProMax() +
       'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
       'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
@@ -1637,6 +1638,9 @@
   }
 
   function isIPhoneProMaxLargeFontClient() {
+    if (isIPhoneAirClient()) {
+      return false;
+    }
     return (
       isIPhone12ProMaxClient() ||
       isIPhone15PlusProMaxLikeClient() ||
@@ -4597,19 +4601,21 @@
           upsertMeta('msapplication-navbutton-color', '#2c80f4');
         }
       }
-      if (
-        iosIPhone16ProMax ||
-        iosIPhone15ProMax ||
-        iosIPhone17ProMax ||
-        (iosClient && isIPhoneLargePromaxWidthViewport())
-      ) {
-        markIosPromaxWideLayout();
-      } else {
-        try {
-          if (sessionStorage.getItem('tax_ios_promax_wide_v1') === '1') {
-            markIosPromaxWideLayout();
-          }
-        } catch (eWideSeen) {}
+      if (!iosIPhoneAir) {
+        if (
+          iosIPhone16ProMax ||
+          iosIPhone15ProMax ||
+          iosIPhone17ProMax ||
+          (iosClient && isIPhoneLargePromaxWidthViewport())
+        ) {
+          markIosPromaxWideLayout();
+        } else {
+          try {
+            if (sessionStorage.getItem('tax_ios_promax_wide_v1') === '1') {
+              markIosPromaxWideLayout();
+            }
+          } catch (eWideSeen) {}
+        }
       }
       if (iosIPhone14 || iosIPhone12Pro) {
         /* 12 Pro 与 14 同为 390×844 刘海，复用白顶栏避让样式 */
@@ -4638,6 +4644,10 @@
       }
       if (iosIPhoneProMaxFont) {
         document.documentElement.classList.add('app-ios-iphone-promax-font');
+      }
+      if (iosIPhoneAir) {
+        document.documentElement.classList.remove('app-ios-promax-wide');
+        document.documentElement.classList.remove('app-ios-iphone-promax-font');
       }
       if (huaweiPura70Client) {
         document.documentElement.classList.add('app-huawei-pura70');
@@ -5141,6 +5151,7 @@
           'html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
           'html.app-ios-iphoneair.app-ios-promax-wide.app-top-safe-shell body.page-shuiming > .header{padding-left:12px !important;padding-right:12px !important;}' +
           'html.app-ios-iphoneair body.page-shuiming .content{padding-left:0 !important;padding-right:0 !important;}' +
+          'html.app-ios-iphoneair body.page-shuiming-result .top-fixed .summary,html.app-ios-iphoneair.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-iphoneair.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +

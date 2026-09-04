@@ -2292,7 +2292,7 @@ if (
       'mine.html': ['20260903-android-blackbar'],
       'purchase.html': ['20260903-mate60pay'],
       'shuiming.html': ['20260904-android-inset'],
-      'shuiming_result.html': ['20260904-tokens'],
+      'shuiming_result.html': ['20260904-air-gap'],
       'xiangqing.html': ['20260904-android-inset'],
       'consult.html': ['20260904-funnel-cta']
     },
