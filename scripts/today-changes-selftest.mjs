@@ -2562,6 +2562,45 @@ mustInclude(
   ["'18671741907'", "'13691947741'"],
   '20260903 full-scope phones in opsConversion'
 );
+mustInclude(
+  'backend/opsStatsReport.js',
+  [
+    'paymentSkuCaseSql',
+    'collectAdminActivationCredits',
+    'paymentProductTable',
+    '开通套餐（线上支付）',
+    '离职证明',
+    '同行费用（每天无限）',
+    '合计 GMV（含管理员激活）',
+    'adminActivationCreditRules',
+    "'18933137956'",
+    "'19106014552'",
+    'combined_amt',
+    'lizhi_amt',
+    'admin_act_amt'
+  ],
+  '20260905 ops daily mail payment analytics split'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['收入拆分对齐「支付分析」', '管理员激活折算与合计 GMV'],
+  '20260905 monitor hint mentions payment split in daily mail'
+);
+mustInclude(
+  'backend/src/tax/withholdingCalc.js',
+  ['currentPeriodDeclaredTax', '累计应纳税额', '累计已预缴税额'],
+  '20260905 period declared tax formula'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    "require('../tax/withholdingCalc')",
+    'currentPeriodDeclaredTax(',
+    'totalTaxPaidBefore,',
+    'totalTaxRelief'
+  ],
+  '20260905 tax calc page uses cumulative formula for 本期申报税额'
+);
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);

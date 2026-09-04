@@ -61,6 +61,7 @@ const {
   otherDeductionForDisplay,
   periodOtherDeductionForDetail
 } = require('../tax/deductionSplit');
+const { currentPeriodDeclaredTax } = require('../tax/withholdingCalc');
 const renameFeePolicy = require('../user/renameFeePolicy');
 const lizhiCertFeePolicy = require('../user/lizhiCertFeePolicy');
 const najiluQrFeePolicy = require('../user/najiluQrFeePolicy');
@@ -5061,8 +5062,17 @@ async function getTaxCalculationData(userId, recordId) {
 
   const br = iitWithholdingBracket(totalTaxableIncome);
   const totalTaxPayable = Math.max(0, (totalTaxableIncome * br.ratePct) / 100 - br.quick);
-
-  const currentTaxReported = sumRowMoney(anchor, 'tax_reported');
+  const totalTaxRelief = 0;
+  /*
+   * 本期申报税额必须用累计公式，不能直接读本条 tax_reported。
+   * 库里存的已申报税额可能过期/与累计重算不一致，页面展示的累计应纳税额−累计已缴会算不通。
+   * 公式：累计应纳税额 − 累计减免税额 − 累计已预缴税额（可为负表示应退）。
+   */
+  const currentTaxReported = currentPeriodDeclaredTax(
+    totalTaxPayable,
+    totalTaxPaidBefore,
+    totalTaxRelief
+  );
 
   return {
     total_income: totalIncome.toFixed(2),
@@ -5078,7 +5088,7 @@ async function getTaxCalculationData(userId, recordId) {
     quick_deduction: br.quick.toFixed(2),
     total_tax_payable: totalTaxPayable.toFixed(2),
     total_tax_paid: totalTaxPaidBefore.toFixed(2),
-    total_tax_relief: '0.00',
+    total_tax_relief: totalTaxRelief.toFixed(2),
     current_tax_reported: currentTaxReported.toFixed(2)
   };
 }

@@ -87,20 +87,58 @@ describe('opsStatsReport format', () => {
         paid_n: 2,
         paid_uv: 2,
         paid_amt: 508,
-        treat_n: 1,
-        treat_amt: 498,
+        activation_n: 1,
+        activation_amt: 498,
+        lizhi_n: 0,
+        lizhi_uv: 0,
+        lizhi_amt: 0,
         rename_n: 1,
         rename_amt: 10,
+        tax_edit_n: 0,
+        tax_edit_amt: 0,
+        admin_act_n: 2,
+        admin_act_amt: 200,
+        combined_amt: 708,
+        combined_activation_n: 3,
+        combined_activation_amt: 698,
+        admin_act_by_admin: [
+          { admin_username: '18933137956', unit_amount: 100, label_note: '', orders: 2, gmv: 200 }
+        ],
+        treat_n: 1,
+        treat_amt: 498,
         dau_unique: 69,
         dau_avg: 69
       },
-      daily: [{ d: '2026-08-12', dau: 69, reg: 14, act: 4, act_admin: 3, act_other: 1, paid_n: 2, paid_amt: 508 }],
+      daily: [
+        {
+          d: '2026-08-12',
+          dau: 69,
+          reg: 14,
+          act: 4,
+          act_admin: 3,
+          act_other: 1,
+          paid_n: 2,
+          paid_amt: 508,
+          activation_amt: 498,
+          lizhi_amt: 0,
+          tax_edit_amt: 0,
+          admin_act_amt: 200,
+          combined_amt: 708
+        }
+      ],
       skus: [{ sku: 'sku_600_perm', kind: 'permanent', n: 1, uv: 1, amt: 498 }]
     };
     var mail = buildDailyEmail(day, day, day);
     expect(mail.subject).toMatch(/日报 2026-08-12/);
     expect(mail.subject).toMatch(/日活 69/);
+    expect(mail.subject).toMatch(/合计GMV ¥708\.00/);
     expect(mail.html).toMatch(/本周累计/);
     expect(mail.html).toMatch(/本月累计/);
+    expect(mail.html).toMatch(/收入拆分（对齐支付分析）/);
+    expect(mail.html).toMatch(/开通套餐（线上支付）/);
+    expect(mail.html).toMatch(/离职证明/);
+    expect(mail.html).toMatch(/管理员激活/);
+    expect(mail.html).toMatch(/合计 GMV（含管理员激活）/);
+    expect(mail.html).toMatch(/同行费用（每天无限）/);
   });
 });

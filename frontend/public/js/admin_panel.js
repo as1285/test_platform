@@ -10140,7 +10140,7 @@
         var btnOpsStatsSendEmail = document.getElementById('btnOpsStatsSendEmail');
         if (btnOpsStatsSendEmail) {
             btnOpsStatsSendEmail.addEventListener('click', function () {
-                if (!confirm('向运营日报邮箱补发昨日日活/注册/激活/付费日报？')) return;
+                if (!confirm('向运营日报邮箱补发昨日日活/注册/激活/支付日报（含支付分析收入拆分）？')) return;
                 var btn = this;
                 btn.disabled = true;
                 adminFetch('api/admin/ops-stats/send-email', { method: 'POST' })

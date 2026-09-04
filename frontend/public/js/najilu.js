@@ -489,7 +489,7 @@
         body: JSON.stringify(body)
       })
       .then(function (r) {
-        return r.json();
+        return parseApiJson(r, '同步开具记录失败');
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data) {
@@ -511,7 +511,7 @@
     return window
       .authFetch('api/tax?action=list_issue_applications')
       .then(function (r) {
-        return r.json();
+        return parseApiJson(r, '申请记录加载失败');
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data && Array.isArray(j.data.applications)) {
@@ -705,12 +705,32 @@
     return merged;
   }
 
+  /** 网关/502 偶发回 HTML（50x.html），避免 r.json() 抛 Unexpected token '<' */
+  function parseApiJson(r, fallbackMsg) {
+    return r.text().then(function (text) {
+      var t = String(text == null ? '' : text).trim();
+      if (!t) {
+        throw new Error((fallbackMsg || '服务器无响应') + '（HTTP ' + r.status + '）');
+      }
+      try {
+        return JSON.parse(t);
+      } catch (e0) {
+        if (t.charAt(0) === '<') {
+          throw new Error('服务暂时不可用，请稍后重试（HTTP ' + r.status + '）');
+        }
+        throw new Error((fallbackMsg || '接口返回无法解析') + '（HTTP ' + r.status + '）');
+      }
+    });
+  }
+
   function fetchUserInfo() {
     var local = getLocalUser();
     if (typeof window.authFetch !== 'function') return Promise.resolve(local);
     return window
       .authFetch('api/user?action=info')
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        return parseApiJson(r, '用户信息加载失败');
+      })
       .then(function (j) {
         if (j.code === 200 && j.data) {
           var merged = mergeUserInfo(local, j.data);
@@ -728,12 +748,12 @@
     if (typeof window.authFetch !== 'function') {
       return Promise.reject(new Error('登录状态异常，请刷新页面后重试'));
     }
-    return window.authFetch('api/tax?action=records')
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
+    return window.authFetch('api/tax?action=records').then(function (r) {
+      return parseApiJson(r, '纳税记录加载失败').then(function (j) {
         if (j.code === 200 && j.data && Array.isArray(j.data.records)) return j.data.records;
         throw new Error(j.msg || '纳税记录加载失败');
       });
+    });
   }
 
   function recordYm(r) {

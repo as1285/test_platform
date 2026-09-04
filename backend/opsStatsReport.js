@@ -18,6 +18,32 @@ const GUEST_PREFIX = '__guest_';
 const USER_TYPE_GUEST = 2;
 const CN_DATE_SQL = 'DATE(DATE_ADD({col}, INTERVAL 8 HOUR))';
 
+/** 与管理台「支付分析」收入拆分同一套 SKU 口径 */
+const LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
+const ZAIZHI_CERT_SKU_ID = 'sku_zaizhi_cert_50';
+const RENAME_FEE_SKU_ID = 'sku_rename_fee_10';
+const TAX_EDIT_SINGLE_SKU_ID = 'sku_tax_edit_fee_20';
+const TAX_EDIT_DAILY_SKU_ID = 'sku_tax_edit_unlimited_30';
+const NAJILU_QR_SKU_ID = 'sku_najilu_qr_300';
+
+function adminPanelRootUser() {
+  return String(process.env.ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+}
+
+/** 管理员激活折算：与 purchaseAnalyticsAdminActivationCreditRules 对齐 */
+function adminActivationCreditRules() {
+  return [
+    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '' },
+    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '' },
+    {
+      admin_username: adminPanelRootUser(),
+      unit_amount: 100,
+      exclude_alipay: true,
+      label_note: '非支付宝'
+    }
+  ];
+}
+
 function statsReportEnabled() {
   var v = String(process.env.STATS_REPORT_ENABLED || '1').trim();
   return v !== '0' && v !== 'false' && v !== 'off';
@@ -179,12 +205,52 @@ function emptyDay(d) {
     paid_n: 0,
     paid_uv: 0,
     paid_amt: 0,
-    treat_n: 0,
-    treat_amt: 0,
+    activation_n: 0,
+    activation_amt: 0,
+    lizhi_n: 0,
+    lizhi_uv: 0,
+    lizhi_amt: 0,
     rename_n: 0,
     rename_amt: 0,
     tax_edit_n: 0,
-    tax_edit_amt: 0
+    tax_edit_amt: 0,
+    admin_act_n: 0,
+    admin_act_amt: 0,
+    combined_amt: 0,
+    combined_activation_n: 0,
+    combined_activation_amt: 0,
+    /* 兼容旧字段：治疗类 ≈ 开通套餐（试用+永久等线上开通） */
+    treat_n: 0,
+    treat_amt: 0
+  };
+}
+
+function paymentSkuCaseSql() {
+  var lizhi =
+    "(sku_id = '" + LIZHI_CERT_SKU_ID + "' OR grant_kind = 'lizhi_cert')";
+  var zaizhi =
+    "(sku_id = '" + ZAIZHI_CERT_SKU_ID + "' OR grant_kind = 'zaizhi_cert')";
+  var rename =
+    "(sku_id = '" +
+    RENAME_FEE_SKU_ID +
+    "' OR sku_id LIKE 'sku_rename%' OR grant_kind = 'rename_credit')";
+  var taxEdit =
+    "(sku_id IN ('" +
+    TAX_EDIT_SINGLE_SKU_ID +
+    "','" +
+    TAX_EDIT_DAILY_SKU_ID +
+    "') OR sku_id LIKE 'sku_tax_edit%' OR grant_kind IN ('tax_edit_single','tax_edit_daily'))";
+  var najilu =
+    "(sku_id = '" + NAJILU_QR_SKU_ID + "' OR sku_id LIKE 'sku_najilu%' OR grant_kind = 'najilu_qr')";
+  var addOn = lizhi + ' OR ' + zaizhi + ' OR ' + rename + ' OR ' + taxEdit + ' OR ' + najilu;
+  return {
+    lizhi: lizhi,
+    zaizhi: zaizhi,
+    rename: rename,
+    taxEdit: taxEdit,
+    najilu: najilu,
+    activationOrder: 'CASE WHEN (' + addOn + ') THEN 0 ELSE 1 END',
+    activationAmount: 'CASE WHEN (' + addOn + ') THEN 0 ELSE amount END'
   };
 }
 
@@ -271,17 +337,39 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       ' BETWEEN ? AND ? GROUP BY d',
     [startYmd, endYmd]
   );
+  const skuCase = paymentSkuCaseSql();
   const [payRows] = await conn.execute(
     'SELECT ' +
       cnPaid +
       ' AS d, COUNT(*) AS n, COUNT(DISTINCT username) AS uv, ' +
       'ROUND(SUM(amount), 2) AS amt, ' +
-      "SUM(CASE WHEN grant_kind IN ('permanent','trial') THEN 1 ELSE 0 END) AS treat_n, " +
-      "ROUND(SUM(CASE WHEN grant_kind IN ('permanent','trial') THEN amount ELSE 0 END), 2) AS treat_amt, " +
-      "SUM(CASE WHEN grant_kind = 'rename_credit' OR sku_id LIKE 'sku_rename%' THEN 1 ELSE 0 END) AS rename_n, " +
-      "ROUND(SUM(CASE WHEN grant_kind = 'rename_credit' OR sku_id LIKE 'sku_rename%' THEN amount ELSE 0 END), 2) AS rename_amt, " +
-      "SUM(CASE WHEN grant_kind IN ('tax_edit_single','tax_edit_daily') OR sku_id LIKE 'sku_tax_edit%' THEN 1 ELSE 0 END) AS tax_edit_n, " +
-      "ROUND(SUM(CASE WHEN grant_kind IN ('tax_edit_single','tax_edit_daily') OR sku_id LIKE 'sku_tax_edit%' THEN amount ELSE 0 END), 2) AS tax_edit_amt " +
+      'SUM(' +
+      skuCase.activationOrder +
+      ') AS activation_n, ' +
+      'ROUND(SUM(' +
+      skuCase.activationAmount +
+      '), 2) AS activation_amt, ' +
+      'SUM(CASE WHEN ' +
+      skuCase.lizhi +
+      ' THEN 1 ELSE 0 END) AS lizhi_n, ' +
+      'COUNT(DISTINCT CASE WHEN ' +
+      skuCase.lizhi +
+      ' THEN username ELSE NULL END) AS lizhi_uv, ' +
+      'ROUND(SUM(CASE WHEN ' +
+      skuCase.lizhi +
+      ' THEN amount ELSE 0 END), 2) AS lizhi_amt, ' +
+      'SUM(CASE WHEN ' +
+      skuCase.rename +
+      ' THEN 1 ELSE 0 END) AS rename_n, ' +
+      'ROUND(SUM(CASE WHEN ' +
+      skuCase.rename +
+      ' THEN amount ELSE 0 END), 2) AS rename_amt, ' +
+      'SUM(CASE WHEN ' +
+      skuCase.taxEdit +
+      ' THEN 1 ELSE 0 END) AS tax_edit_n, ' +
+      'ROUND(SUM(CASE WHEN ' +
+      skuCase.taxEdit +
+      ' THEN amount ELSE 0 END), 2) AS tax_edit_amt ' +
       "FROM payment_orders WHERE status = 'paid' AND " +
       cnPaid +
       ' BETWEEN ? AND ? GROUP BY d',
@@ -295,11 +383,13 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       ' BETWEEN ? AND ? GROUP BY sku, kind ORDER BY amt DESC',
     [startYmd, endYmd]
   );
+  var adminAct = await collectAdminActivationCredits(conn, startYmd, endYmd);
 
   var dauMap = indexByDate(dauRows);
   var regMap = indexByDate(regRows);
   var actMap = indexByDate(actRows);
   var payMap = indexByDate(payRows);
+  var adminDayMap = adminAct.dailyMap || {};
   var daily = enumerateDays(startYmd, endYmd).map(function (d) {
     var row = emptyDay(d);
     if (dauMap[d]) row.dau = Number(dauMap[d].n) || 0;
@@ -313,13 +403,26 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       row.paid_n = Number(payMap[d].n) || 0;
       row.paid_uv = Number(payMap[d].uv) || 0;
       row.paid_amt = Number(payMap[d].amt) || 0;
-      row.treat_n = Number(payMap[d].treat_n) || 0;
-      row.treat_amt = Number(payMap[d].treat_amt) || 0;
+      row.activation_n = Number(payMap[d].activation_n) || 0;
+      row.activation_amt = Number(payMap[d].activation_amt) || 0;
+      row.lizhi_n = Number(payMap[d].lizhi_n) || 0;
+      row.lizhi_uv = Number(payMap[d].lizhi_uv) || 0;
+      row.lizhi_amt = Number(payMap[d].lizhi_amt) || 0;
       row.rename_n = Number(payMap[d].rename_n) || 0;
       row.rename_amt = Number(payMap[d].rename_amt) || 0;
       row.tax_edit_n = Number(payMap[d].tax_edit_n) || 0;
       row.tax_edit_amt = Number(payMap[d].tax_edit_amt) || 0;
+      row.treat_n = row.activation_n;
+      row.treat_amt = row.activation_amt;
     }
+    if (adminDayMap[d]) {
+      row.admin_act_n = Number(adminDayMap[d].orders) || 0;
+      row.admin_act_amt = Number(adminDayMap[d].gmv) || 0;
+    }
+    row.combined_amt = Math.round((row.paid_amt + row.admin_act_amt) * 100) / 100;
+    row.combined_activation_n = row.activation_n + row.admin_act_n;
+    row.combined_activation_amt =
+      Math.round((row.activation_amt + row.admin_act_amt) * 100) / 100;
     return row;
   });
 
@@ -333,19 +436,43 @@ async function collectRangeStats(conn, startYmd, endYmd) {
       a.paid_n += r.paid_n;
       a.paid_uv += r.paid_uv;
       a.paid_amt += r.paid_amt;
-      a.treat_n += r.treat_n;
-      a.treat_amt += r.treat_amt;
+      a.activation_n += r.activation_n;
+      a.activation_amt += r.activation_amt;
+      a.lizhi_n += r.lizhi_n;
+      a.lizhi_uv += r.lizhi_uv;
+      a.lizhi_amt += r.lizhi_amt;
       a.rename_n += r.rename_n;
       a.rename_amt += r.rename_amt;
       a.tax_edit_n += r.tax_edit_n;
       a.tax_edit_amt += r.tax_edit_amt;
+      a.admin_act_n += r.admin_act_n;
+      a.admin_act_amt += r.admin_act_amt;
+      a.treat_n += r.treat_n;
+      a.treat_amt += r.treat_amt;
       return a;
     },
     emptyDay('')
   );
+  /* paid_uv / lizhi_uv 跨日不能简单相加；区间去重用汇总查询结果 */
+  tot.paid_uv = await countDistinctPaidUsers(conn, cnPaid, startYmd, endYmd, null);
+  tot.lizhi_uv = await countDistinctPaidUsers(conn, cnPaid, startYmd, endYmd, skuCase.lizhi);
+  tot.paid_amt = Math.round(tot.paid_amt * 100) / 100;
+  tot.activation_amt = Math.round(tot.activation_amt * 100) / 100;
+  tot.lizhi_amt = Math.round(tot.lizhi_amt * 100) / 100;
+  tot.rename_amt = Math.round(tot.rename_amt * 100) / 100;
+  tot.tax_edit_amt = Math.round(tot.tax_edit_amt * 100) / 100;
+  tot.admin_act_n = adminAct.total_orders || 0;
+  tot.admin_act_amt = adminAct.total_gmv || 0;
+  tot.combined_amt = Math.round((tot.paid_amt + tot.admin_act_amt) * 100) / 100;
+  tot.combined_activation_n = tot.activation_n + tot.admin_act_n;
+  tot.combined_activation_amt =
+    Math.round((tot.activation_amt + tot.admin_act_amt) * 100) / 100;
+  tot.treat_n = tot.activation_n;
+  tot.treat_amt = tot.activation_amt;
   tot.dau_unique = dauUniq && dauUniq.n != null ? Number(dauUniq.n) || 0 : tot.dau;
   tot.days = daily.length;
   tot.dau_avg = tot.days ? Math.round((tot.dau / tot.days) * 10) / 10 : 0;
+  tot.admin_act_by_admin = adminAct.by_admin || [];
 
   return {
     start: startYmd,
@@ -364,18 +491,137 @@ async function collectRangeStats(conn, startYmd, endYmd) {
   };
 }
 
+async function countDistinctPaidUsers(conn, cnPaid, startYmd, endYmd, productSql) {
+  var where =
+    "status = 'paid' AND " + cnPaid + ' BETWEEN ? AND ?' + (productSql ? ' AND (' + productSql + ')' : '');
+  try {
+    const [[row]] = await conn.execute(
+      'SELECT COUNT(DISTINCT username) AS n FROM payment_orders WHERE ' + where,
+      [startYmd, endYmd]
+    );
+    return row && row.n != null ? Number(row.n) || 0 : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function collectAdminActivationCredits(conn, startYmd, endYmd) {
+  var rules = adminActivationCreditRules();
+  var byAdmin = rules.map(function (rule) {
+    return {
+      admin_username: rule.admin_username,
+      unit_amount: rule.unit_amount,
+      label_note: rule.label_note || '',
+      orders: 0,
+      gmv: 0
+    };
+  });
+  var byAdminMap = {};
+  byAdmin.forEach(function (row) {
+    byAdminMap[row.admin_username] = row;
+  });
+  var dailyMap = {};
+  var totalOrders = 0;
+  var totalGmv = 0;
+  var cnActDay = cnDateExpr('ac.last_used_at');
+  var eligible =
+    'u.activation_refunded_at IS NULL AND u.list_hidden_at IS NULL AND COALESCE(u.user_type, 0) <> ' +
+    USER_TYPE_GUEST;
+
+  for (var ri = 0; ri < rules.length; ri++) {
+    var rule = rules[ri];
+    var ownerSql = 'ac.owner_admin_username = ?';
+    var ownerParams = [rule.admin_username];
+    if (rule.exclude_alipay) {
+      ownerSql +=
+        " AND (COALESCE(NULLIF(TRIM(u.activation_source_channel), ''), '__none__') <> ?" +
+        ' AND NOT (ac.note IS NOT NULL AND ac.note LIKE ?))';
+      ownerParams = ownerParams.concat(['alipay', '%支付宝%']);
+    }
+    var baseWhere =
+      "ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ac.used_by_username IS NOT NULL AND TRIM(ac.used_by_username) <> '' AND " +
+      ownerSql +
+      ' AND ' +
+      cnActDay +
+      ' BETWEEN ? AND ? AND ' +
+      eligible;
+    var baseParams = ownerParams.concat([startYmd, endYmd]);
+    try {
+      const [summaryRows] = await conn.execute(
+        'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere,
+        baseParams
+      );
+      var orders = Number((summaryRows[0] || {}).cnt) || 0;
+      if (orders > 0) {
+        var gmv = Math.round(orders * rule.unit_amount * 100) / 100;
+        byAdminMap[rule.admin_username].orders = orders;
+        byAdminMap[rule.admin_username].gmv = gmv;
+        totalOrders += orders;
+        totalGmv += gmv;
+      }
+
+      const [dailyRows] = await conn.execute(
+        'SELECT ' +
+          cnActDay +
+          ' AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY d',
+        baseParams
+      );
+      (dailyRows || []).forEach(function (r) {
+        var dk = asYmd(r.d);
+        var dayOrders = Number(r.cnt) || 0;
+        if (!dk || dayOrders <= 0) return;
+        if (!dailyMap[dk]) dailyMap[dk] = { orders: 0, gmv: 0 };
+        var dayGmv = Math.round(dayOrders * rule.unit_amount * 100) / 100;
+        dailyMap[dk].orders += dayOrders;
+        dailyMap[dk].gmv = Math.round((dailyMap[dk].gmv + dayGmv) * 100) / 100;
+      });
+    } catch (eAdmin) {
+      console.warn('[ops-stats] admin activation credit skipped', eAdmin && eAdmin.message);
+    }
+  }
+
+  return {
+    by_admin: byAdmin.filter(function (r) {
+      return r.orders > 0;
+    }),
+    total_orders: totalOrders,
+    total_gmv: Math.round(totalGmv * 100) / 100,
+    dailyMap: dailyMap
+  };
+}
+
 function kpiTable(tot, opts) {
   opts = opts || {};
+  var adminActLabel =
+    tot.admin_act_n > 0
+      ? num(tot.admin_act_n) + ' 单 / ' + yuan(tot.admin_act_amt)
+      : '0 单 / ' + yuan(0);
   var rows =
     tr(['日活合计（人次）', num(tot.dau)]) +
     (opts.showUnique ? tr(['活跃去重（人）', num(tot.dau_unique)]) : '') +
     (opts.showAvg ? tr(['日均日活', String(tot.dau_avg)]) : '') +
     tr(['新注册', num(tot.reg)]) +
     tr(['新激活', num(tot.act) + '（admin ' + num(tot.act_admin) + ' / 其他 ' + num(tot.act_other) + '）']) +
-    tr(['已付订单', num(tot.paid_n) + ' / ' + num(tot.paid_uv) + ' 人 / ' + yuan(tot.paid_amt)]) +
-    tr(['其中治疗类', num(tot.treat_n) + ' 单 / ' + yuan(tot.treat_amt)]) +
-    tr(['其中改名费', num(tot.rename_n) + ' 单 / ' + yuan(tot.rename_amt)]) +
-    tr(['其中个税修改费', num(tot.tax_edit_n) + ' 单 / ' + yuan(tot.tax_edit_amt)]);
+    tr(['线上已付', num(tot.paid_n) + ' 单 / ' + num(tot.paid_uv) + ' 人 / ' + yuan(tot.paid_amt)]) +
+    tr(['开通套餐（线上）', num(tot.activation_n) + ' 单 / ' + yuan(tot.activation_amt)]) +
+    tr(['离职证明', num(tot.lizhi_n) + ' 单 / ' + num(tot.lizhi_uv) + ' 人 / ' + yuan(tot.lizhi_amt)]) +
+    tr(['改名费', num(tot.rename_n) + ' 单 / ' + yuan(tot.rename_amt)]) +
+    tr(['同行费用（个税修改）', num(tot.tax_edit_n) + ' 单 / ' + yuan(tot.tax_edit_amt)]) +
+    tr(['管理员激活', adminActLabel]) +
+    tr([
+      '开通合计（含管理员激活）',
+      num(tot.combined_activation_n) + ' 单 / ' + yuan(tot.combined_activation_amt)
+    ]) +
+    tr(['合计 GMV（含管理员激活）', yuan(tot.combined_amt)]);
   return (
     '<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;font-size:14px;">' +
     rows +
@@ -408,7 +654,18 @@ function tr(cols) {
 }
 
 function dailyBreakdownTable(daily) {
-  var head = tr(['日期', '日活', '注册', '激活', 'admin激活', '其他激活', '已付单', '实付额']);
+  var head = tr([
+    '日期',
+    '日活',
+    '注册',
+    '激活',
+    '线上已付',
+    '开通',
+    '离职证明',
+    '同行费',
+    '管理员激活',
+    '合计GMV'
+  ]);
   var body = daily
     .map(function (r) {
       return tr([
@@ -416,10 +673,12 @@ function dailyBreakdownTable(daily) {
         num(r.dau),
         num(r.reg),
         num(r.act),
-        num(r.act_admin),
-        num(r.act_other),
         num(r.paid_n),
-        yuan(r.paid_amt)
+        yuan(r.activation_amt),
+        yuan(r.lizhi_amt),
+        yuan(r.tax_edit_amt),
+        yuan(r.admin_act_amt),
+        yuan(r.combined_amt)
       ]);
     })
     .join('');
@@ -430,6 +689,55 @@ function dailyBreakdownTable(daily) {
     '</thead><tbody>' +
     body +
     '</tbody></table>'
+  );
+}
+
+function paymentProductTable(tot) {
+  var rows = [
+    ['开通套餐（线上支付）', tot.activation_n, '—', tot.activation_amt]
+  ];
+  (tot.admin_act_by_admin || []).forEach(function (row) {
+    if (!row || !(row.orders > 0)) return;
+    var note =
+      row.label_note && String(row.label_note).trim()
+        ? ' · ' + String(row.label_note).trim()
+        : '';
+    rows.push([
+      '管理员激活（' +
+        (row.admin_username || '—') +
+        ' · ¥' +
+        (row.unit_amount != null ? row.unit_amount : 0) +
+        '/单' +
+        note +
+        '）',
+      row.orders,
+      '—',
+      row.gmv
+    ]);
+  });
+  rows.push(
+    ['离职证明', tot.lizhi_n, tot.lizhi_uv, tot.lizhi_amt],
+    ['改名费', tot.rename_n, '—', tot.rename_amt],
+    ['同行费用（每天无限）', tot.tax_edit_n, '—', tot.tax_edit_amt],
+    [
+      '开通合计（含管理员激活）',
+      tot.combined_activation_n,
+      '—',
+      tot.combined_activation_amt
+    ],
+    ['合计（含管理员激活）', tot.paid_n, tot.paid_uv, tot.combined_amt]
+  );
+  var head = tr(['产品', '订单数', '去重用户', 'GMV']);
+  var body = rows
+    .map(function (r) {
+      return tr([r[0], num(r[1]), r[2] === '—' ? '—' : num(r[2]), yuan(r[3])]);
+    })
+    .join('');
+  return (
+    '<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;font-size:13px;">' +
+    head +
+    body +
+    '</table>'
   );
 }
 
@@ -458,7 +766,7 @@ function wrapHtml(title, inner) {
     htmlEscape(title) +
     '</h2>' +
     inner +
-    '<p style="color:#888;font-size:12px;margin-top:20px;">口径：日活 = user_daily_activity 按 IP 去重（同 IP 多账号计 1）；注册/激活/支付日 = 北京时间 UTC+8；游客已排除。治疗类 = 试用+永久，不含改名费。</p>' +
+    '<p style="color:#888;font-size:12px;margin-top:20px;">口径：日活 = user_daily_activity 按 IP 去重（同 IP 多账号计 1）；注册/激活/支付日 = 北京时间 UTC+8；游客已排除。支付拆分对齐管理台「支付分析」：开通套餐 = 线上已付中扣除离职/在职证明、改名、个税修改、完税码；管理员激活按 18933137956¥100 / 19106014552¥60 / admin 非支付宝¥100 折算并入合计 GMV。</p>' +
     '</div>'
   );
 }
@@ -482,20 +790,26 @@ function buildDailyEmail(dayStats, wtd, mtd) {
     num(tot.reg) +
     ' / 激活 ' +
     num(tot.act) +
-    ' / 实付 ' +
-    yuan(tot.paid_amt);
+    ' / 合计GMV ' +
+    yuan(tot.combined_amt);
   var html = wrapHtml(
     title,
     h3('当日') +
       kpiTable(tot, {}) +
+      h3('当日收入拆分（对齐支付分析）') +
+      paymentProductTable(tot) +
       h3('当日已付 SKU') +
       skuTable(dayStats.skus) +
       h3('本周累计（' + wtd.start + ' ~ ' + wtd.end + '）') +
       kpiTable(wtd.tot, { showUnique: true, showAvg: true }) +
+      h3('本周收入拆分') +
+      paymentProductTable(wtd.tot) +
       h3('本周分日') +
       dailyBreakdownTable(wtd.daily) +
       h3('本月累计（' + mtd.start + ' ~ ' + mtd.end + '）') +
-      kpiTable(mtd.tot, { showUnique: true, showAvg: true })
+      kpiTable(mtd.tot, { showUnique: true, showAvg: true }) +
+      h3('本月收入拆分') +
+      paymentProductTable(mtd.tot)
   );
   var text =
     title +
@@ -509,24 +823,42 @@ function buildDailyEmail(dayStats, wtd, mtd) {
     tot.act_admin +
     '/其他 ' +
     tot.act_other +
-    '）  实付 ' +
+    '）  线上实付 ' +
     yuan(tot.paid_amt) +
+    '  合计GMV ' +
+    yuan(tot.combined_amt) +
+    '\n开通套餐 ' +
+    tot.activation_n +
+    '/' +
+    yuan(tot.activation_amt) +
+    '  离职证明 ' +
+    tot.lizhi_n +
+    '/' +
+    yuan(tot.lizhi_amt) +
+    '  同行费 ' +
+    tot.tax_edit_n +
+    '/' +
+    yuan(tot.tax_edit_amt) +
+    '  管理员激活 ' +
+    tot.admin_act_n +
+    '/' +
+    yuan(tot.admin_act_amt) +
     '\n本周累计 日活' +
     wtd.tot.dau +
     ' 注册' +
     wtd.tot.reg +
     ' 激活' +
     wtd.tot.act +
-    ' 实付' +
-    yuan(wtd.tot.paid_amt) +
+    ' 合计GMV' +
+    yuan(wtd.tot.combined_amt) +
     '\n本月累计 日活' +
     mtd.tot.dau +
     ' 注册' +
     mtd.tot.reg +
     ' 激活' +
     mtd.tot.act +
-    ' 实付' +
-    yuan(mtd.tot.paid_amt) +
+    ' 合计GMV' +
+    yuan(mtd.tot.combined_amt) +
     '\n';
   return { subject: subject, html: html, text: text };
 }
@@ -549,12 +881,14 @@ function buildPeriodEmail(kind, stats) {
     num(tot.reg) +
     ' / 激活 ' +
     num(tot.act) +
-    ' / 实付 ' +
-    yuan(tot.paid_amt);
+    ' / 合计GMV ' +
+    yuan(tot.combined_amt);
   var html = wrapHtml(
     title,
     h3('汇总') +
       kpiTable(tot, { showUnique: true, showAvg: true }) +
+      h3('收入拆分（对齐支付分析）') +
+      paymentProductTable(tot) +
       h3('已付 SKU') +
       skuTable(stats.skus) +
       h3('分日明细') +
@@ -568,8 +902,10 @@ function buildPeriodEmail(kind, stats) {
     tot.reg +
     '  激活 ' +
     tot.act +
-    '  实付 ' +
+    '  线上实付 ' +
     yuan(tot.paid_amt) +
+    '  合计GMV ' +
+    yuan(tot.combined_amt) +
     '\n';
   return { subject: subject, html: html, text: text };
 }

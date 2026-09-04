@@ -3900,7 +3900,7 @@
                 <div id="page-server-monitor" class="page-panel" role="tabpanel">
                     <section>
                         <h2>服务状态</h2>
-                        <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx，并自测登录/公开/用户/管理等关键接口。任一接口 404/5xx 或超时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。开启自动修复后，健康检查失败或多数接口连续两轮异常会重启后端进程（冷却 10 分钟，每小时最多 3 次）。每晚 0 点（北京时间）自动发送昨日日活/注册/激活/付费日报，周一附周报，每月 1 日附月报。</p>
+                        <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx，并自测登录/公开/用户/管理等关键接口。任一接口 404/5xx 或超时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。开启自动修复后，健康检查失败或多数接口连续两轮异常会重启后端进程（冷却 10 分钟，每小时最多 3 次）。每晚 0 点（北京时间）自动发送昨日日活/注册/激活/支付日报（收入拆分对齐「支付分析」：开通套餐、离职证明、同行费、管理员激活折算与合计 GMV），周一附周报，每月 1 日附月报。</p>
                         <div class="form-row flex-align-center mt-8 flex-wrap gap-10">
                             <button type="button" class="btn-primary" id="btnRefreshServerMonitor">刷新</button>
                             <button type="button" class="btn-page" id="btnMonitorRunSelftest">立即自测接口</button>
