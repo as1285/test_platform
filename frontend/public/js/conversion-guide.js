@@ -1761,6 +1761,25 @@
     window.location.href = 'najilu.html';
   }
 
+  function goNajiluQrReplace(from) {
+    window.location.href = 'najilu_qr.html?from=' + encodeURIComponent(from || 'najilu');
+  }
+
+  /** 未激活用户点「生成纳税记录」：引导去替换完税二维码，不静默出图。 */
+  function openInactiveNajiluGenerateGuide() {
+    openPayGateModal({
+      feature: '纳税记录',
+      from: 'gate_najilu_generate',
+      title: '请先替换完税二维码',
+      message: '当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。',
+      primaryLabel: '去替换',
+      allowContinue: false,
+      onPrimary: function () {
+        goNajiluQrReplace('najilu_generate');
+      }
+    });
+  }
+
   function showValueConfirmDialog(year) {
     if (document.getElementById('cg-value-overlay')) return;
     ensureGateStyles();
@@ -3222,24 +3241,9 @@
           'click',
           function (ev) {
             if (isAccountActive()) return;
-            if (genBtn.__cgPayGatePass) {
-              genBtn.__cgPayGatePass = false;
-              return;
-            }
             ev.preventDefault();
             ev.stopImmediatePropagation();
-            openPayGateModal({
-              feature: '纳税记录',
-              from: 'gate_najilu_generate',
-              title: '生成纳税记录需开通',
-              message: '开通后生成的记录可带公章、去水印，便于导出保存。也可先生成演示预览。',
-              allowContinue: true,
-              continueLabel: '先生成演示版',
-              onContinue: function () {
-                genBtn.__cgPayGatePass = true;
-                genBtn.click();
-              }
-            });
+            openInactiveNajiluGenerateGuide();
           },
           true
         );
@@ -3828,6 +3832,8 @@
     goIncomeDetail: goIncomeDetail,
     pickYearFromTaxRecords: pickYearFromTaxRecords,
     goNajilu: goNajilu,
+    goNajiluQrReplace: goNajiluQrReplace,
+    openInactiveNajiluGenerateGuide: openInactiveNajiluGenerateGuide,
     gateActivation: gateActivation,
     gateTaxRecords: gateTaxRecords,
     openPayGateModal: openPayGateModal,

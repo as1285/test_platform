@@ -101,6 +101,7 @@ describe('C 端完税二维码入口位置', () => {
   const consultHtml = readFileSync(resolve(__dirname, '../../consult.html'), 'utf8');
   const purchaseHtml = readFileSync(resolve(__dirname, '../../purchase.html'), 'utf8');
   const najiluQrHtml = readFileSync(resolve(__dirname, '../../najilu_qr.html'), 'utf8');
+  const najiluHtml = readFileSync(resolve(__dirname, '../../najilu.html'), 'utf8');
 
   it('入口在我要咨询增值服务，不在支付页折叠区', () => {
     expect(consultHtml).toContain('id="najiluQrEntryCard"');
@@ -109,5 +110,11 @@ describe('C 端完税二维码入口位置', () => {
     expect(purchaseHtml).not.toContain('id="cardNajiluQr"');
     expect(purchaseHtml).not.toContain('btnNajiluQrEntry');
     expect(najiluQrHtml).toContain('consult.html?tab=products');
+  });
+
+  it('纳税记录开具页右上角有替换二维码入口', () => {
+    expect(najiluHtml).toContain('id="najiluQrReplaceLink"');
+    expect(najiluHtml).toContain('najilu_qr.html?from=najilu');
+    expect(najiluHtml).toContain('替换二维码');
   });
 });

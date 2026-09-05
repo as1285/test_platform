@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <script src="/js/auth.js?v=20260905-qr-guide" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>纳税记录开具</title>
     <style>
@@ -561,6 +561,24 @@
             opacity: 0.75;
         }
 
+        .header-qr-replace {
+            position: absolute;
+            right: 14px;
+            top: auto;
+            bottom: 0;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            color: #1677ff;
+            font-size: 14px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .header-qr-replace:active {
+            opacity: 0.75;
+        }
+
         .empty-records {
             padding: 48px 16px;
             text-align: center;
@@ -743,6 +761,7 @@
             <span>返回</span>
         </a>
         <span class="header-title">纳税记录开具</span>
+        <a href="najilu_qr.html?from=najilu" class="header-qr-replace" id="najiluQrReplaceLink">替换二维码</a>
     </div>
 
     <div class="page-content">
@@ -822,7 +841,7 @@
 
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260905-scan"></script>
+    <script src="/js/najilu.js?v=20260905-qr-guide"></script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

@@ -1124,6 +1124,14 @@
     );
   }
 
+  function renderQrReplaceLink(from) {
+    return (
+      '<a href="' +
+      esc(najiluQrReplaceHref(from || 'najilu')) +
+      '" class="header-qr-replace" id="najiluQrReplaceLink">替换二维码</a>'
+    );
+  }
+
   function renderHeader(title, backHref, rightHtml) {
     return (
       '<div class="header">' +
@@ -1152,7 +1160,7 @@
     function paint(list) {
       var html =
         '<div class="record-page">' +
-        renderHeader('纳税记录申请记录', 'back') +
+        renderHeader('纳税记录申请记录', 'back', renderQrReplaceLink('najilu_records')) +
         '<div class="record-tips">' +
         '<div>温馨提示：</div>' +
         '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
@@ -1304,6 +1312,94 @@
     return app;
   }
 
+  /** 与 conversion-guide / watermark 同一套 account_active 开通判断，不另立规则。 */
+  function isClientAccountActive() {
+    try {
+      if (window.ConversionGuide && typeof window.ConversionGuide.isAccountActive === 'function') {
+        return !!window.ConversionGuide.isAccountActive();
+      }
+    } catch (e) {}
+    try {
+      return localStorage.getItem('account_active') === '1';
+    } catch (e2) {
+      return false;
+    }
+  }
+
+  function najiluQrReplaceHref(from) {
+    return 'najilu_qr.html?from=' + encodeURIComponent(from || 'najilu');
+  }
+
+  function goNajiluQrReplace(from) {
+    window.location.href = najiluQrReplaceHref(from);
+  }
+
+  function ensureInactiveGenerateGuideStyles() {
+    if (document.getElementById('najilu-inactive-generate-guide-styles')) return;
+    var st = document.createElement('style');
+    st.id = 'najilu-inactive-generate-guide-styles';
+    st.textContent =
+      '.najilu-qr-guide-root{position:fixed;inset:0;z-index:1000030;display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
+      '.najilu-qr-guide-mask{position:absolute;inset:0;background:rgba(15,23,42,.45)}' +
+      '.najilu-qr-guide-panel{position:relative;z-index:1;width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(15,23,42,.12);box-sizing:border-box}' +
+      '.najilu-qr-guide-title{margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a}' +
+      '.najilu-qr-guide-body{margin:0 0 16px;font-size:14px;line-height:1.55;color:#475569}' +
+      '.najilu-qr-guide-actions{display:flex;flex-direction:column;gap:8px}' +
+      '.najilu-qr-guide-btn{display:block;width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}' +
+      '.najilu-qr-guide-btn.primary{background:#1e6fff;color:#fff}' +
+      '.najilu-qr-guide-btn.ghost{background:#f1f5f9;color:#64748b;font-weight:500}';
+    document.head.appendChild(st);
+  }
+
+  function showInactiveGenerateGuide() {
+    if (window.ConversionGuide && typeof window.ConversionGuide.openInactiveNajiluGenerateGuide === 'function') {
+      window.ConversionGuide.openInactiveNajiluGenerateGuide();
+      return;
+    }
+    if (window.ConversionGuide && typeof window.ConversionGuide.openPayGateModal === 'function') {
+      window.ConversionGuide.openPayGateModal({
+        feature: '纳税记录',
+        from: 'gate_najilu_generate',
+        title: '请先替换完税二维码',
+        message: '当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。',
+        primaryLabel: '去替换',
+        allowContinue: false,
+        onPrimary: function () {
+          goNajiluQrReplace('najilu_generate');
+        }
+      });
+      return;
+    }
+    ensureInactiveGenerateGuideStyles();
+    var existing = document.getElementById('najilu-qr-guide-root');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    var root = document.createElement('div');
+    root.id = 'najilu-qr-guide-root';
+    root.className = 'najilu-qr-guide-root';
+    root.innerHTML =
+      '<div class="najilu-qr-guide-mask" data-act="close"></div>' +
+      '<div class="najilu-qr-guide-panel" role="dialog" aria-modal="true" aria-labelledby="najiluQrGuideTitle">' +
+      '<h3 id="najiluQrGuideTitle" class="najilu-qr-guide-title">请先替换完税二维码</h3>' +
+      '<p class="najilu-qr-guide-body">当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。</p>' +
+      '<div class="najilu-qr-guide-actions">' +
+      '<button type="button" class="najilu-qr-guide-btn primary" data-act="primary">去替换</button>' +
+      '<button type="button" class="najilu-qr-guide-btn ghost" data-act="close">取消</button>' +
+      '</div></div>';
+    root.addEventListener('click', function (ev) {
+      var t = ev.target.closest('[data-act]');
+      if (!t) return;
+      var act = t.getAttribute('data-act');
+      if (act === 'close') {
+        if (root.parentNode) root.parentNode.removeChild(root);
+        return;
+      }
+      if (act === 'primary') {
+        goNajiluQrReplace('najilu_generate');
+      }
+    });
+    document.body.appendChild(root);
+  }
+
   function initForm() {
     var rangeStartInput = document.getElementById('rangeStartInput');
     var rangeEndInput = document.getElementById('rangeEndInput');
@@ -1387,9 +1483,26 @@
     });
     resetGenerateBtn();
 
+    btn.addEventListener(
+      'click',
+      function (ev) {
+        if (isClientAccountActive()) return;
+        if (ev) {
+          ev.preventDefault();
+          ev.stopImmediatePropagation();
+        }
+        showInactiveGenerateGuide();
+      },
+      true
+    );
+
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
       if (btn.getAttribute('data-generating') === '1') return;
+      if (!isClientAccountActive()) {
+        showInactiveGenerateGuide();
+        return;
+      }
       btn.setAttribute('data-generating', '1');
       btn.disabled = true;
       btn.textContent = '正在生成...';
@@ -2670,7 +2783,13 @@
 
   window.TaxIssueCertificate = {
     renderDataUrl: renderCertificateDataUrl,
-    buildAppFromAdminDetail: buildAppFromAdminDetail
+    buildAppFromAdminDetail: buildAppFromAdminDetail,
+    isClientAccountActive: isClientAccountActive,
+    shouldGuideInactiveGenerate: function () {
+      return !isClientAccountActive();
+    },
+    najiluQrReplaceHref: najiluQrReplaceHref,
+    showInactiveGenerateGuide: showInactiveGenerateGuide
   };
 
   if (isNajiluPage()) {
