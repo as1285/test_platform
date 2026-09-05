@@ -750,9 +750,22 @@ html.app-ios-iphone15promax .container {
 #panel-products .consult-purchase-entry[hidden] {
     display: none !important;
 }
-#panel-records .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: stretch; }
-#panel-records .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; }
+#panel-records .batch-tax-toolbar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+#panel-records .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; min-height: 44px; }
 #panel-records .batch-tax-toolbar .btn-default { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text-secondary); }
+/* 二级工具栏层级：按模板生成为最显眼的次要入口，独占一行；示例填写降级为次要文字按钮
+   注：外层 .batch-tax-toolbar 改为纵向排列后，flex-basis 百分比会作用在主轴（高度）而非宽度，
+   故这里显式用 width:100% + flex:0 0 auto 撑满一行，避免继承旧的 33% 横向分栏规则。 */
+#panel-records .batch-tax-toolbar-primary.btn {
+    flex: 0 0 auto; width: 100%; min-height: 44px; font-size: 14px; font-weight: 600; padding: 11px 10px;
+    color: var(--color-primary); background: var(--color-primary-bg); border-color: var(--color-primary-border);
+}
+#panel-records .batch-tax-toolbar-primary.btn:active { background: var(--color-primary-border); }
+#panel-records .batch-tax-toolbar-row2 { flex: 0 0 auto; width: 100%; display: flex; gap: 8px; align-items: stretch; }
+#panel-records .batch-tax-toolbar-row2 > .btn,
+#panel-records .batch-tax-toolbar-row2 > .batch-tax-more-wrap { flex: 1 1 0; min-width: 0; }
+#panel-records .batch-tax-toolbar-quiet { background: transparent; border-color: transparent; color: var(--color-text-secondary); font-weight: 400; }
+#panel-records .batch-tax-toolbar-quiet:active { background: var(--color-surface-alt); }
 #panel-records .batch-tax-more-wrap { position: relative; flex: 1 1 calc(33.33% - 6px); min-width: 0; }
 #panel-records .batch-tax-more-wrap > .btn { width: 100%; }
 #panel-records .batch-tax-more-menu {
@@ -911,11 +924,36 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
 }
 #panel-records .batch-emp-bonus-solo-btn:active { opacity: 0.92; }
 
-/* 年月输入 */
+/* 年月输入（旧：四个数字框，管理端仍在用） */
 #panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }
 #panel-records .batch-ym-inline input.batch-ym-field { flex: 1 1 0; min-width: 0; min-height: 42px; font-size: 15px; padding: 10px 12px; touch-action: manipulation; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); -webkit-appearance: none; appearance: none; }
 #panel-records .batch-ym-inline input.batch-emp-sm, #panel-records .batch-ym-inline input.batch-emp-em { flex: 0 0 72px; width: 72px; text-align: center; }
 #panel-records .batch-ym-inline input.batch-ym-field:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+
+/* 起止月：C 端友好选择器（点开年/月下拉，替代四个数字框） */
+#panel-records .batch-emp-period-group { margin-bottom: 14px; }
+#panel-records .batch-ym-range { display: flex; align-items: center; gap: 8px; }
+#panel-records .batch-ym-range-btn {
+    flex: 1 1 0; min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: flex-start;
+    justify-content: center; gap: 2px; padding: 8px 12px; border: 1.5px solid var(--color-border); border-radius: 8px;
+    background: var(--color-surface); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    text-align: left;
+}
+#panel-records .batch-ym-range-btn:active { background: var(--color-surface-alt); border-color: var(--color-primary-border); }
+#panel-records .batch-ym-range-btn-cap { font-size: 11px; color: var(--color-text-muted); line-height: 1.3; }
+#panel-records .batch-ym-range-btn-val { font-size: 15px; font-weight: 600; color: var(--color-text); line-height: 1.3; }
+#panel-records .batch-ym-range-arrow { flex: 0 0 auto; font-size: 14px; color: var(--color-text-muted); }
+#panel-records .batch-ym-hidden-fields { display: none; }
+
+/* 起止月选择弹层：年/月两个下拉 */
+.batch-ym-picker-panel { max-width: 320px; }
+.batch-ym-picker-body { display: flex; align-items: center; gap: 6px; padding: 20px 16px; }
+.batch-ym-picker-select {
+    flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 16px; padding: 8px 10px; border: 1.5px solid var(--color-border);
+    border-radius: 8px; background: var(--color-surface); color: var(--color-text); font-family: inherit;
+    -webkit-appearance: none; appearance: none;
+}
+.batch-ym-picker-unit { flex: 0 0 auto; font-size: 13px; color: var(--color-text-secondary); }
 
 @media (pointer: coarse) {
     .form-group select, .form-group input[type="date"], .form-group input[type="number"] { min-height: 44px; font-size: 16px; touch-action: manipulation; }
