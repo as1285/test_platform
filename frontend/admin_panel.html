@@ -1882,12 +1882,13 @@
                     <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>河南社会保险个人权益记录单</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>、<strong>上海城镇职工养老保险参保情况</strong>、<strong>厦门基本养老个人历年缴费明细表</strong>或<strong>四川社会保险个人参保证明</strong>（版式分别对齐浙里办 / 深圳清单 / 广州清单 / 湖北证明 / 湖南参保证明 / 河南权益记录单 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月 / 厦门社保参保证明 / 四川人社横向样张）。<strong>河南与浙江后台操作相同</strong>（姓名 / 证件 / 单位 / 信用代码 / 分段任职 / 起止月 / 基数 / 四险状态），地区只换 PDF 版式。演示样例带核验码，非正式证明。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">同一页可生成<strong>浙江参保证明</strong>、<strong>深圳历年缴费明细</strong>、<strong>深圳新参保证明</strong>、<strong>广州历年缴费明细</strong>、<strong>武汉（湖北）个人参保证明</strong>、<strong>湖南个人参保信息（实缴明细）</strong>、<strong>河南社会保险个人权益记录单</strong>、<strong>江苏社会保险权益记录单</strong>、<strong>北京社会保险个人权益记录</strong>、<strong>上海城镇职工养老保险参保情况</strong>、<strong>厦门基本养老个人历年缴费明细表</strong>或<strong>四川社会保险个人参保证明</strong>（版式分别对齐浙里办 / 深圳清单 / 深圳参保证明 / 广州清单 / 湖北证明 / 湖南参保证明 / 河南权益记录单 / 江苏智慧人社 / 北京个人权益记录 / 随申办近60个月 / 厦门社保参保证明 / 四川人社横向样张）。<strong>河南与浙江后台操作相同</strong>（姓名 / 证件 / 单位 / 信用代码 / 分段任职 / 起止月 / 基数 / 四险状态），地区只换 PDF 版式。演示样例带核验码，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <span class="hint" style="display:block;margin-bottom:6px;">证明地区</span>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionZj" value="zj" checked> 浙江</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz"> 深圳</label>
+                                <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionSzNew" value="sz_new"> 深圳新</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionGz" value="gz"> 广州</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh"> 武汉</label>
                                 <label style="margin-right:16px;"><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn"> 湖南</label>
@@ -1930,7 +1931,7 @@
 公司名称：杭州千雨千寻文化科技有限公司
 税号：91330102MA7E2YNM2R
 写参保缴费 不要停保"></textarea>
-                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳/广州清单可写<strong>社保电脑号 / 单位编号</strong>；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；河南权益记录单可写<strong>河南 / 郑州 / 郑东新区</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>；上海参保情况可写<strong>上海 / 浦东 / 累计缴费月数</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。深圳/深圳新/广州清单可写<strong>社保电脑号 / 单位编号</strong>；粘贴含「深圳市社会保险参保证明」时走<strong>深圳新</strong>版式；武汉证明可写<strong>个人编号 / 单位编号 / 参保险种</strong>；湖南实缴明细可写<strong>个人编号 / 单位编号 / 湖南 / 常德</strong>；河南权益记录单可写<strong>河南 / 郑州 / 郑东新区</strong>；北京权益记录可写<strong>北京 / 朝阳 / 校验码 / 查询流水号</strong>；上海参保情况可写<strong>上海 / 浦东 / 累计缴费月数</strong>。默认<strong>参保缴费</strong>并自动生成缴费记录。</p>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>

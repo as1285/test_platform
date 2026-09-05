@@ -14,6 +14,7 @@ const { PUBLIC_SITE_URL } = require('../shared/config');
 
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
 const SBDY_SZ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_render_pdf.py');
+const SBDY_SZ_NEW_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sz_new_render_pdf.py');
 const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render_pdf.py');
 const SBDY_HN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_hn_render_pdf.py');
 const SBDY_HENAN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_henan_render_pdf.py');
@@ -70,6 +71,12 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
       script = SBDY_HENAN_RENDER_SCRIPT;
     } else if (region === 'wh' || region === 'wuhan' || region === 'hubei' || region === 'hb') {
       script = SBDY_WH_RENDER_SCRIPT;
+    } else if (
+      region === 'sz_new' ||
+      region === 'shenzhen_new' ||
+      region === 'sz_cgbzm_v1'
+    ) {
+      script = SBDY_SZ_NEW_RENDER_SCRIPT;
     } else if (
       region === 'sz' ||
       region === 'shenzhen' ||
@@ -315,6 +322,11 @@ function isSzStyleRegion(body) {
   return isSzRegion(body) || isGzRegion(body);
 }
 
+function isSzNewRegion(body) {
+  var r = String((body && (body.region || body.layout)) || '').toLowerCase();
+  return r === 'sz_new' || r === 'shenzhen_new' || r === 'sz_cgbzm_v1';
+}
+
 function szStyleCity(body) {
   return isGzRegion(body) ? '广州' : '深圳';
 }
@@ -389,6 +401,7 @@ function regionKeyOf(payload) {
   var r = String((payload && payload.region) || '').toLowerCase();
   if (
     r === 'sz' ||
+    r === 'sz_new' ||
     r === 'gz' ||
     r === 'wh' ||
     r === 'hn' ||
@@ -408,6 +421,7 @@ function isZjStylePayload(p) {
   p = p || {};
   return (
     p.region !== 'sz' &&
+    p.region !== 'sz_new' &&
     p.region !== 'gz' &&
     p.region !== 'wh' &&
     p.region !== 'hn' &&
@@ -418,6 +432,7 @@ function isZjStylePayload(p) {
     p.region !== 'xm' &&
     p.region !== 'sc' &&
     p.layout !== 'sz_official_v1' &&
+    p.layout !== 'sz_cgbzm_v1' &&
     p.layout !== 'gz_official_v1' &&
     p.layout !== 'wh_official_v1' &&
     p.layout !== 'hn_official_v1' &&
@@ -2036,6 +2051,243 @@ function normalizeSzPayload(body) {
   };
 }
 
+function szNewDocSerial(printDate, letter) {
+  var m = String(printDate || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  var y;
+  var mo;
+  var d;
+  if (m) {
+    y = m[1];
+    mo = pad2(Number(m[2]));
+    d = pad2(Number(m[3]));
+  } else {
+    var now = bjNowParts();
+    y = String(now.y);
+    mo = pad2(now.m);
+    d = pad2(now.d);
+  }
+  var ch = String(letter || 'E').replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase() || 'E';
+  return y + ':' + mo + ':' + d + ch;
+}
+
+function toSzNewMonthRow(r, opts) {
+  opts = opts || {};
+  var y = r && r.year;
+  var m = String((r && r.month) || '').padStart(2, '0');
+  var ym = String((r && r.ym) || '');
+  if (!ym && y && m) ym = String(y) + m;
+  if (ym && ym.length >= 6 && (!y || !m || m === '00')) {
+    y = ym.slice(0, 4);
+    m = ym.slice(4, 6);
+  }
+  return {
+    year: y,
+    month: m,
+    ym: ym,
+    unit_code: (r && r.unit_code) || opts.unit_code || '',
+    unit_name: (r && r.unit_name) || opts.company_name || '',
+    pension_base: r && r.pension_base,
+    medical_base: r && r.medical_base,
+    medical_tier: String((r && r.medical_tier) || opts.medical_tier || (r && r.medical_type) || '2'),
+    maternity_base: r && r.maternity_base != null ? r.maternity_base : r && r.medical_base,
+    maternity_type: String((r && r.maternity_type) || opts.maternity_type || '1'),
+    injury_base: r && r.injury_base,
+    unemp_base: r && r.unemp_base
+  };
+}
+
+function pickSzNewYearsMonths(body, n) {
+  var raw = (body && (body.years_months || body.yearsMonths)) || {};
+  function pick(key, alts, fallback) {
+    var keys = [key].concat(alts || []);
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var v = raw[keys[i]];
+      if (v == null && body) v = body[keys[i]];
+      if (v != null && String(v).trim() !== '') {
+        var num = Number(v);
+        if (isFinite(num) && num >= 0) return Math.round(num);
+      }
+    }
+    return fallback;
+  }
+  return {
+    pension: pick('pension', ['months_pension'], n),
+    medical: pick('medical', ['months_medical'], n),
+    maternity: pick('maternity', ['months_maternity'], n),
+    maternity_medical: pick('maternity_medical', ['months_maternity_medical'], 0),
+    injury: pick('injury', ['months_injury'], n),
+    unemployment: pick('unemployment', ['months_unemployment'], n)
+  };
+}
+
+function normalizeSzNewPayload(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var name = String(b.name || '').trim().substring(0, 64);
+  var idNumber = String(b.id_number || b.idNumber || '').trim().substring(0, 32);
+  var company = String(b.company_name || b.company || '').trim().substring(0, 128);
+  var credit = String(b.credit_code || b.creditCode || '').trim().substring(0, 200);
+  var unitCode = String(b.unit_code || b.unitCode || '').trim();
+  if (unitCode && !/[A-Za-z]/.test(unitCode) && unitCode.length < 15) {
+    unitCode = unitCode.replace(/\D/g, '').substring(0, 12);
+  }
+  if (!unitCode) unitCode = szStyleUnitId(credit.split(/[、,，;；/|]+/)[0], credit, idNumber);
+  var computerNo = String(b.computer_no || b.computerNo || '').replace(/\D/g, '').substring(0, 12);
+  if (!computerNo) computerNo = digitsFrom(idNumber, 9);
+  var periodStart = String(b.period_start || b.periodStart || '').trim();
+  var periodEnd = String(b.period_end || b.periodEnd || '').trim();
+  var pensionBase = Number(
+    b.pension_base != null ? b.pension_base : b.base_amount != null ? b.base_amount : b.baseAmount
+  );
+  var medicalBase = Number(b.medical_base != null ? b.medical_base : b.medicalBase);
+  if (!isFinite(pensionBase) || pensionBase <= 0) pensionBase = 4492;
+  if (!isFinite(medicalBase) || medicalBase <= 0) medicalBase = pensionBase;
+  var medicalTier = String(b.medical_tier || b.medicalTier || b.medical_type || '2').trim() || '2';
+  var maternityType = String(b.maternity_type || b.maternityType || '1').trim() || '1';
+  var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
+  var docSerial =
+    String(b.doc_serial || b.docSerial || '').trim() ||
+    szNewDocSerial(printDate, b.doc_serial_letter || b.docSerialLetter);
+  if (!name || !idNumber) {
+    return { error: '姓名与证件号码必填' };
+  }
+  var rawSegs = Array.isArray(b.segments)
+    ? b.segments.map(function (s) {
+        if (!s || typeof s !== 'object') return s;
+        if (s.credit_code || s.creditCode) return s;
+        return Object.assign({}, s, { credit_code: s.unit_code || s.unitCode || '' });
+      })
+    : b.segments;
+  var segments = normalizeSegments(rawSegs, { area: '深圳市', base: pensionBase });
+  var months = [];
+  if (segments.length) {
+    months = buildSzMonthRowsFromSegments(segments);
+    if (!months.length) {
+      return { error: '分段任职的起止月无效' };
+    }
+    var latestEmp = pickLatestZjEmployer({
+      company: company,
+      credit: unitCode,
+      months: months,
+      segments: segments
+    });
+    company = latestEmp.company_name || segments[segments.length - 1].company_name || company;
+    unitCode = latestEmp.credit_code || segments[segments.length - 1].credit_code || unitCode;
+    periodStart = months[0].year + '-' + String(months[0].month).padStart(2, '0');
+    periodEnd =
+      months[months.length - 1].year +
+      '-' +
+      String(months[months.length - 1].month).padStart(2, '0');
+  } else {
+    if (!parseYm(periodStart) || !parseYm(periodEnd)) {
+      return { error: '缴费起止月份格式应为 YYYY-MM' };
+    }
+    var a0 = parseYm(periodStart);
+    var b0 = parseYm(periodEnd);
+    if (a0.y > b0.y || (a0.y === b0.y && a0.m > b0.m)) {
+      var tmp = periodStart;
+      periodStart = periodEnd;
+      periodEnd = tmp;
+    }
+    var monthUnits = null;
+    var nameByCode = {};
+    if (b.month_units && typeof b.month_units === 'object' && !Array.isArray(b.month_units)) {
+      monthUnits = {};
+      Object.keys(b.month_units).forEach(function (k) {
+        var key = String(k).trim();
+        var v = b.month_units[k] == null ? '' : String(b.month_units[k]).trim().substring(0, 40);
+        if (/^\d{4}-\d{2}$/.test(key) && v) monthUnits[key] = v;
+      });
+      if (!Object.keys(monthUnits).length) monthUnits = null;
+    }
+    if (Array.isArray(b.unit_map)) {
+      b.unit_map.forEach(function (item) {
+        if (item && (item.unit_code || item.unitCode)) {
+          nameByCode[String(item.unit_code || item.unitCode)] = item.unit_name || item.unitName || '';
+        }
+      });
+    }
+    months = buildSzMonthRows(periodStart, periodEnd, {
+      pension_base: pensionBase,
+      medical_base: medicalBase,
+      unit_code: unitCode,
+      company_name: company,
+      month_units: monthUnits,
+      name_by_code: nameByCode
+    });
+    if (!months.length) {
+      return { error: '缴费月份区间无效' };
+    }
+  }
+  var monthBases = b.month_bases || b.monthBases;
+  if (monthBases && typeof monthBases === 'object') {
+    months.forEach(function (r) {
+      var key = r.year + '-' + String(r.month).padStart(2, '0');
+      var compact = String(r.year) + String(r.month).padStart(2, '0');
+      var ov = monthBases[key] || monthBases[compact];
+      if (ov == null) return;
+      var base = typeof ov === 'object' ? Number(ov.pension_base || ov.base || ov.base_amount) : Number(ov);
+      if (!isFinite(base) || base <= 0) return;
+      var med =
+        typeof ov === 'object' ? Number(ov.medical_base != null ? ov.medical_base : base) : base;
+      var rebuilt = makeSzMonthRow(r.year, Number(r.month), {
+        pension_base: base,
+        medical_base: isFinite(med) && med > 0 ? med : base,
+        unit_code: r.unit_code,
+        company_name: r.unit_name
+      });
+      r.pension_base = rebuilt.pension_base;
+      r.medical_base = rebuilt.medical_base;
+      r.maternity_base = rebuilt.maternity_base;
+      r.injury_base = rebuilt.injury_base;
+      r.unemp_base = rebuilt.unemp_base;
+    });
+  }
+  var detail = months.map(function (r) {
+    return toSzNewMonthRow(r, {
+      unit_code: unitCode,
+      company_name: company,
+      medical_tier: medicalTier,
+      maternity_type: maternityType
+    });
+  });
+  if (detail.length > 24) detail = detail.slice(-24);
+  var unitMap = [];
+  if (segments.length) {
+    segments.forEach(function (s) {
+      unitMap = normalizeSzUnitMapInput(unitMap, s.credit_code || s.unit_code, s.company_name);
+    });
+  } else {
+    unitMap = normalizeSzUnitMapInput(b.unit_map || b.unitMap, unitCode, company);
+  }
+  return {
+    region: 'sz_new',
+    layout: 'sz_cgbzm_v1',
+    name: name,
+    id_number: idNumber,
+    computer_no: computerNo,
+    company_name: company,
+    credit_code: credit,
+    unit_code: unitCode,
+    unit_map: unitMap,
+    period_start: periodStart,
+    period_end: periodEnd,
+    period_label:
+      formatYmCn(parseYm(periodStart).y, parseYm(periodStart).m) +
+      '-' +
+      formatYmCn(parseYm(periodEnd).y, parseYm(periodEnd).m),
+    pension_base: pensionBase,
+    medical_base: medicalBase,
+    medical_tier: medicalTier,
+    maternity_type: maternityType,
+    base_amount: pensionBase,
+    print_date: printDate,
+    doc_serial: docSerial,
+    years_months: pickSzNewYearsMonths(b, months.length),
+    months: detail
+  };
+}
+
 function buildWhMonthRows(periodStart, periodEnd, opts) {
   opts = opts || {};
   var a = parseYm(periodStart);
@@ -2989,6 +3241,9 @@ function normalizePayload(body) {
   if (isWhRegion(body)) {
     return normalizeWhPayload(body);
   }
+  if (isSzNewRegion(body)) {
+    return normalizeSzNewPayload(body);
+  }
   if (isSzStyleRegion(body)) {
     return normalizeSzPayload(body);
   }
@@ -3681,8 +3936,146 @@ function renderSzCertHtml(payload, links, opts) {
     JSON.stringify(qrUrl) +
     ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
     'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
-    'QRCode.toCanvas(c,u,{width:52,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
+    '    QRCode.toCanvas(c,u,{width:52,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
     '</body></html>'
+  );
+}
+
+function renderSzNewCertHtml(payload, links, opts) {
+  opts = opts || {};
+  var p = payload || {};
+  var months = Array.isArray(p.months) ? p.months : [];
+  var authCode = opts.authCode || '';
+  var mapping = resolveSzUnitMap(p);
+  var years = p.years_months || {};
+  var pdfHref = (links && (links.show_url || links.show_api_url)) || '#';
+  var serial = p.doc_serial || szNewDocSerial(p.print_date);
+  var sealDate = p.print_date || defaultPrintDateCn();
+  var rowsHtml = '';
+  months.forEach(function (r) {
+    if (!r) return;
+    rowsHtml +=
+      '<tr>' +
+      '<td>' +
+      escHtml(r.ym || '') +
+      '</td><td>' +
+      escHtml(r.unit_code || '') +
+      '</td><td>' +
+      escHtml(formatMoney(r.pension_base)) +
+      '</td><td>' +
+      escHtml(formatMoney(r.medical_base)) +
+      '</td><td>' +
+      escHtml(r.medical_tier || '2') +
+      '</td><td>' +
+      escHtml(formatMoney(r.maternity_base != null ? r.maternity_base : r.medical_base)) +
+      '</td><td>' +
+      escHtml(r.maternity_type || '1') +
+      '</td><td>' +
+      escHtml(formatMoney(r.injury_base)) +
+      '</td><td>' +
+      escHtml(formatMoney(r.unemp_base)) +
+      '</td></tr>';
+  });
+  var mapHtml = '';
+  mapping.forEach(function (item) {
+    mapHtml +=
+      '<div class="unit-line">' +
+      escHtml((item.unit_code || '') + ' / ' + (item.unit_name || '')) +
+      '</div>';
+  });
+  return (
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>个人权益记录（参保证明）</title>' +
+    '<style>' +
+    '*{box-sizing:border-box}' +
+    'html,body{margin:0;padding:0;background:#f3f4f6}' +
+    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#111;' +
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.sheet{max-width:430px;margin:0 auto;background:#fff;padding:14px 12px 20px;position:relative;min-height:100vh}' +
+    '@media(min-width:720px){.sheet{max-width:560px;padding:18px 20px 28px;min-height:auto;box-shadow:0 8px 24px rgba(15,23,42,.08);margin:16px auto}}' +
+    'h1{margin:10px 48px 12px;text-align:center;font-size:20px;font-weight:700;letter-spacing:.5px;line-height:1.35}' +
+    '.docno{position:absolute;right:12px;top:12px;font-size:12px;letter-spacing:.2px}' +
+    '.info{font-size:12.5px;line-height:1.75;margin:0 2px 12px;word-break:break-all}' +
+    'h2{margin:14px 0 6px;font-size:14px;font-weight:700}' +
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
+    'th,td{border:1px solid #111;padding:3px 1px;text-align:center;font-size:10px;font-weight:400;line-height:1.25;word-break:break-all}' +
+    'th{font-weight:700}' +
+    'table.years th,table.years td{font-size:11px;padding:5px 2px}' +
+    'table.detail td:nth-child(2){font-size:8.5px}' +
+    '.notes{font-size:11.5px;line-height:1.7;margin-top:12px}' +
+    '.notes .t{font-weight:700}' +
+    '.unit-line{margin-left:1.2em}' +
+    '.seals{display:flex;justify-content:space-around;align-items:center;margin:18px 8px 8px}' +
+    '.seal-box{position:relative;width:118px;height:118px}' +
+    '.seal-box img{width:100%;height:100%;display:block}' +
+    '.seal-date{position:absolute;left:8px;right:8px;top:54%;text-align:center;color:#c43034;font-size:9px;font-weight:700;line-height:1.2;pointer-events:none}' +
+    '.svc{text-align:center;color:#9ca3af;font-size:12px;margin:10px 0 16px}' +
+    '.dl-btn{display:block;width:100%;background:#2b7de1;color:#fff;text-align:center;padding:13px 12px;border-radius:4px;text-decoration:none;font-size:16px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}' +
+    '@media print{html,body{background:#fff}.sheet{max-width:none;box-shadow:none;margin:0;padding:10mm}.dl-btn{display:none}}' +
+    '</style></head><body><div class="sheet">' +
+    '<div class="docno">' +
+    escHtml(serial) +
+    '</div>' +
+    '<h1>深圳市社会保险参保证明</h1>' +
+    '<div class="info">参保人姓名：' +
+    escHtml(p.name || '') +
+    '　有效证件号码：' +
+    escHtml(p.id_number || '') +
+    '　社保电脑号：' +
+    escHtml(p.computer_no || '') +
+    '</div>' +
+    '<h2>（一）历年参保年限</h2>' +
+    '<table class="years"><thead><tr>' +
+    '<th>险种</th><th>养老保险</th><th>医疗保险</th><th>生育保险</th>' +
+    '<th>生育医疗</th><th>工伤保险</th><th>失业保险</th></tr></thead><tbody><tr>' +
+    '<td>累计月数</td><td>' +
+    escHtml(years.pension != null ? years.pension : months.length) +
+    '</td><td>' +
+    escHtml(years.medical != null ? years.medical : months.length) +
+    '</td><td>' +
+    escHtml(years.maternity != null ? years.maternity : months.length) +
+    '</td><td>' +
+    escHtml(years.maternity_medical != null ? years.maternity_medical : 0) +
+    '</td><td>' +
+    escHtml(years.injury != null ? years.injury : months.length) +
+    '</td><td>' +
+    escHtml(years.unemployment != null ? years.unemployment : months.length) +
+    '</td></tr></tbody></table>' +
+    '<h2>（二）近两年参保缴费明细</h2>' +
+    '<table class="detail"><thead>' +
+    '<tr><th rowspan="2">缴费时段</th><th rowspan="2">单位编号</th>' +
+    '<th>养老保险</th><th colspan="2">医疗保险</th><th colspan="2">生育保险/生育医疗</th>' +
+    '<th>工伤保险</th><th>失业保险</th></tr>' +
+    '<tr><th>缴费基数</th><th>缴费基数</th><th>档次</th><th>缴费基数</th><th>险种</th>' +
+    '<th>缴费基数</th><th>缴费基数</th></tr></thead><tbody>' +
+    rowsHtml +
+    '</tbody></table>' +
+    '<div class="notes"><div class="t">备注：</div>' +
+    '1.本证明可作为参保人参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（' +
+    escHtml(authCode) +
+    '）核查，验真码有效期三个月。<br>' +
+    '2.生育保险中的险种“1”为生育保险，“2”为生育医疗。<br>' +
+    '3.医疗保险档次“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险，“6”为统筹医疗保险。<br>' +
+    '4.上述“缴费明细”表中带“*”标识为补缴，带“#”标识为补差，空行为断缴。<br>' +
+    '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。<br>' +
+    '6.单位编号对应的单位名称：' +
+    mapHtml +
+    '</div>' +
+    '<div class="seals">' +
+    '<div class="seal-box"><img src="/img/sbdy_sz_new_si_seal.png" alt="">' +
+    '<div class="seal-date">' +
+    escHtml(sealDate) +
+    '</div></div>' +
+    '<div class="seal-box"><img src="/img/sbdy_sz_new_mi_seal.png" alt="">' +
+    '<div class="seal-date">' +
+    escHtml(sealDate) +
+    '</div></div></div>' +
+    '<div class="svc">本服务由深圳市人力资源和社会保障局提供</div>' +
+    '<a class="dl-btn" href="' +
+    String(pdfHref).replace(/"/g, '&quot;') +
+    '" target="_blank" rel="noopener">下载文件</a>' +
+    '</div></body></html>'
   );
 }
 
@@ -4476,6 +4869,13 @@ function renderCertHtml(payload, links, opts) {
     return renderWhCertHtml(p, links, opts);
   }
   if (
+    p.region === 'sz_new' ||
+    p.layout === 'sz_cgbzm_v1' ||
+    p.region === 'shenzhen_new'
+  ) {
+    return renderSzNewCertHtml(p, links, opts);
+  }
+  if (
     p.region === 'sz' ||
     p.layout === 'sz_official_v1' ||
     p.region === 'gz' ||
@@ -4696,7 +5096,7 @@ async function createSbdyDemoCert(req, body, creator) {
     normalized.demo = true;
   }
   var authCode;
-  if (normalized.region === 'sz' || normalized.region === 'gz') {
+  if (normalized.region === 'sz' || normalized.region === 'sz_new' || normalized.region === 'gz') {
     authCode = randToken(16);
   } else if (normalized.region === 'wh') {
     var stamp = bjStamp12();

@@ -379,6 +379,24 @@ describe('社保演示预填分段', () => {
     expect(parsed.id_number).toMatch(/^440103\d{11}[\dX]$/);
   });
 
+  it('粘贴深圳参保证明模版识别为深圳新地区', () => {
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    const parsed = window.AdminModules['sbdy-demo'].parsePasteTemplate(`
+姓名：林晓薇
+性别：女
+时间：2024.9-2026.8
+深圳市社会保险参保证明
+社保电脑号：089216473
+公司名称：深圳市易满星科技有限公司
+`);
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.region).toBe('sz_new');
+    expect(parsed.area).toBe('深圳市');
+    expect(parsed.computer_no).toBe('089216473');
+  });
+
   it('粘贴河南社保模版识别为河南并默认参保缴费', () => {
     // eslint-disable-next-line no-eval
     eval(sbdyCode);

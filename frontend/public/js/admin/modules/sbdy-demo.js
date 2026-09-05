@@ -4,6 +4,8 @@
 (function (global) {
   /* 预填按税务记录带出的逐月单位编号映射（YYYY-MM → 信用代码），生成时随 month_units 上送 */
   var prefillMonthUnits = {};
+  /* 「填充示例」为深圳新准备的多单位分段 / 累计月数，生成时并入 body */
+  var szNewSampleExtras = null;
   var APP_CFG = global.SBDY_DEMO_APP || null;
   var isApp = !!(APP_CFG && APP_CFG.mode === 'app');
 
@@ -182,7 +184,7 @@
   }
 
   function isSzStyle(region) {
-    return region === 'sz' || region === 'gz';
+    return region === 'sz' || region === 'sz_new' || region === 'gz';
   }
 
   function usesZjCompanySegments(region) {
@@ -198,6 +200,7 @@
     var hn = document.getElementById('sbdyRegionHn');
     var ha = document.getElementById('sbdyRegionHa');
     var sz = document.getElementById('sbdyRegionSz');
+    var szNew = document.getElementById('sbdyRegionSzNew');
     var gz = document.getElementById('sbdyRegionGz');
     var wh = document.getElementById('sbdyRegionWh');
     var js = document.getElementById('sbdyRegionJs');
@@ -213,6 +216,7 @@
     if (ha && ha.checked) return 'ha';
     if (hn && hn.checked) return 'hn';
     if (gz && gz.checked) return 'gz';
+    if (szNew && szNew.checked) return 'sz_new';
     if (sz && sz.checked) return 'sz';
     if (wh && wh.checked) return 'wh';
     return 'zj';
@@ -280,6 +284,7 @@
     var regionDefaults = {
       zj: { area: '余杭区', base: '4986' },
       sz: { area: '深圳市', base: '4492' },
+      sz_new: { area: '深圳市', base: '4492' },
       gz: { area: '广州市', base: '4492' },
       wh: { area: '武汉市', base: '4224' },
       hn: { area: '常德市鼎城区', base: '4053' },
@@ -350,6 +355,7 @@
     var areaCodes = {
       zj: '330106',
       sz: '440305',
+      sz_new: '440305',
       gz: '440103',
       wh: '420106',
       hn: '430703',
@@ -597,8 +603,12 @@
         !/深圳/.test(text) &&
         (unitCode || computerNo || /社保电脑号|社保|参保|缴费/.test(text)))
     );
+    var looksSzNew = !!(
+      /深圳市社会保险参保证明|历年参保年限|近两年参保缴费明细|深圳新/.test(text)
+    );
     var looksSz = !!(
       !looksGz &&
+      !looksSzNew &&
       (unitCode ||
         computerNo ||
         /深圳市社会保险|深圳社保|社保电脑号/.test(text))
@@ -679,9 +689,11 @@
               ? 'js'
               : looksGz
                 ? 'gz'
-                : looksSz
-                  ? 'sz'
-                  : 'zj';
+                : looksSzNew
+                  ? 'sz_new'
+                  : looksSz
+                    ? 'sz'
+                    : 'zj';
     var idNumberDefaulted = false;
     if (!idNumber) {
       idNumber = defaultDemoIdNumber(region, gender || '女');
@@ -750,7 +762,7 @@
         area ||
         (region === 'gz'
           ? '广州市'
-          : region === 'sz'
+          : region === 'sz' || region === 'sz_new'
           ? '深圳市'
           : region === 'wh'
             ? '武汉市'
@@ -785,7 +797,10 @@
   function applyParsedToForm(parsed) {
     prefillMonthUnits = {};
     clearSegments();
-    if (parsed.region === 'sz') {
+    if (parsed.region === 'sz_new') {
+      var szNewRadio = document.getElementById('sbdyRegionSzNew');
+      if (szNewRadio) szNewRadio.checked = true;
+    } else if (parsed.region === 'sz') {
       var szRadio = document.getElementById('sbdyRegionSz');
       if (szRadio) szRadio.checked = true;
     } else if (parsed.region === 'gz') {
@@ -828,7 +843,7 @@
       parsed.area ||
         (parsed.region === 'gz'
           ? '广州市'
-          : parsed.region === 'sz'
+          : parsed.region === 'sz' || parsed.region === 'sz_new'
           ? '深圳市'
           : parsed.region === 'wh'
             ? '武汉市'
@@ -1028,6 +1043,8 @@
       var region =
         row.region === 'gz'
           ? '广州'
+          : row.region === 'sz_new'
+          ? '深圳新'
           : row.region === 'sz'
           ? '深圳'
           : row.region === 'wh'
@@ -1178,11 +1195,29 @@
       esc(d.auth_code || '') +
       '</code></p>' +
       '<div class="form-actions">' +
-      (links.show_url
-        ? '<a class="btn-primary" href="' +
-          esc(links.show_url) +
-          '" target="_blank" rel="noopener">打开 PDF 样例</a>'
-        : '') +
+      (function () {
+        var htmlUrl = '';
+        if (d.payload && d.payload.region === 'sz_new' && links.show_api_url) {
+          htmlUrl =
+            links.show_api_url +
+            (String(links.show_api_url).indexOf('?') >= 0 ? '&' : '?') +
+            'format=html';
+        }
+        return (
+          (htmlUrl
+            ? '<a class="btn-page" href="' +
+              esc(htmlUrl) +
+              '" target="_blank" rel="noopener">打开页面预览</a>'
+            : '') +
+          (links.show_url
+            ? '<a class="btn-primary" href="' +
+              esc(links.show_url) +
+              '" target="_blank" rel="noopener">' +
+              (d.payload && d.payload.region === 'sz_new' ? '下载文件' : '打开 PDF 样例') +
+              '</a>'
+            : '')
+        );
+      })() +
       (links.verify_url
         ? '<a class="btn-page" href="' +
           esc(links.verify_url) +
@@ -1252,7 +1287,7 @@
     var defaultArea =
       region === 'gz'
         ? '广州市'
-        : region === 'sz'
+        : region === 'sz' || region === 'sz_new'
         ? '深圳市'
         : region === 'wh'
           ? '武汉市'
@@ -1424,6 +1459,15 @@
       body.company_name = cleanCompanyName(body.company_name);
       if (!body.person_no) body.person_no = body.id_number;
       body.print_date = val('sbdyPrintDate') || defaultPrintDateCn();
+    }
+    if (region === 'sz_new') {
+      body.print_date = val('sbdyPrintDate') || defaultPrintDateCn();
+      if (szNewSampleExtras && val('sbdyName') === '林晓薇') {
+        if (szNewSampleExtras.segments) body.segments = szNewSampleExtras.segments;
+        if (szNewSampleExtras.unit_map) body.unit_map = szNewSampleExtras.unit_map;
+        if (szNewSampleExtras.years_months) body.years_months = szNewSampleExtras.years_months;
+        if (szNewSampleExtras.doc_serial) body.doc_serial = szNewSampleExtras.doc_serial;
+      }
     }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
       body.snapshot_ym = '202604';
@@ -1724,6 +1768,73 @@
       setField('sbdyBase', 4224);
       setField('sbdyPrintDate', printDate);
       setStatus('已填充武汉示例：杨大富（可再点生成）', false);
+      return;
+    }
+    if (currentRegion() === 'sz_new') {
+      setField('sbdyName', '林晓薇');
+      setField('sbdyIdNumber', '440305199208156018');
+      setField('sbdyGender', '女');
+      setField('sbdyCompany', '深圳市易满星科技有限公司');
+      setField('sbdyUnitCode', '31327084');
+      setField('sbdyComputerNo', '089216473');
+      setField('sbdyArea', '深圳市');
+      setField('sbdyPeriodStart', '2024-09');
+      setField('sbdyPeriodEnd', '2026-08');
+      setField('sbdyBase', 4492);
+      setField('sbdyMedicalBase', 4492);
+      setField('sbdyPrintDate', '2026年09月01日');
+      szNewSampleExtras = {
+        doc_serial: '2026:09:01E',
+        years_months: {
+          pension: 113,
+          medical: 115,
+          maternity: 115,
+          maternity_medical: 0,
+          injury: 115,
+          unemployment: 115
+        },
+        unit_map: [
+          { unit_code: '33310893', unit_name: '盐城市滨海云创电子商务有限公司深圳分公司' },
+          { unit_code: '32877135', unit_name: '深圳市环形时空智能科技有限公司' },
+          { unit_code: '31327084', unit_name: '深圳市易满星科技有限公司' },
+          { unit_code: '30828370', unit_name: '深圳一舱信息技术有限公司' }
+        ],
+        segments: [
+          {
+            company_name: '深圳一舱信息技术有限公司',
+            unit_code: '30828370',
+            credit_code: '30828370',
+            base_amount: 3523,
+            period_start: '2024-09',
+            period_end: '2025-01'
+          },
+          {
+            company_name: '深圳市易满星科技有限公司',
+            unit_code: '31327084',
+            credit_code: '31327084',
+            base_amount: 4492,
+            period_start: '2025-02',
+            period_end: '2025-07'
+          },
+          {
+            company_name: '深圳市环形时空智能科技有限公司',
+            unit_code: '32877135',
+            credit_code: '32877135',
+            base_amount: 6733,
+            period_start: '2025-08',
+            period_end: '2026-01'
+          },
+          {
+            company_name: '盐城市滨海云创电子商务有限公司深圳分公司',
+            unit_code: '33310893',
+            credit_code: '33310893',
+            base_amount: 6727,
+            period_start: '2026-02',
+            period_end: '2026-08'
+          }
+        ]
+      };
+      setStatus('已填充深圳新示例：林晓薇（可再点生成）', false);
       return;
     }
     if (isSzStyle(currentRegion())) {
@@ -2417,7 +2528,10 @@
     bindGenderAuto();
     bindMultiCompanyPromote();
     document.querySelectorAll('input[name="sbdyRegion"]').forEach(function (el) {
-      el.addEventListener('change', syncRegionUi);
+      el.addEventListener('change', function () {
+        if (currentRegion() !== 'sz_new') szNewSampleExtras = null;
+        syncRegionUi();
+      });
     });
     syncRegionUi();
     var fillBtn = document.getElementById('btnSbdyDemoFillSample');
