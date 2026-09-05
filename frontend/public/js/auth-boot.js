@@ -310,6 +310,18 @@
       if (!/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(ua)) {
         return;
       }
+      /*
+       * 单层底图档（vivo X90 / OriginOS 5，mine.html 首屏内联脚本已判）：
+       * @sm 档同时挂画布背景与同尺寸隐藏 <img>，两层同图会留半透明白卡残影，
+       * 定高 1180rpx 又把 1242rpx 底图压掉 5%。这里只放行 750px 资源，不套裁切叠层。
+       */
+      if (
+        window.__mineE1PlainImg ||
+        document.documentElement.classList.contains('app-android-mine-e1-plainimg')
+      ) {
+        window.__mineE1ForceSm = true;
+        return;
+      }
       var p40pro = /ELS-AN00|ELS-AN10|ELS-N04|ELS-AN\d{2}|P40[\s_-]*Pro/i.test(ua);
       if (p40pro) {
         document.documentElement.classList.add('app-android-huawei-p40pro');

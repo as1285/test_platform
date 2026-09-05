@@ -2186,7 +2186,9 @@
         isXiaomi14ProClient() || root.classList.contains('app-android-xiaomi-14pro');
       var p40pro =
         isHuaweiP40ProClient() || root.classList.contains('app-android-huawei-p40pro');
-      var imp = mate60 || mi14pro || p40pro ? 'important' : '';
+      /* 单层底图档（vivo X90）：rpx 必须跟实测画布宽度走，否则胶囊会偏出擦除位 */
+      var plainImg = root.classList.contains('app-android-mine-e1-plainimg');
+      var imp = mate60 || mi14pro || p40pro || plainImg ? 'important' : '';
       root.style.setProperty('--mine-rpx', rpx, imp);
       document.body.style.setProperty('--mine-rpx', rpx, imp);
       canvas.style.setProperty('--mine-rpx', rpx, imp);
@@ -2276,7 +2278,7 @@
     HYPEROS2_MINE_E1_SM_CLASSES.forEach(function (cls) {
       var rootSel = 'html.' + cls;
       if (cls === 'app-android-mine-e1-sm') {
-        rootSel += ':not(.app-android-iqoo-13):not(.app-android-iqoo-15)';
+        rootSel += ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15)';
       }
       css +=
         rootSel + ' body.page-mine,' +
@@ -2308,7 +2310,7 @@
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -2321,6 +2323,154 @@
       'html.mine-guest body.page-mine .mine-e1-footer,body.page-mine.mine-guest .mine-e1-footer{display:none !important;padding:0 !important;margin:0 !important;}'
     );
   }
+  /**
+   * 「我的」e1 单层底图档（vivo X90 / OriginOS 5）。
+   *
+   * @sm 裁切档把同一张底图铺两层：画布 background-image 画可见那份，
+   * 同尺寸 <img> 以 opacity:0 藏另一份。首屏后 pinXiaomi14ProMineE1Layout 会把隐藏层
+   * 从 1px×1px 撑回 100%/auto（整屏 360×596），同时把画布 overflow 改 visible、
+   * background-size 从 100% auto 改 100% 100%。X90 真机上这层撑回整屏的隐藏副本会在
+   * 左侧留下一块半透明白色圆角残影，盖住三宫格与「切换关怀版 / 安全中心」；
+   * 100% 100% 又把 1242rpx 高的底图压进 1180rpx 定高画布，整段中部竖向缩 5%，
+   * 胶囊掉出图内擦除带、贴到菜单白卡上沿（实测胶囊到菜单只剩 1.4px）。
+   *
+   * 本档只留一层可见 <img>：不挂背景副本、不裁 1180rpx、不拉伸、首屏后不再改盒子，
+   * 没有第二份可残留，也就没有残影与压缩。
+   */
+  function isMineE1PlainImgClient() {
+    var root = typeof document !== 'undefined' ? document.documentElement : null;
+    if (root && root.classList.contains('app-android-mine-e1-plainimg')) {
+      return true;
+    }
+    if (typeof window !== 'undefined' && window.__mineE1PlainImg) {
+      return true;
+    }
+    return isVivoX90Client();
+  }
+
+  function mineE1PlainImgLockCss() {
+    var sel = 'html.app-android-mine-e1-plainimg';
+    return (
+      sel + ' body.page-mine,' +
+      sel + '.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-client.app-top-safe-shell body.page-mine{' +
+      '--mine-top-bleed:0px !important;--mine-rpx:calc(100vw / 750) !important;' +
+      'background-color:#f4f6f9 !important;background-image:none !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
+      'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
+      'height:auto !important;min-height:0 !important;max-height:none !important;' +
+      'aspect-ratio:auto !important;container-type:normal !important;width:100% !important;' +
+      'background-image:none !important;background-color:#f4f6f9 !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas > img,' +
+      sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > #headerImg{' +
+      'display:block !important;position:relative !important;top:auto !important;left:auto !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:1284 / 2127 !important;object-fit:fill !important;' +
+      'margin:0 !important;transform:none !important;opacity:1 !important;}' +
+      sel + ' body.page-mine .mine-e1-layer,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-layer{' +
+      'top:0 !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}' +
+      sel + ' body.page-mine .mine-e1-footer{' +
+      'padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px) !important;}' +
+      /* 半透明 + blur 的悬浮底栏在 OriginOS 5 上会把底图切片糊到页面中部，改实心 */
+      sel + ' body.page-mine > .bottom-nav,' +
+      sel + ' body.page-mine > .bottom-nav.ios-device{' +
+      'background:#ffffff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}'
+    );
+  }
+
+  /** 只在值真的变了才写 inline，避免每轮 pin 都触发一次样式失效/重合成 */
+  function setStyleOnce(el, prop, value) {
+    if (!el || !el.style) {
+      return;
+    }
+    if (el.style.getPropertyValue(prop) === value && el.style.getPropertyPriority(prop) === 'important') {
+      return;
+    }
+    el.style.setProperty(prop, value, 'important');
+  }
+
+  function pinMineE1PlainImgLayout() {
+    try {
+      if (!isMineE1PlainImgClient()) {
+        return;
+      }
+      var root = document.documentElement;
+      root.classList.add('app-android-mine-e1-plainimg');
+      root.classList.add('app-android-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-android-immersive-white-top');
+      root.classList.remove('app-android-mine-e1-sm');
+      root.classList.remove('app-android-vivo-family');
+      window.__mineE1PlainImg = true;
+      try {
+        var oldLock = document.querySelector('style[data-mine-e1-plainimg-lock]');
+        if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
+        var lock = document.createElement('style');
+        lock.setAttribute('data-mine-e1-plainimg-lock', '1');
+        lock.setAttribute('data-vivox90-mine-e1-paint', '1');
+        lock.textContent = mineE1PlainImgLockCss();
+        (document.head || document.documentElement).appendChild(lock);
+      } catch (eLock) {}
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      var canvas = document.getElementById('mineE1Canvas');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        /* @sm 档若已经在画布上写过背景副本，这里必须清干净，只留 <img> 一层 */
+        ['background-image', 'background-size', 'background-repeat', 'background-position', 'aspect-ratio', 'height', 'max-height'].forEach(
+          function (prop) {
+            try {
+              canvas.style.removeProperty(prop);
+            } catch (eRm) {}
+          }
+        );
+        setStyleOnce(canvas, 'padding-top', '0');
+        setStyleOnce(canvas, 'margin-top', '0');
+        setStyleOnce(canvas, 'overflow', 'hidden');
+        setStyleOnce(canvas, 'container-type', 'normal');
+        setStyleOnce(canvas, 'width', '100%');
+      }
+      if (img) {
+        try {
+          img.style.removeProperty('max-height');
+        } catch (eImgRm) {}
+        setStyleOnce(img, 'display', 'block');
+        setStyleOnce(img, 'position', 'relative');
+        setStyleOnce(img, 'top', 'auto');
+        setStyleOnce(img, 'left', 'auto');
+        setStyleOnce(img, 'width', '100%');
+        setStyleOnce(img, 'height', 'auto');
+        setStyleOnce(img, 'aspect-ratio', '1284 / 2127');
+        setStyleOnce(img, 'object-fit', 'fill');
+        setStyleOnce(img, 'margin', '0');
+        setStyleOnce(img, 'transform', 'none');
+        setStyleOnce(img, 'opacity', '1');
+      }
+      var layer = document.getElementById('mineE1Layer');
+      if (layer) {
+        setStyleOnce(layer, 'top', '0');
+        setStyleOnce(layer, 'padding-bottom', 'calc(2127 / 1284 * 100%)');
+      }
+      pinMineE1RpxFromCanvas();
+      if (!pinMineE1PlainImgLayout._rearm) {
+        pinMineE1PlainImgLayout._rearm = true;
+        [80, 240, 600, 1200].forEach(function (ms) {
+          setTimeout(function () {
+            try {
+              pinMineE1RpxFromCanvas();
+            } catch (eRpxRe) {}
+          }, ms);
+        });
+      }
+    } catch (ePlain) {}
+  }
+
   /* xiaomi14pro-mine-e1-paint：HyperOS 2 大图能 decode 但不合成，改 750px + CSS 背景 */
   function mineE1ToSmUrl(src) {
     var path = String(src || '/img/mine/e1_01.png').split('?')[0];
@@ -2332,7 +2482,7 @@
   }
   function paintXiaomi14ProMineE1(src) {
     try {
-      if (isIqooMineTailPhone()) {
+      if (isIqooMineTailPhone() || isMineE1PlainImgClient()) {
         return;
       }
       window.__mineE1ForceSm = true;
@@ -2360,7 +2510,7 @@
   function pinXiaomi14ProMineE1Layout() {
     try {
       var root = document.documentElement;
-      if (isIqooMineTailPhone()) {
+      if (isIqooMineTailPhone() || isMineE1PlainImgClient()) {
         return;
       }
       if (!hyperOs2MineE1SmRootHit(root)) {
@@ -2958,10 +3108,10 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm) body.page-mine .mine-e1-canvas,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm) body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm) body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
           /*
            * 叠层绝对定位相对 padding edge：top:0 与负 margin 上拉后的头图顶对齐。
            * 勿再写 top:-bleed，否则姓名/税号相对米色卡整体上移（Hi nova/华为/三星等均中招）。
@@ -3046,7 +3196,9 @@
           'html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,' +
           'html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}' +
           androidMineE1TailCropCss() +
-          xiaomi14ProMineE1LockCss();
+          xiaomi14ProMineE1LockCss() +
+          /* 单层底图档写在最后：同优先级时靠文档序压过 @sm 裁切与 HyperOS lock */
+          mineE1PlainImgLockCss();
         document.head.appendChild(st);
       } catch (eCss) {}
       try {
@@ -3059,6 +3211,7 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
+      pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
       applyImmersiveBlueStatusBar(mineBlue, '#f5f6fa');
@@ -6037,6 +6190,7 @@
     syncAppShellStatusbarTop();
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
+    pinMineE1PlainImgLayout();
     pinNova13MineE1Layout();
     pinHonorMagic5ProHomeCards();
     applyMinePageChrome();
@@ -6110,6 +6264,7 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
+      pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
@@ -6120,6 +6275,7 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
+      pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
       applyImmersiveNotchWhitePageChrome();
@@ -6218,6 +6374,7 @@
     syncAppShellStatusbarTop();
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
+    pinMineE1PlainImgLayout();
     pinNova13MineE1Layout();
     applyMinePageChrome();
     applyDaibanBanchaPageChrome();

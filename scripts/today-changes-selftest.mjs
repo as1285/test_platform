@@ -1434,6 +1434,37 @@ mustInclude(
   ['V2241A', 'app-android-vivo-x90', 'data-vivox90-result-firstpaint'],
   'shuiming_result vivo X90 first-paint'
 );
+/* vivo X90「我的」：底图单层绘制，杜绝背景副本 + 隐藏 <img> 双层留下的半透明白卡残影 */
+mustInclude(
+  'frontend/mine.html',
+  [
+    'app-android-mine-e1-plainimg',
+    'window.__mineE1PlainImg = true;',
+    'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg)',
+    'aspect-ratio: 1284 / 2127 !important;',
+    'padding-bottom: calc(2127 / 1284 * 100%) !important;',
+    'if (sm && !window.__mineE1PlainImg)'
+  ],
+  'mine vivo X90 single-layer e1 paint'
+);
+mustInclude(
+  'frontend/public/js/auth-boot.js',
+  ['window.__mineE1PlainImg ||', "classList.contains('app-android-mine-e1-plainimg')"],
+  'auth-boot lets the single-layer e1 tier skip the @sm crop'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'function isMineE1PlainImgClient()',
+    'function mineE1PlainImgLockCss()',
+    'function pinMineE1PlainImgLayout()',
+    'data-mine-e1-plainimg-lock',
+    'data-vivox90-mine-e1-paint',
+    'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg)',
+    ':not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas'
+  ],
+  'auth.js single-layer e1 lock excludes @sm crop and generic bleed'
+);
 /* 公积金对账单电子章：对齐真实样张（星心压标题行、弧字 145-385°、亮红、直径≈124pt） */
 mustInclude(
   'backend/scripts/gjj_make_seal.py',
@@ -1637,7 +1668,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260903-android-blackbar', 'auth.js?v=20260903-android-blackbar" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  ['auth-boot.js?v=20260905-vivox90-mine', 'auth.js?v=20260905-vivox90-mine" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -2289,7 +2320,7 @@ if (
       'message.html': ['20260903-email-reg1'],
       'shouye.html': ['20260903-email-reg1'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260903-android-blackbar'],
+      'mine.html': ['20260905-vivox90-mine'],
       'purchase.html': ['20260903-mate60pay'],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260904-air-gap'],
@@ -2299,7 +2330,7 @@ if (
     'auth-boot': {
       'login.html': ['20260902-ip16pm-login'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260903-android-blackbar'],
+      'mine.html': ['20260905-vivox90-mine'],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260904-android-inset'],
       'xiangqing.html': ['20260904-android-inset']
@@ -2553,7 +2584,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['theme-color" content="#000000"', 'auth.js?v=20260903-android-blackbar'],
+  ['theme-color" content="#000000"', 'auth.js?v=20260905-vivox90-mine'],
   '20260903 mine black theme-color + cache'
 );
 mustInclude(
