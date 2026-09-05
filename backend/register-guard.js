@@ -122,16 +122,14 @@ function isDistributorCordovaUserAgent(req) {
   return CORDOVA_UA_RE.test(ua) && DISTRIBUTOR_UA_RE.test(ua);
 }
 
-/** 拦截分发端非法注册 */
+/**
+ * 代理版 / 分发端 App 注册门禁（已关闭）。
+ * 历史：带 TaxPlatformDistributor UA 的 Cordova 壳曾禁止 App 内自助注册。
+ * 现允许代理渠道 App 与普通端一样走注册接口；函数保留以便调用方兼容。
+ */
 function checkRegisterDistributorBlock(req) {
-  if (!isDistributorCordovaUserAgent(req)) {
-    return { ok: true };
-  }
-  return {
-    ok: false,
-    reason: 'register_fail:distributor_app',
-    msg: '代理版 App 不支持自助注册，请使用代理提供的注册链接在浏览器中注册，或联系代理开通账号'
-  };
+  void req;
+  return { ok: true };
 }
 
 /** 校验：AppSignHeader */

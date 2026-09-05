@@ -3310,8 +3310,9 @@
     }
   }
 
+  /** 代理版 App 允许 App 内自助注册（旧 distributor_app 禁注册门禁已关闭） */
   function isInAppRegisterDisabled() {
-    return isCordovaTaxAppShell() && isDistributorApp();
+    return false;
   }
 
   /** 注册时绑定代理渠道：优先 URL；安装页 / App 壳可沿用本地已存渠道 */

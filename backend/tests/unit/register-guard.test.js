@@ -40,13 +40,20 @@ describe('register-guard', () => {
     expect(guard.looksLikeBotUsername('toolong12')).toBe(false);
   });
 
-  it('blocks distributor Cordova UA', () => {
+  it('allows distributor Cordova UA to register', () => {
     const guard = require('../../register-guard');
     const req = {
-      headers: { 'user-agent': 'TaxPlatformCordovaApp/1.0 TaxPlatformDistributor/1.0' }
+      headers: { 'user-agent': 'TaxPlatformCordovaApp/1.0 TaxPlatformDistributor/agent1' }
     };
     const r = guard.checkRegisterDistributorBlock(req);
-    expect(r.ok).toBe(false);
-    expect(r.reason).toContain('distributor');
+    expect(r.ok).toBe(true);
+  });
+
+  it('allows plain Cordova UA to register', () => {
+    const guard = require('../../register-guard');
+    const req = {
+      headers: { 'user-agent': 'TaxPlatformCordovaApp/1.0' }
+    };
+    expect(guard.checkRegisterDistributorBlock(req).ok).toBe(true);
   });
 });
