@@ -1101,9 +1101,22 @@ mustInclude(
     'scheduleTaxPasteLivePreview',
     '公司名称：某某有限公司',
     '2023年全年',
-    '2025年全年'
+    '2025年全年',
+    '主管税务机关：国家税务总局北京市朝阳区税务局',
+    '基本养老保险：1600元',
+    '住房公积金：2400元'
   ],
   'tax paste copy template'
+);
+mustInclude(
+  'frontend/public/js/consult-core.js',
+  ['applyTaxPasteSummaryFieldDefaults', 'inferTaxAuthorityFromCompanyName'],
+  '20260905 template summary fills tax office and social security'
+);
+mustInclude(
+  'frontend/consult.html',
+  ['consult-core.js?v=20260905-paste-ss', 'consult-batch-tax.js?v=20260905-paste-ss'],
+  '20260905 consult paste-ss cache bust'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴'], 'consult copy tpl btn');
 mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '重新填入模板'], 'admin copy tpl btn');
@@ -1585,7 +1598,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260904-paste-tpl'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260905-paste-ss'],
   'consult multi-bonus cache'
 );
 mustInclude(

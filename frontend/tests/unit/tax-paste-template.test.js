@@ -73,7 +73,7 @@ describe('consult tax paste template simplify', () => {
     expect(html).toContain('生成记录');
     expect(html).not.toContain('解析引擎 v0721d');
     expect(html).not.toContain('id="taxPasteImportParseBtn"');
-    expect(html).toContain('consult-batch-tax.js?v=20260904-paste-tpl');
+    expect(html).toContain('consult-batch-tax.js?v=20260905-paste-ss');
   });
 
   it('opens with a 2023–2025 template and live preview wiring', () => {
@@ -95,7 +95,27 @@ describe('consult tax paste template simplify', () => {
     expect(parsed.employments).toHaveLength(1);
     expect(parsed.employments[0].company).toContain('有限公司');
     expect(parsed.employments[0].salary).toBe(20000);
+    expect(parsed.employments[0].company_tax_id).toBe('91110105MA01K9XH2B');
+    expect(parsed.employments[0].tax_authority).toBe('国家税务总局北京市朝阳区税务局');
+    expect(parsed.employments[0].pension).toBe(1600);
+    expect(parsed.employments[0].medical).toBe(400);
+    expect(parsed.employments[0].unemployment).toBe(100);
+    expect(parsed.employments[0].fund).toBe(2400);
     expect(parsed.employments[0].range).toEqual({ sy: 2023, sm: 1, ey: 2025, em: 12 });
     expect(parsed.month_total || parsed.employments[0].months.length).toBe(36);
+  });
+
+  it('fills tax office and social security when the short template omits them', () => {
+    const api = loadPasteParser();
+    const parsed = api.parseTaxPasteText(
+      '公司名称：上海某某有限公司\n2023年全年\n月薪：15000元'
+    );
+    expect(parsed.ok).toBe(true);
+    expect(parsed.employments[0].company_tax_id).toBe('91110105MA01K9XH2B');
+    expect(parsed.employments[0].tax_authority).toBe('国家税务总局上海市浦东新区税务局');
+    expect(parsed.employments[0].pension).toBe(1200);
+    expect(parsed.employments[0].medical).toBe(300);
+    expect(parsed.employments[0].unemployment).toBe(75);
+    expect(parsed.employments[0].fund).toBe(1800);
   });
 });

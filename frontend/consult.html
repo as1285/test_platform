@@ -105,12 +105,12 @@
                 <span id="taxPasteImportTitle">按模板生成个税</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪，点生成即可。也可以清空后粘贴个税 APP 明细。</p>
+            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份、月薪、社保和主管税务机关，点生成即可。也可以清空后粘贴个税 APP 明细。</p>
             <div class="tax-paste-import-toolbar">
                 <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">重新填入模板</button>
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
             </div>
-            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="9" placeholder="公司名称：某某有限公司&#10;2023年全年&#10;2024年全年&#10;2025年全年&#10;月薪：20000元"></textarea>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="14" placeholder="公司名称：某某有限公司&#10;扣缴义务人纳税人识别号：91110105MA01K9XH2B&#10;主管税务机关：国家税务总局北京市朝阳区税务局&#10;2023年全年&#10;2024年全年&#10;2025年全年&#10;月薪：20000元&#10;基本养老保险：1600元&#10;基本医疗保险：400元&#10;失业保险：100元&#10;住房公积金：2400元"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
             <div class="batch-ms-modal-footer tax-paste-import-footer">
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
@@ -587,7 +587,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>本页三步怎么走最快？</summary>
-                        <p>① 点「按模板生成个税」，改公司名和月薪后生成；② 或自己填公司与起止年月；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
+                        <p>① 点「按模板生成个税」，改公司名、月薪、社保和机关后生成；② 或自己填公司与起止年月；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>示例填写适合谁？</summary>
@@ -595,7 +595,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>粘贴导入怎么用？</summary>
-                        <p>点「按模板生成个税」会带出一份 2023–2025 的填写模板。改公司名和月薪后点「生成记录」即可。有个税 APP 明细时，可点「清空去粘贴」再粘贴文本。</p>
+                        <p>点「按模板生成个税」会带出一份 2023–2025 的填写模板，含税号、主管税务机关和三险一金。改公司名和月薪后点「生成记录」即可。有个税 APP 明细时，可点「清空去粘贴」再粘贴文本。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>如何核对列表里的税额是否合理？</summary>
@@ -969,8 +969,8 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 → 填税调研 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260905-najilu-qr-entry"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260904-paste-tpl"></script>
+    <script defer src="/js/consult-core.js?v=20260905-paste-ss"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260905-paste-ss"></script>
     <script defer src="/js/consult-records.js?v=20260904-funnel-cta"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>

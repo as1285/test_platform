@@ -1730,6 +1730,65 @@ function finalizeTaxPasteEmployment(emp) {
     return emp;
 }
 
+/** 摘要模板未写税号/机关/社保时，按月薪补默认值（不影响 APP 月明细粘贴）。 */
+function applyTaxPasteSummaryFieldDefaults(input) {
+    var out = {
+        company_tax_id: input && input.company_tax_id ? String(input.company_tax_id).trim() : '',
+        tax_authority: input && input.tax_authority ? String(input.tax_authority).trim() : '',
+        specials: {
+            pension: input && input.specials ? input.specials.pension : null,
+            medical: input && input.specials ? input.specials.medical : null,
+            unemployment: input && input.specials ? input.specials.unemployment : null,
+            fund: input && input.specials ? input.specials.fund : null
+        }
+    };
+    if (!out.company_tax_id) {
+        out.company_tax_id = '91110105MA01K9XH2B';
+    }
+    if (!out.tax_authority) {
+        out.tax_authority = inferTaxAuthorityFromCompanyName(input && input.company);
+    }
+    var hasAnySpecial =
+        (out.specials.pension != null && out.specials.pension > 0) ||
+        (out.specials.medical != null && out.specials.medical > 0) ||
+        (out.specials.unemployment != null && out.specials.unemployment > 0) ||
+        (out.specials.fund != null && out.specials.fund > 0);
+    var salary = input && input.salary != null ? Number(input.salary) : 0;
+    if (!hasAnySpecial && salary > 0) {
+        out.specials.pension = round2(salary * 0.08);
+        out.specials.medical = round2(salary * 0.02);
+        out.specials.unemployment = round2(salary * 0.005);
+        out.specials.fund = round2(salary * 0.12);
+    }
+    return out;
+}
+
+/** 按公司名里的城市推断主管税务机关。 */
+function inferTaxAuthorityFromCompanyName(company) {
+    var s = String(company || '');
+    var pairs = [
+        [/北京/, '国家税务总局北京市朝阳区税务局'],
+        [/上海/, '国家税务总局上海市浦东新区税务局'],
+        [/深圳/, '国家税务总局深圳市南山区税务局'],
+        [/杭州/, '国家税务总局杭州市西湖区税务局'],
+        [/广州/, '国家税务总局广州市天河区税务局'],
+        [/成都/, '国家税务总局成都高新技术产业开发区税务局'],
+        [/南京/, '国家税务总局南京市鼓楼区税务局'],
+        [/武汉/, '国家税务总局武汉东湖新技术开发区税务局'],
+        [/苏州/, '国家税务总局苏州工业园区税务局'],
+        [/重庆/, '国家税务总局重庆市渝北区税务局'],
+        [/天津/, '国家税务总局天津经济技术开发区税务局'],
+        [/西安/, '国家税务总局西安高新技术产业开发区税务局']
+    ];
+    var i;
+    for (i = 0; i < pairs.length; i++) {
+        if (pairs[i][0].test(s)) {
+            return pairs[i][1];
+        }
+    }
+    return '国家税务总局北京市朝阳区税务局';
+}
+
 /**
  * 解析单段粘贴文本（一家公司）：支持 APP 月明细或自然语言摘要。
  */
@@ -1794,6 +1853,16 @@ function parseOneTaxPasteEmployerBlock(block) {
             };
         }
         months = buildSummaryMonthsFromRange(range, salaryInfo.salary, salaryInfo.salary_max);
+        var filled = applyTaxPasteSummaryFieldDefaults({
+            company: company,
+            company_tax_id: companyTaxId,
+            tax_authority: taxAuthority,
+            salary: salaryInfo.salary,
+            specials: specials
+        });
+        companyTaxId = filled.company_tax_id;
+        taxAuthority = filled.tax_authority;
+        specials = filled.specials;
     }
 
     if (!company) {
