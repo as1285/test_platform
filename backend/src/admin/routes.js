@@ -176,13 +176,25 @@ app.get(
 app.get(
   '/api/admin/ops/inactive-summary',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users', 'ops-board']),
+  mw.requireAdminAnyMenu([
+    'ops-inactive',
+    'insights-growth',
+    'analytics-conversion',
+    'users',
+    'ops-board'
+  ]),
   h.handleOpsInactiveSummary
 );
 app.get(
   '/api/admin/ops/inactive-users',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-inactive', 'analytics-conversion', 'users', 'ops-board']),
+  mw.requireAdminAnyMenu([
+    'ops-inactive',
+    'insights-growth',
+    'analytics-conversion',
+    'users',
+    'ops-board'
+  ]),
   h.handleOpsInactiveUsers
 );
 app.get(

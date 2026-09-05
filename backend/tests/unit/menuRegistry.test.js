@@ -33,6 +33,8 @@ describe('menuRegistry', () => {
     expect(resolveMenuKeyForPage('settings/install')).toBe('settings');
     expect(resolveMenuKeyForPage('zaizhi-cert')).toBe('lizhi-cert');
     expect(resolveMenuKeyForPage('insights-product/survey')).toBe('insights-product');
+    expect(resolveMenuKeyForPage('ops-inactive')).toBe('insights-growth');
+    expect(resolveMenuKeyForPage('insights-growth/inactive')).toBe('insights-growth');
   });
 
   it('parseAdminRoute maps legacy hashes to hub tabs', () => {
@@ -159,8 +161,9 @@ describe('menuRegistry', () => {
     expect(tree[0].label).toBe('转化运营');
     const deskPages = tree[0].items.map((i) => i.page);
     expect(deskPages).toEqual(
-      expect.arrayContaining(['ops-board', 'ops-inactive', 'ops-ad-analytics', 'codes'])
+      expect.arrayContaining(['ops-board', 'ops-ad-analytics', 'codes'])
     );
+    expect(deskPages).not.toContain('ops-inactive');
     expect(deskPages).not.toContain('ops-research');
     expect(deskPages).not.toContain('ops-lift');
     expect(getPageDef('ops-ad-analytics').label).toBe('广告页');
@@ -202,13 +205,40 @@ describe('menuRegistry', () => {
         'analytics-purchase'
       ])
     );
+    expect(insightPages).not.toContain('ops-inactive');
     expect(insightPages).not.toContain('analytics-tracking');
     expect(insightPages).not.toContain('channel-analysis');
     expect(insightPages).not.toContain('analytics-activity');
     expect(insightPages).not.toContain('abc-install-stats');
     expect(ADMIN_HUB_DEFS['insights-growth'].tabs.map((t) => t.page)).toEqual(
-      expect.arrayContaining(['channel-analysis', 'install-guide-stats', 'abc-install-stats'])
+      expect.arrayContaining([
+        'channel-analysis',
+        'ops-inactive',
+        'install-guide-stats',
+        'abc-install-stats'
+      ])
     );
+    expect(parseAdminRoute('ops-inactive')).toEqual({
+      page: 'insights-growth',
+      hub: 'insights-growth',
+      tab: 'inactive',
+      contentPage: 'ops-inactive'
+    });
+    expect(parseAdminRoute('insights-growth/inactive')).toEqual({
+      page: 'insights-growth',
+      hub: 'insights-growth',
+      tab: 'inactive',
+      contentPage: 'ops-inactive'
+    });
+    expect(getPageDef('ops-inactive').group).toBe('insights');
+    expect(getPageDef('ops-inactive').nav_hidden).toBe(true);
+    expect(getPageDef('ops-inactive').assignable).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['insights-growth'] }, 'ops-inactive')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['ops-inactive'] }, 'insights-growth')
+    ).toBe(true);
     expect(getPageDef('abc-install-stats').label).toBe('ABC渠道');
     expect(getPageDef('abc-install-stats').menu_key).toBe('install-guide-stats');
     expect(
@@ -303,6 +333,7 @@ describe('menuRegistry', () => {
         'users-deleted'
       ])
     );
+    expect(assignable).not.toContain('ops-inactive');
     expect(assignable).not.toContain('peer-accounts');
     expect(assignable).not.toContain('install-guide');
     expect(assignable).not.toContain('appearance');
