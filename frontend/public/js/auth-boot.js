@@ -52,6 +52,7 @@
     'gjj_extract_ad.html': true,
     'sousuo.html': true,
     'zixun.html': true,
+    'jingshi.html': true,
     'face_login.html': true
   };
 

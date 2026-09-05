@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260905-jingshi"></script>
+    <script src="/js/auth.js?v=20260905-jingshi" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#2f8fff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>综合所得年度汇算 · 警示案例</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { background: #2f8fff; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #edf2fa;
+            min-height: 100vh;
+            color: #191e26;
+        }
+        .js-hero {
+            position: relative;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 42%),
+                linear-gradient(rgba(173, 214, 255, 0.18) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(173, 214, 255, 0.18) 1px, transparent 1px),
+                linear-gradient(180deg, #4aa3ff 0%, #2f8fff 58%, #2b86f5 100%);
+            background-size: auto, 22px 22px, 22px 22px, auto;
+            padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 12px;
+            color: #fff;
+            overflow: hidden;
+        }
+        html.app-top-safe-shell body.page-jingshi .js-hero {
+            padding-top: calc(8px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .js-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            margin-left: -8px;
+            color: #fff;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .js-back svg { width: 11px; height: 20px; display: block; }
+        .js-hero-main {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 4px 0 14px;
+            min-height: 118px;
+        }
+        .js-hero-copy { flex: 1; min-width: 0; padding-bottom: 6px; }
+        .js-hero-title {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.28;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 0 rgba(0, 40, 90, 0.08);
+        }
+        .js-pill {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 10px;
+            padding: 3px 12px;
+            border-radius: 999px;
+            background: #ffe36a;
+            color: #ef7a12;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 2px 0 rgba(210, 140, 20, 0.12);
+        }
+        .js-hero-art {
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            width: 148px;
+            height: 112px;
+            pointer-events: none;
+        }
+        .js-hero-art svg { display: block; overflow: visible; }
+        .js-tabs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 0 2px;
+        }
+        .js-tab {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            background: transparent;
+            color: #fff;
+            font-size: 13px;
+            font-family: inherit;
+            font-weight: 500;
+            line-height: 1.25;
+            padding: 8px 4px;
+            border-radius: 8px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .js-tab.is-on {
+            background: #ffe36a;
+            color: #1e6fff;
+            font-weight: 700;
+        }
+        .js-list {
+            padding: 12px 12px calc(28px + env(safe-area-inset-bottom, 0px));
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .js-card {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #fff;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(25, 30, 38, 0.04);
+            font-family: inherit;
+            color: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .js-card:active { background: #f8fbff; }
+        .js-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #2b86f5;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .js-title {
+            margin-top: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.45;
+            color: #191e26;
+        }
+        .js-snippet {
+            margin-top: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #8a93a3;
+        }
+        .js-snippet-text {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+        }
+        .js-full {
+            color: #2b86f5;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .js-empty {
+            padding: 48px 20px;
+            text-align: center;
+            color: #9aa1ad;
+            font-size: 14px;
+        }
+        .js-detail {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            background: #f5f7fb;
+            flex-direction: column;
+        }
+        .js-detail.is-open { display: flex; }
+        .js-detail-bar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #fff;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        html.app-top-safe-shell body.page-jingshi .js-detail-bar {
+            padding-top: calc(12px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .js-detail-back {
+            position: absolute;
+            left: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            color: #1e6fff;
+            font-size: 15px;
+            background: none;
+            border: 0;
+            font-family: inherit;
+            padding: 8px;
+        }
+        .js-detail-back svg { width: 9px; height: 16px; }
+        .js-detail-bar-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+        .js-detail-body {
+            flex: 1;
+            overflow: auto;
+            padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+        }
+        .js-detail-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 16px 20px;
+            box-shadow: 0 2px 10px rgba(25, 30, 38, 0.04);
+        }
+        .js-demo {
+            display: inline-block;
+            margin-bottom: 8px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: #eef5ff;
+            color: #1e6fff;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .js-detail-card h2 {
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 1.45;
+            color: #191e26;
+            margin-bottom: 10px;
+        }
+        .js-detail-meta {
+            font-size: 12px;
+            color: #8b93a0;
+            margin-bottom: 14px;
+        }
+        .js-detail-text {
+            font-size: 15px;
+            line-height: 1.75;
+            color: #4b5563;
+            white-space: pre-wrap;
+        }
+        [hidden] { display: none !important; }
+    </style>
+    <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
+</head>
+<body class="page-jingshi tax-app-shell">
+    <header class="js-hero">
+        <a href="shouye.html" class="js-back" id="jsBack" aria-label="返回">
+            <svg viewBox="0 0 11 20" fill="none" aria-hidden="true">
+                <path d="M10 1L2 10l8 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+        <div class="js-hero-main">
+            <div class="js-hero-copy">
+                <h1 class="js-hero-title">综合所得年度汇算</h1>
+                <span class="js-pill">警示案例</span>
+            </div>
+            <div class="js-hero-art" aria-hidden="true">
+                <svg width="72" height="104" viewBox="0 0 72 104">
+                    <rect x="10" y="82" width="44" height="12" rx="2" fill="#f4a54a"/>
+                    <rect x="14" y="74" width="40" height="12" rx="2" fill="#5b8def"/>
+                    <path d="M22 28c0-6 5-11 14-11s14 5 14 11c8 2 13 10 13 20 0 14-10 26-27 26S9 62 9 48c0-10 5-18 13-20z" fill="#ffd24a"/>
+                    <path d="M31 18c1-5 5-8 9-8 3 0 6 2 7 5" fill="none" stroke="#e8b42a" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="52" cy="26" r="11" fill="#fff"/>
+                    <circle cx="52" cy="26" r="9.2" fill="#ff6a3d"/>
+                    <rect x="50.2" y="20.2" width="3.6" height="7.4" rx="1.6" fill="#fff"/>
+                    <circle cx="52" cy="31.2" r="1.7" fill="#fff"/>
+                </svg>
+                <svg width="76" height="92" viewBox="0 0 76 92">
+                    <rect x="10" y="10" width="56" height="72" rx="10" fill="#f4f8ff"/>
+                    <rect x="10" y="10" width="56" height="72" rx="10" stroke="#d7e6ff" stroke-width="2" fill="none"/>
+                    <rect x="18" y="18" width="40" height="14" rx="4" fill="#2f8fff"/>
+                    <text x="38" y="28.5" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">123</text>
+                    <g fill="#2f8fff" font-size="11" font-weight="700" text-anchor="middle">
+                        <rect x="18" y="38" width="12" height="10" rx="2" fill="#e7f1ff"/>
+                        <text x="24" y="46">+</text>
+                        <rect x="33" y="38" width="12" height="10" rx="2" fill="#e7f1ff"/>
+                        <text x="39" y="46">−</text>
+                        <rect x="48" y="38" width="12" height="10" rx="2" fill="#e7f1ff"/>
+                        <text x="54" y="46">×</text>
+                        <rect x="18" y="52" width="12" height="10" rx="2" fill="#e7f1ff"/>
+                        <text x="24" y="60">=</text>
+                        <rect x="33" y="52" width="12" height="10" rx="2" fill="#e7f1ff"/>
+                        <text x="39" y="60">7</text>
+                        <rect x="48" y="52" width="12" height="10" rx="2" fill="#e7f1ff"/>
+                        <text x="54" y="60">8</text>
+                        <rect x="18" y="66" width="42" height="8" rx="2" fill="#ffd24a"/>
+                    </g>
+                </svg>
+            </div>
+        </div>
+        <nav class="js-tabs" aria-label="警示案例分类">
+            <button type="button" class="js-tab is-on" data-cat="false">虚假申报案例</button>
+            <button type="button" class="js-tab" data-cat="risk">风险提示案例</button>
+            <button type="button" class="js-tab" data-cat="police">网警重要提醒</button>
+        </nav>
+    </header>
+
+    <main class="js-list" id="jsList" aria-label="警示案例列表"></main>
+    <div class="js-empty" id="jsEmpty" hidden>暂无相关案例（演示数据）</div>
+
+    <div class="js-detail" id="jsDetail" role="dialog" aria-modal="true" aria-labelledby="jsDetailTitle">
+        <div class="js-detail-bar">
+            <button type="button" class="js-detail-back" id="jsDetailClose" aria-label="返回列表">
+                <svg viewBox="0 0 9 16" fill="none" aria-hidden="true">
+                    <path d="M8 1L1.5 8 8 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>返回</span>
+            </button>
+            <div class="js-detail-bar-title">案例详情</div>
+        </div>
+        <div class="js-detail-body">
+            <article class="js-detail-card">
+                <span class="js-demo">演示</span>
+                <h2 id="jsDetailTitle"></h2>
+                <div class="js-detail-meta" id="jsDetailMeta"></div>
+                <p class="js-detail-text" id="jsDetailBody"></p>
+            </article>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var ITEMS = [
+                {
+                    id: 'case-settle',
+                    cat: 'false',
+                    title: '未依法办理个人所得税综合所得汇算清缴案件',
+                    snippet: '演示摘要：四川、上海等地部分纳税人未在规定期限内办理综合所得汇算清缴。此处仅作界面演示，不引用真实案件细节。',
+                    body: '演示案例（非正式执法文书）：部分纳税人取得综合所得后，未在税法规定的期限内办理汇算清缴，也未按规定补缴税款。\n\n办理汇算时请按本人真实收入、扣除和已缴税额填报，并在法定期限内完成申报。本条为界面演示文案，不构成法律意见，亦不对应任何真实案件。'
+                },
+                {
+                    id: 'case-deduct',
+                    cat: 'false',
+                    title: '未在法定期限内办理综合所得汇算清缴、虚假填报子女教育专项附加扣除案件',
+                    snippet: '演示摘要：河北等地出现逾期办理汇算并填报不实子女教育专项附加扣除的情形。请按本人真实信息填报。',
+                    body: '演示案例（非正式执法文书）：纳税人未在法定期限内办理综合所得汇算清缴，同时填报了与实际情况不符的子女教育专项附加扣除。\n\n专项附加扣除须与本人、配偶及子女的真实情况一致。信息变化时应及时更新。本条为界面演示文案，非正式法律文本。'
+                },
+                {
+                    id: 'case-housing',
+                    cat: 'false',
+                    title: '虚假填报住房贷款利息专项附加扣除案件',
+                    snippet: '演示摘要：个别纳税人填报了与贷款合同、房屋权属不符的住房贷款利息扣除。本条仅作演示。',
+                    body: '演示案例（非正式执法文书）：纳税人填报住房贷款利息专项附加扣除时，提供的房屋或贷款信息与实际情况不符。\n\n请仅就符合条件的住房贷款据实填报，并保留合同、还款记录等资料备查。本条为界面演示文案。'
+                },
+                {
+                    id: 'pwd',
+                    cat: 'risk',
+                    title: '办理汇算想便捷 APP密码要记牢',
+                    snippet: '演示提示：办理年度汇算前，请先确认已记住登录密码，避免因无法登录耽误申报进度。',
+                    body: '演示风险提示：办理年度汇算前请确认能够正常登录，并妥善保管本人密码与验证码。不要向他人透露短信验证码。\n\n本条为演示文案，非正式税务机关通知。'
+                },
+                {
+                    id: 'card',
+                    cat: 'risk',
+                    title: '获取退税想及时 准确卡号必须有',
+                    snippet: '演示提示：申请退税时请核对本人银行卡号与开户名，信息有误可能导致退税到账延迟。',
+                    body: '演示风险提示：申请退税请使用本人一类银行卡，并核对卡号、开户名与预留手机号。信息有误可能影响退税到账。\n\n本条为演示文案，非正式退税指引。'
+                },
+                {
+                    id: 'update-deduct',
+                    cat: 'risk',
+                    title: '专项附加扣除信息变化须及时更新',
+                    snippet: '演示提示：子女教育、住房、赡养老人等信息发生变化时，请及时在扣除填报中更正，避免汇算出现差错。',
+                    body: '演示风险提示：专项附加扣除以填报时的真实情况为准。家庭成员、房屋、贷款等发生变化时，应尽快更新，以免汇算数据不实。\n\n本条为演示文案。'
+                },
+                {
+                    id: 'fraud',
+                    cat: 'police',
+                    title: '谨防假冒税务机关诈骗',
+                    snippet: '演示提醒：不会通过陌生链接、社交账号要求转账或索要验证码。请通过正规渠道办理汇算。',
+                    body: '演示网警提醒：不法分子可能冒充税务机关或客服，以退税、补税、账户异常为由发送虚假链接，或索要验证码、银行卡与身份证照片。\n\n请通过本应用或税务机关公布的正规渠道办理业务，不要向陌生人转账。本条为演示文案，非正式警情通报。'
+                },
+                {
+                    id: 'otp',
+                    cat: 'police',
+                    title: '不要向陌生人提供验证码与银行卡',
+                    snippet: '演示提醒：任何要求远程操控手机、提供短信验证码或银行卡密码的请求，都应拒绝。',
+                    body: '演示网警提醒：验证码、支付密码、银行卡号属于敏感信息。即使对方自称税务人员、客服或民警，也不应提供或协助远程操控。\n\n本条为演示文案。'
+                },
+                {
+                    id: 'official',
+                    cat: 'police',
+                    title: '官方渠道办理汇算 远离虚假退税链接',
+                    snippet: '演示提醒：所谓“快速退税”“内部通道”链接多为骗局。请只通过官方应用或公布入口办理。',
+                    body: '演示网警提醒：以“加快退税”“内部绿色通道”“代办退税”为名的链接和二维码存在诈骗风险。请只使用本应用内入口或税务机关公布的渠道。\n\n本条为演示文案。'
+                }
+            ];
+
+            var listEl = document.getElementById('jsList');
+            var emptyEl = document.getElementById('jsEmpty');
+            var tabs = document.querySelectorAll('.js-tab');
+            var currentCat = 'false';
+            var detailEl = document.getElementById('jsDetail');
+            var detailTitle = document.getElementById('jsDetailTitle');
+            var detailMeta = document.getElementById('jsDetailMeta');
+            var detailBody = document.getElementById('jsDetailBody');
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function padCase(n) {
+                return n < 10 ? '0' + n : String(n);
+            }
+
+            function itemById(id) {
+                for (var i = 0; i < ITEMS.length; i++) {
+                    if (ITEMS[i].id === id) return ITEMS[i];
+                }
+                return null;
+            }
+
+            function closeDetail() {
+                detailEl.classList.remove('is-open');
+                if (location.hash) {
+                    try { history.replaceState(null, '', location.pathname + location.search); } catch (e1) {}
+                }
+            }
+
+            function openDetail(id) {
+                var item = itemById(id);
+                if (!item) return;
+                if (item.cat !== currentCat) {
+                    currentCat = item.cat;
+                    for (var i = 0; i < tabs.length; i++) {
+                        tabs[i].classList.toggle('is-on', tabs[i].getAttribute('data-cat') === currentCat);
+                    }
+                    render();
+                }
+                detailTitle.textContent = item.title;
+                detailMeta.textContent = '综合所得年度汇算 · 警示案例（演示）';
+                detailBody.textContent = item.body;
+                detailEl.classList.add('is-open');
+                try { history.replaceState(null, '', '#' + item.id); } catch (e2) {}
+            }
+            window.openJingshiDetail = openDetail;
+
+            function render() {
+                var rows = ITEMS.filter(function (item) { return item.cat === currentCat; });
+                emptyEl.hidden = rows.length > 0;
+                listEl.innerHTML = rows.map(function (item, idx) {
+                    return '<article class="js-card" data-id="' + escapeHtml(item.id) + '" role="button" tabindex="0">' +
+                        '<span class="js-tag">案例' + padCase(idx + 1) + '</span>' +
+                        '<div class="js-title">' + escapeHtml(item.title) + '</div>' +
+                        '<p class="js-snippet"><span class="js-snippet-text">' + escapeHtml(item.snippet) +
+                        '</span><a class="js-full" href="#' + escapeHtml(item.id) + '" data-full="' + escapeHtml(item.id) + '">...全文</a></p>' +
+                        '</article>';
+                }).join('');
+            }
+
+            listEl.addEventListener('click', function (ev) {
+                var full = ev.target.closest('.js-full');
+                if (full) {
+                    ev.preventDefault();
+                    openDetail(full.getAttribute('data-full'));
+                    return;
+                }
+                var card = ev.target.closest('.js-card');
+                if (!card) return;
+                openDetail(card.getAttribute('data-id'));
+            });
+            listEl.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                var card = ev.target.closest('.js-card');
+                if (!card) return;
+                ev.preventDefault();
+                openDetail(card.getAttribute('data-id'));
+            });
+            document.getElementById('jsDetailClose').addEventListener('click', closeDetail);
+
+            for (var t = 0; t < tabs.length; t++) {
+                tabs[t].addEventListener('click', function () {
+                    currentCat = this.getAttribute('data-cat') || 'false';
+                    for (var i = 0; i < tabs.length; i++) {
+                        tabs[i].classList.toggle('is-on', tabs[i] === this);
+                    }
+                    closeDetail();
+                    render();
+                });
+            }
+
+            render();
+
+            var hash = String(location.hash || '').replace(/^#/, '');
+            if (hash) openDetail(hash);
+        })();
+    </script>
+</body>
+</html>
