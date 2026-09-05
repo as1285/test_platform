@@ -72,7 +72,7 @@ describe('homepage scan opens camera scanner', () => {
     expect(scan).toContain('id="scanAlbumBtn"');
     expect(scan).toContain('id="scanVideo"');
     expect(scan).toContain('tax-qr-payload.js?v=20260905-scan');
-    expect(scan).toContain('scan-qr.js?v=20260905-scan');
+    expect(scan).toContain('scan-qr.js?v=20260905-scan2');
     expect(scan).toContain('jsqr.min.js?v=20260905-scan');
     expect(existsSync(resolve(frontend, 'public/js/vendor/jsqr.min.js'))).toBe(true);
   });

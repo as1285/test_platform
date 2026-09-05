@@ -22,7 +22,11 @@
     el.textContent = text || '请将摄像头对准二维码';
     el.classList.toggle('is-error', !!isError);
     if (hintTimer) clearTimeout(hintTimer);
-    if (text && text !== '请将摄像头对准二维码') {
+    if (
+      text &&
+      text !== '请将摄像头对准二维码' &&
+      !document.body.classList.contains('camera-denied')
+    ) {
       hintTimer = setTimeout(function () {
         el.textContent = '请将摄像头对准二维码';
         el.classList.remove('is-error');
