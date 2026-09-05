@@ -102,6 +102,26 @@ describe('menuRegistry', () => {
     ).toBe(false);
   });
 
+  it('analytics-tracking 埋点分析 is removed and aliases to purchase analysis', () => {
+    expect(getPageDef('analytics-tracking')).toEqual(getPageDef('analytics-purchase'));
+    expect(parseAdminRoute('analytics-tracking')).toEqual({
+      page: 'analytics-purchase',
+      hub: null,
+      tab: null,
+      contentPage: 'analytics-purchase'
+    });
+    expect(resolveMenuKeyForPage('analytics-tracking')).toBe('analytics-purchase');
+    const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
+    const insightPages = (tree.menu_tree.find((g) => g.id === 'insights') || { items: [] }).items.map(
+      (i) => i.page
+    );
+    expect(insightPages).not.toContain('analytics-tracking');
+    expect(insightPages).toContain('analytics-purchase');
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-tracking'] }, 'analytics-purchase')
+    ).toBe(false);
+  });
+
   it('admin-accounts is super_only and not assignable', () => {
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['admin-accounts'] }, 'admin-accounts')
@@ -179,10 +199,10 @@ describe('menuRegistry', () => {
       expect.arrayContaining([
         'insights-product',
         'insights-growth',
-        'analytics-purchase',
-        'analytics-tracking'
+        'analytics-purchase'
       ])
     );
+    expect(insightPages).not.toContain('analytics-tracking');
     expect(insightPages).not.toContain('channel-analysis');
     expect(insightPages).not.toContain('analytics-activity');
     expect(insightPages).not.toContain('abc-install-stats');
@@ -229,8 +249,11 @@ describe('menuRegistry', () => {
       false
     );
     expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-tracking'] }, 'ops-ad-analytics')
+      adminProfileCanAccessPage({ is_super: false, menus: ['ops-ad-analytics'] }, 'ops-ad-analytics')
     ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-tracking'] }, 'ops-ad-analytics')
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-ad-analytics')
     ).toBe(false);
@@ -283,6 +306,7 @@ describe('menuRegistry', () => {
     expect(assignable).not.toContain('gjj-demo');
     expect(assignable).not.toContain('user-login-log');
     expect(assignable).not.toContain('analytics-activity');
+    expect(assignable).not.toContain('analytics-tracking');
     expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
     expect(getPageDef('peer-accounts')).toEqual(getPageDef('rename-tax-daily'));
     expect(

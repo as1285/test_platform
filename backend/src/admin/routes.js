@@ -122,13 +122,13 @@ app.get(
 app.get(
   '/api/admin/analytics/purchase-events',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-purchase', 'analytics', 'analytics-conversion', 'analytics-tracking']),
+  mw.requireAdminAnyMenu(['analytics-purchase', 'analytics', 'analytics-conversion']),
   h.handleAdminAnalyticsPurchaseEvents
 );
 app.get(
   '/api/admin/analytics/purchase-events/users',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-purchase', 'analytics', 'analytics-conversion', 'analytics-tracking']),
+  mw.requireAdminAnyMenu(['analytics-purchase', 'analytics', 'analytics-conversion']),
   h.handleAdminAnalyticsPurchaseEventUsers
 );
 app.get(
@@ -212,37 +212,37 @@ app.get(
 app.get(
   '/api/admin/ad-pages',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-conversion']),
   h.handleAdminAdPagesGet
 );
 app.post(
   '/api/admin/ad-pages',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-conversion']),
   h.handleAdminAdPagesPost
 );
 app.get(
   '/api/admin/analytics/ad-page-stats',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-conversion']),
   h.handleAdminAdPageStats
 );
 app.get(
   '/api/admin/analytics/ad-page-stats/user',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-tracking', 'analytics-conversion']),
+  mw.requireAdminAnyMenu(['ops-ad-analytics', 'analytics-conversion']),
   h.handleAdminAdPageUserEvents
 );
 app.get(
   '/api/admin/analytics/page-load-perf',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  mw.requireAdminAnyMenu(['analytics']),
   h.handleAdminPageLoadPerfStats
 );
 app.get(
   '/api/admin/analytics/install-track-stats',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  mw.requireAdminAnyMenu(['analytics']),
   h.handleAdminInstallTrackStats
 );
 app.post(
@@ -454,25 +454,25 @@ app.post('/api/admin/users/purge-bots', mw.requireAdminAuth, mw.requireAdminMenu
 app.get(
   '/api/admin/analytics/events',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  mw.requireAdminAnyMenu(['analytics']),
   h.handleAdminAnalyticsEvents
 );
 app.get(
   '/api/admin/analytics/activate-events',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  mw.requireAdminAnyMenu(['analytics']),
   h.handleAdminAnalyticsActivateEvents
 );
 app.get(
   '/api/admin/analytics/activate-events/users',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  mw.requireAdminAnyMenu(['analytics']),
   h.handleAdminAnalyticsActivateEventUsers
 );
 app.post(
   '/api/admin/analytics/events/clear',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  mw.requireAdminAnyMenu(['analytics']),
   h.handleAdminAnalyticsEventsClear
 );
 app.get('/api/admin/analytics/login-recent', mw.requireAdminAuth, mw.requireAdminMenu('user-login-log'), h.handleAdminAnalyticsLoginRecent);
