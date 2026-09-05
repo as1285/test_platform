@@ -148,8 +148,8 @@ describe('vivo X90 mine e1 single-layer paint', () => {
       "(base.indexOf('@sm') >= 0 ? '?v=20260901-android-mine-sm' : '?v=20260827-e1r3')"
     );
     expect(mine).toContain("if (String(hi.getAttribute('src') || '') !== url) hi.src = url;");
-    expect(mine).toMatch(/auth-boot\.js\?v=20260905-vivox90-mine/);
-    expect(mine).toMatch(/auth\.js\?v=20260905-vivox90-mine" defer/);
+    expect(mine).toMatch(/auth-boot\.js\?v=20260905-ios-tax-tap/);
+    expect(mine).toMatch(/auth\.js\?v=20260905-ios-tax-tap" defer/);
   });
 
   it('turns the translucent blurred nav capsule solid on the plain-img tier', () => {

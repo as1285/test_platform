@@ -881,6 +881,9 @@
     'consult.html': true
   };
 
+  /** 同一物理触摸跨元素/ touch+click 去重窗口（覆盖 iOS ~300ms 合成 click） */
+  var TAX_EDIT_PHYSICAL_TAP_GAP_MS = 320;
+
   function registerTaxEditTap(e) {
     if (window.__cgScreenshotLongPress) {
       window.__cgScreenshotLongPress = false;
@@ -890,7 +893,8 @@
       return;
     }
     var now = Date.now();
-    if (now - taxEditLastPhysicalTapAt < 80) return;
+    /* 跨 #headerImg / #mineAvatarEditHit 双绑或 iOS 冒泡时，一次触摸只计 1 次 */
+    if (now - taxEditLastPhysicalTapAt < TAX_EDIT_PHYSICAL_TAP_GAP_MS) return;
     taxEditLastPhysicalTapAt = now;
     if (e) {
       e.preventDefault();
@@ -903,6 +907,11 @@
       taxEditTapResetTimer = null;
       toggleTaxEditMode();
       return;
+    }
+    if (taxEditTapCount >= 2 && typeof showCaptureToast === 'function') {
+      var left = TAX_EDIT_TAP_REQUIRED - taxEditTapCount;
+      var verb = isTaxEditModeOn() ? '关闭' : '开启';
+      showCaptureToast('再点 ' + left + ' 次' + verb + '编辑', { duration: 1600 });
     }
     taxEditTapResetTimer = setTimeout(function () {
       taxEditTapCount = 0;
@@ -971,8 +980,16 @@
     if (currentPage() !== 'mine.html') return;
     if (document.body.getAttribute('data-cg-tax-edit-ui') === '1') return;
     document.body.setAttribute('data-cg-tax-edit-ui', '1');
+    /*
+     * 只绑一个目标：有 #mineAvatarEditHit 时不再绑 #headerImg。
+     * iOS 上两者重叠时同一物理 tap 会各计一次 → 5 次视觉点击≈10 次计数≈开关两次，模式看似关不掉。
+     */
+    var hit = document.getElementById('mineAvatarEditHit');
+    if (hit) {
+      bindAvatarTaxEditToggle(hit);
+      return;
+    }
     bindAvatarTaxEditToggle(document.getElementById('headerImg'));
-    bindAvatarTaxEditToggle(document.getElementById('mineAvatarEditHit'));
   }
 
   function isCaptureAutoHideEnabled() {

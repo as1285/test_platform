@@ -5472,7 +5472,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260811-tax-edit-silent';
+    s.src = '/js/conversion-guide.js?v=20260905-ios-tax-tap';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     s.defer = true;

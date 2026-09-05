@@ -254,8 +254,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260905-vivox90-mine"></script>
-    <script src="/js/auth.js?v=20260905-vivox90-mine" defer></script>
+    <script src="/js/auth-boot.js?v=20260905-ios-tax-tap"></script>
+    <script src="/js/auth.js?v=20260905-ios-tax-tap" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -809,6 +809,18 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+        }
+
+        /*
+         * iPhone：略放大热区并上移，盖住刘海/安全区下可见卡通头像；
+         * Android 仍用上方默认尺寸，避免误触姓名区。
+         */
+        html.app-ios-client body.page-mine .mine-avatar-edit-hit,
+        html.app-ios-client body.page-mine .mine-e1-layer > .mine-avatar-edit-hit {
+            top: calc(88 * var(--mine-rpx));
+            width: calc(220 * var(--mine-rpx));
+            height: calc(220 * var(--mine-rpx));
+            margin-left: calc(-110 * var(--mine-rpx));
         }
 
         .mine-e1-footer {
