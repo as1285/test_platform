@@ -22,6 +22,7 @@
 # 环境变量:
 #   SITE_URL / API_URL       站点与 API 地址（Docker 用 --network host，默认 127.0.0.1）
 #   UI_SMOKE_DEVICES         all | full | recent | popular | 逗号分隔机型 id（见上）
+#   UI_SMOKE_CHROME_ONLY=1   跳过 API 业务冒烟，只验壳 / 白顶栏（无 DB 时可用）
 #   PLAYWRIGHT_RUN_IMAGE     运行镜像（默认 mcr.microsoft.com/playwright:v1.52.0-jammy）
 #   UI_SMOKE_NODE_IMAGE      node 回退镜像（默认 node:20-bookworm-slim，本机常已通过 daocloud 缓存）
 #   UI_SMOKE_IMAGE           自建镜像名（UI_SMOKE_BUILD_IMAGE=1 时）
@@ -59,6 +60,7 @@ run_docker_smoke() {
     -e SITE_URL \
     -e API_URL \
     -e UI_SMOKE_DEVICES \
+    -e UI_SMOKE_CHROME_ONLY \
     --env-file "$env_file" \
     -v "${ROOT}:/work" \
     -w /work/frontend \
@@ -77,6 +79,7 @@ run_node_fallback_smoke() {
       -e SITE_URL \
       -e API_URL \
       -e UI_SMOKE_DEVICES \
+    -e UI_SMOKE_CHROME_ONLY \
       -e UI_SMOKE_PLAYWRIGHT_VERSION \
       --env-file "$env_file" \
       -v "${ROOT}:/work" \
@@ -93,6 +96,7 @@ run_node_fallback_smoke() {
     -e SITE_URL \
     -e API_URL \
     -e UI_SMOKE_DEVICES \
+    -e UI_SMOKE_CHROME_ONLY \
     -e UI_SMOKE_NODE_IMAGE \
     -e UI_SMOKE_PLAYWRIGHT_VERSION \
     -e UI_SMOKE_FORCE_BROWSER_INSTALL \
@@ -191,6 +195,7 @@ elif [[ "${UI_SMOKE_BUILD_IMAGE:-0}" == "1" ]]; then
     -e SITE_URL \
     -e API_URL \
     -e UI_SMOKE_DEVICES \
+    -e UI_SMOKE_CHROME_ONLY \
     --env-file "$ENV_FILE" \
     -v "${ROOT}:/work:ro" \
     "$USE_IMAGE"

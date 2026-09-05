@@ -2744,6 +2744,11 @@ mustInclude(
   '20260905 standalone API selftest script'
 );
 mustInclude(
+  'frontend/tests/e2e/ui-smoke-browser.mjs',
+  ['UI_SMOKE_CHROME_ONLY', 'CHROME_ONLY'],
+  '20260905 chrome-only smoke skips API business suite'
+);
+mustInclude(
   'frontend/tests/e2e/ui-smoke-devices.mjs',
   [
     "spec === 'popular'",
