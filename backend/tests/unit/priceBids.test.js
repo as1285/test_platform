@@ -62,7 +62,7 @@ function makeStubOffers(calls) {
   };
 }
 
-function makeApi(state, offerCalls, notifications, onBidRecorded) {
+function makeApi(state, offerCalls, notifications, onBidRecorded, listPurchaseSkusForUser) {
   return createPriceBids({
     pool: makeStubPool(state),
     normalizeAmount: normalizeAmount,
@@ -71,7 +71,8 @@ function makeApi(state, offerCalls, notifications, onBidRecorded) {
       notifications.push({ username: username, title: title, body: body, link: link });
       return { email_sent: false, reason: 'no_email' };
     },
-    onBidRecorded: onBidRecorded
+    onBidRecorded: onBidRecorded,
+    listPurchaseSkusForUser: listPurchaseSkusForUser
   });
 }
 
@@ -122,6 +123,39 @@ describe('submitBid auto accept vs pending', () => {
     const api = makeApi({ queries: [] }, [], []);
     await expect(api.submitBid('u1', { sku_id: 'sku_300_7d', amount: '300' })).rejects.toThrow(
       /不低于现价/
+    );
+  });
+
+  it('compares against selected year-card sale price, not cheapest week tier', async () => {
+    const shelf = async function () {
+      return [
+        { id: 'sku_300_7d', amount: '300.00', label: '周卡' },
+        { id: 'sku_ch_t4', amount: '998.00', label: '年卡', grant_days: 365 },
+        { id: 'sku_ch_t5', amount: '1998.00', label: '永久', grant_kind: 'permanent' }
+      ];
+    };
+    const api = makeApi({ queries: [] }, [], [], null, shelf);
+    /* 300 < 年卡现价 998 → 应受理（低于默认底价线则进 pending） */
+    const out = await api.submitBid('u1', { sku_id: 'sku_ch_t4', amount: '300' });
+    expect(out.status).toBe('pending');
+    expect(out.sku_label).toBe('年卡');
+    /* 出价 >= 年卡现价才拒 */
+    await expect(api.submitBid('u1', { sku_id: 'sku_ch_t4', amount: '998' })).rejects.toThrow(
+      /不低于现价 ¥998/
+    );
+    /* 永久档同样用本档现价 */
+    const perm = await api.submitBid('u1', { sku_id: 'sku_ch_t5', amount: '500' });
+    expect(perm.status).toBe('pending');
+    expect(perm.sku_label).toBe('永久');
+    await expect(api.submitBid('u1', { sku_id: 'sku_ch_t5', amount: '1998' })).rejects.toThrow(
+      /不低于现价 ¥1998/
+    );
+  });
+
+  it('rejects unknown selected sku_id instead of falling back to cheapest live sku', async () => {
+    const api = makeApi({ queries: [] }, [], []);
+    await expect(api.submitBid('u1', { sku_id: 'sku_ch_t4', amount: '300' })).rejects.toThrow(
+      /所选套餐不可出价/
     );
   });
 

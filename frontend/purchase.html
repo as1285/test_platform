@@ -3181,6 +3181,17 @@
                     showToast('出价不能低于 ' + priceBidUi.minAmount + ' 元');
                     return;
                 }
+                var selectedSku =
+                    typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;
+                var salePrice = selectedSku ? Number(selectedSku.amount) : NaN;
+                if (isFinite(salePrice) && salePrice > 0 && Number(amount) >= salePrice) {
+                    showToast(
+                        '出价已不低于现价 ¥' +
+                            Number(salePrice).toFixed(2) +
+                            '，直接购买即可'
+                    );
+                    return;
+                }
                 priceBidUi.submitting = true;
                 btnSubmit.disabled = true;
                 var fromTag = bidSheetOpts.from || 'teaser';

@@ -1378,5 +1378,8 @@ module.exports = {
   applyChannelCatalogPrices: applyChannelCatalogPrices,
   GITHUB_CHANNEL_AMOUNT_BY_SKU: GITHUB_CHANNEL_AMOUNT_BY_SKU,
   prependGithubEntrySku: prependGithubEntrySku,
-  SKU_98_3DAY: SKU_98_3DAY
+  SKU_98_3DAY: SKU_98_3DAY,
+  SKU_CH_T4: SKU_CH_T4,
+  SKU_CH_T5: SKU_CH_T5,
+  CHANNEL_EXTRA_SKU_IDS: CHANNEL_EXTRA_SKU_IDS
 };
