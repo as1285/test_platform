@@ -10,11 +10,12 @@ const boot = readFileSync(resolve(frontend, 'public/js/auth-boot.js'), 'utf8');
 const auth = readFileSync(resolve(frontend, 'public/js/auth.js'), 'utf8');
 
 describe('homepage news opens zixun list', () => {
-  it('查看资讯 and 查看更多 point to zixun.html, not help_center', () => {
+  it('查看资讯 points to zixun.html; 查看更多 goes to jingshi, not help_center', () => {
     expect(shouye).toMatch(/href="zixun\.html"[^>]*sy-hit-news/);
-    expect(shouye).toMatch(/href="zixun\.html"[^>]*sy-hit-more/);
+    expect(shouye).toMatch(/href="jingshi\.html"[^>]*sy-hit-more/);
     expect(shouye).toMatch(/aria-label="查看资讯"/);
     expect(shouye).toMatch(/aria-label="查看更多"/);
+    expect(shouye).not.toMatch(/href="zixun\.html"[^>]*sy-hit-more/);
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*sy-hit-news/);
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*sy-hit-more/);
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="查看资讯"/);
