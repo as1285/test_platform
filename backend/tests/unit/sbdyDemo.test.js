@@ -461,6 +461,22 @@ describe('sbdyDemo', () => {
     expect(html).not.toContain('/img/sbdy_sz_seal.png');
   });
 
+  it('Shenzhen-new PDF selftest keeps titles left and embeds dual seals', () => {
+    const { spawnSync } = require('child_process');
+    const script = require('path').join(__dirname, '../../scripts/sbdy_sz_new_render_pdf.py');
+    const r = spawnSync('python3', [script, '--selftest'], {
+      encoding: 'utf8',
+      timeout: 60000
+    });
+    const out = String(r.stdout || '') + String(r.stderr || '');
+    if (r.status !== 0 && /ModuleNotFoundError|missing CJK font/.test(out)) {
+      return;
+    }
+    expect(r.status, out).toBe(0);
+    expect(out).toMatch(/selftest ok/);
+    expect(out).not.toMatch(/missing|not left-aligned/);
+  });
+
   it('Shenzhen-new aliases and multi-employer segments stay off the old sz template', () => {
     const p = normalizePayload({
       region: 'shenzhen_new',

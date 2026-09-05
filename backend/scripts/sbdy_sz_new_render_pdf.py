@@ -174,19 +174,26 @@ def base_text(n):
     return money(n)
 
 
+def note_lines(auth_code):
+    return [
+        '1.本证明可作为参保人参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（%s）核查，验真码有效期三个月。'
+        % (_s(auth_code)),
+        '2.生育保险中的险种“1”为生育保险，“2”为生育医疗。',
+        '3.医疗保险档次“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险，“6”为统筹医疗保险。',
+        '4.上述“缴费明细”表中带“*”标识为补缴，带“#”标识为补差，空行为断缴。',
+        '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。',
+        '6.单位编号对应的单位名称：',
+    ]
+
+
 def collect_blob(p, months, auth_code, years):
     parts = [
         '深圳市社会保险参保证明',
         '参保人姓名：有效证件号码：社保电脑号：',
         '（一）历年参保年限险种养老保险医疗保险生育保险生育医疗工伤保险失业保险累计月数',
         '（二）近两年参保缴费明细缴费时段单位编号缴费基数档次险种',
-        '备注本证明可作为参保人参加社会保险的证明。',
-        '网址：https://sipub.sz.gov.cn/vp/ 验真码有效期三个月。',
-        '生育保险中的险种“1”为生育保险，“2”为生育医疗。',
-        '医疗险种中的档次“1”为基本医疗保险一档，“2”为基本医疗保险二档。',
-        '上述“缴费明细”表中带“*”标识为补缴，带“#”标识为补差，空行为断缴。',
-        '居民养老保险、居民（含少儿/学生）医疗保险不在本清单。',
-        '单位编号对应的单位名称：',
+        '备注：',
+        '　　',  # 信息行全角空格，缺字会变成方框
         '本服务由深圳市人力资源和社会保障局提供',
         '深圳市社会保险基金管理局深圳市医疗保障基金管理中心',
         '社保费缴纳清单证明专用章医疗与生育保险业务专用章',
@@ -200,6 +207,7 @@ def collect_blob(p, months, auth_code, years):
         doc_serial_of(p),
         seal_date_label(p),
     ]
+    parts.extend(note_lines(auth_code))
     for k, v in (years or {}).items():
         parts.append(str(v))
     for item in p.get('unit_map') or []:
@@ -398,15 +406,7 @@ def render(payload, auth_code, qr_url, out_path):
 
         y = y + table_h + 16.0
         page.insert_text((X0, y), '备注：', fontname=body_name, fontsize=9.5)
-        notes = [
-            '1.本证明可作为参保人参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（%s）核查，验真码有效期三个月。'
-            % (_s(auth_code)),
-            '2.生育保险中的险种“1”为生育保险，“2”为生育医疗。',
-            '3.医疗保险档次“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险，“6”为统筹医疗保险。',
-            '4.上述“缴费明细”表中带“*”标识为补缴，带“#”标识为补差，空行为断缴。',
-            '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。',
-            '6.单位编号对应的单位名称：',
-        ]
+        notes = note_lines(auth_code)
         y += 4.0
         for line in notes:
             # 长行自动换行
@@ -541,6 +541,13 @@ def selftest():
         if n_img < 2:
             print('selftest expected 2 seals, got', n_img, file=sys.stderr)
             return 1
+        doc = fitz.open(out_path)
+        text = doc[0].get_text('text')
+        doc.close()
+        for needle in ('向相关部门提供', '查验部门可通过登录网址', '统筹医疗保险', '林晓薇', '31327084'):
+            if needle not in text:
+                print('selftest missing glyph/text', needle, file=sys.stderr)
+                return 1
         print('selftest ok titles=%s seals=%s' % (len(hits), n_img))
         return 0
     finally:
