@@ -60,10 +60,10 @@ describe('mine tax-edit avatar tap (iOS double-bind)', () => {
       /bindAvatarTaxEditToggle\(document\.getElementById\('headerImg'\)\);\s*bindAvatarTaxEditToggle\(document\.getElementById\('mineAvatarEditHit'\)\)/
     );
     expect(guideSrc).toContain("再点 ' + left + ' 次");
-    expect(authSrc).toContain('conversion-guide.js?v=20260905-ios-tax-tap');
+    expect(authSrc).toContain('conversion-guide.js?v=20260905-no-home-refund');
     expect(mineHtml).toContain('html.app-ios-client body.page-mine .mine-avatar-edit-hit');
     expect(mineHtml).toContain('width: calc(220 * var(--mine-rpx))');
-    expect(mineHtml).toMatch(/auth\.js\?v=20260905-ios-tax-tap/);
+    expect(mineHtml).toMatch(/auth\.js\?v=20260905-no-home-refund/);
   });
 
   it('binds only #mineAvatarEditHit when present (headerImg stays unbound)', () => {

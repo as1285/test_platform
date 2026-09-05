@@ -338,7 +338,7 @@
   function removeActivationPromoUi() {
     /* 已激活用户仍需保留「添加个税」强提示；此处只清激活营销类 UI */
     hideLegacyShuimingRefundWechatCard();
-    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast', 'smActivateCard', 'cg-inactive-refund-promo'].forEach(
+    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast', 'smActivateCard'].forEach(
       function (id) {
         var el = document.getElementById(id);
         if (!el) return;
@@ -3062,47 +3062,6 @@
     }
   }
 
-  function removeInactiveRefundAdPromo() {
-    var el = document.getElementById('cg-inactive-refund-promo');
-    if (el && el.parentNode) el.parentNode.removeChild(el);
-  }
-
-  /** 首页：每个未激活用户展示二次退税广告入口 */
-  function renderInactiveRefundAdPromo() {
-    removeInactiveRefundAdPromo();
-    if (currentPage() !== 'shouye.html') return;
-    if (!isLoggedIn() || isLandingGuest() || skipConversionPromo()) return;
-    if (!isInactiveRefundCardUser()) return;
-    ensureGateStyles();
-    var card = document.createElement('div');
-    card.id = 'cg-inactive-refund-promo';
-    card.className = 'cg-shouye-card is-tax-strong';
-    card.innerHTML =
-      '<h4>二次退税</h4>' +
-      '<p>未开通也可先看。打开页面可一键计算 2023、2024、2025 大约可退税额，符合请联系客服办理。</p>' +
-      '<a class="cg-btn cg-btn-primary" id="cgInactiveRefundGo" href="' +
-      refundAdRecommendHref('shouye') +
-      '">去计算可退税额</a>';
-    var host =
-      document.getElementById('guestExperienceBar') ||
-      document.getElementById('syHScroll') ||
-      document.querySelector('.shouye-page') ||
-      document.getElementById('syApkStack');
-    if (!host) return;
-    if (host.id === 'guestExperienceBar' || host.id === 'syHScroll') {
-      host.parentNode.insertBefore(card, host);
-    } else {
-      host.insertBefore(card, host.firstChild);
-    }
-    track('track_refund_ad_inactive_promo_show', { page: 'shouye', source: 'home_card' });
-    var btn = document.getElementById('cgInactiveRefundGo');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        track('track_refund_ad_inactive_promo_click', { page: 'shouye', source: 'home_card' });
-      });
-    }
-  }
-
   function renderShouyeTaxManageEntry() {
     removeShouyeTaxManageEntry();
     if (currentPage() !== 'shouye.html') return;
@@ -3602,7 +3561,6 @@
       removeShuimingResultValueBar();
       syncMineConsultEntryForTax();
       renderShouyeTaxManageEntry();
-      renderInactiveRefundAdPromo();
       renderMineTaxStrongPrompt();
       renderConsultTaxStrongPrompt();
       renderShouyeRetentionCard();
