@@ -75,6 +75,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
 
   it('source prefers a single hit target and hardens physical-tap debounce', () => {
     expect(guideSrc).toContain('TAX_EDIT_PHYSICAL_TAP_GAP_MS');
+    expect(guideSrc).toMatch(/TAX_EDIT_PHYSICAL_TAP_GAP_MS\s*=\s*100/);
     expect(guideSrc).toContain('MOVE_CANCEL_PX');
     expect(guideSrc).toContain("var hit = document.getElementById('mineAvatarEditHit')");
     expect(guideSrc).toMatch(
@@ -84,11 +85,26 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
       /bindAvatarTaxEditToggle\(document\.getElementById\('headerImg'\)\);\s*bindAvatarTaxEditToggle\(document\.getElementById\('mineAvatarEditHit'\)\)/
     );
     expect(guideSrc).toContain("再点 ' + left + ' 次");
-    expect(authSrc).toContain('conversion-guide.js?v=20260905-android-tax-tap');
+    expect(guideSrc).toContain('--app-shell-statusbar-top, env(safe-area-inset-top,0px)');
+    expect(authSrc).toContain('conversion-guide.js?v=20260905-mine-safe-edit');
+    expect(authSrc).toContain('mineNeedsCg');
+    expect(authSrc).toContain('inTabEmbed && !mineNeedsCg');
     expect(mineHtml).toContain('html.app-ios-client body.page-mine .mine-avatar-edit-hit');
     expect(mineHtml).toContain('html.app-android-client body.page-mine .mine-avatar-edit-hit');
     expect(mineHtml).toContain('width: calc(220 * var(--mine-rpx))');
-    expect(mineHtml).toMatch(/auth\.js\?v=20260905-android-tax-tap/);
+    expect(mineHtml).toContain('pointer-events: auto');
+    expect(mineHtml).toContain('app-cordova-shell:not(.app-android-xiaomi-14pro)');
+    expect(mineHtml).toMatch(/auth\.js\?v=20260905-mine-safe-edit/);
+  });
+
+  it('auth injects conversion-guide on mine even inside tab_embed', () => {
+    expect(authSrc).toMatch(/mineNeedsCg\s*=\s*pageCg === 'mine\.html'/);
+    expect(authSrc).toContain("if (inTabEmbed && !mineNeedsCg) return");
+    /* 「我的」不再走 Android idle 延后 */
+    expect(authSrc).toMatch(/if \(mineNeedsCg\) \{\s*appendCg\(\);\s*return;/);
+    expect(authSrc).not.toMatch(
+      /primaryTabs\s*=\s*\{[^}]*'mine\.html':\s*true/
+    );
   });
 
   it('binds only #mineAvatarEditHit when present (headerImg stays unbound)', () => {
@@ -100,6 +116,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
     const img = document.getElementById('headerImg');
     expect(hit.getAttribute('data-cg-tax-edit-toggle')).toBe('1');
     expect(img.getAttribute('data-cg-tax-edit-toggle')).toBe(null);
+    expect(hit.style.pointerEvents).toBe('auto');
   });
 
   it('falls back to #headerImg when hit area is absent', () => {
@@ -110,7 +127,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
     );
   });
 
-  it('double-fire within debounce window counts as one tap; five spaced taps toggle once', () => {
+  it('rapid taps under old 320ms gap still count; five taps toggle once each way', () => {
     vi.useFakeTimers();
     document.body.innerHTML =
       '<img id="headerImg" alt="">' +
@@ -120,22 +137,36 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
     expect(cg.isTaxEditModeOn()).toBe(true);
 
     const hit = document.getElementById('mineAvatarEditHit');
+    /* 真机连点常约 150–250ms；旧 320ms 去重会吞掉一半 */
     for (let i = 0; i < 5; i += 1) {
       fireShortTap(hit);
-      /* 模拟 iOS 同一次触摸的二次计数（旧双绑 / touch+click） */
-      fireShortTap(hit);
-      vi.advanceTimersByTime(350);
+      fireShortTap(hit); /* 同一次触摸的二次计数（touch+合成） */
+      vi.advanceTimersByTime(180);
     }
 
     expect(cg.isTaxEditModeOn()).toBe(false);
 
-    /* 再 5 次应重新开启，证明不是卡在关不掉/开不开 */
     for (let i = 0; i < 5; i += 1) {
       fireShortTap(hit);
       fireShortTap(hit);
-      vi.advanceTimersByTime(350);
+      vi.advanceTimersByTime(180);
     }
     expect(cg.isTaxEditModeOn()).toBe(true);
+  });
+
+  it('shows capture toast when toggling on mine page', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML =
+      '<button type="button" id="mineAvatarEditHit" class="mine-avatar-edit-hit"></button>';
+    const cg = loadGuide();
+    cg.setTaxEditMode(false);
+    const toast = document.getElementById('cg-capture-toast');
+    expect(toast).toBeTruthy();
+    expect(toast.textContent).toMatch(/数据编辑已关闭/);
+    expect(toast.classList.contains('is-show')).toBe(true);
+
+    cg.setTaxEditMode(true);
+    expect(toast.textContent).toMatch(/数据编辑已开启/);
   });
 
   it('Android-style micro jitter still counts; discarded touchend leaves click fallback', () => {
@@ -148,7 +179,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
 
     for (let i = 0; i < 5; i += 1) {
       fireJitterTap(hit);
-      vi.advanceTimersByTime(350);
+      vi.advanceTimersByTime(180);
     }
     expect(cg.isTaxEditModeOn()).toBe(true);
 
@@ -160,7 +191,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
       fireTouch(hit, 'touchend', { x: 140, y: 100 });
       expect(window.__cgLastTouchTapAt).toBeUndefined();
       hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-      vi.advanceTimersByTime(350);
+      vi.advanceTimersByTime(180);
     }
     expect(cg.isTaxEditModeOn()).toBe(false);
   });

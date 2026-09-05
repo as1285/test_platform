@@ -35,7 +35,7 @@
             }
         })();
     </script>
-    <script src="/js/auth-mate60-aug12.js?v=20260905-android-tax-tap"></script>
+    <script src="/js/auth-mate60-aug12.js?v=20260905-mine-safe-edit"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -162,6 +162,19 @@
         }
         html.app-android-client body.page-mine .mine-e1-layer {
             top: 0 !important;
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine {
+            --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 40px));
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas {
+            padding-top: var(--mine-top-bleed, 40px) !important;
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > img,
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > #headerImg {
+            margin-top: 0 !important;
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-layer {
+            top: var(--mine-top-bleed, 40px) !important;
         }
         html.app-android-oneplus-13 body.page-mine,
         html.app-android-xiaomi-mix-fold body.page-mine {
@@ -453,6 +466,7 @@
             background: transparent;
             z-index: 140;
             cursor: pointer;
+            pointer-events: auto;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }

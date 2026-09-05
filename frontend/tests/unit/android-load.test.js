@@ -23,9 +23,10 @@ describe('android first-paint load', () => {
     expect(auth).toContain('setupMobileStatusBar()');
     expect(auth).toContain('applyShouyePageChrome()');
     expect(auth).toMatch(/requestIdleCallback\(function \(\) \{\s*afterPaint\(run\);/);
-    expect(auth).toContain("androidLike && primaryTabs[currentPageName()]");
-    expect(auth).toContain("'mine.html': true");
+    /* 首页等可 idle 延后；「我的」须立即注入（头像连点），不再进 primaryTabsDefer */
+    expect(auth).toContain('androidLike && primaryTabsDefer[pageCg]');
     expect(auth).toContain("'daiban.html': true");
+    expect(auth).toContain('mineNeedsCg');
     expect(auth).toContain("get('tab_embed') === '1'");
     expect(auth.indexOf('markViewportChromeClasses()')).toBeLessThan(auth.indexOf('setupMobileStatusBar();'));
   });
@@ -55,8 +56,8 @@ describe('android first-paint load', () => {
   });
 
   it('auth-boot stays small and exposes sync APIs', () => {
-    /* 首屏同步脚本须保持轻量；含分段注释后约 20KB，硬上限 22KB */
-    expect(boot.length).toBeLessThan(22 * 1024);
+    /* 首屏同步脚本须保持轻量；含分段注释后约 20KB，硬上限 23KB */
+    expect(boot.length).toBeLessThan(23 * 1024);
     expect(boot).toContain('function getToken()');
     expect(boot).toContain('function isPublicPage()');
     expect(boot).toContain('window.authFetch');

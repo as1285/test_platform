@@ -63,6 +63,26 @@
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                 }
+                /* Cordova 壳：首屏即打 class + 状态栏 inset，避免头像先顶进系统栏再跳下来 */
+                try {
+                    var cordovaUa = /TaxPlatformCordovaApp\//i.test(u);
+                    var cordovaObj = false;
+                    try {
+                        cordovaObj = !!(window.cordova || window.PhoneGap);
+                    } catch (eCv) {}
+                    if (cordovaUa || cordovaObj) {
+                        document.documentElement.classList.add('app-cordova-shell');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                        var curInset = '';
+                        try {
+                            curInset =
+                                document.documentElement.style.getPropertyValue('--app-shell-statusbar-top') || '';
+                        } catch (eIns) {}
+                        if (!curInset || curInset === '0px') {
+                            document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                        }
+                    }
+                } catch (eCordova) {}
                 if (/23116PN5|23116PN\b|(?:Xiaomi|Mi|小米)[\s_-]*14[\s_-]*Pro(?!\s*Max)/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-14pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -254,8 +274,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260905-android-tax-tap"></script>
-    <script src="/js/auth.js?v=20260905-android-tax-tap" defer></script>
+    <script src="/js/auth-boot.js?v=20260905-mine-safe-edit"></script>
+    <script src="/js/auth.js?v=20260905-mine-safe-edit" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -385,6 +405,25 @@
         }
         html.app-android-client body.page-mine .mine-e1-layer {
             top: 0 !important;
+        }
+        /*
+         * Android Cordova：状态栏叠在 WebView 上时，整页 e1（头像+#mineAvatarEditHit）下推。
+         * padding + layer.top，禁止负 margin（负 margin 仍把头像画进状态栏）。
+         * --app-shell-statusbar-top 为 0 的外置栏机型不产生空隙。
+         * 排除小米 14/15 Pro 等已锁定零 bleed 的底图方案。
+         */
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine {
+            --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 40px));
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas {
+            padding-top: var(--mine-top-bleed, 40px) !important;
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > img,
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > #headerImg {
+            margin-top: 0 !important;
+        }
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-layer {
+            top: var(--mine-top-bleed, 40px) !important;
         }
         html.app-android-oneplus-13 body.page-mine,
         html.app-android-oneplus-ace2pro body.page-mine,
@@ -807,6 +846,7 @@
             background: transparent;
             z-index: 140;
             cursor: pointer;
+            pointer-events: auto;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }

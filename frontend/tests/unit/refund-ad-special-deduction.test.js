@@ -161,7 +161,7 @@ describe('special deduction refund estimate + force dialog', () => {
     expect(guideSrc).toContain('track_refund_ad_after_tax_show');
     expect(guideSrc).toContain('refund_ad.html?from=tax_done');
     expect(guideSrc).toContain('&est=');
-    expect(authSrc).toContain('conversion-guide.js?v=20260905-android-tax-tap');
+    expect(authSrc).toContain('conversion-guide.js?v=20260905-mine-safe-edit');
     const forceFn = guideSrc.match(
       /function showSpecialDeductionRefundDialog[\s\S]*?function maybeGoRefundAdAfterTax/
     );

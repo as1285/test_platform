@@ -798,7 +798,7 @@
       '.cg-detail-edit-entry{margin:20px 16px 28px;padding:0;text-align:center;font-size:13px;color:#999;line-height:1.5}' +
       '.cg-detail-edit-entry a{color:#1e6fff;text-decoration:none;-webkit-tap-highlight-color:transparent}' +
       '.cg-detail-edit-entry a:active{opacity:.7}' +
-      '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:1000020;padding:10px 16px;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.45;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center;white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.2)}' +
+      '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + var(--app-shell-statusbar-top, env(safe-area-inset-top,0px)));transform:translateX(-50%);z-index:1000020;padding:10px 16px;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.45;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center;white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.2)}' +
       '.cg-capture-toast.is-show{opacity:1}' +
       '.cg-capture-toast.is-tap-dismiss{pointer-events:auto;cursor:pointer}' +
       'html.' +
@@ -854,7 +854,7 @@
         on
           ? '数据编辑已开启\n可通过「我要咨询」修改个税数据'
           : '数据编辑已关闭\n连续点击头像5次可重新开启',
-        { duration: getToastDurationMs() }
+        { duration: Math.max(2200, getToastDurationMs()) }
       );
     }
     try {
@@ -881,8 +881,8 @@
     'consult.html': true
   };
 
-  /** 同一物理触摸跨元素/ touch+click 去重窗口（覆盖 iOS ~300ms 合成 click） */
-  var TAX_EDIT_PHYSICAL_TAP_GAP_MS = 320;
+  /** 同一物理触摸 touch+click 去重；单绑后勿再用 ≥300ms，否则连点会被吞掉 */
+  var TAX_EDIT_PHYSICAL_TAP_GAP_MS = 100;
 
   function registerTaxEditTap(e) {
     if (window.__cgScreenshotLongPress) {
@@ -936,8 +936,10 @@
     if (!el || el.getAttribute('data-cg-tax-edit-toggle') === '1') return;
     el.setAttribute('data-cg-tax-edit-toggle', '1');
     el.style.cursor = 'pointer';
+    el.style.pointerEvents = 'auto';
     el.style.webkitTouchCallout = 'none';
     el.style.webkitUserSelect = 'none';
+    el.style.touchAction = 'manipulation';
     var touchStartAt = 0;
     var touchMoved = false;
     var touchStartX = 0;

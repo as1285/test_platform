@@ -3009,8 +3009,33 @@
           /* Neo8 / 15 Pro / 13 Pro / 魅族 20 Pro：env 常 0，沉浸压栏须固定 40px */
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
         } else {
-          /* 通用 Android Cordova：env 常 0；勿再写 24px 默认到我的页 e1（会叠字上移） */
-          document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
+          /*
+           * 真 Cordova（UA / cordova 对象，含父页透传）：状态栏常叠 WebView，写 40px
+           * 供「我的」e1 整体下推。勿把单纯 tab_embed iframe 当 Cordova（会误加顶距）。
+           */
+          var realCordova = false;
+          try {
+            realCordova = CORDOVA_SHELL_UA_RE.test(navigator.userAgent || '');
+          } catch (eRc0) {}
+          try {
+            if (!realCordova && (window.cordova || window.PhoneGap)) realCordova = true;
+          } catch (eRc1) {}
+          try {
+            if (!realCordova && window.parent && window.parent !== window) {
+              realCordova =
+                CORDOVA_SHELL_UA_RE.test(window.parent.navigator.userAgent || '') ||
+                !!(window.parent.cordova || window.parent.PhoneGap) ||
+                !!(
+                  window.parent.document &&
+                  window.parent.document.documentElement &&
+                  window.parent.document.documentElement.classList.contains('app-cordova-shell')
+                );
+            }
+          } catch (eRc2) {}
+          document.documentElement.style.setProperty(
+            '--app-shell-statusbar-top',
+            realCordova ? '40px' : '0px'
+          );
         }
         return;
       }
@@ -9033,14 +9058,22 @@
 
   (function injectConversionGuide() {
     if (currentPageName() === 'admin_panel.html') return;
-    /* tab-shell iframe 内不注入，避免五页各加载一份引导脚本 */
+    var pageCg = currentPageName();
+    /*
+     * tab-shell iframe：其它 Tab 仍跳过，避免五页各加载一份。
+     * 「我的」必须注入：头像 5 连点开关 cg_tax_edit_mode 绑在本页 DOM，
+     * 宿主页 pushState 成 mine.html 也摸不到 iframe 内 #mineAvatarEditHit。
+     */
+    var mineNeedsCg = pageCg === 'mine.html' || pageCg === 'mine_mate60_aug12.html';
+    var inTabEmbed = false;
     try {
-      if (new URLSearchParams(window.location.search).get('tab_embed') === '1') return;
+      if (new URLSearchParams(window.location.search).get('tab_embed') === '1') inTabEmbed = true;
     } catch (eEmbedCg) {}
     try {
       var feCg = window.frameElement;
-      if (feCg && feCg.classList && feCg.classList.contains('tab-shell-iframe')) return;
+      if (feCg && feCg.classList && feCg.classList.contains('tab-shell-iframe')) inTabEmbed = true;
     } catch (eFeCg) {}
+    if (inTabEmbed && !mineNeedsCg) return;
     /* 公开页未登录不注入；已登录即使在公开页也注入 */
     if (isPublicPage() && !getToken()) return;
     /* 明细/计算等只读页不注入转化引导，减少约 60KB JS 解析与执行 */
@@ -9050,22 +9083,21 @@
       'shenbao_jilu_detail.html': true,
       'shenbao_income_detail.html': true
     };
-    if (skipCg[currentPageName()]) return;
+    if (skipCg[pageCg]) return;
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260905-android-tax-tap';
+      s.src = '/js/conversion-guide.js?v=20260905-mine-safe-edit';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
       document.head.appendChild(s);
     }
-    /* 首页 / 安卓主 Tab：空闲后再拉 ~90KB 引导脚本，避免与首屏抢主线程 */
-    var primaryTabs = {
+    /* 首页 / 安卓主 Tab：空闲后再拉 ~90KB；「我的」立即注入，否则连点头像无监听 */
+    var primaryTabsDefer = {
       'shouye.html': true,
-      'mine.html': true,
       'daiban.html': true,
       'bancha.html': true,
       'message.html': true
@@ -9076,7 +9108,11 @@
         String(navigator.userAgent || '')
       );
     } catch (eUaCg) {}
-    if (currentPageName() === 'shouye.html' || (androidLike && primaryTabs[currentPageName()])) {
+    if (mineNeedsCg) {
+      appendCg();
+      return;
+    }
+    if (pageCg === 'shouye.html' || (androidLike && primaryTabsDefer[pageCg])) {
       if (typeof requestIdleCallback === 'function') {
         requestIdleCallback(function () {
           appendCg();
