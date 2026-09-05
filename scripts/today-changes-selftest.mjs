@@ -2463,7 +2463,7 @@ mustInclude(
 );
 mustInclude(
   'backend/src/admin/menuRegistry.js',
-  ["page: 'ops-board'", "label: '运营看板'", "page: 'ops-inactive'", 'nav_hidden: true'],
+  ["page: 'ops-board'", "label: '转化运营'", "page: 'ops-inactive'", 'nav_hidden: true'],
   'ops conversion admin menus'
 );
 mustInclude(

@@ -17,8 +17,8 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260903-cend-stats',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260904-adpages',
-    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260904-smtp-stats',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260905-hub-merge',
+    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260905-hub-merge',
     'user-emails': '/js/admin/modules/user-emails.js?v=20260903-sendjson'
   };
 

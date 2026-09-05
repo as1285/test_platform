@@ -31,8 +31,10 @@ describe('menuRegistry', () => {
     expect(resolveMenuKeyForPage('install')).toBe('settings');
     expect(resolveMenuKeyForPage('install-guide')).toBe('settings');
     expect(resolveMenuKeyForPage('settings/install')).toBe('settings');
-    expect(resolveMenuKeyForPage('zaizhi-cert')).toBe('lizhi-cert');
+    expect(resolveMenuKeyForPage('zaizhi-cert')).toBe('sbdy-demo');
     expect(resolveMenuKeyForPage('insights-product/survey')).toBe('insights-product');
+    expect(resolveMenuKeyForPage('ops-inactive')).toBe('ops-board');
+    expect(resolveMenuKeyForPage('codes')).toBe('ops-board');
   });
 
   it('parseAdminRoute maps legacy hashes to hub tabs', () => {
@@ -61,10 +63,34 @@ describe('menuRegistry', () => {
       contentPage: 'abc-install-stats'
     });
     expect(parseAdminRoute('abc-install-stats')).toEqual({
-      page: 'insights-growth',
-      hub: 'insights-growth',
+      page: 'insights-product',
+      hub: 'insights-product',
       tab: 'abc',
       contentPage: 'abc-install-stats'
+    });
+    expect(parseAdminRoute('ops-inactive')).toEqual({
+      page: 'ops-board',
+      hub: 'ops-board',
+      tab: 'inactive',
+      contentPage: 'ops-inactive'
+    });
+    expect(parseAdminRoute('ops-board/ads-data')).toEqual({
+      page: 'ops-board',
+      hub: 'ops-board',
+      tab: 'ads-data',
+      contentPage: 'ops-ad-analytics'
+    });
+    expect(parseAdminRoute('users/emails')).toEqual({
+      page: 'users',
+      hub: 'users',
+      tab: 'emails',
+      contentPage: 'user-emails'
+    });
+    expect(parseAdminRoute('server-monitor')).toEqual({
+      page: 'login-log',
+      hub: 'login-log',
+      tab: 'monitor',
+      contentPage: 'server-monitor'
     });
   });
 
@@ -138,11 +164,21 @@ describe('menuRegistry', () => {
     expect(Array.isArray(tree)).toBe(true);
     expect(tree[0].label).toBe('转化运营');
     const deskPages = tree[0].items.map((i) => i.page);
-    expect(deskPages).toEqual(
-      expect.arrayContaining(['ops-board', 'ops-inactive', 'ops-ad-analytics', 'codes'])
-    );
+    expect(deskPages).toEqual(['ops-board']);
+    expect(tree[0].items[0].label).toBe('转化运营');
+    expect(deskPages).not.toContain('ops-inactive');
+    expect(deskPages).not.toContain('ops-ad-analytics');
+    expect(deskPages).not.toContain('codes');
     expect(deskPages).not.toContain('ops-research');
     expect(deskPages).not.toContain('ops-lift');
+    expect(ADMIN_HUB_DEFS['ops-board'].tabs.map((t) => t.id)).toEqual([
+      'board',
+      'inactive',
+      'ads',
+      'ads-data',
+      'ads-reach',
+      'codes'
+    ]);
     expect(getPageDef('ops-ad-analytics').label).toBe('广告页');
     expect(getPageDef('ops-ad-analytics').module).toBe('ad-analytics');
     expect(parseAdminRoute('ops-ad-analytics')).toEqual({
@@ -168,24 +204,30 @@ describe('menuRegistry', () => {
     const configGroup = tree.find((g) => g.id === 'ops-config');
     expect(configGroup.items.map((i) => i.page)).toEqual(['settings']);
     const tools = tree.find((g) => g.id === 'cert-tools');
-    expect(tools.items.map((i) => i.page)).toEqual(
-      expect.arrayContaining(['sbdy-demo', 'lizhi-cert'])
-    );
+    expect(tools.items.map((i) => i.page)).toEqual(['sbdy-demo']);
+    expect(tools.items[0].label).toBe('业务工具');
+    expect(tools.items.map((i) => i.page)).not.toContain('lizhi-cert');
     expect(tools.items.map((i) => i.page)).not.toContain('gjj-demo');
     expect(tools.items.map((i) => i.page)).not.toContain('zaizhi-cert');
     const dataGroup = tree.find((g) => g.id === 'insights');
     const insightPages = dataGroup.items.map((i) => i.page);
-    expect(insightPages).toEqual(
-      expect.arrayContaining([
-        'insights-product',
-        'insights-growth',
-        'analytics-purchase',
-        'analytics-tracking'
-      ])
-    );
+    expect(insightPages).toEqual(['insights-product']);
+    expect(dataGroup.items[0].label).toBe('数据分析');
+    expect(insightPages).not.toContain('insights-growth');
+    expect(insightPages).not.toContain('analytics-purchase');
+    expect(insightPages).not.toContain('analytics-tracking');
     expect(insightPages).not.toContain('channel-analysis');
     expect(insightPages).not.toContain('analytics-activity');
     expect(insightPages).not.toContain('abc-install-stats');
+    expect(ADMIN_HUB_DEFS['insights-product'].tabs.map((t) => t.page)).toEqual(
+      expect.arrayContaining([
+        'analytics-activity',
+        'channel-analysis',
+        'abc-install-stats',
+        'analytics-tracking',
+        'analytics-purchase'
+      ])
+    );
     expect(ADMIN_HUB_DEFS['insights-growth'].tabs.map((t) => t.page)).toEqual(
       expect.arrayContaining(['channel-analysis', 'install-guide-stats', 'abc-install-stats'])
     );
@@ -247,6 +289,12 @@ describe('menuRegistry', () => {
       adminProfileCanAccessPage({ is_super: false, menus: ['lizhi-cert'] }, 'zaizhi-cert')
     ).toBe(true);
     expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['sbdy-demo'] }, 'zaizhi-cert')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['downline-admins'] }, 'login-log')
+    ).toBe(true);
+    expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['login-log'] }, 'user-login-log')
     ).toBe(true);
     expect(
@@ -290,12 +338,33 @@ describe('menuRegistry', () => {
     ).toBe(true);
     const tree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const usersGroup = tree.menu_tree.find((g) => g.id === 'users');
-    expect(usersGroup.items.map((i) => i.page)).toEqual(
-      expect.arrayContaining(['users', 'rename-tax-daily', 'users-deleted'])
-    );
+    expect(usersGroup.items.map((i) => i.page)).toEqual(['users']);
+    expect(usersGroup.items[0].label).toBe('用户管理');
+    expect(usersGroup.items.map((i) => i.page)).not.toContain('rename-tax-daily');
+    expect(usersGroup.items.map((i) => i.page)).not.toContain('users-deleted');
     expect(usersGroup.items.map((i) => i.page)).not.toContain('peer-accounts');
     const systemGroup = tree.menu_tree.find((g) => g.id === 'system');
-    expect(systemGroup.items.map((i) => i.page)).toContain('login-log');
+    expect(systemGroup.items.map((i) => i.page)).toEqual(['login-log']);
+    expect(systemGroup.items[0].label).toBe('系统与安全');
     expect(systemGroup.items.map((i) => i.page)).not.toContain('user-login-log');
+    expect(systemGroup.items.map((i) => i.page)).not.toContain('admin-accounts');
+    expect(systemGroup.items.map((i) => i.page)).not.toContain('server-monitor');
+    expect(systemGroup.items.map((i) => i.page)).not.toContain('blocked-ips');
+    const sidebarPages = tree.menu_tree.flatMap((g) => (g.items || []).map((i) => i.page));
+    expect(sidebarPages).toEqual([
+      'ops-board',
+      'settings',
+      'users',
+      'sbdy-demo',
+      'insights-product',
+      'login-log'
+    ]);
+    const subTree = buildMenuTreeForAdmin({
+      is_super: false,
+      username: 'agent',
+      menus: ['downline-admins']
+    });
+    const subSystem = subTree.menu_tree.find((g) => g.id === 'system');
+    expect(subSystem.items.map((i) => i.page)).toEqual(['login-log']);
   });
 });

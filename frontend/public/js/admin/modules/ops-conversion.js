@@ -696,11 +696,11 @@
       }
       return;
     }
-    if (hash === 'ops-board') {
+    if (hash === 'ops-board' || hash === 'ops-board/board') {
       loadBoard();
       return;
     }
-    if (hash === 'ops-inactive') {
+    if (hash === 'ops-inactive' || hash === 'ops-board/inactive') {
       page = 1;
       try {
         var seg = global.sessionStorage.getItem('ops_inactive_segment');
