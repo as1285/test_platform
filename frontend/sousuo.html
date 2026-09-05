@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260902-adopt" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>搜索</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            min-height: 100%;
+            background: #fff;
+            color: #191e26;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+        body.page-sousuo {
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .ss-top {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px 10px;
+            padding-top: calc(8px + max(var(--app-shell-statusbar-top, 0px), env(safe-area-inset-top, 0px)));
+            background: #fff;
+        }
+        html.app-ios-client .ss-top {
+            padding-top: calc(8px + max(var(--app-shell-statusbar-top, 59px), env(safe-area-inset-top, 0px)));
+        }
+        .ss-back {
+            flex-shrink: 0;
+            width: 28px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            color: #1e6fff;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ss-back img {
+            width: 9px;
+            height: auto;
+            display: block;
+        }
+        .ss-input {
+            flex: 1;
+            min-width: 0;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            background: #f3f4f6;
+            padding: 0 12px;
+            font-size: 14px;
+            color: #191e26;
+            outline: none;
+            font-family: inherit;
+        }
+        .ss-input::placeholder {
+            color: #c0c4cc;
+        }
+        .ss-go {
+            flex-shrink: 0;
+            border: none;
+            background: transparent;
+            color: #1e6fff;
+            font-size: 16px;
+            padding: 0 2px 0 4px;
+            height: 36px;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ss-body {
+            padding: 8px 0 32px;
+        }
+        .ss-sec {
+            padding: 14px 16px 6px;
+        }
+        .ss-sec-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            min-height: 22px;
+        }
+        .ss-sec-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #5c6370;
+        }
+        .ss-clear {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: #b0b6c0;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ss-clear svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+        .ss-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 10px;
+        }
+        .ss-tag {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            padding: 7px 12px;
+            border-radius: 4px;
+            background: #f3f4f6;
+            color: #191e26;
+            font-size: 14px;
+            line-height: 1.3;
+            text-decoration: none;
+            border: none;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ss-tag:active {
+            background: #e8eaee;
+        }
+        .ss-empty {
+            font-size: 13px;
+            color: #9aa1ad;
+            padding: 4px 0 8px;
+        }
+        .ss-results {
+            padding: 4px 16px 0;
+        }
+        .ss-result {
+            display: block;
+            padding: 14px 2px;
+            border-bottom: 1px solid #f0f1f4;
+            color: #191e26;
+            text-decoration: none;
+            font-size: 15px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ss-result:last-child {
+            border-bottom: none;
+        }
+        .ss-result small {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #8b93a0;
+        }
+        .ss-nohit {
+            padding: 24px 16px;
+            text-align: center;
+            color: #9aa1ad;
+            font-size: 14px;
+        }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body class="page-sousuo">
+    <header class="ss-top">
+        <a href="shouye.html" class="ss-back" id="ssBack" aria-label="返回">
+            <img src="/jt.png" alt="" width="9" decoding="async">
+        </a>
+        <input id="ssInput" class="ss-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="请输入想搜索的功能/服务">
+        <button type="button" class="ss-go" id="ssGo">搜索</button>
+    </header>
+
+    <main class="ss-body">
+        <section class="ss-sec" id="ssHistorySec" aria-label="历史搜索">
+            <div class="ss-sec-head">
+                <h2 class="ss-sec-title">历史搜索</h2>
+                <button type="button" class="ss-clear" id="ssClearHistory" aria-label="清空历史搜索">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 7h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M9 7V5.6c0-.9.7-1.6 1.6-1.6h2.8c.9 0 1.6.7 1.6 1.6V7" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M7.5 7l.8 12.2c.1.8.8 1.4 1.6 1.4h4.2c.8 0 1.5-.6 1.6-1.4L16.5 7" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="ss-tags" id="ssHistoryTags"></div>
+        </section>
+
+        <section class="ss-sec" id="ssRecommendSec" aria-label="推荐搜索">
+            <div class="ss-sec-head"><h2 class="ss-sec-title">推荐搜索</h2></div>
+            <div class="ss-tags">
+                <button type="button" class="ss-tag" data-q="收入纳税明细">收入纳税明细</button>
+                <button type="button" class="ss-tag" data-q="综合所得年度汇算">综合所得年度汇算</button>
+                <button type="button" class="ss-tag" data-q="纳税记录开具">纳税记录开具</button>
+                <button type="button" class="ss-tag" data-q="专项附加扣除">专项附加扣除</button>
+                <button type="button" class="ss-tag" data-q="关于&amp;更新">关于&amp;更新</button>
+            </div>
+        </section>
+
+        <section class="ss-sec" id="ssHotSec" aria-label="热搜功能">
+            <div class="ss-sec-head"><h2 class="ss-sec-title">热搜功能</h2></div>
+            <div class="ss-tags">
+                <button type="button" class="ss-tag" data-q="收入纳税明细">收入纳税明细</button>
+                <button type="button" class="ss-tag" data-q="综合所得年度汇算">综合所得年度汇算</button>
+                <button type="button" class="ss-tag" data-q="申报记录">申报记录</button>
+                <button type="button" class="ss-tag" data-q="异议申诉">异议申诉</button>
+            </div>
+        </section>
+
+        <section class="ss-results" id="ssResultSec" hidden>
+            <div id="ssResultList"></div>
+            <div class="ss-nohit" id="ssNoHit" hidden>未找到相关功能或服务</div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            var HISTORY_KEY = 'tax_search_history_v1';
+            var DEFAULT_HISTORY = ['流水', '计算', '导出'];
+            var CATALOG = [
+                { name: '收入纳税明细', href: 'shuiming.html', keys: '流水 明细 工资 纳税明细 收入' },
+                { name: '综合所得年度汇算', href: 'zonghe.html', keys: '汇算 年度汇算 申报 综合所得' },
+                { name: '纳税记录开具', href: 'najilu.html', keys: '导出 开具 完税 纳税记录' },
+                { name: '专项附加扣除', href: 'zxkouchu.html', keys: '专项 扣除 子女 住房 赡养' },
+                { name: '关于&更新', href: 'about_update.html', keys: '关于 更新 版本' },
+                { name: '申报记录', href: 'shenbao_jilu.html', keys: '申报 记录' },
+                { name: '异议申诉', href: 'yiyishensu.html', keys: '异议 申诉' },
+                { name: '税款计算', href: 'shuikuanjisuan.html', keys: '计算 算税 税款' },
+                { name: '个人养老金扣除管理', href: 'gerenyanglao.html', keys: '养老金' },
+                { name: '经营所得申报', href: 'jingyingsuode.html', keys: '经营所得' },
+                { name: '帮助中心', href: 'help_center.html', keys: '帮助 客服' }
+            ];
+
+            function readHistory() {
+                try {
+                    var raw = localStorage.getItem(HISTORY_KEY);
+                    if (raw === null) return DEFAULT_HISTORY.slice();
+                    var parsed = JSON.parse(raw);
+                    if (!Array.isArray(parsed)) return [];
+                    return parsed.map(function (s) { return String(s || '').trim(); }).filter(Boolean).slice(0, 12);
+                } catch (e0) {
+                    return DEFAULT_HISTORY.slice();
+                }
+            }
+
+            function writeHistory(list) {
+                try {
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 12)));
+                } catch (e1) {}
+            }
+
+            function pushHistory(q) {
+                q = String(q || '').trim();
+                if (!q) return;
+                var list = readHistory().filter(function (item) { return item !== q; });
+                list.unshift(q);
+                writeHistory(list);
+            }
+
+            function matchCatalog(q) {
+                q = String(q || '').trim().toLowerCase();
+                if (!q) return [];
+                return CATALOG.filter(function (item) {
+                    var hay = (item.name + ' ' + (item.keys || '')).toLowerCase();
+                    return hay.indexOf(q) >= 0;
+                });
+            }
+
+            function goHref(href) {
+                if (!href) return;
+                window.location.href = href;
+            }
+
+            function openQuery(q) {
+                q = String(q || '').trim();
+                if (!q) return;
+                pushHistory(q);
+                var hits = matchCatalog(q);
+                if (hits.length === 1) {
+                    goHref(hits[0].href);
+                    return;
+                }
+                if (hits.length > 1) {
+                    var exact = null;
+                    for (var i = 0; i < hits.length; i++) {
+                        if (hits[i].name === q) {
+                            exact = hits[i];
+                            break;
+                        }
+                    }
+                    if (exact) {
+                        goHref(exact.href);
+                        return;
+                    }
+                }
+                renderHistory();
+                showResults(q, hits);
+            }
+
+            function renderHistory() {
+                var mount = document.getElementById('ssHistoryTags');
+                if (!mount) return;
+                var list = readHistory();
+                if (!list.length) {
+                    mount.innerHTML = '<p class="ss-empty">暂无历史搜索</p>';
+                    return;
+                }
+                mount.innerHTML = list.map(function (q) {
+                    return '<button type="button" class="ss-tag" data-q="' +
+                        String(q).replace(/&/g, '&amp;').replace(/"/g, '&quot;') +
+                        '">' +
+                        String(q).replace(/&/g, '&amp;').replace(/</g, '&lt;') +
+                        '</button>';
+                }).join('');
+            }
+
+            function showBrowse() {
+                document.getElementById('ssHistorySec').hidden = false;
+                document.getElementById('ssRecommendSec').hidden = false;
+                document.getElementById('ssHotSec').hidden = false;
+                document.getElementById('ssResultSec').hidden = true;
+            }
+
+            function showResults(q, hits) {
+                document.getElementById('ssHistorySec').hidden = true;
+                document.getElementById('ssRecommendSec').hidden = true;
+                document.getElementById('ssHotSec').hidden = true;
+                document.getElementById('ssResultSec').hidden = false;
+                var list = document.getElementById('ssResultList');
+                var empty = document.getElementById('ssNoHit');
+                if (!hits.length) {
+                    list.innerHTML = '';
+                    empty.hidden = false;
+                    return;
+                }
+                empty.hidden = true;
+                list.innerHTML = hits.map(function (item) {
+                    return '<a class="ss-result" href="' + item.href + '" data-q="' +
+                        item.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;') +
+                        '">' + item.name.replace(/&/g, '&amp;') +
+                        '<small>进入功能</small></a>';
+                }).join('');
+            }
+
+            var input = document.getElementById('ssInput');
+            var back = document.getElementById('ssBack');
+            if (back) {
+                back.addEventListener('click', function (ev) {
+                    if (window.history.length > 1) {
+                        ev.preventDefault();
+                        window.history.back();
+                    }
+                });
+            }
+            document.getElementById('ssGo').addEventListener('click', function () {
+                openQuery(input.value);
+            });
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    openQuery(input.value);
+                }
+            });
+            input.addEventListener('input', function () {
+                if (!String(input.value || '').trim()) showBrowse();
+            });
+            document.getElementById('ssClearHistory').addEventListener('click', function () {
+                writeHistory([]);
+                renderHistory();
+            });
+            document.addEventListener('click', function (ev) {
+                var tag = ev.target && ev.target.closest ? ev.target.closest('[data-q]') : null;
+                if (!tag) return;
+                var q = tag.getAttribute('data-q') || '';
+                if (tag.tagName === 'A') {
+                    pushHistory(q);
+                    return;
+                }
+                ev.preventDefault();
+                openQuery(q);
+            });
+            renderHistory();
+            try { input.focus(); } catch (e2) {}
+        })();
+    </script>
+</body>
+</html>

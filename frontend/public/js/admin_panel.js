@@ -311,6 +311,7 @@
             'gongyicishan.html': '公益慈善',
             'other_id.html': '其他身份证件',
             'help_center.html': '帮助中心',
+            'sousuo.html': '搜索',
             'install_guide.html': '引导安装',
             'care_version.html': '关怀版',
             'about_update.html': '关于',
