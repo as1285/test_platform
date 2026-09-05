@@ -59,7 +59,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('consult-records.js?v=20260905-list-tap');
     expect(html).toContain('consult-batch-tax.js?v=20260905-list-tap');
     expect(html).toContain('按模板生成个税');
-    expect(html).toContain('展开添加');
+    expect(html).toContain('id="batchTaxCollapseBtn"');
     expect(html).toContain('id="batch_submit_employments_btn"');
   });
 
@@ -77,7 +77,9 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(card.classList.contains('is-tappable')).toBe(true);
     expect(card.getAttribute('data-record-id')).toBe('r-1');
     expect(card.getAttribute('role')).toBe('button');
-    expect(mount.querySelector('[data-record-delete="r-1"]')).toBeTruthy();
+    const delBtn = mount.querySelector('[data-record-delete="r-1"]');
+    expect(delBtn).toBeTruthy();
+    expect(delBtn.hidden).toBe(true);
   });
 
   it('tapping a card opens edit; delete stays behind 管理 mode', () => {
@@ -98,6 +100,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('完成');
     expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(false);
     expect(document.getElementById('taxRecordsManageHint').hidden).toBe(false);
+    expect(mount.querySelector('[data-record-delete="r-2"]').hidden).toBe(false);
 
     mount.querySelector('[data-record-delete="r-2"]').click();
     expect(window.deleteRecord).toHaveBeenCalledWith('r-2');

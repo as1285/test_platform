@@ -438,6 +438,10 @@ function setTaxRecordsManageMode(on) {
     if (hint) {
         hint.hidden = !taxRecordsManageMode;
     }
+    var dels = document.querySelectorAll('#recordListMount .record-card-delete');
+    for (var i = 0; i < dels.length; i++) {
+        dels[i].hidden = !taxRecordsManageMode;
+    }
 }
 
 function toggleTaxRecordsManageMode() {
@@ -519,7 +523,7 @@ function renderListFromArray(list) {
         html += '扣缴单位：' + (r.company_name || '') + '<br>';
         html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
         html += '</div></div>';
-        html += '<button type="button" class="record-card-delete btn btn-danger btn-sm" data-record-delete="' + idAttr + '">删除</button>';
+        html += '<button type="button" class="record-card-delete btn btn-danger btn-sm" data-record-delete="' + idAttr + '"' + (taxRecordsManageMode ? '' : ' hidden') + '>删除</button>';
         html += '</div>';
     });
     mount.innerHTML = html;
