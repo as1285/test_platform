@@ -614,4 +614,13 @@
       }
     }
   }
+
+  /* 全站同步挂载剪贴板助手（一键复制微信号等）；须在解析期 document.write */
+  try {
+    if (typeof document !== 'undefined' && typeof document.write === 'function') {
+      document.write(
+        '<script src="/js/clipboard-copy.js?v=20260905-wxcopy2"><\/script>'
+      );
+    }
+  } catch (eClipBoot) {}
 })();

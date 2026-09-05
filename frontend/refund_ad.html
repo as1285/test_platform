@@ -252,6 +252,9 @@
             color: #111827;
             word-break: break-all;
             cursor: pointer;
+            -webkit-user-select: text;
+            user-select: all;
+            -webkit-touch-callout: default;
             -webkit-tap-highlight-color: transparent;
         }
         .refund-ad-wx.is-stack {
@@ -902,6 +905,7 @@
         </a>
     </div>
     <script src="/js/refund-estimate.js?v=20260904-calc"></script>
+    <script src="/js/clipboard-copy.js?v=20260905-wxcopy2"></script>
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
@@ -963,9 +967,12 @@
                     copied = localStorage.getItem(WECHAT_COPIED_KEY) === '1';
                 } catch (eCopied) {}
                 if (!copied) {
-                    setNodeText(document.getElementById('btnCopyRefundWechat'), '一键复制微信号 · 备注' + remark);
-                    setNodeText(document.getElementById('btnCopyRefundWechatGuide'), '一键复制微信号 · 备注' + remark);
-                    setNodeText(document.getElementById('btnStickyCopyRefundWechat'), '一键复制微信号 · 备注' + remark);
+                    var copyBtnLabel = fromTaxDone
+                        ? '一键复制微信并备注' + remark
+                        : '一键复制微信号 · 备注' + remark;
+                    setNodeText(document.getElementById('btnCopyRefundWechat'), copyBtnLabel);
+                    setNodeText(document.getElementById('btnCopyRefundWechatGuide'), copyBtnLabel);
+                    setNodeText(document.getElementById('btnStickyCopyRefundWechat'), copyBtnLabel);
                 }
             }
             var gjjOn = !!cfg.gjj;
@@ -1069,20 +1076,22 @@
         }
 
         function copyText(text) {
+            if (typeof window.copyTextRobust === 'function') {
+                return window.copyTextRobust(text);
+            }
             var t = String(text || '');
             if (!t) return Promise.reject(new Error('empty'));
-            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                return navigator.clipboard.writeText(t);
-            }
             return new Promise(function (resolve, reject) {
                 var ta = document.createElement('textarea');
                 ta.value = t;
                 ta.setAttribute('readonly', '');
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
+                ta.style.cssText =
+                    'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;opacity:0;';
                 document.body.appendChild(ta);
-                ta.select();
                 try {
+                    ta.focus();
+                    ta.select();
+                    if (typeof ta.setSelectionRange === 'function') ta.setSelectionRange(0, t.length);
                     if (document.execCommand('copy')) resolve();
                     else reject(new Error('copy_failed'));
                 } catch (e) {
@@ -1326,6 +1335,11 @@
             document.body.classList.add('is-from-tax-done');
             var titleEl = document.getElementById('refundAdTitle');
             if (titleEl) titleEl.textContent = '填完了';
+            var copyLabel = '一键复制微信并备注二次退税';
+            if (copyBtn) copyBtn.textContent = copyLabel;
+            if (stickyCopyBtn) stickyCopyBtn.textContent = copyLabel;
+            var guideCopyBtn = document.getElementById('btnCopyRefundWechatGuide');
+            if (guideCopyBtn) guideCopyBtn.textContent = copyLabel;
             try {
                 localStorage.setItem('refund_ad_after_tax_v1', '1');
             } catch (eSeen) {}

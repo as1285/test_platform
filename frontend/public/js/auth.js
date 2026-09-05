@@ -7107,31 +7107,78 @@
   function copyTextToClipboard(text) {
     var t = String(text || '');
     if (!t) return Promise.resolve(false);
+    /* 优先共用稳健实现（Clipboard → execCommand → Cordova） */
+    if (typeof window.copyTextRobust === 'function') {
+      return window.copyTextRobust(t).then(
+        function () {
+          return true;
+        },
+        function () {
+          return false;
+        }
+      );
+    }
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
       return navigator.clipboard.writeText(t).then(
         function () {
           return true;
         },
         function () {
-          return fallbackCopy(t);
+          return fallbackCopy(t).then(function (ok) {
+            return ok ? true : tryCordovaClipboard(t);
+          });
         }
       );
     }
-    return Promise.resolve(fallbackCopy(t));
+    return fallbackCopy(t).then(function (ok) {
+      return ok ? true : tryCordovaClipboard(t);
+    });
 
     function fallbackCopy(s) {
+      return new Promise(function (resolve) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = s;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText =
+            'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;opacity:0;';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          if (typeof ta.setSelectionRange === 'function') ta.setSelectionRange(0, s.length);
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          resolve(!!ok);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    }
+
+    function tryCordovaClipboard(s) {
       try {
-        var ta = document.createElement('textarea');
-        ta.value = s;
-        ta.setAttribute('readonly', '');
-        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-        document.body.appendChild(ta);
-        ta.select();
-        var ok = document.execCommand('copy');
-        document.body.removeChild(ta);
-        return !!ok;
-      } catch (e) {
-        return false;
+        var clip =
+          (window.cordova && window.cordova.plugins && window.cordova.plugins.clipboard) ||
+          (window.plugins && window.plugins.clipboard) ||
+          null;
+        if (!clip || typeof clip.copy !== 'function') return Promise.resolve(false);
+        return new Promise(function (resolve) {
+          try {
+            clip.copy(
+              s,
+              function () {
+                resolve(true);
+              },
+              function () {
+                resolve(false);
+              }
+            );
+          } catch (e) {
+            resolve(false);
+          }
+        });
+      } catch (e2) {
+        return Promise.resolve(false);
       }
     }
   }
