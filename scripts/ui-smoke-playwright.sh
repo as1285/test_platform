@@ -9,18 +9,19 @@
 #   UI_SMOKE_USE_MIRROR=0 ...                                  # 禁用 npmmirror 下载 Chromium
 #   UI_SMOKE_DEVICES=all ./scripts/ui-smoke-playwright.sh      # 全机型（默认）
 #   UI_SMOKE_DEVICES=full ./scripts/ui-smoke-playwright.sh     # 仅 iPhone 12 完整业务冒烟
-#   UI_SMOKE_DEVICES=recent ./scripts/ui-smoke-playwright.sh   # 近期频繁改兼容的机型
+#   UI_SMOKE_DEVICES=recent ./scripts/ui-smoke-playwright.sh   # 近期频繁改兼容的机型（默认 CI 建议用这个）
+#   UI_SMOKE_DEVICES=popular ./scripts/ui-smoke-playwright.sh  # 线上 user_devices 高频型号（约 20 档，含 iOS 18.7）
 #   UI_SMOKE_DEVICES=oneplus-12,mate60,xiaomi-15 ...           # 指定机型
 #
 # 机型目录：frontend/tests/e2e/ui-smoke-devices.mjs
-#   iOS：12 / 13–17 Pro Max / 16 Pro / Air
-#   Android：Pixel、Galaxy S24、一加 12/Ace 系、Reno10/K9x/A58/Find X9、
-#            小米 13–15 / 红米 K80Pro·K70至尊·Note11、Mate30/60/70、nova13、
-#            Hi nova 9 SE、Pura70、荣耀折叠、vivo/iQOO 系、魅族 20 Pro
+#   iOS：12 / 13–17 Pro Max / 16 Pro / Air + 线上 iOS 18.7 / 18.5 / 17.6.1 / 14.4 队列
+#   Android：Pixel、Galaxy S24、一加 12/Ace 系、Reno10/K9x/A58/A57/Find X8/X9、
+#            小米 13–15 / 红米 K80Pro·K80 Ultra·K70·K70至尊·Note11、Mate30/60/70、nova13、
+#            Hi nova 9 SE、Pura70、荣耀折叠、vivo/iQOO 系（含 X100）、魅族 20 Pro
 #
 # 环境变量:
 #   SITE_URL / API_URL       站点与 API 地址（Docker 用 --network host，默认 127.0.0.1）
-#   UI_SMOKE_DEVICES         all | full | recent | 逗号分隔机型 id（见上）
+#   UI_SMOKE_DEVICES         all | full | recent | popular | 逗号分隔机型 id（见上）
 #   PLAYWRIGHT_RUN_IMAGE     运行镜像（默认 mcr.microsoft.com/playwright:v1.52.0-jammy）
 #   UI_SMOKE_NODE_IMAGE      node 回退镜像（默认 node:20-bookworm-slim，本机常已通过 daocloud 缓存）
 #   UI_SMOKE_IMAGE           自建镜像名（UI_SMOKE_BUILD_IMAGE=1 时）

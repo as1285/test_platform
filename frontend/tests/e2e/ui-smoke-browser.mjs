@@ -4,7 +4,7 @@
  * 由 Docker 容器或本地 Chromium 执行；测试账号由 ui-smoke-host-setup.sh 准备。
  *
  * 机型：见 ui-smoke-devices.mjs
- *   UI_SMOKE_DEVICES=all|full|iphone-12,oneplus-12,...
+ *   UI_SMOKE_DEVICES=all|full|recent|popular|iphone-12,oneplus-12,...
  */
 import { mkdirSync } from 'fs';
 import { chromium, devices } from 'playwright';

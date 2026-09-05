@@ -14,7 +14,8 @@
     "test:e2e:docker": "UI_SMOKE_NODE_FALLBACK=1 ../scripts/ui-smoke-playwright.sh",
     "test:e2e:full": "UI_SMOKE_DEVICES=full ../scripts/ui-smoke-playwright.sh",
     "test:e2e:recent": "UI_SMOKE_DEVICES=recent ../scripts/ui-smoke-playwright.sh",
-    "test:e2e:android-top": "UI_SMOKE_DEVICES=oneplus-12,oneplus-ace6,oneplus-ace2pro,oneplus-ace2v,oppo-reno10,oppo-k9x,xiaomi-13,xiaomi-14,xiaomi-14pro,xiaomi-15,redmi-k80pro,redmi-note11-5g,mate60,mate30,huawei-nova13,hinova9se,vivo-x200pro,vivo-s50promini,vivo-x90,iqoo-neo8,iqoo-15,meizu-20pro ../scripts/ui-smoke-playwright.sh"
+    "test:e2e:popular": "UI_SMOKE_DEVICES=popular ../scripts/ui-smoke-playwright.sh",
+    "test:e2e:android-top": "UI_SMOKE_DEVICES=oneplus-12,oneplus-ace6,oneplus-ace2pro,oneplus-ace2v,oppo-reno10,oppo-k9x,xiaomi-13,xiaomi-14,xiaomi-14pro,xiaomi-15,redmi-k80pro,redmi-k80ultra,redmi-k70,redmi-note11-5g,mate60,mate30,huawei-nova13,hinova9se,vivo-x200pro,vivo-s50promini,vivo-x90,vivo-x100,iqoo-neo8,iqoo-15,meizu-20pro,oppo-findx8,oppo-a57 ../scripts/ui-smoke-playwright.sh"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.7",
