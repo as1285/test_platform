@@ -3594,101 +3594,6 @@
                     </section>
                 </div>
 
-                <div id="page-analytics-tracking" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>页面加载性能</h2>
-                        <p class="hint mt-0">C 端自动上报 <code>track_page_load_perf</code>：DOM Ready / FCP / Load，可按页面与 Android/iOS 对比。数据来自 App / 浏览器 WebView 真实采样。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsPagePerfDays">统计区间</label>
-                                <select id="analyticsPagePerfDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshPageLoadPerf">刷新性能数据</button>
-                        </div>
-                        <details class="analytics-section-details mt-10">
-                            <summary>查看性能数据</summary>
-                            <div id="analyticsPageLoadPerf" class="analytics-conv-wrap" aria-live="polite">页面性能加载中…</div>
-                        </details>
-                    </section>
-                    <section>
-                        <h2>安装页埋点汇总</h2>
-                        <p class="hint mt-0">来自 <code>analytics_api_daily</code>：安装包点击、视频播放与注册成功事件（公开页 <code>track_install_*</code>）。安装页 PV/停留详见侧栏「安装页统计」。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsInstallTrackDays">统计区间</label>
-                                <select id="analyticsInstallTrackDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshInstallTrack">刷新安装埋点</button>
-                        </div>
-                        <details class="analytics-section-details mt-10">
-                            <summary>查看安装页埋点</summary>
-                            <div id="analyticsInstallTrack" class="analytics-conv-wrap" aria-live="polite">安装埋点加载中…</div>
-                        </details>
-                    </section>
-                    <section>
-                        <div class="form-row flex-align-center mb-8">
-                            <div>
-                                <label for="analyticsTrackingDays">行为埋点统计区间</label>
-                                <select id="analyticsTrackingDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshAnalyticsTracking">刷新行为埋点</button>
-                        </div>
-                        <h2>激活 / 购买页埋点（详细）</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0 mb-8">覆盖购买激活页全链路：页浏览 → 确认激活 / 支付宝生成码与打开付款 → 酷发卡 / 微信 / 闲鱼 / 客服。按<strong>北京时间自然日</strong>汇总；可展开查看当日账号及每人各按钮次数。数据来自 <code>user_page_events</code>。</p></details>
-                        <details class="analytics-section-details mb-10">
-                            <summary>查看事件合计</summary>
-                            <div class="scroll-x mt-8">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>按钮 / 事件</th>
-                                            <th>所在位置</th>
-                                            <th>区间合计</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <p id="activateEventsHint" class="stat mb-8">—</p>
-                        </details>
-                        <details class="analytics-section-details">
-                            <summary>查看按日明细（可展开到账号）</summary>
-                            <div class="scroll-x mt-8">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>日期</th>
-                                            <th>合计</th>
-                                            <th>去重用户</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="activateEventsDailyTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
-                        </details>
-                    </section>
-                    <section>
-                        <div class="section-head-actions">
-                            <div>
-                                <h2>C端行为埋点</h2>
-                                <p class="hint mt-8 mb-0">展示 C 端其它埋点（<code>track_register_*</code>/<code>register_*</code> 注册等；<strong>不含</strong>上方激活相关事件）。统计区间与上方“统计天数”一致。</p>
-                            </div>
-                            <button type="button" class="btn-sm btn-ban" id="btnClearAnalyticsEvents">删除数据</button>
-                        </div>
-                        <details class="analytics-section-details mt-12">
-                            <summary>查看 C 端行为埋点</summary>
-                            <div class="scroll-x mt-8">
-                                <table>
-                                    <thead><tr><th>按钮名称</th><th>页面名称</th><th>次数</th></tr></thead>
-                                    <tbody id="analyticsEventsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <p id="analyticsEventsHint" class="hint mt-8">—</p>
-                        </details>
-                    </section>
-                </div>
-
                 <div id="page-channel-analysis" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">对比注册来源、激活来源与渠道趋势</p></div>
                     <section>
@@ -4143,9 +4048,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260904-adpages"></script>
+    <script src="/js/admin/loader.js?v=20260905-no-tracking"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260904-adpages"></script>
+    <script src="/js/admin_panel.js?v=20260905-no-tracking"></script>
 </body>
 </html>
