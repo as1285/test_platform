@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
+    <script src="/js/auth.js?v=20260905-compat-bug" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>兼容问题反馈</title>
+    <style>
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --warn: #b45309;
+            --ok: #047857;
+            --ok-soft: #ecfdf5;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
+        }
+        .header {
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn { color: var(--accent); font-size: 15px; text-decoration: none; padding: 4px 2px; }
+        .header-title { font-size: 16px; font-weight: 600; }
+        .page { max-width: var(--wrap); margin: 0 auto; padding: 8px 20px 0; }
+        .hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
+        }
+        .hero h1 { font-size: 20px; margin: 0 0 8px; }
+        .hero p { font-size: 13px; line-height: 1.55; color: rgba(255,255,255,.88); margin: 0; }
+        .card {
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+        }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+        .field-label { display: block; font-size: 12px; color: var(--ink-soft); margin: 0 0 6px; }
+        .field, .field-area {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .field { min-height: 44px; }
+        .field-area { min-height: 128px; resize: vertical; line-height: 1.5; }
+        .field:focus, .field-area:focus { outline: none; border-color: #93c5fd; }
+        .photo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .pick-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+        }
+        .photo-hint { font-size: 12px; color: var(--muted); }
+        .preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 12px;
+        }
+        .compat-preview-item {
+            position: relative;
+            width: 88px;
+            height: 88px;
+        }
+        .compat-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: #f8fafc;
+        }
+        .compat-preview-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 22px;
+            height: 22px;
+            border: 0;
+            border-radius: 50%;
+            background: #0f172a;
+            color: #fff;
+            font-size: 14px;
+            line-height: 22px;
+            cursor: pointer;
+        }
+        .submit-btn {
+            width: 100%;
+            min-height: 46px;
+            border: 0;
+            border-radius: 12px;
+            background: var(--accent-deep);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .submit-btn:disabled { opacity: .55; }
+        .status { font-size: 13px; line-height: 1.45; margin: 10px 0 0; }
+        .ok-box {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--ok-soft);
+            color: var(--ok);
+            font-size: 13px;
+            line-height: 1.5;
+            margin-top: 12px;
+        }
+        .ok-box[hidden], .status[hidden] { display: none !important; }
+        .ok-box a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" href="consult.html?tab=products" id="compatBugBack">‹ 返回</a>
+        <div class="header-title">兼容问题反馈</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>反馈兼容 BUG</h1>
+            <p>页面错位、按钮点不到、机型显示异常时，拍几张图并说明出现在哪一页、什么设备、怎么操作的。团队会在后台看到。</p>
+        </div>
+        <form class="card" id="compatBugForm">
+            <div class="card-title">上传截图</div>
+            <p class="card-hint">可选。相册或拍照均可，方便对照页面和机型。</p>
+            <div class="photo-row">
+                <label class="pick-btn" id="compatBugPick" for="compatBugInput">选择照片</label>
+                <span class="photo-hint" id="compatBugPhotoHint">可选，最多 6 张，单张不超过 5MB</span>
+            </div>
+            <input type="file" id="compatBugInput" class="file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/*" multiple>
+            <div class="preview-grid" id="compatBugPreview" aria-live="polite"></div>
+
+            <label class="field-label" for="compatBugContent">问题描述 <span style="color:#dc2626;">*</span></label>
+            <textarea id="compatBugContent" class="field-area" required maxlength="2000" placeholder="例如：在「我的」页底部导航被刘海挡住；机型是 Redmi K80 Ultra；点「税务记录」后白屏。请尽量写清页面、设备和操作步骤。"></textarea>
+
+            <label class="field-label" for="compatBugDevice">设备信息</label>
+            <input type="text" id="compatBugDevice" class="field" maxlength="255" placeholder="将自动带入机型 / 屏幕，可改">
+
+            <label class="field-label" for="compatBugContact">联系方式（选填）</label>
+            <input type="text" id="compatBugContact" class="field" maxlength="64" placeholder="微信或手机，方便必要时回访">
+
+            <button type="submit" class="submit-btn" id="compatBugSubmit">提交反馈</button>
+            <p class="status" id="compatBugStatus" hidden></p>
+            <div class="ok-box" id="compatBugOk" hidden>已收到。可继续补充提交，或返回 <a href="consult.html?tab=products">我要咨询</a>。</div>
+        </form>
+    </div>
+    <script src="/js/compat-bug.js?v=20260905-compat-bug"></script>
+</body>
+</html>

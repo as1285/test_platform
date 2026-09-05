@@ -892,7 +892,7 @@
                 'lizhi-cert': ['zaizhi-cert'],
                 'sbdy-demo': ['gjj-demo'],
                 'login-log': ['user-login-log'],
-                'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey'],
+                'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback'],
                 'insights-growth': ['channel-analysis', 'install-guide-stats', 'abc-install-stats']
             };
             if (hubAlias[menuKey]) {
@@ -909,6 +909,7 @@
                 'analytics-activity': 'insights-product',
                 'analytics-devices': 'insights-product',
                 'tax-fill-survey': 'insights-product',
+                feedback: 'insights-product',
                 'channel-analysis': 'insights-growth',
                 'install-guide-stats': 'insights-growth',
                 'abc-install-stats': 'insights-growth'
@@ -965,6 +966,7 @@
                 'tax-records-edit',
                 'analytics-activity',
                 'tax-fill-survey',
+                'feedback',
                 'analytics-devices',
                 'appearance',
                 'admin-accounts',
@@ -1104,7 +1106,8 @@
                 tabs: [
                     { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
                     { id: 'devices', label: '机型', page: 'analytics-devices' },
-                    { id: 'survey', label: '填写调研', page: 'tax-fill-survey' }
+                    { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
+                    { id: 'feedback', label: '兼容反馈', page: 'feedback' }
                 ]
             },
             'insights-growth': {
@@ -1364,6 +1367,9 @@
             }
             if (pageKey === 'tax-fill-survey') {
                 callAdminModuleLoadPage('tax-fill-survey');
+            }
+            if (pageKey === 'feedback') {
+                callAdminModuleLoadPage('feedback');
             }
             if (pageKey === 'analytics-activity') {
                 loadAnalyticsActivityPage();
@@ -6951,6 +6957,7 @@
             'analytics-purchase': '支付分析',
             'analytics-activity': '用户活跃',
             'tax-fill-survey': '填写调研',
+            feedback: '兼容反馈',
             'analytics-devices': '机型',
             'install-guide-stats': '安装统计',
             'abc-install-stats': 'ABC渠道',
@@ -10211,7 +10218,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v21-ad-pages';
+                var MENU_TREE_VER = 'ops-ia-v22-compat-feedback';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

@@ -17,6 +17,7 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260903-cend-stats',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
+    feedback: '/js/admin/modules/feedback.js?v=20260905-compat-bug',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260904-adpages',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260904-smtp-stats',
     'user-emails': '/js/admin/modules/user-emails.js?v=20260903-sendjson'
@@ -55,6 +56,7 @@
     'analytics-purchase': 'analytics',
     'analytics-devices': 'devices',
     'tax-fill-survey': 'tax-fill-survey',
+    feedback: 'feedback',
     'install-guide-stats': 'analytics',
     'abc-install-stats': 'analytics',
     'channel-analysis': 'analytics',
