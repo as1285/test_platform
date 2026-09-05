@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260905-compat-bug">
+    <link rel="stylesheet" href="/css/consult.css?v=20260905-list-compat">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -520,7 +520,7 @@
                     <div class="card-title-actions">
                         <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
                         <div class="batch-tax-more-wrap">
-                            <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false">管理</button>
+                            <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false" aria-pressed="false">管理</button>
                             <div class="batch-tax-more-menu" id="taxRecordsManageMenu" hidden>
                                 <button type="button" class="batch-tax-more-item" onclick="openTaxRecycleBin(); closeTaxRecordsManageMenu();">回收站</button>
                                 <button type="button" class="batch-tax-more-item" onclick="dedupeTaxRecords(); closeTaxRecordsManageMenu();">一键去重</button>
@@ -531,6 +531,7 @@
                         </div>
                     </div>
                 </div>
+                <p class="tax-records-manage-hint" id="taxRecordsManageHint" hidden>点「删除」移除单条；也可按年或按公司批量处理。删除后可在回收站恢复。</p>
                 <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>
                     <div class="tax-pay-guide-banner-text">
                         <strong id="taxPayGuideBannerTitle">记录已生成</strong>
@@ -633,7 +634,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>如何核对列表里的税额是否合理？</summary>
-                        <p>打开列表中某月记录，对照收入、减除费用 5000、三险一金与专项附加是否接近你的实际情况；也可用「更多 → 个税计算表」里的快速试算，用累计应纳税所得额验算税额档位。</p>
+                        <p>点列表中某月记录即可修改，对照收入、减除费用 5000、三险一金与专项附加是否接近你的实际情况；也可用「更多 → 个税计算表」里的快速试算，用累计应纳税所得额验算税额档位。删除单条请先点「管理」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>回填修改是干什么的？</summary>
@@ -1012,8 +1013,8 @@
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 → 填税调研 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
     <script defer src="/js/consult-core.js?v=20260905-ym-range"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260905-ym-range"></script>
-    <script defer src="/js/consult-records.js?v=20260904-funnel-cta"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260905-list-tap"></script>
+    <script defer src="/js/consult-records.js?v=20260905-list-tap"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>
     (function () {

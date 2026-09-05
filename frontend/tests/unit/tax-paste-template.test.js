@@ -86,7 +86,7 @@ describe('consult tax paste template simplify', () => {
     expect(html).not.toContain('解析引擎 v0721d');
     expect(html).not.toContain('id="taxPasteImportParseBtn"');
     expect(html).toContain('consult-core.js?v=20260905-ym-range');
-    expect(html).toContain('consult-batch-tax.js?v=20260905-ym-range');
+    expect(html).toContain('consult-batch-tax.js?v=20260905-list-tap');
   });
 
   it('opens with a 2023–2025 template and live preview wiring', () => {

@@ -37,7 +37,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/conversion-guide.js',
-  ['goEditTaxRecords', 'runPostActivateEditOnboarding', 'POST_ACTIVATE_PENDING_KEY'],
+  [
+    'goEditTaxRecords',
+    'runPostActivateEditOnboarding',
+    'POST_ACTIVATE_PENDING_KEY',
+    '点下方记录卡片即可修改',
+    '#recordListMount .record-card'
+  ],
   'conversion guide edit onboarding'
 );
 mustInclude(

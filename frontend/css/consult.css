@@ -382,13 +382,81 @@ html.app-ios-iphone15promax .container {
 }
 #panel-records .form-row { gap: 10px; grid-template-columns: 1fr 1fr; }
 #panel-records .btn-block { padding: 12px; font-size: 15px; margin-top: 4px; border-radius: 10px; font-weight: 600; }
-#panel-records .record-card { padding: 10px 12px; margin-bottom: 8px; border-radius: 10px; background: var(--color-surface-alt); border: 1px solid var(--color-border-light); }
+#panel-records .record-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border-light);
+}
+#panel-records .record-card-main { flex: 1; min-width: 0; }
 #panel-records .record-card-header { margin-bottom: 4px; }
 #panel-records .record-card-title { font-size: 13px; }
 #panel-records .record-card-date { font-size: 11px; }
 #panel-records .record-card-info { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+#panel-records .record-card.is-tappable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#panel-records .record-card.is-tappable:active {
+    background: var(--color-primary-bg);
+    border-color: var(--color-primary-border);
+}
+#panel-records .record-card.is-tappable::after {
+    content: "›";
+    color: var(--color-text-muted);
+    font-size: 18px;
+    line-height: 1;
+    padding-top: 2px;
+    flex: 0 0 auto;
+}
+#taxRecordsListCard.is-managing .record-card.is-tappable::after { display: none; }
+#panel-records .record-card-delete {
+    display: none;
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+#taxRecordsListCard.is-managing .record-card-delete { display: inline-flex; }
 #panel-records .record-card .list-item-actions { margin-top: 8px; }
 #panel-records .record-card .btn-sm { padding: 5px 10px; font-size: 12px; }
+#taxRecordsManageHint,
+.tax-records-manage-hint {
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+}
+#taxRecordsListCard.is-managing #btnTaxRecordsManage.is-active {
+    color: var(--color-primary);
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-bg);
+}
+#taxRecordsListCard.is-managing .card-title-actions { width: 100%; }
+#taxRecordsListCard.is-managing .batch-tax-more-wrap { flex: 1 1 100%; }
+#taxRecordsListCard.is-managing #taxRecordsManageMenu {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
+    margin-top: 6px;
+    box-shadow: none;
+    border: 1px solid var(--color-border-light);
+    background: var(--color-surface-alt);
+}
+#taxRecordsListCard.is-managing #taxRecordsManageMenu[hidden] { display: none !important; }
+#taxRecordsListCard.is-managing .batch-tax-more-item {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 8px 10px;
+}
 #panel-records #recordListMount .empty { padding: 28px 16px; font-size: 13px; color: var(--color-text-muted); }
 #panel-records #recordListMount .tax-empty-start-title {
     margin: 0 0 6px;

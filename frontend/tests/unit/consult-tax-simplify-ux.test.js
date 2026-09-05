@@ -41,6 +41,15 @@ describe('consult 税务记录 batch generate: simplified period + action hierar
     expect(html).toContain('一键生成税务记录');
   });
 
+  it('keeps list header actions 回填修改 / 管理 for the simplified card list', () => {
+    const cardStart = html.indexOf('id="taxRecordsListCard"');
+    expect(cardStart).toBeGreaterThan(-1);
+    const cardChunk = html.slice(cardStart, cardStart + 1800);
+    expect(cardChunk).toContain('回填修改');
+    expect(cardChunk).toContain('id="btnTaxRecordsManage"');
+    expect(cardChunk).toContain('id="taxRecordsManageHint"');
+  });
+
   it('keeps the 3-step progress stepper with copy matching the simplified flow', () => {
     expect(html).toContain('id="taxFlowSteps"');
     expect(html).toContain('填资料');

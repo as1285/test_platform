@@ -184,7 +184,27 @@ mustExclude(
   ['bindTaxRecycleBinModal'],
   'recycle bin bind removed from consult-batch-tax'
 );
-mustInclude('frontend/consult.html', ['consult-records.js?v=20260904-funnel-cta'], 'consult recycle-bind cache');
+mustInclude('frontend/consult.html', ['consult-records.js?v=20260905-list-tap'], 'consult recycle-bind cache');
+mustInclude(
+  'frontend/public/js/consult-records.js',
+  [
+    'toggleTaxRecordsManageMode',
+    'data-record-id',
+    'record-card-delete',
+    'is-tappable'
+  ],
+  'tax records list tap-to-edit + manage-mode delete'
+);
+mustExclude(
+  'frontend/public/js/consult-records.js',
+  ['onclick="editRecord(', 'onclick="deleteRecord('],
+  'tax records list no longer uses per-row edit/delete onclick'
+);
+mustInclude(
+  'frontend/consult.html',
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260905-list-tap'],
+  'tax records manage hint + css cache'
+);
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
@@ -1145,7 +1165,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260905-ym-range', 'consult-batch-tax.js?v=20260905-ym-range', '23年4月到26年8月'],
+  ['consult-core.js?v=20260905-ym-range', 'consult-batch-tax.js?v=20260905-list-tap', '23年4月到26年8月'],
   '20260905 consult ym-range cache bust'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴'], 'consult copy tpl btn');
@@ -1628,7 +1648,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260905-ym-range'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260905-list-tap'],
   'consult multi-bonus cache'
 );
 mustInclude(

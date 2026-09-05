@@ -1549,17 +1549,17 @@
   function showPostActivateEditCoachMark() {
     if (document.getElementById('cg-edit-coach-mark')) return;
     ensureGateStyles();
-    var firstEditBtn = document.querySelector('#recordListMount .list-item-actions .btn-primary');
-    if (!firstEditBtn) {
-      showCaptureToast('已开通！在下方记录卡片点「编辑」即可修改个税数据', { duration: 4500 });
+    var firstCard = document.querySelector('#recordListMount .record-card');
+    if (!firstCard) {
+      showCaptureToast('已开通！点下方记录卡片即可修改个税数据', { duration: 4500 });
       return;
     }
-    var rect = firstEditBtn.getBoundingClientRect();
+    var rect = firstCard.getBoundingClientRect();
     var mark = document.createElement('div');
     mark.id = 'cg-edit-coach-mark';
     mark.className = 'cg-edit-coach-mark';
     mark.setAttribute('role', 'status');
-    mark.textContent = '点这里「编辑」可修改该条个税记录';
+    mark.textContent = '点这条记录即可修改';
     document.body.appendChild(mark);
     var markRect = mark.getBoundingClientRect();
     var top = rect.top - markRect.height - 14;
@@ -1573,14 +1573,14 @@
     var left = Math.max(12, Math.min(rect.left, window.innerWidth - markRect.width - 12));
     mark.style.top = top + 'px';
     mark.style.left = left + 'px';
-    firstEditBtn.style.boxShadow = '0 0 0 3px rgba(5,150,105,.45)';
-    firstEditBtn.style.position = 'relative';
-    firstEditBtn.style.zIndex = '2';
+    firstCard.style.boxShadow = '0 0 0 3px rgba(5,150,105,.45)';
+    firstCard.style.position = 'relative';
+    firstCard.style.zIndex = '2';
     setTimeout(function () {
       if (mark.parentNode) mark.parentNode.removeChild(mark);
-      firstEditBtn.style.boxShadow = '';
-      firstEditBtn.style.position = '';
-      firstEditBtn.style.zIndex = '';
+      firstCard.style.boxShadow = '';
+      firstCard.style.position = '';
+      firstCard.style.zIndex = '';
     }, 5200);
   }
 
@@ -1606,7 +1606,7 @@
     banner.innerHTML =
       '<button type="button" class="cg-dismiss" id="cgPostActivateEditDismiss" aria-label="知道了">知道了</button>' +
       '<h4>已开通 · 现在可以编辑个税了</h4>' +
-      '<p>入口在下方「我要咨询」。进入后切换到「税务记录」，点每条记录右侧的「编辑」即可修改。</p>' +
+      '<p>入口在下方「我要咨询」。进入后切换到「税务记录」，点记录卡片即可修改。</p>' +
       '<button type="button" class="cg-btn-primary" id="cgPostActivateEditGo">去编辑个税记录</button>';
     var stack = document.querySelector('.mine-stack');
     var canvas = document.getElementById('mineE1Canvas');
@@ -1656,7 +1656,7 @@
     banner.innerHTML =
       '<button type="button" class="cg-dismiss" id="cgConsultEditDismiss" aria-label="知道了">×</button>' +
       '<strong>已开通 · 在这里编辑个税</strong>' +
-      '<span>点击下方每条记录右侧的「编辑」可修改；批量调整可用上方「回填修改」。</span>';
+      '<span>点下方记录卡片即可修改；批量调整可用「回填修改」，删除请点「管理」。</span>';
     host.parentNode.insertBefore(banner, host);
     if (force) {
       track('track_post_activate_edit_guide_show', {

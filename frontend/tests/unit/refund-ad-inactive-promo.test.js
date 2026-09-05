@@ -34,7 +34,7 @@ describe('inactive users always see refund ad (source)', () => {
     expect(guideSrc).toContain('track_refund_ad_inactive_promo_show');
     expect(guideSrc).toContain('track_refund_ad_inactive_promo_click');
     expect(guideSrc).toContain("refundAdRecommendHref('shouye')");
-    expect(authSrc).toContain('conversion-guide.js?v=20260905-tax-year-nav');
+    expect(authSrc).toContain('conversion-guide.js?v=20260905-list-tap');
     expect(guideSrc).toContain('id="cgValueGoRefund"');
     expect(guideSrc).toContain('查看可退税额');
     expect(guideSrc).not.toContain('id="cgValueGoPay"');

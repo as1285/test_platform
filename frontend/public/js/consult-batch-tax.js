@@ -2202,6 +2202,10 @@ function closeBatchTaxMoreMenu() {
 }
 
 function closeTaxRecordsManageMenu() {
+    /* 管理态下操作条常驻，不因点菜单项或空白处收起 */
+    if (typeof window.isTaxRecordsManageMode === 'function' && window.isTaxRecordsManageMode()) {
+        return;
+    }
     var menu = document.getElementById('taxRecordsManageMenu');
     var btn = document.getElementById('btnTaxRecordsManage');
     if (menu) menu.hidden = true;
@@ -2435,6 +2439,10 @@ function initConsultRecordsUx() {
         manageBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             closeBatchTaxMoreMenu();
+            if (typeof window.toggleTaxRecordsManageMode === 'function') {
+                window.toggleTaxRecordsManageMode();
+                return;
+            }
             var open = manageMenu.hidden;
             manageMenu.hidden = !open;
             manageBtn.setAttribute('aria-expanded', open ? 'true' : 'false');

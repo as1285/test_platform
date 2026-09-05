@@ -399,14 +399,96 @@ function syncTaxPayGuideBanner(list) {
 }
 
 // === 记录列表渲染 / 编辑删除 ===
+/** 列表「管理」模式：显示单条删除与批量操作条。 */
+var taxRecordsManageMode = false;
+
+function isTaxRecordsManageMode() {
+    return !!taxRecordsManageMode;
+}
+
+function escapeTaxRecordIdAttr(id) {
+    return String(id == null ? '' : id)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+}
+
+/**
+ * 进入/退出列表管理态。
+ * 副作用：#taxRecordsListCard.is-managing、管理按钮文案、批量操作条显隐。
+ */
+function setTaxRecordsManageMode(on) {
+    taxRecordsManageMode = !!on;
+    var listCard = document.getElementById('taxRecordsListCard');
+    if (listCard) {
+        listCard.classList.toggle('is-managing', taxRecordsManageMode);
+    }
+    var btn = document.getElementById('btnTaxRecordsManage');
+    if (btn) {
+        btn.textContent = taxRecordsManageMode ? '完成' : '管理';
+        btn.setAttribute('aria-pressed', taxRecordsManageMode ? 'true' : 'false');
+        btn.setAttribute('aria-expanded', taxRecordsManageMode ? 'true' : 'false');
+        btn.classList.toggle('is-active', taxRecordsManageMode);
+    }
+    var menu = document.getElementById('taxRecordsManageMenu');
+    if (menu) {
+        menu.hidden = !taxRecordsManageMode;
+    }
+    var hint = document.getElementById('taxRecordsManageHint');
+    if (hint) {
+        hint.hidden = !taxRecordsManageMode;
+    }
+}
+
+function toggleTaxRecordsManageMode() {
+    setTaxRecordsManageMode(!taxRecordsManageMode);
+}
+
+window.isTaxRecordsManageMode = isTaxRecordsManageMode;
+window.setTaxRecordsManageMode = setTaxRecordsManageMode;
+window.toggleTaxRecordsManageMode = toggleTaxRecordsManageMode;
+
+/** 列表容器事件委托：点卡片编辑，管理模式下点删除。只绑一次。 */
+function bindTaxRecordCardEvents(mount) {
+    if (!mount || mount.__taxCardsBound) return;
+    mount.__taxCardsBound = true;
+    mount.addEventListener('click', function (e) {
+        var del = e.target.closest('[data-record-delete]');
+        if (del && mount.contains(del)) {
+            e.preventDefault();
+            e.stopPropagation();
+            deleteRecord(del.getAttribute('data-record-delete'));
+            return;
+        }
+        var card = e.target.closest('.record-card[data-record-id]');
+        if (card && mount.contains(card)) {
+            editRecord(card.getAttribute('data-record-id'));
+        }
+    });
+    mount.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target.closest('[data-record-delete]')) return;
+        var card = e.target.closest('.record-card[data-record-id]');
+        if (card && e.target === card) {
+            e.preventDefault();
+            editRecord(card.getAttribute('data-record-id'));
+        }
+    });
+}
+
 /**
  * 渲染税务记录卡片列表（空态含示例 CTA）。
+ * 默认无行内「编辑/删除」：点卡片即编辑；删除在「管理」态显示。
  * 副作用：写 #recordListMount；同步支付引导与编辑引导。
  */
 function renderListFromArray(list) {
     var mount = document.getElementById('recordListMount');
     if (!mount) return;
+    bindTaxRecordCardEvents(mount);
     if (!list.length) {
+        if (taxRecordsManageMode) {
+            setTaxRecordsManageMode(false);
+        }
         mount.innerHTML =
             '<div class="empty tax-empty-start">' +
             '<p class="tax-empty-start-title">还没有税务记录</p>' +
@@ -425,8 +507,10 @@ function renderListFromArray(list) {
         return;
     }
     var html = '';
-    list.forEach(function(r) {
-        html += '<div class="record-card">';
+    list.forEach(function (r) {
+        var idAttr = escapeTaxRecordIdAttr(r.id);
+        html += '<div class="record-card is-tappable" data-record-id="' + idAttr + '" role="button" tabindex="0">';
+        html += '<div class="record-card-main">';
         html += '<div class="record-card-header">';
         html += '<div class="record-card-title">' + r.year + '年' + r.month + '月 - ' + (r.income_type || '') + '</div>';
         html += '<div class="record-card-date">' + (r.report_date || '') + '</div>';
@@ -434,11 +518,9 @@ function renderListFromArray(list) {
         html += '<div class="record-card-info">';
         html += '扣缴单位：' + (r.company_name || '') + '<br>';
         html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
-        html += '</div>';
-        html += '<div class="list-item-actions">';
-        html += '<button type="button" class="btn btn-primary btn-sm" onclick="editRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">编辑</button>';
-        html += '<button type="button" class="btn btn-danger btn-sm" onclick="deleteRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">删除</button>';
         html += '</div></div>';
+        html += '<button type="button" class="record-card-delete btn btn-danger btn-sm" data-record-delete="' + idAttr + '">删除</button>';
+        html += '</div>';
     });
     mount.innerHTML = html;
     syncTaxPayGuideBanner(list);

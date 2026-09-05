@@ -9053,7 +9053,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260905-tax-year-nav';
+      s.src = '/js/conversion-guide.js?v=20260905-list-tap';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
