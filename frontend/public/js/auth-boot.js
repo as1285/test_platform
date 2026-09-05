@@ -54,7 +54,8 @@
     'zixun.html': true,
     'jingshi.html': true,
     'face_login.html': true,
-    'scan.html': true
+    'scan.html': true,
+    'zhongdian_fuwu.html': true
   };
 
   /** @returns {string} 当前 HTML 文件名，缺省为 index.html */
