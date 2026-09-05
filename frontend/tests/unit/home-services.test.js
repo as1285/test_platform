@@ -40,9 +40,11 @@ describe('homepage 更多功能 opens 首页重点服务管理', () => {
     expect(page).toContain('返回');
     expect(page).toContain('zdfw-act-minus');
     expect(page).toContain('zdfw-act-plus');
+    expect(page).toContain('zdfw-act-dot');
     expect(page).toContain('zdfw-handle');
+    expect(page).toContain('data-mode');
     expect(page).toContain('href="shouye.html"');
-    expect(page).toContain('/js/home-services.js?v=20260905-zdfw');
+    expect(page).toContain('/js/home-services.js?v=20260905-zdfw2');
   });
 
   it('is reachable without login', () => {

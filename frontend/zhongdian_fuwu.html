@@ -112,9 +112,11 @@
             position: relative;
             z-index: 2;
         }
+        .zdfw-row { cursor: pointer; }
         .zdfw-act {
-            width: 22px;
-            height: 22px;
+            width: 36px;
+            height: 36px;
+            margin-left: -7px;
             border-radius: 50%;
             border: 0;
             padding: 0;
@@ -122,11 +124,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            background: transparent;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        .zdfw-act-minus { background: #ee0a24; }
-        .zdfw-act-plus { background: #1e6fff; }
+        .zdfw-act-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zdfw-act-minus .zdfw-act-dot { background: #ee0a24; }
+        .zdfw-act-plus .zdfw-act-dot { background: #1e6fff; }
         .zdfw-act svg { display: block; }
         .zdfw-icon {
             width: 32px;
@@ -211,7 +222,7 @@
 
     <div class="zdfw-toast" id="zdfwToast" role="status" aria-live="polite"></div>
 
-    <script src="/js/home-services.js?v=20260905-zdfw"></script>
+    <script src="/js/home-services.js?v=20260905-zdfw2"></script>
     <script>
         (function () {
             var HS = window.TaxHomeServices;
@@ -241,12 +252,12 @@
                     (isMinus ? 'remove' : 'add') +
                     '" aria-label="' +
                     (isMinus ? '移除' : '添加') +
-                    '">' +
+                    '"><span class="zdfw-act-dot">' +
                     '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">' +
                     (isMinus
                         ? '<rect x="2" y="5" width="8" height="2" rx="1" fill="#fff"/>'
                         : '<rect x="2" y="5" width="8" height="2" rx="1" fill="#fff"/><rect x="5" y="2" width="2" height="8" rx="1" fill="#fff"/>') +
-                    '</svg></button>'
+                    '</svg></span></button>'
                 );
             }
 
@@ -263,6 +274,8 @@
                 return (
                     '<div class="zdfw-row" data-id="' +
                     HS.esc(item.id) +
+                    '" data-mode="' +
+                    mode +
                     '">' +
                     actBtn(mode === 'current' ? 'minus' : 'plus') +
                     '<span class="zdfw-icon">' +
@@ -302,12 +315,16 @@
             }
 
             function onAct(ev) {
-                var btn = ev.target.closest('[data-act]');
-                if (!btn) return;
-                var row = btn.closest('.zdfw-row');
+                if (ev.target.closest('.zdfw-handle')) return;
+                var row = ev.target.closest('.zdfw-row');
                 if (!row) return;
                 var id = row.getAttribute('data-id');
-                var act = btn.getAttribute('data-act');
+                var btn = ev.target.closest('[data-act]');
+                var act = btn
+                    ? btn.getAttribute('data-act')
+                    : row.getAttribute('data-mode') === 'current'
+                        ? 'remove'
+                        : 'add';
                 var result = act === 'remove' ? HS.removeService(id) : HS.addService(id);
                 if (!result.ok && result.message) toast(result.message);
                 render();
