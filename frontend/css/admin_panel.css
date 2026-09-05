@@ -2194,6 +2194,12 @@ tr.users-detail-row > td {
 .col-w-150 { width: 150px; }
 
 .max-w-760 { max-width: 760px; }
+.max-w-920 { max-width: 920px; }
+/* 渠道专属套餐：保证「心理价位」列在「小时」右侧可见，不被窄容器挤没 */
+.agent-ch-sku-table th:last-child,
+.agent-ch-sku-table td:last-child {
+    min-width: 96px;
+}
 .field-note {
     margin: 10px 0 8px;
     color: var(--admin-text-secondary);
@@ -2373,6 +2379,7 @@ tr.users-detail-row > td {
 .mt-12 { margin-top: 12px; }
 .mb-12 { margin-bottom: 12px; }
 .max-w-760 { max-width: 760px; }
+.max-w-920 { max-width: 920px; }
 .input-w-100 { width: 100px; }
 .input-flex {
     flex: 1;

@@ -32,7 +32,7 @@
         localStorage.setItem('admin_menu_tree', JSON.stringify(data.menu_tree));
       } catch (e0) {}
     }
-    window.location.href = '/admin_panel.html?v=20260905-inactive-growth';
+    window.location.href = '/admin_panel.html?v=20260905-ch-psych-col';
   }
 
   var btn = document.getElementById('btn');
