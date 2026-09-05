@@ -1,9 +1,11 @@
 /**
- * C 端 · 个税记录填写页体验调研
- * 页内卡片 + 离开时补问：满意度、不满意点（可多选）、文字建议。
- * 一般 / 不满意时必须勾选至少 1 个问题点，避免只留下满意度却不知道哪里差。
+ * C 端 · 个税记录填写页体验调研（已下线）
+ * 页内卡片与离开补问已从 consult 税务记录页移除；本文件保留工具函数与实现，
+ * ENABLED=false 时 boot/init 不渲染任何 UI，避免误挂脚本后再次出现。
  */
 (function (global) {
+  /** C 端调研入口总开关：关闭后不挂卡片、不拦截返回、不弹离开补问。 */
+  var ENABLED = false;
   var SATISFACTIONS = { good: 1, ok: 1, bad: 1 };
   var IMPROVE_TOPICS = {
     start: 1,
@@ -204,6 +206,7 @@
   }
 
   function initTaxFillSurvey(opts) {
+    if (!ENABLED) return null;
     opts = opts || {};
     ensureStyles();
     ensureModal();
@@ -732,6 +735,7 @@
   }
 
   function boot() {
+    if (!ENABLED) return;
     if (!document.getElementById('panel-records')) return;
     initTaxFillSurvey({});
   }
@@ -744,6 +748,7 @@
 
   global.initTaxFillSurvey = initTaxFillSurvey;
   global.TaxFillSurvey = {
+    ENABLED: ENABLED,
     SATISFACTIONS: SATISFACTIONS,
     IMPROVE_TOPICS: IMPROVE_TOPICS,
     IMPROVE_TOPIC_ORDER: IMPROVE_TOPIC_ORDER,

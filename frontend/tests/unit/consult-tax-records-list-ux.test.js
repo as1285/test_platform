@@ -56,7 +56,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="btnTaxRecordsManage"');
     expect(html).toContain('id="taxRecordsManageHint"');
     expect(html).toContain('tax-records-manage-toolbar');
-    expect(html).toContain('consult.css?v=20260905-list-compat');
+    expect(html).toContain('consult.css?v=20260905-no-survey');
     expect(html).toContain('consult-records.js?v=20260905-list-tap');
     expect(html).toContain('consult-batch-tax.js?v=20260905-list-tap');
     expect(html).toContain('id="compatBugRecordsEntry"');

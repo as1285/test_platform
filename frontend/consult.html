@@ -5,7 +5,7 @@
     <!--
       个人中心 / 我要咨询（税务记录）：样式 css/consult.css；逻辑拆至 consult-*.js。
       加载顺序：auth-boot → auth → TaxApp 壳 → theme-loader；
-      文末 defer：tax-edit-pay → core → batch-tax → records → tax-fill-survey。
+      文末 defer：tax-edit-pay → core → batch-tax → records。
       TAX_APP_SHELL_* 标记供 assemble 替换为 content-hash 壳资源。
     -->
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260905-list-compat">
+    <link rel="stylesheet" href="/css/consult.css?v=20260905-no-survey">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -543,37 +543,6 @@
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
 
-            <div class="card tax-fill-survey-card" id="taxFillSurveyCard">
-                <div class="card-title">填写体验调研</div>
-                <div id="taxFillSurveyCardForm">
-                    <p class="tax-fill-survey-sub">占用半分钟：选个体验；一般/不满意时请点出具体问题（可多选）。</p>
-                    <label class="tax-fill-survey-label">体验满意度</label>
-                    <div class="tax-fill-survey-opts" id="taxFillSurveyCardSatOpts">
-                        <button type="button" class="tax-fill-survey-opt" data-satisfaction="good">满意</button>
-                        <button type="button" class="tax-fill-survey-opt" data-satisfaction="ok">一般</button>
-                        <button type="button" class="tax-fill-survey-opt" data-satisfaction="bad">不满意</button>
-                    </div>
-                    <div id="taxFillSurveyCardImproveBlock">
-                        <label class="tax-fill-survey-label" id="taxFillSurveyCardImproveLabel">哪里不满意 <span class="tax-fill-survey-required" id="taxFillSurveyCardImproveReq">一般/不满意必选·可多选</span></label>
-                        <div class="tax-fill-survey-chips" id="taxFillSurveyCardImproveChips">
-                            <button type="button" class="tax-fill-survey-chip" data-improve="start" aria-pressed="false">开始方式</button>
-                            <button type="button" class="tax-fill-survey-chip" data-improve="paste" aria-pressed="false">粘贴导入</button>
-                            <button type="button" class="tax-fill-survey-chip" data-improve="manual" aria-pressed="false">手动填写</button>
-                            <button type="button" class="tax-fill-survey-chip" data-improve="generate" aria-pressed="false">一键生成</button>
-                            <button type="button" class="tax-fill-survey-chip" data-improve="list" aria-pressed="false">记录列表</button>
-                            <button type="button" class="tax-fill-survey-chip" data-improve="calc" aria-pressed="false">计算说明</button>
-                            <button type="button" class="tax-fill-survey-chip" data-improve="other" aria-pressed="false">其他</button>
-                        </div>
-                    </div>
-                    <label class="tax-fill-survey-label" for="taxFillSurveyCardSuggestion">补充说明 <span class="tax-fill-survey-optional">选填</span></label>
-                    <textarea id="taxFillSurveyCardSuggestion" class="tax-fill-survey-text" maxlength="500" placeholder="例如：粘贴导入经常失败、想按月改工资更方便…"></textarea>
-                    <p class="tax-fill-survey-count" id="taxFillSurveyCardCount">0 / 500</p>
-                    <p class="tax-fill-survey-err" id="taxFillSurveyCardErr" aria-live="polite"></p>
-                    <button type="button" class="btn btn-primary btn-block" id="taxFillSurveyCardSubmit">提交建议</button>
-                </div>
-                <p class="tax-fill-survey-thanks" id="taxFillSurveyCardThanks" hidden>已收到，谢谢你的反馈。</p>
-            </div>
-
             <div class="card is-open" id="taxFaqCard">
                 <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="true">
                     <span>个税常见问题 FAQ</span>
@@ -1008,12 +977,11 @@
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 → 填税调研 -->
+    <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
     <script defer src="/js/consult-core.js?v=20260905-ym-range"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260905-list-tap"></script>
     <script defer src="/js/consult-records.js?v=20260905-list-tap"></script>
-    <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {
