@@ -55,6 +55,34 @@ describe('未激活生成纳税记录引导替换完税二维码', () => {
     expect(document.getElementById('najilu-qr-guide-root')).toBe(null);
   });
 
+  it('开具页 init 后点击生成会弹出引导且不开始生成', () => {
+    document.body.innerHTML =
+      '<input type="month" id="rangeStartInput" value="2026-01">' +
+      '<input type="month" id="rangeEndInput" value="2026-03">' +
+      '<span id="rangeStartLabel">2026-01</span>' +
+      '<span id="rangeEndLabel">2026-03</span>' +
+      '<div id="sliderLane"><span id="sliderHint"></span>' +
+      '<div id="sliderHandle" class="verified"></div></div>' +
+      '<button type="button" id="generateBtn">生成纳税记录</button>' +
+      '<a href="#" id="viewRecordsLink">查看申请记录</a>';
+    const loc = {
+      pathname: '/najilu.html',
+      href: 'http://localhost/najilu.html',
+      search: '',
+      replace: function () {}
+    };
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: loc });
+    localStorage.setItem('account_active', '0');
+    loadNajiluHelpers();
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = false;
+    btn.click();
+    expect(document.getElementById('najilu-qr-guide-root')).toBeTruthy();
+    expect(document.getElementById('najilu-qr-guide-root').textContent).toContain('去替换');
+    expect(btn.textContent).toBe('生成纳税记录');
+    expect(btn.getAttribute('data-generating')).not.toBe('1');
+  });
+
   it('开具页与转化引导都指向替换完税二维码，不再静默先生成演示版', () => {
     expect(najiluHtml).toContain('id="generateBtn"');
     expect(najiluHtml).toContain('id="najiluQrReplaceLink"');
