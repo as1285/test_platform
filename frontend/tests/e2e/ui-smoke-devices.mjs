@@ -25,7 +25,7 @@ function androidUa(model, brandLabel) {
 }
 
 function immersive(model, label, classes, extra) {
-  return Object.assign(
+  const profile = Object.assign(
     {
       id: extra && extra.id ? extra.id : undefined,
       label: label,
@@ -46,6 +46,10 @@ function immersive(model, label, classes, extra) {
     extra && extra.userAgent ? { userAgent: extra.userAgent } : {},
     extra && extra.playwrightDevice ? { playwrightDevice: extra.playwrightDevice } : {}
   );
+  if (extra && extra.expect) {
+    Object.assign(profile.expect, extra.expect);
+  }
+  return profile;
 }
 
 function outer(model, label, extra) {
@@ -281,7 +285,9 @@ export const DEVICE_PROFILES = [
     id: 'vivo-s50promini'
   }),
   immersive('V2241A', 'vivo X90', ['app-android-vivo-x90', 'app-android-immersive-white-top'], {
-    id: 'vivo-x90'
+    id: 'vivo-x90',
+    /* OriginOS 5「我的」底图必须单层绘制：见 assertMineE1SingleLayer */
+    expect: { mineE1PlainImg: true }
   }),
   immersive('V2301A', 'iQOO Neo8', ['app-android-iqoo-neo8', 'app-android-immersive-white-top'], {
     id: 'iqoo-neo8'

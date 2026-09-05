@@ -201,6 +201,16 @@
                 if (/V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-x90');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    /*
+                     * OriginOS 5：底图只许画一层。@sm 裁切档同时挂 CSS 背景和同尺寸隐藏 <img>，
+                     * auth.js 首屏后把隐藏层从 1px 撑回整屏，WebView 会先合成一次再套 opacity:0，
+                     * 左侧留下半透明白卡残影；100% 100% 又把 1242rpx 底图压进 1180rpx 画布，
+                     * 三宫格胶囊被挤到菜单上沿。此处提前标记，auth-boot 走单层 <img> 首屏。
+                     */
+                    window.__mineE1PlainImg = true;
+                    window.__mineE1ForceSm = true;
+                    document.documentElement.classList.add('app-android-mine-e1-plainimg');
+                    document.documentElement.classList.remove('app-android-mine-e1-sm');
                 }
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-acepro');
@@ -244,8 +254,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260903-android-blackbar"></script>
-    <script src="/js/auth.js?v=20260903-android-blackbar" defer></script>
+    <script src="/js/auth-boot.js?v=20260905-vivox90-mine"></script>
+    <script src="/js/auth.js?v=20260905-vivox90-mine" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -809,7 +819,7 @@
         }
 
         /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 另走 lock。 */
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -817,8 +827,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -827,11 +837,70 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
+        }
+
+        /*
+         * vivo X90（OriginOS 5）单层底图档：750px 底图只由 <img> 画一遍。
+         * 勿再给画布挂 background-image —— 背景副本 + 同尺寸隐藏 <img> 是两层同图，
+         * 首屏后隐藏层从 1px 撑回整屏时 WebView 会先合成一次再套 opacity:0，
+         * 左侧就留下一块半透明白色圆角残影盖住三宫格与菜单上沿。
+         * 画布高度交给 <img> 的 aspect-ratio，勿用 1180rpx 定高 + background-size:100% 100%，
+         * 那会把 1242rpx 高的底图竖向压掉 5%，胶囊掉到卡片下沿、与菜单几乎贴上。
+         */
+        html.app-android-mine-e1-plainimg body.page-mine {
+            --mine-top-bleed: 0px !important;
+            --mine-rpx: calc(100vw / 750) !important;
+            background-color: #f4f6f9 !important;
+            background-image: none !important;
+        }
+        html.app-android-mine-e1-plainimg body.page-mine .mine-e1-canvas {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            overflow: hidden !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            aspect-ratio: auto !important;
+            container-type: normal !important;
+            width: 100% !important;
+            background-image: none !important;
+            background-color: #f4f6f9 !important;
+        }
+        html.app-android-mine-e1-plainimg body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-plainimg body.page-mine .mine-e1-canvas > #headerImg {
+            display: block !important;
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            /* 与叠层 padding-bottom 同比例：decode 前先占好 596px，首屏不跳动 */
+            aspect-ratio: 1284 / 2127 !important;
+            object-fit: fill !important;
+            margin: 0 !important;
+            transform: none !important;
+            opacity: 1 !important;
+        }
+        html.app-android-mine-e1-plainimg body.page-mine .mine-e1-layer {
+            top: 0 !important;
+            height: 0 !important;
+            padding-bottom: calc(2127 / 1284 * 100%) !important;
+        }
+        html.app-android-mine-e1-plainimg body.page-mine .mine-e1-footer {
+            padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
+        }
+        /* 半透明 + blur 的悬浮底栏在 OriginOS 5 上会把底图切片糊到页面中部，改实心 */
+        html.app-android-mine-e1-plainimg body.page-mine > .bottom-nav,
+        html.app-android-mine-e1-plainimg body.page-mine > .bottom-nav.ios-device {
+            background: #ffffff !important;
+            -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
         }
 
         /* 游客：叠字隐藏，登录钮落在信息卡中央 */
@@ -2188,8 +2257,9 @@
                         }
                         if (sm) base += '@sm';
                         var url = '/img/mine/' + base + '.png' + v;
-                        hi.src = url;
-                    if (sm) {
+                        if (String(hi.getAttribute('src') || '') !== url) hi.src = url;
+                    /* 单层底图档（vivo X90）：底图由这张 <img> 独自绘制，勿再挂背景副本 */
+                    if (sm && !window.__mineE1PlainImg) {
                         var canvas = document.getElementById('mineE1Canvas');
                         if (canvas) {
                             canvas.style.setProperty('background-image', 'url("' + url + '")', 'important');
@@ -2204,7 +2274,8 @@
             </script>
             <script data-mine-e1-selfheal="1">
                 (function () {
-                    if (window.__mineE1ForceSm) return;
+                    /* 单层底图档：这张 <img> 就是唯一可见层，解码失败会整片空白，必须留自愈 */
+                    if (window.__mineE1ForceSm && !window.__mineE1PlainImg) return;
                     /*
                      * e1 大底图自愈：小米 14 Pro HyperOS 2 等机型会把这张 1284×2127 大图
                      * 缓存成坏档或解码失败（小图正常、整片只剩底色）。失败时换参重拉，
@@ -2452,8 +2523,20 @@
                     }
                 } catch (e14) {}
                 if (window.__mineE1ForceSm) base += '@sm';
-                hi.src = '/img/mine/' + base + '.png?v=20260827-e1r3';
-                if (window.__mineE1ForceSm && typeof window.paintXiaomi14ProMineE1 === 'function') {
+                /*
+                 * 750px 副本的版本戳必须与首屏 <link rel=preload> / <img src> 一致，
+                 * 否则同一张图会因 query 不同再拉一次、再解码一次；单层底图档下这会重合成
+                 * 首屏那层，OriginOS 5 上正是残影变「粘住」的原因。
+                 */
+                var url =
+                    '/img/mine/' + base + '.png' +
+                    (base.indexOf('@sm') >= 0 ? '?v=20260901-android-mine-sm' : '?v=20260827-e1r3');
+                if (String(hi.getAttribute('src') || '') !== url) hi.src = url;
+                if (
+                    window.__mineE1ForceSm &&
+                    !window.__mineE1PlainImg &&
+                    typeof window.paintXiaomi14ProMineE1 === 'function'
+                ) {
                     window.paintXiaomi14ProMineE1(hi.src);
                 }
             }

@@ -310,6 +310,22 @@
       if (!/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(ua)) {
         return;
       }
+      /*
+       * 单层底图档（vivo X90）：@sm 档两层同图会留半透明白卡残影，须在注入裁切首屏样式
+       * 「之前」判掉，否则该 style 节点留在 DOM 里抢。样式见 mine.html plainimg 档。
+       */
+      var cl = document.documentElement.classList;
+      if (
+        window.__mineE1PlainImg ||
+        cl.contains('app-android-mine-e1-plainimg') ||
+        /V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(ua)
+      ) {
+        cl.add('app-android-mine-e1-plainimg');
+        cl.remove('app-android-mine-e1-sm');
+        window.__mineE1PlainImg = true;
+        window.__mineE1ForceSm = true;
+        return;
+      }
       var p40pro = /ELS-AN00|ELS-AN10|ELS-N04|ELS-AN\d{2}|P40[\s_-]*Pro/i.test(ua);
       if (p40pro) {
         document.documentElement.classList.add('app-android-huawei-p40pro');

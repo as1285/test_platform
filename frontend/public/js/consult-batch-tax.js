@@ -3330,10 +3330,16 @@ function clearBatchMonthSalaryModal() {
 // === 个税粘贴导入弹窗 ===
 var TAX_PASTE_IMPORT_TEMPLATE =
     '公司名称：某某有限公司\n' +
+    '扣缴义务人纳税人识别号：91110105MA01K9XH2B\n' +
+    '主管税务机关：国家税务总局北京市朝阳区税务局\n' +
     '2023年全年\n' +
     '2024年全年\n' +
     '2025年全年\n' +
-    '月薪：20000元';
+    '月薪：20000元\n' +
+    '基本养老保险：1600元\n' +
+    '基本医疗保险：400元\n' +
+    '失业保险：100元\n' +
+    '住房公积金：2400元';
 
 var _taxPasteImportLastParsed = null;
 
@@ -3373,7 +3379,7 @@ function copyTaxPasteImportTemplate() {
     fillTaxPasteTemplateIntoBox({ focus: true });
     var text = TAX_PASTE_IMPORT_TEMPLATE;
     function done(ok) {
-        showMsg(ok ? '已填入模板，改公司名和月薪后点生成' : '已填入模板，可直接修改后生成', true);
+        showMsg(ok ? '已填入模板，改公司名、月薪、社保和机关后点生成' : '已填入模板，可直接修改后生成', true);
     }
     if (typeof window.copyTextToClipboard === 'function') {
         window.copyTextToClipboard(text).then(done, function () {

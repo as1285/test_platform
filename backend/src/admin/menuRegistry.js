@@ -78,7 +78,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ad-analytics',
     order: 35,
-    alias_menus: ['analytics-tracking', 'analytics-conversion', 'ops-board']
+    alias_menus: ['analytics-conversion', 'ops-board']
   },
   {
     page: 'analytics-conversion',
@@ -281,14 +281,6 @@ const ADMIN_PAGE_DEFS = [
     order: 25,
     assignable: false,
     nav_hidden: true
-  },
-  {
-    page: 'analytics-tracking',
-    menu_key: 'analytics-tracking',
-    label: '埋点分析',
-    group: 'insights',
-    module: 'analytics',
-    order: 30
   },
   {
     page: 'channel-analysis',
@@ -525,7 +517,8 @@ function getAssignableMenuDefs() {
 
 /** 已合并侧栏页：旧 hash 仍指向同一面板 */
 var ADMIN_PAGE_ALIASES = {
-  'peer-accounts': 'rename-tax-daily'
+  'peer-accounts': 'rename-tax-daily',
+  'analytics-tracking': 'analytics-purchase'
 };
 
 /**
@@ -545,6 +538,7 @@ function parseAdminRoute(raw) {
   if (head === 'analytics' || head === 'analytics-conversion') head = 'ops-board';
   if (head === 'ops-research' || head === 'ops-lift') head = 'ops-board';
   if (head === 'analytics-register') head = 'install-guide-stats';
+  if (head === 'analytics-tracking') head = 'analytics-purchase';
   if (ADMIN_PAGE_ALIASES[head]) head = ADMIN_PAGE_ALIASES[head];
 
   if (ADMIN_HUB_DEFS[head]) {

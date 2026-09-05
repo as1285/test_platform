@@ -3589,11 +3589,7 @@ async function createTables() {
      WHERE menu_key IN ('users', 'user-data')`
   );
 
-  var analyticsSplitMenus = [
-    'analytics-conversion',
-    'analytics-purchase',
-    'analytics-tracking'
-  ];
+  var analyticsSplitMenus = ['analytics-conversion', 'analytics-purchase'];
   for (var asi = 0; asi < analyticsSplitMenus.length; asi++) {
     await conn.execute(
       `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
@@ -3607,6 +3603,8 @@ async function createTables() {
      SELECT admin_id, 'analytics-purchase' FROM admin_account_menus
      WHERE menu_key IN ('analytics-conversion', 'analytics-tracking', 'analytics')`
   );
+
+  await conn.execute(`DELETE FROM admin_account_menus WHERE menu_key = 'analytics-tracking'`);
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)

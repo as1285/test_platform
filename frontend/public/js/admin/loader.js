@@ -53,7 +53,6 @@
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-purchase': 'analytics',
-    'analytics-tracking': 'analytics',
     'analytics-devices': 'devices',
     'tax-fill-survey': 'tax-fill-survey',
     'install-guide-stats': 'analytics',
@@ -128,7 +127,7 @@
    *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260903-cert-pub',
+      '/js/consult-core.js?v=20260905-paste-ss',
       '/js/consult-batch-tax.js?v=20260905-ym-picker',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
