@@ -8,16 +8,35 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>安全验证</title>
-    <script src="/js/auth-boot.js?v=20260905-facelogin"></script>
-    <script src="/js/auth.js?v=20260905-facelogin" defer></script>
+    <script src="/js/auth-boot.js?v=20260905-facelogin-ui3"></script>
+    <script src="/js/auth.js?v=20260905-facelogin-ui3" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* 铺满视口白底，避免壳层给 html 刷的顶栏蓝从短内容下方透出成「半屏蓝块」 */
+        html,
+        html.app-ios-standalone-entry,
+        html.app-android-huawei-mate60.app-top-safe-shell,
+        html.app-top-safe-shell {
+            background: #fff !important;
+            background-image: none !important;
+            min-height: 100%;
+        }
         html, body {
-            background: #fff;
+            background: #fff !important;
             min-height: 100%;
             color: #333;
             font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'STHeiti', 'Microsoft YaHei', sans-serif;
             -webkit-font-smoothing: antialiased;
+        }
+        body.page-face-login {
+            background: #fff !important;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+        /* standalone 入口页会给 body::before 刷顶栏蓝条；本页是白顶栏安全验证，关掉 */
+        html.app-ios-standalone-entry body.page-face-login::before {
+            display: none !important;
+            content: none !important;
         }
         .header {
             background: #fff;
@@ -65,10 +84,13 @@
             color: #333;
         }
         .verify-main {
-            padding: 48px 24px 0;
+            padding: 48px 24px calc(32px + env(safe-area-inset-bottom, 0px));
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            background: #fff;
         }
         .shield-wrap {
             width: 168px;
@@ -77,6 +99,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         .shield-ring {
             position: absolute;
@@ -94,12 +117,15 @@
             color: #4285f4;
             text-align: center;
         }
+        /* 滑块跟在文案下方（对齐登录页 nc_wrapper），勿 fixed 贴底以免半屏空洞 */
         .slider-section {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: calc(48px + env(safe-area-inset-bottom, 0px));
-            padding: 0 20px;
+            position: static;
+            width: 100%;
+            max-width: 343px;
+            margin: 40px auto 0;
+            padding: 0;
+            box-sizing: border-box;
+            background: transparent;
         }
         .slider-lane {
             position: relative;
@@ -107,7 +133,7 @@
             background: #f0f2f5;
             border-radius: 4px;
             overflow: hidden;
-            max-width: 343px;
+            width: 100%;
             margin: 0 auto;
         }
         .slider-progress {
@@ -258,32 +284,32 @@
         </div>
         <p class="verify-copy" id="verifyCopy">为保证您的信息安全，请进行验证</p>
 
+        <div class="slider-section" id="sliderSection">
+            <div class="slider-lane" id="faceSliderLane">
+                <div class="slider-progress" id="faceSliderProgress" aria-hidden="true"></div>
+                <span class="slider-hint" id="faceSliderHint">
+                    <span class="slider-hint-check" aria-hidden="true">
+                        <svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.2 6.1l2.4 2.4 5.2-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="slider-hint-text" id="faceSliderHintText">请按住滑块，拖动到最右边</span>
+                </span>
+                <div class="slider-arrows" id="faceSliderHandle" aria-label="拖动滑块完成验证">
+                    <svg class="slider-grip-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9.5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
         <div class="face-scan" id="faceScanPanel">
             <div class="face-oval" aria-hidden="true"></div>
             <p class="face-hint" id="faceScanHint">请将面部对准框内</p>
             <p class="face-status" id="faceScanStatus">演示扫脸，无需调用系统相机</p>
         </div>
         <p class="flow-tip" id="faceFlowTip" role="alert"></p>
-    </div>
-
-    <div class="slider-section" id="sliderSection">
-        <div class="slider-lane" id="faceSliderLane">
-            <div class="slider-progress" id="faceSliderProgress" aria-hidden="true"></div>
-            <span class="slider-hint" id="faceSliderHint">
-                <span class="slider-hint-check" aria-hidden="true">
-                    <svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2.2 6.1l2.4 2.4 5.2-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </span>
-                <span class="slider-hint-text" id="faceSliderHintText">请按住滑块，拖动到最右边</span>
-            </span>
-            <div class="slider-arrows" id="faceSliderHandle" aria-label="拖动滑块完成验证">
-                <svg class="slider-grip-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M9.5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -425,10 +451,7 @@
                     clearDraft();
                     goLogin({
                         face_ok: '1',
-                        account: draft.username || '',
-                        face_msg: draft.username
-                            ? '扫脸验证已通过，请输入密码完成登录'
-                            : '扫脸演示已完成，请使用账号密码登录'
+                        account: draft.username || ''
                     });
                     return;
                 }
@@ -484,8 +507,7 @@
                         clearDraft();
                         goLogin({
                             face_ok: '1',
-                            account: draft.username,
-                            face_msg: (data && data.msg) || '扫脸验证已通过，请输入密码完成登录'
+                            account: draft.username
                         });
                     })
                     .catch(function () {
@@ -493,8 +515,7 @@
                         clearDraft();
                         goLogin({
                             face_ok: '1',
-                            account: draft.username,
-                            face_msg: '网络错误，扫脸验证已通过，请输入密码完成登录'
+                            account: draft.username
                         });
                     });
             }
