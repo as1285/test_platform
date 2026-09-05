@@ -99,4 +99,36 @@ describe('agentChannels normalize', () => {
       label: '年卡'
     });
   });
+
+  it('normalizeSkuPrices accepts psych/list anchor amounts', () => {
+    const out = api.normalizeSkuPrices({
+      price_week: '199',
+      psych_week: '399',
+      label_week: '体验卡',
+      price_t4: '598',
+      list_t4: '898',
+      days_t4: 90,
+      hours_t4: 0
+    });
+    expect(out.sku_300_7d).toEqual({
+      amount: '199.00',
+      list_amount: '399.00',
+      label: '体验卡'
+    });
+    expect(out.sku_ch_t4).toEqual({
+      amount: '598.00',
+      list_amount: '898.00',
+      grant_days: 90,
+      grant_hours: 0
+    });
+    const flat = api.normalizeSkuPrices({
+      sku_348_14d: { amount: '299', psych_amount: '499', grant_days: 14 }
+    });
+    expect(flat.sku_348_14d).toEqual({
+      amount: '299.00',
+      list_amount: '499.00',
+      grant_days: 14,
+      grant_hours: 0
+    });
+  });
 });

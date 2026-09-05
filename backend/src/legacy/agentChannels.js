@@ -165,9 +165,22 @@ function createAgentChannels(deps) {
   }
 
   /**
-   * 清洗渠道专属套餐覆盖：金额 / 天数 / 小时 / 名称。
-   * 兼容旧格式 { sku_id: "199.00" }；新格式 { sku_id: { amount, grant_days, grant_hours, label } }。
-   * 也可传拆开字段 price_week / days_week / hours_week / label_week …
+   * 渠道「心理价」= 划线对照原价（list_amount）；「价格」仍为实付价。
+   * 与全站支付套餐字段语义相反：全站是价格=原价、心理价=实付。
+   */
+  function parseListAmount(raw) {
+    return parseAmount(raw);
+  }
+
+  function applyListAmountField(target, raw) {
+    var list = parseListAmount(raw);
+    if (list) target.list_amount = list;
+  }
+
+  /**
+   * 清洗渠道专属套餐覆盖：金额 / 心理价(划线) / 天数 / 小时 / 名称。
+   * 兼容旧格式 { sku_id: "199.00" }；新格式 { sku_id: { amount, list_amount, grant_days, grant_hours, label } }。
+   * 也可传拆开字段 price_week / psych_week / days_week / hours_week / label_week …
    */
   function normalizeSkuPrices(raw) {
     var src = raw;
@@ -187,32 +200,46 @@ function createAgentChannels(deps) {
       return bucket[id];
     }
 
-    /* 拆开字段：price_week / days_week / hours_week / label_week */
+    /* 拆开字段：price_week / psych_week|list_week / days_week / hours_week / label_week */
     CHANNEL_SKU_IDS.forEach(function (id) {
       var meta = CHANNEL_SKU_META[id];
       var key = meta.key;
       var amt = parseAmount(src['price_' + key] != null ? src['price_' + key] : src[key]);
+      var listRaw =
+        src['psych_' + key] != null
+          ? src['psych_' + key]
+          : src['list_' + key] != null
+            ? src['list_' + key]
+            : '';
       var days = parseNonNegInt(src['days_' + key], 3650);
       var hours = parseNonNegInt(src['hours_' + key], 23);
       var label =
         src['label_' + key] != null ? String(src['label_' + key]).trim().slice(0, 32) : '';
       if (amt) ensure(id).amount = amt;
+      if (listRaw !== '' && listRaw != null) applyListAmountField(ensure(id), listRaw);
       if (days != null) ensure(id).grant_days = days;
       if (hours != null) ensure(id).grant_hours = hours;
       if (label) ensure(id).label = label;
     });
 
-    /* sku_slots: [{ id|slot, amount, grant_days, grant_hours, label }] */
+    /* sku_slots: [{ id|slot, amount, list_amount|psych_amount, grant_days, grant_hours, label }] */
     if (Array.isArray(src.sku_slots)) {
       src.sku_slots.forEach(function (slot, idx) {
         if (!slot || typeof slot !== 'object') return;
         var id = String(slot.id || CHANNEL_SKU_IDS[idx] || '').trim();
         if (CHANNEL_SKU_IDS.indexOf(id) < 0) return;
         var amt = parseAmount(slot.amount);
+        var listSlot =
+          slot.list_amount != null
+            ? slot.list_amount
+            : slot.psych_amount != null
+              ? slot.psych_amount
+              : '';
         var days = parseNonNegInt(slot.grant_days, 3650);
         var hours = parseNonNegInt(slot.grant_hours, 23);
         var label = slot.label != null ? String(slot.label).trim().slice(0, 32) : '';
         if (amt) ensure(id).amount = amt;
+        if (listSlot !== '' && listSlot != null) applyListAmountField(ensure(id), listSlot);
         if (days != null) ensure(id).grant_days = days;
         if (hours != null) ensure(id).grant_hours = hours;
         if (label) ensure(id).label = label;
@@ -237,7 +264,14 @@ function createAgentChannels(deps) {
         t5_amount: 'sku_ch_t5',
         sku_t5: 'sku_ch_t5'
       };
-      if (k.indexOf('price_') === 0 || k.indexOf('days_') === 0 || k.indexOf('hours_') === 0 || k.indexOf('label_') === 0) {
+      if (
+        k.indexOf('price_') === 0 ||
+        k.indexOf('days_') === 0 ||
+        k.indexOf('hours_') === 0 ||
+        k.indexOf('label_') === 0 ||
+        k.indexOf('psych_') === 0 ||
+        k.indexOf('list_') === 0
+      ) {
         return;
       }
       if (k === 'sku_slots') return;
@@ -247,10 +281,13 @@ function createAgentChannels(deps) {
       if (v == null || v === '') return;
       if (typeof v === 'object' && !Array.isArray(v)) {
         var amtO = parseAmount(v.amount);
+        var listO =
+          v.list_amount != null ? v.list_amount : v.psych_amount != null ? v.psych_amount : '';
         var daysO = parseNonNegInt(v.grant_days, 3650);
         var hoursO = parseNonNegInt(v.grant_hours, 23);
         var labelO = v.label != null ? String(v.label).trim().slice(0, 32) : '';
         if (amtO) ensure(id).amount = amtO;
+        if (listO !== '' && listO != null) applyListAmountField(ensure(id), listO);
         if (daysO != null) ensure(id).grant_days = daysO;
         if (hoursO != null) ensure(id).grant_hours = hoursO;
         if (labelO) ensure(id).label = labelO;
@@ -265,14 +302,17 @@ function createAgentChannels(deps) {
     Object.keys(bucket).forEach(function (id) {
       var o = bucket[id];
       var hasAmt = !!o.amount;
+      var hasList = !!o.list_amount;
       var hasDur = o.grant_days != null || o.grant_hours != null;
       var hasLabel = !!o.label;
-      if (!hasAmt && !hasDur && !hasLabel) return;
+      if (!hasAmt && !hasList && !hasDur && !hasLabel) return;
       /* 只改时长时也要落库 */
       if (hasDur) {
         if (o.grant_days == null) o.grant_days = 0;
         if (o.grant_hours == null) o.grant_hours = 0;
-        if ((o.grant_days || 0) + (o.grant_hours || 0) <= 0 && !hasAmt && !hasLabel) return;
+        if ((o.grant_days || 0) + (o.grant_hours || 0) <= 0 && !hasAmt && !hasList && !hasLabel) {
+          return;
+        }
       }
       out[id] = o;
     });
@@ -288,12 +328,21 @@ function createAgentChannels(deps) {
     var p = prices || {};
     function slot(id) {
       var o = p[id];
-      if (o == null) return { amount: '', grant_days: '', grant_hours: '', label: '' };
+      if (o == null) {
+        return { amount: '', list_amount: '', grant_days: '', grant_hours: '', label: '' };
+      }
       if (typeof o !== 'object') {
-        return { amount: String(o), grant_days: '', grant_hours: '', label: '' };
+        return {
+          amount: String(o),
+          list_amount: '',
+          grant_days: '',
+          grant_hours: '',
+          label: ''
+        };
       }
       return {
         amount: o.amount != null ? String(o.amount) : '',
+        list_amount: o.list_amount != null ? String(o.list_amount) : '',
         grant_days: o.grant_days != null ? String(o.grant_days) : '',
         grant_hours: o.grant_hours != null ? String(o.grant_hours) : '',
         label: o.label != null ? String(o.label) : ''
@@ -304,6 +353,8 @@ function createAgentChannels(deps) {
       var meta = CHANNEL_SKU_META[id];
       var s = slot(id);
       out['price_' + meta.key] = s.amount;
+      out['psych_' + meta.key] = s.list_amount;
+      out['list_' + meta.key] = s.list_amount;
       out['days_' + meta.key] = s.grant_days;
       out['hours_' + meta.key] = s.grant_hours;
       out['label_' + meta.key] = s.label;
@@ -460,6 +511,8 @@ function createAgentChannels(deps) {
       CHANNEL_SKU_IDS.forEach(function (id) {
         var key = CHANNEL_SKU_META[id].key;
         priceSrc['price_' + key] = input && input['price_' + key];
+        priceSrc['psych_' + key] =
+          input && (input['psych_' + key] != null ? input['psych_' + key] : input['list_' + key]);
         priceSrc['days_' + key] = input && input['days_' + key];
         priceSrc['hours_' + key] = input && input['hours_' + key];
         priceSrc['label_' + key] = input && input['label_' + key];

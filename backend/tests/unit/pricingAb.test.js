@@ -378,4 +378,63 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     );
     expect(out.map((s) => s.id)).toEqual(['sku_300_7d']);
   });
+
+  it('applyChannelCatalogPrices applies channel list_amount as strike anchor', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        {
+          id: 'sku_300_7d',
+          amount: '120.00',
+          list_amount: '300.00',
+          psych_offer: true,
+          label: '周卡·心理价特惠',
+          grant_days: 7,
+          grant_hours: 0
+        }
+      ],
+      {
+        sku_300_7d: {
+          amount: '199.00',
+          list_amount: '399.00',
+          label: '体验卡'
+        }
+      }
+    );
+    const s = out[0];
+    expect(s.amount).toBe('199.00');
+    expect(s.list_amount).toBe('399.00');
+    expect(s.psych_offer).toBe(true);
+    expect(s.label).toBe('体验卡·心理价特惠');
+    expect(s.channel_price).toBe(true);
+  });
+
+  it('applyChannelCatalogPrices ignores list_amount not above pay price', () => {
+    const out = applyChannelCatalogPrices(
+      [{ id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 }],
+      { sku_300_7d: { amount: '199.00', list_amount: '150.00' } }
+    );
+    expect(out[0].amount).toBe('199.00');
+    expect(out[0].list_amount).toBeUndefined();
+    expect(out[0].psych_offer).toBeUndefined();
+  });
+
+  it('applyChannelCatalogPrices appends extra tier with list_amount', () => {
+    const out = applyChannelCatalogPrices(
+      [{ id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 }],
+      {
+        sku_ch_t4: {
+          amount: '598.00',
+          list_amount: '798.00',
+          grant_days: 90,
+          grant_hours: 0,
+          label: '季卡'
+        }
+      }
+    );
+    const t4 = out.find((s) => s.id === 'sku_ch_t4');
+    expect(t4.amount).toBe('598.00');
+    expect(t4.list_amount).toBe('798.00');
+    expect(t4.psych_offer).toBe(true);
+    expect(t4.label).toContain('心理价');
+  });
 });

@@ -8974,11 +8974,11 @@
         }
 
         var AGENT_CH_SKU_SLOTS = [
-            { key: 'week', priceId: 'agentChPriceWeek', daysId: 'agentChDaysWeek', hoursId: 'agentChHoursWeek', labelId: 'agentChLabelWeek' },
-            { key: 'biweek', priceId: 'agentChPriceBiweek', daysId: 'agentChDaysBiweek', hoursId: 'agentChHoursBiweek', labelId: 'agentChLabelBiweek' },
-            { key: 'month', priceId: 'agentChPriceMonth', daysId: 'agentChDaysMonth', hoursId: 'agentChHoursMonth', labelId: 'agentChLabelMonth' },
-            { key: 't4', priceId: 'agentChPriceT4', daysId: 'agentChDaysT4', hoursId: 'agentChHoursT4', labelId: 'agentChLabelT4' },
-            { key: 't5', priceId: 'agentChPriceT5', daysId: 'agentChDaysT5', hoursId: 'agentChHoursT5', labelId: 'agentChLabelT5' }
+            { key: 'week', priceId: 'agentChPriceWeek', psychId: 'agentChPsychWeek', daysId: 'agentChDaysWeek', hoursId: 'agentChHoursWeek', labelId: 'agentChLabelWeek' },
+            { key: 'biweek', priceId: 'agentChPriceBiweek', psychId: 'agentChPsychBiweek', daysId: 'agentChDaysBiweek', hoursId: 'agentChHoursBiweek', labelId: 'agentChLabelBiweek' },
+            { key: 'month', priceId: 'agentChPriceMonth', psychId: 'agentChPsychMonth', daysId: 'agentChDaysMonth', hoursId: 'agentChHoursMonth', labelId: 'agentChLabelMonth' },
+            { key: 't4', priceId: 'agentChPriceT4', psychId: 'agentChPsychT4', daysId: 'agentChDaysT4', hoursId: 'agentChHoursT4', labelId: 'agentChLabelT4' },
+            { key: 't5', priceId: 'agentChPriceT5', psychId: 'agentChPsychT5', daysId: 'agentChDaysT5', hoursId: 'agentChHoursT5', labelId: 'agentChLabelT5' }
         ];
 
         function agentChFieldVal(id) {
@@ -8997,7 +8997,7 @@
             var pricingEl = document.getElementById('agentChPricing');
             if (pricingEl) pricingEl.value = 'b';
             AGENT_CH_SKU_SLOTS.forEach(function (slot) {
-                [slot.priceId, slot.daysId, slot.hoursId, slot.labelId].forEach(function (id) {
+                [slot.priceId, slot.psychId, slot.daysId, slot.hoursId, slot.labelId].forEach(function (id) {
                     var el = document.getElementById(id);
                     if (el) el.value = '';
                 });
@@ -9029,6 +9029,7 @@
             };
             AGENT_CH_SKU_SLOTS.forEach(function (slot) {
                 setVal(slot.priceId, c['price_' + slot.key]);
+                setVal(slot.psychId, c['psych_' + slot.key] != null ? c['psych_' + slot.key] : c['list_' + slot.key]);
                 setVal(slot.daysId, c['days_' + slot.key]);
                 setVal(slot.hoursId, c['hours_' + slot.key]);
                 setVal(slot.labelId, c['label_' + slot.key]);
@@ -9185,6 +9186,7 @@
                 };
                 AGENT_CH_SKU_SLOTS.forEach(function (slot) {
                     payload['price_' + slot.key] = agentChFieldVal(slot.priceId);
+                    payload['psych_' + slot.key] = agentChFieldVal(slot.psychId);
                     payload['days_' + slot.key] = agentChFieldVal(slot.daysId);
                     payload['hours_' + slot.key] = agentChFieldVal(slot.hoursId);
                     payload['label_' + slot.key] = agentChFieldVal(slot.labelId);

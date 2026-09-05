@@ -701,7 +701,7 @@ function buildChannelExtraSku(id, ov) {
     ov.label != null && String(ov.label).trim() !== ''
       ? String(ov.label).trim().slice(0, 32)
       : autoChannelGrantLabel(d, h) || String(id);
-  return {
+  var sku = {
     id: String(id),
     amount: amount,
     label: label,
@@ -712,9 +712,35 @@ function buildChannelExtraSku(id, ov) {
     grant_minutes: 0,
     channel_price: true
   };
+  applyChannelListAmount(sku, ov);
+  sku.subject = '激活码·' + (sku.label || label);
+  return sku;
 }
 
-/** 按渠道覆盖货架：金额 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
+/** 渠道心理价：划线对照原价；须高于实付价才生效（与支付页 list_amount 一致） */
+function applyChannelListAmount(sku, ov) {
+  if (!sku || !ov) return;
+  var listRaw =
+    ov.list_amount != null
+      ? ov.list_amount
+      : ov.psych_amount != null
+        ? ov.psych_amount
+        : '';
+  var list = listRaw != null ? String(listRaw).trim() : '';
+  if (!list) return;
+  var listN = Number(list);
+  var payN = Number(sku.amount);
+  if (!(isFinite(listN) && listN > 0 && isFinite(payN) && payN > 0 && listN > payN)) {
+    return;
+  }
+  sku.list_amount = listN.toFixed(2);
+  sku.psych_offer = true;
+  if (sku.label && String(sku.label).indexOf('心理价') < 0) {
+    sku.label = String(sku.label) + '·心理价特惠';
+  }
+}
+
+/** 按渠道覆盖货架：金额 / 心理价划线 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
 function applyChannelCatalogPrices(skus, priceMap) {
   var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
   var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
@@ -729,7 +755,7 @@ function applyChannelCatalogPrices(skus, priceMap) {
     var touched = false;
     if (ov.amount != null && String(ov.amount).trim() !== '') {
       next[i].amount = String(ov.amount).trim();
-      /* 渠道价覆盖后不再用全站心理价划线/文案，避免仍显示「周卡·体验价」 */
+      /* 渠道价覆盖后先清全站心理价划线/文案，避免仍显示「周卡·体验价」 */
       delete next[i].list_amount;
       delete next[i].psych_offer;
       touched = true;
@@ -752,6 +778,22 @@ function applyChannelCatalogPrices(skus, priceMap) {
     } else if (ov.grant_days != null || ov.grant_hours != null) {
       var auto = autoChannelGrantLabel(next[i].grant_days, next[i].grant_hours);
       if (auto) next[i].label = auto;
+    }
+    var listRaw =
+      ov.list_amount != null
+        ? ov.list_amount
+        : ov.psych_amount != null
+          ? ov.psych_amount
+          : '';
+    if (listRaw != null && String(listRaw).trim() !== '') {
+      var listN = Number(String(listRaw).trim());
+      var payN = Number(next[i].amount);
+      if (isFinite(listN) && listN > 0 && isFinite(payN) && payN > 0 && listN > payN) {
+        delete next[i].list_amount;
+        delete next[i].psych_offer;
+        applyChannelListAmount(next[i], ov);
+        if (next[i].list_amount) touched = true;
+      }
     }
     if (touched) {
       next[i].channel_price = true;
