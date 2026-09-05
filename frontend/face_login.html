@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>安全验证</title>
+    <script src="/js/auth-boot.js?v=20260905-facelogin"></script>
+    <script src="/js/auth.js?v=20260905-facelogin" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            background: #fff;
+            min-height: 100%;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'STHeiti', 'Microsoft YaHei', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .header {
+            background: #fff;
+            padding: 0 12px;
+            padding-top: calc(15px + max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px)));
+            min-height: calc(44px + max(env(safe-area-inset-top, 0px), var(--app-shell-statusbar-top, 0px)));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-bottom: 1px solid #e3e4e8;
+        }
+        html.app-top-safe-shell body.page-face-login .header {
+            padding-top: calc(15px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .back-btn {
+            position: absolute;
+            left: 8px;
+            bottom: 0;
+            height: 44px;
+            color: #4285f4;
+            font-size: 15px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            line-height: 21px;
+            padding: 0 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn .back-chevron {
+            display: block;
+            width: 11px;
+            height: 18px;
+        }
+        .back-btn .back-chevron svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 400;
+            line-height: 23px;
+            color: #333;
+        }
+        .verify-main {
+            padding: 48px 24px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .shield-wrap {
+            width: 168px;
+            height: 168px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .shield-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(66, 133, 244, 0.16);
+        }
+        .shield-ring.r1 { width: 168px; height: 168px; }
+        .shield-ring.r2 { width: 136px; height: 136px; }
+        .shield-ring.r3 { width: 104px; height: 104px; }
+        .shield-icon { width: 72px; height: 80px; position: relative; z-index: 1; }
+        .verify-copy {
+            margin-top: 28px;
+            font-size: 15px;
+            line-height: 22px;
+            color: #4285f4;
+            text-align: center;
+        }
+        .slider-section {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+            padding: 0 20px;
+        }
+        .slider-lane {
+            position: relative;
+            height: 48px;
+            background: #f0f2f5;
+            border-radius: 4px;
+            overflow: hidden;
+            max-width: 343px;
+            margin: 0 auto;
+        }
+        .slider-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: #b7d978;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .slider-lane.is-verified { background: #8fc63d; }
+        .slider-lane.is-verified .slider-progress {
+            width: 100% !important;
+            background: #8fc63d;
+        }
+        .slider-hint {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 12px 0 56px;
+            font-size: 16px;
+            color: #999da6;
+            pointer-events: none;
+            user-select: none;
+            z-index: 1;
+        }
+        .slider-lane.is-verified .slider-hint {
+            color: #fff;
+            font-weight: 500;
+            padding: 0 12px;
+        }
+        .slider-hint-check {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            align-items: center;
+            justify-content: center;
+        }
+        .slider-lane.is-verified .slider-hint-check { display: inline-flex; }
+        .slider-hint-check svg { width: 11px; height: 11px; color: #fff; }
+        .slider-arrows {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 52px;
+            height: 100%;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 0 2px #a0a0a0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            cursor: grab;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .slider-lane.is-verified .slider-arrows { display: none; }
+        .slider-grip-icon { width: 16px; height: 16px; color: #80858c; }
+
+        .face-scan {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .face-scan.is-on { display: flex; }
+        .face-oval {
+            width: 168px;
+            height: 210px;
+            border-radius: 50%;
+            border: 3px solid #4285f4;
+            box-shadow: 0 0 0 10px rgba(66, 133, 244, 0.08);
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 40%, #eaf3ff 0%, #f7fbff 70%);
+        }
+        .face-oval::after {
+            content: "";
+            position: absolute;
+            left: 8%;
+            right: 8%;
+            height: 28%;
+            top: -30%;
+            background: linear-gradient(180deg, rgba(66, 133, 244, 0.28), transparent);
+            animation: faceScanSweep 1.4s linear infinite;
+        }
+        @keyframes faceScanSweep {
+            0% { top: -30%; }
+            100% { top: 100%; }
+        }
+        .face-hint {
+            margin-top: 22px;
+            font-size: 15px;
+            color: #4285f4;
+            text-align: center;
+        }
+        .face-status {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #8b93a0;
+            min-height: 20px;
+        }
+        .flow-tip {
+            display: none;
+            margin: 24px 20px 0;
+            padding: 10px 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #d46b08;
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .flow-tip.show { display: block; }
+    </style>
+</head>
+<body class="page-face-login">
+    <div class="header">
+        <a href="login.html" class="back-btn" id="faceLoginBack" data-no-page-loading="1" aria-label="返回">
+            <span class="back-chevron" aria-hidden="true">
+                <svg viewBox="0 0 12 20" xmlns="http://www.w3.org/2000/svg" fill="none">
+                    <path d="M10 2L3 10l7 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </span>
+            <span>返回</span>
+        </a>
+        <span class="header-title">安全验证</span>
+    </div>
+
+    <div class="verify-main">
+        <div class="shield-wrap" id="shieldWrap" aria-hidden="true">
+            <span class="shield-ring r1"></span>
+            <span class="shield-ring r2"></span>
+            <span class="shield-ring r3"></span>
+            <svg class="shield-icon" viewBox="0 0 72 80" xmlns="http://www.w3.org/2000/svg">
+                <path d="M36 4L8 16v24c0 20 12.4 31.6 28 36 15.6-4.4 28-16 28-36V16L36 4z" fill="#4285f4"/>
+                <path d="M24.5 41.2l8.2 8.2 15.8-16.2" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <p class="verify-copy" id="verifyCopy">为保证您的信息安全，请进行验证</p>
+
+        <div class="face-scan" id="faceScanPanel">
+            <div class="face-oval" aria-hidden="true"></div>
+            <p class="face-hint" id="faceScanHint">请将面部对准框内</p>
+            <p class="face-status" id="faceScanStatus">演示扫脸，无需调用系统相机</p>
+        </div>
+        <p class="flow-tip" id="faceFlowTip" role="alert"></p>
+    </div>
+
+    <div class="slider-section" id="sliderSection">
+        <div class="slider-lane" id="faceSliderLane">
+            <div class="slider-progress" id="faceSliderProgress" aria-hidden="true"></div>
+            <span class="slider-hint" id="faceSliderHint">
+                <span class="slider-hint-check" aria-hidden="true">
+                    <svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2.2 6.1l2.4 2.4 5.2-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                <span class="slider-hint-text" id="faceSliderHintText">请按住滑块，拖动到最右边</span>
+            </span>
+            <div class="slider-arrows" id="faceSliderHandle" aria-label="拖动滑块完成验证">
+                <svg class="slider-grip-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9.5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var FACE_DRAFT_KEY = 'face_login_draft_v1';
+            var proceeding = false;
+
+            function forceClearLoader() {
+                try {
+                    if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    }
+                    window.__pageLoadingQueue = [];
+                    var root = document.getElementById('appPageLoadingRoot');
+                    if (root) {
+                        root.classList.remove('is-visible', 'is-cover');
+                        root.setAttribute('aria-hidden', 'true');
+                    }
+                    document.documentElement.classList.remove('app-nav-leaving');
+                } catch (e0) {}
+            }
+
+            function showTip(msg) {
+                var el = document.getElementById('faceFlowTip');
+                if (!el) return;
+                el.textContent = msg || '';
+                el.classList.toggle('show', !!msg);
+            }
+
+            function queryParam(name) {
+                try {
+                    return String(new URLSearchParams(window.location.search).get(name) || '').trim();
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function readDraft() {
+                var draft = { username: '', password: '', next: '' };
+                try {
+                    var raw = sessionStorage.getItem(FACE_DRAFT_KEY);
+                    if (raw) {
+                        var o = JSON.parse(raw);
+                        if (o && typeof o === 'object') {
+                            draft.username = String(o.username || '').trim();
+                            draft.password = String(o.password || '');
+                            draft.next = String(o.next || '').trim();
+                        }
+                    }
+                } catch (e1) {}
+                if (!draft.username) {
+                    draft.username = queryParam('account');
+                }
+                if (!draft.username) {
+                    try {
+                        draft.username = String(localStorage.getItem('userName') || '').trim();
+                    } catch (e2) {}
+                }
+                if (!draft.next && typeof window.getLoginNextTarget === 'function') {
+                    draft.next = String(window.getLoginNextTarget() || '');
+                }
+                if (!draft.next) {
+                    draft.next = queryParam('next');
+                }
+                return draft;
+            }
+
+            function clearDraft() {
+                try {
+                    sessionStorage.removeItem(FACE_DRAFT_KEY);
+                } catch (e3) {}
+            }
+
+            function buildLoginReturnUrl(extras) {
+                var href = 'login.html';
+                try {
+                    if (typeof window.buildLoginPageUrl === 'function') {
+                        href = window.buildLoginPageUrl(readDraft().next, extras || {});
+                    } else {
+                        var u = new URL('login.html', window.location.href);
+                        var next = readDraft().next;
+                        if (next) u.searchParams.set('next', next);
+                        Object.keys(extras || {}).forEach(function (k) {
+                            if (extras[k]) u.searchParams.set(k, String(extras[k]));
+                        });
+                        href = (u.pathname || '/login.html').replace(/^\//, '') + u.search;
+                    }
+                } catch (e4) {}
+                return href;
+            }
+
+            function goLogin(extras) {
+                forceClearLoader();
+                window.location.href = buildLoginReturnUrl(extras);
+            }
+
+            function nextHrefAfterLogin(d) {
+                var loginNext = readDraft().next;
+                var nextHref = 'shouye.html';
+                if (loginNext && /^[a-z0-9_\-]+\.html/i.test(loginNext)) {
+                    var nextPageOnly = String(loginNext).split('?')[0].split('#')[0].toLowerCase();
+                    if (nextPageOnly !== 'purchase.html') {
+                        nextHref = loginNext;
+                    }
+                }
+                try {
+                    if (typeof window.appendSalesChannelToUrl === 'function') {
+                        nextHref = window.appendSalesChannelToUrl(nextHref);
+                    }
+                } catch (e5) {}
+                return nextHref;
+            }
+
+            function applySession(d, username) {
+                if (typeof window.clearIdentityLocalCaches === 'function') {
+                    window.clearIdentityLocalCaches();
+                }
+                if (d.token) localStorage.setItem('token', d.token);
+                localStorage.removeItem('landing_guest_v1');
+                try {
+                    localStorage.removeItem('guest_username_v1');
+                    localStorage.removeItem('guest_sample_tax_seeded_v1');
+                } catch (e6) {}
+                localStorage.setItem('userName', d.username || username);
+                localStorage.setItem('user_id', d.user_id || username);
+                localStorage.setItem('real_name', d.real_name || username);
+                var act = d.account_active === true || d.account_active === 1;
+                localStorage.setItem('account_active', act ? '1' : '0');
+                localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+            }
+
+            function finishFaceLogin() {
+                if (proceeding) return;
+                proceeding = true;
+                forceClearLoader();
+                var draft = readDraft();
+                var status = document.getElementById('faceScanStatus');
+                if (!draft.username || !draft.password) {
+                    clearDraft();
+                    goLogin({
+                        face_ok: '1',
+                        account: draft.username || '',
+                        face_msg: draft.username
+                            ? '扫脸验证已通过，请输入密码完成登录'
+                            : '扫脸演示已完成，请使用账号密码登录'
+                    });
+                    return;
+                }
+                if (status) status.textContent = '正在登录…';
+                var loginClientId = '';
+                try {
+                    if (typeof window.getOrCreateClientDeviceId === 'function') {
+                        loginClientId = String(window.getOrCreateClientDeviceId() || '');
+                    }
+                } catch (e7) {}
+                var loginSalesCh = '';
+                try {
+                    if (typeof window.getSalesChannel === 'function') {
+                        loginSalesCh = String(window.getSalesChannel() || '');
+                    }
+                } catch (e8) {}
+                fetch('api/auth', {
+                    method: 'POST',
+                    headers: typeof window.authHeaders === 'function'
+                        ? window.authHeaders()
+                        : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'login',
+                        username: draft.username,
+                        password: draft.password,
+                        client_id: loginClientId || undefined,
+                        sales_ch: loginSalesCh || undefined
+                    })
+                })
+                    .then(function (r) {
+                        return (window.authParseJson || function (res) { return res.json(); })(r);
+                    })
+                    .then(function (data) {
+                        forceClearLoader();
+                        if (data && data.code === 200 && data.data) {
+                            applySession(data.data, draft.username);
+                            clearDraft();
+                            if (!data.data.account_active && data.data.account_active !== 1) {
+                                window.location.href = 'login.html?need_activate=1';
+                                return;
+                            }
+                            if (data.data.peer_account) {
+                                try {
+                                    sessionStorage.setItem(
+                                        'peer_login_notice',
+                                        String(data.data.peer_login_notice || '')
+                                    );
+                                } catch (e9) {}
+                            }
+                            window.location.href = nextHrefAfterLogin(data.data);
+                            return;
+                        }
+                        clearDraft();
+                        goLogin({
+                            face_ok: '1',
+                            account: draft.username,
+                            face_msg: (data && data.msg) || '扫脸验证已通过，请输入密码完成登录'
+                        });
+                    })
+                    .catch(function () {
+                        forceClearLoader();
+                        clearDraft();
+                        goLogin({
+                            face_ok: '1',
+                            account: draft.username,
+                            face_msg: '网络错误，扫脸验证已通过，请输入密码完成登录'
+                        });
+                    });
+            }
+
+            function startFaceScan() {
+                forceClearLoader();
+                var slider = document.getElementById('sliderSection');
+                var shield = document.getElementById('shieldWrap');
+                var copy = document.getElementById('verifyCopy');
+                var panel = document.getElementById('faceScanPanel');
+                var hint = document.getElementById('faceScanHint');
+                var status = document.getElementById('faceScanStatus');
+                if (slider) slider.style.display = 'none';
+                if (shield) shield.style.display = 'none';
+                if (copy) copy.style.display = 'none';
+                if (panel) panel.classList.add('is-on');
+                if (hint) hint.textContent = '请将面部对准框内';
+                if (status) status.textContent = '演示扫脸，无需调用系统相机';
+                window.setTimeout(function () {
+                    if (hint) hint.textContent = '识别成功';
+                    if (status) status.textContent = '正在进入下一步…';
+                    forceClearLoader();
+                    window.setTimeout(finishFaceLogin, 280);
+                }, 1200);
+            }
+
+            function initSlider() {
+                var lane = document.getElementById('faceSliderLane');
+                var handle = document.getElementById('faceSliderHandle');
+                var progress = document.getElementById('faceSliderProgress');
+                var hintText = document.getElementById('faceSliderHintText');
+                if (!lane || !handle || !hintText) return;
+                var maxX = 0;
+                var startLeft = 0;
+                var startClientX = 0;
+                var dragging = false;
+
+                function layout() {
+                    maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth);
+                }
+                function setProgress(x) {
+                    if (!progress) return;
+                    var w = x + handle.offsetWidth / 2;
+                    progress.style.width = Math.max(0, Math.min(lane.offsetWidth, w)) + 'px';
+                }
+                function setHandle(x) {
+                    x = Math.max(0, Math.min(x, maxX));
+                    handle.style.left = x + 'px';
+                    setProgress(x);
+                }
+                function resetSlider() {
+                    lane.classList.remove('is-verified');
+                    handle.style.left = '0px';
+                    if (progress) progress.style.width = '0px';
+                    hintText.textContent = '请按住滑块，拖动到最右边';
+                }
+                function onPointerDown(e) {
+                    if (lane.classList.contains('is-verified') || proceeding) return;
+                    dragging = true;
+                    layout();
+                    startLeft = handle.offsetLeft;
+                    startClientX = e.clientX != null ? e.clientX : e.touches[0].clientX;
+                    e.preventDefault();
+                }
+                function onPointerMove(e) {
+                    if (!dragging) return;
+                    var cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                    setHandle(startLeft + cx - startClientX);
+                    e.preventDefault();
+                }
+                function onPointerUp() {
+                    if (!dragging) return;
+                    dragging = false;
+                    layout();
+                    if (handle.offsetLeft >= maxX - 2) {
+                        lane.classList.add('is-verified');
+                        handle.style.left = '0px';
+                        if (progress) progress.style.width = '100%';
+                        hintText.textContent = '验证通过!';
+                        forceClearLoader();
+                        window.setTimeout(startFaceScan, 360);
+                    } else {
+                        resetSlider();
+                    }
+                }
+
+                handle.addEventListener('mousedown', onPointerDown);
+                handle.addEventListener('touchstart', onPointerDown, { passive: false });
+                document.addEventListener('mousemove', onPointerMove);
+                document.addEventListener('touchmove', onPointerMove, { passive: false });
+                document.addEventListener('mouseup', onPointerUp);
+                document.addEventListener('touchend', onPointerUp);
+                document.addEventListener('touchcancel', onPointerUp);
+                window.addEventListener('resize', function () {
+                    if (!lane.classList.contains('is-verified')) {
+                        layout();
+                        setHandle(handle.offsetLeft);
+                    }
+                });
+                layout();
+                resetSlider();
+            }
+
+            function bindBack() {
+                var back = document.getElementById('faceLoginBack');
+                if (!back) return;
+                back.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    forceClearLoader();
+                    window.location.href = buildLoginReturnUrl({});
+                });
+            }
+
+            forceClearLoader();
+            bindBack();
+            initSlider();
+            window.addEventListener('pageshow', forceClearLoader);
+            window.addEventListener('visibilitychange', function () {
+                if (!document.hidden) forceClearLoader();
+            });
+        })();
+    </script>
+</body>
+</html>

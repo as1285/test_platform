@@ -805,7 +805,7 @@
         </div>
         <p class="login-form-tip" id="loginFormTip" role="alert" aria-live="polite"></p>
         <div class="login-aux">
-            <a href="javascript:void(0)" id="linkFaceLogin">扫脸登录</a>
+            <a href="face_login.html" id="linkFaceLogin">扫脸登录</a>
             <span class="login-aux-sep">|</span>
             <a href="zhzh_jhm.html" id="linkForgotPwd">找回密码</a>
         </div>
@@ -1106,10 +1106,83 @@
         }
         var linkFaceLogin = document.getElementById('linkFaceLogin');
         if (linkFaceLogin) {
-            linkFaceLogin.addEventListener('click', function () {
-                alert('扫脸登录功能暂未开放，请使用账号密码登录。');
+            linkFaceLogin.addEventListener('click', function (e) {
+                e.preventDefault();
+                try {
+                    var next = '';
+                    if (typeof window.getLoginNextTarget === 'function') {
+                        next = String(window.getLoginNextTarget() || '');
+                    }
+                    sessionStorage.setItem('face_login_draft_v1', JSON.stringify({
+                        username: (document.getElementById('loginUsername') || {}).value || '',
+                        password: (document.getElementById('loginPassword') || {}).value || '',
+                        next: next,
+                        at: Date.now()
+                    }));
+                } catch (eDraft) {}
+                var href = 'face_login.html';
+                try {
+                    var u = new URL('face_login.html', window.location.href);
+                    var nextQ = '';
+                    if (typeof window.getLoginNextTarget === 'function') {
+                        nextQ = String(window.getLoginNextTarget() || '');
+                    }
+                    if (nextQ) u.searchParams.set('next', nextQ);
+                    var acc = String((document.getElementById('loginUsername') || {}).value || '').trim();
+                    if (acc) u.searchParams.set('account', acc);
+                    href = (u.pathname || '/face_login.html').replace(/^\//, '') + u.search;
+                } catch (eUrl) {}
+                try {
+                    if (typeof window.appendSalesChannelToUrl === 'function') {
+                        href = window.appendSalesChannelToUrl(href);
+                    }
+                } catch (eCh) {}
+                window.location.href = href;
             });
         }
+
+        function applyFaceLoginReturn() {
+            var params;
+            try {
+                params = new URLSearchParams(window.location.search);
+            } catch (eP) {
+                return;
+            }
+            if (!params || params.get('face_ok') !== '1') {
+                return;
+            }
+            var lane = document.getElementById('loginSliderLane');
+            var hintText = document.getElementById('loginSliderHintText');
+            if (lane) {
+                lane.classList.add('is-verified');
+                if (hintText) hintText.textContent = '验证通过!';
+                setLoginSubmitReady(true);
+            }
+            var acc = String(params.get('account') || '').trim();
+            if (!acc) {
+                try {
+                    acc = String(localStorage.getItem('userName') || '').trim();
+                } catch (eAcc) {}
+            }
+            var userEl = document.getElementById('loginUsername');
+            if (userEl && acc && !String(userEl.value || '').trim()) {
+                userEl.value = acc;
+            }
+            var msg = String(params.get('face_msg') || '').trim() ||
+                '扫脸验证已通过，请输入密码完成登录';
+            showLoginFormTip(msg);
+            try {
+                params.delete('face_ok');
+                params.delete('face_msg');
+                var qs = params.toString();
+                history.replaceState(
+                    null,
+                    '',
+                    window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
+                );
+            } catch (eHist) {}
+        }
+        applyFaceLoginReturn();
         var linkDigitalIdentity = document.getElementById('linkDigitalIdentity');
         if (linkDigitalIdentity) {
             linkDigitalIdentity.addEventListener('click', function () {

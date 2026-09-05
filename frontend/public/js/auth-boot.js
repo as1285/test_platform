@@ -51,7 +51,8 @@
     'douyin_yuefu_ad.html': true,
     'gjj_extract_ad.html': true,
     'sousuo.html': true,
-    'zixun.html': true
+    'zixun.html': true,
+    'face_login.html': true
   };
 
   /** @returns {string} 当前 HTML 文件名，缺省为 index.html */

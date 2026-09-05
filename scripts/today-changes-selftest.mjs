@@ -588,6 +588,29 @@ else fail('bilibili share 1x copy');
 mustInclude('frontend/index.html', ["var target = 'shouye.html'", 'url=shouye.html'], 'app launch -> home');
 mustInclude('frontend/nginx.conf', ['return 302 /shouye.html'], 'nginx / -> home');
 mustInclude('frontend/login.html', ["window.location.href = 'shouye.html'"], 'login land home');
+mustInclude(
+  'frontend/login.html',
+  ['href="face_login.html"', 'face_login_draft_v1', 'applyFaceLoginReturn'],
+  'login 扫脸登录 opens face_login.html'
+);
+mustInclude(
+  'frontend/face_login.html',
+  [
+    '安全验证',
+    '请按住滑块，拖动到最右边',
+    '验证通过!',
+    'startFaceScan',
+    'finishFaceLogin',
+    'forceHidePageLoading',
+    '20260905-facelogin'
+  ],
+  'face login slider then demo scan, no stuck loader'
+);
+mustInclude(
+  'frontend/public/js/page-loading.js',
+  ["'face_login.html': true"],
+  'page-loading skips face_login HUD'
+);
 const authJs = read('frontend/public/js/auth.js');
 if (
   authJs.includes("window.location.replace('shouye.html')") &&
@@ -1645,13 +1668,14 @@ mustInclude(
   'frontend/public/js/auth.js',
   [
     'isPrimaryTab',
-    '20260903-mate60pay',
+    '20260905-facelogin',
     's.async = true',
     'appendShellExtra',
     'requestIdleCallback',
     'deferShellPages',
     'skipLoadingPages',
     'install_guide.html',
+    'face_login.html',
   ],
   'auth inject page-loading skip primary tab show'
 );
@@ -2355,6 +2379,7 @@ if (
       'gerenxinxi.html': ['20260903-email-val1'],
       'register.html': ['20260903-email-val1', '20260903-email-reg1'],
       'login.html': ['20260903-email-reg1'],
+      'face_login.html': ['20260905-facelogin'],
       'message.html': ['20260903-email-reg1'],
       'shouye.html': ['20260903-email-reg1'],
       'message_detail.html': ['20260903-mate60-msg3'],
@@ -2367,6 +2392,7 @@ if (
     },
     'auth-boot': {
       'login.html': ['20260902-ip16pm-login'],
+      'face_login.html': ['20260905-facelogin'],
       'message_detail.html': ['20260903-mate60-msg3'],
       'mine.html': ['20260905-vivox90-mine'],
       'shuiming.html': ['20260904-android-inset'],

@@ -1,0 +1,50 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
+
+const frontend = resolve(__dirname, '../..');
+const login = readFileSync(resolve(frontend, 'login.html'), 'utf8');
+const facePath = resolve(frontend, 'face_login.html');
+const face = readFileSync(facePath, 'utf8');
+const boot = readFileSync(resolve(frontend, 'public/js/auth-boot.js'), 'utf8');
+const auth = readFileSync(resolve(frontend, 'public/js/auth.js'), 'utf8');
+const loading = readFileSync(resolve(frontend, 'public/js/page-loading.js'), 'utf8');
+
+describe('扫脸登录 continues past 安全验证', () => {
+  it('login 扫脸登录 goes to face_login.html, not the closed alert', () => {
+    expect(login).toContain('id="linkFaceLogin"');
+    expect(login).toContain('href="face_login.html"');
+    expect(login).toContain("window.location.href = href");
+    expect(login).toContain('face_login_draft_v1');
+    expect(login).toContain('applyFaceLoginReturn');
+    expect(login).toContain("params.get('face_ok')");
+    expect(login).not.toMatch(
+      /linkFaceLogin[\s\S]{0,240}扫脸登录功能暂未开放/
+    );
+  });
+
+  it('face_login page is the 安全验证 gate then demo face scan', () => {
+    expect(existsSync(facePath)).toBe(true);
+    expect(face).toContain('<title>安全验证</title>');
+    expect(face).toContain('class="header-title">安全验证<');
+    expect(face).toContain('为保证您的信息安全，请进行验证');
+    expect(face).toContain('请按住滑块，拖动到最右边');
+    expect(face).toContain('验证通过!');
+    expect(face).toContain('startFaceScan');
+    expect(face).toContain('finishFaceLogin');
+    expect(face).toContain('请将面部对准框内');
+    expect(face).toContain('识别成功');
+    expect(face).toContain('forceHidePageLoading');
+    expect(face).toContain('forceClearLoader');
+    expect(face).toContain('20260905-facelogin');
+    expect(face).not.toMatch(/showPageLoading\s*\(/);
+  });
+
+  it('verify page is public and skips the stuck loading HUD', () => {
+    expect(boot).toContain("'face_login.html': true");
+    expect(auth).toContain("'face_login.html': true");
+    expect(auth).toMatch(/skipLoadingPages[\s\S]*'face_login\.html': true/);
+    expect(loading).toMatch(/SKIP_PAGES[\s\S]*'face_login\.html': true/);
+    expect(auth).toContain('page-loading.js?v=20260905-facelogin');
+  });
+});
