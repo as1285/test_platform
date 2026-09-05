@@ -58,6 +58,29 @@ function registerUserRoutes(app, deps) {
     h.handleUserShebaoPhotoUpload
   );
 
+  /* 兼容 BUG 反馈：仅需登录，不要求已激活 */
+  ['/api/feedback', '/api/feedback.php', '/feedback.php'].forEach(function (p) {
+    app.post(
+      p,
+      mw.requireAuth,
+      function (req, res, next) {
+        mw.userCompatFeedbackUpload.array('images', 6)(req, res, function (err) {
+          if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+              return res.status(413).json({ code: 413, msg: '图片过大，单张不超过 5MB' });
+            }
+            if (err.code === 'LIMIT_FILE_COUNT') {
+              return res.status(400).json({ code: 400, msg: '最多上传 6 张图片' });
+            }
+            return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+          }
+          next();
+        });
+      },
+      h.handleFeedbackSubmit
+    );
+  });
+
   /* 完税二维码替换：仅需登录；未付费可保存/生成（带水印），付款后去水印 */
   app.get('/api/najilu-qr/status', mw.requireAuth, h.handleUserNajiluQrStatus);
   app.get('/api/najilu-qr/list', mw.requireAuth, h.handleUserNajiluQrList);

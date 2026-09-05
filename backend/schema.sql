@@ -144,13 +144,17 @@ CREATE TABLE IF NOT EXISTS shenbao_jilu_records (
     INDEX idx_shenbao_user_tab (user_id, tab)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 用户反馈（BUG / 意见优化；管理后台可回复）
+-- 用户反馈（兼容 BUG / 意见；管理后台可查看）
 CREATE TABLE IF NOT EXISTS user_feedback (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
     real_name_snapshot VARCHAR(255) NULL,
-    feedback_type VARCHAR(32) NOT NULL COMMENT 'bug | suggestion',
+    feedback_type VARCHAR(32) NOT NULL COMMENT 'bug | suggestion | compat_bug',
     content TEXT NOT NULL,
+    image_urls TEXT NULL COMMENT 'JSON 数组：private/compat-feedback/...',
+    user_agent VARCHAR(512) NULL,
+    device_info VARCHAR(255) NULL,
+    contact VARCHAR(64) NULL,
     admin_reply TEXT NULL,
     replied_at DATETIME NULL,
     replied_by VARCHAR(255) NULL,

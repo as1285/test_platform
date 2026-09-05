@@ -10,6 +10,7 @@ const zaizhiCert = require('./admin/zaizhiCert');
 const zaizhiCertUser = require('./user/zaizhiCertUser');
 const sbdyDemoUser = require('./user/sbdyDemoUser');
 const shebaoPhoto = require('./user/shebaoPhoto');
+const compatFeedback = require('./user/compatFeedback');
 const ylbxPs = require('./admin/ylbxPs');
 const ccbFlow = require('./admin/ccbFlow');
 const najiluQr = require('./admin/najiluQr');
@@ -45,6 +46,7 @@ function buildApp() {
       zaizhiCertUser.getHandlers(),
       sbdyDemoUser.getHandlers(),
       shebaoPhoto.getHandlers(),
+      compatFeedback.getHandlers(),
       ylbxPs.getHandlers(),
       ccbFlow.getHandlers(),
       najiluQr.getHandlers(),
@@ -59,6 +61,7 @@ function buildApp() {
     ),
     middleware: Object.assign({}, getMiddleware(), {
       userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload,
+      userCompatFeedbackUpload: compatFeedback.userCompatFeedbackUpload,
       userNajiluQrUpload: najiluQr.userNajiluQrUpload
     })
   };

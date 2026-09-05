@@ -224,6 +224,10 @@ describe('menuRegistry', () => {
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'abc-install-stats')
     ).toBe(false);
     expect(getPageDef('tax-fill-survey').label).toBe('填写调研');
+    expect(getPageDef('feedback').label).toBe('兼容反馈');
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['insights-product'] }, 'feedback')
+    ).toBe(true);
     expect(ADMIN_HUB_DEFS.settings).toBeTruthy();
   });
 

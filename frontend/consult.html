@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260905-ym-picker">
+    <link rel="stylesheet" href="/css/consult.css?v=20260905-compat-bug">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -279,6 +279,14 @@
         </div>
 
         <div id="panel-records" class="tab-panel active">
+            <a class="consult-compat-bug-entry" id="compatBugRecordsEntry" href="compat_bug.html?from=consult_records" aria-label="反馈兼容BUG">
+                <div class="consult-compat-bug-body">
+                    <strong>兼容问题反馈</strong>
+                    <span>页面错位、按钮点不到？拍图说明即可</span>
+                </div>
+                <span class="consult-compat-bug-cta">去反馈</span>
+                <span class="consult-compat-bug-arrow" aria-hidden="true">›</span>
+            </a>
             <div class="card consult-product-card" id="consultRefundAdEntry" hidden>
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
                     <div class="card-title" id="consultRefundAdTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
@@ -939,6 +947,14 @@
                 </div>
                 <p class="hint" id="consultLizhiCertHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">未付款可生成带「演示样例」水印；付 ¥50 后去水印。</p>
                 <a class="btn btn-primary btn-block" href="lizhi_cert.html?from=consult" id="btnConsultLizhiCert">去生成</a>
+            </div>
+            <div class="card consult-product-card" id="compatBugProductEntry">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">兼容问题反馈</div>
+                    <span class="consult-product-badge">免费</span>
+                </div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">设备 / 页面显示异常时，上传截图并描述情况，团队会在后台查看。</p>
+                <a class="btn btn-primary btn-block" href="compat_bug.html?from=consult_products" id="btnConsultCompatBug">反馈兼容BUG</a>
             </div>
             <div class="card consult-product-card" id="zaizhiCertEntryCard">
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">

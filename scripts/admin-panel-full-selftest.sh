@@ -61,7 +61,7 @@ fi
 
 echo "== static source =="
 for pair in \
-  'frontend/public/js/admin_panel.js|ADMIN_HUB_DEFS|insights-product|insights-growth|ops-ia-v19-hub-merge|installGuideVisitRegChart|destroyPlatformCharts|pointRadius: 0' \
+  'frontend/public/js/admin_panel.js|ADMIN_HUB_DEFS|insights-product|insights-growth|ops-ia-v22-compat-feedback|installGuideVisitRegChart|destroyPlatformCharts|pointRadius: 0' \
   'frontend/public/js/admin/modules/charts.js|applyAdminChartDefaults|scheduleChartResize|registerPlatformDailyChart|lineSeriesStyle|cutout' \
   'frontend/admin_panel.html|registerPlatformDailyChart|registerPlatformMixChart|registerPlatformChartsWrap|20260903-chart-opt' \
   'frontend/css/admin_panel.css|admin-hub-tabs|chart-canvas-wrap|register-platform-charts-grid' \
@@ -88,14 +88,14 @@ do
 done
 
 # 侧栏隐藏项不应作为可见 nav 默认出现在 menu tree 构建结果中
-HIDDEN_PAGES='install-guide appearance zaizhi-cert gjj-demo user-login-log analytics-activity analytics-devices tax-fill-survey channel-analysis install-guide-stats'
+HIDDEN_PAGES='install-guide appearance zaizhi-cert gjj-demo user-login-log analytics-activity analytics-devices tax-fill-survey feedback channel-analysis install-guide-stats'
 node - <<'NODE' || fail "menu tree visibility"
 const m = require('./backend/src/admin/menuRegistry');
 const t = m.buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
 const pages = t.menu_tree.flatMap((g) => g.items.map((i) => i.page));
 const hidden = [
   'install-guide','appearance','zaizhi-cert','gjj-demo','user-login-log',
-  'analytics-activity','analytics-devices','tax-fill-survey','channel-analysis','install-guide-stats'
+  'analytics-activity','analytics-devices','tax-fill-survey','feedback','channel-analysis','install-guide-stats'
 ];
 const bad = hidden.filter((p) => pages.includes(p));
 if (bad.length) {
@@ -117,7 +117,8 @@ const routes = [
   ['#channel-analysis','insights-growth','channel'],
   ['#analytics-activity','insights-product','activity'],
   ['#zaizhi-cert','lizhi-cert','zaizhi'],
-  ['#insights-growth/install-stats','insights-growth','install-stats']
+  ['#insights-growth/install-stats','insights-growth','install-stats'],
+  ['#feedback','insights-product','feedback']
 ];
 for (const [raw, hub, tab] of routes) {
   const r = m.parseAdminRoute(raw);

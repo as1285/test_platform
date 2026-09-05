@@ -76,6 +76,18 @@ app.get(
   mw.requireAdminAnyMenu(['user-data', 'users']),
   h.handleAdminShebaoPhotoFile
 );
+app.get(
+  '/api/admin/feedback',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['feedback', 'insights-product', 'analytics-devices', 'analytics']),
+  h.handleAdminFeedbackList
+);
+app.get(
+  '/api/admin/feedback/:id/image/:index',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['feedback', 'insights-product', 'analytics-devices', 'analytics']),
+  h.handleAdminFeedbackImage
+);
 /* 工具页预填：独立路径，避免部分浏览器扩展把 /user-data/ 当成追踪接口拦截（表现为 Failed to fetch） */
 app.get(
   '/api/admin/lizhi-cert/prefill',

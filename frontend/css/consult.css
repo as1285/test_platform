@@ -686,6 +686,51 @@ html.app-ios-iphone15promax .container {
     color: #d97706;
     line-height: 1;
 }
+#panel-records .consult-compat-bug-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+    -webkit-tap-highlight-color: transparent;
+}
+#panel-records .consult-compat-bug-entry:active {
+    opacity: 0.92;
+}
+#panel-records .consult-compat-bug-body {
+    flex: 1;
+    min-width: 0;
+}
+#panel-records .consult-compat-bug-body strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e40af;
+}
+#panel-records .consult-compat-bug-body span {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #64748b;
+}
+#panel-records .consult-compat-bug-cta {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1d4ed8;
+}
+#panel-records .consult-compat-bug-arrow {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #60a5fa;
+    line-height: 1;
+}
 #panel-records #consultRefundAdEntry.is-refund-qualified,
 #panel-products #consultRefundAdProductEntry.is-refund-qualified {
     border: 1px solid #fecaca;

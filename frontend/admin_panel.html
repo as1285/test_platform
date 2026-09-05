@@ -3469,6 +3469,19 @@
                     </section>
                 </div>
 
+                <div id="page-feedback" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>兼容 BUG 反馈</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">用户从 C 端「我要咨询 → 兼容问题反馈」提交：问题描述、截图、设备信息。按时间倒序，点行可展开详情与图片。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <input type="search" id="feedbackSearch" class="filter-select" placeholder="搜索账号、描述或机型" style="min-width:220px;">
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshFeedback">刷新</button>
+                        </div>
+                        <p id="feedbackSummary" class="stat">进入本页后加载…</p>
+                        <div id="feedbackMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite"></div>
+                    </section>
+                </div>
+
                 <div id="page-analytics-activity" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户日活与登录趋势</h2>
@@ -4048,9 +4061,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260905-no-tracking"></script>
+    <script src="/js/admin/loader.js?v=20260905-compat-bug"></script>
     <script src="/js/admin/nav.js?v=20260901-reg-merge"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260905-no-tracking"></script>
+    <script src="/js/admin_panel.js?v=20260905-compat-bug"></script>
 </body>
 </html>

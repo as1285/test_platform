@@ -241,7 +241,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 18,
-    alias_menus: ['analytics-activity', 'analytics-devices', 'tax-fill-survey']
+    alias_menus: ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback']
   },
   {
     page: 'insights-growth',
@@ -281,6 +281,17 @@ const ADMIN_PAGE_DEFS = [
     order: 25,
     assignable: false,
     nav_hidden: true
+  },
+  {
+    page: 'feedback',
+    menu_key: 'feedback',
+    label: '兼容反馈',
+    group: 'insights',
+    module: 'feedback',
+    order: 26,
+    assignable: false,
+    nav_hidden: true,
+    alias_menus: ['insights-product', 'analytics-devices']
   },
   {
     page: 'channel-analysis',
@@ -426,7 +437,8 @@ const ADMIN_HUB_DEFS = {
     tabs: [
       { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
       { id: 'devices', label: '机型', page: 'analytics-devices' },
-      { id: 'survey', label: '填写调研', page: 'tax-fill-survey' }
+      { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
+      { id: 'feedback', label: '兼容反馈', page: 'feedback' }
     ]
   },
   'insights-growth': {
