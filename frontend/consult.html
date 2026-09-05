@@ -519,17 +519,15 @@
                     <span>税务记录列表</span>
                     <div class="card-title-actions">
                         <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
-                        <div class="batch-tax-more-wrap">
-                            <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false" aria-pressed="false">管理</button>
-                            <div class="batch-tax-more-menu" id="taxRecordsManageMenu" hidden>
-                                <button type="button" class="batch-tax-more-item" onclick="openTaxRecycleBin(); closeTaxRecordsManageMenu();">回收站</button>
-                                <button type="button" class="batch-tax-more-item" onclick="dedupeTaxRecords(); closeTaxRecordsManageMenu();">一键去重</button>
-                                <button type="button" class="batch-tax-more-item" onclick="deleteTaxRecordsByYear(); closeTaxRecordsManageMenu();">按年删除</button>
-                                <button type="button" class="batch-tax-more-item" onclick="openDeleteTaxRecordsByCompanyModal(); closeTaxRecordsManageMenu();">删除公司数据</button>
-                                <button type="button" class="batch-tax-more-item is-danger" onclick="deleteAllTaxRecords(); closeTaxRecordsManageMenu();">一键删除全部</button>
-                            </div>
-                        </div>
+                        <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false" aria-pressed="false">管理</button>
                     </div>
+                </div>
+                <div class="batch-tax-more-menu tax-records-manage-toolbar" id="taxRecordsManageMenu" hidden>
+                    <button type="button" class="batch-tax-more-item" onclick="openTaxRecycleBin(); closeTaxRecordsManageMenu();">回收站</button>
+                    <button type="button" class="batch-tax-more-item" onclick="dedupeTaxRecords(); closeTaxRecordsManageMenu();">一键去重</button>
+                    <button type="button" class="batch-tax-more-item" onclick="deleteTaxRecordsByYear(); closeTaxRecordsManageMenu();">按年删除</button>
+                    <button type="button" class="batch-tax-more-item" onclick="openDeleteTaxRecordsByCompanyModal(); closeTaxRecordsManageMenu();">删除公司数据</button>
+                    <button type="button" class="batch-tax-more-item is-danger" onclick="deleteAllTaxRecords(); closeTaxRecordsManageMenu();">一键删除全部</button>
                 </div>
                 <p class="tax-records-manage-hint" id="taxRecordsManageHint" hidden>点「删除」移除单条；也可按年或按公司批量处理。删除后可在回收站恢复。</p>
                 <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>

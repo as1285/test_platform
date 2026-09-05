@@ -55,6 +55,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('回填修改');
     expect(html).toContain('id="btnTaxRecordsManage"');
     expect(html).toContain('id="taxRecordsManageHint"');
+    expect(html).toContain('tax-records-manage-toolbar');
     expect(html).toContain('consult.css?v=20260905-list-tap');
     expect(html).toContain('consult-records.js?v=20260905-list-tap');
     expect(html).toContain('consult-batch-tax.js?v=20260905-list-tap');
@@ -110,7 +111,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
   it('styles hide per-row delete until manage mode and keep a tappable chevron', () => {
     expect(css).toContain('#taxRecordsListCard.is-managing .record-card-delete');
     expect(css).toContain('.record-card.is-tappable');
-    expect(css).toContain('#taxRecordsListCard.is-managing #taxRecordsManageMenu');
+    expect(css).toContain('#taxRecordsListCard.is-managing .tax-records-manage-toolbar');
   });
 
   it('updates post-activate copy to tap-card instead of 右侧编辑', () => {

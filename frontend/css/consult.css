@@ -437,22 +437,22 @@ html.app-ios-iphone15promax .container {
     border-color: var(--color-primary-border);
     background: var(--color-primary-bg);
 }
-#taxRecordsListCard.is-managing .card-title-actions { width: 100%; }
-#taxRecordsListCard.is-managing .batch-tax-more-wrap { flex: 1 1 100%; }
-#taxRecordsListCard.is-managing #taxRecordsManageMenu {
+#taxRecordsListCard .tax-records-manage-toolbar {
     position: static;
-    display: flex;
+    display: none;
     flex-direction: row;
     flex-wrap: wrap;
     min-width: 0;
     width: 100%;
-    margin-top: 6px;
+    margin: 0 0 8px;
     box-shadow: none;
     border: 1px solid var(--color-border-light);
     background: var(--color-surface-alt);
 }
-#taxRecordsListCard.is-managing #taxRecordsManageMenu[hidden] { display: none !important; }
-#taxRecordsListCard.is-managing .batch-tax-more-item {
+#taxRecordsListCard.is-managing .tax-records-manage-toolbar:not([hidden]) {
+    display: flex;
+}
+#taxRecordsListCard .tax-records-manage-toolbar .batch-tax-more-item {
     flex: 1 1 auto;
     text-align: center;
     padding: 8px 10px;
