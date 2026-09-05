@@ -1,12 +1,44 @@
 /**
- * 稳健剪贴板复制：Clipboard API → textarea + execCommand → Cordova 插件。
- * 供广告页「一键复制微信号」等场景复用；仅在全部失败时 reject。
+ * 稳健剪贴板复制（全站共用）：
+ * Clipboard API → textarea/contentEditable + execCommand → Cordova 插件 → App 壳 postMessage 桥。
+ * 供「一键复制微信号」等场景；仅全部失败时 reject。
+ *
+ * Cordova APK 用 iframe 加载线上 H5，跨域 iframe 常禁 clipboard-write，
+ * 故最后一跳请壳层（父页面）代为写入剪贴板。
  */
 (function (global) {
   'use strict';
 
+  var CLIPBOARD_API_TIMEOUT_MS = 900;
+  var SHELL_BRIDGE_TIMEOUT_MS = 1600;
+
   function normalizeText(text) {
     return String(text == null ? '' : text);
+  }
+
+  function withTimeout(promise, ms, label) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var timer = global.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        reject(new Error(label || 'timeout'));
+      }, ms);
+      Promise.resolve(promise).then(
+        function (v) {
+          if (settled) return;
+          settled = true;
+          global.clearTimeout(timer);
+          resolve(v);
+        },
+        function (err) {
+          if (settled) return;
+          settled = true;
+          global.clearTimeout(timer);
+          reject(err);
+        }
+      );
+    });
   }
 
   function tryClipboardApi(text) {
@@ -17,44 +49,86 @@
       return Promise.reject(new Error('no_clipboard_writeText'));
     }
     try {
-      return Promise.resolve(global.navigator.clipboard.writeText(text));
+      return withTimeout(
+        Promise.resolve(global.navigator.clipboard.writeText(text)),
+        CLIPBOARD_API_TIMEOUT_MS,
+        'clipboard_api_timeout'
+      );
     } catch (e) {
       return Promise.reject(e);
     }
   }
 
+  function removeNode(node) {
+    try {
+      if (node && node.parentNode) node.parentNode.removeChild(node);
+    } catch (eRm) {}
+  }
+
+  function tryTextareaExecCommand(text) {
+    var doc = global.document;
+    if (!doc || !doc.body) return false;
+    var ta = doc.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.setAttribute('aria-hidden', 'true');
+    /* iOS / WebView：需在视口内、可 focus，勿用 display:none / 远负定位 */
+    ta.style.cssText =
+      'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;' +
+      'border:none;outline:none;box-shadow:none;background:transparent;opacity:0;z-index:99999;';
+    doc.body.appendChild(ta);
+    var ok = false;
+    try {
+      ta.focus();
+      ta.select();
+      if (typeof ta.setSelectionRange === 'function') {
+        ta.setSelectionRange(0, text.length);
+      }
+      ok = !!(doc.execCommand && doc.execCommand('copy'));
+    } catch (e) {
+      ok = false;
+    }
+    removeNode(ta);
+    return ok;
+  }
+
+  function tryContentEditableExecCommand(text) {
+    var doc = global.document;
+    if (!doc || !doc.body) return false;
+    var el = doc.createElement('div');
+    el.contentEditable = 'true';
+    el.setAttribute('aria-hidden', 'true');
+    el.textContent = text;
+    el.style.cssText =
+      'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;' +
+      'border:none;outline:none;opacity:0;z-index:99999;white-space:pre;';
+    doc.body.appendChild(el);
+    var ok = false;
+    try {
+      el.focus();
+      var range = doc.createRange();
+      range.selectNodeContents(el);
+      var sel = global.getSelection && global.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      ok = !!(doc.execCommand && doc.execCommand('copy'));
+      if (sel) sel.removeAllRanges();
+    } catch (e) {
+      ok = false;
+    }
+    removeNode(el);
+    return ok;
+  }
+
   function tryExecCommandCopy(text) {
     return new Promise(function (resolve, reject) {
-      var doc = global.document;
-      if (!doc || !doc.body) {
-        reject(new Error('no_document'));
+      if (tryTextareaExecCommand(text) || tryContentEditableExecCommand(text)) {
+        resolve();
         return;
       }
-      var ta = doc.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.setAttribute('aria-hidden', 'true');
-      /* iOS / WebView：需在视口内、可 focus，勿用 display:none */
-      ta.style.cssText =
-        'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;' +
-        'border:none;outline:none;box-shadow:none;background:transparent;opacity:0;';
-      doc.body.appendChild(ta);
-      var ok = false;
-      try {
-        ta.focus();
-        ta.select();
-        if (typeof ta.setSelectionRange === 'function') {
-          ta.setSelectionRange(0, text.length);
-        }
-        ok = !!(doc.execCommand && doc.execCommand('copy'));
-      } catch (e) {
-        ok = false;
-      }
-      try {
-        doc.body.removeChild(ta);
-      } catch (eRm) {}
-      if (ok) resolve();
-      else reject(new Error('execCommand_copy_failed'));
+      reject(new Error('execCommand_copy_failed'));
     });
   }
 
@@ -96,16 +170,89 @@
         reject(err || new Error('cordova_clipboard_failed'));
       }
       try {
-        /* cordova-clipboard / ionic-plugin-clipboard：copy(text, success, error) */
         if (clip !== global.Clipboard) {
           clip.copy(text, done, fail);
           return;
         }
-        /* 少数同步 Clipboard.copy(text) */
         clip.copy(text);
         done();
       } catch (e) {
         fail(e);
+      }
+    });
+  }
+
+  function inAppShellIframe() {
+    try {
+      if (global.parent && global.parent !== global) {
+        var ua = String((global.navigator && global.navigator.userAgent) || '');
+        if (/TaxPlatformCordovaApp/i.test(ua)) return true;
+        /* 壳会 postMessage device-hint；即便无 UA，只要确有跨域父页也尝试桥接 */
+        try {
+          void global.parent.location.href;
+          /* 能读到 parent.location → 同源，不是线上壳 iframe */
+          return false;
+        } catch (cross) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function tryShellBridgeCopy(text) {
+    return new Promise(function (resolve, reject) {
+      if (!inAppShellIframe()) {
+        reject(new Error('no_shell_bridge'));
+        return;
+      }
+      var id =
+        'clip_' +
+        String(Date.now()) +
+        '_' +
+        Math.random().toString(36).slice(2, 8);
+      var settled = false;
+      function cleanup() {
+        try {
+          global.removeEventListener('message', onMsg);
+        } catch (e0) {}
+        if (timer) global.clearTimeout(timer);
+      }
+      function finishOk() {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      }
+      function finishFail(err) {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(err || new Error('shell_clipboard_failed'));
+      }
+      function onMsg(ev) {
+        var d = ev && ev.data;
+        if (!d || d.source !== 'tax-shell' || d.type !== 'clipboard-copy-result') return;
+        if (String(d.id || '') !== id) return;
+        if (d.ok) finishOk();
+        else finishFail(new Error(d.detail || 'shell_clipboard_failed'));
+      }
+      var timer = global.setTimeout(function () {
+        finishFail(new Error('shell_clipboard_timeout'));
+      }, SHELL_BRIDGE_TIMEOUT_MS);
+      try {
+        global.addEventListener('message', onMsg);
+        global.parent.postMessage(
+          {
+            source: 'tax-platform-h5',
+            type: 'clipboard-copy',
+            id: id,
+            text: text
+          },
+          '*'
+        );
+      } catch (e) {
+        finishFail(e);
       }
     });
   }
@@ -118,11 +265,16 @@
     var t = normalizeText(text);
     if (!t) return Promise.reject(new Error('empty'));
 
-    return tryClipboardApi(t).catch(function () {
-      return tryExecCommandCopy(t);
-    }).catch(function () {
-      return tryCordovaCopy(t);
-    });
+    return tryClipboardApi(t)
+      .catch(function () {
+        return tryExecCommandCopy(t);
+      })
+      .catch(function () {
+        return tryCordovaCopy(t);
+      })
+      .catch(function () {
+        return tryShellBridgeCopy(t);
+      });
   }
 
   /**
@@ -151,6 +303,7 @@
     copyTextToClipboard: copyTextToClipboard,
     tryClipboardApi: tryClipboardApi,
     tryExecCommandCopy: tryExecCommandCopy,
-    tryCordovaCopy: tryCordovaCopy
+    tryCordovaCopy: tryCordovaCopy,
+    tryShellBridgeCopy: tryShellBridgeCopy
   };
 })(typeof window !== 'undefined' ? window : globalThis);

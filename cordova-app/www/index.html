@@ -169,6 +169,11 @@
                 f.setAttribute('title', '应用');
                 f.setAttribute('importance', 'high');
                 f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+                /* 跨域 iframe 默认可能禁剪贴板；显式放开供 H5「一键复制微信号」 */
+                f.setAttribute('allow', 'clipboard-read; clipboard-write');
+                try {
+                    f.allow = 'clipboard-read; clipboard-write';
+                } catch (eAllow) {}
                 f.src = startUrl || buildAppStartUrl();
                 f.addEventListener('load', function () {
                     try {
@@ -256,6 +261,74 @@
                 } catch (eReply) {}
             }
 
+            function replyClipboardCopy(id, ok, detail) {
+                var f = document.getElementById('app-frame');
+                try {
+                    if (f && f.contentWindow) {
+                        f.contentWindow.postMessage(
+                            {
+                                source: 'tax-shell',
+                                type: 'clipboard-copy-result',
+                                id: id,
+                                ok: !!ok,
+                                detail: detail || ''
+                            },
+                            '*'
+                        );
+                    }
+                } catch (eClipReply) {}
+            }
+
+            /** 壳层代写剪贴板：优先 Cordova 插件，再 execCommand（绕过 iframe 权限限制） */
+            function copyTextInShell(text, id) {
+                var t = text != null ? String(text) : '';
+                if (!t) {
+                    replyClipboardCopy(id, false, 'empty');
+                    return;
+                }
+                function viaExecCommand() {
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = t;
+                        ta.setAttribute('readonly', '');
+                        ta.style.cssText =
+                            'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:none;';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        if (typeof ta.setSelectionRange === 'function') {
+                            ta.setSelectionRange(0, t.length);
+                        }
+                        var ok = !!(document.execCommand && document.execCommand('copy'));
+                        document.body.removeChild(ta);
+                        return ok;
+                    } catch (eExec) {
+                        return false;
+                    }
+                }
+                try {
+                    var clip =
+                        (window.cordova &&
+                            window.cordova.plugins &&
+                            window.cordova.plugins.clipboard) ||
+                        (window.plugins && window.plugins.clipboard) ||
+                        null;
+                    if (clip && typeof clip.copy === 'function') {
+                        clip.copy(
+                            t,
+                            function () {
+                                replyClipboardCopy(id, true, 'cordova');
+                            },
+                            function () {
+                                replyClipboardCopy(id, viaExecCommand(), 'cordova_fail_exec');
+                            }
+                        );
+                        return;
+                    }
+                } catch (eCordova) {}
+                replyClipboardCopy(id, viaExecCommand(), 'exec');
+            }
+
             function saveLocalFileFromH5(data) {
                 var id = data && data.id;
                 try {
@@ -287,6 +360,10 @@
                 }
                 if (data.type === 'save-local-file') {
                     saveLocalFileFromH5(data);
+                    return;
+                }
+                if (data.type === 'clipboard-copy') {
+                    copyTextInShell(data.text, data.id);
                 }
             });
 

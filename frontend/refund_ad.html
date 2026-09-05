@@ -905,7 +905,7 @@
         </a>
     </div>
     <script src="/js/refund-estimate.js?v=20260904-calc"></script>
-    <script src="/js/clipboard-copy.js?v=20260905-wxcopy"></script>
+    <script src="/js/clipboard-copy.js?v=20260905-wxcopy2"></script>
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
@@ -967,9 +967,12 @@
                     copied = localStorage.getItem(WECHAT_COPIED_KEY) === '1';
                 } catch (eCopied) {}
                 if (!copied) {
-                    setNodeText(document.getElementById('btnCopyRefundWechat'), '一键复制微信号 · 备注' + remark);
-                    setNodeText(document.getElementById('btnCopyRefundWechatGuide'), '一键复制微信号 · 备注' + remark);
-                    setNodeText(document.getElementById('btnStickyCopyRefundWechat'), '一键复制微信号 · 备注' + remark);
+                    var copyBtnLabel = fromTaxDone
+                        ? '一键复制微信并备注' + remark
+                        : '一键复制微信号 · 备注' + remark;
+                    setNodeText(document.getElementById('btnCopyRefundWechat'), copyBtnLabel);
+                    setNodeText(document.getElementById('btnCopyRefundWechatGuide'), copyBtnLabel);
+                    setNodeText(document.getElementById('btnStickyCopyRefundWechat'), copyBtnLabel);
                 }
             }
             var gjjOn = !!cfg.gjj;
@@ -1332,6 +1335,11 @@
             document.body.classList.add('is-from-tax-done');
             var titleEl = document.getElementById('refundAdTitle');
             if (titleEl) titleEl.textContent = '填完了';
+            var copyLabel = '一键复制微信并备注二次退税';
+            if (copyBtn) copyBtn.textContent = copyLabel;
+            if (stickyCopyBtn) stickyCopyBtn.textContent = copyLabel;
+            var guideCopyBtn = document.getElementById('btnCopyRefundWechatGuide');
+            if (guideCopyBtn) guideCopyBtn.textContent = copyLabel;
             try {
                 localStorage.setItem('refund_ad_after_tax_v1', '1');
             } catch (eSeen) {}
