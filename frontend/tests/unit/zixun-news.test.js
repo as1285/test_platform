@@ -21,9 +21,10 @@ describe('homepage news opens zixun list', () => {
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="查看更多"/);
   });
 
-  it('scan and 更多服务 still go to help_center', () => {
+  it('更多服务 still goes to help_center; scan opens scanner', () => {
     expect(shouye).toMatch(/href="help_center\.html"[^>]*aria-label="更多服务"/);
-    expect(shouye).toContain("window.location.href = 'help_center.html'");
+    expect(shouye).not.toContain("window.location.href = 'help_center.html'");
+    expect(shouye).toContain("window.location.href = 'scan.html'");
   });
 
   it('zixun page exists with title and homepage news rows', () => {

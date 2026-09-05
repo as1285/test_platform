@@ -21,7 +21,8 @@
     'install-ios.html': true,
     'admin_login.html': true,
     'admin_panel.html': true,
-    'face_login.html': true
+    'face_login.html': true,
+    'scan.html': true
   };
 
   /* 底栏 TAB 互切可不盖转圈；从「我要咨询」等深层页切走必须立刻遮住，避免安卓慢切时闪编辑页 */

@@ -45,6 +45,6 @@ describe('扫脸登录 continues past 安全验证', () => {
     expect(auth).toContain("'face_login.html': true");
     expect(auth).toMatch(/skipLoadingPages[\s\S]*'face_login\.html': true/);
     expect(loading).toMatch(/SKIP_PAGES[\s\S]*'face_login\.html': true/);
-    expect(auth).toContain('page-loading.js?v=20260905-facelogin');
+    expect(auth).toContain('page-loading.js?v=20260905-scan');
   });
 });

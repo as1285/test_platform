@@ -1721,7 +1721,7 @@
 
   function buildCertificateVerifyUrl(app) {
     var code = queryCode(app);
-    /* 只带验证码，缩短 payload → 更少模块，预览缩小时不易糊成条纹 */
+    /* 首页扫一扫 parseTaxQrPayload 识别本 URL / 16 位 code；只带验证码，缩短 payload → 更少模块 */
     try {
       var u = new URL('najilu.html', certificatePublicOrigin() + '/');
       u.searchParams.set('view', 'verify');

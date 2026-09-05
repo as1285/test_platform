@@ -88,7 +88,8 @@
     'gjj_extract_ad.html': true,
     'sousuo.html': true,
     'zixun.html': true,
-    'face_login.html': true
+    'face_login.html': true,
+    'scan.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
   /** 通用顶栏蓝（登录 WebClip 等） */
@@ -9102,7 +9103,8 @@
       'install-ios.html': true,
       'admin_login.html': true,
       'admin_panel.html': true,
-      'face_login.html': true
+      'face_login.html': true,
+      'scan.html': true
     };
     if (skipLoadingPages[page]) {
       return;
@@ -9134,7 +9136,7 @@
     }
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260905-facelogin';
+      s.src = '/js/page-loading.js?v=20260905-scan';
       s.setAttribute('data-app-page-loading-js', '1');
       /* 异步加载：不阻塞后续 HTML/图片解析，转圈由业务页主动触发 */
       s.async = true;
