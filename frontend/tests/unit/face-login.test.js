@@ -21,6 +21,15 @@ describe('扫脸登录 continues past 安全验证', () => {
     expect(login).not.toMatch(
       /linkFaceLogin[\s\S]{0,240}扫脸登录功能暂未开放/
     );
+    // 扫脸回跳只点亮绿色「验证通过!」，不弹橙黄 tip
+    expect(login).toMatch(
+      /applyFaceLoginReturn[\s\S]*?showLoginFormTip\(\s*''\s*\)/
+    );
+    expect(login).not.toMatch(
+      /applyFaceLoginReturn[\s\S]*?showLoginFormTip\(\s*msg\s*\)/
+    );
+    expect(login).not.toContain('扫脸演示已完成，请使用账号密码登录');
+    expect(login).not.toContain('扫脸验证已通过，请输入密码完成登录');
   });
 
   it('face_login page is the 安全验证 gate then demo face scan', () => {
@@ -36,7 +45,10 @@ describe('扫脸登录 continues past 安全验证', () => {
     expect(face).toContain('识别成功');
     expect(face).toContain('forceHidePageLoading');
     expect(face).toContain('forceClearLoader');
-    expect(face).toContain('20260905-facelogin-ui2');
+    expect(face).toContain('20260905-facelogin-ui3');
+    expect(face).not.toContain('face_msg');
+    expect(face).not.toContain('扫脸演示已完成，请使用账号密码登录');
+    expect(face).not.toContain('扫脸验证已通过，请输入密码完成登录');
     expect(face).not.toMatch(/showPageLoading\s*\(/);
     // 滑块跟在文案下方，禁止 fixed 贴底造成半屏空洞 + 壳层蓝底透出
     expect(face).toMatch(/\.slider-section\s*\{[^}]*position:\s*static/s);

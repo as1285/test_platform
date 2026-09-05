@@ -1168,12 +1168,12 @@
             if (userEl && acc && !String(userEl.value || '').trim()) {
                 userEl.value = acc;
             }
-            var msg = String(params.get('face_msg') || '').trim() ||
-                '扫脸验证已通过，请输入密码完成登录';
-            showLoginFormTip(msg);
+            // 扫脸回跳只保留绿色「验证通过!」滑块态，不再展示橙黄 tip 文案
+            showLoginFormTip('');
             try {
                 params.delete('face_ok');
                 params.delete('face_msg');
+                params.delete('account');
                 var qs = params.toString();
                 history.replaceState(
                     null,

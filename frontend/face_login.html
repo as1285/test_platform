@@ -8,8 +8,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>安全验证</title>
-    <script src="/js/auth-boot.js?v=20260905-facelogin-ui2"></script>
-    <script src="/js/auth.js?v=20260905-facelogin-ui2" defer></script>
+    <script src="/js/auth-boot.js?v=20260905-facelogin-ui3"></script>
+    <script src="/js/auth.js?v=20260905-facelogin-ui3" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         /* 铺满视口白底，避免壳层给 html 刷的顶栏蓝从短内容下方透出成「半屏蓝块」 */
@@ -451,10 +451,7 @@
                     clearDraft();
                     goLogin({
                         face_ok: '1',
-                        account: draft.username || '',
-                        face_msg: draft.username
-                            ? '扫脸验证已通过，请输入密码完成登录'
-                            : '扫脸演示已完成，请使用账号密码登录'
+                        account: draft.username || ''
                     });
                     return;
                 }
@@ -510,8 +507,7 @@
                         clearDraft();
                         goLogin({
                             face_ok: '1',
-                            account: draft.username,
-                            face_msg: (data && data.msg) || '扫脸验证已通过，请输入密码完成登录'
+                            account: draft.username
                         });
                     })
                     .catch(function () {
@@ -519,8 +515,7 @@
                         clearDraft();
                         goLogin({
                             face_ok: '1',
-                            account: draft.username,
-                            face_msg: '网络错误，扫脸验证已通过，请输入密码完成登录'
+                            account: draft.username
                         });
                     });
             }
