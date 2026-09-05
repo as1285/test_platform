@@ -27,14 +27,14 @@ describe('inactive users always see refund ad (source)', () => {
   it('wires C-end promo to every unactivated user, not only tax-qualified', () => {
     expect(guideSrc).toContain('var showInactive = inactive');
     expect(guideSrc).not.toMatch(/var showInactive = inactive &&/);
-    expect(guideSrc).toContain('function renderInactiveRefundAdPromo');
-    expect(guideSrc).toContain('cg-inactive-refund-promo');
+    expect(guideSrc).not.toContain('function renderInactiveRefundAdPromo');
+    expect(guideSrc).not.toContain('cg-inactive-refund-promo');
+    expect(guideSrc).not.toContain("refundAdRecommendHref('shouye')");
     expect(guideSrc).toContain('未开通可看');
     expect(guideSrc).toContain('去计算可退税额');
     expect(guideSrc).toContain('track_refund_ad_inactive_promo_show');
     expect(guideSrc).toContain('track_refund_ad_inactive_promo_click');
-    expect(guideSrc).toContain("refundAdRecommendHref('shouye')");
-    expect(authSrc).toContain('conversion-guide.js?v=20260905-ios-tax-tap');
+    expect(authSrc).toContain('conversion-guide.js?v=20260905-no-home-refund');
     expect(guideSrc).toContain('id="cgValueGoRefund"');
     expect(guideSrc).toContain('查看可退税额');
     expect(guideSrc).not.toContain('id="cgValueGoPay"');

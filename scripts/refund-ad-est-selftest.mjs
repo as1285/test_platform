@@ -30,6 +30,12 @@ function mustHave(src, needles, label) {
   else fail(label, 'missing: ' + miss.join(', '));
 }
 
+function mustNotHave(src, needles, label) {
+  const hit = needles.filter((k) => src.includes(k));
+  if (!hit.length) ok(label);
+  else fail(label, 'unexpected: ' + hit.join(', '));
+}
+
 const guide = read('frontend/public/js/conversion-guide.js');
 const auth = read('frontend/public/js/auth.js');
 const ad = read('frontend/refund_ad.html');
@@ -62,18 +68,21 @@ if (forceFn && !forceFn[0].includes('稍后再说') && forceFn[0].includes('cgRe
   fail('force dialog has CTA only, no 稍后再说');
 }
 
-mustHave(auth, ['conversion-guide.js?v=20260905-list-tap'], 'auth.js cache-busts conversion-guide');
+mustHave(auth, ['conversion-guide.js?v=20260905-no-home-refund'], 'auth.js cache-busts conversion-guide');
 
 mustHave(
   guide,
   [
     'var showInactive = inactive',
-    'function renderInactiveRefundAdPromo',
-    'cg-inactive-refund-promo',
-    'track_refund_ad_inactive_promo_show',
-    '去计算可退税额'
+    '去计算可退税额',
+    'track_refund_ad_inactive_promo_show'
   ],
-  'source conversion-guide inactive refund promo'
+  'source conversion-guide inactive refund promo (non-home)'
+);
+mustNotHave(
+  guide,
+  ['function renderInactiveRefundAdPromo', 'cg-inactive-refund-promo', "refundAdRecommendHref('shouye')"],
+  'home inactive refund card removed from conversion-guide'
 );
 
 mustHave(
@@ -128,13 +137,8 @@ const containerChecks = [
     'container conversion-guide 4500/month'
   ],
   [
-    '/usr/share/nginx/html/js/conversion-guide.js',
-    'cg-inactive-refund-promo',
-    'container conversion-guide inactive promo'
-  ],
-  [
     '/usr/share/nginx/html/js/auth.js',
-    '20260905-tax-year-nav',
+    '20260905-no-home-refund',
     'container auth cache-bust'
   ],
   [
@@ -153,6 +157,11 @@ if (existsSync('/var/run/docker.sock') || process.env.FRONTEND_CONTAINER) {
   for (const [path, needle, label] of containerChecks) {
     if (dockerGrep(path, needle)) ok(label);
     else fail(label, needle + ' not in ' + path);
+  }
+  if (dockerGrep('/usr/share/nginx/html/js/conversion-guide.js', 'cg-inactive-refund-promo')) {
+    fail('container conversion-guide has no home promo', 'cg-inactive-refund-promo still present');
+  } else {
+    ok('container conversion-guide has no home promo');
   }
 } else {
   fail('docker available', 'no docker.sock');
@@ -176,22 +185,25 @@ if (adHtml.includes('refundEstCard') && adHtml.includes('二次退税怎么来�
   fail('HTTP refund_ad.html serves estimate card', adHtml ? 'missing markers' : 'empty/failed');
 }
 
-const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260905-list-tap');
+const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260905-no-home-refund');
 if (
   cgJs.includes('cg-refund-force-overlay') &&
   cgJs.includes('4500') &&
-  cgJs.includes('cg-inactive-refund-promo')
+  !cgJs.includes('cg-inactive-refund-promo')
 ) {
-  ok('HTTP conversion-guide.js serves estimate + force dialog');
+  ok('HTTP conversion-guide.js serves estimate + force dialog without home promo');
 } else {
-  fail('HTTP conversion-guide.js serves estimate + force dialog', cgJs ? 'missing markers' : 'empty/failed');
+  fail(
+    'HTTP conversion-guide.js serves estimate + force dialog without home promo',
+    cgJs ? 'missing markers or home promo still present' : 'empty/failed'
+  );
 }
 
 const authJs = curlText('http://127.0.0.1/js/auth.js');
-if (authJs.includes('conversion-guide.js?v=20260905-list-tap')) {
-  ok('HTTP auth.js points at refund-est conversion-guide');
+if (authJs.includes('conversion-guide.js?v=20260905-no-home-refund')) {
+  ok('HTTP auth.js points at no-home-refund conversion-guide');
 } else {
-  fail('HTTP auth.js points at refund-est conversion-guide');
+  fail('HTTP auth.js points at no-home-refund conversion-guide');
 }
 
 console.log(`[refund-est-selftest] ${passed} ok, ${failed} fail`);
