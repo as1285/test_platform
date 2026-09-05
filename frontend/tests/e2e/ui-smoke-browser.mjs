@@ -4,7 +4,8 @@
  * 由 Docker 容器或本地 Chromium 执行；测试账号由 ui-smoke-host-setup.sh 准备。
  *
  * 机型：见 ui-smoke-devices.mjs
- *   UI_SMOKE_DEVICES=all|full|iphone-12,oneplus-12,...
+ *   UI_SMOKE_DEVICES=all|full|recent|popular|iphone-12,oneplus-12,...
+ *   UI_SMOKE_CHROME_ONLY=1  跳过 API 业务冒烟，只验壳 class / 白顶栏顶距（静态站可用）
  */
 import { mkdirSync } from 'fs';
 import { chromium, devices } from 'playwright';
@@ -576,13 +577,17 @@ async function runAndroidWhiteTop(page, profile, tag) {
   }
 }
 
+const CHROME_ONLY = /^(1|true|yes)$/i.test(String(process.env.UI_SMOKE_CHROME_ONLY || ''));
+
 async function runProfile(browser, profile) {
   const tag = `[${profile.id}]`;
-  log(`${tag} start ${profile.label} suite=${profile.suite}`);
+  log(`${tag} start ${profile.label} suite=${profile.suite}${CHROME_ONLY ? ' chrome-only' : ''}`);
   const { context, page } = await openProfile(browser, profile);
   try {
-    /* 每台机都跑完整业务冒烟，再叠加壳/顶距检查 */
-    await runFullSuite(page, tag);
+    /* 完整业务冒烟需要 API/DB；chrome-only 只验壳 class / 顶距 */
+    if (!CHROME_ONLY) {
+      await runFullSuite(page, tag);
+    }
     if (profile.suite === 'ios-chrome') {
       await runIosChrome(page, profile, tag);
     } else if (profile.platform === 'ios') {
@@ -598,11 +603,19 @@ async function runProfile(browser, profile) {
 }
 
 async function main() {
-  if (!USER || !PASS) {
+  if (!CHROME_ONLY && (!USER || !PASS)) {
     fatal('缺少 UI_SMOKE_USER / UI_SMOKE_PASS（请先运行 ui-smoke-host-setup.sh）');
   }
-  if (!TOKEN) {
+  if (!CHROME_ONLY && !TOKEN) {
     TOKEN = await apiLogin();
+  }
+  if (CHROME_ONLY) {
+    if (!USER) {
+      /* attachSession 已捕获 USER；空用户名只写入 localStorage */
+    }
+    if (!TOKEN) {
+      TOKEN = 'chrome-only-token';
+    }
   }
 
   let profiles;

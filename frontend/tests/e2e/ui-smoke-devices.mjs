@@ -4,6 +4,7 @@
  * - playwrightDevice：用 Playwright 内置 devices[name]
  * - 安卓 OEM：在 Pixel 视口上叠真实型号 UA + tax_device_model_v1，并带 TaxPlatformCordovaApp
  *   以触发 App 壳内白顶栏默认沉浸逻辑
+ * - iOS 版本队列：在内置 iPhone 视口上叠线上高频 OS 版本 UA（Safari 不暴露硬件型号）
  *
  * suite（额外检查；每台机都会先跑完整业务冒烟）:
  *   full              — 仅业务冒烟（主档 iPhone 12）
@@ -11,8 +12,11 @@
  *   android-home      — 安卓首页壳 class / 顶栏存在
  *   android-white-top — 收入纳税明细/查询/详情顶距
  *
- * UI_SMOKE_DEVICES=all|full|recent|id1,id2
- *   recent = 近期频繁改兼容性的机型（见 RECENT_DEVICE_IDS）
+ * UI_SMOKE_DEVICES=all|full|recent|popular|id1,id2
+ *   recent  = 近期频繁改兼容性的机型（见 RECENT_DEVICE_IDS；默认 CI 仍用这个，勿把 popular 并进去）
+ *   popular = 线上 user_devices 高频型号（见 PRODUCTION_TOP_MODELS / POPULAR_DEVICE_IDS）
+ *   all     = 目录全量（长，本地/夜间用）
+ *   full    = 仅 iPhone 12 完整业务冒烟
  */
 
 function androidUa(model, brandLabel) {
@@ -21,6 +25,19 @@ function androidUa(model, brandLabel) {
     model +
     ' Build/UKQ1.230924.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.0.0 Mobile Safari/537.36 TaxPlatformCordovaApp/1.0 ' +
     brandLabel
+  );
+}
+
+/** Safari / WKWebView UA：线上只报 iPhone OS x_y，不报 15,4 这类硬件号 */
+function iosUa(osVersion) {
+  const underscored = String(osVersion).replace(/\./g, '_');
+  const version = String(osVersion).replace(/_/g, '.');
+  return (
+    'Mozilla/5.0 (iPhone; CPU iPhone OS ' +
+    underscored +
+    ' like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/' +
+    version +
+    ' Mobile/15E148 Safari/604.1'
   );
 }
 
@@ -154,6 +171,42 @@ export const DEVICE_PROFILES = [
     platform: 'ios',
     deviceModel: 'iPhone 17 Pro Max'
   },
+  {
+    id: 'iphone-ios18-7',
+    label: 'iPhone iOS 18.7（线上主队列）',
+    playwrightDevice: 'iPhone 15',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('18.7')
+  },
+  {
+    id: 'iphone-ios18-5',
+    label: 'iPhone iOS 18.5',
+    playwrightDevice: 'iPhone 15',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('18.5')
+  },
+  {
+    id: 'iphone-ios17-6',
+    label: 'iPhone iOS 17.6.1',
+    playwrightDevice: 'iPhone 14 Pro Max',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('17.6.1')
+  },
+  {
+    id: 'iphone-ios14-4',
+    label: 'iPhone iOS 14.4',
+    playwrightDevice: 'iPhone 12',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('14.4')
+  },
 
   /* —— 通用安卓 —— */
   {
@@ -196,6 +249,14 @@ export const DEVICE_PROFILES = [
   Object.assign(outer('CPH2797', 'OPPO Find X9', { id: 'oppo-findx9' }), {
     userAgent: androidUa('CPH2797', 'OPPO Find X9')
   }),
+  /* 线上 PKB110：Find X8。未进核实外置名单，走白顶栏默认沉浸 40px */
+  immersive('PKB110', 'OPPO Find X8', ['app-android-oppo-family', 'app-android-immersive-white-top'], {
+    id: 'oppo-findx8'
+  }),
+  /* 线上 PFTM20：A57 5G。未进 A58 外置名单，走默认沉浸，勿误套 A58 清零 */
+  immersive('PFTM20', 'OPPO A57 5G', ['app-android-oppo-family', 'app-android-immersive-white-top'], {
+    id: 'oppo-a57'
+  }),
 
   /* —— 小米 / 红米 —— */
   immersive('2211133C', '小米 13', ['app-android-xiaomi-13', 'app-android-immersive-white-top'], {
@@ -234,8 +295,18 @@ export const DEVICE_PROFILES = [
   immersive('24122RKC7C', '红米 K80 Pro', ['app-android-redmi-k80pro', 'app-android-immersive-white-top'], {
     id: 'redmi-k80pro'
   }),
+  immersive(
+    '25060RK16C',
+    '红米 K80 Ultra',
+    ['app-android-redmi-k80ultra', 'app-android-25060rk16c', 'app-android-immersive-white-top'],
+    { id: 'redmi-k80ultra' }
+  ),
   immersive('2407FPN8EG', '红米 K70 至尊', ['app-android-redmi-k70-ultra', 'app-android-immersive-white-top'], {
     id: 'redmi-k70-ultra'
+  }),
+  /* 线上 23113RKC6C：K70 标准版。未进核实外置名单，白顶栏走默认沉浸 */
+  immersive('23113RKC6C', '红米 K70', ['app-android-redmi-k70', 'app-android-immersive-white-top'], {
+    id: 'redmi-k70'
   }),
   immersive('22120RN86C', '红米 12C', ['app-android-redmi-12c', 'app-android-immersive-white-top'], {
     id: 'redmi-12c'
@@ -289,6 +360,10 @@ export const DEVICE_PROFILES = [
     /* OriginOS 5「我的」底图必须单层绘制：见 assertMineE1SingleLayer */
     expect: { mineE1PlainImg: true }
   }),
+  /* 线上 V2309A：X100。未进 X90/X200 特判，白顶栏走默认沉浸，勿误套 X90 单层底图 */
+  immersive('V2309A', 'vivo X100', ['app-android-vivo-family', 'app-android-immersive-white-top'], {
+    id: 'vivo-x100'
+  }),
   immersive('V2301A', 'iQOO Neo8', ['app-android-iqoo-neo8', 'app-android-immersive-white-top'], {
     id: 'iqoo-neo8'
   }),
@@ -310,6 +385,38 @@ export const DEVICE_PROFILES = [
   if (!p.id) throw new Error('device profile missing id: ' + p.label);
   return p;
 });
+
+/**
+ * 线上 user_devices.device_detail_json 高频型号（约 3926 行抽样）。
+ * model 为 Cordova / UA 型号码；id 对应当前冒烟档。
+ */
+export const PRODUCTION_TOP_MODELS = [
+  { count: 829, model: 'iPhone iOS 18.7', id: 'iphone-ios18-7' },
+  { count: 57, model: '23127PN0CC', id: 'xiaomi-14' },
+  { count: 55, model: '24129PN74C', id: 'xiaomi-15' },
+  { count: 37, model: '2211133C', id: 'xiaomi-13' },
+  { count: 37, model: 'V2505A', id: 'iqoo-15' },
+  { count: 36, model: 'PGP110', id: 'oneplus-acepro' },
+  { count: 34, model: '25060RK16C', id: 'redmi-k80ultra' },
+  { count: 31, model: 'V2241A', id: 'vivo-x90' },
+  { count: 31, model: 'PHJ110', id: 'oppo-a58' },
+  { count: 29, model: '2410DPN6CC', id: 'xiaomi-15pro' },
+  { count: 27, model: '23116PN5BC', id: 'xiaomi-14pro' },
+  { count: 26, model: 'PKB110', id: 'oppo-findx8' },
+  { count: 25, model: 'V2301A', id: 'iqoo-neo8' },
+  { count: 24, model: 'V2309A', id: 'vivo-x100' },
+  { count: 23, model: 'ALN-AL00', id: 'mate60' },
+  { count: 23, model: 'PFTM20', id: 'oppo-a57' },
+  { count: 21, model: 'V2405A', id: 'vivo-x200pro' },
+  { count: 20, model: '23113RKC6C', id: 'redmi-k70' },
+  { count: 20, model: 'PJD110', id: 'oneplus-12' },
+  { count: 0, model: 'iPhone iOS 18.5', id: 'iphone-ios18-5' },
+  { count: 0, model: 'iPhone iOS 17.6.1', id: 'iphone-ios17-6' },
+  { count: 0, model: 'iPhone iOS 14.4', id: 'iphone-ios14-4' }
+];
+
+/** 线上高频机（含 iOS 版本队列）。勿并入 recent，以免默认 CI 过长 */
+export const POPULAR_DEVICE_IDS = [...new Set(PRODUCTION_TOP_MODELS.map((row) => row.id))];
 
 /** 近期频繁改兼容性的机型（白顶栏 / 顶距 / 首屏） */
 export const RECENT_DEVICE_IDS = [
@@ -350,7 +457,7 @@ export const RECENT_DEVICE_IDS = [
   'meizu-20pro'
 ];
 
-/** UI_SMOKE_DEVICES=all|full|recent|id1,id2 */
+/** UI_SMOKE_DEVICES=all|full|recent|popular|id1,id2 */
 export function resolveSmokeDevices(raw) {
   const all = DEVICE_PROFILES.slice();
   const spec = String(raw || process.env.UI_SMOKE_DEVICES || 'all').trim().toLowerCase();
@@ -358,6 +465,10 @@ export function resolveSmokeDevices(raw) {
   if (spec === 'full') return all.filter((d) => d.suite === 'full');
   if (spec === 'recent') {
     const want = new Set(RECENT_DEVICE_IDS);
+    return all.filter((d) => want.has(d.id));
+  }
+  if (spec === 'popular') {
+    const want = new Set(POPULAR_DEVICE_IDS);
     return all.filter((d) => want.has(d.id));
   }
   const want = new Set(
@@ -369,7 +480,8 @@ export function resolveSmokeDevices(raw) {
   const picked = all.filter((d) => want.has(d.id));
   if (!picked.length) {
     throw new Error(
-      'UI_SMOKE_DEVICES 无匹配机型。可选: all | full | recent | ' + all.map((d) => d.id).join(', ')
+      'UI_SMOKE_DEVICES 无匹配机型。可选: all | full | recent | popular | ' +
+        all.map((d) => d.id).join(', ')
     );
   }
   return picked;
