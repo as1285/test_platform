@@ -411,6 +411,7 @@ function cloneSku(s) {
     out.list_amount = String(s.list_amount);
   }
   if (s.psych_offer) out.psych_offer = true;
+  if (s.channel_price) out.channel_price = true;
   return out;
 }
 
@@ -672,10 +673,38 @@ var CHANNEL_EXTRA_SKU_IDS = [SKU_CH_T4.id, SKU_CH_T5.id];
 
 function channelOverrideObject(raw) {
   if (raw == null || raw === '') return null;
-  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    /* 深拷贝字段，避免多档共享同一对象引用时互相覆盖金额/心理价 */
+    var copy = {};
+    if (raw.amount != null) copy.amount = raw.amount;
+    else if (raw.price != null) copy.amount = raw.price;
+    if (raw.list_amount != null) copy.list_amount = raw.list_amount;
+    else if (raw.psych_amount != null) copy.list_amount = raw.psych_amount;
+    if (raw.grant_days != null) copy.grant_days = raw.grant_days;
+    if (raw.grant_hours != null) copy.grant_hours = raw.grant_hours;
+    if (raw.label != null) copy.label = raw.label;
+    return copy;
+  }
   var amt = String(raw).trim();
   if (!amt) return null;
   return { amount: amt };
+}
+
+function resolveChannelOverrideAmount(ov) {
+  if (!ov || typeof ov !== 'object') return '';
+  var raw = ov.amount != null ? ov.amount : ov.price != null ? ov.price : '';
+  return raw != null ? String(raw).trim() : '';
+}
+
+function resolveChannelOverrideListAmount(ov) {
+  if (!ov || typeof ov !== 'object') return '';
+  var raw =
+    ov.list_amount != null
+      ? ov.list_amount
+      : ov.psych_amount != null
+        ? ov.psych_amount
+        : '';
+  return raw != null ? String(raw).trim() : '';
 }
 
 function autoChannelGrantLabel(days, hours) {
@@ -687,16 +716,35 @@ function autoChannelGrantLabel(days, hours) {
   return '';
 }
 
+/** 渠道「永久」档：名称或超长天数视为永久开通，但仍用该档自己的实付价（绝不用年卡/模板默认 998） */
+function isChannelPermanentGrant(label, days, hours) {
+  var name = String(label || '').trim();
+  if (name === '永久' || name.indexOf('永久') === 0) return true;
+  var d = parseInt(days, 10) || 0;
+  var h = parseInt(hours, 10) || 0;
+  return d >= 3650 && h <= 0;
+}
+
+function applyChannelPermanentGrant(sku) {
+  if (!sku) return;
+  if (!isChannelPermanentGrant(sku.label, sku.grant_days, sku.grant_hours)) return;
+  sku.grant_kind = 'permanent';
+  sku.grant_days = 0;
+  sku.grant_hours = 0;
+  sku.grant_minutes = 0;
+}
+
 function buildChannelExtraSku(id, ov) {
   if (!ov) return null;
-  var amount = ov.amount != null ? String(ov.amount).trim() : '';
+  var amount = resolveChannelOverrideAmount(ov);
+  /* 第 4/5 档必须显式配置实付价；禁止回落到 SKU_CH_T5 模板默认 998（易与年卡同价） */
   if (!amount) return null;
   var d = ov.grant_days != null ? parseInt(ov.grant_days, 10) || 0 : 0;
   var h = ov.grant_hours != null ? parseInt(ov.grant_hours, 10) || 0 : 0;
   if (d < 0) d = 0;
   if (h < 0) h = 0;
   if (h > 23) h = 23;
-  if (d + h <= 0) return null;
+  if (d + h <= 0 && !isChannelPermanentGrant(ov.label, d, h)) return null;
   var label =
     ov.label != null && String(ov.label).trim() !== ''
       ? String(ov.label).trim().slice(0, 32)
@@ -712,6 +760,8 @@ function buildChannelExtraSku(id, ov) {
     grant_minutes: 0,
     channel_price: true
   };
+  applyChannelPermanentGrant(sku);
+  if (sku.grant_kind !== 'permanent' && d + h <= 0) return null;
   applyChannelListAmount(sku, ov);
   sku.subject = '激活码·' + (sku.label || label);
   return sku;
@@ -720,13 +770,7 @@ function buildChannelExtraSku(id, ov) {
 /** 渠道心理价：划线对照原价；须高于实付价才生效（与支付页 list_amount 一致） */
 function applyChannelListAmount(sku, ov) {
   if (!sku || !ov) return;
-  var listRaw =
-    ov.list_amount != null
-      ? ov.list_amount
-      : ov.psych_amount != null
-        ? ov.psych_amount
-        : '';
-  var list = listRaw != null ? String(listRaw).trim() : '';
+  var list = resolveChannelOverrideListAmount(ov);
   if (!list) return;
   var listN = Number(list);
   var payN = Number(sku.amount);
@@ -743,18 +787,26 @@ function applyChannelListAmount(sku, ov) {
 /** 按渠道覆盖货架：金额 / 心理价划线 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
 function applyChannelCatalogPrices(skus, priceMap) {
   var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
-  var next = Array.isArray(skus) ? skus.map(cloneSku) : [];
+  /*
+   * 先去掉货架上已有的渠道第 4/5 档，再按 map 重建。
+   * 避免「模板默认金额 998」残留：若覆盖只改了天数/名称而漏了 amount，
+   * 旧逻辑会让永久档继续显示年卡同价 998。
+   */
+  var next = (Array.isArray(skus) ? skus : [])
+    .filter(function (s) {
+      return CHANNEL_EXTRA_SKU_IDS.indexOf(String((s && s.id) || '')) < 0;
+    })
+    .map(cloneSku);
   var i;
   for (i = 0; i < next.length; i++) {
     var raw = map[next[i].id];
     if (raw == null || raw === '') continue;
-    var ov =
-      typeof raw === 'object' && !Array.isArray(raw)
-        ? raw
-        : { amount: String(raw).trim() };
+    var ov = channelOverrideObject(raw);
+    if (!ov) continue;
     var touched = false;
-    if (ov.amount != null && String(ov.amount).trim() !== '') {
-      next[i].amount = String(ov.amount).trim();
+    var payAmt = resolveChannelOverrideAmount(ov);
+    if (payAmt) {
+      next[i].amount = payAmt;
       /* 渠道价覆盖后先清全站心理价划线/文案，避免仍显示「周卡·体验价」 */
       delete next[i].list_amount;
       delete next[i].psych_offer;
@@ -779,14 +831,9 @@ function applyChannelCatalogPrices(skus, priceMap) {
       var auto = autoChannelGrantLabel(next[i].grant_days, next[i].grant_hours);
       if (auto) next[i].label = auto;
     }
-    var listRaw =
-      ov.list_amount != null
-        ? ov.list_amount
-        : ov.psych_amount != null
-          ? ov.psych_amount
-          : '';
-    if (listRaw != null && String(listRaw).trim() !== '') {
-      var listN = Number(String(listRaw).trim());
+    var listRaw = resolveChannelOverrideListAmount(ov);
+    if (listRaw) {
+      var listN = Number(listRaw);
       var payN = Number(next[i].amount);
       if (isFinite(listN) && listN > 0 && isFinite(payN) && payN > 0 && listN > payN) {
         delete next[i].list_amount;
@@ -797,6 +844,7 @@ function applyChannelCatalogPrices(skus, priceMap) {
     }
     if (touched) {
       next[i].channel_price = true;
+      applyChannelPermanentGrant(next[i]);
       next[i].subject = '激活码·' + (next[i].label || next[i].id);
     }
   }

@@ -2236,7 +2236,7 @@
         return (Math.max(1, original - discount) / 100).toFixed(2);
     }
 
-    /** 划线对照原价：优先套餐目录价（心理价特惠）；否则更贵永久档；再否则上浮约 35% 取整 */
+    /** 划线对照原价：仅用本档 list_amount；渠道档禁止借用其它档（如年卡）金额。无划线时对本档实付价上浮约 35% */
     function skuListAnchorAmount(sku, allSkus) {
         var listAmt = Number(sku && sku.list_amount) || 0;
         var amt = Number(sku && sku.amount) || 0;
@@ -2244,9 +2244,15 @@
             return listAmt % 1 === 0 ? String(Math.round(listAmt)) : listAmt.toFixed(2);
         }
         if (amt <= 0) return '';
+        /* 渠道专属价：只用本档心理价/上浮，绝不回落到其它档（避免永久显示成年卡 998/1350） */
+        if (sku && sku.channel_price) {
+            var chInflated = Math.ceil((amt * 1.35) / 10) * 10;
+            if (chInflated <= amt) chInflated = Math.ceil(amt + 100);
+            return String(chInflated);
+        }
         var permMax = 0;
         (allSkus || []).forEach(function (s) {
-            if (s && s.grant_kind === 'permanent') {
+            if (s && s.grant_kind === 'permanent' && !s.channel_price) {
                 var a = Number(s.amount) || 0;
                 if (a > permMax) permMax = a;
             }

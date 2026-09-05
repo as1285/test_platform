@@ -228,7 +228,7 @@ function createAgentChannels(deps) {
         if (!slot || typeof slot !== 'object') return;
         var id = String(slot.id || CHANNEL_SKU_IDS[idx] || '').trim();
         if (CHANNEL_SKU_IDS.indexOf(id) < 0) return;
-        var amt = parseAmount(slot.amount);
+        var amt = parseAmount(slot.amount != null ? slot.amount : slot.price);
         var listSlot =
           slot.list_amount != null
             ? slot.list_amount
@@ -280,7 +280,7 @@ function createAgentChannels(deps) {
       var v = src[k];
       if (v == null || v === '') return;
       if (typeof v === 'object' && !Array.isArray(v)) {
-        var amtO = parseAmount(v.amount);
+        var amtO = parseAmount(v.amount != null ? v.amount : v.price);
         var listO =
           v.list_amount != null ? v.list_amount : v.psych_amount != null ? v.psych_amount : '';
         var daysO = parseNonNegInt(v.grant_days, 3650);

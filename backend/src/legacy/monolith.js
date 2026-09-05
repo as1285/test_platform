@@ -6281,6 +6281,7 @@ async function handleAlipayConfig(req, res) {
         amount: s.amount,
         list_amount: s.list_amount || '',
         psych_offer: !!s.psych_offer,
+        channel_price: !!s.channel_price,
         label: s.label,
         subject: s.subject,
         grant_kind: s.grant_kind,
