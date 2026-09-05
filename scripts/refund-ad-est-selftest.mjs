@@ -62,7 +62,7 @@ if (forceFn && !forceFn[0].includes('稍后再说') && forceFn[0].includes('cgRe
   fail('force dialog has CTA only, no 稍后再说');
 }
 
-mustHave(auth, ['conversion-guide.js?v=20260904-funnel-cta'], 'auth.js cache-busts conversion-guide');
+mustHave(auth, ['conversion-guide.js?v=20260905-tax-year-nav'], 'auth.js cache-busts conversion-guide');
 
 mustHave(
   guide,
@@ -134,7 +134,7 @@ const containerChecks = [
   ],
   [
     '/usr/share/nginx/html/js/auth.js',
-    '20260904-funnel-cta',
+    '20260905-tax-year-nav',
     'container auth cache-bust'
   ],
   [
@@ -176,7 +176,7 @@ if (adHtml.includes('refundEstCard') && adHtml.includes('二次退税怎么来�
   fail('HTTP refund_ad.html serves estimate card', adHtml ? 'missing markers' : 'empty/failed');
 }
 
-const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260904-funnel-cta');
+const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260905-tax-year-nav');
 if (
   cgJs.includes('cg-refund-force-overlay') &&
   cgJs.includes('4500') &&
@@ -188,7 +188,7 @@ if (
 }
 
 const authJs = curlText('http://127.0.0.1/js/auth.js');
-if (authJs.includes('conversion-guide.js?v=20260904-funnel-cta')) {
+if (authJs.includes('conversion-guide.js?v=20260905-tax-year-nav')) {
   ok('HTTP auth.js points at refund-est conversion-guide');
 } else {
   fail('HTTP auth.js points at refund-est conversion-guide');
