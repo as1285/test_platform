@@ -437,4 +437,94 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(t4.psych_offer).toBe(true);
     expect(t4.label).toContain('心理价');
   });
+
+  it('channel permanent tier keeps own amount 1998, not year-card 998', () => {
+    const base = [
+      { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
+      { id: 'sku_348_14d', amount: '348.00', label: '双周卡', grant_days: 14, grant_hours: 0 },
+      { id: 'sku_398_30d', amount: '398.00', label: '月卡', grant_days: 30, grant_hours: 0 },
+      /* 残留模板默认 998：旧逻辑在覆盖缺 amount 时会让永久档继续显示 998 */
+      {
+        id: 'sku_ch_t5',
+        amount: '998.00',
+        label: '档位5',
+        grant_days: 365,
+        grant_hours: 0,
+        channel_price: true
+      }
+    ];
+    const out = applyChannelCatalogPrices(base, {
+      sku_300_7d: { amount: '99.00', grant_days: 0, grant_hours: 1, label: '小时卡' },
+      sku_348_14d: { amount: '300.00', grant_days: 7, grant_hours: 0, label: '周卡' },
+      sku_398_30d: { amount: '498.00', grant_days: 30, grant_hours: 0, label: '月卡' },
+      sku_ch_t4: { amount: '998.00', grant_days: 365, grant_hours: 0, label: '年卡' },
+      sku_ch_t5: {
+        amount: '1998.00',
+        list_amount: '2698.00',
+        grant_days: 3650,
+        grant_hours: 0,
+        label: '永久'
+      }
+    });
+    const year = out.find((s) => s.id === 'sku_ch_t4');
+    const perm = out.find((s) => s.id === 'sku_ch_t5');
+    expect(year.amount).toBe('998.00');
+    expect(year.label).toBe('年卡');
+    expect(perm.amount).toBe('1998.00');
+    expect(perm.list_amount).toBe('2698.00');
+    expect(perm.label).toContain('永久');
+    expect(perm.grant_kind).toBe('permanent');
+    expect(perm.channel_price).toBe(true);
+    expect(perm.amount).not.toBe(year.amount);
+  });
+
+  it('channel permanent without amount is dropped instead of keeping stale 998', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
+        {
+          id: 'sku_ch_t5',
+          amount: '998.00',
+          label: '档位5',
+          grant_days: 365,
+          grant_hours: 0
+        }
+      ],
+      {
+        sku_ch_t5: { grant_days: 3650, grant_hours: 0, label: '永久' }
+      }
+    );
+    expect(out.find((s) => s.id === 'sku_ch_t5')).toBeUndefined();
+    expect(out.map((s) => s.id)).toEqual(['sku_300_7d']);
+  });
+
+  it('channel permanent psych list_amount is per-tier and never copies year card', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 }
+      ],
+      {
+        sku_ch_t4: {
+          amount: '998.00',
+          list_amount: '1350.00',
+          grant_days: 365,
+          grant_hours: 0,
+          label: '年卡'
+        },
+        sku_ch_t5: {
+          amount: '1998.00',
+          list_amount: '2700.00',
+          grant_days: 3650,
+          grant_hours: 0,
+          label: '永久'
+        }
+      }
+    );
+    const year = out.find((s) => s.id === 'sku_ch_t4');
+    const perm = out.find((s) => s.id === 'sku_ch_t5');
+    expect(year.list_amount).toBe('1350.00');
+    expect(perm.list_amount).toBe('2700.00');
+    expect(perm.list_amount).not.toBe(year.list_amount);
+    expect(perm.amount).toBe('1998.00');
+  });
 });

@@ -142,6 +142,19 @@ var LEGACY_OFFERABLE_SKUS = [
 
 var OFFERABLE_SKUS = LIVE_OFFERABLE_SKUS.concat(LEGACY_OFFERABLE_SKUS);
 
+try {
+  var pricingAbMod = require('../legacy/pricingAb');
+  [pricingAbMod.SKU_CH_T4, pricingAbMod.SKU_CH_T5].forEach(function (extra) {
+    if (!extra || !extra.id) return;
+    var exists = OFFERABLE_SKUS.some(function (s) {
+      return s.id === extra.id;
+    });
+    if (!exists) OFFERABLE_SKUS.push(extra);
+  });
+} catch (eChSku) {
+  /* optional: pricingAb may be unavailable in isolated tests */
+}
+
 function cloneSku(s) {
   return {
     id: String(s.id || ''),
@@ -206,6 +219,16 @@ function buildSkuFromOffer(row) {
   base.label = customLabel || base.label + '（专属价）';
   base.subject = String(base.subject || '').replace(/·专属价$/, '') + '·专属价';
   if (base.subject.length > 128) base.subject = base.subject.slice(0, 128);
+  /* 渠道永久档：专属价标签常含「永久」，勿沿用模板 trial 天数 */
+  if (
+    String(base.label || '').indexOf('永久') >= 0 ||
+    String(customLabel || '').indexOf('永久') >= 0
+  ) {
+    base.grant_kind = 'permanent';
+    base.grant_days = 0;
+    base.grant_hours = 0;
+    base.grant_minutes = 0;
+  }
   return base;
 }
 
@@ -303,6 +326,22 @@ function createUserPriceOffers(deps) {
     var u = String(username || '').trim();
     var skuId = String((input && input.sku_id) || '').trim();
     var base = findOfferableSku(skuId);
+    /* 渠道年卡/永久等不在全站 OFFERABLE 列表时，用支付页货架快照建专属价 */
+    if (!base && input && input.sku_snapshot && typeof input.sku_snapshot === 'object') {
+      var snap = input.sku_snapshot;
+      if (String(snap.id || '').trim() === skuId || !snap.id) {
+        base = {
+          id: skuId,
+          amount: snap.amount != null ? String(snap.amount) : '',
+          label: snap.label != null ? String(snap.label) : skuId,
+          subject: snap.subject != null ? String(snap.subject) : '激活码·' + skuId,
+          grant_kind: snap.grant_kind === 'permanent' ? 'permanent' : 'trial',
+          grant_hours: parseInt(snap.grant_hours, 10) || 0,
+          grant_days: parseInt(snap.grant_days, 10) || 0,
+          grant_minutes: parseInt(snap.grant_minutes, 10) || 0
+        };
+      }
+    }
     if (!u) {
       var e0 = new Error('请填写账号');
       e0.statusCode = 400;

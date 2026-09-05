@@ -655,6 +655,26 @@ function getPriceBids() {
         return alipay.normalizeAmount(v);
       },
       offers: getUserPriceOffers(),
+      /* 与支付页一致的货架（含渠道专属档现价），避免年卡出价误用周卡价 */
+      listPurchaseSkusForUser: async function (username) {
+        var envProduct = getAlipayProductConfig();
+        var offer = await getPricingAb().resolveOfferForUser(
+          username || '',
+          envProduct.amount,
+          envProduct.subject,
+          null
+        );
+        offer = await applyAgentChannelPricesToOffer(offer, username || '', null);
+        try {
+          if (username) {
+            var applied = await getUserPriceOffers().applyOfferToPricingOffer(username, offer);
+            offer = (applied && applied.offer) || offer;
+          }
+        } catch (eOffer) {
+          /* 专属价失败时仍用渠道货架 */
+        }
+        return Array.isArray(offer && offer.skus) ? offer.skus : [];
+      },
       notifyUser: async function (username, title, body, linkUrl) {
         var uid = String(username || '').trim();
         if (!uid) return { email_sent: false, reason: 'no_user' };
@@ -6281,6 +6301,7 @@ async function handleAlipayConfig(req, res) {
         amount: s.amount,
         list_amount: s.list_amount || '',
         psych_offer: !!s.psych_offer,
+        channel_price: !!s.channel_price,
         label: s.label,
         subject: s.subject,
         grant_kind: s.grant_kind,

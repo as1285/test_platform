@@ -102,6 +102,9 @@ function createPriceBids(deps) {
   var offers = deps.offers;
   var notifyUser = typeof deps.notifyUser === 'function' ? deps.notifyUser : null;
   var onBidRecorded = typeof deps.onBidRecorded === 'function' ? deps.onBidRecorded : null;
+  /* 与支付页货架一致（含渠道第 4/5 档与渠道改价），用于现价校验 */
+  var listPurchaseSkusForUser =
+    typeof deps.listPurchaseSkusForUser === 'function' ? deps.listPurchaseSkusForUser : null;
   var tableReady = false;
 
   async function ensureTable() {
@@ -152,15 +155,32 @@ function createPriceBids(deps) {
     return cfg;
   }
 
-  /** 出价目标套餐：优先用户指定，否则取现售最便宜档 */
-  async function resolveTargetSku(skuId) {
-    var skus = await offers.listOfferableSkusLive();
+  async function loadBidTargetSkus(username) {
+    var u = String(username || '').trim();
+    if (listPurchaseSkusForUser && u) {
+      try {
+        var purchaseSkus = await listPurchaseSkusForUser(u);
+        if (Array.isArray(purchaseSkus) && purchaseSkus.length) return purchaseSkus;
+      } catch (eList) {
+        /* fall through to site live list */
+      }
+    }
+    return offers.listOfferableSkusLive();
+  }
+
+  /**
+   * 出价目标套餐：必须用「当前选中套餐」的支付页现价（sale price）。
+   * 指定了 sku_id 却找不到时，不得回退到最便宜档（否则年卡会误用周卡 300）。
+   */
+  async function resolveTargetSku(skuId, username) {
+    var skus = await loadBidTargetSkus(username);
     if (!skus || !skus.length) return null;
     var id = String(skuId || '').trim();
     if (id) {
       for (var i = 0; i < skus.length; i++) {
-        if (skus[i].id === id) return skus[i];
+        if (String(skus[i].id || '') === id) return skus[i];
       }
+      return null;
     }
     var best = skus[0];
     for (var j = 1; j < skus.length; j++) {
@@ -226,13 +246,28 @@ function createPriceBids(deps) {
 
   async function acceptToOffer(bid, amount, reviewer, isAuto) {
     var label = (bid.sku_label ? String(bid.sku_label) : '') + '·心理价特惠';
+    var skuSnapshot = null;
+    try {
+      var shelf = await loadBidTargetSkus(bid.username);
+      if (shelf && shelf.length) {
+        for (var si = 0; si < shelf.length; si++) {
+          if (String(shelf[si].id || '') === String(bid.sku_id || '')) {
+            skuSnapshot = shelf[si];
+            break;
+          }
+        }
+      }
+    } catch (eSnap) {
+      skuSnapshot = null;
+    }
     await offers.upsertOffer(
       bid.username,
       {
         sku_id: bid.sku_id,
         amount: amount,
         label: label.slice(0, 64),
-        note: ('心理价#' + bid.id + (isAuto ? ' 自动通过' : ' 人工通过')).slice(0, 255)
+        note: ('心理价#' + bid.id + (isAuto ? ' 自动通过' : ' 人工通过')).slice(0, 255),
+        sku_snapshot: skuSnapshot
       },
       reviewer
     );
@@ -286,9 +321,13 @@ function createPriceBids(deps) {
       e1.statusCode = 403;
       throw e1;
     }
-    var sku = await resolveTargetSku(input && input.sku_id);
+    var sku = await resolveTargetSku(input && input.sku_id, u);
     if (!sku) {
-      var e2 = new Error('暂无可出价的套餐');
+      var e2 = new Error(
+        String(input && input.sku_id || '').trim()
+          ? '所选套餐不可出价，请刷新页面后重试'
+          : '暂无可出价的套餐'
+      );
       e2.statusCode = 400;
       throw e2;
     }
