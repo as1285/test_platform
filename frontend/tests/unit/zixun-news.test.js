@@ -22,8 +22,10 @@ describe('homepage news opens zixun list', () => {
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="查看更多"/);
   });
 
-  it('更多服务 still goes to help_center; scan opens scanner', () => {
-    expect(shouye).toMatch(/href="help_center\.html"[^>]*aria-label="更多服务"/);
+  it('更多功能 goes to zhongdian_fuwu; scan opens scanner', () => {
+    expect(shouye).toMatch(/href="zhongdian_fuwu\.html"[^>]*aria-label="更多功能"/);
+    expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="更多功能"/);
+    expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="更多服务"/);
     expect(shouye).not.toContain("window.location.href = 'help_center.html'");
     expect(shouye).toContain("window.location.href = 'scan.html'");
   });

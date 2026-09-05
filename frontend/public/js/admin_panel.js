@@ -314,6 +314,7 @@
             'sousuo.html': '搜索',
             'zixun.html': '资讯',
             'jingshi.html': '警示案例',
+            'zhongdian_fuwu.html': '首页重点服务管理',
             'install_guide.html': '引导安装',
             'care_version.html': '关怀版',
             'about_update.html': '关于',

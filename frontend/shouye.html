@@ -878,6 +878,63 @@
             background: transparent;
         }
 
+        /* 自定义重点服务：无 a6 切片时用同比例白卡，尺寸仍走 .sy-apk-hitem */
+        .sy-hcard-link {
+            background: transparent;
+        }
+        .sy-hcard {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px 8px 0;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 4px rgba(25, 30, 38, 0.06);
+            line-height: normal;
+        }
+        .sy-hcard-icon {
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+            display: block;
+        }
+        .sy-hcard-icon svg { display: block; width: 28px; height: 28px; }
+        .sy-hcard-title {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #191e26;
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .sy-hcard-desc {
+            margin-top: 4px;
+            font-size: 10px;
+            color: #8b93a0;
+            font-style: normal;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .sy-hcard-btn {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 10px 0 10px 0;
+        }
+
         /* 轮播 */
         .sy-apk-swiper-wrap {
             width: 93%;
@@ -1016,8 +1073,9 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260905-jingshi">
+    <link rel="stylesheet" href="css/nav.css?v=20260905-zdfw">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
+    <script src="/js/home-services.js?v=20260905-zdfw"></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
     <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
@@ -1115,10 +1173,10 @@
 
             <!-- a6 横向入口 -->
             <div class="sy-apk-hscroll" id="syHScroll">
-                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
-                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
-                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
-                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260901-home-compress" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得年度汇算"><img src="/img/home/a6_01.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录开具"><img src="/img/home/a6_03.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
+                <a class="sy-apk-hitem" href="zhongdian_fuwu.html" aria-label="更多功能"><img src="/img/home/a6_04.jpg?v=20260905-zdfw" alt="" loading="lazy" fetchpriority="low" decoding="async"></a>
             </div>
 
             <!-- 轮播 a4_*：整块常在首屏下，全部 lazy -->
@@ -1212,6 +1270,14 @@
                 }
             }
             syncDeclareCard();
+
+            function syncHomeKeyServices() {
+                var hs = window.TaxHomeServices;
+                var row = document.getElementById('syHScroll');
+                if (!hs || !row) return;
+                hs.syncHomeRow(row, hs.HOME_ASSET_Q || '?v=20260905-zdfw');
+            }
+            syncHomeKeyServices();
 
             /* 专项附加扣除：未填报用原 a3；已填报展示动态条数白卡 */
             (function initZxkHomeCount() {
@@ -1332,6 +1398,7 @@
             window.addEventListener('pageshow', function (ev) {
                 if (ev.persisted) syncShouyeTopPadding();
                 syncDeclareCard();
+                syncHomeKeyServices();
             });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', syncShouyeTopPadding);

@@ -90,7 +90,8 @@
     'zixun.html': true,
     'jingshi.html': true,
     'face_login.html': true,
-    'scan.html': true
+    'scan.html': true,
+    'zhongdian_fuwu.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
   /** 通用顶栏蓝（登录 WebClip 等） */
