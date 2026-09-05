@@ -19,10 +19,12 @@ describe('homepage 查看更多 opens 警示案例专题', () => {
     expect(shouye).toMatch(/href="zixun\.html"[^>]*sy-hit-news/);
   });
 
-  it('scan / 更多服务 / 查看资讯 stay on their existing targets', () => {
+  it('查看资讯 / 扫一扫 keep targets; 更多功能 opens service manager', () => {
     expect(shouye).toMatch(/href="zixun\.html"[^>]*sy-hit-news/);
-    expect(shouye).toMatch(/href="help_center\.html"[^>]*aria-label="更多服务"/);
-    expect(shouye).toContain("window.location.href = 'help_center.html'");
+    expect(shouye).toMatch(/href="zhongdian_fuwu\.html"[^>]*aria-label="更多功能"/);
+    expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="更多服务"/);
+    expect(shouye).toContain("window.location.href = 'scan.html'");
+    expect(shouye).not.toContain("window.location.href = 'help_center.html'");
   });
 
   it('jingshi page matches 综合所得年度汇算 · 警示案例 special UI', () => {
@@ -53,7 +55,7 @@ describe('homepage 查看更多 opens 警示案例专题', () => {
     expect(jingshi).toContain('auth.js?v=20260905-jingshi');
     expect(shouye).toContain('auth-boot.js?v=20260905-jingshi');
     expect(shouye).toContain('auth.js?v=20260905-jingshi');
-    expect(shouye).toContain('nav.css?v=20260905-jingshi');
+    expect(shouye).toContain('nav.css?v=20260905-jingshi-zdfw');
   });
 
   it('is reachable without login and titled in admin analytics', () => {
