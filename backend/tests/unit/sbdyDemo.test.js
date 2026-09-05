@@ -398,6 +398,123 @@ describe('sbdyDemo', () => {
     expect(html).not.toMatch(/table\.map|class="map"/);
   });
 
+  it('normalizePayload builds Shenzhen-new participation certificate', () => {
+    const p = normalizePayload({
+      region: 'sz_new',
+      name: '林晓薇',
+      id_number: '440305199208156018',
+      company_name: '深圳市易满星科技有限公司',
+      unit_code: '31327084',
+      computer_no: '089216473',
+      period_start: '2024-09',
+      period_end: '2026-08',
+      base_amount: 4492,
+      print_date: '2026年09月01日',
+      years_months: {
+        pension: 113,
+        medical: 115,
+        maternity: 115,
+        maternity_medical: 0,
+        injury: 115,
+        unemployment: 115
+      }
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('sz_new');
+    expect(p.layout).toBe('sz_cgbzm_v1');
+    expect(p.computer_no).toBe('089216473');
+    expect(p.unit_code).toBe('31327084');
+    expect(p.doc_serial).toBe('2026:09:01E');
+    expect(p.months.length).toBe(24);
+    expect(p.months[0].ym).toBe('202409');
+    expect(p.months[0].medical_tier).toBe('2');
+    expect(p.months[0].maternity_type).toBe('1');
+    expect(p.years_months.pension).toBe(113);
+    expect(p.years_months.maternity_medical).toBe(0);
+    const html = renderCertHtml(
+      p,
+      { show_url: 'https://example.test/taxmock/SBDYx/show.pdf' },
+      { authCode: '3359a909b3600273' }
+    );
+    expect(html).toContain('深圳市社会保险参保证明');
+    expect(html).toContain('个人权益记录（参保证明）');
+    expect(html).toContain('（一）历年参保年限');
+    expect(html).toContain('（二）近两年参保缴费明细');
+    expect(html).toContain('2026:09:01E');
+    expect(html).toContain('林晓薇');
+    expect(html).toContain('3359a909b3600273');
+    expect(html).toContain('/img/sbdy_sz_new_si_seal.png');
+    expect(html).toContain('/img/sbdy_sz_new_mi_seal.png');
+    expect(html).toContain('下载文件');
+    expect(html).toContain('本服务由深圳市人力资源和社会保障局提供');
+    expect(html).toContain('缴费基数');
+    expect(html).toContain('档次');
+    expect(html).not.toContain('深圳市社会保险历年参保缴费明细表');
+    expect(html).not.toContain('/img/sbdy_sz_seal.png');
+  });
+
+  it('Shenzhen-new aliases and multi-employer segments stay off the old sz template', () => {
+    const p = normalizePayload({
+      region: 'shenzhen_new',
+      name: '<b>测</b>',
+      id_number: '440305199208156018',
+      print_date: '2026年09月01日',
+      segments: [
+        {
+          company_name: '深圳一舱信息技术有限公司',
+          unit_code: '30828370',
+          base_amount: 3523,
+          period_start: '2024-09',
+          period_end: '2025-01'
+        },
+        {
+          company_name: '深圳市易满星科技有限公司',
+          unit_code: '31327084',
+          base_amount: 4492,
+          period_start: '2025-02',
+          period_end: '2025-07'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('sz_new');
+    expect(p.layout).toBe('sz_cgbzm_v1');
+    expect(p.months.length).toBe(11);
+    expect(p.months[0].unit_code).toBe('30828370');
+    expect(p.months[0].pension_base).toBe(3523);
+    expect(p.months[p.months.length - 1].unit_code).toBe('31327084');
+    expect(p.unit_map.length).toBe(2);
+    const html = renderCertHtml(p, {}, { authCode: 'abc123' });
+    expect(html).toContain('&lt;b&gt;测&lt;/b&gt;');
+    expect(html).not.toMatch(/参保人姓名：\s*<b>测<\/b>/);
+    expect(html).toContain('30828370 / 深圳一舱信息技术有限公司');
+    expect(html).toContain('31327084 / 深圳市易满星科技有限公司');
+    const old = normalizePayload({
+      region: 'sz',
+      name: '林晓薇',
+      id_number: '440305199208156018',
+      period_start: '2025-07',
+      period_end: '2025-09',
+      base_amount: 4492
+    });
+    expect(old.region).toBe('sz');
+    expect(old.layout).toBe('sz_official_v1');
+    expect(renderCertHtml(old)).toContain('深圳市社会保险历年参保缴费明细表');
+    expect(renderCertHtml(old)).not.toContain('（一）历年参保年限');
+  });
+
+  it('sz_cgbzm_v1 layout alias normalizes to sz_new', () => {
+    const p = normalizePayload({
+      layout: 'sz_cgbzm_v1',
+      name: '周浩然',
+      id_number: '440304199511083517',
+      period_start: '2026-01',
+      period_end: '2026-03'
+    });
+    expect(p.region).toBe('sz_new');
+    expect(p.months.length).toBe(3);
+  });
+
   it('normalizePayload builds Wuhan month rows in reverse chrono split', () => {
     const p = normalizePayload({
       region: 'wh',

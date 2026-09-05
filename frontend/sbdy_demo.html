@@ -193,6 +193,7 @@
             <div class="region-row">
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionZj" value="zj" checked>浙江</label>
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionSz" value="sz">深圳</label>
+                <label><input type="radio" name="sbdyRegion" id="sbdyRegionSzNew" value="sz_new">深圳新</label>
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionGz" value="gz">广州</label>
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionWh" value="wh">武汉</label>
                 <label><input type="radio" name="sbdyRegion" id="sbdyRegionHn" value="hn">湖南</label>
@@ -327,7 +328,8 @@
             <div class="card-title">生成成功</div>
             <p class="card-hint">PDF 已生成；二维码核验授权码：</p>
             <div class="result-code" id="sbdyAuthCode"></div>
-            <a class="btn" id="btnSbdyOpenPdf" href="#" target="_blank" rel="noopener">查看 / 下载 PDF</a>
+            <a class="btn" id="btnSbdyDownloadFile" href="#" target="_blank" rel="noopener">下载文件</a>
+            <a class="btn btn-secondary" id="btnSbdyOpenPdf" href="#" target="_blank" rel="noopener">查看 / 下载 PDF</a>
             <button type="button" class="btn btn-secondary" id="btnSbdyCopyPdf">复制 PDF 链接</button>
             <a class="btn btn-secondary" id="btnSbdyVerify" href="#" target="_blank" rel="noopener">打开核验页</a>
             <p class="status" id="sbdySaveStatus"></p>
@@ -338,7 +340,7 @@
     <script>
 window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
     </script>
-    <script src="/js/admin/modules/sbdy-demo.js?v=20260904-ha-zjops"></script>
+    <script src="/js/admin/modules/sbdy-demo.js?v=20260905-sz-new"></script>
     <script>
 (function () {
     function token() {
@@ -382,7 +384,9 @@ window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
         var verifyUrl = (d.links && d.links.verify_url) || '';
         document.getElementById('sbdyAuthCode').textContent = d.auth_code || '';
         var openBtn = document.getElementById('btnSbdyOpenPdf');
-        if (lastPdfUrl) openBtn.setAttribute('href', lastPdfUrl);
+        if (lastPdfUrl && openBtn) openBtn.setAttribute('href', lastPdfUrl);
+        var dlBtn = document.getElementById('btnSbdyDownloadFile');
+        if (lastPdfUrl && dlBtn) dlBtn.setAttribute('href', lastPdfUrl);
         var verifyBtn = document.getElementById('btnSbdyVerify');
         if (verifyUrl) verifyBtn.setAttribute('href', verifyUrl);
         setStatus(

@@ -2393,6 +2393,48 @@ mustInclude(
   'SZ/GZ unit_code column widened for 18-digit codes'
 );
 mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  [
+    'function isSzNewRegion',
+    'function normalizeSzNewPayload',
+    'function renderSzNewCertHtml',
+    'SBDY_SZ_NEW_RENDER_SCRIPT',
+    "region: 'sz_new'",
+    'sz_cgbzm_v1'
+  ],
+  'sbdyDemo Shenzhen-new normalize + HTML'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['sbdyRegionSzNew', "return 'sz_new'", '已填充深圳新示例'],
+  'sbdy admin Shenzhen-new radio + sample'
+);
+mustInclude(
+  'frontend/sbdy_demo.html',
+  ['sbdyRegionSzNew', '深圳新', 'btnSbdyDownloadFile', '下载文件'],
+  'user sbdy page Shenzhen-new radio and download button'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['sbdyRegionSzNew', '深圳新参保证明'],
+  'admin panel Shenzhen-new label'
+);
+mustInclude(
+  'backend/scripts/sbdy_sz_new_render_pdf.py',
+  ['深圳市社会保险参保证明', '历年参保年限', '近两年参保缴费明细', 'sz_new_si_seal'],
+  'Shenzhen-new PDF renderer title and dual seals'
+);
+if (
+  exists('backend/assets/sbdy/sz_new_si_seal.png') &&
+  exists('backend/assets/sbdy/sz_new_mi_seal.png') &&
+  exists('frontend/public/img/sbdy_sz_new_si_seal.png') &&
+  exists('frontend/public/img/sbdy_sz_new_mi_seal.png')
+) {
+  ok('Shenzhen-new sbdy dual seal assets present');
+} else {
+  fail('Shenzhen-new sbdy dual seal assets present', 'missing sz_new_*_seal.png');
+}
+mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
   ['default_seal_code', 'seal_code', 'place_seal'],
   'lizhi seal supports bottom seal_code'
