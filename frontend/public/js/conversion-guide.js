@@ -98,6 +98,54 @@
     return y;
   }
 
+  /**
+   * 从刚写入的个税记录里取最早有数据的年份。
+   * 忽略空记录、已删除记录、无数字 year 的条目。
+   * @param {Array} records
+   * @returns {number|null}
+   */
+  function pickYearFromTaxRecords(records) {
+    if (!records || !records.length) return null;
+    var seen = {};
+    var earliest = null;
+    var i;
+    for (i = 0; i < records.length; i++) {
+      var r = records[i];
+      if (!r || typeof r !== 'object') continue;
+      if (r.deleted || r.is_deleted || r.deleted_at) continue;
+      var y = parseInt(String(r.year == null ? '' : r.year).trim(), 10);
+      if (!y || isNaN(y)) continue;
+      if (seen[y]) continue;
+      seen[y] = true;
+      if (earliest == null || y < earliest) earliest = y;
+    }
+    return earliest;
+  }
+
+  function fallbackSelectedTaxYear() {
+    var y = normalizeTaxYearLocal(null);
+    try {
+      var sy = localStorage.getItem('selected_year');
+      if (sy) y = normalizeTaxYearLocal(sy);
+    } catch (e) {}
+    return y;
+  }
+
+  function persistSelectedTaxYear(year) {
+    try {
+      localStorage.setItem('selected_year', String(year));
+    } catch (e) {}
+  }
+
+  /** 入参可解析且落在可选年度内时用之，否则 null（不回落到默认年）。 */
+  function parseProvidedTaxYear(raw) {
+    if (raw == null || raw === '') return null;
+    var y = parseInt(String(raw).trim(), 10);
+    if (!y || isNaN(y)) return null;
+    if (normalizeTaxYearLocal(y) !== y) return null;
+    return y;
+  }
+
   function getToastDurationMs() {
     var ms =
       typeof window !== 'undefined' && window.TOAST_DURATION_MS != null
@@ -414,11 +462,9 @@
   }
 
   function goIncomeDetail(year) {
-    var y = normalizeTaxYearLocal(year);
-    try {
-      var sy = localStorage.getItem('selected_year');
-      if (sy) y = normalizeTaxYearLocal(sy);
-    } catch (e) {}
+    var provided = parseProvidedTaxYear(year);
+    var y = provided != null ? provided : fallbackSelectedTaxYear();
+    if (provided != null) persistSelectedTaxYear(y);
     window.location.href = 'shuiming_result.html?year=' + encodeURIComponent(String(y));
   }
 
@@ -2563,13 +2609,11 @@
    */
   function afterTaxRecordsCreated(opts) {
     opts = opts || {};
-    var y = normalizeTaxYearLocal(null);
-    try {
-      var sy = localStorage.getItem('selected_year');
-      if (sy) y = normalizeTaxYearLocal(sy);
-    } catch (e) {}
     resolveTaxRecordsForRefundAd(opts).then(function (records) {
       syncRefundAdRecommendCards(records || []);
+      var fromRecords = pickYearFromTaxRecords(records);
+      var y = fromRecords != null ? fromRecords : fallbackSelectedTaxYear();
+      if (fromRecords != null) persistSelectedTaxYear(y);
       if (maybeGoRefundAdAfterTax(opts, y, records)) return;
       function continueAfterTax() {
         if (isLandingGuest()) {
@@ -3782,6 +3826,7 @@
     goEditTaxRecords: goEditTaxRecords,
     syncConsultEditGuideAfterRecordsLoad: syncConsultEditGuideAfterRecordsLoad,
     goIncomeDetail: goIncomeDetail,
+    pickYearFromTaxRecords: pickYearFromTaxRecords,
     goNajilu: goNajilu,
     gateActivation: gateActivation,
     gateTaxRecords: gateTaxRecords,
