@@ -3328,6 +3328,9 @@ function clearBatchMonthSalaryModal() {
 })();
 
 // === 个税粘贴导入弹窗 ===
+/* 默认模板仍用「YYYY年全年」多行，便于一眼看懂。
+ * 解析同时支持缩写年与自然区间，例如 23年4月到26年8月
+ *（两位年：00–69→20xx，70–99→19xx）。 */
 var TAX_PASTE_IMPORT_TEMPLATE =
     '公司名称：某某有限公司\n' +
     '扣缴义务人纳税人识别号：91110105MA01K9XH2B\n' +
@@ -3340,6 +3343,9 @@ var TAX_PASTE_IMPORT_TEMPLATE =
     '基本医疗保险：400元\n' +
     '失业保险：100元\n' +
     '住房公积金：2400元';
+
+var TAX_PASTE_IMPORT_PLACEHOLDER =
+    TAX_PASTE_IMPORT_TEMPLATE + '\n\n（任职区间也可写：23年4月到26年8月）';
 
 var _taxPasteImportLastParsed = null;
 
@@ -3741,7 +3747,7 @@ function openTaxPasteImportModal() {
     }
     root.classList.add('is-open');
     if (ta) {
-        ta.setAttribute('placeholder', TAX_PASTE_IMPORT_TEMPLATE);
+        ta.setAttribute('placeholder', TAX_PASTE_IMPORT_PLACEHOLDER);
         if (!String(ta.value || '').trim()) {
             ta.value = TAX_PASTE_IMPORT_TEMPLATE;
         }
@@ -3891,7 +3897,7 @@ function generateTaxPasteImportDirect() {
     var genBtn = document.getElementById('taxPasteImportGenerateBtn');
     var taInit = document.getElementById('taxPasteImportText');
     if (taInit) {
-        taInit.setAttribute('placeholder', TAX_PASTE_IMPORT_TEMPLATE);
+        taInit.setAttribute('placeholder', TAX_PASTE_IMPORT_PLACEHOLDER);
         taInit.addEventListener('input', scheduleTaxPasteLivePreview);
         taInit.addEventListener('paste', function () {
             setTimeout(function () {

@@ -1601,19 +1601,105 @@ function extractTaxPasteCompanyName(block) {
 }
 
 
+/**
+ * 展开个税粘贴中的年份。
+ * 两位年：00–69 → 2000–2069，70–99 → 1970–1999（咨询场景多为近二十年，故优先 20xx）。
+ * 四位年：1970–2100 原样采用。
+ */
+function expandTaxPasteYear(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s || !/^\d{1,4}$/.test(s)) {
+        return null;
+    }
+    var n = parseInt(s, 10);
+    if (!isFinite(n) || n < 0) {
+        return null;
+    }
+    if (s.length <= 2 || n < 100) {
+        n += n >= 70 ? 1900 : 2000;
+    }
+    if (n < 1970 || n > 2100) {
+        return null;
+    }
+    return n;
+}
+
+/** 解析「年 + 月」一对，月份须为 1–12。 */
+function parseTaxPasteYearMonthPair(yearRaw, monthRaw) {
+    var y = expandTaxPasteYear(yearRaw);
+    var m = parseInt(monthRaw, 10);
+    if (!y || !m || m < 1 || m > 12) {
+        return null;
+    }
+    return { y: y, m: m };
+}
+
+/**
+ * 从文本中识别自然任职区间。
+ * 支持：23年4月到26年8月、2023年4月-2026年8月、2023.4~2026.8、
+ * 2023年4月至2026年8月，以及 en/zh 破折号 — – - ~ ～ 到 至。
+ * 仅有年份的「23年到26年」视为当年 1 月至当年 12 月。
+ */
+function parseTaxPasteNaturalYmRange(block) {
+    var text = String(block || '');
+    if (!text) {
+        return null;
+    }
+    var sep = '[-–—~～至到]+';
+    var patterns = [
+        new RegExp(
+            '(\\d{2,4})\\s*(?:年|[.\\-/])\\s*(\\d{1,2})\\s*月?\\s*' +
+                sep +
+                '\\s*(\\d{2,4})\\s*(?:年|[.\\-/])\\s*(\\d{1,2})\\s*月?'
+        ),
+        new RegExp('(\\d{2,4})\\s*年\\s*' + sep + '\\s*(\\d{2,4})\\s*年(?!\\s*\\d)')
+    ];
+    var i;
+    for (i = 0; i < patterns.length; i++) {
+        var m = text.match(patterns[i]);
+        if (!m) {
+            continue;
+        }
+        var start;
+        var end;
+        if (m.length >= 5 && m[2] != null && m[4] != null) {
+            start = parseTaxPasteYearMonthPair(m[1], m[2]);
+            end = parseTaxPasteYearMonthPair(m[3], m[4]);
+        } else {
+            start = parseTaxPasteYearMonthPair(m[1], 1);
+            end = parseTaxPasteYearMonthPair(m[2], 12);
+        }
+        if (!start || !end) {
+            continue;
+        }
+        if (ymToKey(start.y, start.m) > ymToKey(end.y, end.m)) {
+            continue;
+        }
+        return { sy: start.y, sm: start.m, ey: end.y, em: end.m };
+    }
+    return null;
+}
+
 /** 摘要模式推断任职起止年月。 */
 function inferTaxPasteSummaryRange(block, bonuses) {
+    var rangeFromText = parseTaxPasteNaturalYmRange(block);
+    if (rangeFromText) {
+        return rangeFromText;
+    }
     var hire = null;
-    var hireM = block.match(/入职\s*[：:]?\s*[^\n]{0,20}?(\d{4})\s*年\s*(\d{1,2})\s*月/);
+    var hireM = block.match(/入职\s*[：:]?\s*[^\n]{0,20}?(\d{2,4})\s*年\s*(\d{1,2})\s*月/);
     if (hireM) {
-        hire = { y: parseInt(hireM[1], 10), m: parseInt(hireM[2], 10) };
+        var hireYm = parseTaxPasteYearMonthPair(hireM[1], hireM[2]);
+        if (hireYm) {
+            hire = hireYm;
+        }
     }
     var fullYears = [];
-    var fyRe = /(\d{4})\s*年?\s*全年/g;
+    var fyRe = /(\d{2,4})\s*年?\s*全年/g;
     var fm;
     while ((fm = fyRe.exec(block)) !== null) {
-        var y = parseInt(fm[1], 10);
-        if (y >= 1990 && y <= 2100 && fullYears.indexOf(y) < 0) {
+        var y = expandTaxPasteYear(fm[1]);
+        if (y && fullYears.indexOf(y) < 0) {
             fullYears.push(y);
         }
     }
@@ -1621,24 +1707,12 @@ function inferTaxPasteSummaryRange(block, bonuses) {
         return a - b;
     });
     var until = null;
-    var untilM = block.match(/一直到\s*(\d{4})\s*年\s*(\d{1,2})\s*月/);
+    var untilM = block.match(/一直到\s*(\d{2,4})\s*年\s*(\d{1,2})\s*月/);
     if (untilM) {
-        until = { y: parseInt(untilM[1], 10), m: parseInt(untilM[2], 10) };
-    }
-    var rangeFromText = null;
-    var rangeMatch = block.match(
-        /统计区间\s*[：:]\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*[-–—~～至到]+\s*(\d{4})\s*年\s*(\d{1,2})\s*月/
-    );
-    if (rangeMatch) {
-        rangeFromText = {
-            sy: parseInt(rangeMatch[1], 10),
-            sm: parseInt(rangeMatch[2], 10),
-            ey: parseInt(rangeMatch[3], 10),
-            em: parseInt(rangeMatch[4], 10)
-        };
-    }
-    if (rangeFromText) {
-        return rangeFromText;
+        var untilYm = parseTaxPasteYearMonthPair(untilM[1], untilM[2]);
+        if (untilYm) {
+            until = untilYm;
+        }
     }
     var sy = null;
     var sm = null;
@@ -1816,16 +1890,9 @@ function parseOneTaxPasteEmployerBlock(block) {
         var first = months[0];
         var last = months[months.length - 1];
         range = { sy: first.year, sm: first.month, ey: last.year, em: last.month };
-        var rangeMatch = block.match(
-            /统计区间\s*[：:]\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*[-–—~～至到]+\s*(\d{4})\s*年\s*(\d{1,2})\s*月/
-        );
-        if (rangeMatch) {
-            range = {
-                sy: parseInt(rangeMatch[1], 10),
-                sm: parseInt(rangeMatch[2], 10),
-                ey: parseInt(rangeMatch[3], 10),
-                em: parseInt(rangeMatch[4], 10)
-            };
+        var naturalRange = parseTaxPasteNaturalYmRange(block);
+        if (naturalRange) {
+            range = naturalRange;
         }
         if (salaryInfo.salary == null) {
             var incomes = months.map(function (r) {
@@ -1843,7 +1910,7 @@ function parseOneTaxPasteEmployerBlock(block) {
             return {
                 ok: false,
                 error:
-                    '未识别到任职区间：请写明入职时间、「YYYY年全年」或「一直到YYYY年M月」，或粘贴「YYYY年M月 收入x元 税额y元」月明细'
+                    '未识别到任职区间：请写明入职时间、「YYYY年全年」、「23年4月到26年8月」或「一直到YYYY年M月」，或粘贴「YYYY年M月 收入x元 税额y元」月明细'
             };
         }
         if (salaryInfo.salary == null && salaryInfo.salary_max == null) {

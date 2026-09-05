@@ -22,6 +22,12 @@ function loadPasteParser() {
     function round2(n) { return Math.round(Number(n) * 100) / 100; }
     function pad2(n) { n = parseInt(n, 10); return (n < 10 ? '0' : '') + n; }
     function ymToKey(y, m) { return Number(y) * 100 + Number(m); }
+    function parseMoneyToken(raw) {
+      var s = String(raw == null ? '' : raw).replace(/,/g, '').replace(/，/g, '').replace(/\\s+/g, '').trim();
+      var n = parseFloat(s);
+      if (!isFinite(n) || n < 0) return null;
+      return round2(n);
+    }
     function parseFlexibleMoney(raw) {
       var s = String(raw == null ? '' : raw).replace(/,/g, '').trim();
       if (!s) return null;
@@ -44,7 +50,7 @@ function loadPasteParser() {
     }
   `;
   const coreStart = coreSrc.indexOf('function normalizeTaxPasteLabels');
-  const coreEnd = coreSrc.indexOf('function formatTaxPastePreview');
+  const coreEnd = coreSrc.indexOf('function applyOneTaxPasteEmpToRow');
   const batchStart = batchSrc.indexOf('function applyTaxPasteGaiweiOverrides');
   const batchEnd = batchSrc.indexOf('function parseTaxPasteText');
   const parseStart = batchSrc.indexOf('function parseTaxPasteText');
@@ -58,9 +64,15 @@ function loadPasteParser() {
     coreSrc.slice(coreStart, coreEnd) +
     batchSrc.slice(batchStart, batchEnd) +
     batchSrc.slice(parseStart, parseEnd) +
-    '; return { parseTaxPasteText: parseTaxPasteText, TAX_PASTE_IMPORT_TEMPLATE: TAX_PASTE_IMPORT_TEMPLATE };';
+    '; return { parseTaxPasteText: parseTaxPasteText, formatTaxPastePreview: formatTaxPastePreview, expandTaxPasteYear: expandTaxPasteYear, TAX_PASTE_IMPORT_TEMPLATE: TAX_PASTE_IMPORT_TEMPLATE };';
   // eslint-disable-next-line no-new-func
   return new Function(fnBody)();
+}
+
+function monthCount(range) {
+  return (
+    (range.ey - range.sy) * 12 + (range.em - range.sm) + 1
+  );
 }
 
 describe('consult tax paste template simplify', () => {
@@ -73,18 +85,22 @@ describe('consult tax paste template simplify', () => {
     expect(html).toContain('生成记录');
     expect(html).not.toContain('解析引擎 v0721d');
     expect(html).not.toContain('id="taxPasteImportParseBtn"');
-    expect(html).toContain('consult-batch-tax.js?v=20260905-ym-picker');
+    expect(html).toContain('consult-core.js?v=20260905-ym-range');
+    expect(html).toContain('consult-batch-tax.js?v=20260905-ym-range');
   });
 
   it('opens with a 2023–2025 template and live preview wiring', () => {
     expect(batchSrc).toContain("公司名称：某某有限公司");
     expect(batchSrc).toContain('2023年全年');
     expect(batchSrc).toContain('2025年全年');
+    expect(batchSrc).toContain('23年4月到26年8月');
+    expect(batchSrc).toContain('TAX_PASTE_IMPORT_PLACEHOLDER');
     expect(batchSrc).toContain('function fillTaxPasteTemplateIntoBox');
     expect(batchSrc).toContain('function scheduleTaxPasteLivePreview');
     expect(batchSrc).toContain('function clearTaxPasteImportText');
     expect(batchSrc).not.toContain('将为「');
     expect(batchSrc).toContain("if (!String(ta.value || '').trim())");
+    expect(html).toContain('23年4月到26年8月');
   });
 
   it('parses the default template into 36 months across 2023–2025', () => {
@@ -117,5 +133,78 @@ describe('consult tax paste template simplify', () => {
     expect(parsed.employments[0].medical).toBe(300);
     expect(parsed.employments[0].unemployment).toBe(75);
     expect(parsed.employments[0].fund).toBe(1800);
+    expect(parsed.employments[0].range).toEqual({ sy: 2023, sm: 1, ey: 2023, em: 12 });
+    expect(parsed.employments[0].months.length).toBe(12);
+  });
+
+  it('expands two-digit years: 00–69 → 20xx, 70–99 → 19xx', () => {
+    const api = loadPasteParser();
+    expect(api.expandTaxPasteYear('23')).toBe(2023);
+    expect(api.expandTaxPasteYear('26')).toBe(2026);
+    expect(api.expandTaxPasteYear('00')).toBe(2000);
+    expect(api.expandTaxPasteYear('69')).toBe(2069);
+    expect(api.expandTaxPasteYear('70')).toBe(1970);
+    expect(api.expandTaxPasteYear('98')).toBe(1998);
+    expect(api.expandTaxPasteYear('2023')).toBe(2023);
+    expect(api.expandTaxPasteYear('1969')).toBe(null);
+  });
+
+  it('parses abbreviated natural ranges like 23年4月到26年8月', () => {
+    const api = loadPasteParser();
+    const parsed = api.parseTaxPasteText(
+      '公司名称：某某有限公司\n23年4月到26年8月\n月薪：20000元'
+    );
+    expect(parsed.ok).toBe(true);
+    expect(parsed.employments[0].range).toEqual({ sy: 2023, sm: 4, ey: 2026, em: 8 });
+    expect(parsed.employments[0].months.length).toBe(41);
+    expect(parsed.month_total).toBe(41);
+    expect(monthCount(parsed.employments[0].range)).toBe(41);
+    const preview = api.formatTaxPastePreview(parsed);
+    expect(preview).toContain('合计 41 个月');
+    expect(preview).toContain('2023年4月 — 2026年8月（41 个月）');
+  });
+
+  it('parses the listed month-range separators and dotted years', () => {
+    const api = loadPasteParser();
+    const samples = [
+      '2023年4月-2026年8月',
+      '2023年4月—2026年8月',
+      '2023年4月–2026年8月',
+      '2023年4月至2026年8月',
+      '2023.4~2026.8',
+      '2023.4～2026.8',
+      '2023-4~2026-8'
+    ];
+    samples.forEach((rangeLine) => {
+      const parsed = api.parseTaxPasteText(
+        '公司名称：某某有限公司\n' + rangeLine + '\n月薪：20000元'
+      );
+      expect(parsed.ok, rangeLine).toBe(true);
+      expect(parsed.employments[0].range, rangeLine).toEqual({
+        sy: 2023,
+        sm: 4,
+        ey: 2026,
+        em: 8
+      });
+      expect(parsed.employments[0].months.length, rangeLine).toBe(41);
+    });
+  });
+
+  it('still accepts 23年全年 and APP monthly paste', () => {
+    const api = loadPasteParser();
+    const fullYear = api.parseTaxPasteText(
+      '公司名称：某某有限公司\n23年全年\n月薪：20000元'
+    );
+    expect(fullYear.ok).toBe(true);
+    expect(fullYear.employments[0].range).toEqual({ sy: 2023, sm: 1, ey: 2023, em: 12 });
+    expect(fullYear.employments[0].months.length).toBe(12);
+
+    const appPaste = api.parseTaxPasteText(
+      '公司名称：某某有限公司\n2023年1月 收入20000元 税额100元\n2023年2月 收入20000元 税额80元'
+    );
+    expect(appPaste.ok).toBe(true);
+    expect(appPaste.employments[0].mode).toBe('detail');
+    expect(appPaste.employments[0].months.length).toBe(2);
+    expect(appPaste.employments[0].range).toEqual({ sy: 2023, sm: 1, ey: 2023, em: 2 });
   });
 });

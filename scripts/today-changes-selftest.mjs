@@ -1096,6 +1096,8 @@ mustInclude(
   [
     'copyTaxPasteImportTemplate',
     'TAX_PASTE_IMPORT_TEMPLATE',
+    'TAX_PASTE_IMPORT_PLACEHOLDER',
+    '23年4月到26年8月',
     'taxPasteImportCopyTplBtn',
     'fillTaxPasteTemplateIntoBox',
     'scheduleTaxPasteLivePreview',
@@ -1110,13 +1112,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/consult-core.js',
-  ['applyTaxPasteSummaryFieldDefaults', 'inferTaxAuthorityFromCompanyName'],
+  [
+    'applyTaxPasteSummaryFieldDefaults',
+    'inferTaxAuthorityFromCompanyName',
+    'expandTaxPasteYear',
+    'parseTaxPasteNaturalYmRange'
+  ],
   '20260905 template summary fills tax office and social security'
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260905-paste-ss', 'consult-batch-tax.js?v=20260905-paste-ss'],
-  '20260905 consult paste-ss cache bust'
+  ['consult-core.js?v=20260905-ym-range', 'consult-batch-tax.js?v=20260905-ym-range', '23年4月到26年8月'],
+  '20260905 consult ym-range cache bust'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴'], 'consult copy tpl btn');
 mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '重新填入模板'], 'admin copy tpl btn');
@@ -1598,7 +1605,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260905-paste-ss'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260905-ym-range'],
   'consult multi-bonus cache'
 );
 mustInclude(
