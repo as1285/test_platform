@@ -38,16 +38,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 5,
-    alias_menus: ['ops-inactive', 'analytics-conversion', 'ops-lift', 'ops-research']
-  },
-  {
-    page: 'ops-inactive',
-    menu_key: 'ops-inactive',
-    label: '未激活用户',
-    group: 'ops-desk',
-    module: 'ops-conversion',
-    order: 10,
-    alias_menus: ['analytics-conversion', 'users', 'ops-board']
+    alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research']
   },
   {
     page: 'ops-research',
@@ -250,7 +241,18 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 19,
-    alias_menus: ['channel-analysis', 'install-guide-stats', 'abc-install-stats']
+    alias_menus: ['ops-inactive', 'channel-analysis', 'install-guide-stats', 'abc-install-stats']
+  },
+  {
+    page: 'ops-inactive',
+    menu_key: 'ops-inactive',
+    label: '未激活用户',
+    group: 'insights',
+    module: 'ops-conversion',
+    order: 21,
+    alias_menus: ['analytics-conversion', 'users', 'ops-board', 'insights-growth'],
+    assignable: false,
+    nav_hidden: true
   },
   {
     page: 'analytics-activity',
@@ -446,6 +448,7 @@ const ADMIN_HUB_DEFS = {
     defaultTab: 'channel',
     tabs: [
       { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
+      { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
       { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
       { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
     ]

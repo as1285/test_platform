@@ -895,7 +895,7 @@
                 'sbdy-demo': ['gjj-demo'],
                 'login-log': ['user-login-log'],
                 'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback'],
-                'insights-growth': ['channel-analysis', 'install-guide-stats', 'abc-install-stats']
+                'insights-growth': ['ops-inactive', 'channel-analysis', 'install-guide-stats', 'abc-install-stats']
             };
             if (hubAlias[menuKey]) {
                 for (var hi = 0; hi < hubAlias[menuKey].length; hi++) {
@@ -912,6 +912,7 @@
                 'analytics-devices': 'insights-product',
                 'tax-fill-survey': 'insights-product',
                 feedback: 'insights-product',
+                'ops-inactive': 'insights-growth',
                 'channel-analysis': 'insights-growth',
                 'install-guide-stats': 'insights-growth',
                 'abc-install-stats': 'insights-growth'
@@ -1117,6 +1118,7 @@
                 defaultTab: 'channel',
                 tabs: [
                     { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
+                    { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
                     { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
                     { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
                 ]

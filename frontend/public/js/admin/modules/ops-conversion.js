@@ -1,4 +1,4 @@
-/** Admin module: 转化运营 — 未激活明细 / 转化调研 */
+/** Admin module: 转化运营看板 + 增长洞察·未激活明细 */
 (function (global) {
   var page = 1;
   var lastUsers = [];
@@ -700,7 +700,11 @@
       loadBoard();
       return;
     }
-    if (hash === 'ops-inactive') {
+    if (
+      hash === 'ops-inactive' ||
+      hash === 'insights-growth/inactive' ||
+      /(?:^|\/)inactive$/.test(hash)
+    ) {
       page = 1;
       try {
         var seg = global.sessionStorage.getItem('ops_inactive_segment');
