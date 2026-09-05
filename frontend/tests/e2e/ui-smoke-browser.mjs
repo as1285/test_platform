@@ -459,7 +459,94 @@ async function assertWhiteTopOnPath(page, profile, tag, path, insetOpts) {
   );
 }
 
+/*
+ * 「我的」e1 单层底图档（vivo X90 / OriginOS 5）。
+ *
+ * 底图坐标即 @sm 像素（750×1242）：三宫格白卡 519–741、灰缝 741–765、菜单白卡 765–1226，
+ * 胶囊在图内已擦除、擦除带 660–738。@sm 裁切档把底图铺两层（画布背景 + 同尺寸隐藏 <img>），
+ * 并用 background-size:100% 100% 压进 1180rpx 定高画布，底图竖向缩 5%：
+ * 胶囊会掉出擦除带、贴到菜单白卡上沿，隐藏那层还会在 OriginOS 5 上留下半透明白卡残影。
+ */
+const MINE_E1_ART_H = 1242;
+const MINE_E1_ERASED_TOP = 660;
+const MINE_E1_ERASED_BOTTOM = 738;
+const MINE_E1_MENU_TOP = 765;
+
+async function assertMineE1SingleLayer(page, profile, tag) {
+  await page.goto(`${SITE_URL}/mine.html`, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.waitForSelector('#mineE1Canvas #headerImg', { timeout: 15000 });
+  } catch (eNoCanvas) {
+    log(`${tag} skip mine e1 single-layer (no canvas)`);
+    return;
+  }
+  await page.waitForTimeout(1200);
+  const m = await page.evaluate(() => {
+    const canvas = document.getElementById('mineE1Canvas');
+    const img = document.getElementById('headerImg');
+    const pill = document.getElementById('familyCountWrap');
+    const rect = (el) => (el ? el.getBoundingClientRect() : null);
+    const cr = rect(canvas);
+    const ir = rect(img);
+    const pr = rect(pill);
+    return {
+      classes: Array.from(document.documentElement.classList),
+      canvasW: cr.width,
+      canvasH: cr.height,
+      canvasBg: getComputedStyle(canvas).backgroundImage,
+      imgOpacity: Number(getComputedStyle(img).opacity),
+      imgH: ir.height,
+      staleSmStyles: document.querySelectorAll(
+        '#androidMineSmFirstPaint,style[data-android-mine-e1-sm-firstpaint],style[data-xiaomi14pro-mine-e1-lock]'
+      ).length,
+      pillTop: pr ? pr.top - cr.top : null,
+      pillBottom: pr ? pr.bottom - cr.top : null
+    };
+  });
+  if (!m.classes.includes('app-android-mine-e1-plainimg')) {
+    fail(`${tag} /mine.html missing app-android-mine-e1-plainimg: ${m.classes.join(' ')}`);
+  }
+  if (m.classes.includes('app-android-mine-e1-sm')) {
+    fail(`${tag} /mine.html still on the @sm crop tier: ${m.classes.join(' ')}`);
+  }
+  if (m.staleSmStyles > 0) {
+    fail(`${tag} /mine.html left ${m.staleSmStyles} @sm first-paint style node(s) in the DOM`);
+  }
+  if (m.canvasBg !== 'none') {
+    fail(`${tag} /mine.html canvas keeps a second painted copy: ${m.canvasBg}`);
+  }
+  if (m.imgOpacity < 1) {
+    fail(`${tag} /mine.html header image is hidden (opacity=${m.imgOpacity})`);
+  }
+  const trueH = (m.canvasW * 2127) / 1284;
+  if (Math.abs(m.canvasH - trueH) > 2) {
+    fail(`${tag} /mine.html artwork is not at true scale: ${m.canvasH.toFixed(1)} vs ${trueH.toFixed(1)}`);
+  }
+  if (Math.abs(m.imgH - m.canvasH) > 2) {
+    fail(`${tag} /mine.html header image overflows the canvas: img=${m.imgH.toFixed(1)} canvas=${m.canvasH.toFixed(1)}`);
+  }
+  if (m.pillTop == null) {
+    log(`${tag} skip mine e1 pill band (no pill)`);
+    return;
+  }
+  const scale = m.canvasH / MINE_E1_ART_H;
+  if (m.pillTop < MINE_E1_ERASED_TOP * scale - 1 || m.pillBottom > MINE_E1_ERASED_BOTTOM * scale + 1) {
+    fail(
+      `${tag} /mine.html pill escaped the erased band: pill=${m.pillTop.toFixed(1)}-${m.pillBottom.toFixed(1)} ` +
+        `band=${(MINE_E1_ERASED_TOP * scale).toFixed(1)}-${(MINE_E1_ERASED_BOTTOM * scale).toFixed(1)}`
+    );
+  }
+  const gap = MINE_E1_MENU_TOP * scale - m.pillBottom;
+  if (gap < 12) {
+    fail(`${tag} /mine.html pill row is cramped against the menu list: gap=${gap.toFixed(1)}px`);
+  }
+  log(`${tag} ok mine e1 single layer canvas=${m.canvasH.toFixed(1)} pill-menu gap=${gap.toFixed(1)}`);
+}
+
 async function runAndroidWhiteTop(page, profile, tag) {
+  if (profile.expect?.mineE1PlainImg) {
+    await assertMineE1SingleLayer(page, profile, tag);
+  }
   await assertWhiteTopOnPath(page, profile, tag, '/shuiming_result.html');
   const otherExpect = {};
   if (profile.id === 'xiaomi-14') {
