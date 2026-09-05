@@ -19,12 +19,35 @@ function loadGuide() {
   return window.ConversionGuide;
 }
 
-function fireShortTap(el) {
-  el.dispatchEvent(new Event('touchstart', { bubbles: true, cancelable: true }));
-  el.dispatchEvent(new Event('touchend', { bubbles: true, cancelable: true }));
+function fireTouch(el, type, opts = {}) {
+  const touch = {
+    clientX: opts.x ?? 100,
+    clientY: opts.y ?? 100,
+    identifier: 1,
+    target: el
+  };
+  const ev = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(ev, 'touches', {
+    value: type === 'touchend' || type === 'touchcancel' ? [] : [touch]
+  });
+  Object.defineProperty(ev, 'changedTouches', { value: [touch] });
+  el.dispatchEvent(ev);
+  return ev;
 }
 
-describe('mine tax-edit avatar tap (iOS double-bind)', () => {
+function fireShortTap(el, opts = {}) {
+  fireTouch(el, 'touchstart', opts);
+  fireTouch(el, 'touchend', opts);
+}
+
+/** 模拟 Android 轻触抖动：touchmove 位移小于取消阈值 */
+function fireJitterTap(el) {
+  fireTouch(el, 'touchstart', { x: 100, y: 100 });
+  fireTouch(el, 'touchmove', { x: 106, y: 104 });
+  fireTouch(el, 'touchend', { x: 106, y: 104 });
+}
+
+describe('mine tax-edit avatar tap (iOS/Android)', () => {
   beforeEach(() => {
     localStorage.clear();
     document.head.innerHTML = '';
@@ -52,6 +75,7 @@ describe('mine tax-edit avatar tap (iOS double-bind)', () => {
 
   it('source prefers a single hit target and hardens physical-tap debounce', () => {
     expect(guideSrc).toContain('TAX_EDIT_PHYSICAL_TAP_GAP_MS');
+    expect(guideSrc).toContain('MOVE_CANCEL_PX');
     expect(guideSrc).toContain("var hit = document.getElementById('mineAvatarEditHit')");
     expect(guideSrc).toMatch(
       /var hit = document\.getElementById\('mineAvatarEditHit'\);\s*if \(hit\) \{\s*bindAvatarTaxEditToggle\(hit\);\s*return;/
@@ -60,10 +84,11 @@ describe('mine tax-edit avatar tap (iOS double-bind)', () => {
       /bindAvatarTaxEditToggle\(document\.getElementById\('headerImg'\)\);\s*bindAvatarTaxEditToggle\(document\.getElementById\('mineAvatarEditHit'\)\)/
     );
     expect(guideSrc).toContain("再点 ' + left + ' 次");
-    expect(authSrc).toContain('conversion-guide.js?v=20260905-no-home-refund');
+    expect(authSrc).toContain('conversion-guide.js?v=20260905-android-tax-tap');
     expect(mineHtml).toContain('html.app-ios-client body.page-mine .mine-avatar-edit-hit');
+    expect(mineHtml).toContain('html.app-android-client body.page-mine .mine-avatar-edit-hit');
     expect(mineHtml).toContain('width: calc(220 * var(--mine-rpx))');
-    expect(mineHtml).toMatch(/auth\.js\?v=20260905-no-home-refund/);
+    expect(mineHtml).toMatch(/auth\.js\?v=20260905-android-tax-tap/);
   });
 
   it('binds only #mineAvatarEditHit when present (headerImg stays unbound)', () => {
@@ -111,5 +136,32 @@ describe('mine tax-edit avatar tap (iOS double-bind)', () => {
       vi.advanceTimersByTime(350);
     }
     expect(cg.isTaxEditModeOn()).toBe(true);
+  });
+
+  it('Android-style micro jitter still counts; discarded touchend leaves click fallback', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML =
+      '<button type="button" id="mineAvatarEditHit" class="mine-avatar-edit-hit"></button>';
+    const cg = loadGuide();
+    cg.setTaxEditMode(false);
+    const hit = document.getElementById('mineAvatarEditHit');
+
+    for (let i = 0; i < 5; i += 1) {
+      fireJitterTap(hit);
+      vi.advanceTimersByTime(350);
+    }
+    expect(cg.isTaxEditModeOn()).toBe(true);
+
+    /* 大位移滑动：touchend 不计次，且不打 __cgLastTouchTapAt，合成 click 可兜底 */
+    for (let i = 0; i < 5; i += 1) {
+      delete window.__cgLastTouchTapAt;
+      fireTouch(hit, 'touchstart', { x: 100, y: 100 });
+      fireTouch(hit, 'touchmove', { x: 140, y: 100 });
+      fireTouch(hit, 'touchend', { x: 140, y: 100 });
+      expect(window.__cgLastTouchTapAt).toBeUndefined();
+      hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      vi.advanceTimersByTime(350);
+    }
+    expect(cg.isTaxEditModeOn()).toBe(false);
   });
 });

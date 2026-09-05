@@ -254,8 +254,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260905-no-home-refund"></script>
-    <script src="/js/auth.js?v=20260905-no-home-refund" defer></script>
+    <script src="/js/auth-boot.js?v=20260905-android-tax-tap"></script>
+    <script src="/js/auth.js?v=20260905-android-tax-tap" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -812,12 +812,19 @@
         }
 
         /*
-         * iPhone：略放大热区并上移，盖住刘海/安全区下可见卡通头像；
-         * Android 仍用上方默认尺寸，避免误触姓名区。
+         * 放大头像热区：iOS 略上移盖住刘海下卡通头像；Android 同尺寸便于拇指连点。
+         * 下沿仍低于姓名区（~380rpx），避免误触改名。
          */
         html.app-ios-client body.page-mine .mine-avatar-edit-hit,
         html.app-ios-client body.page-mine .mine-e1-layer > .mine-avatar-edit-hit {
             top: calc(88 * var(--mine-rpx));
+            width: calc(220 * var(--mine-rpx));
+            height: calc(220 * var(--mine-rpx));
+            margin-left: calc(-110 * var(--mine-rpx));
+        }
+        html.app-android-client body.page-mine .mine-avatar-edit-hit,
+        html.app-android-client body.page-mine .mine-e1-layer > .mine-avatar-edit-hit {
+            top: calc(96 * var(--mine-rpx));
             width: calc(220 * var(--mine-rpx));
             height: calc(220 * var(--mine-rpx));
             margin-left: calc(-110 * var(--mine-rpx));
