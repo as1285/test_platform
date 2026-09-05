@@ -3,6 +3,8 @@ import { devices } from 'playwright';
 import {
   DEVICE_PROFILES,
   RECENT_DEVICE_IDS,
+  POPULAR_DEVICE_IDS,
+  PRODUCTION_TOP_MODELS,
   resolveSmokeDevices,
   buildContextOptions
 } from '../e2e/ui-smoke-devices.mjs';
@@ -46,7 +48,16 @@ describe('ui-smoke device catalog', () => {
       'iqoo-neo8pro',
       'iqoo-13',
       'iqoo-15',
-      'meizu-20pro'
+      'meizu-20pro',
+      'iphone-ios18-7',
+      'iphone-ios18-5',
+      'iphone-ios17-6',
+      'iphone-ios14-4',
+      'redmi-k80ultra',
+      'redmi-k70',
+      'oppo-findx8',
+      'oppo-a57',
+      'vivo-x100'
     ].forEach((id) => {
       expect(ids, id).toContain(id);
     });
@@ -54,6 +65,13 @@ describe('ui-smoke device catalog', () => {
     expect(RECENT_DEVICE_IDS.length).toBeGreaterThan(20);
     RECENT_DEVICE_IDS.forEach((id) => {
       expect(ids, 'recent:' + id).toContain(id);
+    });
+    expect(POPULAR_DEVICE_IDS.length).toBeGreaterThan(15);
+    POPULAR_DEVICE_IDS.forEach((id) => {
+      expect(ids, 'popular:' + id).toContain(id);
+    });
+    PRODUCTION_TOP_MODELS.forEach((row) => {
+      expect(ids, 'prod:' + row.model).toContain(row.id);
     });
   });
 
@@ -81,6 +99,11 @@ describe('ui-smoke device catalog', () => {
     expect(resolveSmokeDevices('recent').map((d) => d.id).sort()).toEqual(
       [...RECENT_DEVICE_IDS].sort()
     );
+    expect(resolveSmokeDevices('popular').map((d) => d.id).sort()).toEqual(
+      [...POPULAR_DEVICE_IDS].sort()
+    );
+    expect(resolveSmokeDevices('popular').length).toBeLessThan(DEVICE_PROFILES.length);
+    expect(resolveSmokeDevices('popular').length).toBeLessThanOrEqual(25);
     expect(() => resolveSmokeDevices('no-such-phone')).toThrow(/无匹配机型/);
   });
 });

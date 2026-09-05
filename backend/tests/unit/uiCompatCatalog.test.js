@@ -26,6 +26,23 @@ describe('uiCompatCatalog + deviceStats', () => {
     const oneplus12 = catalog.listCatalogModels().find((m) => m.id === 'oneplus-12');
     expect(catalog.modelMatchesBlob(oneplus12, '一加 12 PJD110')).toBe(true);
     expect(catalog.modelMatchesBlob(oneplus12, 'OnePlus 12R CPH2585')).toBe(false);
+    const xiaomi15 = catalog.listCatalogModels().find((m) => m.id === 'xiaomi-15');
+    expect(catalog.modelMatchesBlob(xiaomi15, '24129PN74C')).toBe(true);
+    expect(catalog.modelMatchesBlob(xiaomi15, 'Xiaomi 15 Pro 2410DPN6CC')).toBe(false);
+    const k80ultra = catalog.listCatalogModels().find((m) => m.id === 'redmi-k80ultra');
+    expect(catalog.modelMatchesBlob(k80ultra, '25060RK16C REDMI K80 Ultra')).toBe(true);
+    expect(catalog.modelMatchesBlob(k80ultra, '24122RKC7C REDMI K80 Pro')).toBe(false);
+    const findx8 = catalog.listCatalogModels().find((m) => m.id === 'oppo-findx8');
+    expect(catalog.modelMatchesBlob(findx8, 'PKB110 OPPO Find X8')).toBe(true);
+    expect(catalog.modelMatchesBlob(findx8, 'CPH2797 OPPO Find X9')).toBe(false);
+    const x100 = catalog.listCatalogModels().find((m) => m.id === 'vivo-x100');
+    expect(catalog.modelMatchesBlob(x100, 'V2309A vivo X100')).toBe(true);
+    expect(catalog.modelMatchesBlob(x100, 'V2241A vivo X90')).toBe(false);
+    const a57 = catalog.listCatalogModels().find((m) => m.id === 'oppo-a57');
+    expect(catalog.modelMatchesBlob(a57, 'PFTM20 OPPO A57')).toBe(true);
+    expect(catalog.modelMatchesBlob(a57, 'PHJ110 OPPO A58')).toBe(false);
+    const k70 = catalog.listCatalogModels().find((m) => m.id === 'redmi-k70');
+    expect(catalog.modelMatchesBlob(k70, '23113RKC6C')).toBe(true);
   });
 
   it('matches Mate 30 without taking Mate 30 Pro or Mate 60', () => {

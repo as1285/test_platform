@@ -327,7 +327,7 @@ var MODELS = [
     platform: 'android',
     family: 'xiaomi',
     label: '小米 15',
-    match: ['小米\\s*15\\b(?!\\s*Pro)', 'Xiaomi\\s*15\\b(?!\\s*Pro)'],
+    match: ['小米\\s*15\\b(?!\\s*Pro)', 'Xiaomi\\s*15\\b(?!\\s*Pro)', '24129PN74C', '24129PN74G'],
     issues: [{ page: 'shuiming', title: '明细四行距拉开', summary: '行距过紧，单独拉齐；并避开 X300 Pro / Mate60 顶栏规则。', since: '2026-08-17' }]
   },
   {
@@ -361,10 +361,25 @@ var MODELS = [
     platform: 'android',
     family: 'xiaomi',
     label: '红米 K70 / 至尊',
-    match: ['K70', 'Redmi\\s*K70', 'K70\\s*(?:至尊|Ultra)'],
+    match: ['K70', 'Redmi\\s*K70', 'K70\\s*(?:至尊|Ultra)', '23113RKC6C', '23113RKC6G'],
     issues: [
       { page: 'shouye', title: '勿套小米 14 的 72px 留白', summary: '状态栏多为独立黑条，收紧首页顶距。', since: '2026-07-27' },
       { page: 'shuiming', title: 'K70 至尊白顶栏避让', summary: 'WebView 压在状态栏下的机型须留顶距。', since: '2026-08-13' }
+    ]
+  },
+  {
+    id: 'redmi-k80ultra',
+    platform: 'android',
+    family: 'xiaomi',
+    label: '红米 K80 Ultra',
+    match: ['K80\\s*(?:至尊|Ultra)', '25060RK16C'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '白顶栏避开系统状态栏',
+        summary: 'HyperOS 沉浸 WebView；勿按 K70 / mi-family 清零顶距。线上高频型号 25060RK16C。',
+        since: '2026-09-05'
+      }
     ]
   },
   {
@@ -560,6 +575,21 @@ var MODELS = [
     ]
   },
   {
+    id: 'vivo-x100',
+    platform: 'android',
+    family: 'vivo',
+    label: 'vivo X100',
+    match: ['X100\\b(?!\\s*Pro)', 'V2309A'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '白顶栏默认沉浸 40px',
+        summary: '线上高频 V2309A。未进 X90 / X200 特判，勿按 OriginOS 族名清零。',
+        since: '2026-09-05'
+      }
+    ]
+  },
+  {
     id: 'vivo-x200pro',
     platform: 'android',
     family: 'vivo',
@@ -622,6 +652,36 @@ var MODELS = [
     label: 'OPPO Reno10 5G',
     match: ['Reno10', 'Reno 10', 'CPH2531'],
     issues: [{ page: 'shuiming', title: '避开 ColorOS 沉浸状态栏', summary: '真沉浸机，「我的」可保留 inset。', since: '2026-08-17' }]
+  },
+  {
+    id: 'oppo-findx8',
+    platform: 'android',
+    family: 'oppo',
+    label: 'OPPO Find X8',
+    match: ['PKB110', 'Find\\s*X\\s*8(?!\\s*Pro)'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '白顶栏默认沉浸 40px',
+        summary: '线上高频 PKB110。未进 Find X9 外置核实名单，标题须避开系统时间。',
+        since: '2026-09-05'
+      }
+    ]
+  },
+  {
+    id: 'oppo-a57',
+    platform: 'android',
+    family: 'oppo',
+    label: 'OPPO A57 5G',
+    match: ['PFTM20', 'OPPO\\s*A57', 'A57\\s*5G'],
+    issues: [
+      {
+        page: 'shuiming',
+        title: '白顶栏默认沉浸 40px',
+        summary: '线上高频 PFTM20。勿套 A58（PHJ110）外置清零。',
+        since: '2026-09-05'
+      }
+    ]
   },
   {
     id: 'oppo-k9x',

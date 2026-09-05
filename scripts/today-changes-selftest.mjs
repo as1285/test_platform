@@ -2483,8 +2483,26 @@ mustInclude(
 );
 mustInclude(
   'backend/scripts/sbdy_sz_new_render_pdf.py',
-  ['深圳市社会保险参保证明', '历年参保年限', '近两年参保缴费明细', 'sz_new_si_seal'],
+  [
+    '深圳市社会保险参保证明',
+    '历年参保年限',
+    '近两年参保缴费明细',
+    'sz_new_si_seal',
+    'ensure_full_cjk_font',
+    'right_x = X1 - seal_size'
+  ],
   'Shenzhen-new PDF renderer title and dual seals'
+);
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  [
+    '.sz-sec{',
+    'text-align:left',
+    'font-synthesis:none',
+    'justify-content:flex-end',
+    'Noto Serif CJK SC'
+  ],
+  'Shenzhen-new HTML section titles left + Song font + right seals'
 );
 if (
   exists('backend/assets/sbdy/sz_new_si_seal.png') &&
@@ -2742,6 +2760,37 @@ mustInclude(
   'scripts/api-selftest.mjs',
   ['/api/health', '/api/najilu-qr/status', '/api/partner/bank/health', 'expectStatus'],
   '20260905 standalone API selftest script'
+);
+mustInclude(
+  'frontend/tests/e2e/ui-smoke-browser.mjs',
+  ['UI_SMOKE_CHROME_ONLY', 'CHROME_ONLY'],
+  '20260905 chrome-only smoke skips API business suite'
+);
+mustInclude(
+  'frontend/tests/e2e/ui-smoke-devices.mjs',
+  [
+    "spec === 'popular'",
+    'POPULAR_DEVICE_IDS',
+    "id: 'redmi-k80ultra'",
+    "id: 'oppo-findx8'",
+    "id: 'vivo-x100'",
+    "id: 'iphone-ios18-7'",
+    '25060RK16C',
+    'PKB110',
+    'V2309A',
+    'PFTM20',
+    '23113RKC6C'
+  ],
+  '20260905 popular production device smoke catalog'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'app-android-redmi-k80ultra',
+    'isAndroid25060RK16CClient()',
+    'K80[\\s_-]*(?:至尊|Ultra)'
+  ],
+  '20260905 K80 Ultra immersive 40px'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
