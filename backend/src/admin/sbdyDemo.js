@@ -3989,31 +3989,31 @@ function renderSzNewCertHtml(payload, links, opts) {
     '<title>个人权益记录（参保证明）</title>' +
     '<style>' +
     '*{box-sizing:border-box}' +
-    'html,body{margin:0;padding:0;background:#f3f4f6}' +
-    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#111;' +
-    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-    '.sheet{max-width:430px;margin:0 auto;background:#fff;padding:14px 12px 20px;position:relative;min-height:100vh}' +
-    '@media(min-width:720px){.sheet{max-width:560px;padding:18px 20px 28px;min-height:auto;box-shadow:0 8px 24px rgba(15,23,42,.08);margin:16px auto}}' +
-    'h1{margin:10px 48px 12px;text-align:center;font-size:20px;font-weight:700;letter-spacing:.5px;line-height:1.35}' +
-    '.docno{position:absolute;right:12px;top:12px;font-size:12px;letter-spacing:.2px}' +
-    '.info{font-size:12.5px;line-height:1.75;margin:0 2px 12px;word-break:break-all}' +
-    'h2{margin:14px 0 6px;font-size:14px;font-weight:700}' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    /* 与旧深圳/其它 sbdy 正式件同一套宋体栈；禁止合成粗体，避免 WebView 回退成黑体/无衬线 */
+    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;font-size:12px;' +
+    'font-weight:400;font-synthesis:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.page{width:210mm;max-width:100%;margin:0 auto;background:#fff;padding:10px 14px 24px;position:relative}' +
+    'h1{margin:8px 72px 10px;text-align:center;font-size:18px;font-weight:400;letter-spacing:1px;line-height:1.35}' +
+    '.docno{position:absolute;right:14px;top:10px;font-size:11px;letter-spacing:.2px}' +
+    '.info{font-size:12px;line-height:1.75;margin:0 0 10px;word-break:break-all}' +
+    /* 不用 h2：部分 WebView 会把标题默认居中 */
+    '.sz-sec{margin:12px 0 4px;font-size:12px;font-weight:400;text-align:left}' +
     'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
-    'th,td{border:1px solid #111;padding:3px 1px;text-align:center;font-size:10px;font-weight:400;line-height:1.25;word-break:break-all}' +
-    'th{font-weight:700}' +
+    'th,td{border:1px solid #000;padding:3px 1px;text-align:center;font-size:10px;font-weight:400;line-height:1.25;word-break:break-all}' +
     'table.years th,table.years td{font-size:11px;padding:5px 2px}' +
     'table.detail td:nth-child(2){font-size:8.5px}' +
-    '.notes{font-size:11.5px;line-height:1.7;margin-top:12px}' +
-    '.notes .t{font-weight:700}' +
+    '.notes{font-size:11px;line-height:1.7;margin-top:10px;text-align:left}' +
+    '.notes .t{font-weight:400}' +
     '.unit-line{margin-left:1.2em}' +
-    '.seals{display:flex;justify-content:space-around;align-items:center;margin:18px 8px 8px}' +
-    '.seal-box{position:relative;width:118px;height:118px}' +
+    '.seals{display:flex;justify-content:flex-end;align-items:flex-start;gap:20px;margin:4px 0 2px}' +
+    '.seal-box{position:relative;width:96px;height:96px;flex:0 0 96px}' +
     '.seal-box img{width:100%;height:100%;display:block}' +
-    '.seal-date{position:absolute;left:8px;right:8px;top:54%;text-align:center;color:#c43034;font-size:9px;font-weight:700;line-height:1.2;pointer-events:none}' +
-    '.svc{text-align:center;color:#9ca3af;font-size:12px;margin:10px 0 16px}' +
+    '.seal-date{position:absolute;left:6px;right:6px;top:52%;text-align:center;color:#c43034;font-size:8px;font-weight:400;line-height:1.2;pointer-events:none}' +
+    '.svc{text-align:center;color:#666;font-size:11px;margin:8px 0 14px}' +
     '.dl-btn{display:block;width:100%;background:#2b7de1;color:#fff;text-align:center;padding:13px 12px;border-radius:4px;text-decoration:none;font-size:16px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}' +
-    '@media print{html,body{background:#fff}.sheet{max-width:none;box-shadow:none;margin:0;padding:10mm}.dl-btn{display:none}}' +
-    '</style></head><body><div class="sheet">' +
+    '@media print{html,body{background:#fff}.page{max-width:none;margin:0;padding:10mm}.dl-btn{display:none}}' +
+    '</style></head><body><div class="page">' +
     '<div class="docno">' +
     escHtml(serial) +
     '</div>' +
@@ -4025,7 +4025,7 @@ function renderSzNewCertHtml(payload, links, opts) {
     '　社保电脑号：' +
     escHtml(p.computer_no || '') +
     '</div>' +
-    '<h2>（一）历年参保年限</h2>' +
+    '<div class="sz-sec">（一）历年参保年限</div>' +
     '<table class="years"><thead><tr>' +
     '<th>险种</th><th>养老保险</th><th>医疗保险</th><th>生育保险</th>' +
     '<th>生育医疗</th><th>工伤保险</th><th>失业保险</th></tr></thead><tbody><tr>' +
@@ -4042,7 +4042,7 @@ function renderSzNewCertHtml(payload, links, opts) {
     '</td><td>' +
     escHtml(years.unemployment != null ? years.unemployment : months.length) +
     '</td></tr></tbody></table>' +
-    '<h2>（二）近两年参保缴费明细</h2>' +
+    '<div class="sz-sec">（二）近两年参保缴费明细</div>' +
     '<table class="detail"><thead>' +
     '<tr><th rowspan="2">缴费时段</th><th rowspan="2">单位编号</th>' +
     '<th>养老保险</th><th colspan="2">医疗保险</th><th colspan="2">生育保险/生育医疗</th>' +
