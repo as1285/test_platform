@@ -997,6 +997,9 @@
             color: #111827;
             word-break: break-all;
             cursor: pointer;
+            -webkit-user-select: text;
+            user-select: all;
+            -webkit-touch-callout: default;
             -webkit-tap-highlight-color: transparent;
         }
         .purchase-refund-ad-copy {
@@ -1532,6 +1535,7 @@
     </div>
 
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
+    <script src="/js/clipboard-copy.js?v=20260905-wxcopy"></script>
     <script>
 (function () {
     /* === 购买页主逻辑（内联）===
@@ -1834,21 +1838,24 @@
             });
     }
 
+    /** 微信号等：Clipboard API 失败时继续走 execCommand / Cordova，勿直接 toast 失败 */
     function copyTextFallback(text) {
+        if (typeof window.copyTextRobust === 'function') {
+            return window.copyTextRobust(text);
+        }
         var t = String(text || '');
         if (!t) return Promise.reject(new Error('empty'));
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            return navigator.clipboard.writeText(t);
-        }
         return new Promise(function (resolve, reject) {
             var ta = document.createElement('textarea');
             ta.value = t;
             ta.setAttribute('readonly', '');
-            ta.style.position = 'fixed';
-            ta.style.left = '-9999px';
+            ta.style.cssText =
+                'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;opacity:0;';
             document.body.appendChild(ta);
-            ta.select();
             try {
+                ta.focus();
+                ta.select();
+                if (typeof ta.setSelectionRange === 'function') ta.setSelectionRange(0, t.length);
                 if (document.execCommand('copy')) resolve();
                 else reject(new Error('copy_failed'));
             } catch (e) {

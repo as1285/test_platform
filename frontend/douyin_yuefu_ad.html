@@ -220,6 +220,9 @@
             letter-spacing: 0.02em;
             word-break: break-all;
             cursor: pointer;
+            -webkit-user-select: text;
+            user-select: all;
+            -webkit-touch-callout: default;
             -webkit-tap-highlight-color: transparent;
         }
         .dy-wx-copy {
@@ -392,6 +395,7 @@
         </footer>
     </main>
     <div class="dy-toast" id="dyToast" role="status" aria-live="polite"></div>
+    <script src="/js/clipboard-copy.js?v=20260905-wxcopy"></script>
     <script>
     (function () {
         var WECHAT_ID = 'Tangdong6832';
@@ -505,20 +509,22 @@
         }
 
         function copyText(text) {
+            if (typeof window.copyTextRobust === 'function') {
+                return window.copyTextRobust(text);
+            }
             var t = String(text || '');
             if (!t) return Promise.reject(new Error('empty'));
-            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                return navigator.clipboard.writeText(t);
-            }
             return new Promise(function (resolve, reject) {
                 var ta = document.createElement('textarea');
                 ta.value = t;
                 ta.setAttribute('readonly', '');
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
+                ta.style.cssText =
+                    'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;opacity:0;';
                 document.body.appendChild(ta);
-                ta.select();
                 try {
+                    ta.focus();
+                    ta.select();
+                    if (typeof ta.setSelectionRange === 'function') ta.setSelectionRange(0, t.length);
                     if (document.execCommand('copy')) resolve();
                     else reject(new Error('copy_failed'));
                 } catch (e) {
