@@ -2394,6 +2394,38 @@
     el.style.setProperty(prop, value, 'important');
   }
 
+  /**
+   * @sm 档的首屏样式节点与 HyperOS lock 必须摘掉，不能只靠 :not() 排除。
+   * 旧版 auth-boot 会无条件注入 data-android-mine-e1-sm-firstpaint，里头的
+   * 1180rpx 定高与 opacity:0 隐藏 <img> 规则留在 DOM 里就会跟本档抢。
+   */
+  var MINE_E1_STALE_SM_STYLE_SEL =
+    '#androidMineSmFirstPaint,style[data-android-mine-e1-sm-firstpaint],style[data-xiaomi14pro-mine-e1-lock]';
+
+  function dropStaleMineE1SmStyles() {
+    try {
+      var nodes = document.querySelectorAll(MINE_E1_STALE_SM_STYLE_SEL);
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i] && nodes[i].parentNode) {
+          nodes[i].parentNode.removeChild(nodes[i]);
+        }
+      }
+    } catch (eDrop) {}
+  }
+
+  /** 画布里除 #headerImg 外不该再有第二个绘制层；有就压掉，避免又冒出一块白卡 */
+  function dropDuplicateMineE1PaintLayers(canvas) {
+    try {
+      var kids = canvas.children;
+      for (var i = 0; i < kids.length; i++) {
+        var el = kids[i];
+        if (!el || el.id === 'headerImg' || el.id === 'mineE1Layer') continue;
+        if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+        el.style.setProperty('display', 'none', 'important');
+      }
+    } catch (eDup) {}
+  }
+
   function pinMineE1PlainImgLayout() {
     try {
       if (!isMineE1PlainImgClient()) {
@@ -2404,17 +2436,28 @@
       root.classList.add('app-android-client');
       root.classList.add('app-top-safe-shell');
       root.classList.add('app-android-immersive-white-top');
+      /* 每轮都摘：pinXiaomi14ProMineE1Layout 之类的自愈会给整屏安卓补回 sm class */
       root.classList.remove('app-android-mine-e1-sm');
       root.classList.remove('app-android-vivo-family');
       window.__mineE1PlainImg = true;
+      dropStaleMineE1SmStyles();
       try {
-        var oldLock = document.querySelector('style[data-mine-e1-plainimg-lock]');
-        if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
-        var lock = document.createElement('style');
-        lock.setAttribute('data-mine-e1-plainimg-lock', '1');
-        lock.setAttribute('data-vivox90-mine-e1-paint', '1');
-        lock.textContent = mineE1PlainImgLockCss();
-        (document.head || document.documentElement).appendChild(lock);
+        /* 幂等注入：内容没变就别摘了重建，免得每轮都触发一次样式重算 */
+        var lock = document.querySelector('style[data-mine-e1-plainimg-lock]');
+        var css = mineE1PlainImgLockCss();
+        if (!lock) {
+          lock = document.createElement('style');
+          lock.setAttribute('data-mine-e1-plainimg-lock', '1');
+          lock.setAttribute('data-vivox90-mine-e1-paint', '1');
+          lock.textContent = css;
+        }
+        if (lock.textContent !== css) {
+          lock.textContent = css;
+        }
+        /* 始终排在 head 末尾：同优先级时靠文档序压过后注入的 data-mine-chrome */
+        if (lock.parentNode !== document.head || lock.nextElementSibling) {
+          (document.head || document.documentElement).appendChild(lock);
+        }
       } catch (eLock) {}
       if (!document.body || !document.body.classList.contains('page-mine')) {
         return;
@@ -2435,6 +2478,13 @@
         setStyleOnce(canvas, 'overflow', 'hidden');
         setStyleOnce(canvas, 'container-type', 'normal');
         setStyleOnce(canvas, 'width', '100%');
+        /* 兜底：仍有样式表在画背景，就地钉死 none，杜绝第二份底图 */
+        try {
+          if (getComputedStyle(canvas).backgroundImage !== 'none') {
+            setStyleOnce(canvas, 'background-image', 'none');
+          }
+        } catch (eBg) {}
+        dropDuplicateMineE1PaintLayers(canvas);
       }
       if (img) {
         try {
@@ -2460,11 +2510,12 @@
       pinMineE1RpxFromCanvas();
       if (!pinMineE1PlainImgLayout._rearm) {
         pinMineE1PlainImgLayout._rearm = true;
+        /* 复检整档而非只补 rpx：晚到的自愈可能把 sm class / 首屏样式又塞回来 */
         [80, 240, 600, 1200].forEach(function (ms) {
           setTimeout(function () {
             try {
-              pinMineE1RpxFromCanvas();
-            } catch (eRpxRe) {}
+              pinMineE1PlainImgLayout();
+            } catch (eRe) {}
           }, ms);
         });
       }

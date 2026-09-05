@@ -496,6 +496,9 @@ async function assertMineE1SingleLayer(page, profile, tag) {
       canvasBg: getComputedStyle(canvas).backgroundImage,
       imgOpacity: Number(getComputedStyle(img).opacity),
       imgH: ir.height,
+      staleSmStyles: document.querySelectorAll(
+        '#androidMineSmFirstPaint,style[data-android-mine-e1-sm-firstpaint],style[data-xiaomi14pro-mine-e1-lock]'
+      ).length,
       pillTop: pr ? pr.top - cr.top : null,
       pillBottom: pr ? pr.bottom - cr.top : null
     };
@@ -505,6 +508,9 @@ async function assertMineE1SingleLayer(page, profile, tag) {
   }
   if (m.classes.includes('app-android-mine-e1-sm')) {
     fail(`${tag} /mine.html still on the @sm crop tier: ${m.classes.join(' ')}`);
+  }
+  if (m.staleSmStyles > 0) {
+    fail(`${tag} /mine.html left ${m.staleSmStyles} @sm first-paint style node(s) in the DOM`);
   }
   if (m.canvasBg !== 'none') {
     fail(`${tag} /mine.html canvas keeps a second painted copy: ${m.canvasBg}`);

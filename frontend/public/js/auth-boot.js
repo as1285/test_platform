@@ -311,14 +311,18 @@
         return;
       }
       /*
-       * 单层底图档（vivo X90 / OriginOS 5，mine.html 首屏内联脚本已判）：
-       * @sm 档同时挂画布背景与同尺寸隐藏 <img>，两层同图会留半透明白卡残影，
-       * 定高 1180rpx 又把 1242rpx 底图压掉 5%。这里只放行 750px 资源，不套裁切叠层。
+       * 单层底图档（vivo X90）：@sm 档两层同图会留半透明白卡残影，须在注入裁切首屏样式
+       * 「之前」判掉，否则该 style 节点留在 DOM 里抢。样式见 mine.html plainimg 档。
        */
+      var cl = document.documentElement.classList;
       if (
         window.__mineE1PlainImg ||
-        document.documentElement.classList.contains('app-android-mine-e1-plainimg')
+        cl.contains('app-android-mine-e1-plainimg') ||
+        /V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(ua)
       ) {
+        cl.add('app-android-mine-e1-plainimg');
+        cl.remove('app-android-mine-e1-sm');
+        window.__mineE1PlainImg = true;
         window.__mineE1ForceSm = true;
         return;
       }

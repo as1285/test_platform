@@ -40,15 +40,51 @@ describe('vivo X90 mine e1 single-layer paint', () => {
     expect(mine).toContain("document.documentElement.classList.add('app-android-mine-e1-plainimg')");
   });
 
-  it('first-paints X90 without the @sm crop class that builds the double layer', () => {
-    /* mine.html 内联脚本先立旗，auth-boot 必须在挂 @sm 裁切档之前放行 */
-    const plainIdx = boot.indexOf('app-android-mine-e1-plainimg');
-    const smIdx = boot.indexOf("document.documentElement.classList.add('app-android-mine-e1-sm')");
-    expect(plainIdx).toBeGreaterThan(0);
-    expect(smIdx).toBeGreaterThan(plainIdx);
-    expect(boot).toMatch(/window\.__mineE1PlainImg \|\|[\s\S]{0,120}window\.__mineE1ForceSm = true;\s*return;/);
-    const bootIdx = mine.indexOf('/js/auth-boot.js?v=');
-    expect(mine.indexOf("classList.add('app-android-mine-e1-plainimg')")).toBeLessThan(bootIdx);
+  it('detects X90 in auth-boot itself, before any @sm first-paint style is injected', () => {
+    /*
+     * 别只靠 mine.html 立旗：那个内联块早段抛错就漏判，@sm 首屏 style 会留在 DOM 里抢。
+     * auth-boot 必须用同一条 UA 正则自己判，且判点在 sm class / style 注入之前。
+     */
+    expect(boot).toContain(
+      'V2241A|V2241EA|PD2241\\b|(?:vivo[\\s_-]*)?X90\\b(?![\\s_-]*(?:Pro|[sS]|Plus|\\+))'
+    );
+    const uaIdx = boot.indexOf('V2241A|V2241EA|PD2241');
+    const smClassIdx = boot.indexOf("document.documentElement.classList.add('app-android-mine-e1-sm')");
+    const smStyleIdx = boot.indexOf("st.id = 'androidMineSmFirstPaint'");
+    expect(uaIdx).toBeGreaterThan(0);
+    expect(smClassIdx).toBeGreaterThan(uaIdx);
+    expect(smStyleIdx).toBeGreaterThan(uaIdx);
+    expect(boot).toContain("cl.add('app-android-mine-e1-plainimg')");
+    expect(boot).toContain("cl.remove('app-android-mine-e1-sm')");
+    expect(boot).toMatch(/cl\.remove\('app-android-mine-e1-sm'\);[\s\S]{0,120}return;/);
+    /* mine.html 那份判定仍要早于 auth-boot 加载，两处互为兜底 */
+    const bootTagIdx = mine.indexOf('/js/auth-boot.js?v=');
+    expect(mine.indexOf("classList.add('app-android-mine-e1-plainimg')")).toBeLessThan(bootTagIdx);
+  });
+
+  it('drops a leftover @sm first-paint style node instead of only :not()-ing it', () => {
+    expect(auth).toContain('function dropStaleMineE1SmStyles()');
+    expect(auth).toContain('#androidMineSmFirstPaint');
+    expect(auth).toContain('style[data-android-mine-e1-sm-firstpaint]');
+    expect(auth).toContain('style[data-xiaomi14pro-mine-e1-lock]');
+    expect(auth).toMatch(/pinMineE1PlainImgLayout\(\)[\s\S]{0,900}dropStaleMineE1SmStyles\(\);/);
+    /* 自愈会给整屏安卓补回 sm class，每轮都要摘 */
+    expect(auth).toMatch(
+      /root\.classList\.remove\('app-android-mine-e1-sm'\);[\s\S]{0,200}dropStaleMineE1SmStyles\(\);/
+    );
+    /* 复检整档而非只补 rpx，否则晚到的自愈塞回来就没人收拾 */
+    expect(auth).toMatch(/_rearm[\s\S]{0,300}setTimeout\([\s\S]{0,120}pinMineE1PlainImgLayout\(\);/);
+  });
+
+  it('leaves no duplicate paint layer inside the canvas', () => {
+    expect(auth).toContain('function dropDuplicateMineE1PaintLayers(canvas)');
+    expect(auth).toContain("el.style.setProperty('display', 'none', 'important')");
+    /* 兜底：仍有样式表在画背景就地钉 none，避免第二份底图 */
+    expect(auth).toMatch(
+      /getComputedStyle\(canvas\)\.backgroundImage !== 'none'[\s\S]{0,120}'background-image', 'none'/
+    );
+    /* 单层 lock 必须留在 head 末尾，否则会被后注入的 data-mine-chrome 压过 */
+    expect(auth).toContain('lock.nextElementSibling');
   });
 
   it('paints the artwork once: <img> stays visible and the canvas keeps no background copy', () => {

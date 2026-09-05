@@ -1447,17 +1447,35 @@ mustInclude(
   ],
   'mine vivo X90 single-layer e1 paint'
 );
+/* auth-boot 必须自己判 X90：判点在 sm class / 首屏 style 注入之前，别只靠 mine.html 立旗 */
 mustInclude(
   'frontend/public/js/auth-boot.js',
-  ['window.__mineE1PlainImg ||', "classList.contains('app-android-mine-e1-plainimg')"],
-  'auth-boot lets the single-layer e1 tier skip the @sm crop'
+  [
+    'window.__mineE1PlainImg ||',
+    "cl.contains('app-android-mine-e1-plainimg')",
+    'V2241A|V2241EA|PD2241\\b|(?:vivo[\\s_-]*)?X90\\b(?![\\s_-]*(?:Pro|[sS]|Plus|\\+))',
+    "cl.add('app-android-mine-e1-plainimg')",
+    "cl.remove('app-android-mine-e1-sm')"
+  ],
+  'auth-boot detects vivo X90 before injecting the @sm first paint'
 );
+(function testAuthBootPlainImgBeforeSmFirstPaint() {
+  const src = read('frontend/public/js/auth-boot.js');
+  const uaIdx = src.indexOf('V2241A|V2241EA|PD2241');
+  const clsIdx = src.indexOf("document.documentElement.classList.add('app-android-mine-e1-sm')");
+  const styleIdx = src.indexOf("st.id = 'androidMineSmFirstPaint'");
+  if (uaIdx > 0 && clsIdx > uaIdx && styleIdx > uaIdx) ok('auth-boot X90 check precedes @sm first paint');
+  else fail('auth-boot X90 check precedes @sm first paint', `ua=${uaIdx} cls=${clsIdx} style=${styleIdx}`);
+})();
 mustInclude(
   'frontend/public/js/auth.js',
   [
     'function isMineE1PlainImgClient()',
     'function mineE1PlainImgLockCss()',
     'function pinMineE1PlainImgLayout()',
+    'function dropStaleMineE1SmStyles()',
+    'function dropDuplicateMineE1PaintLayers(canvas)',
+    'style[data-android-mine-e1-sm-firstpaint]',
     'data-mine-e1-plainimg-lock',
     'data-vivox90-mine-e1-paint',
     'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg)',
