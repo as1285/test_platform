@@ -49,7 +49,8 @@
     'zhzh_jhm.html': true,
     'refund_ad.html': true,
     'douyin_yuefu_ad.html': true,
-    'gjj_extract_ad.html': true
+    'gjj_extract_ad.html': true,
+    'sousuo.html': true
   };
 
   /** @returns {string} 当前 HTML 文件名，缺省为 index.html */
