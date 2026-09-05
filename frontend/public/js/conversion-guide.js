@@ -940,35 +940,67 @@
     el.style.webkitUserSelect = 'none';
     var touchStartAt = 0;
     var touchMoved = false;
+    var touchStartX = 0;
+    var touchStartY = 0;
     var MAX_TAP_MS = 750;
+    /* Android WebView 轻触常带 1–10px 抖动；无阈值会误判为滑动导致 touchend 不计次 */
+    var MOVE_CANCEL_PX = 14;
+
+    function touchPoint(e) {
+      var t =
+        (e && e.changedTouches && e.changedTouches[0]) ||
+        (e && e.touches && e.touches[0]) ||
+        null;
+      return t ? { x: t.clientX, y: t.clientY } : null;
+    }
 
     function onShortTap(e) {
       if (e && e.target && e.target.closest && e.target.closest('#mineActivateBtn')) {
-        return;
+        return false;
       }
       var dt = Date.now() - touchStartAt;
-      if (touchMoved || (touchStartAt && dt > MAX_TAP_MS)) return;
+      if (touchMoved || (touchStartAt && dt > MAX_TAP_MS)) return false;
       registerTaxEditTap(e);
+      return true;
     }
 
     el.addEventListener(
       'touchstart',
-      function () {
+      function (e) {
         touchStartAt = Date.now();
         touchMoved = false;
+        var p = touchPoint(e);
+        touchStartX = p ? p.x : 0;
+        touchStartY = p ? p.y : 0;
       },
       { passive: true }
     );
     el.addEventListener(
       'touchmove',
-      function () {
-        touchMoved = true;
+      function (e) {
+        if (touchMoved) return;
+        var p = touchPoint(e);
+        if (!p) {
+          touchMoved = true;
+          return;
+        }
+        var dx = p.x - touchStartX;
+        var dy = p.y - touchStartY;
+        if (dx * dx + dy * dy > MOVE_CANCEL_PX * MOVE_CANCEL_PX) {
+          touchMoved = true;
+        }
       },
       { passive: true }
     );
     el.addEventListener('touchend', function (e) {
-      window.__cgLastTouchTapAt = Date.now();
-      onShortTap(e);
+      /*
+       * 仅在真正计次时打戳，挡住随后合成 click。
+       * 旧逻辑无论是否因 touchMoved 丢弃都会打戳 → Android 抖动丢弃 touchend 后，
+       * 合成 click 也被 <500ms 拦截，一次物理点击计 0。
+       */
+      if (onShortTap(e)) {
+        window.__cgLastTouchTapAt = Date.now();
+      }
     });
     el.addEventListener('click', function (e) {
       if (window.__cgLastTouchTapAt && Date.now() - window.__cgLastTouchTapAt < 500) return;
