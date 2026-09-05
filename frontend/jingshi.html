@@ -105,9 +105,10 @@
             -webkit-tap-highlight-color: transparent;
         }
         .js-tab.is-on {
-            background: #ffe36a;
+            background: #ffd24a;
             color: #1e6fff;
             font-weight: 700;
+            box-shadow: 0 1px 0 rgba(180, 120, 0, 0.12);
         }
         .js-list {
             padding: 12px 12px calc(28px + env(safe-area-inset-bottom, 0px));
@@ -151,14 +152,8 @@
         .js-snippet {
             margin-top: 8px;
             font-size: 13px;
-            line-height: 1.6;
+            line-height: 1.65;
             color: #8a93a3;
-        }
-        .js-snippet-text {
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-            overflow: hidden;
         }
         .js-full {
             color: #2b86f5;
@@ -420,6 +415,12 @@
                 return n < 10 ? '0' + n : String(n);
             }
 
+            function clipSnippet(s) {
+                var t = String(s || '').replace(/\s+/g, ' ').trim();
+                if (t.length > 48) t = t.slice(0, 48);
+                return t;
+            }
+
             function itemById(id) {
                 for (var i = 0; i < ITEMS.length; i++) {
                     if (ITEMS[i].id === id) return ITEMS[i];
@@ -459,8 +460,8 @@
                     return '<article class="js-card" data-id="' + escapeHtml(item.id) + '" role="button" tabindex="0">' +
                         '<span class="js-tag">案例' + padCase(idx + 1) + '</span>' +
                         '<div class="js-title">' + escapeHtml(item.title) + '</div>' +
-                        '<p class="js-snippet"><span class="js-snippet-text">' + escapeHtml(item.snippet) +
-                        '</span><a class="js-full" href="#' + escapeHtml(item.id) + '" data-full="' + escapeHtml(item.id) + '">...全文</a></p>' +
+                        '<p class="js-snippet">' + escapeHtml(clipSnippet(item.snippet)) +
+                        '<a class="js-full" href="#' + escapeHtml(item.id) + '" data-full="' + escapeHtml(item.id) + '">...全文</a></p>' +
                         '</article>';
                 }).join('');
             }
