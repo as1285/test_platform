@@ -132,10 +132,7 @@
                     q =
                         'mine.html?in_app=1&_v=20260903-mine1&ch=' +
                         encodeURIComponent(ch.toLowerCase());
-                    /* 仅当明确禁用 App 内注册时才打 distributor_app 标记 */
-                    if (cfg.disableInAppRegister === true) {
-                        q += '&distributor_app=1';
-                    }
+                    /* 不再打 distributor_app=1：代理/渠道包允许 App 内自助注册 */
                 }
                 return base + q;
             }

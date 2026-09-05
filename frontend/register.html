@@ -14,8 +14,12 @@
             } catch (e) {}
         })();
     </script>
+    <script>
+        /* 清除旧代理包禁注册标记，确保渠道 App 可进入创建账号流 */
+        try { localStorage.removeItem('distributor_app_v1'); } catch (e) {}
+    </script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260905-agent-reg" defer></script>
+    <script src="/js/auth.js?v=20260905-agent-reg2" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>

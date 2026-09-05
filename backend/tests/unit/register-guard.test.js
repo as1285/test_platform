@@ -43,10 +43,11 @@ describe('register-guard', () => {
   it('allows distributor Cordova UA to register', () => {
     const guard = require('../../register-guard');
     const req = {
-      headers: { 'user-agent': 'TaxPlatformCordovaApp/1.0 TaxPlatformDistributor/agent1' }
+      headers: { 'user-agent': 'TaxPlatformCordovaApp/1.0 TaxPlatformDistributor/abc' }
     };
     const r = guard.checkRegisterDistributorBlock(req);
     expect(r.ok).toBe(true);
+    expect(r.msg).toBeUndefined();
   });
 
   it('allows plain Cordova UA to register', () => {
@@ -55,5 +56,17 @@ describe('register-guard', () => {
       headers: { 'user-agent': 'TaxPlatformCordovaApp/1.0' }
     };
     expect(guard.checkRegisterDistributorBlock(req).ok).toBe(true);
+  });
+
+  it('does not ship distributor self-register block copy', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '../../register-guard.js'), 'utf8');
+    expect(src).not.toContain(
+      '代理版 App 不支持自助注册，请使用代理提供的注册链接在浏览器中注册，或联系代理开通账号'
+    );
+    expect(src).not.toContain('请使用代理提供的注册链接');
+    expect(src).not.toContain('联系代理开通账号');
+    expect(src).not.toMatch(/代理版 App 不支持自助注册/);
   });
 });

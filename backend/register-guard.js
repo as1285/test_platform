@@ -279,8 +279,7 @@ function failReasonLabel(reason) {
     'register_fail:rate_ip_day': '本 IP 今日注册已达上限',
     'register_fail:rate_fp_day': '本设备今日注册已达上限',
     'register_fail:backoff': '失败冷却中',
-    'register_fail:invalid_client': '非官方客户端',
-    'register_fail:distributor_app': '代理版 App 不支持自助注册'
+    'register_fail:invalid_client': '非官方客户端'
   };
   return map[r] || '';
 }

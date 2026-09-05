@@ -13398,11 +13398,7 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, clientChk.reason);
           return res.status(403).json({ code: 403, msg: clientChk.msg });
         }
-        var distChk = registerGuard.checkRegisterDistributorBlock(req);
-        if (!distChk.ok) {
-          await recordUserRegistrationAttempt(regUser, false, req, distChk.reason);
-          return res.status(403).json({ code: 403, msg: distChk.msg });
-        }
+        /* 代理版 / TaxPlatformDistributor UA 注册门禁已移除，允许渠道包 App 内自助注册 */
         var rateChk = await registerGuard.checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprint);
         if (!rateChk.ok) {
           await recordUserRegistrationAttempt(regUser, false, req, rateChk.reason);

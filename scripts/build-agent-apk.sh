@@ -19,7 +19,9 @@ fi
 
 DISABLE_IN_APP_REGISTER=false
 if [[ "${2:-}" == "--no-register" ]] || [[ "${2:-}" == "no-register" ]]; then
-  DISABLE_IN_APP_REGISTER=true
+  # 演示环境：渠道包一律允许 App 内自助注册，忽略 --no-register
+  echo "警告: 已忽略 --no-register（代理渠道包允许 App 内创建账号）" >&2
+  DISABLE_IN_APP_REGISTER=false
 fi
 
 CHANNEL_LOWER="$(echo "$CHANNEL" | tr '[:upper:]' '[:lower:]')"
