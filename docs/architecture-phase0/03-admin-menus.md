@@ -25,7 +25,7 @@
 | `ops-inactive` | 未激活用户 | 收集未开通用户明细（也可凭 `analytics-conversion` / `users` 进入） |
 | `ops-research` | 转化调研 | 未开通漏斗、价格与填写问卷（也可凭转化概览 / 填写调研进入） |
 | `ops-lift` | 提高转化 | 次日回访、高收入跟进、站内信群发 |
-| `ops-ad-analytics` | 广告页数据运营 | 退税合格名单 + 广告页停留时间与操作（也可凭埋点分析 / 转化概览进入） |
+| `ops-ad-analytics` | 广告页数据运营 | 退税合格名单 + 广告页停留时间与操作（也可凭转化概览进入） |
 | `analytics-conversion` | 转化概览 | 支付转化 + 日转化总览 |
 | `codes` | 激活码 | 发码 / 列表 |
 | `settings` | 定价与引导 | `/api/admin/settings` |
@@ -44,7 +44,6 @@
 | `najilu-qr` | 完税二维码 | 工具 |
 | `analytics-register` | 注册分析 | 注册漏斗 |
 | `analytics-activity` | 用户活跃 | DAU 等 |
-| `analytics-tracking` | 埋点分析 | events |
 | `analytics-devices` | 机型 | UI 兼容目录与 user_devices 对账 |
 | `analytics-purchase` | 支付分析 | 购买漏斗 |
 | `channel-analysis` | 渠道分析 | 渠道漏斗 |
@@ -64,7 +63,7 @@
 
 ## 已废弃（勿再当作现行菜单）
 
-旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`api-analytics` 等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。
+旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`api-analytics`、`analytics-tracking`（埋点分析）等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。旧 hash `#analytics-tracking` 归一到支付分析。
 
 ## 权限变更检查单
 

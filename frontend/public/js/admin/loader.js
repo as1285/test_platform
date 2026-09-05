@@ -53,7 +53,6 @@
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-purchase': 'analytics',
-    'analytics-tracking': 'analytics',
     'analytics-devices': 'devices',
     'tax-fill-survey': 'tax-fill-survey',
     'install-guide-stats': 'analytics',
