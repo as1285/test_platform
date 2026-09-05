@@ -86,7 +86,8 @@
     'refund_ad.html': true,
     'douyin_yuefu_ad.html': true,
     'gjj_extract_ad.html': true,
-    'sousuo.html': true
+    'sousuo.html': true,
+    'zixun.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
   /** 通用顶栏蓝（登录 WebClip 等） */

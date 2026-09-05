@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth-boot.js?v=20260905-zixun"></script>
+    <script src="/js/auth.js?v=20260905-zixun" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>资讯</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { background: #f5f6fa; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #191e26;
+        }
+        .header {
+            background: #fff;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            display: block;
+            margin-right: 4px;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+        html.app-top-safe-shell body.page-zixun .header {
+            padding-top: calc(12px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .zx-tabs {
+            display: flex;
+            align-items: stretch;
+            background: #fff;
+            padding: 0 8px;
+            border-bottom: 1px solid #f0f0f0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .zx-tab {
+            flex: 1 0 auto;
+            min-width: 0;
+            border: 0;
+            background: transparent;
+            color: #8b93a0;
+            font-size: 14px;
+            font-family: inherit;
+            padding: 12px 10px 10px;
+            position: relative;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .zx-tab.is-on {
+            color: #1e6fff;
+            font-weight: 600;
+        }
+        .zx-tab.is-on::after {
+            content: '';
+            position: absolute;
+            left: 18%;
+            right: 18%;
+            bottom: 0;
+            height: 2px;
+            border-radius: 2px;
+            background: #1e6fff;
+        }
+        .zx-list {
+            padding: 12px 12px calc(100px + env(safe-area-inset-bottom, 0px));
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .zx-card {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #fff;
+            border: 0;
+            border-radius: 12px;
+            padding: 16px 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(25, 30, 38, 0.04);
+            font-family: inherit;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .zx-card:active {
+            background: #f8fbff;
+        }
+        .zx-card-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .zx-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #eef5ff;
+            color: #1e6fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zx-icon svg {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+        .zx-main { flex: 1; min-width: 0; }
+        .zx-title {
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.45;
+            color: #191e26;
+        }
+        .zx-date {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #8b93a0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .zx-date svg {
+            width: 12px;
+            height: 12px;
+            display: block;
+        }
+        .zx-summary {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f0f1f4;
+            font-size: 13px;
+            line-height: 1.65;
+            color: #5c6370;
+        }
+        .zx-card.is-open .zx-summary { display: block; }
+        .zx-demo {
+            display: inline-block;
+            margin-bottom: 6px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: #eef5ff;
+            color: #1e6fff;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .zx-empty {
+            padding: 48px 20px;
+            text-align: center;
+            color: #9aa1ad;
+            font-size: 14px;
+        }
+        [hidden] { display: none !important; }
+    </style>
+    <link rel="stylesheet" href="css/nav.css?v=20260905-zixun">
+    <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
+</head>
+<body class="page-zixun tax-app-shell has-bottom-nav">
+    <header class="header">
+        <a href="shouye.html" class="back-btn" id="zxBack" aria-label="返回">
+            <img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span>
+        </a>
+        <h1 class="header-title">资讯</h1>
+    </header>
+
+    <nav class="zx-tabs" aria-label="资讯分类">
+        <button type="button" class="zx-tab is-on" data-cat="warn">警示案例</button>
+        <button type="button" class="zx-tab" data-cat="notice">通知公告</button>
+        <button type="button" class="zx-tab" data-cat="hot">热点问题</button>
+        <button type="button" class="zx-tab" data-cat="policy">政策解读</button>
+    </nav>
+
+    <main class="zx-list" id="zxList" aria-label="资讯列表"></main>
+    <div class="zx-empty" id="zxEmpty" hidden>暂无相关资讯（演示数据）</div>
+
+    <div class="bottom-nav">
+        <a href="shouye.html" class="nav-item active" data-icon="sy">
+            <div class="nav-icon"><img src="caidan/sy1.png" width="19" height="19" alt="首页"></div>
+            <span class="nav-text">首页</span>
+        </a>
+        <a href="daiban.html" class="nav-item" data-icon="db">
+            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt="待办"></div>
+            <span class="nav-text">待办</span>
+        </a>
+        <a href="bancha.html" class="nav-item" data-icon="bc">
+            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
+            <span class="nav-text">办&查</span>
+        </a>
+        <a href="message.html" class="nav-item" data-icon="xx">
+            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>
+            <span class="nav-text">消息</span>
+        </a>
+        <a href="mine.html" class="nav-item" data-icon="w">
+            <div class="nav-icon"><img src="caidan/w2.png" width="19" height="19" alt="我的"></div>
+            <span class="nav-text">我的</span>
+        </a>
+    </div>
+
+    <script>
+        (function () {
+            var ITEMS = [
+                {
+                    id: 'pwd',
+                    cat: 'warn',
+                    title: '办理汇算想便捷 APP密码要记牢',
+                    date: '2025-02-28',
+                    summary: '办理年度汇算前，请先确认已记住登录密码，避免因无法登录耽误申报进度。本条为演示文案，非正式税务机关通知。'
+                },
+                {
+                    id: 'card',
+                    cat: 'warn',
+                    title: '获取退税想及时 准确卡号必须有',
+                    date: '2025-02-28',
+                    summary: '申请退税时请核对本人银行卡号与开户名，信息有误可能导致退税到账延迟。本条为演示文案，非正式退税指引。'
+                },
+                {
+                    id: 'case-settle',
+                    cat: 'warn',
+                    title: '未依法办理个人所得税综合所得汇算清缴案件',
+                    date: '2024-03-15',
+                    summary: '演示案例摘要：部分纳税人未在规定期限内办理综合所得汇算清缴。此处仅作界面演示，不引用真实案件细节，亦非正式执法文书。'
+                },
+                {
+                    id: 'case-deduct',
+                    cat: 'warn',
+                    title: '未在法定期限内办理综合所得汇算清缴、虚假填报子女教育专项附加扣除案件',
+                    date: '2024-03-15',
+                    summary: '演示案例摘要：逾期办理汇算并填报不实的专项附加扣除。请按本人真实信息填报。本条非正式法律文本。'
+                }
+            ];
+
+            var listEl = document.getElementById('zxList');
+            var emptyEl = document.getElementById('zxEmpty');
+            var tabs = document.querySelectorAll('.zx-tab');
+            var currentCat = 'warn';
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function iconSvg() {
+                return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+                    '<rect x="5" y="3.5" width="14" height="17" rx="2" stroke="currentColor" stroke-width="1.6"/>' +
+                    '<path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+                    '</svg>';
+            }
+
+            function clockSvg() {
+                return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+                    '<circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/>' +
+                    '<path d="M12 8v4.2L15 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+                    '</svg>';
+            }
+
+            function render() {
+                var rows = ITEMS.filter(function (item) { return item.cat === currentCat; });
+                emptyEl.hidden = rows.length > 0;
+                listEl.innerHTML = rows.map(function (item) {
+                    return '<button type="button" class="zx-card" data-id="' + escapeHtml(item.id) + '" aria-expanded="false">' +
+                        '<div class="zx-card-row">' +
+                        '<div class="zx-icon">' + iconSvg() + '</div>' +
+                        '<div class="zx-main">' +
+                        '<div class="zx-title">' + escapeHtml(item.title) + '</div>' +
+                        '<div class="zx-date">' + clockSvg() + '<span>' + escapeHtml(item.date) + '</span></div>' +
+                        '</div></div>' +
+                        '<div class="zx-summary"><span class="zx-demo">演示</span><div>' + escapeHtml(item.summary) + '</div></div>' +
+                        '</button>';
+                }).join('');
+            }
+
+            listEl.addEventListener('click', function (ev) {
+                var card = ev.target.closest('.zx-card');
+                if (!card) return;
+                var open = !card.classList.contains('is-open');
+                var cards = listEl.querySelectorAll('.zx-card');
+                for (var i = 0; i < cards.length; i++) {
+                    cards[i].classList.remove('is-open');
+                    cards[i].setAttribute('aria-expanded', 'false');
+                }
+                if (open) {
+                    card.classList.add('is-open');
+                    card.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            for (var t = 0; t < tabs.length; t++) {
+                tabs[t].addEventListener('click', function () {
+                    currentCat = this.getAttribute('data-cat') || 'warn';
+                    for (var i = 0; i < tabs.length; i++) {
+                        tabs[i].classList.toggle('is-on', tabs[i] === this);
+                    }
+                    render();
+                });
+            }
+
+            render();
+
+            var hash = String(location.hash || '').replace(/^#/, '');
+            if (hash) {
+                var target = listEl.querySelector('.zx-card[data-id="' + hash.replace(/"/g, '') + '"]');
+                if (target) {
+                    target.classList.add('is-open');
+                    target.setAttribute('aria-expanded', 'true');
+                    try { target.scrollIntoView({ block: 'center' }); } catch (e0) {}
+                }
+            }
+
+            var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+            navItems.forEach(function (item) {
+                var icon = item.getAttribute('data-icon');
+                var img = item.querySelector('.nav-icon img');
+                if (!img || !icon) return;
+                img.src = item.classList.contains('active')
+                    ? 'caidan/' + icon + '1.png'
+                    : 'caidan/' + icon + '2.png';
+            });
+            if (window.__refreshNavFromMineUi) window.__refreshNavFromMineUi();
+        })();
+    </script>
+</body>
+</html>
