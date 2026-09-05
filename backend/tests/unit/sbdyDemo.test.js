@@ -449,6 +449,14 @@ describe('sbdyDemo', () => {
     expect(html).toContain('本服务由深圳市人力资源和社会保障局提供');
     expect(html).toContain('缴费基数');
     expect(html).toContain('档次');
+    expect(html).toContain('.sz-sec{');
+    expect(html).toContain('text-align:left');
+    expect(html).toContain('font-synthesis:none');
+    expect(html).toContain('SimSun');
+    expect(html).toContain('Noto Serif CJK SC');
+    expect(html).toContain('justify-content:flex-end');
+    expect(html).not.toMatch(/<h2[>\s]/);
+    expect(html).not.toContain('justify-content:space-around');
     expect(html).not.toContain('深圳市社会保险历年参保缴费明细表');
     expect(html).not.toContain('/img/sbdy_sz_seal.png');
   });

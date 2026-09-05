@@ -2483,8 +2483,26 @@ mustInclude(
 );
 mustInclude(
   'backend/scripts/sbdy_sz_new_render_pdf.py',
-  ['深圳市社会保险参保证明', '历年参保年限', '近两年参保缴费明细', 'sz_new_si_seal'],
+  [
+    '深圳市社会保险参保证明',
+    '历年参保年限',
+    '近两年参保缴费明细',
+    'sz_new_si_seal',
+    'ensure_full_cjk_font',
+    'right_x = X1 - seal_size'
+  ],
   'Shenzhen-new PDF renderer title and dual seals'
+);
+mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  [
+    '.sz-sec{',
+    'text-align:left',
+    'font-synthesis:none',
+    'justify-content:flex-end',
+    'Noto Serif CJK SC'
+  ],
+  'Shenzhen-new HTML section titles left + Song font + right seals'
 );
 if (
   exists('backend/assets/sbdy/sz_new_si_seal.png') &&

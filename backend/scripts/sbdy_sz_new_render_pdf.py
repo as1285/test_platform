@@ -19,7 +19,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sbdy_render_pdf import (  # noqa: E402
     cell_box,
-    ensure_bold_cjk_font,
     ensure_full_cjk_font,
     make_subset_font,
     money,
@@ -252,15 +251,9 @@ def render(payload, auth_code, qr_url, out_path):
     years = years_months_of(p, len(months))
     blob = collect_blob(p, months, auth_code, years) + '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:/-*.#（）'
     full_body = ensure_full_cjk_font()
-    full_title = ensure_bold_cjk_font()
+    # 正文/表头/小节标题一律 Regular 宋体（Noto Serif CJK），与旧深圳及其它 sbdy 正式件一致；
+    # 不用 Bold，避免看起来像黑体/系统无衬线。
     subset_body = make_subset_font(full_body, blob, prefix='sbdy_sz_new_b_')
-    subset_title = make_subset_font(
-        full_title,
-        '深圳市社会保险参保证明（一）历年参保年限（二）近两年参保缴费明细'
-        '缴费时段单位编号养老保险医疗保险生育保险/生育医疗工伤保险失业保险'
-        '累计月数缴费基数档次险种备注：、',
-        prefix='sbdy_sz_new_t_',
-    )
     doc = None
     try:
         doc = fitz.open()
@@ -268,12 +261,12 @@ def render(payload, auth_code, qr_url, out_path):
         extra = max(0, (len(months) - 18) * 11.0) + max(0, (len(mapping) - 2) * 11.0)
         ph = max(PAGE_H, 842.0 + extra)
         page = doc.new_page(width=PAGE_W, height=ph)
-        body_name, title_name = register_fonts(page, subset_body, subset_title)
+        body_name, _title_name = register_fonts(page, subset_body, subset_body)
 
         title = '深圳市社会保险参保证明'
         tsize = 16.0
-        tw = text_width(subset_title, title, tsize)
-        page.insert_text(((PAGE_W - tw) / 2.0, 36.0), title, fontname=title_name, fontsize=tsize)
+        tw = text_width(subset_body, title, tsize)
+        page.insert_text(((PAGE_W - tw) / 2.0, 36.0), title, fontname=body_name, fontsize=tsize)
 
         serial = doc_serial_of(p)
         if serial:
@@ -288,7 +281,7 @@ def render(payload, auth_code, qr_url, out_path):
         page.insert_text((X0, 54.0), info, fontname=body_name, fontsize=9.0)
 
         y = 68.0
-        page.insert_text((X0, y), '（一）历年参保年限', fontname=title_name, fontsize=11.0)
+        page.insert_text((X0, y), '（一）历年参保年限', fontname=body_name, fontsize=10.5)
         y += 6.0
         y1_h = 16.0
         y2_h = 16.0
@@ -317,14 +310,14 @@ def render(payload, auth_code, qr_url, out_path):
             years.get('unemployment', 0),
         ]
         for i, lab in enumerate(labels1):
-            cell_box(page, subset_title, title_name, lab, cols1[i], cols1[i + 1], y, y + y1_h, size=8.0)
+            cell_box(page, subset_body, body_name, lab, cols1[i], cols1[i + 1], y, y + y1_h, size=8.0)
         for i, val in enumerate(vals1):
             cell_box(
                 page, subset_body, body_name, _s(val), cols1[i], cols1[i + 1], y + y1_h, y + y1_h + y2_h, size=8.5
             )
         y = y + y1_h + y2_h + 16.0
 
-        page.insert_text((X0, y), '（二）近两年参保缴费明细', fontname=title_name, fontsize=11.0)
+        page.insert_text((X0, y), '（二）近两年参保缴费明细', fontname=body_name, fontsize=10.5)
         y += 6.0
         head1 = 16.0
         head2 = 16.0
@@ -354,13 +347,13 @@ def render(payload, auth_code, qr_url, out_path):
         for i in inner_idx:
             draw_vline(page, cols2[i], y_mid, y + table_h)
 
-        cell_box(page, subset_title, title_name, '缴费时段', cols2[0], cols2[1], y, y_data, size=8.0)
-        cell_box(page, subset_title, title_name, '单位编号', cols2[1], cols2[2], y, y_data, size=8.0)
-        cell_box(page, subset_title, title_name, '养老保险', cols2[2], cols2[3], y, y_mid, size=8.0)
-        cell_box(page, subset_title, title_name, '医疗保险', cols2[3], cols2[5], y, y_mid, size=8.0)
-        cell_box(page, subset_title, title_name, '生育保险/生育医疗', cols2[5], cols2[7], y, y_mid, size=7.2)
-        cell_box(page, subset_title, title_name, '工伤保险', cols2[7], cols2[8], y, y_mid, size=8.0)
-        cell_box(page, subset_title, title_name, '失业保险', cols2[8], cols2[9], y, y_mid, size=8.0)
+        cell_box(page, subset_body, body_name, '缴费时段', cols2[0], cols2[1], y, y_data, size=8.0)
+        cell_box(page, subset_body, body_name, '单位编号', cols2[1], cols2[2], y, y_data, size=8.0)
+        cell_box(page, subset_body, body_name, '养老保险', cols2[2], cols2[3], y, y_mid, size=8.0)
+        cell_box(page, subset_body, body_name, '医疗保险', cols2[3], cols2[5], y, y_mid, size=8.0)
+        cell_box(page, subset_body, body_name, '生育保险/生育医疗', cols2[5], cols2[7], y, y_mid, size=7.2)
+        cell_box(page, subset_body, body_name, '工伤保险', cols2[7], cols2[8], y, y_mid, size=8.0)
+        cell_box(page, subset_body, body_name, '失业保险', cols2[8], cols2[9], y, y_mid, size=8.0)
         subs = [
             (2, 3, '缴费基数'),
             (3, 4, '缴费基数'),
@@ -371,7 +364,7 @@ def render(payload, auth_code, qr_url, out_path):
             (8, 9, '缴费基数'),
         ]
         for a, b, lab in subs:
-            cell_box(page, subset_title, title_name, lab, cols2[a], cols2[b], y_mid, y_data, size=7.2)
+            cell_box(page, subset_body, body_name, lab, cols2[a], cols2[b], y_mid, y_data, size=7.2)
 
         if not months:
             cell_box(page, subset_body, body_name, '', cols2[0], cols2[1], y_data, y_data + row_h, size=8.0)
@@ -404,7 +397,7 @@ def render(payload, auth_code, qr_url, out_path):
                 )
 
         y = y + table_h + 16.0
-        page.insert_text((X0, y), '备注：', fontname=title_name, fontsize=9.5)
+        page.insert_text((X0, y), '备注：', fontname=body_name, fontsize=9.5)
         notes = [
             '1.本证明可作为参保人参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（%s）核查，验真码有效期三个月。'
             % (_s(auth_code)),
@@ -438,12 +431,13 @@ def render(payload, auth_code, qr_url, out_path):
             line = '%s / %s' % (item.get('unit_code') or '', item.get('unit_name') or '')
             page.insert_text((X0 + 12, y), line, fontname=body_name, fontsize=7.4)
 
-        seal_size = 92.0
-        seal_y = min(ph - 128.0, y + 18.0)
+        # 双章靠右、略压在备注下方，对齐官方参保证明（不再页心居中）
+        seal_size = 80.0
+        seal_y = min(ph - 108.0, y + 8.0)
         date_lab = seal_date_label(p)
-        gap = 48.0
-        left_x = PAGE_W / 2.0 - gap / 2.0 - seal_size
-        right_x = PAGE_W / 2.0 + gap / 2.0
+        gap = 22.0
+        right_x = X1 - seal_size
+        left_x = right_x - gap - seal_size
         draw_seal_with_date(
             page,
             SEAL_SI,
@@ -480,15 +474,85 @@ def render(payload, auth_code, qr_url, out_path):
                 doc.close()
             except Exception:
                 pass
-        for path in (subset_body, subset_title):
-            if path:
-                try:
-                    os.remove(path)
-                except Exception:
-                    pass
+        if subset_body:
+            try:
+                os.remove(subset_body)
+            except Exception:
+                pass
+
+
+def selftest():
+    """Check section titles sit on the table left edge and both seals are embedded."""
+    payload = {
+        'name': '林晓薇',
+        'id_number': '440305199208156018',
+        'computer_no': '089216473',
+        'company_name': '深圳市易满星科技有限公司',
+        'unit_code': '31327084',
+        'print_date': '2026年09月01日',
+        'doc_serial': '2026:09:01E',
+        'years_months': {
+            'pension': 113,
+            'medical': 115,
+            'maternity': 115,
+            'maternity_medical': 0,
+            'injury': 115,
+            'unemployment': 115,
+        },
+        'months': [
+            {
+                'ym': '202409',
+                'year': '2024',
+                'month': '09',
+                'unit_code': '31327084',
+                'pension_base': 4492,
+                'medical_base': 4492,
+                'medical_tier': '2',
+                'maternity_base': 4492,
+                'maternity_type': '1',
+                'injury_base': 4492,
+                'unemp_base': 4492,
+            }
+        ],
+    }
+    fd, out_path = tempfile.mkstemp(suffix='.pdf', prefix='sbdy_sz_new_st_')
+    os.close(fd)
+    try:
+        render(payload, '3359a909b3600273', '', out_path)
+        doc = fitz.open(out_path)
+        page = doc[0]
+        hits = []
+        for block in page.get_text('dict').get('blocks') or []:
+            for line in block.get('lines') or []:
+                text = ''.join(span.get('text') or '' for span in line.get('spans') or [])
+                if '历年参保年限' in text or '近两年参保缴费明细' in text:
+                    hits.append((text, line['bbox'][0]))
+        doc.close()
+        if len(hits) < 2:
+            print('selftest missing section titles', hits, file=sys.stderr)
+            return 1
+        for text, x0 in hits:
+            if abs(x0 - X0) > 2.5:
+                print('selftest title not left-aligned', text, x0, file=sys.stderr)
+                return 1
+        doc = fitz.open(out_path)
+        n_img = len(doc[0].get_images())
+        doc.close()
+        if n_img < 2:
+            print('selftest expected 2 seals, got', n_img, file=sys.stderr)
+            return 1
+        print('selftest ok titles=%s seals=%s' % (len(hits), n_img))
+        return 0
+    finally:
+        try:
+            os.remove(out_path)
+        except Exception:
+            pass
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == '--selftest':
+        return selftest()
     if len(sys.argv) < 3:
         print('usage: sbdy_sz_new_render_pdf.py <payload.json> <out.pdf>', file=sys.stderr)
         return 2
