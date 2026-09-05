@@ -230,7 +230,7 @@
                         })
                     })
                         .then(function (r) {
-                            return r.json().then(function (j) {
+                            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                                 return { status: r.status, body: j };
                             });
                         })

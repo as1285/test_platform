@@ -282,7 +282,7 @@
                           );
                 return req
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (body) {
                         var url =

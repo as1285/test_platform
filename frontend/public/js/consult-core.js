@@ -218,6 +218,7 @@ function switchTab(tab, pushHistory) {
     }
     if (tab === 'products') {
         loadConsultLizhiCertFeeCopy();
+        loadConsultNajiluQrFeeCopy();
         var shebaoCard = document.getElementById('cardShebaoPhoto');
         if (shebaoCard && !shebaoCard.hidden && typeof loadConsultShebaoPhotos === 'function') {
             loadConsultShebaoPhotos().catch(function () {});
@@ -307,6 +308,32 @@ function applyConsultLizhiCertFeeCopy(amount) {
 }
 
 /**
+ * 完税二维码入口：价格/开通态以后台为准。
+ * 副作用：写徽章、副文案与 CTA 文案。
+ */
+function applyConsultNajiluQrFeeCopy(data) {
+    data = data || {};
+    var yuan = formatConsultCertFeeYuan(data.fee_amount || data.amount);
+    var unlocked = !!data.unlocked;
+    var badge = document.getElementById('consultNajiluQrBadge');
+    var hint = document.getElementById('consultNajiluQrHint');
+    var cta = document.getElementById('btnConsultNajiluQrLabel');
+    if (unlocked) {
+        if (badge) badge.textContent = '已开通 · 无水印';
+        if (hint) hint.textContent = '已开通去水印 · 官方 APP 可扫码查验';
+        if (cta) cta.textContent = '去生成';
+        return;
+    }
+    if (yuan) {
+        if (badge) badge.textContent = '¥' + yuan + ' 去水印';
+        if (hint) {
+            hint.textContent = '官方 APP 可扫码查验 · 未付也可试（含水印）· 付 ¥' + yuan + ' 去水印';
+        }
+    }
+    if (cta) cta.textContent = '去生成';
+}
+
+/**
  * 拉取离职/在职证明标价并刷新徽章文案（以后台「定价与引导」为准）。
  * 副作用：GET /api/public/lizhi-cert-fee → DOM；失败再试登录态 status。
  */
@@ -322,13 +349,13 @@ function loadConsultLizhiCertFeeCopy() {
     }
     fetch('/api/public/lizhi-cert-fee', { credentials: 'same-origin' })
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (j) {
             if (applyJson(j)) return;
             if (typeof window.authFetch !== 'function') return;
             return window.authFetch('/api/lizhi-cert/status').then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             }).then(applyJson);
         })
         .catch(function () {
@@ -336,11 +363,30 @@ function loadConsultLizhiCertFeeCopy() {
             window
                 .authFetch('/api/lizhi-cert/status')
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(applyJson)
                 .catch(function () {});
         });
+}
+
+/**
+ * 拉取完税二维码标价/开通态（登录态）。
+ * 副作用：GET /api/najilu-qr/status → DOM。
+ */
+function loadConsultNajiluQrFeeCopy() {
+    if (typeof window.authFetch !== 'function') return;
+    window
+        .authFetch('/api/najilu-qr/status')
+        .then(function (r) {
+            return window.authParseJson ? (window.authParseJson||function(r){return r.json();})(r) : r.json();
+        })
+        .then(function (j) {
+            if (j && j.code === 200 && j.data) {
+                applyConsultNajiluQrFeeCopy(j.data);
+            }
+        })
+        .catch(function () {});
 }
 
 /**
@@ -406,7 +452,7 @@ function loadPeerTaxFeeBanner() {
     if (!banner) return;
     window.authFetch('api/tax?action=tax_edit_policy')
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (j) {
             var pol = j && j.code === 200 ? j.data : null;
@@ -436,7 +482,7 @@ function loadUserInfoFromApi() {
     }
     
     window.authFetch('api/user?action=summary')
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 var user = data.data;
@@ -494,6 +540,7 @@ function initHeader() {
         /* 本地激活态先亮支付入口，接口返回后再校正文案 */
         syncConsultPurchaseEntry(null);
         loadConsultLizhiCertFeeCopy();
+        loadConsultNajiluQrFeeCopy();
 
         /* 用户资料不挡税务列表首屏 */
         setTimeout(function () {
@@ -809,7 +856,7 @@ function confirmDeleteTaxRecordsByCompany() {
             company_name: company
         })
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code === 200) {
@@ -1055,7 +1102,7 @@ function restoreAllDeletedTaxRecords() {
             user_id: currentUserId()
         })
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code !== 200) {
@@ -2234,7 +2281,7 @@ function apiFetchEmployers(opts) {
         return window.__consultEmployersInFlight;
     }
     window.__consultEmployersInFlight = window.authFetch('api/user?action=employers')
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200 && data.data && data.data.employers) {
                 return data.data.employers;
@@ -2412,7 +2459,7 @@ function onSubmitEmployer(e) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(data)
     })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (res) {
             if (res.code === 200) {
                 var wasEdit = !!employerEditId;
@@ -2563,7 +2610,7 @@ function deleteEmployer(id) {
             employer_id: id
         })
     })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 if (data.data && data.data.employer_count != null) {
@@ -2616,7 +2663,7 @@ function copyEmployer(id) {
             body: new URLSearchParams(data)
         })
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (res) {
                 if (res.code === 200) {
@@ -2645,7 +2692,7 @@ function escapeHtml(s) {
 function apiFetchMessages() {
     var uid = currentUserId();
     return window.authFetch('api/message?action=list')
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200 && Array.isArray(data.data)) {
                 return data.data;
@@ -2704,7 +2751,7 @@ function onSubmitMessage(e) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (res) {
             if (res.code === 200) {
                 document.getElementById('mf_content').value = '';
@@ -2732,7 +2779,7 @@ function deleteMessage(id) {
             id: id
         })
     })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 showMsg('已删除', true);
@@ -2947,7 +2994,7 @@ function boot() {
         var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : fetch;
         return fetchFn('/api/user/shebao-photo', { method: 'GET', credentials: 'same-origin' })
             .then(function (r) {
-                return r.json().then(function (j) {
+                return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                     return { status: r.status, body: j };
                 });
             })
@@ -2985,7 +3032,7 @@ function boot() {
             body: fd,
             credentials: 'same-origin'
         }).then(function (r) {
-            return r.json().then(function (j) {
+            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                 return { status: r.status, body: j };
             });
         });

@@ -63,7 +63,7 @@
       body: JSON.stringify(payload)
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { ok: r.ok, status: r.status, j: j };
         });
       })

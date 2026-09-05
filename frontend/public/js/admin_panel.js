@@ -222,7 +222,7 @@
             }
             adminFetch('api/admin/activation-batch-channels')
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.channels) {
@@ -953,7 +953,7 @@
                 'api/admin/user-shebao-photos?username=' + encodeURIComponent(username)
             )
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (d) {
                     if (d.code !== 200 || !d.data) {
@@ -1895,7 +1895,7 @@
                     encodeURIComponent(String(ACTIVATE_USERS_PAGE_LIMIT))
             )
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -2127,7 +2127,7 @@
                     encodeURIComponent(String(PURCHASE_USERS_PAGE_LIMIT))
             )
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -2279,7 +2279,7 @@
                     DAU_USERS_PAGE_LIMIT
             )
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -2305,7 +2305,7 @@
             if (reasonTbody) reasonTbody.innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
             adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (ov) {
                     if (ov.code === 200 && ov.data && ov.data.dau) {
@@ -2405,7 +2405,7 @@
             if (surveyRecentTbody) surveyRecentTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
             adminFetch('api/admin/analytics/purchase-events?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (res) {
                     if (!res || res.code !== 200 || !res.data) {
@@ -2909,7 +2909,7 @@
             el.textContent = '加载中…';
             adminFetch('api/admin/analytics/page-load-perf?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (!j || j.code !== 200 || !j.data) {
@@ -2997,9 +2997,9 @@
             }
 
             Promise.all([
-                adminFetch('api/admin/analytics/events?days=' + encodeURIComponent(daysT)).then(function (r) { return r.json(); }),
+                adminFetch('api/admin/analytics/events?days=' + encodeURIComponent(daysT)).then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); }),
                 adminFetch('api/admin/analytics/activate-events?days=' + encodeURIComponent(daysT)).then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
             ]).then(function (results) {
                 var ev = results[0];
@@ -3263,7 +3263,7 @@
             if (svcGrid) svcGrid.innerHTML = '加载中…';
             adminFetch('api/admin/monitor/overview')
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code === 200 && j.data) {
@@ -3286,7 +3286,7 @@
             var statEl = document.getElementById('blockedIpsStat');
             if (statEl) statEl.textContent = '加载中…';
             adminFetch('api/admin/blocked-ips')
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (d) {
                     if (d.code !== 200) {
                         if (statEl) statEl.textContent = d.msg || '加载失败';
@@ -3314,7 +3314,7 @@
                                     method: 'POST',
                                     body: JSON.stringify({ ip: ip })
                                 })
-                                    .then(function (r) { return r.json(); })
+                                    .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                     .then(function (d2) {
                                         if (d2.code === 200) {
                                             loadBlockedIps();
@@ -3377,7 +3377,7 @@
             }
             adminFetch(query)
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (recent) {
                     var info = document.getElementById('loginLogPageInfo');
@@ -3544,7 +3544,7 @@
                 query += '&reason=' + encodeURIComponent(reasonFilter);
             }
             adminFetch(query)
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (recent) {
                     var info = document.getElementById('userLoginLogPageInfo');
                     var prevBtn = document.getElementById('userLoginLogPrev');
@@ -3683,7 +3683,7 @@
             el.textContent = '渠道漏斗加载中…';
             adminFetch('api/admin/analytics/channel-registration-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -3731,7 +3731,7 @@
             el.textContent = '激活渠道漏斗加载中…';
             adminFetch('api/admin/analytics/activation-channel-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -4442,7 +4442,7 @@
             el.textContent = '加载中…';
             adminFetch('api/admin/analytics/install-guide-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -4476,7 +4476,7 @@
             el.textContent = '加载中…';
             adminFetch('api/admin/analytics/abc-install-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -4927,7 +4927,7 @@
                         })
                     })
                         .then(function (r) {
-                            return r.json();
+                            return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (j) {
                             if (j.code !== 200) {
@@ -4964,7 +4964,7 @@
                 body: JSON.stringify({ action: 'list', username: username })
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -5037,7 +5037,7 @@
                 })
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (btn) btn.disabled = false;
@@ -5188,7 +5188,7 @@
             el.textContent = '安装埋点加载中…';
             adminFetch('api/admin/analytics/install-track-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -5503,7 +5503,7 @@
             if (hasBank !== '') url += '&has_bank=' + encodeURIComponent(hasBank);
             adminFetch(url)
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) {
@@ -5621,7 +5621,7 @@
                                         encodeURIComponent(name)
                                 )
                                     .then(function (r) {
-                                        return r.json();
+                                        return (window.adminParseJson||function(r){return r.json();})(r);
                                     })
                                     .then(function (d) {
                                         if (d.code !== 200 || !d.data) {
@@ -5723,7 +5723,7 @@
                 body: JSON.stringify({ username: userPasswordTarget, new_password: pwd })
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (d) {
                     if (d.code === 200) {
@@ -5841,7 +5841,7 @@
                 body: JSON.stringify(body)
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (d) {
                     if (d.code === 200) {
@@ -5889,7 +5889,7 @@
             if (statEl) statEl.textContent = '加载中…';
             adminFetch('api/admin/rename-tax-daily?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (!data || data.code !== 200 || !data.data) {
@@ -6229,7 +6229,7 @@
             }
 
             adminFetch(url)
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.users || [];
@@ -6573,7 +6573,7 @@
                                 body: JSON.stringify({ username: name })
                             })
                                 .then(function (r) {
-                                    return r.json();
+                                    return (window.adminParseJson||function(r){return r.json();})(r);
                                 })
                                 .then(function (d) {
                                     if (d.code === 200) {
@@ -6610,7 +6610,7 @@
                                 'api/admin/user-price-offer?username=' + encodeURIComponent(name)
                             )
                                 .then(function (r) {
-                                    return r.json();
+                                    return (window.adminParseJson||function(r){return r.json();})(r);
                                 })
                                 .then(function (d) {
                                     if (d.code !== 200) {
@@ -6681,7 +6681,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, exempt: nextExempt ? 1 : 0 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code !== 200) {
                                         alert(d.msg || '操作失败');
@@ -6716,7 +6716,7 @@
                                 body: JSON.stringify({ username: name, is_agent: nextAgent ? 1 : 0 })
                             })
                                 .then(function (r) {
-                                    return r.json();
+                                    return (window.adminParseJson||function(r){return r.json();})(r);
                                 })
                                 .then(function (d) {
                                     if (d.code !== 200) {
@@ -6748,7 +6748,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, unlocked: nextUnlocked ? 1 : 0 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code !== 200) {
                                         alert(d.msg || '操作失败');
@@ -6784,7 +6784,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, unlocked: nextUnlocked ? 1 : 0 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code !== 200) {
                                         alert(d.msg || '操作失败');
@@ -6818,7 +6818,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, unlocked: 1 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (dLizhi) {
                                     if (dLizhi.code !== 200) {
                                         throw new Error(dLizhi.msg || '开通离职证明失败');
@@ -6826,7 +6826,7 @@
                                     return adminFetch('api/admin/user-zaizhi-cert-unlock', {
                                         method: 'POST',
                                         body: JSON.stringify({ username: name, unlocked: 1 })
-                                    }).then(function (r2) { return r2.json(); });
+                                    }).then(function (r2) { return (window.adminParseJson||function(r2){return r2.json();})(r2); });
                                 })
                                 .then(function (dZaizhi) {
                                     if (dZaizhi.code !== 200) {
@@ -6853,7 +6853,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, banned: b ? 1 : 0 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         loadUsers();
@@ -6884,7 +6884,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ ip: targetIp, reason: '封禁用户 ' + name })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         alert('IP ' + targetIp + ' 已封禁');
@@ -6904,7 +6904,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         loadUsers();
@@ -6926,7 +6926,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         loadUsers();
@@ -6960,7 +6960,7 @@
                             box.removeAttribute('data-loaded');
                             box.textContent = '加载中…';
                             adminFetch('api/admin/user-tax-records?username=' + encodeURIComponent(name))
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code !== 200) {
                                         box.textContent = d.msg || '加载失败';
@@ -7065,7 +7065,7 @@
 
             if (statEl) statEl.textContent = '加载中…';
             adminFetch(url)
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (!data || data.code !== 200 || !data.data) {
                         if (statEl) statEl.textContent = (data && data.msg) || '加载失败';
@@ -7175,7 +7175,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, exempt: nextExempt ? 1 : 0 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code !== 200) {
                                         alert(d.msg || '操作失败');
@@ -7207,7 +7207,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, banned: b ? 1 : 0 })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         loadPeerAccounts();
@@ -7244,7 +7244,7 @@
             if (exact) url += '&exact=1';
 
             adminFetch(url)
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.users || [];
@@ -7308,7 +7308,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         loadDeletedUsers();
@@ -7336,7 +7336,7 @@
                                 method: 'POST',
                                 body: JSON.stringify({ username: name })
                             })
-                                .then(function (r) { return r.json(); })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         loadDeletedUsers();
@@ -7445,7 +7445,7 @@
                 if (codeExact) q += '&code_exact=1';
             }
             adminFetch(q)
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.codes || [];
@@ -7539,7 +7539,7 @@
             }
             adminFetch(q)
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) {
@@ -7772,7 +7772,7 @@
                     '&limit=10'
             )
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -7824,7 +7824,7 @@
             }
             syncAdminAccountsPageCopy();
             adminFetch('api/admin/accounts')
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) {
                         alert(data.msg || '加载后台账号失败');
@@ -8176,7 +8176,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(purgeBotsPayload(true))
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         if (stat) stat.textContent = '预览失败：' + (j.msg || '');
@@ -8215,7 +8215,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(purgeBotsPayload(false))
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         alert(j.msg || '删除失败');
@@ -8315,7 +8315,7 @@
                 method: 'POST',
                 body: JSON.stringify(payload)
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.code) {
                         var el = document.getElementById('issueOut');
@@ -8360,7 +8360,7 @@
                     body: JSON.stringify({ scope: 'general' })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (d) {
                         if (d.code === 200) {
@@ -8443,7 +8443,7 @@
                 method: 'POST',
                 body: JSON.stringify({ username: username, full_name: fullName, password: password, menus: menus })
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (j) {
                     if (j.code === 200) {
                         document.getElementById('adminAccUsername').value = '';
@@ -8532,7 +8532,7 @@
                         password: newPassword
                     })
                 })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                     .then(function (j) {
                         if (j.code === 200) {
                             if (pwdInput) pwdInput.value = '';
@@ -8555,7 +8555,7 @@
                     method: 'POST',
                     body: JSON.stringify({ username: uname2 })
                 })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                     .then(function (j) {
                         if (j.code === 200) {
                             loadAdminAccounts();
@@ -8573,7 +8573,7 @@
         /* ========== Settings / Configuration ========== */
         function loadAdminSettings() {
             adminFetch('api/admin/settings')
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var pricingAb = data.data.pricing_ab;
@@ -8875,7 +8875,7 @@
                     body: JSON.stringify({ lizhi_cert_fee: fees })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -8915,7 +8915,7 @@
                     body: JSON.stringify({ najilu_qr_fee: fees })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -8955,7 +8955,7 @@
                     body: JSON.stringify({ rename_fee: fees })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -9025,7 +9025,7 @@
                     body: JSON.stringify({ tax_edit_fee: fees })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -9094,7 +9094,7 @@
                     body: JSON.stringify({ sku_catalog: catalog })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -9175,7 +9175,7 @@
                         })
                     })
                         .then(function (r) {
-                            return r.json();
+                            return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
                             if (data.code === 200) {
@@ -9219,7 +9219,7 @@
                         'api/admin/user-price-offer?username=' + encodeURIComponent(username)
                     )
                         .then(function (r) {
-                            return r.json();
+                            return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
                             if (data.code !== 200) {
@@ -9279,7 +9279,7 @@
                         body: JSON.stringify({ username: username })
                     })
                         .then(function (r) {
-                            return r.json();
+                            return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
                             if (data.code === 200) {
@@ -9386,7 +9386,7 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="hint">加载中…</td></tr>';
                 adminFetch('api/admin/price-bids?status=' + encodeURIComponent(currentStatus()))
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code !== 200) {
@@ -9457,7 +9457,7 @@
                     })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         alert(data.msg || (data.code === 200 ? '已处理' : '处理失败'));
@@ -9514,7 +9514,7 @@
                         body: JSON.stringify(payload)
                     })
                         .then(function (r) {
-                            return r.json();
+                            return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
                             if (hint) hint.textContent = data.code === 200 ? '已保存' : '';
@@ -9567,7 +9567,7 @@
                     })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -9612,7 +9612,7 @@
                     })()
                 })
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200) {
                         alert('引导安装配置已保存');
@@ -9792,7 +9792,7 @@
                     if (!id || !confirm('确认删除渠道「' + id + '」？')) return;
                     adminFetch('api/admin/agent-channels/' + encodeURIComponent(id), { method: 'DELETE' })
                         .then(function (r) {
-                            return r.json();
+                            return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
                             if (data.code === 200) {
@@ -9813,7 +9813,7 @@
             if (!document.getElementById('agentChannelsTbody')) return;
             adminFetch('api/admin/agent-channels')
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
@@ -9854,7 +9854,7 @@
                     body: JSON.stringify(payload)
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200) {
@@ -10013,7 +10013,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mine_ui: mineUi })
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200) {
                         alert('外观配置已保存');
@@ -10047,7 +10047,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ enabled: on })
                 })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                     .then(function (j) {
                         if (j.code === 200 && j.data) {
                             chk.checked = !!j.data.enabled;
@@ -10073,7 +10073,7 @@
                 var btn = this;
                 btn.disabled = true;
                 adminFetch('api/admin/monitor/run', { method: 'POST' })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                     .then(function (j) {
                         if (j.code === 200 && j.data) {
                             renderServerMonitor(j.data);
@@ -10100,7 +10100,7 @@
                     method: 'POST',
                     body: JSON.stringify({ ip: ipVal, reason: reason ? reason.value.trim() : '' })
                 })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                     .then(function (d) {
                         if (d.code === 200) {
                             alert('IP ' + ipVal + ' 已封禁');
@@ -10124,7 +10124,7 @@
                 btn.disabled = true;
                 adminFetch('api/admin/monitor/test-email', { method: 'POST' })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         alert(j.code === 200 ? j.msg || '已发送' : j.msg || '发送失败');
@@ -10145,7 +10145,7 @@
                 btn.disabled = true;
                 adminFetch('api/admin/ops-stats/send-email', { method: 'POST' })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         alert(j.code === 200 ? j.msg || '已发送' : j.msg || '发送失败');
@@ -10386,7 +10386,7 @@
                     body: JSON.stringify(bulkMsgPayload(true))
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         if (j.code !== 200 || !j.data) {
@@ -10419,7 +10419,7 @@
                     body: JSON.stringify(bulkMsgPayload(true))
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (prev) {
                         if (prev.code !== 200 || !prev.data) {
@@ -10443,7 +10443,7 @@
                             method: 'POST',
                             body: JSON.stringify(payload)
                         }).then(function (r2) {
-                            return r2.json();
+                            return (window.adminParseJson||function(r2){return r2.json();})(r2);
                         });
                     })
                     .then(function (j) {
@@ -10612,7 +10612,7 @@
                     body: JSON.stringify(bulkEmailPayload(true))
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         if (j.code !== 200 || !j.data) {
@@ -10651,7 +10651,7 @@
                     body: JSON.stringify(bulkEmailPayload(true))
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.adminParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         if (j.code !== 200 || !j.data) {
@@ -10677,7 +10677,7 @@
                             method: 'POST',
                             body: JSON.stringify(payload)
                         }).then(function (r2) {
-                            return r2.json();
+                            return (window.adminParseJson||function(r2){return r2.json();})(r2);
                         });
                     })
                     .then(function (j) {
@@ -10737,7 +10737,7 @@
             btn.disabled = true;
             adminFetch('api/admin/analytics/events/clear?days=' + encodeURIComponent(daysT), { method: 'POST' })
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code === 200) {
@@ -11014,7 +11014,7 @@
             }
             applyAdminRoute();
             adminFetch('api/admin/me')
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data || !j.data.admin) {
                         return;

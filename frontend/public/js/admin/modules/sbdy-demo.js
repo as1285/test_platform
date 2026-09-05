@@ -1105,7 +1105,7 @@
       body: JSON.stringify({ id: idNum })
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -1138,7 +1138,7 @@
   function loadList() {
     fetchAdmin('api/admin/sbdy-demo/list?limit=30')
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data) {
@@ -1458,7 +1458,7 @@
       body: JSON.stringify(body)
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -2287,7 +2287,7 @@
       : '/api/admin/sbdy-demo/prefill?username=' + encodeURIComponent(username);
     fetchAdmin(prefillUrl)
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })

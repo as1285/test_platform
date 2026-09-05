@@ -96,3 +96,18 @@ describe('C 端完税二维码使用说明', () => {
     expect(html).toContain('替换完成后能扫码查验吗');
   });
 });
+
+describe('C 端完税二维码入口位置', () => {
+  const consultHtml = readFileSync(resolve(__dirname, '../../consult.html'), 'utf8');
+  const purchaseHtml = readFileSync(resolve(__dirname, '../../purchase.html'), 'utf8');
+  const najiluQrHtml = readFileSync(resolve(__dirname, '../../najilu_qr.html'), 'utf8');
+
+  it('入口在我要咨询增值服务，不在支付页折叠区', () => {
+    expect(consultHtml).toContain('id="najiluQrEntryCard"');
+    expect(consultHtml).toContain('najilu_qr.html?from=consult');
+    expect(consultHtml).toContain('完税二维码替换');
+    expect(purchaseHtml).not.toContain('id="cardNajiluQr"');
+    expect(purchaseHtml).not.toContain('btnNajiluQrEntry');
+    expect(najiluQrHtml).toContain('consult.html?tab=products');
+  });
+});

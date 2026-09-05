@@ -687,7 +687,7 @@
     function loadPrefill() {
       return authFetch(apiPrefix + '/prefill')
         .then(function (r) {
-          return r.json();
+          return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (j) {
           if (j && j.code === 200 && j.data) {
@@ -704,7 +704,7 @@
     function loadStatus() {
       return authFetch(apiPrefix + '/status')
         .then(function (r) {
-          return r.json();
+          return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (j) {
           if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
@@ -730,7 +730,7 @@
         body: JSON.stringify({ product: product, sku_id: skuId })
       })
         .then(function (r) {
-          return r.json();
+          return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (j) {
           if (!j || j.code !== 200 || !j.data) {
@@ -783,7 +783,7 @@
     function pollPay() {
       authFetch('/api/payments/alipay/latest')
         .then(function (r) {
-          return r.json();
+          return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (j) {
           var ord = j && j.code === 200 && j.data ? j.data.order : null;
@@ -873,7 +873,7 @@
         body: JSON.stringify(payload)
       })
         .then(function (r) {
-          return r.json().then(function (j) {
+          return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
             return { ok: r.ok, j: j };
           });
         })

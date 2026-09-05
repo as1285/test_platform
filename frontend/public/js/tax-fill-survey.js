@@ -686,7 +686,7 @@
     }
     authFetch('/api/growth/tax-fill-survey/status')
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data && j.data.done) {

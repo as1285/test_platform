@@ -913,7 +913,7 @@
             if (window.__adPagesConfigPromise) return window.__adPagesConfigPromise;
             window.__adPagesConfigPromise = fetch('/api/public/ad-pages', { credentials: 'same-origin' })
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     return j && j.code === 200 ? j.data : null;

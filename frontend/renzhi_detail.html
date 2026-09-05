@@ -129,7 +129,7 @@
                 return;
             }
             window.authFetch('api/user?action=employers')
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data || !data.data.employers) {
                         mount.innerHTML = '<div class="empty-state">加载失败</div>';

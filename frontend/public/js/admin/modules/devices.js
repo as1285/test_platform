@@ -254,7 +254,7 @@
     setBusy(true);
     fetchAdmin('api/admin/analytics/devices')
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         setBusy(false);

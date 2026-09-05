@@ -70,7 +70,7 @@
         out.hidden = false;
         out.innerHTML = '核验中…';
         fetch('/api/public/gjj-demo/verify?code=' + encodeURIComponent(code))
-          .then(function (r) { return r.json(); })
+          .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
           .then(function (j) {
             if (j && j.code === 200) render(j.data);
             else {

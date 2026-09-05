@@ -6394,6 +6394,28 @@
 
   // === 渠道归因（sales_channel、share、landing AB、purchase ABC）===
   // sticky key：sales_channel_v1、share_attr_v1、landing_bc_assignment_v1、purchase_abc_assignment_v1 等
+  /** URL-only 渠道：仅当页面 URL 带 ?ch=xxx 时生效，不写入 localStorage、不留存。
+   *  用于一次性安装统计（如 abc），避免污染后续会话的渠道归因。 */
+  var URL_ONLY_SALES_CHANNELS = { abc: true };
+
+  function isUrlOnlySalesChannel(ch) {
+    var k = sanitizeSalesChannelId(ch);
+    return !!k && Object.prototype.hasOwnProperty.call(URL_ONLY_SALES_CHANNELS, k);
+  }
+
+  /** 从当前页面 URL 读取 ?ch= / ?channel=（含壳 UA / 分销注入），返回 sanitize 后的渠道。 */
+  function readUrlSalesChannel() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var ch = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
+      if (ch) return ch;
+      ch = readSalesChannelFromDistributorUa();
+      return ch;
+    } catch (e) {
+      return '';
+    }
+  }
+
   function sanitizeSalesChannelId(raw) {
     var s = String(raw || '').trim().toLowerCase();
     if (!s || s.length > 64) {
@@ -6417,6 +6439,10 @@
         ch = readSalesChannelFromDistributorUa();
       }
       if (!ch) {
+        return;
+      }
+      /* URL-only 渠道不写入 localStorage，仅在当前页 URL 生效 */
+      if (isUrlOnlySalesChannel(ch)) {
         return;
       }
       var permanent = shouldPersistSalesChannelPermanent(p);
@@ -6624,6 +6650,11 @@
 
   function getSalesChannel() {
     try {
+      /* URL-only 渠道（如 abc）：只认页面 URL，不读 localStorage */
+      var urlCh = readUrlSalesChannel();
+      if (urlCh && isUrlOnlySalesChannel(urlCh)) {
+        return urlCh;
+      }
       var raw = localStorage.getItem(SALES_CHANNEL_KEY);
       if (!raw) {
         return '';
@@ -6636,6 +6667,10 @@
         localStorage.removeItem(SALES_CHANNEL_KEY);
         return '';
       }
+      /* URL-only 渠道即便被误写进 localStorage 也不认 */
+      if (isUrlOnlySalesChannel(o.ch)) {
+        return '';
+      }
       return sanitizeSalesChannelId(o.ch);
     } catch (e) {
       return '';
@@ -6643,8 +6678,13 @@
   }
 
   function getPublicInstallPackagesUrl() {
-    // 已登录用户不带 localStorage 推广渠道，由服务端按账号 sales_promo_channel 判断
+    // 已登录用户不带 localStorage 推广渠道，由服务端按账号 sales_promo_channel 判断；
+    // 但 URL-only 渠道（如 abc 安装统计）即便已登录也按 URL 带上。
     if (getToken()) {
+      var urlCh = readUrlSalesChannel();
+      if (urlCh && isUrlOnlySalesChannel(urlCh)) {
+        return '/api/public/install-packages?sales_ch=' + encodeURIComponent(urlCh);
+      }
       return '/api/public/install-packages';
     }
     var ch = getSalesChannel();
@@ -6706,7 +6746,7 @@
     }
     return fetch('/api/public/resolve-sales-channel', { credentials: 'same-origin', headers: headers })
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (body) {
         if (body && body.code === 200 && body.data) {
@@ -7507,7 +7547,7 @@
     var req = fetchPublicInstallPackages();
     _installPackagesInFlight = req
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (body) {
         var data = body && body.code === 200 && body.data ? body.data : null;
@@ -8205,6 +8245,32 @@
   }
 
   /**
+   * 安全解析 API JSON：网关/502 偶发回 HTML（50x.html），避免 r.json() 抛 Unexpected token '<'。
+   * fallbackMsg 可选，用于空响应时的前缀文案。
+   */
+  function authParseJson(r, fallbackMsg) {
+    if (typeof r.text !== 'function') {
+      return Promise.resolve(r.json ? r.json() : {}).catch(function () {
+        throw new Error((fallbackMsg || '接口返回无法解析') + '（HTTP ' + r.status + '）');
+      });
+    }
+    return r.text().then(function (text) {
+      var t = String(text == null ? '' : text).trim();
+      if (!t) {
+        throw new Error((fallbackMsg || '服务器无响应') + '（HTTP ' + r.status + '）');
+      }
+      try {
+        return JSON.parse(t);
+      } catch (e0) {
+        if (t.charAt(0) === '<') {
+          throw new Error('服务暂时不可用，请稍后重试（HTTP ' + r.status + '）');
+        }
+        throw new Error((fallbackMsg || '接口返回无法解析') + '（HTTP ' + r.status + '）');
+      }
+    });
+  }
+
+  /**
    * 带鉴权的 fetch：合并 authHeaders；GET 短缓存/合流；401 清会话跳登录；
    * 403+need_activation 写 account_active=0 并 reject（err.need_activation）。
    */
@@ -8405,7 +8471,10 @@
     window.authGetToken = getToken;
     window.authHeaders = authHeaders;
     window.authFetch = authFetch;
+    window.authParseJson = authParseJson;
     window.authClearSession = clearSession;
+    window.getSalesChannel = getSalesChannel;
+    window.isUrlOnlySalesChannel = isUrlOnlySalesChannel;
   } catch (eEarlyAuthExport) {}
 
   function detectNetType() {
@@ -8648,6 +8717,7 @@
   window.authGetToken = getToken;
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
+  window.authParseJson = authParseJson;
   window.authClearSession = clearSession;
   window.reportApiPerf = reportApiPerf;
   window.measureFetchAndRender = measureFetchAndRender;
@@ -8674,6 +8744,7 @@
   window.getShareAttribution = getShareAttribution;
   window.trackShareDownloadClick = trackShareDownloadClick;
   window.getSalesChannel = getSalesChannel;
+  window.isUrlOnlySalesChannel = isUrlOnlySalesChannel;
   window.getRegisterSalesChannel = getRegisterSalesChannel;
   window.captureRegisterSourceFromUrl = captureRegisterSourceFromUrl;
   window.getRegisterSourceChannel = getRegisterSourceChannel;

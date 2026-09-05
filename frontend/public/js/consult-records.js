@@ -77,7 +77,7 @@ function submitConsultActivateWithCode(code) {
         body: JSON.stringify({ action: 'activate', code: code })
     })
         .then(function (r) {
-            return r.json().then(function (j) {
+            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                 return { status: r.status, body: j };
             });
         })
@@ -156,7 +156,7 @@ function apiFetchRecords(opts) {
         return window.__consultRecordsInFlight;
     }
     window.__consultRecordsInFlight = window.authFetch('api/tax?action=records')
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
                 return data.data.records;
@@ -234,7 +234,7 @@ function onSubmitRecord(e) {
                     record: o
                 });
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 rememberBatchCompanyProfile({
@@ -527,7 +527,7 @@ function deleteRecord(id) {
             user_id: currentUserId(),
             id: id
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 return refreshRecordList();
@@ -550,7 +550,7 @@ function deleteAllTaxRecords() {
             action: 'delete_all_records',
             user_id: currentUserId()
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
@@ -583,7 +583,7 @@ function deleteTaxRecordsByYear() {
             action: 'delete_records_by_year',
             year: year
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
         .then(function (data) {
             if (data.code === 200) {
                 var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
@@ -612,7 +612,7 @@ function dedupeTaxRecords() {
             user_id: currentUserId()
         })
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code === 200) {
@@ -672,7 +672,7 @@ function closeTaxRecycleBin() {
 function apiFetchDeletedRecords() {
     return window.authFetch('api/tax?action=deleted_records')
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code !== 200) {
@@ -717,7 +717,7 @@ function restoreDeletedTaxRecord(id) {
             id: id
         })
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code !== 200) {
@@ -755,7 +755,7 @@ function restoreDeletedTaxRecordsByCompanyName(companyName) {
             company_name: company
         })
         .then(function (r) {
-            return r.json();
+            return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code !== 200) {

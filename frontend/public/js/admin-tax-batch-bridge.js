@@ -48,7 +48,7 @@ function apiFetchRecords(opts) {
             body: JSON.stringify({ username: ctx.username, action: 'list' })
         })
         .then(function (r) {
-            return r.json();
+            return (window.adminParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
             if (data.code === 200 && data.data && Array.isArray(data.data.records)) {

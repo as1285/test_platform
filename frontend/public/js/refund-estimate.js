@@ -243,7 +243,7 @@
     }
     return fetchFn.call(global, 'api/tax?action=records')
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (data) {
         if (data && data.code === 200 && data.data && Array.isArray(data.data.records)) {

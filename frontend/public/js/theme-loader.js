@@ -323,7 +323,7 @@
 
   fetch('/api/public/mine-ui', { credentials: 'same-origin' })
     .then(function (r) {
-      return r.json();
+      return (window.authParseJson||function(r){return r.json();})(r);
     })
     .then(function (body) {
       if (body.code === 200 && body.data) {

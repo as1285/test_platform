@@ -113,7 +113,7 @@
     }
     return fetch('/api/public/conversion-config', { credentials: 'same-origin', headers: headers })
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code === 200 && j.data) {
@@ -572,7 +572,7 @@
     }
     profileFetchInFlight = window.authFetch('api/user?action=summary')
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (data) {
         if (data.code !== 200 || !data.data) return;
@@ -3448,7 +3448,7 @@
           body: JSON.stringify({ action: 'save_profile', email: val })
         })
         .then(function (r) {
-          return r.json();
+          return (window.authParseJson||function(r){return r.json();})(r);
         })
         .then(function (data) {
           if (!data || data.code !== 200) {

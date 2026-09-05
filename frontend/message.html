@@ -592,7 +592,7 @@
         function loadMessages() {
             window.authFetch('api/message?action=list')
                 .then(function (response) {
-                    return response.json();
+                    return (window.authParseJson||function(response){return response.json();})(response);
                 })
                 .then(function (data) {
                     if (data.code === 200) {
@@ -635,7 +635,7 @@
                 body: JSON.stringify({ action: 'mark_all_read' })
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code === 200) {

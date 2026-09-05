@@ -2601,6 +2601,44 @@ mustInclude(
   ],
   '20260905 tax calc page uses cumulative formula for 本期申报税额'
 );
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['URL_ONLY_SALES_CHANNELS', 'isUrlOnlySalesChannel', 'readUrlSalesChannel'],
+  '20260905 abc URL-only sales channel'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['window.isUrlOnlySalesChannel = isUrlOnlySalesChannel'],
+  '20260905 export isUrlOnlySalesChannel early'
+);
+mustInclude(
+  'backend/serverMonitor.js',
+  [
+    'najilu-qr-status',
+    'najilu-qr-list',
+    'zaizhi-status',
+    'bilibili-share',
+    'public-ad-pages',
+    'auth-login-fail',
+    'var raw = await probeHttp(url, { method: def.method || \'GET\', body: def.body });'
+  ],
+  '20260905 monitor probes cover more endpoints + pass body'
+);
+mustInclude(
+  'frontend/consult.html',
+  ['id="najiluQrEntryCard"', 'najilu_qr.html?from=consult', 'consult-najilu-qr-entry'],
+  '20260905 完税二维码入口移到我要咨询增值服务'
+);
+mustExclude(
+  'frontend/purchase.html',
+  ['id="cardNajiluQr"', 'btnNajiluQrEntry'],
+  '20260905 完税二维码入口已从支付页移除'
+);
+mustInclude(
+  'scripts/api-selftest.mjs',
+  ['/api/health', '/api/najilu-qr/status', '/api/partner/bank/health', 'expectStatus'],
+  '20260905 standalone API selftest script'
+);
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);

@@ -1429,7 +1429,7 @@
         <details class="purchase-fold" id="foldMoreServices">
             <summary>
                 <span>增值服务与其它</span>
-                <span class="purchase-fold-hint">离职/在职证明 · 完税二维码 · 下载</span>
+                <span class="purchase-fold-hint">离职/在职证明 · 下载</span>
             </summary>
             <div class="purchase-fold-body">
                 <p class="section-label" id="purchaseExtraServicesLabel">增值服务</p>
@@ -1449,15 +1449,6 @@
                     </div>
                     <p class="card-hint" id="purchaseZaizhiCertHint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。文书标题为「工作证明」。App 内请用系统分享「存储到文件」。</p>
                     <a class="btn btn-secondary" id="btnZaizhiCertEntry" href="zaizhi_cert.html?from=purchase">去生成</a>
-                </div>
-
-                <div class="card" id="cardNajiluQr">
-                    <div class="card-head">
-                        <div class="card-title">完税二维码替换</div>
-                        <span class="badge-auto" id="najiluQrPurchaseBadge">¥300 去水印</span>
-                    </div>
-                    <p class="card-hint" id="najiluQrPurchaseHint">替换完成后可用官方 APP 扫码查验。未付款也可上传锁定（带「演示样例」水印）；付 ¥300 后去水印。页内有详细用法。</p>
-                    <a class="btn btn-secondary" id="btnNajiluQrEntry" href="najilu_qr.html?from=purchase">去生成</a>
                 </div>
 
                 <div class="card download-box" id="cardDownloadApp" hidden>
@@ -1807,7 +1798,7 @@
                 : {}
         })
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (body) {
                 var cfg = body && body.code === 200 && body.data ? body.data : null;
@@ -2178,72 +2169,31 @@
         }
         fetch('/api/public/lizhi-cert-fee', { credentials: 'same-origin' })
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (j) {
                 if (applyJson(j)) return;
                 if (!purchaseGetToken()) return;
                 return purchaseAuthFetch('/api/lizhi-cert/status').then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 }).then(applyJson);
             })
             .catch(function () {
                 if (!purchaseGetToken()) return;
                 purchaseAuthFetch('/api/lizhi-cert/status')
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(applyJson)
                     .catch(function () {});
             });
     }
 
-    function applyPurchaseNajiluQrFeeCopy(data) {
-        data = data || {};
-        var yuan = formatPurchaseCertFeeYuan(data.fee_amount || data.amount);
-        var unlocked = !!data.unlocked;
-        var badge = document.getElementById('najiluQrPurchaseBadge');
-        var hint = document.getElementById('najiluQrPurchaseHint');
-        var btn = document.getElementById('btnNajiluQrEntry');
-        if (unlocked) {
-            if (badge) badge.textContent = '已开通 · 无水印';
-            if (hint) {
-                hint.textContent =
-                    '已开通去水印。替换完成后可用官方 APP 扫码查验；进入后按步骤上传并锁定即可。页内有详细用法。';
-            }
-            if (btn) btn.textContent = '去生成';
-            return;
-        }
-        if (!yuan) return;
-        if (badge) badge.textContent = '¥' + yuan + ' 去水印';
-        if (hint) {
-            hint.textContent =
-                '替换完成后可用官方 APP 扫码查验。未付款也可上传锁定（带「演示样例」水印）；付 ¥' +
-                yuan +
-                ' 后去水印。页内有详细用法。';
-        }
-        if (btn) btn.textContent = '去生成';
-    }
-
-    function loadPurchaseNajiluQrFeeCopy() {
-        if (!purchaseGetToken()) return;
-        purchaseAuthFetch('/api/najilu-qr/status')
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (j) {
-                if (j && j.code === 200 && j.data) {
-                    applyPurchaseNajiluQrFeeCopy(j.data);
-                }
-            })
-            .catch(function () {});
-    }
-
     function paymentFetch(url, options) {
         var opts = options || {};
         opts.headers = Object.assign({ 'Content-Type': 'application/json' }, purchaseAuthHeaders(), opts.headers || {});
         return purchaseAuthFetch(url, opts).then(function (r) {
-            return r.json().then(function (body) {
+            return (window.authParseJson||function(r){return r.json();})(r).then(function (body) {
                 return { status: r.status, body: body };
             });
         });
@@ -3479,7 +3429,7 @@
                   );
         return req
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (body) {
                 if (body && body.code === 200 && body.data) {
@@ -3521,7 +3471,7 @@
             body: JSON.stringify({ action: 'activate', code: code })
         })
             .then(function (r) {
-                return r.json().then(function (j) {
+                return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                     return { status: r.status, body: j };
                 });
             })
@@ -3715,7 +3665,7 @@
         if (window.__adPagesConfigPromise) return window.__adPagesConfigPromise;
         window.__adPagesConfigPromise = fetch('/api/public/ad-pages', { credentials: 'same-origin' })
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (j) {
                 return j && j.code === 200 ? j.data : null;
@@ -4351,7 +4301,7 @@
         }
         purchaseAuthFetch('/api/growth/purchase-price-survey/status')
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (j) {
                 if (j && j.code === 200 && j.data && j.data.done) {
@@ -4598,7 +4548,7 @@
         }
         return purchaseAuthFetch('/api/user/shebao-photo', { method: 'GET' })
             .then(function (r) {
-                return r.json().then(function (j) {
+                return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                     return { status: r.status, body: j };
                 });
             })
@@ -4633,7 +4583,7 @@
             body: fd,
             credentials: 'same-origin'
         }).then(function (r) {
-            return r.json().then(function (j) {
+            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                 return { status: r.status, body: j };
             });
         });
@@ -4794,10 +4744,8 @@
         completePendingBilibiliShare();
         loadBilibiliShareStatus();
         loadPurchaseLizhiCertFeeCopy();
-        loadPurchaseNajiluQrFeeCopy();
     });
     loadPurchaseLizhiCertFeeCopy();
-    loadPurchaseNajiluQrFeeCopy();
 })();
     </script>
 </body>

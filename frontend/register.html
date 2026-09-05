@@ -790,7 +790,7 @@
                     guest_username: regGuestUsername || undefined
                 })
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;

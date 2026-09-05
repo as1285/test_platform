@@ -405,7 +405,7 @@ window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
 
     function loadStatus() {
         return authFetch('/api/sbdy-demo/status')
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
             .then(function (j) {
                 if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
                 feeAmount = j.data.fee_amount || feeAmount;
@@ -431,7 +431,7 @@ window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product: 'sbdy_demo', sku_id: 'sku_sbdy_demo_199' })
         })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
             .then(function (j) {
                 if (!j || j.code !== 200 || !j.data) {
                     var failMsg = (j && j.msg) || '创建订单失败';
@@ -469,7 +469,7 @@ window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
 
     function pollPay() {
         authFetch('/api/payments/alipay/latest')
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
             .then(function (j) {
                 var ord = j && j.code === 200 && j.data ? j.data.order : null;
                 if (!ord) return;

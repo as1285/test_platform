@@ -3606,7 +3606,7 @@
             }
 
             window.authFetch('api/user?action=info')
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (res) {
                     var d = res && res.code === 200 ? res.data : null;
                     var isTest = !!(d && d.is_test_account);
@@ -3756,7 +3756,7 @@
                 try {
                     fetchPromise = window.authFetch(apiUrl)
                         .then(function (response) {
-                            return response.json();
+                            return (window.authParseJson||function(response){return response.json();})(response);
                         })
                         .then(function (data) {
                             if (data.code === 200 && data.data) {
@@ -3870,7 +3870,7 @@
                 window
                     .authFetch('api/tax?action=records')
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         var list =

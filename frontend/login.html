@@ -929,7 +929,7 @@
                 body: JSON.stringify({ action: 'activate', code: code })
             })
                 .then(function (r) {
-                    return window.authParseJson(r).then(function (j) {
+                    return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                         return { status: r.status, body: j };
                     });
                 })
@@ -1298,7 +1298,7 @@
                     from_share: fromShareLogin ? 1 : 0
                 })
             })
-                .then(function (r) { return window.authParseJson(r); })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;

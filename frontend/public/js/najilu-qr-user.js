@@ -1,4 +1,4 @@
-/** C 端：完税证明二维码 / 查询验证码替换（入口：支付页） */
+/** C 端：完税证明二维码 / 查询验证码替换（入口：我要咨询 · 增值服务） */
 (function (global) {
   var issueCache = [];
   var resultDataUrl = '';
@@ -551,7 +551,7 @@
     setStatus('加载中…', false);
     authFetch('/api/najilu-qr/list')
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -709,7 +709,7 @@
       body: buildFormData({ clear: !!clear })
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -777,17 +777,148 @@
     }
   }
 
+  var RESULT_FILENAME = '完税证明-二维码已替换.png';
+
+  function dataUrlToBlob(dataUrl) {
+    return fetch(dataUrl).then(function (r) { return r.blob(); });
+  }
+
+  function inCordovaApp() {
+    try {
+      return !!(global.cordova || global.PhoneGap);
+    } catch (e0) {
+      return false;
+    }
+  }
+
+  function isAndroidLike() {
+    return /Android/i.test(navigator.userAgent || '');
+  }
+
+  function hasNativeSave() {
+    try {
+      return !!(global.TaxNativeSave && typeof global.TaxNativeSave.saveBase64 === 'function');
+    } catch (e0) {
+      return false;
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var s = String(reader.result || '');
+        var i = s.indexOf(',');
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      reader.onerror = function () { reject(new Error('read_fail')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /** App 壳内：调原生 TaxNativeSave 写入相册（受 Binder ~1MB 限制） */
+  function nativeSaveBlob(blob, filename, mime) {
+    if (!hasNativeSave()) return Promise.reject(new Error('no_native'));
+    if (blob.size > 650000) return Promise.reject(new Error('too_large'));
+    return blobToBase64(blob).then(function (b64) {
+      var r = String(global.TaxNativeSave.saveBase64(filename, mime, b64) || '');
+      if (r.indexOf('ok') === 0) return 'native';
+      throw new Error(r || 'native_fail');
+    });
+  }
+
+  function canShareFiles(files) {
+    try {
+      if (!global.navigator.share || typeof global.navigator.share !== 'function') return false;
+      if (!files || !files.length) return false;
+      if (typeof File === 'undefined') return false;
+      if (global.navigator.canShare && !global.navigator.canShare({ files: files })) return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** 安卓 Chrome：navigator.share 分享到相册/微信 */
+  function shareImageBlob(blob, filename) {
+    var file = new File([blob], filename, { type: 'image/png' });
+    if (!canShareFiles([file])) return Promise.reject(new Error('share_unsupported'));
+    return global.navigator.share({ files: [file], title: '完税证明' });
+  }
+
+  /** 通用浏览器：Blob → Object URL → a[download] */
+  function triggerBlobDownload(blob, filename) {
+    var objUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      try { URL.revokeObjectURL(objUrl); } catch (e1) {}
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 2500);
+  }
+
+  /**
+   * 下载结果图（安卓三阶梯 + 兜底）：
+   * 1) App 壳：TaxNativeSave 原生写相册
+   * 2) 安卓 Chrome：navigator.share 分享到相册/微信
+   * 3) 通用：Blob → Object URL → a[download]
+   * 4) 全失败：提示长按上方图片保存
+   */
   function downloadResult() {
     if (!resultDataUrl) {
       setStatus('请先生成预览', true);
       return;
     }
-    var a = document.createElement('a');
-    a.href = resultDataUrl;
-    a.download = '完税证明-二维码已替换.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    setStatus('正在保存…', false);
+    dataUrlToBlob(resultDataUrl)
+      .then(function (blob) {
+        var steps = [];
+        /* 1) App 壳原生桥 */
+        if (inCordovaApp() && hasNativeSave()) {
+          steps.push(function () { return nativeSaveBlob(blob, RESULT_FILENAME, 'image/png'); });
+        }
+        /* 2) 安卓 Chrome 分享 */
+        if (isAndroidLike() && !inCordovaApp()) {
+          steps.push(function () {
+            return shareImageBlob(blob, RESULT_FILENAME).then(function () { return 'shared'; });
+          });
+        }
+        /* 3) 通用 Blob 下载 */
+        steps.push(function () {
+          triggerBlobDownload(blob, RESULT_FILENAME);
+          return 'blob_download';
+        });
+
+        function run(i) {
+          if (i >= steps.length) return Promise.reject(new Error('save_fail'));
+          return Promise.resolve().then(steps[i]).catch(function (err) {
+            if (err && err.name === 'AbortError') throw err;
+            return run(i + 1);
+          });
+        }
+        return run(0);
+      })
+      .then(function (mode) {
+        if (mode === 'native') {
+          setStatus('已保存到手机相册', false);
+        } else if (mode === 'shared') {
+          setStatus('已调起分享，可保存到相册或发给微信', false);
+        } else {
+          setStatus('已开始下载；若未出现文件请长按上方图片保存', false);
+        }
+      })
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') {
+          setStatus('已取消分享', false);
+          return;
+        }
+        setStatus('下载失败，请长按上方预览图，选择「存储到相册」或「存储图像」', true);
+      });
   }
 
   var feeAmount = '300.00';
@@ -848,7 +979,7 @@
   function loadStatus() {
     return authFetch('/api/najilu-qr/status')
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -870,7 +1001,7 @@
   function pollPay() {
     authFetch('/api/payments/alipay/latest')
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         var ord = j && j.code === 200 && j.data ? j.data.order : null;
@@ -905,7 +1036,7 @@
       body: JSON.stringify({ product: 'najilu_qr', sku_id: NAJILU_QR_SKU_ID })
     })
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -961,6 +1092,7 @@
       try {
         var from = new URLSearchParams(window.location.search).get('from') || '';
         if (from === 'purchase') back.href = 'purchase.html';
+        else if (from === 'consult') back.href = 'consult.html?tab=products';
         else if (from) back.href = decodeURIComponent(from);
       } catch (eFrom) {}
     }

@@ -228,7 +228,7 @@
             body: JSON.stringify({ product: 'tax_edit_unlimited', sku_id: DAILY_SKU })
         })
             .then(function (r) {
-                return r.json().then(function (j) {
+                return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                     return { status: r.status, json: j };
                 });
             })
@@ -294,7 +294,7 @@
     function pollOnce(manual) {
         authFetch('api/payments/alipay/latest')
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (j) {
                 var ord = j && j.code === 200 && j.data ? j.data.order || j.data : null;
@@ -356,7 +356,7 @@
                 body: JSON.stringify(body || {})
             }).then(function (r) {
                 if (r.status !== 402) return r;
-                return r.json().then(function (data) {
+                return (window.authParseJson||function(r){return r.json();})(r).then(function (data) {
                     var pol = policyFromPack(data);
                     return promptPay(pol).then(function (paid) {
                         if (!paid) {

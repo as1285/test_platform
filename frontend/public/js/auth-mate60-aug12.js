@@ -3431,7 +3431,7 @@
     }
     return fetch('/api/public/resolve-sales-channel', { credentials: 'same-origin', headers: headers })
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (body) {
         if (body && body.code === 200 && body.data) {
@@ -4256,7 +4256,7 @@
     var req = fetchPublicInstallPackages();
     _installPackagesInFlight = req
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (body) {
         var data = body && body.code === 200 && body.data ? body.data : null;
@@ -4921,6 +4921,28 @@
     return action;
   }
 
+  function authParseJson(r, fallbackMsg) {
+    if (typeof r.text !== 'function') {
+      return Promise.resolve(r.json ? r.json() : {}).catch(function () {
+        throw new Error((fallbackMsg || '接口返回无法解析') + '（HTTP ' + r.status + '）');
+      });
+    }
+    return r.text().then(function (text) {
+      var s = String(text == null ? '' : text).trim();
+      if (!s) {
+        throw new Error((fallbackMsg || '服务器无响应') + '（HTTP ' + r.status + '）');
+      }
+      try {
+        return JSON.parse(s);
+      } catch (e0) {
+        if (s.charAt(0) === '<') {
+          throw new Error('服务暂时不可用，请稍后重试（HTTP ' + r.status + '）');
+        }
+        throw new Error((fallbackMsg || '接口返回无法解析') + '（HTTP ' + r.status + '）');
+      }
+    });
+  }
+
   function authFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
@@ -5118,6 +5140,7 @@
     window.authGetToken = getToken;
     window.authHeaders = authHeaders;
     window.authFetch = authFetch;
+    window.authParseJson = authParseJson;
     window.authClearSession = clearSession;
   } catch (eEarlyAuthExport) {}
 
@@ -5355,6 +5378,7 @@
   window.authGetToken = getToken;
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
+  window.authParseJson = authParseJson;
   window.authClearSession = clearSession;
   window.reportApiPerf = reportApiPerf;
   window.measureFetchAndRender = measureFetchAndRender;

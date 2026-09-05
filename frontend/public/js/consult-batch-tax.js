@@ -1590,7 +1590,7 @@ function deleteBatchExampleTaxRecordsPromise(companies) {
                 company_name: company
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (data.code !== 200) {
@@ -2599,7 +2599,7 @@ function postBatchReplaceTaxRecordsPromise(idsToDelete, records) {
             records: part
         })
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (data) {
                 if (data.code !== 200) {
@@ -3993,7 +3993,7 @@ function applyProfilePasteImport() {
                 body: JSON.stringify(profilePayload)
             })
                 .then(function (r) {
-                    return r.json().then(function (data) {
+                    return (window.authParseJson||function(r){return r.json();})(r).then(function (data) {
                         return { http: r.status, data: data };
                     });
                 })
@@ -4036,7 +4036,7 @@ function applyProfilePasteImport() {
                 })
             })
                 .then(function (r) {
-                    return r.json();
+                    return (window.authParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (data) {
                     if (!data || data.code !== 200) {
@@ -4222,7 +4222,7 @@ function postBatchTaxRecordsPromise(records) {
             action: 'batch_save_records',
             records: part
         })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
             .then(function (data) {
                 if (data.code !== 200) throw new Error(data.msg || '批量保存失败');
                 return data.data || {};

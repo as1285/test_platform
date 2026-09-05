@@ -290,7 +290,7 @@
     el.textContent = '加载中…';
     fetchAdmin('/api/admin/tax-fill-survey/stats?days=' + encodeURIComponent(days))
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {

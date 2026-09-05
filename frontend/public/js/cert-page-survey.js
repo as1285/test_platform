@@ -583,7 +583,7 @@
     if (markedLocal()) done = true;
     authFetch('/api/growth/cert-page-survey/status?product=' + encodeURIComponent(product))
       .then(function (r) {
-        return r.json();
+        return (window.authParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data && j.data.done) markDoneLocal();

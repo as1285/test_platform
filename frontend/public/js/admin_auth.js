@@ -104,7 +104,7 @@
       if (r.status === 401) {
         return rejectUnauthorized();
       }
-      return r.json();
+      return adminParseJson(r);
     });
   }
 

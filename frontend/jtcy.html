@@ -211,7 +211,7 @@
                 if (!mount) return;
                 jtcyAuthFetch('api/user?action=family_members', { credentials: 'same-origin' })
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code === 200 && data.data && Array.isArray(data.data.members)) {

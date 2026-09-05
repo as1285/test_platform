@@ -135,7 +135,7 @@
         }
         return window.authFetch('api/tax?action=records')
             .then(function (r) {
-                return r.json();
+                return (window.authParseJson||function(r){return r.json();})(r);
             })
             .then(function (j) {
                 if (j.code === 200 && j.data && Array.isArray(j.data.records)) {

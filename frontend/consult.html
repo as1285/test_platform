@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260904-paste-tpl">
+    <link rel="stylesheet" href="/css/consult.css?v=20260905-najilu-qr-entry">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -879,6 +879,25 @@
                 <button type="button" class="btn btn-primary btn-block" id="btnConsultProductsActivate">确认激活</button>
             </div>
             <p class="consult-products-section-label">增值服务</p>
+            <a class="consult-najilu-qr-entry" id="najiluQrEntryCard" href="najilu_qr.html?from=consult" aria-label="完税二维码替换">
+                <div class="consult-najilu-qr-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M14 14h3v3h-3v-3zm4 0h3v2h-3v-2zm-4 4h2v3h-2v-3zm3 1h4v3h-4v-3z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div class="consult-najilu-qr-body">
+                    <div class="consult-najilu-qr-title-row">
+                        <strong class="consult-najilu-qr-title">完税二维码替换</strong>
+                        <span class="consult-najilu-qr-badge" id="consultNajiluQrBadge">¥300 去水印</span>
+                    </div>
+                    <span class="consult-najilu-qr-sub" id="consultNajiluQrHint">官方 APP 可扫码查验 · 未付也可试（含水印）</span>
+                </div>
+                <span class="consult-najilu-qr-cta" id="btnConsultNajiluQrLabel">去生成</span>
+                <span class="consult-najilu-qr-arrow" aria-hidden="true">›</span>
+            </a>
             <div class="card consult-product-card" id="consultRefundAdProductEntry" hidden>
                 <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
                     <div class="card-title" id="consultRefundAdProductTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
@@ -950,7 +969,7 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 → 填税调研 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260903-cert-pub"></script>
+    <script defer src="/js/consult-core.js?v=20260905-najilu-qr-entry"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260904-paste-tpl"></script>
     <script defer src="/js/consult-records.js?v=20260904-funnel-cta"></script>
     <script defer src="/js/tax-fill-survey.js?v=20260901-tax-fill"></script>

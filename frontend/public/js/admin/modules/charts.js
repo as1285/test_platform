@@ -499,7 +499,7 @@
             destroyChannelAnalysisCharts();
             adminFetch('api/admin/analytics/register-channels?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -1003,7 +1003,7 @@
             destroyPlatformCharts();
             adminFetch('api/admin/analytics/register-time?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
@@ -1031,7 +1031,7 @@
             destroyRegisterTimeCharts();
             adminFetch('api/admin/analytics/register-time?days=' + encodeURIComponent(days))
                 .then(function (r) {
-                    return r.json();
+                    return (window.adminParseJson||function(r){return r.json();})(r);
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {

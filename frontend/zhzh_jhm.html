@@ -437,7 +437,7 @@
                             headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'recover_by_identity', username: username, real_name: realName, tax_id: taxId })
                         })
-                        .then(function (r) { return r.json(); })
+                        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                         .then(function (data) {
                             btn.disabled = false;
                             if (data.code === 200 && data.data) {
@@ -460,7 +460,7 @@
                             headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'recover_by_activation_code', activation_code: code })
                         })
-                        .then(function (r) { return r.json(); })
+                        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                         .then(function (data) {
                             btn.disabled = false;
                             if (data.code === 200 && data.data) {

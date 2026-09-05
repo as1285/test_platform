@@ -263,7 +263,7 @@
         '&tax_limit=2000'
     )
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -541,7 +541,7 @@
         if (r.status === 401) {
           return Promise.reject(new Error('unauthorized'));
         }
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })

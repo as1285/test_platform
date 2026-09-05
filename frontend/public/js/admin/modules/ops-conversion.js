@@ -243,7 +243,7 @@
     if (ch) url += '&channel=' + encodeURIComponent(ch);
     fetchAdmin(url)
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -264,7 +264,7 @@
     if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
     fetchAdmin('api/admin/ops/inactive-users?' + queryString())
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -457,7 +457,7 @@
     if (meta) meta.textContent = '';
     fetchAdmin('api/admin/ops/board/payments?days=' + encodeURIComponent(days))
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -664,7 +664,7 @@
     if (research) research.textContent = '加载中…';
     fetchAdmin('api/admin/ops/board?days=7')
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {

@@ -61,7 +61,7 @@
                     ? window.getClientDeviceHeaders()
                     : {}
             })
-                .then(function (r) { return r.json(); })
+                .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                 .then(function (body) {
                     var cfg = body && body.code === 200 && body.data ? body.data : null;
                     if (!cfg || cfg.enabled === false) {
@@ -1941,7 +1941,7 @@
                                 ? performance.now()
                                 : Date.now();
                         var netMs = Math.max(0, Math.round(reqEnd - reqStart));
-                        return r.json().then(function (body) {
+                        return (window.authParseJson||function(r){return r.json();})(r).then(function (body) {
                             return { body: body, netMs: netMs };
                         });
                     })
@@ -2152,7 +2152,7 @@
             }
             if (!mineUiInflight) {
                 mineUiInflight = fetch('/api/public/mine-ui', { credentials: 'same-origin' })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                     .then(function (body) {
                         if (body && body.code === 200 && body.data) {
                             mineUiCache = body.data;

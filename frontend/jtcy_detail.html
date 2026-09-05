@@ -750,7 +750,7 @@
                     credentials: 'same-origin'
                 })
                     .then(function (r) {
-                        return r.json().then(function (j) {
+                        return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                             return { status: r.status, body: j };
                         });
                     })
@@ -801,7 +801,7 @@
                         })
                     })
                         .then(function (r) {
-                            return r.json().then(function (j) {
+                            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                                 return { status: r.status, body: j };
                             });
                         })
@@ -833,7 +833,7 @@
                         body: JSON.stringify({ action: 'delete_family_member', member_id: memberId })
                     })
                         .then(function (r) {
-                            return r.json().then(function (j) {
+                            return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                                 return { status: r.status, body: j };
                             });
                         })

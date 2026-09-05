@@ -326,7 +326,7 @@
   function loadList() {
     fetchAdmin('api/admin/gjj-demo/list?limit=30')
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j && j.code === 200 && j.data) {
@@ -440,7 +440,7 @@
       body: JSON.stringify(body)
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -566,7 +566,7 @@
     setStatus('加载用户数据…', false);
     fetchAdmin('/api/admin/gjj-demo/prefill?username=' + encodeURIComponent(username))
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })

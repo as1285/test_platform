@@ -376,7 +376,7 @@
     najiluQrUnlockPromise = window
       .authFetch('/api/najilu-qr/status')
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (j) {
         setNajiluQrUnlocked(!!(j && j.data && j.data.unlocked));
@@ -594,7 +594,7 @@
         })
       })
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .catch(function () {
         return null;
@@ -707,6 +707,9 @@
 
   /** 网关/502 偶发回 HTML（50x.html），避免 r.json() 抛 Unexpected token '<' */
   function parseApiJson(r, fallbackMsg) {
+    if (typeof window.authParseJson === 'function') {
+      return window.authParseJson(r, fallbackMsg);
+    }
     return r.text().then(function (text) {
       var t = String(text == null ? '' : text).trim();
       if (!t) {
@@ -2416,7 +2419,7 @@
     }
     fetch('api/tax?' + qs)
       .then(function (r) {
-        return r.json();
+        return window.authParseJson(r);
       })
       .then(function (j) {
         var mount = document.getElementById('verifyMount');

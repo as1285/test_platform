@@ -194,6 +194,23 @@ const API_PROBE_DEFS = [
     method: 'GET',
     path: '/api/payments/alipay/config',
     accept: [401, 403]
+  },
+  { id: 'alipay-latest', label: '支付宝最近订单', method: 'GET', path: '/api/payments/alipay/latest', accept: [401, 403] },
+  { id: 'price-bid', label: '心理价出价', method: 'GET', path: '/api/payments/price-bid', accept: [401, 403] },
+  { id: 'najilu-qr-status', label: '完税二维码状态', method: 'GET', path: '/api/najilu-qr/status', accept: [401, 403] },
+  { id: 'najilu-qr-list', label: '完税二维码列表', method: 'GET', path: '/api/najilu-qr/list', accept: [401, 403] },
+  { id: 'zaizhi-status', label: '在职证明状态', method: 'GET', path: '/api/zaizhi-cert/status', accept: [401, 403] },
+  { id: 'sbdy-status', label: '社保演示状态', method: 'GET', path: '/api/sbdy-demo/status', accept: [401, 403] },
+  { id: 'bilibili-share', label: 'B站分享状态', method: 'GET', path: '/api/growth/bilibili-share/status', accept: [401, 403] },
+  { id: 'public-ad-pages', label: '广告页配置', method: 'GET', path: '/api/public/ad-pages', accept: [200] },
+  { id: 'public-resolve-ch', label: '渠道解析', method: 'GET', path: '/api/public/resolve-sales-channel', accept: [200] },
+  {
+    id: 'auth-login-fail',
+    label: '登录失败态',
+    method: 'POST',
+    path: '/api/auth',
+    body: { action: 'login', username: '__monitor_no__', password: 'x' },
+    accept: [400]
   }
 ];
 
@@ -416,7 +433,7 @@ async function runApiProbes() {
   for (var i = 0; i < API_PROBE_DEFS.length; i++) {
     var def = API_PROBE_DEFS[i];
     var url = MONITOR_BACKEND_URL + def.path;
-    var raw = await probeHttp(url, { method: def.method || 'GET' });
+    var raw = await probeHttp(url, { method: def.method || 'GET', body: def.body });
     var judged = classifyApiProbeResult(def, raw.status, raw.error);
     out.push({
       id: def.id,

@@ -392,7 +392,7 @@
     if (box) box.textContent = '加载中…';
     fetchAdmin('api/admin/ops/refund-eligible?' + refundQueryString())
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {
@@ -412,7 +412,7 @@
     if (summary) summary.textContent = '加载中…';
     fetchAdmin('api/admin/analytics/ad-page-stats?' + queryString())
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {
@@ -440,7 +440,7 @@
     }
     fetchAdmin('api/admin/analytics/ad-page-stats/user?' + qs.join('&'))
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {
@@ -554,7 +554,7 @@
     setAdPagesStatus('加载中…');
     fetchAdmin('api/admin/ad-pages')
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {
@@ -578,7 +578,7 @@
       body: JSON.stringify(readAdPagesForm())
     })
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {
@@ -742,7 +742,7 @@
       body: JSON.stringify(payload)
     })
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {
@@ -942,7 +942,7 @@
     el.textContent = '加载金额邮件失败率…';
     fetchAdmin('api/admin/emails/campaign-stats?campaign=refund_ad_amount&days=7')
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (j.code !== 200 || !j.data) {

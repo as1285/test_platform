@@ -170,7 +170,7 @@
 
         renderVideo('', '暂未配置操作教程视频');
         fetch('/api/public/mine-ui', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
             .then(function (body) {
                 if (!body || body.code !== 200 || !body.data) {
                     return;

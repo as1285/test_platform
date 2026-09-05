@@ -2359,7 +2359,7 @@
                         body: JSON.stringify(payload)
                     })
                         .then(function (r) {
-                            return r.json().then(function (data) {
+                            return (window.authParseJson||function(r){return r.json();})(r).then(function (data) {
                                 return { http: r.status, data: data };
                             });
                         })
@@ -2386,7 +2386,7 @@
                 }
                 fetchFn('api/user?action=rename_policy')
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         var pol = j && j.code === 200 ? j.data : null;
@@ -2465,7 +2465,7 @@
                     body: JSON.stringify({ product: 'rename_fee', sku_id: 'sku_rename_fee_10' })
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         if (!j || j.code !== 200 || !j.data) {
@@ -2531,7 +2531,7 @@
                 var fetchFn = mineAuthedFetch;
                 fetchFn('api/payments/alipay/latest')
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (j) {
                         var ord = j && j.code === 200 && j.data ? j.data.order || j.data : null;
@@ -2569,7 +2569,7 @@
                     body: JSON.stringify(payload)
                 })
                     .then(function (r) {
-                        return r.json();
+                        return (window.authParseJson||function(r){return r.json();})(r);
                     })
                     .then(function (data) {
                         if (data.code !== 200) {
@@ -2763,7 +2763,7 @@
                     body: JSON.stringify({ action: 'activate', code: code })
                 })
                     .then(function (r) {
-                        return r.json().then(function (j) {
+                        return (window.authParseJson||function(r){return r.json();})(r).then(function (j) {
                             return { status: r.status, body: j };
                         });
                     })
@@ -3377,7 +3377,7 @@
                 function refreshSummaryInBackground() {
                     fetchFn('api/user?action=summary')
                         .then(function (r) {
-                            return r.json();
+                            return (window.authParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
                             if (data.code !== 200 || !data.data) {

@@ -73,7 +73,7 @@
     /* 勿走 /user-data/：部分广告/隐私扩展会拦截该路径，浏览器报 Failed to fetch */
     fetchAdmin('/api/admin/lizhi-cert/prefill?username=' + encodeURIComponent(username))
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -153,7 +153,7 @@
       body: JSON.stringify(body)
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -493,7 +493,7 @@
     el.textContent = '加载中…';
     fetchAdmin('/api/admin/lizhi-cert/stats?days=' + encodeURIComponent(days))
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {

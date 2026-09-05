@@ -206,7 +206,7 @@
             applyActivateSuccessCopy(hasRecords);
             if (!hasRecords && typeof window.authFetch === 'function') {
                 window.authFetch('api/user?action=summary')
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
                     .then(function (data) {
                         if (data.code !== 200 || !data.data) return;
                         var n = Math.max(0, Number(data.data.tax_record_count) || 0);

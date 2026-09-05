@@ -495,7 +495,7 @@
     setStatus('加载开具记录…', false);
     fetchAdmin('api/admin/najilu-qr/list?username=' + encodeURIComponent(username))
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
@@ -665,7 +665,7 @@
       body: buildFormData({ clear: !!clear })
     })
       .then(function (r) {
-        return r.json().then(function (j) {
+        return (window.adminParseJson||function(r){return r.json();})(r).then(function (j) {
           return { http: r.status, j: j };
         });
       })
@@ -716,7 +716,7 @@
         return fetchAdmin(
           '/api/admin/najilu-qr/prefill?username=' + encodeURIComponent(username)
         ).then(function (r) {
-          return r.json();
+          return (window.adminParseJson||function(r){return r.json();})(r);
         });
       })
       .then(function (j) {
@@ -984,7 +984,7 @@
     el.textContent = '加载中…';
     fetchAdmin('/api/admin/najilu-qr/stats?days=' + encodeURIComponent(days))
       .then(function (r) {
-        return r.json();
+        return (window.adminParseJson||function(r){return r.json();})(r);
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
