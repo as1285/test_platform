@@ -38,6 +38,9 @@ describe('homepage news opens zixun list', () => {
     expect(zixun).toContain('2025-02-28');
     expect(zixun).toContain('2024-03-15');
     expect(zixun).toContain('资讯列表');
+    expect(zixun).toContain('openZixunDetail');
+    expect(zixun).toContain('zxDetail');
+    expect(zixun).toContain('演示');
   });
 
   it('is reachable without login', () => {

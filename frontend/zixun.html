@@ -108,6 +108,7 @@
             box-shadow: 0 2px 10px rgba(25, 30, 38, 0.04);
             font-family: inherit;
             color: inherit;
+            cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
         .zx-card:active {
@@ -154,25 +155,65 @@
             height: 12px;
             display: block;
         }
-        .zx-summary {
-            display: none;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #f0f1f4;
-            font-size: 13px;
-            line-height: 1.65;
-            color: #5c6370;
-        }
-        .zx-card.is-open .zx-summary { display: block; }
         .zx-demo {
             display: inline-block;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             padding: 1px 6px;
             border-radius: 4px;
             background: #eef5ff;
             color: #1e6fff;
             font-size: 11px;
             font-weight: 600;
+        }
+        .zx-detail {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            background: rgba(15, 23, 42, 0.45);
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .zx-detail.is-open { display: flex; }
+        .zx-detail-panel {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.18);
+        }
+        .zx-detail-panel h2 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.45;
+            color: #191e26;
+        }
+        .zx-detail-date {
+            font-size: 12px;
+            color: #8b93a0;
+            margin-bottom: 12px;
+        }
+        .zx-detail-body {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #5c6370;
+        }
+        .zx-detail-close {
+            display: flex;
+            width: 100%;
+            min-height: 44px;
+            margin-top: 16px;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 10px;
+            background: #edf4ff;
+            color: #1e6fff;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
         }
         .zx-empty {
             padding: 48px 20px;
@@ -202,6 +243,16 @@
 
     <main class="zx-list" id="zxList" aria-label="资讯列表"></main>
     <div class="zx-empty" id="zxEmpty" hidden>暂无相关资讯（演示数据）</div>
+
+    <div class="zx-detail" id="zxDetail" role="dialog" aria-modal="true" aria-labelledby="zxDetailTitle">
+        <div class="zx-detail-panel">
+            <span class="zx-demo">演示</span>
+            <h2 id="zxDetailTitle"></h2>
+            <div class="zx-detail-date" id="zxDetailDate"></div>
+            <p class="zx-detail-body" id="zxDetailBody"></p>
+            <button type="button" class="zx-detail-close" id="zxDetailClose">关闭</button>
+        </div>
+    </div>
 
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item active" data-icon="sy">
@@ -286,35 +337,66 @@
                     '</svg>';
             }
 
+            var detailEl = document.getElementById('zxDetail');
+            var detailTitle = document.getElementById('zxDetailTitle');
+            var detailDate = document.getElementById('zxDetailDate');
+            var detailBody = document.getElementById('zxDetailBody');
+
+            function itemById(id) {
+                for (var i = 0; i < ITEMS.length; i++) {
+                    if (ITEMS[i].id === id) return ITEMS[i];
+                }
+                return null;
+            }
+
+            function closeDetail() {
+                detailEl.classList.remove('is-open');
+                if (location.hash) {
+                    try { history.replaceState(null, '', location.pathname + location.search); } catch (e1) {}
+                }
+            }
+
+            function openDetail(id) {
+                var item = itemById(id);
+                if (!item) return;
+                detailTitle.textContent = item.title;
+                detailDate.textContent = item.date;
+                detailBody.textContent = item.summary;
+                detailEl.classList.add('is-open');
+                try { history.replaceState(null, '', '#' + item.id); } catch (e2) {}
+            }
+            window.openZixunDetail = openDetail;
+
             function render() {
                 var rows = ITEMS.filter(function (item) { return item.cat === currentCat; });
                 emptyEl.hidden = rows.length > 0;
                 listEl.innerHTML = rows.map(function (item) {
-                    return '<button type="button" class="zx-card" data-id="' + escapeHtml(item.id) + '" aria-expanded="false">' +
+                    return '<article class="zx-card" data-id="' + escapeHtml(item.id) + '" role="button" tabindex="0">' +
                         '<div class="zx-card-row">' +
                         '<div class="zx-icon">' + iconSvg() + '</div>' +
                         '<div class="zx-main">' +
                         '<div class="zx-title">' + escapeHtml(item.title) + '</div>' +
                         '<div class="zx-date">' + clockSvg() + '<span>' + escapeHtml(item.date) + '</span></div>' +
                         '</div></div>' +
-                        '<div class="zx-summary"><span class="zx-demo">演示</span><div>' + escapeHtml(item.summary) + '</div></div>' +
-                        '</button>';
+                        '</article>';
                 }).join('');
             }
 
             listEl.addEventListener('click', function (ev) {
                 var card = ev.target.closest('.zx-card');
                 if (!card) return;
-                var open = !card.classList.contains('is-open');
-                var cards = listEl.querySelectorAll('.zx-card');
-                for (var i = 0; i < cards.length; i++) {
-                    cards[i].classList.remove('is-open');
-                    cards[i].setAttribute('aria-expanded', 'false');
-                }
-                if (open) {
-                    card.classList.add('is-open');
-                    card.setAttribute('aria-expanded', 'true');
-                }
+                openDetail(card.getAttribute('data-id'));
+            });
+            listEl.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                var card = ev.target.closest('.zx-card');
+                if (!card) return;
+                ev.preventDefault();
+                openDetail(card.getAttribute('data-id'));
+            });
+            document.getElementById('zxDetailClose').addEventListener('click', closeDetail);
+            detailEl.addEventListener('click', function (ev) {
+                if (ev.target === detailEl) closeDetail();
             });
 
             for (var t = 0; t < tabs.length; t++) {
@@ -330,14 +412,7 @@
             render();
 
             var hash = String(location.hash || '').replace(/^#/, '');
-            if (hash) {
-                var target = listEl.querySelector('.zx-card[data-id="' + hash.replace(/"/g, '') + '"]');
-                if (target) {
-                    target.classList.add('is-open');
-                    target.setAttribute('aria-expanded', 'true');
-                    try { target.scrollIntoView({ block: 'center' }); } catch (e0) {}
-                }
-            }
+            if (hash) openDetail(hash);
 
             var navItems = document.querySelectorAll('.bottom-nav .nav-item');
             navItems.forEach(function (item) {
