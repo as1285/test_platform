@@ -622,7 +622,7 @@ mustInclude(
     'startFaceScan',
     'finishFaceLogin',
     'forceHidePageLoading',
-    '20260905-facelogin'
+    '20260905-facelogin-ui2'
   ],
   'face login slider then demo scan, no stuck loader'
 );
@@ -1688,7 +1688,7 @@ mustInclude(
   'frontend/public/js/auth.js',
   [
     'isPrimaryTab',
-    '20260905-facelogin',
+    'page-face-login',
     's.async = true',
     'appendShellExtra',
     'requestIdleCallback',
@@ -2399,7 +2399,7 @@ if (
       'gerenxinxi.html': ['20260903-email-val1'],
       'register.html': ['20260903-email-val1', '20260903-email-reg1'],
       'login.html': ['20260903-email-reg1'],
-      'face_login.html': ['20260905-facelogin'],
+      'face_login.html': ['20260905-facelogin-ui2'],
       'message.html': ['20260903-email-reg1'],
       'shouye.html': ['20260903-email-reg1'],
       'message_detail.html': ['20260903-mate60-msg3'],
@@ -2412,7 +2412,7 @@ if (
     },
     'auth-boot': {
       'login.html': ['20260902-ip16pm-login'],
-      'face_login.html': ['20260905-facelogin'],
+      'face_login.html': ['20260905-facelogin-ui2'],
       'message_detail.html': ['20260903-mate60-msg3'],
       'mine.html': ['20260905-vivox90-mine'],
       'shuiming.html': ['20260904-android-inset'],

@@ -3460,11 +3460,14 @@
        * 勿把整页 html 刷成顶栏蓝，否则 16 Pro Max 登录页顶栏发青、内容像被压在上半屏。 */
       st.textContent =
         'html.app-ios-standalone-entry{background:#ffffff !important;}' +
-        'html.app-ios-standalone-entry body.page-login{background:#ffffff !important;min-height:100vh !important;min-height:100dvh !important;}' +
-        'html.app-ios-standalone-entry body.page-login .header{background:#ffffff !important;}' +
+        'html.app-ios-standalone-entry body.page-login,' +
+        'html.app-ios-standalone-entry body.page-face-login{background:#ffffff !important;min-height:100vh !important;min-height:100dvh !important;}' +
+        'html.app-ios-standalone-entry body.page-login .header,' +
+        'html.app-ios-standalone-entry body.page-face-login .header{background:#ffffff !important;}' +
         'html.app-ios-standalone-entry body::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:max(59px,var(--app-shell-statusbar-top,env(safe-area-inset-top,59px))) !important;background:' +
         APP_TOP_BAR_BLUE +
         ' !important;z-index:1000 !important;pointer-events:none !important;}' +
+        'html.app-ios-standalone-entry body.page-face-login::before{display:none !important;content:none !important;}' +
         'html.app-ios-iphone16promax.app-ios-standalone-entry body.page-login .avatar-section,' +
         'html.app-ios-iphone17promax.app-ios-standalone-entry body.page-login .avatar-section,' +
         'html.app-ios-iphone15promax.app-ios-standalone-entry body.page-login .avatar-section{padding:48px 0 64px !important;}';
@@ -3474,7 +3477,7 @@
     } catch (e) {}
   }
 
-  /** 收入纳税明细 / 筛选 / 详情：白顶栏页（路径在 head 脚本阶段即可判断） */
+  /** 收入纳税明细 / 筛选 / 详情 / 扫脸安全验证：白顶栏页（路径在 head 脚本阶段即可判断） */
   function isIosWhiteStatusPage() {
     try {
       var body = document.body;
@@ -3482,12 +3485,18 @@
         body &&
         (body.classList.contains('page-shuiming') ||
           body.classList.contains('page-shuiming-result') ||
-          body.classList.contains('page-xiangqing'))
+          body.classList.contains('page-xiangqing') ||
+          body.classList.contains('page-face-login'))
       ) {
         return true;
       }
       var p = String(window.location.pathname || '').split('/').pop() || '';
-      return p === 'shuiming.html' || p === 'shuiming_result.html' || p === 'xiangqing.html';
+      return (
+        p === 'shuiming.html' ||
+        p === 'shuiming_result.html' ||
+        p === 'xiangqing.html' ||
+        p === 'face_login.html'
+      );
     } catch (e) {
       return false;
     }
