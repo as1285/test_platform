@@ -1049,6 +1049,170 @@ function bindBatchYearInput(inputEl) {
     bindBatchYmNumericInput(inputEl, { min: 1, max: 9999, maxLength: 4 });
 }
 
+// === 起止年月：友好选择器（年月两个下拉，取代四个数字框） ===
+/** 打开中的选择器上下文：确认回调等；一次只开一个。 */
+var _batchYmPickerCtx = null;
+
+function batchYmPickerYearBounds(currentY) {
+    var cy = new Date().getFullYear();
+    var minY = cy - 12;
+    var maxY = cy + 2;
+    var y = parseInt(currentY, 10) || 0;
+    if (y > 0) {
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+    }
+    return { min: minY, max: maxY };
+}
+
+/** 按当前选中年份重建月份下拉（1–12），尽量保留原月份。 */
+function refreshBatchYmPickerMonthOptions() {
+    var monthSel = document.getElementById('batchYmPickerMonth');
+    if (!monthSel) return;
+    var prevM = parseInt(monthSel.value, 10) || 1;
+    monthSel.innerHTML = '';
+    var m;
+    for (m = 1; m <= 12; m++) {
+        var opt = document.createElement('option');
+        opt.value = String(m);
+        opt.textContent = m + '月';
+        monthSel.appendChild(opt);
+    }
+    monthSel.value = String(prevM >= 1 && prevM <= 12 ? prevM : 1);
+}
+
+/** 首次使用时绑定选择器弹层的取消/确定/遮罩事件（单例，只绑一次）。 */
+function ensureBatchYmPickerModalBound() {
+    var modal = document.getElementById('batchYmPickerModal');
+    if (!modal || modal.getAttribute('data-ym-picker-bound') === '1') return;
+    modal.setAttribute('data-ym-picker-bound', '1');
+    var mask = document.getElementById('batchYmPickerMask');
+    var closeX = document.getElementById('batchYmPickerCloseX');
+    var cancelBtn = document.getElementById('batchYmPickerCancel');
+    var okBtn = document.getElementById('batchYmPickerOk');
+    var yearSel = document.getElementById('batchYmPickerYear');
+    function close() {
+        modal.classList.remove('is-open');
+        _batchYmPickerCtx = null;
+    }
+    if (mask) mask.addEventListener('click', close);
+    if (closeX) closeX.addEventListener('click', close);
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    if (yearSel) yearSel.addEventListener('change', refreshBatchYmPickerMonthOptions);
+    if (okBtn) {
+        okBtn.addEventListener('click', function () {
+            var ctx = _batchYmPickerCtx;
+            var yearSelEl = document.getElementById('batchYmPickerYear');
+            var monthSelEl = document.getElementById('batchYmPickerMonth');
+            var y = yearSelEl ? parseInt(yearSelEl.value, 10) : 0;
+            var m = monthSelEl ? parseInt(monthSelEl.value, 10) : 0;
+            close();
+            if (!ctx || typeof ctx.onConfirm !== 'function' || !y || !m) return;
+            ctx.onConfirm(y, m);
+        });
+    }
+}
+
+/**
+ * 打开年月选择弹层（年/月两个下拉），确认后把结果通过 onConfirm(y, m) 回传。
+ * 副作用：开 #batchYmPickerModal。
+ */
+function openBatchYmPicker(title, y, m, onConfirm) {
+    ensureBatchYmPickerModalBound();
+    var modal = document.getElementById('batchYmPickerModal');
+    var titleEl = document.getElementById('batchYmPickerTitle');
+    var yearSel = document.getElementById('batchYmPickerYear');
+    var monthSel = document.getElementById('batchYmPickerMonth');
+    if (!modal || !yearSel || !monthSel) return;
+    if (titleEl) titleEl.textContent = title || '选择年月';
+    var curY = parseInt(y, 10) || new Date().getFullYear();
+    var bounds = batchYmPickerYearBounds(curY);
+    yearSel.innerHTML = '';
+    var yy;
+    for (yy = bounds.min; yy <= bounds.max; yy++) {
+        var opt = document.createElement('option');
+        opt.value = String(yy);
+        opt.textContent = yy + '年';
+        if (yy === curY) opt.selected = true;
+        yearSel.appendChild(opt);
+    }
+    refreshBatchYmPickerMonthOptions();
+    var curM = parseInt(m, 10);
+    if (curM >= 1 && curM <= 12) monthSel.value = String(curM);
+    _batchYmPickerCtx = { onConfirm: onConfirm };
+    modal.classList.add('is-open');
+}
+
+function formatBatchYm(y, m) {
+    var yy = parseInt(y, 10);
+    var mm = parseInt(m, 10);
+    if (!yy || !mm) return '请选择';
+    return yy + '年' + mm + '月';
+}
+
+/** 让隐藏的年/月输入触发既有的 input+change 监听（清理/校验/草稿保存）。 */
+function dispatchBatchYmChange(inputEl) {
+    if (!inputEl) return;
+    try {
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (eDispatch) {}
+}
+
+/**
+ * 用隐藏的 sy/sm/ey/em 值刷新一行「起始月 → 结束月」按钮上的显示文案。
+ * 供示例填写 / 粘贴导入 / 回填修改 / 草稿恢复等写入新值后调用。
+ */
+function refreshBatchEmpPeriodDisplay(row) {
+    if (!row) return;
+    var startVal = row.querySelector('.batch-emp-period-start-val');
+    var endVal = row.querySelector('.batch-emp-period-end-val');
+    if (startVal) {
+        var sy = row.querySelector('.batch-emp-sy');
+        var sm = row.querySelector('.batch-emp-sm');
+        startVal.textContent = formatBatchYm(sy && sy.value, sm && sm.value);
+    }
+    if (endVal) {
+        var ey = row.querySelector('.batch-emp-ey');
+        var em = row.querySelector('.batch-emp-em');
+        endVal.textContent = formatBatchYm(ey && ey.value, em && em.value);
+    }
+}
+
+/** 绑定一行「起始月/结束月」按钮：点击打开友好选择器并写回隐藏字段。 */
+function bindBatchEmpPeriodPicker(row) {
+    if (!row) return;
+    var startBtn = row.querySelector('.batch-emp-period-start-btn');
+    var endBtn = row.querySelector('.batch-emp-period-end-btn');
+    if (startBtn && startBtn.getAttribute('data-ym-picker-bound') !== '1') {
+        startBtn.setAttribute('data-ym-picker-bound', '1');
+        startBtn.addEventListener('click', function () {
+            var syEl = row.querySelector('.batch-emp-sy');
+            var smEl = row.querySelector('.batch-emp-sm');
+            openBatchYmPicker('选择起始月', syEl && syEl.value, smEl && smEl.value, function (y, m) {
+                if (syEl) syEl.value = String(y);
+                if (smEl) smEl.value = String(m);
+                dispatchBatchYmChange(smEl || syEl);
+                refreshBatchEmpPeriodDisplay(row);
+            });
+        });
+    }
+    if (endBtn && endBtn.getAttribute('data-ym-picker-bound') !== '1') {
+        endBtn.setAttribute('data-ym-picker-bound', '1');
+        endBtn.addEventListener('click', function () {
+            var eyEl = row.querySelector('.batch-emp-ey');
+            var emEl = row.querySelector('.batch-emp-em');
+            openBatchYmPicker('选择结束月', eyEl && eyEl.value, emEl && emEl.value, function (y, m) {
+                if (eyEl) eyEl.value = String(y);
+                if (emEl) emEl.value = String(m);
+                dispatchBatchYmChange(emEl || eyEl);
+                refreshBatchEmpPeriodDisplay(row);
+            });
+        });
+    }
+    refreshBatchEmpPeriodDisplay(row);
+}
+
 function parseBatchRatioPct(el) {
     if (!el) return 0;
     var v = parseFloat(el.value);
@@ -1136,6 +1300,7 @@ function bindBatchEmpRow(node) {
     bindBatchMonthInput(node.querySelector('.batch-emp-em'));
     bindBatchYearInput(node.querySelector('.batch-emp-sy'));
     bindBatchYearInput(node.querySelector('.batch-emp-ey'));
+    bindBatchEmpPeriodPicker(node);
     var msBtn = node.querySelector('.batch-emp-month-salary-btn');
     if (msBtn) {
         msBtn.addEventListener('click', function () {
@@ -1326,6 +1491,7 @@ function setBatchEmpRowValues(row, data) {
         syncBatchEmpBonusMetaExpanded(row);
     }
     updateBatchEmpMonthSalaryBadge(row);
+    refreshBatchEmpPeriodDisplay(row);
 }
 
 // === 示例填写 / 场景模板 / 一键生成 ===
@@ -1784,8 +1950,7 @@ function applyConsultBatchAbUi() {
     var hint = document.getElementById('batchTaxCardHint');
     if (quick) quick.style.display = '';
     if (hint) {
-        hint.innerHTML =
-            '按工作经历生成多月工资薪金。<strong>首次使用可点「30秒体验完整明细」</strong>快速填入示例，生成后即可在收入纳税明细查看。';
+        hint.innerHTML = '首次使用可点<strong>「30秒体验完整明细」</strong>快速填示例生成。';
     }
 }
 
@@ -1993,7 +2158,7 @@ function updateBatchTaxCardUi() {
             ? '已载入 ' +
               batchTaxEditMode.scopeIds.length +
               ' 条月薪记录。修改后点「保存覆盖」将替换原记录；未改动的年终奖默认保留。'
-            : '填写工作经历后一键生成多月工资薪金；也可从个税 APP 粘贴导入。';
+            : '填公司、起止月、月薪，点「一键生成」；其余选项按需展开。';
     }
     if (banner) {
         if (inEdit) {
