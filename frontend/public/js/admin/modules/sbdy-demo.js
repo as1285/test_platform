@@ -6,6 +6,8 @@
   var prefillMonthUnits = {};
   /* 「填充示例」为深圳新准备的多单位分段 / 累计月数，生成时并入 body */
   var szNewSampleExtras = null;
+  /* 「填充示例」为江苏新准备的标题区间覆盖（明细行仍按分段） */
+  var jsNewSampleExtras = null;
   var APP_CFG = global.SBDY_DEMO_APP || null;
   var isApp = !!(APP_CFG && APP_CFG.mode === 'app');
 
@@ -191,6 +193,10 @@
     return region === 'zj' || region === 'gz' || region === 'sc' || region === 'ha';
   }
 
+  function isJsStyle(region) {
+    return region === 'js' || region === 'js_new';
+  }
+
   /** 浙江式操作：信用代码 + 分段任职 + 四险状态「参保缴费」；河南只换权益记录单版式 */
   function isZjOpsRegion(region) {
     return region === 'zj' || region === 'sc' || region === 'ha';
@@ -204,6 +210,7 @@
     var gz = document.getElementById('sbdyRegionGz');
     var wh = document.getElementById('sbdyRegionWh');
     var js = document.getElementById('sbdyRegionJs');
+    var jsNew = document.getElementById('sbdyRegionJsNew');
     var bj = document.getElementById('sbdyRegionBj');
     var sh = document.getElementById('sbdyRegionSh');
     var xm = document.getElementById('sbdyRegionXm');
@@ -212,6 +219,7 @@
     if (xm && xm.checked) return 'xm';
     if (sh && sh.checked) return 'sh';
     if (bj && bj.checked) return 'bj';
+    if (jsNew && jsNew.checked) return 'js_new';
     if (js && js.checked) return 'js';
     if (ha && ha.checked) return 'ha';
     if (hn && hn.checked) return 'hn';
@@ -260,7 +268,7 @@
       el.hidden =
         region !== 'zj' &&
         region !== 'wh' &&
-        region !== 'js' &&
+        !isJsStyle(region) &&
         region !== 'bj' &&
         region !== 'sh' &&
         region !== 'xm' &&
@@ -268,12 +276,12 @@
         region !== 'ha';
     });
     document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
-      el.hidden = region !== 'js';
+      el.hidden = !isJsStyle(region);
     });
     document.querySelectorAll('.sbdy-zj-js').forEach(function (el) {
       el.hidden =
         region !== 'zj' &&
-        region !== 'js' &&
+        !isJsStyle(region) &&
         region !== 'bj' &&
         region !== 'sh' &&
         region !== 'gz' &&
@@ -290,6 +298,7 @@
       hn: { area: '常德市鼎城区', base: '4053' },
       ha: { area: '郑州市郑东新区', base: '4200' },
       js: { area: '溧水区', base: '4494' },
+      js_new: { area: '经济技术开发区', base: '12000' },
       bj: { area: '朝阳区', base: '6821' },
       sh: { area: '上海市', base: '7313' },
       xm: { area: '湖里区', base: '1800' },
@@ -361,6 +370,7 @@
       hn: '430703',
       ha: '410105',
       js: '320102',
+      js_new: '320102',
       bj: '110105',
       sh: '310115',
       xm: '350206',
@@ -616,11 +626,13 @@
     if (looksWh && /深圳|广州/.test(text) && !/武汉|湖北/.test(text)) looksWh = false;
     if (looksHn && /武汉|湖北/.test(text) && !/湖南|常德/.test(text)) looksHn = false;
     if (looksHn && looksHa) looksHn = false;
+    var looksJsNew = !!(/江苏新|全国社保卡服务平台|该核查内容真实/.test(text));
     var looksJs = !!(
       /江苏|权益记录单|南京|苏州|无锡|常州|徐州|南通|扬州|盐城|泰州|镇江|淮安|连云港|宿迁/.test(text)
     );
     if (looksJs && /浙江|杭州|余杭|深圳|广州|武汉|湖北|湖南|常德|北京|上海|河南|郑州/.test(text))
       looksJs = false;
+    if (looksJsNew) looksJs = false;
     var looksBj = !!(
       /北京市社会保险|个人权益记录|查询流水号|查询时间段|补充资料|校验码|朝阳区社会保险|海淀区社会保险|fuwu\.rsj\.beijing/.test(
         text
@@ -685,7 +697,9 @@
           ? 'hn'
           : looksWh
             ? 'wh'
-            : looksJs
+            : looksJsNew
+              ? 'js_new'
+              : looksJs
               ? 'js'
               : looksGz
                 ? 'gz'
@@ -715,7 +729,9 @@
                 ? 4053
                 : region === 'ha'
                   ? 4200
-                  : region === 'js'
+                  : region === 'js_new'
+                    ? 12000
+                    : region === 'js'
                   ? 4494
                   : region === 'bj'
                     ? 6821
@@ -770,7 +786,9 @@
               ? '常德市鼎城区'
               : region === 'ha'
                 ? '郑州市郑东新区'
-                : region === 'js'
+                : region === 'js_new'
+                  ? '经济技术开发区'
+                  : region === 'js'
                 ? '南京市'
                 : region === 'bj'
                   ? '朝阳区'
@@ -815,6 +833,9 @@
     } else if (parsed.region === 'ha') {
       var haRadio = document.getElementById('sbdyRegionHa');
       if (haRadio) haRadio.checked = true;
+    } else if (parsed.region === 'js_new') {
+      var jsNewRadio = document.getElementById('sbdyRegionJsNew');
+      if (jsNewRadio) jsNewRadio.checked = true;
     } else if (parsed.region === 'js') {
       var jsRadio = document.getElementById('sbdyRegionJs');
       if (jsRadio) jsRadio.checked = true;
@@ -851,7 +872,9 @@
               ? '常德市鼎城区'
               : parsed.region === 'ha'
                 ? '郑州市郑东新区'
-                : parsed.region === 'js'
+                : parsed.region === 'js_new'
+                  ? '经济技术开发区'
+                  : parsed.region === 'js'
                 ? '南京市'
                 : parsed.region === 'bj'
                   ? '朝阳区'
@@ -1053,6 +1076,8 @@
               ? '湖南'
               : row.region === 'ha'
                 ? '河南'
+                : row.region === 'js_new'
+                ? '江苏新'
                 : row.region === 'js'
                 ? '江苏'
                 : row.region === 'bj'
@@ -1273,7 +1298,9 @@
             ? 4053
             : region === 'ha'
               ? 4200
-              : region === 'js'
+              : region === 'js_new'
+                ? 12000
+                : region === 'js'
               ? 4494
               : region === 'bj'
                 ? 6821
@@ -1295,7 +1322,9 @@
             ? '常德市鼎城区'
             : region === 'ha'
               ? '郑州市郑东新区'
-              : region === 'js'
+              : region === 'js_new'
+                ? '经济技术开发区'
+                : region === 'js'
               ? '溧水区'
               : region === 'bj'
                 ? '朝阳区'
@@ -1347,8 +1376,8 @@
       body.print_date = todayCn;
       setField('sbdyPrintDate', todayCn);
     }
-    /* 江苏版：参保状态单值；分段（多参保地）以分段为准 */
-    if (region === 'js') {
+    /* 江苏 / 江苏新：参保状态单值；分段（多参保地）以分段为准 */
+    if (isJsStyle(region)) {
       body.status = val('sbdyStatus') || '正常缴费';
       var jsSegs = readSegments();
       if (jsSegs.length) {
@@ -1467,6 +1496,12 @@
         if (szNewSampleExtras.unit_map) body.unit_map = szNewSampleExtras.unit_map;
         if (szNewSampleExtras.years_months) body.years_months = szNewSampleExtras.years_months;
         if (szNewSampleExtras.doc_serial) body.doc_serial = szNewSampleExtras.doc_serial;
+      }
+    }
+    if (region === 'js_new') {
+      if (jsNewSampleExtras && val('sbdyName') === '张某某') {
+        if (jsNewSampleExtras.span_months != null) body.span_months = jsNewSampleExtras.span_months;
+        if (jsNewSampleExtras.period_compact) body.period_compact = jsNewSampleExtras.period_compact;
       }
     }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
@@ -1696,29 +1731,53 @@
       setStatus('已填充厦门示例：张知宇（基本养老历年缴费明细，两家单位，可再点生成）', false);
       return;
     }
-    if (currentRegion() === 'js') {
-      setField('sbdyName', '樊宜');
-      setField('sbdyIdNumber', '342501199307088233');
+    if (currentRegion() === 'js' || currentRegion() === 'js_new') {
+      var jsNewSample = currentRegion() === 'js_new';
+      setField('sbdyName', jsNewSample ? '张某某' : '樊宜');
+      setField('sbdyIdNumber', jsNewSample ? '320102199001011234' : '342501199307088233');
       setField('sbdyGender', '男');
       setField('sbdyStatus', '暂停缴费（中断）');
       setField('sbdyStatusPension', '暂停缴费（中断）');
       setField('sbdyStatusMedical', '暂停缴费（中断）');
       setField('sbdyStatusInjury', '暂停缴费（中断）');
       setField('sbdyStatusUnemp', '暂停缴费（中断）');
-      setField('sbdyCompany', '南京市溧水区暂时中止单位');
-      setField('sbdyArea', '溧水区');
-      setField('sbdyBase', 4879);
-      setField('sbdyPeriodStart', '2025-08');
-      setField('sbdyPeriodEnd', '2026-08');
+      setField(
+        'sbdyCompany',
+        jsNewSample ? '南京市经济技术开发区暂时中止单位' : '南京市溧水区暂时中止单位'
+      );
+      setField('sbdyArea', jsNewSample ? '经济技术开发区' : '溧水区');
+      setField('sbdyBase', jsNewSample ? 12000 : 4879);
+      /* 江苏新：标题区间 1990-01～2026-09（文案 439 个月 / 199001-202609）；明细行仅 2023-12～2026-07 */
+      setField('sbdyPeriodStart', jsNewSample ? '1990-01' : '2025-08');
+      setField('sbdyPeriodEnd', jsNewSample ? '2026-09' : '2026-08');
       setField('sbdyPrintDate', printDate);
-      /* 逐月明细按段展开，单位/基数各段不同；2026-02 断缴（不填该月）*/
-      renderSegments([
-        { company_name: '南京胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
-        { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
-        { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
-        { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
-      ]);
-      setStatus('已填充江苏示例：樊宜（4 家单位逐月，含断缴月，可再点生成）', false);
+      if (jsNewSample) {
+        jsNewSampleExtras = {
+          span_months: 439,
+          period_compact: '199001-202609'
+        };
+        renderSegments([
+          {
+            company_name: '南京晶升装备股份有限公司',
+            base_amount: 12000,
+            period_start: '2023-12',
+            period_end: '2026-07'
+          }
+        ]);
+        setStatus(
+          '已填充江苏新示例：张某某（明细 2023.12–2026.7，基数 12000，标题 439 个月，可再点生成）',
+          false
+        );
+      } else {
+        jsNewSampleExtras = null;
+        renderSegments([
+          { company_name: '南京胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
+          { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
+          { company_name: '南京贝奇尔机械有限公司', base_amount: 7000, period_start: '2026-03', period_end: '2026-05' },
+          { company_name: '威尔特茵轮（南京）有限公司', base_amount: 6400, period_start: '2026-06', period_end: '2026-08' }
+        ]);
+        setStatus('已填充江苏示例：樊宜（4 家单位逐月，含断缴月，可再点生成）', false);
+      }
       return;
     }
     if (currentRegion() === 'hn') {
@@ -2457,11 +2516,11 @@
             period_start: info.minYm || rangeStart,
             period_end: info.maxYm || rangeEnd,
             force_single: forceSingleLocalSegment,
-            summary_company: currentRegion() === 'js' ? info.latestCompany : '',
-            summary_credit: currentRegion() === 'js' ? info.latestCredit : ''
+            summary_company: isJsStyle(currentRegion()) ? info.latestCompany : '',
+            summary_credit: isJsStyle(currentRegion()) ? info.latestCredit : ''
           })
         ) {
-          if (currentRegion() === 'js' && info.latestArea) setField('sbdyArea', info.latestArea);
+          if (isJsStyle(currentRegion()) && info.latestArea) setField('sbdyArea', info.latestArea);
         } else {
           clearSegments();
           var oneCo =
@@ -2530,6 +2589,7 @@
     document.querySelectorAll('input[name="sbdyRegion"]').forEach(function (el) {
       el.addEventListener('change', function () {
         if (currentRegion() !== 'sz_new') szNewSampleExtras = null;
+        if (currentRegion() !== 'js_new') jsNewSampleExtras = null;
         syncRegionUi();
       });
     });

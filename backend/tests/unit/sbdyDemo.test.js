@@ -907,6 +907,98 @@ describe('sbdyDemo', () => {
     expect(html).not.toMatch(/<td[^>]*>\s*<script>/i);
   });
 
+  it('normalizePayload builds Jiangsu-new watermarked rights record', () => {
+    const p = normalizePayload({
+      region: 'js_new',
+      name: '张某某',
+      id_number: '320102199001011234',
+      gender: '男',
+      status: '暂停缴费（中断）',
+      company_name: '南京市经济技术开发区暂时中止单位',
+      area: '经济技术开发区',
+      period_start: '1990-01',
+      period_end: '2026-09',
+      span_months: 439,
+      period_compact: '199001-202609',
+      base_amount: 12000,
+      segments: [
+        {
+          company_name: '南京晶升装备股份有限公司',
+          base_amount: 12000,
+          period_start: '2023-12',
+          period_end: '2026-07'
+        }
+      ]
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('js_new');
+    expect(p.layout).toBe('js_cgbzm_v1');
+    expect(p.watermark_id).toMatch(/^\d{12}-\d{11}$/);
+    expect(p.span_months).toBe(439);
+    expect(p.period_compact).toBe('199001-202609');
+    /* 2023-12～2026-07 = 32 个月明细 */
+    expect(p.detail_rows.length).toBe(32);
+    expect(p.detail_rows[0].year).toBe(2023);
+    expect(p.detail_rows[0].month).toBe('12');
+    expect(p.detail_rows[0].unit_name).toBe('南京晶升装备股份有限公司');
+    expect(p.detail_rows[0].pension_base).toBe(12000);
+    expect(p.detail_rows[0].pension_pay).toBeCloseTo(960, 2);
+    expect(p.detail_rows[0].unemp_base).toBe(12000);
+    expect(p.detail_rows[0].unemp_pay).toBeCloseTo(60, 2);
+    expect(p.detail_rows[0].injury_base).toBe(12000);
+    const last = p.detail_rows[p.detail_rows.length - 1];
+    expect(last.year).toBe(2026);
+    expect(last.month).toBe('07');
+    expect(last.pension_pay).toBeCloseTo(960, 2);
+    const html = renderCertHtml(p, { show_url: 'https://example.test/show.pdf' });
+    expect(html).toContain('江苏省社会保险权益记录单');
+    expect(html).toContain('出具证明前439个月缴费情况（199001-202609）');
+    expect(html).toContain('该核查内容真实，欢迎登录人社APP扫描验证');
+    expect(html).toContain('本文件由全国社保卡服务平台提供，任何第三方机构不得进行二次加工');
+    expect(html).toContain('class="wm"');
+    expect(html).toContain(p.watermark_id);
+    expect(html).toContain('南京市经济技术开发区暂时中止单位');
+    expect(html).toContain('南京晶升装备股份有限公司');
+    expect(html).toContain('12000.00');
+    expect(html).toContain('960.00');
+    expect(html).toContain('60.00');
+    expect(html).toContain('/img/sbdy_js_seal.png');
+    expect(html).not.toContain('请使用官方江苏智慧人社APP扫描验证');
+  });
+
+  it('js_cgbzm_v1 layout alias normalizes to js_new', () => {
+    const p = normalizePayload({
+      layout: 'js_cgbzm_v1',
+      name: '张某某',
+      id_number: '320102199001011234',
+      period_start: '2024-01',
+      period_end: '2024-02',
+      base_amount: 12000
+    });
+    expect(p.region).toBe('js_new');
+    expect(p.layout).toBe('js_cgbzm_v1');
+    expect(p.watermark_id).toBeTruthy();
+    expect(p.detail_rows[0].pension_pay).toBeCloseTo(960, 2);
+    expect(p.detail_rows[0].unemp_pay).toBeCloseTo(60, 2);
+  });
+
+  it('old Jiangsu layout stays without national watermark', () => {
+    const p = normalizePayload({
+      region: 'js',
+      name: '樊宜',
+      id_number: '342501199307088233',
+      period_start: '2024-01',
+      period_end: '2024-02',
+      base_amount: 5000
+    });
+    expect(p.region).toBe('js');
+    expect(p.watermark_id).toBeUndefined();
+    const html = renderCertHtml(p);
+    expect(html).toContain('请使用官方江苏智慧人社APP扫描验证');
+    expect(html).not.toContain('本文件由全国社保卡服务平台');
+    expect(html).not.toContain('class="wm"');
+  });
+
   it('normalizePayload builds Hunan snapshot rows and extra employer', () => {
     const p = normalizePayload({
       region: 'hn',

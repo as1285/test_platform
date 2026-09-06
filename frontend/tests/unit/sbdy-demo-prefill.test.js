@@ -397,6 +397,27 @@ describe('社保演示预填分段', () => {
     expect(parsed.computer_no).toBe('089216473');
   });
 
+  it('粘贴江苏新权益单模版识别为江苏新地区', () => {
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    const parsed = window.AdminModules['sbdy-demo'].parsePasteTemplate(`
+姓名：张某某
+身份证号320102199001011234
+性别：男
+时间：2024.1-2024.6
+缴费基数:12000
+江苏新
+该核查内容真实，欢迎登录人社APP扫描验证
+全国社保卡服务平台
+公司名称：南京市经济技术开发区暂时中止单位
+`);
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.region).toBe('js_new');
+    expect(parsed.area).toBe('经济技术开发区');
+    expect(Number(parsed.base_amount)).toBe(12000);
+  });
+
   it('粘贴河南社保模版识别为河南并默认参保缴费', () => {
     // eslint-disable-next-line no-eval
     eval(sbdyCode);

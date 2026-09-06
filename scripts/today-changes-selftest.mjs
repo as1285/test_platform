@@ -2578,6 +2578,45 @@ if (
   fail('Shenzhen-new sbdy dual seal assets present', 'missing sz_new_*_seal.png');
 }
 mustInclude(
+  'backend/src/admin/sbdyDemo.js',
+  [
+    'function isJsNewRegion',
+    'function isJsStyleRegion',
+    'function renderJsNewCertHtml',
+    'SBDY_JS_NEW_RENDER_SCRIPT',
+    "region: isNew ? 'js_new' : 'js'",
+    'js_cgbzm_v1',
+    '该核查内容真实，欢迎登录人社APP扫描验证',
+    '本文件由全国社保卡服务平台提供，任何第三方机构不得进行二次加工'
+  ],
+  'sbdyDemo Jiangsu-new normalize + HTML watermark'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/sbdy-demo.js',
+  ['sbdyRegionJsNew', "return 'js_new'", '已填充江苏新示例', 'isJsStyle'],
+  'sbdy admin Jiangsu-new radio + sample'
+);
+mustInclude(
+  'frontend/sbdy_demo.html',
+  ['sbdyRegionJsNew', '江苏新'],
+  'user sbdy page Jiangsu-new radio'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['sbdyRegionJsNew', '江苏新', '江苏新权益记录单'],
+  'admin panel Jiangsu-new label'
+);
+mustInclude(
+  'backend/scripts/sbdy_js_new_render_pdf.py',
+  [
+    'WATERMARK_BASE',
+    'draw_watermark',
+    '该核查内容真实，欢迎登录人社APP扫描验证',
+    '不得进行二次加工'
+  ],
+  'Jiangsu-new PDF watermark script'
+);
+mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
   ['default_seal_code', 'seal_code', 'place_seal'],
   'lizhi seal supports bottom seal_code'
