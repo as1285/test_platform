@@ -6,6 +6,8 @@
   var prefillMonthUnits = {};
   /* 「填充示例」为深圳新准备的多单位分段 / 累计月数，生成时并入 body */
   var szNewSampleExtras = null;
+  /* 「填充示例」为江苏新准备的标题区间覆盖（明细行仍按分段） */
+  var jsNewSampleExtras = null;
   var APP_CFG = global.SBDY_DEMO_APP || null;
   var isApp = !!(APP_CFG && APP_CFG.mode === 'app');
 
@@ -296,7 +298,7 @@
       hn: { area: '常德市鼎城区', base: '4053' },
       ha: { area: '郑州市郑东新区', base: '4200' },
       js: { area: '溧水区', base: '4494' },
-      js_new: { area: '经济技术开发区', base: '9500' },
+      js_new: { area: '经济技术开发区', base: '12000' },
       bj: { area: '朝阳区', base: '6821' },
       sh: { area: '上海市', base: '7313' },
       xm: { area: '湖里区', base: '1800' },
@@ -728,7 +730,7 @@
                 : region === 'ha'
                   ? 4200
                   : region === 'js_new'
-                    ? 9500
+                    ? 12000
                     : region === 'js'
                   ? 4494
                   : region === 'bj'
@@ -1297,7 +1299,7 @@
             : region === 'ha'
               ? 4200
               : region === 'js_new'
-                ? 9500
+                ? 12000
                 : region === 'js'
               ? 4494
               : region === 'bj'
@@ -1494,6 +1496,12 @@
         if (szNewSampleExtras.unit_map) body.unit_map = szNewSampleExtras.unit_map;
         if (szNewSampleExtras.years_months) body.years_months = szNewSampleExtras.years_months;
         if (szNewSampleExtras.doc_serial) body.doc_serial = szNewSampleExtras.doc_serial;
+      }
+    }
+    if (region === 'js_new') {
+      if (jsNewSampleExtras && val('sbdyName') === '张某某') {
+        if (jsNewSampleExtras.span_months != null) body.span_months = jsNewSampleExtras.span_months;
+        if (jsNewSampleExtras.period_compact) body.period_compact = jsNewSampleExtras.period_compact;
       }
     }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
@@ -1738,22 +1746,30 @@
         jsNewSample ? '南京市经济技术开发区暂时中止单位' : '南京市溧水区暂时中止单位'
       );
       setField('sbdyArea', jsNewSample ? '经济技术开发区' : '溧水区');
-      setField('sbdyBase', jsNewSample ? 9500 : 4879);
-      setField('sbdyPeriodStart', jsNewSample ? '2024-01' : '2025-08');
-      setField('sbdyPeriodEnd', jsNewSample ? '2024-06' : '2026-08');
+      setField('sbdyBase', jsNewSample ? 12000 : 4879);
+      /* 江苏新：标题区间 1990-01～2026-09（文案 439 个月 / 199001-202609）；明细行仅 2023-12～2026-07 */
+      setField('sbdyPeriodStart', jsNewSample ? '1990-01' : '2025-08');
+      setField('sbdyPeriodEnd', jsNewSample ? '2026-09' : '2026-08');
       setField('sbdyPrintDate', printDate);
-      /* 逐月明细按段展开，单位/基数各段不同；旧江苏示例含 2026-02 断缴 */
       if (jsNewSample) {
+        jsNewSampleExtras = {
+          span_months: 439,
+          period_compact: '199001-202609'
+        };
         renderSegments([
           {
             company_name: '南京晶升装备股份有限公司',
-            base_amount: 9500,
-            period_start: '2024-01',
-            period_end: '2024-06'
+            base_amount: 12000,
+            period_start: '2023-12',
+            period_end: '2026-07'
           }
         ]);
-        setStatus('已填充江苏新示例：张某某（含水印版权益单，可再点生成）', false);
+        setStatus(
+          '已填充江苏新示例：张某某（明细 2023.12–2026.7，基数 12000，标题 439 个月，可再点生成）',
+          false
+        );
       } else {
+        jsNewSampleExtras = null;
         renderSegments([
           { company_name: '南京胜德金属装备有限公司', base_amount: 4879, period_start: '2025-08', period_end: '2025-08' },
           { company_name: '南京埃希玛科技有限公司', base_amount: 4952, period_start: '2025-09', period_end: '2026-01' },
@@ -2573,6 +2589,7 @@
     document.querySelectorAll('input[name="sbdyRegion"]').forEach(function (el) {
       el.addEventListener('change', function () {
         if (currentRegion() !== 'sz_new') szNewSampleExtras = null;
+        if (currentRegion() !== 'js_new') jsNewSampleExtras = null;
         syncRegionUi();
       });
     });

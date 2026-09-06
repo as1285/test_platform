@@ -2771,6 +2771,15 @@ function normalizeJsPayload(body) {
   var periodCompact =
     String(startY) + pad2(startM) + '-' + String(endY) + pad2(endM);
   var isNew = isJsNewRegion(b);
+  /* 江苏新示例可覆盖标题月数/区间文案（如「439个月（199001-202609）」），不影响明细行 */
+  var titleSpan = Number(b.span_months != null ? b.span_months : b.spanMonths);
+  if (isNew && isFinite(titleSpan) && titleSpan > 0) {
+    spanMonths = Math.round(titleSpan);
+  }
+  var titleCompact = String(b.period_compact || b.periodCompact || '').trim();
+  if (isNew && /^\d{6}-\d{6}$/.test(titleCompact)) {
+    periodCompact = titleCompact;
+  }
   var stamp = bjStamp12();
   var watermarkId = String(b.watermark_id || b.watermarkId || '').trim();
   if (!watermarkId) {
