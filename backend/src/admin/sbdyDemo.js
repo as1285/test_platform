@@ -19,6 +19,7 @@ const SBDY_WH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_wh_render
 const SBDY_HN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_hn_render_pdf.py');
 const SBDY_HENAN_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_henan_render_pdf.py');
 const SBDY_JS_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_js_render_pdf.py');
+const SBDY_JS_NEW_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_js_new_render_pdf.py');
 const SBDY_BJ_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_bj_render_pdf.py');
 const SBDY_SH_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_sh_render_pdf.py');
 const SBDY_XM_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_xm_render_pdf.py');
@@ -84,6 +85,12 @@ function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
       region === 'guangzhou'
     ) {
       script = SBDY_SZ_RENDER_SCRIPT;
+    } else if (
+      region === 'js_new' ||
+      region === 'jiangsu_new' ||
+      region === 'js_cgbzm_v1'
+    ) {
+      script = SBDY_JS_NEW_RENDER_SCRIPT;
     } else if (region === 'js' || region === 'jiangsu' || region === 'js_official_v1') {
       script = SBDY_JS_RENDER_SCRIPT;
     } else if (region === 'bj' || region === 'beijing' || region === 'bj_official_v1') {
@@ -367,6 +374,15 @@ function isJsRegion(body) {
   return r === 'js' || r === 'jiangsu' || r === 'js_official_v1';
 }
 
+function isJsNewRegion(body) {
+  var r = String((body && (body.region || body.layout)) || '').toLowerCase();
+  return r === 'js_new' || r === 'jiangsu_new' || r === 'js_cgbzm_v1';
+}
+
+function isJsStyleRegion(body) {
+  return isJsRegion(body) || isJsNewRegion(body);
+}
+
 function isBjRegion(body) {
   var r = String((body && (body.region || body.layout)) || '').toLowerCase();
   return r === 'bj' || r === 'beijing' || r === 'bj_official_v1';
@@ -407,6 +423,7 @@ function regionKeyOf(payload) {
     r === 'hn' ||
     r === 'ha' ||
     r === 'js' ||
+    r === 'js_new' ||
     r === 'bj' ||
     r === 'sh' ||
     r === 'xm' ||
@@ -427,6 +444,7 @@ function isZjStylePayload(p) {
     p.region !== 'hn' &&
     p.region !== 'ha' &&
     p.region !== 'js' &&
+    p.region !== 'js_new' &&
     p.region !== 'bj' &&
     p.region !== 'sh' &&
     p.region !== 'xm' &&
@@ -438,6 +456,7 @@ function isZjStylePayload(p) {
     p.layout !== 'hn_official_v1' &&
     p.layout !== 'ha_official_v1' &&
     p.layout !== 'js_official_v1' &&
+    p.layout !== 'js_cgbzm_v1' &&
     p.layout !== 'bj_official_v1' &&
     p.layout !== 'sh_official_v1' &&
     p.layout !== 'xm_official_v1' &&
@@ -2751,9 +2770,15 @@ function normalizeJsPayload(body) {
   var spanMonths = displayEndNum - displayStartNum + 1;
   var periodCompact =
     String(startY) + pad2(startM) + '-' + String(endY) + pad2(endM);
-  return {
-    region: 'js',
-    layout: 'js_official_v1',
+  var isNew = isJsNewRegion(b);
+  var stamp = bjStamp12();
+  var watermarkId = String(b.watermark_id || b.watermarkId || '').trim();
+  if (!watermarkId) {
+    watermarkId = stamp + '-' + randDigits(11);
+  }
+  var out = {
+    region: isNew ? 'js_new' : 'js',
+    layout: isNew ? 'js_cgbzm_v1' : 'js_official_v1',
     name: name,
     id_number: idNumber,
     gender: gender,
@@ -2775,6 +2800,10 @@ function normalizeJsPayload(body) {
     detail_rows: months,
     months: months
   };
+  if (isNew) {
+    out.watermark_id = watermarkId;
+  }
+  return out;
 }
 
 function normalizeZjStatusLabel(value, fallback) {
@@ -3229,7 +3258,7 @@ function normalizePayload(body) {
   if (isBjRegion(body)) {
     return normalizeBjPayload(body);
   }
-  if (isJsRegion(body)) {
+  if (isJsStyleRegion(body)) {
     return normalizeJsPayload(body);
   }
   if (isHnRegion(body)) {
@@ -4354,6 +4383,206 @@ function renderJsCertHtml(payload, links, opts) {
   );
 }
 
+/** 江苏新：全国社保卡服务平台斜向水印 + 人社 APP 核验提示（保留旧江苏版不动） */
+function renderJsNewCertHtml(payload, links, opts) {
+  opts = opts || {};
+  var p = payload || {};
+  var rows = Array.isArray(p.detail_rows) ? p.detail_rows : [];
+  var qrUrl = (links && links.show_url) || (links && links.show_api_url) || '';
+  var printDate = p.print_date || defaultPrintDateCn();
+  var sealDate = String(printDate).replace(
+    /^\s*(\d{4})\s*年\s*0?(\d{1,2})\s*月\s*0?(\d{1,2})\s*日.*$/,
+    function (_m, y, mo, d) {
+      return y + '年' + Number(mo) + '月' + Number(d) + '日';
+    }
+  );
+  function m2(n) {
+    var x = Number(n);
+    return isFinite(x) ? x.toFixed(2) : '';
+  }
+  var rowsHtml = '';
+  rows.forEach(function (r) {
+    rowsHtml +=
+      '<tr>' +
+      '<td>' +
+      escHtml(r.year || '') +
+      '</td>' +
+      '<td>' +
+      escHtml(r.month || '') +
+      '</td>' +
+      '<td class="cn">' +
+      escHtml(r.unit_name || r.company_name || '') +
+      '</td>' +
+      '<td>' +
+      escHtml(m2(r.pension_base != null ? r.pension_base : r.base)) +
+      '</td>' +
+      '<td>' +
+      escHtml(m2(r.pension_pay)) +
+      '</td>' +
+      '<td>' +
+      escHtml(m2(r.unemp_base != null ? r.unemp_base : r.base)) +
+      '</td>' +
+      '<td>' +
+      escHtml(m2(r.unemp_pay)) +
+      '</td>' +
+      '<td>' +
+      escHtml(m2(r.injury_base != null ? r.injury_base : r.base)) +
+      '</td>' +
+      '<td></td>' +
+      '</tr>';
+  });
+  var stP = escHtml(p.status_pension || p.status || '');
+  var stI = escHtml(p.status_injury || p.status || '');
+  var stU = escHtml(p.status_unemployment || p.status || '');
+  var sec =
+    '出具证明前' +
+    escHtml(p.span_months || p.month_count || rows.length || 1) +
+    '个月缴费情况（' +
+    escHtml(p.period_compact || '') +
+    '）';
+  var pageNo = '共' + (p.total_pages || 1) + '页，第' + (p.page_idx || 1) + '页';
+  var wmId = String(p.watermark_id || '').trim();
+  var wmLine =
+    '本文件由全国社保卡服务平台提供，任何第三方机构不得进行二次加工、处理、解析或以任何形式用于商业用途，否则将追究法律责任。(' +
+    wmId +
+    ')';
+  var wmTiles = '';
+  var wi;
+  for (wi = 0; wi < 48; wi++) {
+    wmTiles += '<span>' + escHtml(wmLine) + '</span>';
+  }
+  return (
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>江苏省社会保险权益记录单（参保人员）</title>' +
+    '<style>' +
+    '*{box-sizing:border-box}' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    'body{font-family:"Microsoft YaHei","微软雅黑",SimHei,"黑体","Noto Sans CJK SC",sans-serif;color:#000;' +
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
+    'padding:14mm 12mm 16mm;position:relative;overflow:hidden}' +
+    '.wm{position:absolute;inset:-20%;z-index:0;pointer-events:none;display:flex;flex-wrap:wrap;' +
+    'align-content:flex-start;gap:28px 18px;transform:rotate(-32deg);transform-origin:center center;' +
+    'opacity:.18;color:#9a9a9a;font-size:11px;line-height:1.35;user-select:none}' +
+    '.wm span{display:inline-block;white-space:nowrap;width:52%;max-width:420px;' +
+    'overflow:hidden;text-overflow:clip}' +
+    '.page-inner{position:relative;z-index:1}' +
+    '.head{position:relative;min-height:116px}' +
+    '.qr-box{position:absolute;top:0;right:0;width:88px;text-align:center;z-index:2}' +
+    '.qr-box canvas,.qr-box img.qr{width:82px;height:82px;display:block;margin:0 auto}' +
+    '.qr-ph{width:82px;height:82px;margin:0 auto}' +
+    '.qr-cap{position:absolute;right:94px;top:4px;width:18px;writing-mode:vertical-rl;' +
+    'text-orientation:mixed;font-size:11px;letter-spacing:1px;line-height:1.15;color:#000;' +
+    'white-space:nowrap}' +
+    'h1{margin:14px 110px 0 8px;text-align:center;font-size:20px;font-weight:700;line-height:1.35}' +
+    'h1 .sub{display:block;font-size:16px;margin-top:2px;font-weight:700}' +
+    'table.g{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px}' +
+    'table.g th,table.g td{border:1px solid #333;padding:3px 3px;text-align:center;' +
+    'vertical-align:middle;font-weight:400;word-break:break-all;line-height:1.25;font-size:12px}' +
+    'table.g .lab{font-weight:700}' +
+    'table.g .sec{font-weight:700;font-size:13px;letter-spacing:1px}' +
+    '.page-no{text-align:right;font-size:12px;margin:3px 1px 6px}' +
+    'table.d{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}' +
+    'table.d th,table.d td{border:1px solid #333;padding:3px 2px;text-align:center;' +
+    'vertical-align:middle;font-weight:400;word-break:break-all;line-height:1.2}' +
+    'table.d thead th{font-weight:400}' +
+    'table.d td.cn{font-size:10.5px}' +
+    'table.d col.c-y{width:7%}table.d col.c-m{width:5%}table.d col.c-u{width:23%}' +
+    'table.d col.c-b{width:11%}table.d col.c-p{width:10.5%}table.d col.c-i{width:11%}table.d col.c-r{width:10%}' +
+    '.notes{font-size:12px;line-height:1.8;margin-top:16px}' +
+    '.notes .n2{padding-left:1.1em;text-indent:-1.1em}' +
+    '.foot{position:relative;margin-top:14px;min-height:150px}' +
+    '.print-date{position:absolute;right:150px;bottom:70px;font-size:12px;white-space:nowrap;z-index:4}' +
+    '.seal-wrap{position:absolute;right:20px;bottom:0;width:150px;height:150px;z-index:3;pointer-events:none}' +
+    '.seal-wrap img{width:150px;height:150px;display:block}' +
+    '@media print{.page{padding:12mm}}' +
+    '@media (max-width:720px){.page{padding:8px}' +
+    '.head{min-height:0}.qr-box{position:static;margin:0 auto 8px}h1{margin:8px 0 0}' +
+    '.qr-cap{position:static;writing-mode:horizontal-tb;width:auto;text-align:center;white-space:normal;' +
+    'letter-spacing:0;margin:6px 0}' +
+    '.print-date{position:static;text-align:right;margin:8px 0}.seal-wrap{position:static;margin:0 0 0 auto}}' +
+    '</style></head><body>' +
+    '<div class="page">' +
+    '<div class="wm" aria-hidden="true">' +
+    wmTiles +
+    '</div>' +
+    '<div class="page-inner">' +
+    '<div class="head">' +
+    '<div class="qr-cap">该核查内容真实，欢迎登录人社APP扫描验证</div>' +
+    '<div class="qr-box"><div class="qr-ph" id="qrPh"></div>' +
+    '<canvas id="qrCanvas" class="qr" width="82" height="82" style="display:none"></canvas></div>' +
+    '<h1>江苏省社会保险权益记录单<span class="sub">（参保人员）</span></h1>' +
+    '</div>' +
+    '<table class="g"><colgroup><col style="width:9%"><col style="width:18%"><col style="width:26%">' +
+    '<col style="width:32%"><col style="width:7%"><col style="width:8%"></colgroup>' +
+    '<tr>' +
+    '<td class="lab">姓名</td><td>' +
+    escHtml(p.name || '') +
+    '</td>' +
+    '<td class="lab">公民身份号码<br>（社会保障号）</td><td>' +
+    escHtml(p.id_number || '') +
+    '</td>' +
+    '<td class="lab">性别</td><td>' +
+    escHtml(p.gender || '') +
+    '</td>' +
+    '</tr></table>' +
+    '<div class="page-no">' +
+    escHtml(pageNo) +
+    '</div>' +
+    '<table class="g"><colgroup><col style="width:18%"><col style="width:23%"><col style="width:20%"><col style="width:39%"></colgroup>' +
+    '<tr><td class="sec" colspan="4">参加社会保险基本情况</td></tr>' +
+    '<tr><td class="lab">险种</td><td class="lab">养老保险</td><td class="lab">工伤保险</td><td class="lab">失业保险</td></tr>' +
+    '<tr><td class="lab">参保状态</td><td>' +
+    stP +
+    '</td><td>' +
+    stI +
+    '</td><td>' +
+    stU +
+    '</td></tr>' +
+    '<tr><td class="lab">现参保单位全称</td><td colspan="2">' +
+    escHtml(p.company_display || p.company_name || '') +
+    '</td><td><span class="lab" style="margin-right:6px;">现参保地</span>' +
+    escHtml(p.area || '') +
+    '</td></tr>' +
+    '</table>' +
+    '<table class="g" style="margin-top:0;"><tr><td class="sec">' +
+    sec +
+    '</td></tr></table>' +
+    '<table class="d"><colgroup>' +
+    '<col class="c-y"><col class="c-m"><col class="c-u"><col class="c-b"><col class="c-p">' +
+    '<col class="c-b"><col class="c-p"><col class="c-i"><col class="c-r"></colgroup>' +
+    '<thead>' +
+    '<tr><th rowspan="2">年</th><th rowspan="2">月</th><th rowspan="2">单位全称</th>' +
+    '<th colspan="2">养老保险</th><th colspan="2">失业保险</th><th colspan="1">工伤保险</th>' +
+    '<th rowspan="2">备注</th></tr>' +
+    '<tr><th>缴费基数（元）</th><th>个人缴费（元）</th><th>缴费基数（元）</th><th>个人缴费（元）</th><th>缴费基数（元）</th></tr>' +
+    '</thead><tbody>' +
+    rowsHtml +
+    '</tbody></table>' +
+    '<div class="notes">' +
+    '<div>说明：</div>' +
+    '<div class="n2">1.本权益单信息为打印时参保情况，供参考，由参保人员自行保管。</div>' +
+    '<div class="n2">2.本权益单已签具电子印章，不再加盖鲜章。</div>' +
+    '<div class="n2">3.本权益记录单出具后有效期（6个月）内，如需核对真伪，请使用江苏智慧人社APP，扫描右上方二维码进行验证（可多次验证）。</div>' +
+    '</div>' +
+    '<div class="foot">' +
+    '<div class="print-date">打印时间：' +
+    escHtml(sealDate) +
+    '</div>' +
+    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260906-js-new" alt=""></div>' +
+    '</div>' +
+    '</div></div>' +
+    '<script src="/js/vendor/qrcode.min.js"><\/script>' +
+    '<script>(function(){var u=' +
+    JSON.stringify(qrUrl) +
+    ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
+    'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
+    'QRCode.toCanvas(c,u,{width:82,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
+    '</body></html>'
+  );
+}
+
 function bjHtmlNum(n, months) {
   if (!months) return '';
   var x = Number(n);
@@ -4865,6 +5094,13 @@ function renderCertHtml(payload, links, opts) {
   if (p.region === 'js' || p.layout === 'js_official_v1') {
     return renderJsCertHtml(p, links, opts);
   }
+  if (
+    p.region === 'js_new' ||
+    p.layout === 'js_cgbzm_v1' ||
+    p.region === 'jiangsu_new'
+  ) {
+    return renderJsNewCertHtml(p, links, opts);
+  }
   if (p.region === 'wh' || p.layout === 'wh_official_v1') {
     return renderWhCertHtml(p, links, opts);
   }
@@ -5107,7 +5343,7 @@ async function createSbdyDemoCert(req, body, creator) {
   } else if (normalized.region === 'ha') {
     authCode = String(normalized.form_verify_code || randHexLower(32)).substring(0, 32);
     normalized.form_verify_code = authCode;
-  } else if (normalized.region === 'js') {
+  } else if (normalized.region === 'js' || normalized.region === 'js_new') {
     authCode = randToken(16);
   } else if (normalized.region === 'bj') {
     authCode = String(normalized.query_serial || randDigits(20)).substring(0, 20);
@@ -5345,7 +5581,7 @@ async function handlePublicSbdyDemoShow(req, res) {
       payload.status_injury = payload.status_medical;
     }
     /* 兼容已生成的江苏历史证书：旧前端曾把隐藏的浙江状态带进工伤/失业列 */
-    if (payload && isJsRegion(payload)) {
+    if (payload && isJsStyleRegion(payload)) {
       var jsShowStatus = String(
         payload.status || payload.status_pension || payload.status_injury || payload.status_unemployment || '正常参保'
       ).trim();
