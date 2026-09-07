@@ -535,20 +535,39 @@
                     if (is17pmLike) {
                         document.documentElement.classList.add('app-ios-iphone17promax');
                     }
+                    /* 13 Pro Max / 12 PM / 14 Plus：428×926。勿并入 15 Plus（430×932）档 */
+                    var is13pmLike =
+                        /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b|iPhone\s*14\s*Plus|iPhone14,8\b|iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(
+                            blob16
+                        ) ||
+                        (short16 >= 426 &&
+                            short16 <= 430 &&
+                            long16 >= 922 &&
+                            long16 <= 928 &&
+                            !/iPhone\s*15\s*(?:Plus|Pro\s*Max)|iPhone15,5\b|iPhone16,[12]\b/i.test(
+                                blob16
+                            ));
+                    if (is13pmLike) {
+                        document.documentElement.classList.add('app-ios-iphone13promax');
+                        document.documentElement.classList.add('app-ios-client');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                    }
                     var is15pmLike =
                         (/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5\b|iPhone16,1\b|iPhone16,2\b/i.test(
                             blob16
                         ) ||
                             (short16 >= 428 &&
                                 short16 <= 432 &&
-                                long16 >= 926 &&
+                                long16 >= 928 &&
                                 long16 <= 936)) &&
+                        !is13pmLike &&
                         !is16pmUa &&
                         !is16pmVp &&
                         !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
                     var is15Like =
                         /iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))|iPhone15,4\b/i.test(blob16) &&
                         !is15pmLike &&
+                        !is13pmLike &&
                         !is17pmLike &&
                         !is16pmUa;
                     if (is15Like) {
@@ -658,7 +677,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260904-android-inset"></script>
-    <script src="/js/auth.js?v=20260907-no-sm-fill" defer></script>
+    <script src="/js/auth.js?v=20260907-ios-white-bar" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>

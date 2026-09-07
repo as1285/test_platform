@@ -516,11 +516,23 @@
                     } else {
                         StatusBar.overlaysWebView(false);
                     }
-                    if (d.color) {
-                        StatusBar.backgroundColorByHexString(String(d.color));
+                    var styleDefault =
+                        d.style === 'default' || d.style === 'dark';
+                    var barColor = String(d.color || '').trim();
+                    /* 白顶栏：透明色在刘海外系统栏会落成黑条，强制实底白 */
+                    if (
+                        styleDefault &&
+                        (!barColor ||
+                            barColor === '#00000000' ||
+                            barColor.toLowerCase() === 'transparent')
+                    ) {
+                        barColor = '#ffffff';
+                    }
+                    if (barColor) {
+                        StatusBar.backgroundColorByHexString(barColor);
                     }
                     /* 必须在 overlays/颜色之后设图标：OriginOS 改底色会把电量/信号刷成白字 */
-                    if (d.style === 'default' || d.style === 'dark') {
+                    if (styleDefault) {
                         StatusBar.styleDefault();
                     } else {
                         StatusBar.styleLightContent();
@@ -528,11 +540,11 @@
                     if (d.paint_shell !== false) {
                         var PAGE_BG = '#f5f6fa';
                         var rawShell = String(d.shell_bg != null ? d.shell_bg : '').trim();
-                        var statusColor = String(d.color || '').trim().toLowerCase();
+                        var statusColor = String(barColor || '').trim().toLowerCase();
                         var shellBg = rawShell;
                         /* 未单独传 shell_bg 时：勿回退到顶栏蓝，避免底栏下整条蓝带 */
                         if (!shellBg) {
-                            shellBg = d.style === 'default' ? '#ffffff' : PAGE_BG;
+                            shellBg = styleDefault ? '#ffffff' : PAGE_BG;
                         } else if (
                             shellBg !== '#00000000' &&
                             shellBg !== 'transparent' &&
@@ -549,9 +561,9 @@
                             if (frame) frame.style.background = shellBg;
                             try {
                                 var meta = document.querySelector('meta[name="theme-color"]');
-                                if (meta) meta.setAttribute('content', String(d.color || shellBg));
+                                if (meta) meta.setAttribute('content', String(barColor || shellBg));
                             } catch (eMeta) {}
-                        } else if (d.style === 'default') {
+                        } else if (styleDefault) {
                             document.documentElement.style.background = '#ffffff';
                             document.body.style.background = '#ffffff';
                         }

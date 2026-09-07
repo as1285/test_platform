@@ -3697,8 +3697,9 @@
   }
 
   /**
-   * iOS 白顶栏页：深色状态栏文字（styleDefault）。
-   * 从首页等蓝顶栏进入后 Cordova 会残留浅色图标，白底上看不见时间；充电时电池变绿才露出来。
+   * iOS 白顶栏页：深色状态栏文字（styleDefault）+ 实底白。
+   * 从首页等蓝顶栏进入后 Cordova 会残留浅色图标；13PM 等刘海机布局视口更矮，
+   * 状态栏常在 WebView 外，#00000000 会被系统画成黑条白字。
    * 不按 14/16/17 分档，12 Pro（390×844 刘海）同样需要。
    */
   function applyIPhone16ProPageChrome() {
@@ -3711,14 +3712,29 @@
       }
       upsertMeta('theme-color', '#ffffff');
       upsertMeta('msapplication-navbutton-color', '#ffffff');
+      upsertMeta('color-scheme', 'light');
       setStatusBarStyleMeta('default');
-      requestShellStatusBar({
+      try {
+        document.documentElement.style.colorScheme = 'light';
+        if (document.body) document.body.style.colorScheme = 'light';
+      } catch (eCs) {}
+      /* 必须实底白：透明色在 WebView 外的系统栏会落成黑底 */
+      var whiteBarOpts = {
         style: 'default',
         overlays: true,
-        color: '#00000000',
+        color: '#ffffff',
         paint_shell: true,
         shell_bg: '#ffffff'
-      });
+      };
+      requestShellStatusBar(whiteBarOpts);
+      /* 首页浅蓝图标残留：颜色落地后再多次 styleDefault */
+      var reapplyDark = function () {
+        requestShellStatusBar(whiteBarOpts);
+      };
+      setTimeout(reapplyDark, 0);
+      setTimeout(reapplyDark, 80);
+      setTimeout(reapplyDark, 320);
+      setTimeout(reapplyDark, 800);
     } catch (e) {}
   }
 
