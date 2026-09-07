@@ -196,6 +196,8 @@ describe('menuRegistry', () => {
     );
     expect(tools.items.map((i) => i.page)).not.toContain('gjj-demo');
     expect(tools.items.map((i) => i.page)).not.toContain('zaizhi-cert');
+    expect(tools.items.map((i) => i.page)).not.toContain('ylbx-ps');
+    expect(getPageDef('ylbx-ps')).toBeNull();
     const dataGroup = tree.find((g) => g.id === 'insights');
     const insightPages = dataGroup.items.map((i) => i.page);
     expect(insightPages).toEqual(

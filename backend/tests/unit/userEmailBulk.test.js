@@ -1,5 +1,7 @@
 const {
   isValidUserEmail,
+  isRefundEmailRequest,
+  REFUND_EMAIL_STOPPED_MSG,
   buildEmailBodies,
   buildCtaUrl,
   EMAIL_COPY_TEMPLATES,
@@ -183,6 +185,23 @@ describe('userEmailBulk list/send API surface', () => {
     expect(out.requested).toBe(1);
   });
 
+  test('sendToUsernames rejects refund emails', async () => {
+    var api = createUserEmailBulk({
+      getPool: function () {
+        return mockPool({});
+      },
+      mail: { isMailConfigured: function () { return true; }, sendMail: async function () {} }
+    });
+    await expect(
+      api.sendToUsernames({
+        usernames: ['u1'],
+        subject: '二次退税：测算约可退 ¥27,000',
+        content: '打开二次退税页',
+        linkUrl: 'refund_ad.html?from=email_refund'
+      })
+    ).rejects.toMatchObject({ message: REFUND_EMAIL_STOPPED_MSG, code: 400 });
+  });
+
   test('sendToUsernames rejects empty selection', async () => {
     var api = createUserEmailBulk({
       getPool: function () {
@@ -318,16 +337,16 @@ describe('userEmailBulk list/send API surface', () => {
     await expect(
       apiWithCount(201).sendBulk({
         audience: 'has_email_inactive',
-        subject: '二次退税',
-        content: '打开页面测算'
+        subject: '开通后去除水印',
+        content: '打开支付页开通'
       })
     ).rejects.toMatchObject({ code: 400 });
 
     var out = await apiWithCount(201).sendBulk({
       audience: 'has_email_inactive',
-      subject: '二次退税',
-      content: '打开页面测算',
-      campaign: 'refund_ad_auto',
+      subject: '开通后去除水印',
+      content: '打开支付页开通',
+      campaign: 'ad_reach_activate',
       allowPartial: true
     });
     expect(out.sent).toBe(1);
@@ -364,67 +383,18 @@ describe('userEmailBulk list/send API surface', () => {
     expect(sqls[0]).not.toContain('INTERVAL 7 DAY');
   });
 
-  test('sendBulk personalizeRefundAmount puts that user refund into the mail', async () => {
-    var mails = [];
-    var inserts = [];
-    var api = createUserEmailBulk({
-      getPool: function () {
-        return mockPool({
-          execute: async function (sql, params) {
-            if (/INSERT INTO user_email_sends/.test(sql)) inserts.push(params);
-            return [{ affectedRows: 1 }, []];
-          },
-          query: async function (sql) {
-            if (/COUNT\(\*\)/.test(sql)) return [[{ total: 1 }], []];
-            if (/FROM tax_records/.test(sql)) {
-              var rows = [];
-              for (var y = 2023; y <= 2025; y++) {
-                for (var m = 1; m <= 12; m++) {
-                  rows.push({
-                    user_id: 'u1',
-                    year: y,
-                    month: m,
-                    income: '13000',
-                    income_this_period: '13000',
-                    tax_reported: '200',
-                    company_name: '甲公司'
-                  });
-                }
-              }
-              return [rows, []];
-            }
-            return [[{ username: 'u1', email: 'a@qq.com' }], []];
-          }
-        });
-      },
-      publicSiteUrl: 'https://lkj.qiyun888.top',
-      mail: {
-        isMailConfigured: function () {
-          return true;
-        },
-        sendMail: async function (payload) {
-          mails.push(payload);
-        }
-      }
-    });
-    var out = await api.sendBulk({
-      audience: 'has_email_inactive',
-      personalizeRefundAmount: true,
-      campaign: 'refund_ad_amount',
-      poster: 'refund',
-      allowPartial: true
-    });
-    expect(out.sent).toBe(1);
-    expect(out.personalized_refund).toBe(true);
-    expect(mails[0].subject).toContain('¥7,200');
-    expect(mails[0].text).toContain('大约可退 ¥7,200');
-    expect(mails[0].text).toContain('2025 年约 ¥2,400');
-    expect(mails[0].text).toMatch(/\/api\/public\/email-click\/[a-f0-9]{32}/);
-    expect(mails[0].html).toMatch(/\/api\/public\/email-click\/[a-f0-9]{32}/);
-    expect(inserts[0][9]).toContain('refund_ad.html?from=email_refund&est=7200');
+  test('isRefundEmailRequest flags amount campaign and refund copy', () => {
+    expect(isRefundEmailRequest({ personalizeRefundAmount: true })).toBe(true);
+    expect(isRefundEmailRequest({ campaign: 'refund_ad_amount' })).toBe(true);
+    expect(isRefundEmailRequest({ poster: 'refund' })).toBe(true);
+    expect(isRefundEmailRequest({ subject: '二次退税：测算约可退 ¥27,000' })).toBe(true);
+    expect(isRefundEmailRequest({ linkUrl: 'refund_ad.html?from=email_refund' })).toBe(true);
+    expect(isRefundEmailRequest({ subject: '开通后去除水印', linkUrl: 'purchase.html' })).toBe(
+      false
+    );
   });
 
-  test('sendBulk personalizeRefundAmount skips users with no tax records', async () => {
+  test('sendBulk rejects refund emails', async () => {
     var mails = [];
     var api = createUserEmailBulk({
       getPool: function () {
@@ -432,9 +402,7 @@ describe('userEmailBulk list/send API surface', () => {
           execute: async function () {
             return [{ affectedRows: 1 }, []];
           },
-          query: async function (sql) {
-            if (/COUNT\(\*\)/.test(sql)) return [[{ total: 1 }], []];
-            if (/FROM tax_records/.test(sql)) return [[], []];
+          query: async function () {
             return [[{ username: 'u1', email: 'a@qq.com' }], []];
           }
         });
@@ -448,13 +416,15 @@ describe('userEmailBulk list/send API surface', () => {
         }
       }
     });
-    var out = await api.sendBulk({
-      audience: 'has_email_inactive',
-      personalizeRefundAmount: true,
-      campaign: 'refund_ad_amount'
-    });
-    expect(out.sent).toBe(0);
-    expect(out.skipped).toBe(1);
+    await expect(
+      api.sendBulk({
+        audience: 'has_email_inactive',
+        personalizeRefundAmount: true,
+        campaign: 'refund_ad_amount',
+        poster: 'refund',
+        allowPartial: true
+      })
+    ).rejects.toMatchObject({ message: REFUND_EMAIL_STOPPED_MSG, code: 400 });
     expect(mails.length).toBe(0);
   });
 

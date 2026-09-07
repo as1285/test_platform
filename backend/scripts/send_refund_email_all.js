@@ -29,6 +29,7 @@ function nonGuestUsernameSql(userCol) {
 }
 
 (async function main() {
+  throw new Error('退税邮件已停发');
   if (!mail.isMailConfigured || !mail.isMailConfigured()) {
     throw new Error('SMTP not configured');
   }

@@ -7,6 +7,32 @@ var refundEstimate = require('./refundEstimate');
 var MSG_EMAIL_BULK_MAX = 200;
 var MSG_EMAIL_SEND_GAP_MS = 120;
 var EMAIL_SKIP_MARKER_PREFIX = '@@email_bulk:';
+var REFUND_EMAIL_STOPPED_MSG = '退税邮件已停发';
+
+function isRefundEmailRequest(opts) {
+  opts = opts || {};
+  if (opts.personalizeRefundAmount === true) return true;
+  var campaign = String(opts.campaign || '').trim().toLowerCase();
+  if (campaign === 'refund_ad_amount' || campaign === 'refund_ad_auto') return true;
+  var poster = String(opts.poster != null ? opts.poster : opts.posterKey || '')
+    .trim()
+    .toLowerCase();
+  if (poster === 'refund') return true;
+  var subject = String(opts.subject || '').trim();
+  var content = String(opts.content || '').trim();
+  var link = String(opts.linkUrl || opts.link_url || '').trim();
+  if (subject.indexOf('二次退税') >= 0 || content.indexOf('二次退税') >= 0) return true;
+  if (subject.indexOf('测算约可退') >= 0) return true;
+  if (/refund_ad\.html/i.test(link)) return true;
+  return false;
+}
+
+function assertRefundEmailAllowed(opts) {
+  if (!isRefundEmailRequest(opts)) return;
+  var err = new Error(REFUND_EMAIL_STOPPED_MSG);
+  err.code = 400;
+  throw err;
+}
 
 function newClickToken() {
   return crypto.randomBytes(16).toString('hex');
@@ -494,6 +520,7 @@ function createUserEmailBulk(deps) {
    */
   async function sendBulk(opts) {
     opts = opts || {};
+    if (opts.dryRun !== true) assertRefundEmailAllowed(opts);
     await ensureTable();
     var audience = opts.audience != null ? String(opts.audience).trim() : 'has_email_inactive';
     if (!isKnownAudience(audience)) {
@@ -878,6 +905,7 @@ function createUserEmailBulk(deps) {
    */
   async function sendToUsernames(opts) {
     opts = opts || {};
+    if (opts.dryRun !== true) assertRefundEmailAllowed(opts);
     await ensureTable();
     var subject = opts.subject != null ? String(opts.subject).trim() : '';
     var content = opts.content != null ? String(opts.content).trim() : '';
@@ -1222,6 +1250,8 @@ function createUserEmailBulk(deps) {
 module.exports = {
   createUserEmailBulk: createUserEmailBulk,
   isValidUserEmail: isValidUserEmail,
+  isRefundEmailRequest: isRefundEmailRequest,
+  REFUND_EMAIL_STOPPED_MSG: REFUND_EMAIL_STOPPED_MSG,
   buildEmailBodies: buildEmailBodies,
   buildCtaUrl: buildCtaUrl,
   buildClickTrackUrl: buildClickTrackUrl,

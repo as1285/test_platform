@@ -40,6 +40,32 @@
     }
   }
 
+  function jumpToUser(username) {
+    var name = String(username || '').trim();
+    if (!name || name === '—') return;
+    if (typeof global.jumpToRegisteredUser === 'function') {
+      global.jumpToRegisteredUser(name);
+      return;
+    }
+    var usernameEl = document.getElementById('filterUsername');
+    var exactEl = document.getElementById('filterExact');
+    if (usernameEl) usernameEl.value = name;
+    if (exactEl) exactEl.checked = true;
+    global.location.hash = 'users';
+  }
+
+  function accountButton(userId) {
+    var name = String(userId || '').trim();
+    if (!name) return '—';
+    return (
+      '<button type="button" class="admin-user-jump js-feedback-open-user" data-u="' +
+      esc(name) +
+      '" title="跳转到注册用户">' +
+      esc(name) +
+      '</button>'
+    );
+  }
+
   function snippet(text, n) {
     var s = String(text || '').replace(/\s+/g, ' ').trim();
     if (!s) return '—';
@@ -74,7 +100,7 @@
       var id = Number(row.id) || 0;
       html += '<tr data-feedback-id="' + esc(String(id)) + '">';
       html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
-      html += '<td class="cell-break"><code>' + esc(row.user_id || '—') + '</code></td>';
+      html += '<td class="cell-break">' + accountButton(row.user_id) + '</td>';
       html += '<td>' + esc(row.real_name || '—') + '</td>';
       html += '<td class="cell-break">' + esc(row.device_info || '—') + '</td>';
       html += '<td class="cell-break">' + esc(snippet(row.content, 48)) + '</td>';
@@ -110,6 +136,7 @@
         showDetail(Number(btn.getAttribute('data-id')));
       });
     });
+    bindAccountJumps(el);
   }
 
   function revokeDetailUrls(box) {
@@ -170,9 +197,9 @@
       ' · ' +
       esc(formatDt(row.created_at)) +
       '</p>' +
-      '<p class="hint mt-0">账号 <code>' +
-      esc(row.user_id || '—') +
-      '</code>　姓名 ' +
+      '<p class="hint mt-0">账号 ' +
+      accountButton(row.user_id) +
+      '　姓名 ' +
       esc(row.real_name || '—') +
       (row.contact ? '　联系 ' + esc(row.contact) : '') +
       '</p>' +
@@ -194,10 +221,22 @@
     revokeDetailUrls(box);
     box.innerHTML = html;
     box.hidden = false;
+    bindAccountJumps(box);
     mountDetailImages(box, imgs);
     try {
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (e0) {}
+  }
+
+  function bindAccountJumps(root) {
+    if (!root) return;
+    root.querySelectorAll('.js-feedback-open-user').forEach(function (btn) {
+      if (btn.__feedbackJumpBound) return;
+      btn.__feedbackJumpBound = true;
+      btn.addEventListener('click', function () {
+        jumpToUser(btn.getAttribute('data-u'));
+      });
+    });
   }
 
   function bindPager() {

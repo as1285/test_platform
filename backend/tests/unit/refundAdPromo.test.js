@@ -13,10 +13,8 @@ describe('core refund-ad promo to all inactive users', () => {
     expect(monolith).toContain('function scheduleRefundAdPromo');
     expect(monolith).toContain('scheduleRefundAdPromo();');
     expect(monolith).toContain("audience: 'all_inactive'");
-    expect(monolith).toContain("audience: 'has_email_inactive'");
-    expect(monolith).toContain("campaign: 'refund_ad_amount'");
-    expect(monolith).toContain('personalizeRefundAmount: true');
-    expect(monolith).toContain('skipHours: REFUND_AD_EMAIL_SKIP_HOURS');
+    expect(monolith).toContain('email skipped (退税邮件已停发)');
+    expect(monolith).not.toContain('personalizeRefundAmount: true');
     expect(monolith).toContain("process.env.REFUND_AD_EMAIL_SKIP_HOURS || '24'");
     expect(monolith).toContain("skipMarker: MSG_AUTO_REFUND_AD_MARKER");
     expect(monolith).toContain("MSG_AUTO_REFUND_AD_MARKER = '@@auto_refund_ad'");

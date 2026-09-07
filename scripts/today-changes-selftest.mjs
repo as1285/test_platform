@@ -202,7 +202,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260907-fill-first'],
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260907-no-fillbtn'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
@@ -379,7 +379,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260907-deact-note', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260907-amt-enter', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -1176,7 +1176,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260907-sz-wage', 'consult-batch-tax.js?v=20260907-severance', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
+  ['consult-core.js?v=20260907-no-fillbtn', 'consult-batch-tax.js?v=20260907-tax-ux', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
   '20260906 consult tax screenshot OCR'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴', '上传截图识别'], 'consult copy tpl btn');
@@ -1234,6 +1234,8 @@ mustInclude(
     "COALESCE(NULLIF(TRIM(u.activation_source_channel), ''), '__none__') <> ?",
     'label_note: \'非支付宝\'',
     'exclude_alipay: true',
+    'use_user_amount: true',
+    'activation_credit_amount',
     'queryPurchaseAnalyticsAdminActivationCredits',
     'admin_activation_gmv',
     'combined_gmv'
@@ -1244,6 +1246,7 @@ mustInclude(
   'frontend/public/js/admin_panel.js',
   [
     '管理员激活（',
+    '按填写金额',
     'combined_gmv',
     'admin_activation_orders',
     '合计（含管理员激活）'
@@ -1252,7 +1255,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['18933137956', '19106014552', 'admin', '除支付宝激活外', '管理员激活'],
+  ['18933137956', '19106014552', 'admin', '除支付宝激活外', '按注册用户列表填写的', '管理员激活'],
   'purchase analytics admin activation hint'
 );
 mustInclude(
@@ -1785,7 +1788,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260907-pay-top', 'auth.js?v=20260907-fill-btn" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  ['auth-boot.js?v=20260907-pay-top', 'auth.js?v=20260907-email-sfx" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1956,12 +1959,12 @@ mustInclude(
   'frontend/public/js/conversion-guide.js',
   [
     'isInactiveRefundCardUser',
-    'var show = showInactive || showActiveBrowse',
-    'var showInactive = inactive',
+    "['consultRefundAdEntry', 'consultRefundAdProductEntry']",
+    'function maybeRecommendIncomeRefundAd',
     '__smAccountActiveConfirmed',
     'consultRefundAdEntry',
     'syncShuimingInactivePrompt',
-    '去计算可退税额'
+    '已关闭：不再向咨询页/明细页推二次退税广告入口'
   ],
   'refund card for every inactive user, CTA to calculate'
 );
@@ -1985,16 +1988,18 @@ mustInclude(
   'frontend/shuiming_result.html',
   [
     'smActivateCard',
-    'smActivateTitle',
-    'is-tax-fill',
-    '去填写个税',
-    'consult.html?tab=records&onboarding=tax',
+    '填写个税引导卡已下线',
     'syncShuimingInactivePrompt',
     'sm-account-active',
     '__smAccountActiveConfirmed',
     'watermark.js?v=20260831-m60home'
   ],
-  'shuiming inactive card guides tax fill'
+  'shuiming tax-fill card retired'
+);
+mustExclude(
+  'frontend/shuiming_result.html',
+  ['去填写个税', 'id="smActivateTitle"', 'id="smActivateBtn"'],
+  'shuiming no longer shows tax-fill CTA'
 );
 mustInclude(
   'frontend/shuiming_result.html',
@@ -2013,7 +2018,7 @@ mustExclude(
     'syncShuimingRefundAdCard',
     'id="smRefundAdBtn"',
     'refund_ad.html?from=shuiming_result',
-    '去计算可退税额',
+    '已关闭：填税后不再推荐去二次退税广告页',
     '二次退税咨询'
   ],
   'shuiming result has no wechat or summary refund card'
@@ -2519,24 +2524,24 @@ if (
   /* page -> allowed stamp(s) that may differ from the majority */
   const PAGE_STAMP_ALLOW = {
     auth: {
-      'gerenxinxi.html': ['20260903-email-val1'],
+      'gerenxinxi.html': ['20260907-email-sfx'],
       'login.html': ['20260905-agent-reg2'],
       'face_login.html': ['20260905-facelogin-ui3'],
       'message.html': ['20260903-email-reg1'],
       'shouye.html': ['20260906-login-top'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260907-fill-btn'],
-      'purchase.html': ['20260907-pay-top'],
+      'mine.html': ['20260907-email-sfx'],
+      'purchase.html': ['20260907-email-sfx'],
       'shuiming.html': ['20260904-android-inset'],
-      'shuiming_result.html': ['20260907-sm-taxfill'],
+      'shuiming_result.html': ['20260907-no-sm-fill'],
       'xiangqing.html': ['20260904-android-inset'],
-      'consult.html': ['20260904-funnel-cta'],
+      'consult.html': ['20260907-android-hdr'],
       'compat_bug.html': ['20260905-compat-bug'],
       'install_guide.html': ['20260904-abc-stats'],
       'jingshi.html': ['20260905-no-home-refund'],
       'sousuo.html': ['20260905-no-home-refund'],
       'najilu.html': ['20260905-qr-guide'],
-      'register.html': ['20260903-email-val1', '20260903-email-reg1', '20260906-reg-urlch'],
+      'register.html': ['20260907-email-sfx'],
       'scan.html': ['20260905-scan'],
       'zhongdian_fuwu.html': ['20260905-zdfw'],
       'zixun.html': ['20260905-zixun']
@@ -2825,6 +2830,47 @@ mustInclude(
   'ops conversion admin module'
 );
 mustInclude(
+  'frontend/public/js/admin/modules/ops-conversion.js',
+  ['不能沿用未激活名单的 active=0', 'jumpToRegisteredUser', "activeEl.value = ''"],
+  'ops pay detail jump does not force inactive filter'
+);
+mustExclude(
+  'frontend/public/js/admin/modules/ops-conversion.js',
+  ["activeEl.value = '0'"],
+  'ops jumpToUser no longer forces 未激活'
+);
+mustInclude(
+  'frontend/public/js/admin/nav.js',
+  ['function isAccountQuery', 'function fetchCommandUsers', 'data-command-user', 'api/admin/users?username='],
+  'admin command palette searches accounts'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  [
+    '搜功能或账号',
+    '没有匹配的功能或账号',
+    'nav.js?v=20260907-user-search',
+    'admin_panel.js?v=20260907-amt-enter',
+    'loader.js?v=20260907-no-refund-mail'
+  ],
+  'admin search copy and cache for account jump'
+);
+mustInclude(
+  'frontend/public/js/admin/loader.js',
+  ['ops-conversion.js?v=20260907-pay-user', 'ad-analytics.js?v=20260907-no-refund-mail'],
+  'ops-conversion cache after pay-user jump fix'
+);
+mustInclude(
+  'backend/src/admin/userEmailBulk.js',
+  ['REFUND_EMAIL_STOPPED_MSG', 'function isRefundEmailRequest', '退税邮件已停发'],
+  'refund emails are blocked at sendBulk'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ['email skipped (退税邮件已停发)'],
+  'auto refund-ad promo no longer sends refund emails'
+);
+mustInclude(
   'frontend/admin_panel.html',
   ['id="page-ops-board"', 'opsBoardKpi', 'opsBoardTodo', 'opsBoardBulkAnchor'],
   'ops board page panel'
@@ -2918,7 +2964,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['theme-color" content="#000000"', 'auth.js?v=20260907-fill-btn'],
+  ['theme-color" content="#000000"', 'auth.js?v=20260907-email-sfx'],
   '20260903 mine black theme-color + cache'
 );
 mustInclude(
@@ -2934,7 +2980,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/purchase.html',
-  ['forceHidePageLoading', 'auth.js?v=20260907-pay-top', 'visibilitychange'],
+  ['forceHidePageLoading', 'auth.js?v=20260907-email-sfx', 'visibilitychange'],
   '20260903 purchase hides loading on return'
 );
 mustInclude(
@@ -2944,7 +2990,7 @@ mustInclude(
     'html.platform-android body.page-shuiming-result .list-item',
     '--list-inline-pad: 16px',
     'margin-left: 2px',
-    'auth.js?v=20260907-sm-taxfill'
+    'auth.js?v=20260907-no-sm-fill'
   ],
   '20260903 android wide list + question-mark spacing revert'
 );
@@ -3106,13 +3152,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['橙色<strong>取消激活</strong>', '不计入运营看板「今日激活」', 'admin_panel.js?v=20260907-deact-note'],
+  ['橙色<strong>取消激活</strong>', '不计入运营看板「今日激活」', 'admin_panel.js?v=20260907-amt-enter'],
   '20260907 admin cancel activation copy + cache'
 );
 mustInclude(
   'frontend/mine.html',
-  ['id="mineActivateBtn"', 'class="mine-activate-btn header-activate-btn"', 'body.page-mine.mine-account-active .mine-activate-btn', 'id="mineFillDataBtn"'],
-  '20260907 mine activate + fill-data buttons'
+  ['id="mineActivateBtn"', 'class="mine-activate-btn header-activate-btn"', 'body.page-mine.mine-account-active .mine-activate-btn'],
+  '20260907 mine activate button'
 );
 mustInclude(
   'frontend/public/js/conversion-guide.js',
@@ -3133,6 +3179,67 @@ mustInclude(
   'frontend/public/js/tab-shell-escape.js',
   ['isNestedWindow', 'assignTopLocation'],
   '20260907 tab-shell-escape lifts iframe to top'
+);
+
+/* —— 2026-09-07：admin 激活金额按用户列表填写，不再写死 ¥100/单 —— */
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'function parseActivationCreditAmount',
+    'function isRootAdminAccount',
+    'async function handleAdminUserActivationCredit',
+    '仅 admin 可查看或保存激活金额',
+    'use_user_amount: true',
+    'activation_credit_amount DECIMAL(10,2)',
+    'MAX(COALESCE(u.activation_credit_amount, 0))',
+    'paidActivationAmountMap',
+    'paid_activation_amount'
+  ],
+  '20260907 admin activation credit amount API + analytics'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ["'/api/admin/user-activation-credit'", 'h.handleAdminUserActivationCredit'],
+  '20260907 user-activation-credit route'
+);
+mustInclude(
+  'backend/opsStatsReport.js',
+  ['use_user_amount: true', '按填写金额', '按用户列表填写的激活金额'],
+  '20260907 daily report admin activation uses filled amount'
+);
+mustInclude(
+  'backend/src/admin/menuRegistry.js',
+  ['is_root_admin', 'ADMIN_PANEL_USER'],
+  '20260907 session marks root admin for activation amount'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  [
+    'th class="col-w-140 col-activation-credit">激活金额',
+    'id="userActivateCreditAmount"',
+    'id="userActivateCreditWrap"',
+    '按注册用户列表填写的',
+    '线上已付开通会自动带出实收',
+    'admin_panel.js?v=20260907-amt-enter'
+  ],
+  '20260907 users list activation amount field'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  [
+    'function saveUserActivationCredit',
+    'function canViewActivationCredit',
+    'function syncActivationCreditVisibility',
+    'function displayUserActivationAmount',
+    'paid_activation_amount',
+    "adminFetch('api/admin/user-activation-credit'",
+    'keydown',
+    "key !== 'Enter'",
+    'placeholder="填金额"',
+    'body.credit_amount = creditEl.value',
+    '按填写金额'
+  ],
+  '20260907 users list save activation amount + analytics label'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

@@ -676,7 +676,7 @@
   };
 
   function applyReachEmailTemplate(id) {
-    var t = REACH_EMAIL_TEMPLATES[id] || REACH_EMAIL_TEMPLATES.refund;
+    var t = REACH_EMAIL_TEMPLATES[id] || REACH_EMAIL_TEMPLATES.activate;
     setInput('adReachEmailSubject', t.subject);
     setInput('adReachEmailContent', t.content);
     setInput('adReachEmailLink', t.link_url);
@@ -708,17 +708,33 @@
     };
   }
 
+  function isRefundReachEmail(payload) {
+    var p = payload || {};
+    var subject = String(p.subject || '');
+    var content = String(p.content || '');
+    var link = String(p.link_url || '');
+    var poster = String(p.poster || '');
+    var campaign = String(p.campaign || '');
+    if (poster === 'refund') return true;
+    if (campaign === 'refund_ad_amount' || campaign === 'refund_ad_auto') return true;
+    if (subject.indexOf('二次退税') >= 0 || content.indexOf('二次退税') >= 0) return true;
+    if (subject.indexOf('测算约可退') >= 0) return true;
+    if (/refund_ad\.html/i.test(link)) return true;
+    return false;
+  }
+
   function reachEmailPayload(dryRun) {
     var skipEl = document.getElementById('adReachEmailSkipSent');
+    var tpl = val('adReachEmailTemplate') || 'activate';
     return {
       audience: val('adReachEmailAudience') || 'has_email_inactive',
       subject: val('adReachEmailSubject'),
       content: String((document.getElementById('adReachEmailContent') || {}).value || '').trim(),
-      link_url: val('adReachEmailLink') || 'refund_ad.html?from=email_refund',
-      cta_label: val('adReachEmailCta') || '打开二次退税说明',
-      poster: val('adReachEmailPoster') || 'refund',
+      link_url: val('adReachEmailLink') || 'purchase.html?from=email_activate',
+      cta_label: val('adReachEmailCta') || '立即开通',
+      poster: val('adReachEmailPoster') || 'activate',
       skip_already_sent: !!(skipEl && skipEl.checked),
-      campaign: 'refund_ad_auto',
+      campaign: tpl === 'refund' ? 'refund_ad_auto' : 'ad_reach_' + tpl,
       allow_partial: true,
       dry_run: !!dryRun
     };
@@ -823,6 +839,10 @@
     if (emailSend) {
       emailSend.addEventListener('click', function () {
         var payload = reachEmailPayload(false);
+        if (isRefundReachEmail(payload)) {
+          setReachEmailStatus('退税邮件已停发');
+          return;
+        }
         if (
           !window.confirm(
             '向「' + reachAudienceLabel(payload.audience) + '」中已留邮箱的人发邮件？请先预览人数。'

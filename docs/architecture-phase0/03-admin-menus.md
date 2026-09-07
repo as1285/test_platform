@@ -39,7 +39,6 @@
 | `tax-records-edit` | 个税维护 | `/api/admin/user-tax-records` |
 | `sbdy-demo` | 社保演示 | 工具 |
 | `lizhi-cert` | 离职证明 | 工具 |
-| `ylbx-ps` | 社保图片 PS | 工具 |
 | `ccb-flow` | 工资流水 | 工具 |
 | `najilu-qr` | 完税二维码 | 工具 |
 | `analytics-register` | 注册分析 | 注册漏斗 |
@@ -63,7 +62,7 @@
 
 ## 已废弃（勿再当作现行菜单）
 
-旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`api-analytics`、`analytics-tracking`（埋点分析）等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。旧 hash `#analytics-tracking` 归一到支付分析。
+旧文档中的 `guest-users`、`user`、`chat`、`user-behavior`、`activated-user-analysis`、`api-analytics`、`analytics-tracking`（埋点分析）、`ylbx-ps`（社保图片 PS）等**已不在**当前 `ADMIN_PAGE_DEFS`；以 `menuRegistry.js` 为准。旧 hash `#analytics-tracking` 归一到支付分析。
 
 ## 权限变更检查单
 

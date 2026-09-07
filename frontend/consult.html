@@ -9,7 +9,7 @@
       TAX_APP_SHELL_* 标记供 assemble 替换为 content-hash 壳资源。
     -->
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260904-funnel-cta" defer></script>
+    <script src="/js/auth.js?v=20260907-android-hdr" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260907-fill-first">
+    <link rel="stylesheet" href="/css/consult.css?v=20260907-no-fillbtn">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -26,7 +26,6 @@
     <div class="header">
         <a href="mine.html" class="back-link" id="consultBackLink"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
         <h1 id="consultPageTitle">个人中心</h1>
-        <button type="button" class="consult-fill-entry-toggle" id="consultFillEntryToggle" aria-pressed="true" aria-label="隐藏我的页填写数据按钮">隐藏填写</button>
     </div>
 
     <div id="consultActivateModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="consultActivateModalTitle">
@@ -292,14 +291,6 @@
                 <span class="consult-compat-bug-arrow" aria-hidden="true">›</span>
             </a>
 
-            <div class="tax-flow-steps" id="taxFlowSteps" aria-label="税务记录流程">
-                <div class="tax-flow-step is-current"><span class="tax-flow-num">1</span><span class="tax-flow-label">填资料</span></div>
-                <div class="tax-flow-sep" aria-hidden="true"></div>
-                <div class="tax-flow-step"><span class="tax-flow-num">2</span><span class="tax-flow-label">生成</span></div>
-                <div class="tax-flow-sep" aria-hidden="true"></div>
-                <div class="tax-flow-step"><span class="tax-flow-num">3</span><span class="tax-flow-label">核对</span></div>
-            </div>
-
             <div class="card" id="batchTaxCard">
                 <div class="card-title-row batch-tax-card-head">
                     <div class="card-title" id="batchTaxCardTitle">生成税务记录</div>
@@ -307,13 +298,15 @@
                 </div>
                 <div id="batchTaxCardBody">
                 <div class="tax-start-chooser" id="taxStartChooser">
-                    <p class="tax-start-chooser-title">怎么填写个税？</p>
-                    <p class="tax-start-chooser-desc">推荐先改模板生成 2023–2025 记录；也可上传官方个税 APP 截图自动识别，或粘贴明细文本。</p>
+                    <p class="tax-start-chooser-title">生成税务记录</p>
                     <div class="tax-start-chooser-actions">
-                        <button type="button" class="btn btn-primary btn-block tax-start-btn" id="btnTaxStartPaste" onclick="openTaxStartPath('paste')">按模板生成个税</button>
-                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartScreenshot" onclick="openTaxStartPath('screenshot')">上传个税截图识别</button>
+                        <button type="button" class="btn btn-primary btn-block tax-start-btn" id="btnTaxStartPaste" onclick="openTaxStartPath('paste')">按模板生成</button>
                         <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartManual" onclick="openTaxStartPath('manual')">自己填公司与月薪</button>
-                        <button type="button" class="btn btn-default btn-block tax-start-btn tax-start-btn-quiet" id="btnTaxStartExample" onclick="openTaxStartPath('example')">先用示例看看</button>
+                    </div>
+                    <div class="tax-start-chooser-more">
+                        <button type="button" class="tax-start-link" id="btnTaxStartScreenshot" onclick="openTaxStartPath('screenshot')">上传截图识别</button>
+                        <span class="tax-start-link-sep" aria-hidden="true">·</span>
+                        <button type="button" class="tax-start-link" id="btnTaxStartExample" onclick="openTaxStartPath('example')">先用示例看看</button>
                     </div>
                     <input type="file" id="taxScreenshotOcrInput" class="tax-screenshot-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/*" hidden>
                 </div>
@@ -323,10 +316,11 @@
                 <div class="batch-tax-toolbar" id="batchTaxToolbar">
                     <button type="button" class="btn btn-default btn-sm batch-tax-toolbar-primary" id="btnBatchTaxPasteImport" onclick="openTaxStartPath('paste')">按模板生成</button>
                     <div class="batch-tax-toolbar-row2">
-                        <button type="button" class="btn btn-default btn-sm batch-tax-toolbar-quiet" id="btnBatchTaxExample" onclick="openTaxStartPath('example')">示例填写</button>
                         <div class="batch-tax-more-wrap">
                             <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxMore" aria-expanded="false">更多</button>
                             <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
+                                <button type="button" class="batch-tax-more-item" id="btnBatchTaxExample" onclick="openTaxStartPath('example'); closeBatchTaxMoreMenu();">示例填写</button>
+                                <button type="button" class="batch-tax-more-item" onclick="openTaxStartPath('screenshot'); closeBatchTaxMoreMenu();">上传截图识别</button>
                                 <button type="button" class="batch-tax-more-item" onclick="loadBatchEmploymentsFromExistingRecords(); closeBatchTaxMoreMenu();">从已有回填</button>
                                 <button type="button" class="batch-tax-more-item" onclick="batchAddYearEndBonusOnly(); closeBatchTaxMoreMenu();">仅添加年终奖</button>
                                 <button type="button" class="batch-tax-more-item" onclick="batchAddSeveranceOnly(); closeBatchTaxMoreMenu();">仅添加裁员补偿</button>
@@ -541,8 +535,6 @@
                 <div class="batch-tax-actions">
                     <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="oneClickGenerateBatchTaxRecords()">一键生成税务记录</button>
                     <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">保存覆盖</button>
-                    <button type="button" class="batch-bonus-only-btn" onclick="batchAddYearEndBonusOnly()">单独增加年终奖</button>
-                    <button type="button" class="batch-bonus-only-btn" onclick="batchAddSeveranceOnly()">单独增加裁员补偿</button>
                 </div>
                 </div>
                 </div>
@@ -567,18 +559,18 @@
                 <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>
                     <div class="tax-pay-guide-banner-text">
                         <strong id="taxPayGuideBannerTitle">记录已生成</strong>
-                        <span id="taxPayGuideBannerDesc">可先测算近三年大约可退税额；开通后可去水印并导出纳税证明。</span>
+                        <span id="taxPayGuideBannerDesc">开通后可去水印、完整查看详情并导出纳税证明。</span>
                     </div>
                     <div class="tax-pay-guide-banner-actions">
-                        <a class="btn btn-primary btn-sm" id="taxPayGuideBannerCta" href="refund_ad.html?from=tax_done">查看可退税额</a>
+                        <a class="btn btn-primary btn-sm" id="taxPayGuideBannerCta" href="purchase.html?from=tax_done">去开通</a>
                         <button type="button" class="tax-pay-guide-banner-dismiss" id="taxPayGuideBannerDismiss" aria-label="今日不再提示">×</button>
                     </div>
                 </div>
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
 
-            <div class="card is-open" id="taxFaqCard">
-                <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="true">
+            <div class="card" id="taxFaqCard">
+                <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="false">
                     <span>个税常见问题 FAQ</span>
                     <span class="tax-faq-toggle-icon" aria-hidden="true">▼</span>
                 </button>
@@ -1030,9 +1022,9 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260907-sz-wage"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260907-severance"></script>
-    <script defer src="/js/consult-records.js?v=20260905-list-tap"></script>
+    <script defer src="/js/consult-core.js?v=20260907-no-fillbtn"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260907-tax-ux"></script>
+    <script defer src="/js/consult-records.js?v=20260907-no-ad-divert"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {

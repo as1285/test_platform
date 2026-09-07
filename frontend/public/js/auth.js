@@ -5251,6 +5251,7 @@
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar{padding-bottom:20px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-title{margin-bottom:18px !important;}' +
           'html.app-top-safe-shell body:not(.page-shuiming) > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell body.page-consult > .header .back-link{position:static !important;top:auto !important;left:auto !important;right:auto !important;}' +
           /* Mate60 个人信息：相对定位垫高，返回钮跟标题同一行；禁止 sticky+top:52 */
           'html.app-android-huawei-mate60 body.page-personal-info > .header,' +
           'html.app-android-huawei-mate60 body.page-gerenxinxi > .header{' +
@@ -9246,7 +9247,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260907-email-sfx';
+      s.src = '/js/conversion-guide.js?v=20260907-no-sm-fill';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

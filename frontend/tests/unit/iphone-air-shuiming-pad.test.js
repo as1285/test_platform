@@ -52,6 +52,6 @@ describe('收入纳税明细切年份二次进入顶空白', () => {
     expect(shuimingResult).toContain("setProperty('margin-top', listTop + 'px', 'important')");
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('resetShuimingScrollTop();');
-    expect(shuimingResult).toContain('auth.js?v=20260907-sm-taxfill');
+    expect(shuimingResult).toContain('auth.js?v=20260907-no-sm-fill');
   });
 });

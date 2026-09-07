@@ -77,20 +77,23 @@ function monthCount(range) {
 
 describe('consult tax paste template simplify', () => {
   it('makes template generate the primary start path', () => {
+    expect(html).toContain('按模板生成');
     expect(html).toContain('按模板生成个税');
-    expect(html).toContain('上传个税截图识别');
+    expect(html).toContain('自己填公司与月薪');
     expect(html).toContain('重新填入模板');
     expect(html).toContain('清空去粘贴');
     expect(html).toContain('上传截图识别');
     expect(html).toContain('id="btnTaxStartPaste"');
+    expect(html).toContain('id="btnTaxStartManual"');
     expect(html).toContain('id="btnTaxStartScreenshot"');
     expect(html).toContain('id="taxScreenshotOcrInput"');
     expect(html.indexOf('btnTaxStartPaste')).toBeLessThan(html.indexOf('btnTaxStartExample'));
+    expect(html.indexOf('btnTaxStartManual')).toBeLessThan(html.indexOf('btnTaxStartScreenshot'));
     expect(html).toContain('生成记录');
     expect(html).not.toContain('解析引擎 v0721d');
     expect(html).not.toContain('id="taxPasteImportParseBtn"');
-    expect(html).toContain('consult-core.js?v=20260907-sz-wage');
-    expect(html).toContain('consult-batch-tax.js?v=20260907-severance');
+    expect(html).toContain('consult-core.js?v=20260907-no-fillbtn');
+    expect(html).toContain('consult-batch-tax.js?v=20260907-tax-ux');
   });
 
   it('opens with a 2023–2025 template and live preview wiring', () => {

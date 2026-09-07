@@ -367,11 +367,11 @@ function syncTaxPayGuideBanner(list) {
     var title = document.getElementById('taxPayGuideBannerTitle');
     var desc = document.getElementById('taxPayGuideBannerDesc');
     if (title) title.textContent = '已有 ' + n + ' 条税务记录';
-    if (desc) desc.textContent = '可先测算近三年大约可退税额；开通后可去水印并导出纳税证明。';
+    if (desc) desc.textContent = '开通后可去水印、完整查看详情并导出纳税证明。';
     var cta = document.getElementById('taxPayGuideBannerCta');
     if (cta) {
-        cta.setAttribute('href', 'refund_ad.html?from=tax_done');
-        cta.textContent = '查看可退税额';
+        cta.setAttribute('href', 'purchase.html?from=tax_done');
+        cta.textContent = '去开通';
         if (!cta.__bound) {
             cta.__bound = true;
             cta.addEventListener('click', function () {

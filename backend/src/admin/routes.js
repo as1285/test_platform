@@ -64,7 +64,7 @@ app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-d
 app.get(
   '/api/admin/user-data/detail',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'zaizhi-cert', 'ylbx-ps', 'ccb-flow', 'najilu-qr']),
+  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'zaizhi-cert', 'ccb-flow', 'najilu-qr']),
   h.handleAdminUserDataDetail
 );
 app.get(
@@ -96,12 +96,6 @@ app.get(
   '/api/admin/lizhi-cert/prefill',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['lizhi-cert', 'user-data']),
-  h.handleAdminUserDataDetail
-);
-app.get(
-  '/api/admin/ylbx-ps/prefill',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['ylbx-ps', 'user-data']),
   h.handleAdminUserDataDetail
 );
 app.get(
@@ -394,6 +388,12 @@ app.post(
 );
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
 app.post(
+  '/api/admin/user-activation-credit',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserActivationCredit
+);
+app.post(
   '/api/admin/user-make-permanent',
   mw.requireAdminAuth,
   mw.requireAdminMenu('users'),
@@ -617,22 +617,6 @@ app.post(
   mw.requireAdminAuth,
   mw.requireAdminMenu('users'),
   h.handleAdminUserZaizhiCertUnlock
-);
-app.post(
-  '/api/admin/ylbx-ps/edit',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('ylbx-ps'),
-  function (req, res, next) {
-    mw.adminUpload.single('file')(req, res, function (err) {
-      if (err) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(413).json({ code: 413, msg: '图片过大' });
-        }
-        return res.status(400).json({ code: 400, msg: (err && err.message) || '上传失败' });
-      }
-      return h.handleAdminYlbxPsEdit(req, res);
-    });
-  }
 );
 app.post(
   '/api/admin/ccb-flow/edit',

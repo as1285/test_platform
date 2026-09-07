@@ -63,16 +63,16 @@ mustNotHave(
   'force refund dialog markup removed'
 );
 
-mustHave(auth, ['conversion-guide.js?v=20260907-no-refund-force'], 'auth.js cache-busts conversion-guide');
+mustHave(auth, ['conversion-guide.js?v=20260907-no-sm-fill'], 'auth.js cache-busts conversion-guide');
 
 mustHave(
   guide,
   [
-    'var showInactive = inactive',
-    '去计算可退税额',
-    'track_refund_ad_inactive_promo_show'
+    '已关闭：不再向咨询页/明细页推二次退税广告入口',
+    'function maybeRecommendIncomeRefundAd',
+    '已关闭：填税后不再推荐去二次退税广告页'
   ],
-  'source conversion-guide inactive refund promo (non-home)'
+  'source conversion-guide refund ad diversion disabled'
 );
 mustNotHave(
   guide,
@@ -133,7 +133,7 @@ const containerChecks = [
   ],
   [
     '/usr/share/nginx/html/js/auth.js',
-    '20260907-no-refund-force',
+    '20260907-email-sfx',
     'container auth cache-bust'
   ],
   [
@@ -180,7 +180,7 @@ if (adHtml.includes('refundEstCard') && adHtml.includes('二次退税怎么来�
   fail('HTTP refund_ad.html serves estimate card', adHtml ? 'missing markers' : 'empty/failed');
 }
 
-const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260907-no-refund-force');
+const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260907-no-sm-fill');
 if (
   cgJs.includes('已关闭强制退税弹框') &&
   cgJs.includes('4500') &&
@@ -196,10 +196,10 @@ if (
 }
 
 const authJs = curlText('http://127.0.0.1/js/auth.js');
-if (authJs.includes('conversion-guide.js?v=20260907-no-refund-force')) {
-  ok('HTTP auth.js points at no-refund-force conversion-guide');
+if (authJs.includes('conversion-guide.js?v=20260907-no-sm-fill')) {
+  ok('HTTP auth.js points at no-sm-fill conversion-guide');
 } else {
-  fail('HTTP auth.js points at no-refund-force conversion-guide');
+  fail('HTTP auth.js points at no-sm-fill conversion-guide');
 }
 
 console.log(`[refund-est-selftest] ${passed} ok, ${failed} fail`);

@@ -25,7 +25,7 @@
 
 | 状态 | 说明 |
 |------|------|
-| **已拆出真实逻辑** | `charts`、业务工具：`sbdy-demo` / `lizhi-cert` / `ylbx-ps` / `ccb-flow` / `najilu-qr` |
+| **已拆出真实逻辑** | `charts`、业务工具：`sbdy-demo` / `lizhi-cert` / `ccb-flow` / `najilu-qr` |
 | **仍在 `admin_panel.js`** | 用户、个税维护、数据分析、激活码、设置、账号、日志、监控等 |
 | **占位模块** | `users` / `analytics` / `codes` / `settings` / `accounts` / `logs` / `monitor` / `user-data` 多为 `AdminModules[x]={ready:true}`，重逻辑仍在主文件 |
 | **已移除/未再拆** | 文档旧述「chat 已拆」不准确：当前菜单与模块中**无**独立 `chat` 页 |

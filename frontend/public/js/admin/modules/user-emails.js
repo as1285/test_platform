@@ -370,6 +370,16 @@
       return;
     }
     if (
+      poster === 'refund' ||
+      subject.indexOf('二次退税') >= 0 ||
+      content.indexOf('二次退税') >= 0 ||
+      subject.indexOf('测算约可退') >= 0 ||
+      /refund_ad\.html/i.test(link)
+    ) {
+      if (status) status.textContent = '退税邮件已停发';
+      return;
+    }
+    if (
       !confirm(
         '确认向 ' + pendingSendNames.length + ' 人发送邮件「' + subject.slice(0, 40) + '」？'
       )

@@ -2528,7 +2528,7 @@ function setBatchTaxCardCollapsed(collapsed) {
     }
 }
 
-/** C 端有三入口；管理端 / 旧 DOM 无 #taxStartChooser，须始终可操作表单 */
+/** C 端有起步选择器；管理端 / 旧 DOM 无 #taxStartChooser，须始终可操作表单 */
 function hasTaxStartChooser() {
     return !!document.getElementById('taxStartChooser');
 }
@@ -2548,10 +2548,10 @@ function showBatchTaxManualForm(opts) {
     }
 }
 
-/** 显示税务起步三入口（有 #taxStartChooser 时）。 */
+/** 显示税务起步选择器（有 #taxStartChooser 时）。 */
 function showTaxStartChooser(opts) {
     opts = opts || {};
-    /* 管理端等无三入口 DOM：禁止藏表单 */
+    /* 管理端等无选择器 DOM：禁止藏表单 */
     if (!hasTaxStartChooser()) {
         showBatchTaxManualForm({ scroll: opts.scroll === true ? true : false });
         return;

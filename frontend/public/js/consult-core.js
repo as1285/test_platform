@@ -543,56 +543,6 @@ function updateProfileForm(user) {
     applyConsultTestRestrictions(user);
 }
 
-var MINE_FILL_DATA_BTN_KEY = 'cg_mine_fill_data_btn';
-var MINE_FILL_DATA_OFF_CLASS = 'cg-mine-fill-data-off';
-
-function isMineFillDataBtnOn() {
-    if (window.ConversionGuide && typeof window.ConversionGuide.isMineFillDataBtnOn === 'function') {
-        return window.ConversionGuide.isMineFillDataBtnOn();
-    }
-    try {
-        return localStorage.getItem(MINE_FILL_DATA_BTN_KEY) !== '0';
-    } catch (e) {
-        return true;
-    }
-}
-
-function setMineFillDataBtn(on) {
-    if (window.ConversionGuide && typeof window.ConversionGuide.setMineFillDataBtn === 'function') {
-        window.ConversionGuide.setMineFillDataBtn(on);
-        return;
-    }
-    try {
-        if (on) localStorage.removeItem(MINE_FILL_DATA_BTN_KEY);
-        else localStorage.setItem(MINE_FILL_DATA_BTN_KEY, '0');
-    } catch (e) {}
-    document.documentElement.classList.toggle(MINE_FILL_DATA_OFF_CLASS, !on);
-    try {
-        window.dispatchEvent(new CustomEvent('cgMineFillDataBtnChange', { detail: { on: !!on } }));
-    } catch (e2) {}
-}
-
-function syncConsultFillEntryToggle() {
-    var btn = document.getElementById('consultFillEntryToggle');
-    if (!btn) return;
-    var on = isMineFillDataBtnOn();
-    btn.textContent = on ? '隐藏填写' : '显示填写';
-    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    btn.setAttribute('aria-label', on ? '隐藏我的页填写数据按钮' : '显示我的页填写数据按钮');
-}
-
-function initConsultFillEntryToggle() {
-    var btn = document.getElementById('consultFillEntryToggle');
-    if (!btn || btn.getAttribute('data-fill-entry-bound') === '1') return;
-    btn.setAttribute('data-fill-entry-bound', '1');
-    syncConsultFillEntryToggle();
-    btn.addEventListener('click', function () {
-        setMineFillDataBtn(!isMineFillDataBtnOn());
-        syncConsultFillEntryToggle();
-    });
-    window.addEventListener('cgMineFillDataBtnChange', syncConsultFillEntryToggle);
-}
-
 /**
  * 首屏头：同步所属期、证明价、本地开通入口；延迟拉用户。
  * 副作用：定时 loadUserInfoFromApi。
@@ -602,7 +552,6 @@ function initHeader() {
         var name = localStorage.getItem('real_name') || '杰瑞';
         document.title = '个人中心 - ' + name;
 
-        initConsultFillEntryToggle();
         initBelongingPeriodSync();
         initTaxReportedManualEditTracking();
         /* 本地激活态先亮支付入口，接口返回后再校正文案 */
@@ -1409,7 +1358,7 @@ function applyTaxFaqFilters() {
     if (emptyEl) emptyEl.hidden = shown > 0;
 }
 
-/** 初始化 FAQ 卡（默认展开）并绑定搜索/芯片。 */
+/** 初始化 FAQ 卡（默认收起）并绑定搜索/芯片。 */
 function initTaxFaqCard() {
     var card = document.getElementById('taxFaqCard');
     var toggle = document.getElementById('taxFaqToggle');
@@ -1421,10 +1370,8 @@ function initTaxFaqCard() {
             toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
     }
-    if (!card.classList.contains('is-open')) {
-        card.classList.add('is-open');
-        if (toggle) toggle.setAttribute('aria-expanded', 'true');
-    }
+    card.classList.remove('is-open');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
     if (card.__faqFilterBound) {
         applyTaxFaqFilters();
         return;

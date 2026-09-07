@@ -13,8 +13,8 @@ const shuimingHtml = readFileSync(
 const consultHtml = readFileSync(resolve(__dirname, '../../consult.html'), 'utf8');
 const consultCss = readFileSync(resolve(__dirname, '../../css/consult.css'), 'utf8');
 
-describe('income ≥150k refund ad browse recommend', () => {
-  it('wires soft recommend dialog and income hit helpers in conversion-guide', () => {
+describe('income ≥150k refund ad browse recommend disabled', () => {
+  it('keeps helpers but disables soft recommend dialog diversion', () => {
     expect(guideSrc).toContain('REFUND_AD_INCOME_RECOMMEND_KEY');
     expect(guideSrc).toContain('REFUND_AD_INCOME_RECOMMEND_SHOW_DAY_KEY');
     expect(guideSrc).toContain('REFUND_AD_WECHAT_COPIED_KEY');
@@ -24,20 +24,16 @@ describe('income ≥150k refund ad browse recommend', () => {
     expect(guideSrc).toContain('function maybeRecommendIncomeRefundAd');
     expect(guideSrc).toContain('function showIncomeRefundAdRecommendDialog');
     expect(guideSrc).toContain('function syncShuimingIncomeBrowseCard');
-    expect(guideSrc).toContain('去广告页看看');
-    expect(guideSrc).toContain('track_refund_ad_income_recommend_show');
-    expect(guideSrc).toContain('track_refund_ad_income_recommend_click');
-    expect(guideSrc).toContain('track_refund_ad_income_recommend_dismiss');
+    expect(guideSrc).toContain('已关闭：填税后不再推荐去二次退税广告页');
+    expect(guideSrc).not.toContain('去广告页看看');
     expect(guideSrc).toContain('REFUND_AD_MIN_YEAR_INCOME = 150000');
   });
 
-  it('shows consult browse card for active high-income users (moved from shuiming)', () => {
+  it('keeps consult/shuiming markup dormant for refund browse cards', () => {
     expect(consultHtml).toContain('id="consultRefundAdEntry"');
     expect(consultHtml).toContain('id="consultRefundAdTitle"');
     expect(consultCss).toContain('is-income-browse');
-    expect(consultCss).toContain('#0f766e');
-    expect(guideSrc).toContain("source: 'consult_card'");
-    expect(guideSrc).toContain('年收入已超 15 万');
+    expect(guideSrc).toContain("['consultRefundAdEntry', 'consultRefundAdProductEntry']");
     expect(guideSrc).toMatch(/syncShuimingIncomeBrowseCard[\s\S]*card\.hidden = true/);
     expect(shuimingHtml).toContain('id="smRefundBrowseCard"');
     expect(shuimingHtml).toContain('syncRefundAdRecommendCards');

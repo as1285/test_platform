@@ -806,7 +806,7 @@
         var loginRecentLimit = 20;
         var userLoginPage = 1;
         var userLoginLimit = 20;
-        var currentAdminProfile = { username: '', full_name: '', is_super: false, menus: [] };
+        var currentAdminProfile = { username: '', full_name: '', is_super: false, is_root_admin: false, menus: [] };
         var adminMenuKeyList = [];
         var adminMenuDefsList = [];
         var userDataPage = 1;
@@ -834,6 +834,30 @@
                 if (next === 'peer') loadPeerAccounts();
                 else loadRenameTaxDaily();
             }
+        }
+
+        function canViewActivationCredit() {
+            if (currentAdminProfile && currentAdminProfile.is_root_admin) return true;
+            var name =
+                currentAdminProfile && currentAdminProfile.username
+                    ? String(currentAdminProfile.username).trim().toLowerCase()
+                    : '';
+            return name === 'admin';
+        }
+
+        function syncActivationCreditVisibility() {
+            var show = canViewActivationCredit();
+            document.querySelectorAll('.users-registry-table').forEach(function (table) {
+                table.classList.toggle('show-activation-credit', show);
+            });
+            var wrap = document.getElementById('userActivateCreditWrap');
+            if (wrap) {
+                if (show) wrap.removeAttribute('hidden');
+                else wrap.setAttribute('hidden', '');
+            }
+            document.querySelectorAll('.user-activate-credit-hint').forEach(function (el) {
+                el.hidden = !show;
+            });
         }
 
         function adminHasMenu(menuKey) {
@@ -969,6 +993,7 @@
                     username: parsed.username ? String(parsed.username) : '',
                     full_name: parsed.full_name ? String(parsed.full_name) : '',
                     is_super: !!parsed.is_super,
+                    is_root_admin: !!parsed.is_root_admin,
                     menus: sanitizeAdminMenus(parsed.menus)
                 };
             } catch (e) {}
@@ -1017,6 +1042,7 @@
                     codesHint.textContent = '';
                 }
             }
+            syncActivationCreditVisibility();
             var codeListStat = document.getElementById('codeListStat');
             if (codeListStat) {
                 codeListStat.style.display =
@@ -1383,9 +1409,6 @@
             }
             if (pageKey === 'zaizhi-cert') {
                 callAdminModuleLoadPage('zaizhi-cert');
-            }
-            if (pageKey === 'ylbx-ps') {
-                callAdminModuleLoadPage('ylbx-ps');
             }
             if (pageKey === 'ccb-flow') {
                 callAdminModuleLoadPage('ccb-flow');
@@ -2196,9 +2219,12 @@
                             productRows.push([
                                 '管理员激活（' +
                                     (row.admin_username || '—') +
-                                    ' · ¥' +
-                                    (row.unit_amount != null ? row.unit_amount : 0) +
-                                    '/单' +
+                                    ' · ' +
+                                    (row.use_user_amount
+                                        ? '按填写金额'
+                                        : '¥' +
+                                          (row.unit_amount != null ? row.unit_amount : 0) +
+                                          '/单') +
                                     labelNote +
                                     '）',
                                 row.orders || 0,
@@ -5107,6 +5133,63 @@
             userActivateTarget = null;
         }
 
+        function displayUserActivationAmount(u) {
+            if (u && u.activation_credit_amount != null && u.activation_credit_amount !== '') {
+                return String(u.activation_credit_amount);
+            }
+            if (u && u.paid_activation_amount != null && Number(u.paid_activation_amount) > 0) {
+                return String(u.paid_activation_amount);
+            }
+            return '';
+        }
+
+        function saveUserActivationCredit(username, inputEl) {
+            if (!canViewActivationCredit()) return;
+            var name = String(username || '').trim();
+            if (!name) return;
+            var input =
+                inputEl ||
+                document.querySelector('.user-credit-amt-input[data-u="' + name + '"]');
+            var raw = input ? String(input.value || '').trim() : '';
+            if (input) {
+                if (input.getAttribute('data-saving') === '1') return;
+                input.setAttribute('data-saving', '1');
+                input.disabled = true;
+            }
+            adminFetch('api/admin/user-activation-credit', {
+                method: 'POST',
+                body: JSON.stringify({ username: name, credit_amount: raw })
+            })
+                .then(function (r) {
+                    return (window.adminParseJson || function (res) {
+                        return res.json();
+                    })(r);
+                })
+                .then(function (d) {
+                    if (d && d.code === 200) {
+                        if (input && d.data && d.data.activation_credit_amount != null) {
+                            input.value = String(d.data.activation_credit_amount);
+                        } else if (input && raw === '') {
+                            input.value = '';
+                        }
+                        return;
+                    }
+                    alert((d && d.msg) || '保存失败');
+                })
+                .catch(function () {
+                    alert('网络错误');
+                })
+                .then(function () {
+                    if (input) {
+                        input.removeAttribute('data-saving');
+                        input.disabled = false;
+                        try {
+                            input.focus();
+                        } catch (eFocus) {}
+                    }
+                });
+        }
+
         function openUserActivateModal(username, opts) {
             userActivateTarget = username;
             var metaEl = document.getElementById('userActivateMeta');
@@ -5123,6 +5206,10 @@
             if (daysEl) daysEl.value = '7';
             if (hoursEl) hoursEl.value = '0';
             if (minutesEl) minutesEl.value = '0';
+            var creditEl = document.getElementById('userActivateCreditAmount');
+            if (creditEl) {
+                creditEl.value = opts && opts.amount != null ? String(opts.amount) : '';
+            }
             syncUserActivateCustomWrap();
             var bd = document.getElementById('userActivateBackdrop');
             if (bd) {
@@ -5182,6 +5269,10 @@
                 body.grant_days = grant.grant_days;
                 body.grant_hours = grant.grant_hours;
                 body.grant_minutes = grant.grant_minutes;
+            }
+            var creditEl = document.getElementById('userActivateCreditAmount');
+            if (canViewActivationCredit() && creditEl && String(creditEl.value || '').trim() !== '') {
+                body.credit_amount = creditEl.value;
             }
             adminFetch('api/admin/user-activate', {
                 method: 'POST',
@@ -5505,6 +5596,7 @@
 
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
+            syncActivationCreditVisibility();
             if (p != null) userPage = p;
             
             var username = document.getElementById('filterUsername').value.trim();
@@ -5706,6 +5798,8 @@
                                 esc(u.username) +
                                 '" data-expired="' +
                                 (isExpired ? '1' : '0') +
+                                '" data-amt="' +
+                                esc(displayUserActivationAmount(u)) +
                                 '" title="' +
                                 (isExpired
                                     ? '试用已过期，重新选择时长开通（与未激活相同）'
@@ -5889,6 +5983,15 @@
                             esc(pwdText === '—' || pwdText.indexOf('未记录') >= 0 ? '' : pwdText) +
                             '" title="修改密码">修改</button></td>';
                         html += '<td>' + act + '</td>';
+                        var creditVal = displayUserActivationAmount(u);
+                        html +=
+                            '<td class="col-w-140 col-activation-credit"><div class="user-credit-amt-wrap">' +
+                            '<input type="number" class="user-credit-amt-input" min="0" max="99999" step="0.01" inputmode="decimal" data-u="' +
+                            esc(u.username) +
+                            '" value="' +
+                            esc(creditVal) +
+                            '" placeholder="填金额" title="填好后按回车保存；线上已付会带出实收，admin 手动开通按此计入支付分析">' +
+                            '</div></td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
@@ -5896,10 +5999,10 @@
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html += '<td colspan="11"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="12"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="11">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="12">暂无数据</td></tr>';
                     highlightPendingUserRow();
 
                     // 重新绑定事件
@@ -5914,9 +6017,18 @@
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
                         btn.onclick = function () {
                             openUserActivateModal(btn.getAttribute('data-u'), {
-                                expired: btn.getAttribute('data-expired') === '1'
+                                expired: btn.getAttribute('data-expired') === '1',
+                                amount: btn.getAttribute('data-amt') || ''
                             });
                         };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.user-credit-amt-input').forEach(function (input) {
+                        input.addEventListener('keydown', function (ev) {
+                            var key = ev && (ev.key || ev.keyCode);
+                            if (key !== 'Enter' && key !== 13) return;
+                            ev.preventDefault();
+                            saveUserActivationCredit(input.getAttribute('data-u'), input);
+                        });
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-make-permanent').forEach(function (btn) {
                         btn.onclick = function () {
@@ -6959,7 +7071,6 @@
             'gjj-demo': '公积金演示',
             'lizhi-cert': '证明工具',
             'zaizhi-cert': '在职证明',
-            'ylbx-ps': '社保图片PS',
             'ccb-flow': '工资流水',
             'najilu-qr': '完税二维码',
             'blocked-ips': 'IP 黑名单'
@@ -10274,6 +10385,7 @@
                 username: a.username ? String(a.username) : '',
                 full_name: a.full_name ? String(a.full_name) : '',
                 is_super: !!a.is_super,
+                is_root_admin: !!a.is_root_admin,
                 menus: sanitizeAdminMenus(a.menus)
             };
             if (window.AdminNav && typeof AdminNav.applyAdminIdentity === 'function') {
@@ -10394,6 +10506,7 @@
         }
         window.applyAdminRoute = applyAdminRoute;
         window.goAdminPage = goAdminPage;
+        window.jumpToRegisteredUser = jumpToRegisteredUser;
         window.addEventListener('hashchange', function () {
             applyAdminRoute();
         });

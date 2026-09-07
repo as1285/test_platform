@@ -12,7 +12,6 @@ const sbdyDemoUser = require('./user/sbdyDemoUser');
 const shebaoPhoto = require('./user/shebaoPhoto');
 const taxScreenshotOcr = require('./tax/screenshotOcr');
 const compatFeedback = require('./user/compatFeedback');
-const ylbxPs = require('./admin/ylbxPs');
 const ccbFlow = require('./admin/ccbFlow');
 const najiluQr = require('./admin/najiluQr');
 const deviceStats = require('./admin/deviceStats');
@@ -49,7 +48,6 @@ function buildApp() {
       shebaoPhoto.getHandlers(),
       taxScreenshotOcr.getHandlers(),
       compatFeedback.getHandlers(),
-      ylbxPs.getHandlers(),
       ccbFlow.getHandlers(),
       najiluQr.getHandlers(),
       deviceStats.getHandlers(),

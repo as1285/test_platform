@@ -642,7 +642,7 @@ const ACTIVATION_INBOX_PROMO_INTERVAL_MS = parseInt(
   process.env.ACTIVATION_INBOX_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
   10
 );
-/** 核心推广：未激活用户站内信 + 已留邮箱发二次退税邮件。设 REFUND_AD_PROMO_ENABLED=0 可关 */
+/** 核心推广：未激活用户站内信。退税邮件已停发。设 REFUND_AD_PROMO_ENABLED=0 可关站内信。 */
 const REFUND_AD_PROMO_ENABLED =
   String(process.env.REFUND_AD_PROMO_ENABLED != null ? process.env.REFUND_AD_PROMO_ENABLED : '1').trim() !==
   '0';
@@ -3332,6 +3332,16 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_credit_amount DECIMAL(10,2) NULL COMMENT '管理端填写的激活收款金额，admin 非支付宝开通按此计入支付分析'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   var guestMergeUserCols = [
     "ALTER TABLE users ADD COLUMN guest_merged_to VARCHAR(255) NULL COMMENT '游客账号合并到的正式账号'",
     "ALTER TABLE users ADD COLUMN merged_from_guest VARCHAR(255) NULL COMMENT '正式账号来源的游客账号'",
@@ -3918,11 +3928,13 @@ async function createTables() {
     `DELETE FROM admin_account_menus WHERE menu_key = 'weekly-codes'`
   );
 
+  await conn.execute(`DELETE FROM admin_account_menus WHERE menu_key = 'ylbx-ps'`);
+
   /* 工资流水：已有证明工具权限的账号自动开通 */
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT DISTINCT admin_id, 'ccb-flow' FROM admin_account_menus
-     WHERE menu_key IN ('ylbx-ps', 'lizhi-cert', 'zaizhi-cert', 'sbdy-demo', 'najilu-qr')`
+     WHERE menu_key IN ('lizhi-cert', 'zaizhi-cert', 'sbdy-demo', 'najilu-qr')`
   );
 
   /* 在职证明：已有离职证明权限的账号自动开通 */
@@ -17598,42 +17610,7 @@ async function runRefundAdPromo(reason) {
           (inbox && inbox.matched != null ? inbox.matched : 0)
       );
     }
-    var mailer = getUserEmailBulk();
-    if (mailer && mail.isMailConfigured && mail.isMailConfigured()) {
-      var email = await mailer.sendBulk({
-        audience: 'has_email_inactive',
-        campaign: 'refund_ad_amount',
-        personalizeRefundAmount: true,
-        skipHours: REFUND_AD_EMAIL_SKIP_HOURS,
-        poster: 'refund',
-        dryRun: false,
-        skipAlreadySent: true,
-        allowPartial: true
-      });
-      if (email && (email.sent > 0 || email.skipped > 0 || email.failed > 0)) {
-        console.log(
-          '[refund-ad-promo] email ' +
-            reason +
-            ' sent=' +
-            email.sent +
-            ' failed=' +
-            (email.failed || 0) +
-            ' skipped=' +
-            (email.skipped || 0) +
-            ' matched=' +
-            email.matched
-        );
-      } else {
-        console.log(
-          '[refund-ad-promo] email ' +
-            reason +
-            ' sent=0 matched=' +
-            (email && email.matched != null ? email.matched : 0)
-        );
-      }
-    } else {
-      console.log('[refund-ad-promo] email skipped (SMTP 未配置)');
-    }
+    console.log('[refund-ad-promo] email skipped (退税邮件已停发)');
     return { inbox: inbox };
   } catch (e) {
     console.error('[refund-ad-promo] failed', e);
@@ -17658,9 +17635,7 @@ function scheduleRefundAdPromo() {
   console.log(
     '[refund-ad-promo] scheduled interval_ms=' +
       intervalMs +
-      ' (未激活站内信；已留邮箱每 ' +
-      REFUND_AD_EMAIL_SKIP_HOURS +
-      'h 发可退税额邮件)'
+      ' (未激活站内信；退税邮件已停发)'
   );
 }
 /** 注册时段分布 */
@@ -18222,6 +18197,7 @@ async function handleAdminRegisterChannelStats(req, res) {
 /** 管理端用户列表 */
 async function handleAdminUsers(req, res) {
   try {
+    var canViewActivationCredit = isRootAdminAccount(req.admin);
     var page = parseInt(req.query.page, 10) || 1;
     var limit = parseInt(req.query.limit, 10) || 10;
     if (page < 1) page = 1;
@@ -18405,7 +18381,7 @@ async function handleAdminUsers(req, res) {
              zaizhi_cert_unlocked,
              is_agent,
              last_login_city, created_at, hash, plain_password, register_source_channel,
-             activation_source_channel, activation_kind, active_until,
+             activation_source_channel, activation_kind, active_until, activation_credit_amount,
              user_type, sales_promo_channel, invited_by,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
@@ -18442,6 +18418,7 @@ async function handleAdminUsers(req, res) {
     var lastLoginAtMap = {};
     var loggedInTodaySet = Object.create(null);
     var maxMonthIncomeMap = {};
+    var paidActivationAmountMap = {};
     if (usernamesForRisk.length) {
       var nameChangePlaceholders = usernamesForRisk
         .map(function () {
@@ -18546,6 +18523,30 @@ async function handleAdminUsers(req, res) {
       } catch (eIncome) {
         /* 收入汇总失败时列表仍返回 */
       }
+      if (canViewActivationCredit) {
+        try {
+          const [paidAmtRows] = await conn.query(
+            `SELECT username, ROUND(COALESCE(SUM(amount), 0), 2) AS paid_activation_amount
+             FROM payment_orders
+             WHERE status = 'paid'
+               AND username IN (` +
+              nameChangePlaceholders +
+              `)
+               AND (grant_kind IS NULL OR grant_kind IN ('trial', 'permanent', ''))
+               AND (sku_id IS NULL OR (sku_id NOT LIKE 'sku_rename%' AND sku_id NOT LIKE 'sku_lizhi%' AND sku_id NOT LIKE 'sku_zaizhi%' AND sku_id NOT LIKE 'sku_najilu%' AND sku_id NOT LIKE 'sku_tax_edit%' AND sku_id NOT LIKE 'sku_sbdy%'))
+             GROUP BY username`,
+            usernamesForRisk
+          );
+          (paidAmtRows || []).forEach(function (row) {
+            var n = Number(row.paid_activation_amount);
+            if (isFinite(n) && n > 0) {
+              paidActivationAmountMap[String(row.username || '')] = Math.round(n * 100) / 100;
+            }
+          });
+        } catch (ePaidAmt) {
+          /* 支付表异常时列表仍返回，激活金额仅显示手填值 */
+        }
+      }
     }
     conn.release();
 
@@ -18582,6 +18583,17 @@ async function handleAdminUsers(req, res) {
           days_gt: peerFeeCfg.days_gt
         }),
         tax_id: r.tax_id,
+        activation_credit_amount: canViewActivationCredit
+          ? (function () {
+              if (r.activation_credit_amount == null || r.activation_credit_amount === '') return null;
+              var n = Number(r.activation_credit_amount);
+              return isFinite(n) ? Math.round(n * 100) / 100 : null;
+            })()
+          : null,
+        paid_activation_amount:
+          canViewActivationCredit && paidActivationAmountMap[uname] != null
+            ? paidActivationAmountMap[uname]
+            : null,
         account_active: r.account_active === 1 || r.account_active === true,
         activation_kind:
           r.activation_kind != null && String(r.activation_kind).trim() !== ''
@@ -20032,6 +20044,15 @@ async function handleAdminUserActivate(req, res) {
         ['admin_manual', target]
       );
     }
+    var creditAmt = isRootAdminAccount(req.admin)
+      ? parseActivationCreditAmount(body.credit_amount)
+      : null;
+    if (creditAmt !== null && !isNaN(creditAmt)) {
+      await conn.execute('UPDATE users SET activation_credit_amount = ? WHERE username = ?', [
+        creditAmt,
+        target
+      ]);
+    }
     await conn.commit();
     conn.release();
     invalidateUserAuthCache(target);
@@ -20065,6 +20086,56 @@ async function handleAdminUserActivate(req, res) {
       conn.release();
     } catch (e3) {}
     return res.status(400).json({ code: 400, msg: e.message || String(e) });
+  }
+}
+
+/** 管理端：保存注册用户列表上的激活收款金额（支付分析 admin 非支付宝按此加总） */
+async function handleAdminUserActivationCredit(req, res) {
+  if (!isRootAdminAccount(req.admin)) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 可查看或保存激活金额' });
+  }
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  var raw = body.credit_amount != null ? body.credit_amount : body.amount;
+  var clear = raw == null || String(raw).trim() === '';
+  var creditAmt = clear ? null : parseActivationCreditAmount(raw);
+  if (!clear && (creditAmt == null || isNaN(creditAmt))) {
+    return res.status(400).json({ code: 400, msg: '请填写 0～99999 的激活金额' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute('UPDATE users SET activation_credit_amount = ? WHERE username = ?', [
+      creditAmt,
+      canonicalUsername
+    ]);
+    return res.json({
+      code: 200,
+      data: { username: canonicalUsername, activation_credit_amount: creditAmt },
+      msg: '已保存激活金额'
+    });
+  } catch (e) {
+    console.error('admin user activation credit', e);
+    return res.status(500).json({ code: 500, msg: '保存激活金额失败' });
+  } finally {
+    conn.release();
   }
 }
 
@@ -22810,17 +22881,35 @@ function purchasePageTrackEventLabel(eventKey) {
   return labels[eventKey] || eventKey;
 }
 
-/** 支付分析：指定管理员名下激活码开通，按固定单价计入 GMV */
+function isRootAdminAccount(admin) {
+  var name = admin && admin.username != null ? String(admin.username).trim().toLowerCase() : '';
+  if (!name) return false;
+  var root = String(ADMIN_PANEL_USER || 'admin').trim().toLowerCase() || 'admin';
+  return name === root;
+}
+
+function parseActivationCreditAmount(raw) {
+  if (raw == null) return null;
+  var s = String(raw).trim();
+  if (s === '') return null;
+  var n = Number(s);
+  if (!isFinite(n) || n < 0) return NaN;
+  if (n > 99999) n = 99999;
+  return Math.round(n * 100) / 100;
+}
+
+/** 支付分析：指定管理员名下激活码开通计入 GMV；admin 按用户列表填写金额加总 */
 function purchaseAnalyticsAdminActivationCreditRules() {
   var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
   return [
-    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '' },
-    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '' },
+    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '', use_user_amount: false },
+    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '', use_user_amount: false },
     {
       admin_username: rootAdmin,
-      unit_amount: 100,
+      unit_amount: null,
       exclude_alipay: true,
-      label_note: '非支付宝'
+      label_note: '非支付宝',
+      use_user_amount: true
     }
   ];
 }
@@ -22830,6 +22919,7 @@ function purchaseAnalyticsAdminActivationCreditList() {
     return {
       admin_username: rule.admin_username,
       unit_amount: rule.unit_amount,
+      use_user_amount: !!rule.use_user_amount,
       label_note: rule.label_note || ''
     };
   });
@@ -22841,6 +22931,7 @@ function emptyPurchaseAnalyticsAdminActivationCredit() {
       return {
         admin_username: row.admin_username,
         unit_amount: row.unit_amount,
+        use_user_amount: !!row.use_user_amount,
         label_note: row.label_note || '',
         orders: 0,
         gmv: 0
@@ -22890,22 +22981,31 @@ async function queryPurchaseAnalyticsAdminActivationCredits(conn, period) {
         userActivationStatsEligibleSql('u.username');
       var baseParams = ownerFilter.params.concat(actPf.params);
 
-      const [summaryRows] = await conn.execute(
-        'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+      var summarySql = rule.use_user_amount
+        ? 'SELECT COUNT(*) AS cnt, COALESCE(SUM(amt), 0) AS gmv FROM (' +
+          'SELECT u.username, MAX(COALESCE(u.activation_credit_amount, 0)) AS amt' +
           ' FROM activation_codes ac' +
           ' INNER JOIN users u ON u.username = ac.used_by_username' +
           ' WHERE ' +
-          baseWhere,
-        baseParams
-      );
+          baseWhere +
+          ' GROUP BY u.username) t'
+        : 'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere;
+      const [summaryRows] = await conn.execute(summarySql, baseParams);
       var orders = Number((summaryRows[0] || {}).cnt) || 0;
       if (orders > 0) {
-        var gmv = Math.round(orders * rule.unit_amount * 100) / 100;
+        var gmv = rule.use_user_amount
+          ? Math.round(Number((summaryRows[0] || {}).gmv || 0) * 100) / 100
+          : Math.round(orders * Number(rule.unit_amount || 0) * 100) / 100;
         var summaryRow = byAdminMap[rule.admin_username];
         if (!summaryRow) {
           summaryRow = {
             admin_username: rule.admin_username,
             unit_amount: rule.unit_amount,
+            use_user_amount: !!rule.use_user_amount,
             label_note: rule.label_note || '',
             orders: 0,
             gmv: 0
@@ -22919,8 +23019,17 @@ async function queryPurchaseAnalyticsAdminActivationCredits(conn, period) {
         out.total_gmv += gmv;
       }
 
-      const [dailyRows] = await conn.execute(
-        'SELECT ' +
+      var dailySql = rule.use_user_amount
+        ? 'SELECT d, COUNT(*) AS cnt, COALESCE(SUM(amt), 0) AS gmv FROM (' +
+          'SELECT ' +
+          cnActDay +
+          ' AS d, u.username, MAX(COALESCE(u.activation_credit_amount, 0)) AS amt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY d, u.username) t GROUP BY d ORDER BY d DESC'
+        : 'SELECT ' +
           cnActDay +
           ' AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
           ' FROM activation_codes ac' +
@@ -22929,9 +23038,8 @@ async function queryPurchaseAnalyticsAdminActivationCredits(conn, period) {
           baseWhere +
           ' GROUP BY ' +
           cnActDay +
-          ' ORDER BY d DESC',
-        baseParams
-      );
+          ' ORDER BY d DESC';
+      const [dailyRows] = await conn.execute(dailySql, baseParams);
       (dailyRows || []).forEach(function (r) {
         var dk = formatDateKey(r.d);
         var dayOrders = Number(r.cnt) || 0;
@@ -22943,12 +23051,15 @@ async function queryPurchaseAnalyticsAdminActivationCredits(conn, period) {
             by_admin: {}
           };
         }
-        var dayGmv = Math.round(dayOrders * rule.unit_amount * 100) / 100;
+        var dayGmv = rule.use_user_amount
+          ? Math.round(Number(r.gmv || 0) * 100) / 100
+          : Math.round(dayOrders * Number(rule.unit_amount || 0) * 100) / 100;
         dailyMap[dk].admin_activation_orders += dayOrders;
         dailyMap[dk].admin_activation_gmv += dayGmv;
         dailyMap[dk].by_admin[rule.admin_username] = {
           admin_username: rule.admin_username,
           unit_amount: rule.unit_amount,
+          use_user_amount: !!rule.use_user_amount,
           label_note: rule.label_note || '',
           orders: dayOrders,
           gmv: dayGmv
@@ -24631,6 +24742,7 @@ function getHandlers() {
     handleAdminAgentChannelsDelete,
     handleAdminCodes,
     handleAdminUserActivate,
+    handleAdminUserActivationCredit,
     handleAdminUserMakePermanent,
     handleAdminUserDeactivate,
     handleAdminUserPriceOfferGet,

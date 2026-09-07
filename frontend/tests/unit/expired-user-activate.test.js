@@ -21,7 +21,7 @@ describe('已过期账号与未激活同一套激活', () => {
 
   it('说明与缓存版本已更新', () => {
     expect(html).toContain('已过期账号操作列与未激活相同');
-    expect(html).toContain('admin_panel.js?v=20260907-deact-note');
+    expect(html).toContain('admin_panel.js?v=20260907-amt-enter');
   });
 
   it('注册用户激活状态筛选含已过期', () => {

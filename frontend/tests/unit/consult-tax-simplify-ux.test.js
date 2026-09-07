@@ -22,14 +22,15 @@ describe('consult 税务记录 batch generate: simplified period + action hierar
     expect(html).toContain('batch-ym-hidden-fields');
   });
 
-  it('promotes 按模板生成 as the prominent secondary path and demotes 示例填写', () => {
+  it('promotes 按模板生成 as the prominent secondary path and demotes 示例填写 into 更多', () => {
     const toolbarStart = html.indexOf('id="batchTaxToolbar"');
     expect(toolbarStart).toBeGreaterThan(-1);
-    const toolbarChunk = html.slice(toolbarStart, toolbarStart + 1500);
+    const toolbarChunk = html.slice(toolbarStart, toolbarStart + 1800);
     expect(toolbarChunk).toContain('batch-tax-toolbar-primary');
     expect(toolbarChunk).toContain('id="btnBatchTaxPasteImport"');
-    expect(toolbarChunk).toContain('batch-tax-toolbar-quiet');
+    expect(toolbarChunk).toContain('id="btnBatchTaxMore"');
     expect(toolbarChunk).toContain('id="btnBatchTaxExample"');
+    expect(toolbarChunk).not.toContain('batch-tax-toolbar-quiet');
     // 按模板生成 must appear before 示例填写 in DOM order (primary path first)
     expect(toolbarChunk.indexOf('btnBatchTaxPasteImport')).toBeLessThan(
       toolbarChunk.indexOf('btnBatchTaxExample')
@@ -50,21 +51,44 @@ describe('consult 税务记录 batch generate: simplified period + action hierar
     expect(cardChunk).toContain('id="taxRecordsManageHint"');
   });
 
-  it('keeps the 3-step progress stepper with copy matching the simplified flow', () => {
-    expect(html).toContain('id="taxFlowSteps"');
-    expect(html).toContain('tax-flow-step is-current');
-    expect(html).toContain('填资料');
-    expect(html).toContain('>生成<');
-    expect(html).toContain('核对');
+  it('drops the 3-step progress stepper from the tax fill first screen', () => {
+    expect(html).not.toContain('id="taxFlowSteps"');
+  });
+
+  it('uses dual primary start paths and demotes screenshot/example', () => {
+    const chooserStart = html.indexOf('id="taxStartChooser"');
+    expect(chooserStart).toBeGreaterThan(-1);
+    const chooserChunk = html.slice(chooserStart, chooserStart + 1200);
+    expect(chooserChunk).toContain('id="btnTaxStartPaste"');
+    expect(chooserChunk).toContain('id="btnTaxStartManual"');
+    expect(chooserChunk).toContain('按模板生成');
+    expect(chooserChunk).toContain('自己填公司与月薪');
+    expect(chooserChunk).toContain('tax-start-chooser-more');
+    expect(chooserChunk).toContain('id="btnTaxStartScreenshot"');
+    expect(chooserChunk).toContain('id="btnTaxStartExample"');
+    expect(chooserChunk.indexOf('btnTaxStartPaste')).toBeLessThan(
+      chooserChunk.indexOf('btnTaxStartScreenshot')
+    );
+    expect(chooserChunk.indexOf('btnTaxStartManual')).toBeLessThan(
+      chooserChunk.indexOf('btnTaxStartScreenshot')
+    );
+  });
+
+  it('keeps FAQ default-collapsed below the record list', () => {
+    const list = html.indexOf('id="taxRecordsListCard"');
+    const faq = html.indexOf('id="taxFaqCard"');
+    expect(list).toBeGreaterThan(-1);
+    expect(faq).toBeGreaterThan(list);
+    const faqChunk = html.slice(faq, faq + 400);
+    expect(faqChunk).not.toContain('is-open');
+    expect(faqChunk).toContain('aria-expanded="false"');
   });
 
   it('puts 二次退税咨询 below the tax fill flow and record list', () => {
-    const flow = html.indexOf('id="taxFlowSteps"');
     const batch = html.indexOf('id="batchTaxCard"');
     const list = html.indexOf('id="taxRecordsListCard"');
     const refund = html.indexOf('id="consultRefundAdEntry"');
-    expect(flow).toBeGreaterThan(-1);
-    expect(batch).toBeGreaterThan(flow);
+    expect(batch).toBeGreaterThan(-1);
     expect(list).toBeGreaterThan(batch);
     expect(refund).toBeGreaterThan(list);
   });
@@ -73,5 +97,15 @@ describe('consult 税务记录 batch generate: simplified period + action hierar
     const m = html.match(/<p class="batch-hint" id="batchTaxCardHint">([^<]*)<\/p>/);
     expect(m).toBeTruthy();
     expect(m[1].length).toBeLessThan(40);
+  });
+
+  it('moves bottom bonus-only CTAs out of the primary action row', () => {
+    const actionsStart = html.indexOf('class="batch-tax-actions"');
+    expect(actionsStart).toBeGreaterThan(-1);
+    const actionsChunk = html.slice(actionsStart, actionsStart + 500);
+    expect(actionsChunk).not.toContain('单独增加年终奖');
+    expect(actionsChunk).not.toContain('单独增加裁员补偿');
+    expect(html).toContain('batchAddYearEndBonusOnly()');
+    expect(html).toContain('batchAddSeveranceOnly()');
   });
 });

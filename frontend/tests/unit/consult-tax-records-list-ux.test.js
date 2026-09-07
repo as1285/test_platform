@@ -56,18 +56,18 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="btnTaxRecordsManage"');
     expect(html).toContain('id="taxRecordsManageHint"');
     expect(html).toContain('tax-records-manage-toolbar');
-    expect(html).toContain('consult.css?v=20260907-fill-first');
-    expect(html).toContain('consult-records.js?v=20260905-list-tap');
-    expect(html).toContain('consult-batch-tax.js?v=20260907-severance');
+    expect(html).toContain('consult.css?v=20260907-no-fillbtn');
+    expect(html).toContain('consult-records.js?v=20260907-no-ad-divert');
+    expect(html).toContain('consult-batch-tax.js?v=20260907-tax-ux');
     expect(html).toContain('id="compatBugRecordsEntry"');
     expect(html).toContain('兼容问题反馈');
-    expect(html).toContain('按模板生成个税');
-    expect(html).toContain('上传个税截图识别');
+    expect(html).toContain('按模板生成');
+    expect(html).toContain('自己填公司与月薪');
     expect(html).toContain('id="btnTaxStartScreenshot"');
     expect(html).toContain('id="batchTaxCollapseBtn"');
     expect(html).toContain('id="batch_submit_employments_btn"');
-    expect(html).toContain('id="consultFillEntryToggle"');
-    expect(html).toContain('consult-core.js?v=20260907-sz-wage');
+    expect(html).not.toContain('id="consultFillEntryToggle"');
+    expect(html).toContain('consult-core.js?v=20260907-no-fillbtn');
   });
 
   it('default cards keep month/type/company/income and drop dual primary buttons', () => {

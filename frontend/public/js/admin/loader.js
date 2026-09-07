@@ -12,15 +12,14 @@
     'gjj-demo': '/js/admin/modules/gjj-demo.js?v=20260826-deadcode',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260828-cert-survey',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260828-cert-survey',
-    'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-expense-sum',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260906-page-track',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
-    feedback: '/js/admin/modules/feedback.js?v=20260905-compat-bug',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260905-ch-psych-col',
-    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260904-smtp-stats',
-    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-halfprice'
+    feedback: '/js/admin/modules/feedback.js?v=20260907-fb-user',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260907-pay-user',
+    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260907-no-refund-mail',
+    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-no-refund-mail'
   };
 
   var PAGE_MODULE = {
@@ -32,7 +31,6 @@
     'gjj-demo': 'gjj-demo',
     'lizhi-cert': 'lizhi-cert',
     'zaizhi-cert': 'zaizhi-cert',
-    'ylbx-ps': 'ylbx-ps',
     'ccb-flow': 'ccb-flow',
     'najilu-qr': 'najilu-qr',
     'admin-accounts': 'accounts',
@@ -130,7 +128,7 @@
   function ensureTaxBatchScripts() {
     var scripts = [
       '/js/consult-core.js?v=20260907-sz-wage',
-      '/js/consult-batch-tax.js?v=20260907-severance',
+      '/js/consult-batch-tax.js?v=20260907-tax-ux',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

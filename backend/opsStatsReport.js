@@ -33,13 +33,14 @@ function adminPanelRootUser() {
 /** 管理员激活折算：与 purchaseAnalyticsAdminActivationCreditRules 对齐 */
 function adminActivationCreditRules() {
   return [
-    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '' },
-    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '' },
+    { admin_username: '18933137956', unit_amount: 100, exclude_alipay: false, label_note: '', use_user_amount: false },
+    { admin_username: '19106014552', unit_amount: 60, exclude_alipay: false, label_note: '', use_user_amount: false },
     {
       admin_username: adminPanelRootUser(),
-      unit_amount: 100,
+      unit_amount: null,
       exclude_alipay: true,
-      label_note: '非支付宝'
+      label_note: '非支付宝',
+      use_user_amount: true
     }
   ];
 }
@@ -511,6 +512,7 @@ async function collectAdminActivationCredits(conn, startYmd, endYmd) {
     return {
       admin_username: rule.admin_username,
       unit_amount: rule.unit_amount,
+      use_user_amount: !!rule.use_user_amount,
       label_note: rule.label_note || '',
       orders: 0,
       gmv: 0
@@ -547,40 +549,58 @@ async function collectAdminActivationCredits(conn, startYmd, endYmd) {
       eligible;
     var baseParams = ownerParams.concat([startYmd, endYmd]);
     try {
-      const [summaryRows] = await conn.execute(
-        'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+      var summarySql = rule.use_user_amount
+        ? 'SELECT COUNT(*) AS cnt, COALESCE(SUM(amt), 0) AS gmv FROM (' +
+          'SELECT u.username, MAX(COALESCE(u.activation_credit_amount, 0)) AS amt' +
           ' FROM activation_codes ac' +
           ' INNER JOIN users u ON u.username = ac.used_by_username' +
           ' WHERE ' +
-          baseWhere,
-        baseParams
-      );
+          baseWhere +
+          ' GROUP BY u.username) t'
+        : 'SELECT COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere;
+      const [summaryRows] = await conn.execute(summarySql, baseParams);
       var orders = Number((summaryRows[0] || {}).cnt) || 0;
       if (orders > 0) {
-        var gmv = Math.round(orders * rule.unit_amount * 100) / 100;
+        var gmv = rule.use_user_amount
+          ? Math.round(Number((summaryRows[0] || {}).gmv || 0) * 100) / 100
+          : Math.round(orders * Number(rule.unit_amount || 0) * 100) / 100;
         byAdminMap[rule.admin_username].orders = orders;
         byAdminMap[rule.admin_username].gmv = gmv;
         totalOrders += orders;
         totalGmv += gmv;
       }
 
-      const [dailyRows] = await conn.execute(
-        'SELECT ' +
+      var dailySql = rule.use_user_amount
+        ? 'SELECT d, COUNT(*) AS cnt, COALESCE(SUM(amt), 0) AS gmv FROM (' +
+          'SELECT ' +
+          cnActDay +
+          ' AS d, u.username, MAX(COALESCE(u.activation_credit_amount, 0)) AS amt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username' +
+          ' WHERE ' +
+          baseWhere +
+          ' GROUP BY d, u.username) t GROUP BY d'
+        : 'SELECT ' +
           cnActDay +
           ' AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
           ' FROM activation_codes ac' +
           ' INNER JOIN users u ON u.username = ac.used_by_username' +
           ' WHERE ' +
           baseWhere +
-          ' GROUP BY d',
-        baseParams
-      );
+          ' GROUP BY d';
+      const [dailyRows] = await conn.execute(dailySql, baseParams);
       (dailyRows || []).forEach(function (r) {
         var dk = asYmd(r.d);
         var dayOrders = Number(r.cnt) || 0;
         if (!dk || dayOrders <= 0) return;
         if (!dailyMap[dk]) dailyMap[dk] = { orders: 0, gmv: 0 };
-        var dayGmv = Math.round(dayOrders * rule.unit_amount * 100) / 100;
+        var dayGmv = rule.use_user_amount
+          ? Math.round(Number(r.gmv || 0) * 100) / 100
+          : Math.round(dayOrders * Number(rule.unit_amount || 0) * 100) / 100;
         dailyMap[dk].orders += dayOrders;
         dailyMap[dk].gmv = Math.round((dailyMap[dk].gmv + dayGmv) * 100) / 100;
       });
@@ -705,9 +725,10 @@ function paymentProductTable(tot) {
     rows.push([
       '管理员激活（' +
         (row.admin_username || '—') +
-        ' · ¥' +
-        (row.unit_amount != null ? row.unit_amount : 0) +
-        '/单' +
+        ' · ' +
+        (row.use_user_amount
+          ? '按填写金额'
+          : '¥' + (row.unit_amount != null ? row.unit_amount : 0) + '/单') +
         note +
         '）',
       row.orders,
@@ -766,7 +787,7 @@ function wrapHtml(title, inner) {
     htmlEscape(title) +
     '</h2>' +
     inner +
-    '<p style="color:#888;font-size:12px;margin-top:20px;">口径：日活 = user_daily_activity 按 IP 去重（同 IP 多账号计 1）；注册/激活/支付日 = 北京时间 UTC+8；游客已排除。支付拆分对齐管理台「支付分析」：开通套餐 = 线上已付中扣除离职/在职证明、改名、个税修改、完税码；管理员激活按 18933137956¥100 / 19106014552¥60 / admin 非支付宝¥100 折算并入合计 GMV。</p>' +
+    '<p style="color:#888;font-size:12px;margin-top:20px;">口径：日活 = user_daily_activity 按 IP 去重（同 IP 多账号计 1）；注册/激活/支付日 = 北京时间 UTC+8；游客已排除。支付拆分对齐管理台「支付分析」：开通套餐 = 线上已付中扣除离职/在职证明、改名、个税修改、完税码；管理员激活按 18933137956¥100 / 19106014552¥60 / admin 非支付宝按用户列表填写的激活金额加总并入合计 GMV。</p>' +
     '</div>'
   );
 }

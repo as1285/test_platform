@@ -543,7 +543,7 @@ body.admin-command-open {
     scroll-margin-top: 80px;
 }
 
-/* 业务工具：拖拽上传 / 分步 / 结果卡（社保图片·演示） */
+/* 业务工具：分步 / 结果卡 */
 .admin-tool-step {
     margin: 4px 0 2px;
     color: var(--admin-text-muted);
@@ -552,34 +552,6 @@ body.admin-command-open {
 }
 .admin-tool-advanced {
     margin-top: 4px;
-}
-.admin-dropzone {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    max-width: 640px;
-    padding: 18px 16px;
-    border: 1.5px dashed var(--admin-border-strong);
-    border-radius: 12px;
-    background: var(--admin-surface-muted);
-    cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease;
-}
-.admin-dropzone:hover,
-.admin-dropzone:focus {
-    border-color: var(--admin-primary-border);
-    background: var(--admin-primary-soft-2);
-    outline: none;
-}
-.admin-dropzone.is-dragover {
-    border-color: var(--admin-primary);
-    background: var(--admin-primary-soft);
-}
-.admin-dropzone-title {
-    color: var(--admin-heading);
-    font-size: 14px;
-    font-weight: 600;
 }
 .admin-tool-preview-grid {
     display: grid;
@@ -854,8 +826,32 @@ button.risk-same-ip-link:hover {
 }
 .scroll-x { overflow-x: auto; }
 .users-registry-table {
-    min-width: 1360px;
+    min-width: 1480px;
     table-layout: fixed;
+}
+.users-registry-table .col-activation-credit {
+    display: none;
+}
+.users-registry-table.show-activation-credit .col-activation-credit {
+    display: table-cell;
+}
+.users-registry-table .user-credit-amt-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.users-registry-table .user-credit-amt-input {
+    width: 100%;
+    min-width: 0;
+    padding: 3px 6px;
+    font-size: 12px;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+.users-registry-table .user-credit-amt-input::-webkit-outer-spin-button,
+.users-registry-table .user-credit-amt-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 .peer-accounts-table {
     min-width: 1280px;
@@ -2200,6 +2196,7 @@ tr.users-detail-row > td {
 .col-w-56 { width: 56px; }
 .col-w-72 { width: 72px; }
 .col-w-88 { width: 88px; }
+.col-w-100 { width: 100px; }
 .col-w-110 { width: 110px; }
 .col-w-120 { width: 120px; }
 .col-w-130 { width: 130px; }
@@ -2985,7 +2982,8 @@ tr.users-detail-row > td {
 .ops-board-pay-table td {
     font-size: 13px;
 }
-.ops-board-pay-table .btn-rename-user {
+.ops-board-pay-table .btn-rename-user,
+.admin-user-jump {
     background: none;
     border: 0;
     padding: 0;

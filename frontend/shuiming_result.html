@@ -658,7 +658,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260904-android-inset"></script>
-    <script src="/js/auth.js?v=20260907-sm-taxfill" defer></script>
+    <script src="/js/auth.js?v=20260907-no-sm-fill" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -3149,11 +3149,8 @@
                 <span class="summary-label"><span class="summary-label-text">已申报税额合计：</span></span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
-            <div class="sm-activate-card is-tax-fill" id="smActivateCard" hidden>
-                <p class="sm-activate-title" id="smActivateTitle">填写个税</p>
-                <p class="sm-activate-desc" id="smActivateDesc">推荐按模板生成 2023、2024、2025 记录，也可上传个税 APP 截图识别，或自己填公司与月薪。</p>
-                <a href="consult.html?tab=records&onboarding=tax" class="sm-activate-btn" id="smActivateBtn">去填写个税</a>
-            </div>
+            <!-- 填写个税引导卡已下线；保留空壳避免旧缓存脚本报错 -->
+            <div class="sm-activate-card" id="smActivateCard" hidden aria-hidden="true"></div>
             <!-- 15万推荐卡已移至 consult.html「我要咨询 / 填写个税」；保留空壳避免旧缓存脚本报错 -->
             <div class="sm-refund-browse-card" id="smRefundBrowseCard" hidden aria-hidden="true"></div>
         </div>
@@ -4003,35 +4000,11 @@
         function syncSmActivateCard() {
             hideLegacyRefundWechatCard();
             var card = document.getElementById('smActivateCard');
-            var btn = document.getElementById('smActivateBtn');
-            if (!card) return;
-            var active = false;
-            var guest = false;
-            try {
-                active = localStorage.getItem('account_active') === '1';
-                guest =
-                    localStorage.getItem('landing_guest_v1') === '1' ||
-                    String(localStorage.getItem('user_id') || '').indexOf('__guest_') === 0;
-            } catch (e0) {}
-            var confirmedActive = window.__smAccountActiveConfirmed === true || active;
-            var confirmedInactive = window.__smAccountActiveConfirmed === false;
-            /* 未确认或已开通：保持隐藏，禁止先画出未开通卡再收掉 */
-            if (confirmedActive || guest) {
+            if (card) {
                 card.hidden = true;
                 card.setAttribute('hidden', '');
+                card.setAttribute('aria-hidden', 'true');
                 card.classList.remove('is-refund-prompt', 'is-tax-fill');
-                window.__smAccountActiveConfirmed = true;
-                try {
-                    document.documentElement.classList.add('sm-account-active');
-                } catch (eOn) {}
-            } else if (!confirmedInactive) {
-                card.hidden = true;
-                card.setAttribute('hidden', '');
-                card.classList.remove('is-refund-prompt', 'is-tax-fill');
-            } else {
-                try {
-                    document.documentElement.classList.remove('sm-account-active');
-                } catch (eOff) {}
             }
             function applyPrompt(list) {
                 if (
@@ -4048,47 +4021,6 @@
             }
             if (Array.isArray(window.__consultRecordsCache)) {
                 applyPrompt(window.__consultRecordsCache);
-            } else if (
-                typeof window.authFetch === 'function' &&
-                !guest &&
-                (confirmedInactive || confirmedActive)
-            ) {
-                window
-                    .authFetch('api/tax?action=records')
-                    .then(function (r) {
-                        return (window.authParseJson||function(r){return r.json();})(r);
-                    })
-                    .then(function (data) {
-                        var list =
-                            data && data.code === 200 && data.data && Array.isArray(data.data.records)
-                                ? data.data.records
-                                : [];
-                        window.__consultRecordsCache = list;
-                        applyPrompt(list);
-                        syncTopFixedHeight();
-                    })
-                    .catch(function () {});
-            }
-            if (btn && !btn.dataset.bound) {
-                btn.dataset.bound = '1';
-                btn.addEventListener('click', function () {
-                    try {
-                        if (typeof window.trackUserAction === 'function') {
-                            window.trackUserAction('track_tax_fill_banner_ok', {
-                                page: 'shuiming_result',
-                                source: 'shuiming_result_card'
-                            });
-                        } else if (
-                            window.ConversionGuide &&
-                            typeof ConversionGuide.track === 'function'
-                        ) {
-                            ConversionGuide.track('track_tax_fill_banner_ok', {
-                                page: 'shuiming_result',
-                                source: 'shuiming_result_card'
-                            });
-                        }
-                    } catch (e1) {}
-                });
             }
             syncTopFixedHeight();
         }

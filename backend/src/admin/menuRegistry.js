@@ -7,6 +7,7 @@
  * 信息架构：转化运营 → 内容配置 → 用户管理 → 业务工具 → 数据分析 → 系统与安全
  * C 档合并：内容配置 / 证明工具 / 社保公积金 / 登录审计 / 产品洞察 / 增长洞察
  */
+const config = require('../shared/config');
 const ADMIN_MENU_GROUPS = [
   { id: 'ops-desk', label: '转化运营', order: 10 },
   { id: 'ops-config', label: '内容配置', order: 20 },
@@ -198,14 +199,6 @@ const ADMIN_PAGE_DEFS = [
     order: 25,
     assignable: false,
     nav_hidden: true
-  },
-  {
-    page: 'ylbx-ps',
-    menu_key: 'ylbx-ps',
-    label: '社保图片PS',
-    group: 'cert-tools',
-    module: 'ylbx-ps',
-    order: 30
   },
   {
     page: 'ccb-flow',
@@ -742,6 +735,9 @@ function buildAdminSessionPayload(admin) {
       username: admin.username,
       full_name: admin.full_name || '',
       is_super: !!admin.is_super,
+      is_root_admin:
+        String(admin.username || '').trim().toLowerCase() ===
+        String((config.ADMIN_PANEL_USER || 'admin') + '').trim().toLowerCase(),
       menus: Array.isArray(admin.menus) ? admin.menus.slice() : []
     },
     menu_tree: built.menu_tree,

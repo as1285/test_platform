@@ -196,15 +196,90 @@
       });
   }
 
+  var commandUserResults = [];
+  var commandUserTimer = 0;
+  var commandUserSeq = 0;
+
+  function isAccountQuery(query) {
+    var q = String(query || '').trim();
+    if (q.length < 4) return false;
+    if (/^\d{4,}$/.test(q)) return true;
+    return /[0-9]/.test(q) && q.length >= 5;
+  }
+
+  function fetchCommandUsers(query) {
+    var q = String(query || '').trim();
+    if (!isAccountQuery(q) || typeof global.adminFetch !== 'function') {
+      commandUserResults = [];
+      return Promise.resolve([]);
+    }
+    var exact = /^\d{6,}$/.test(q) ? '1' : '0';
+    var seq = ++commandUserSeq;
+    return global
+      .adminFetch(
+        'api/admin/users?username=' +
+          encodeURIComponent(q) +
+          '&exact=' +
+          exact +
+          '&limit=8&page=1'
+      )
+      .then(function (r) {
+        return (global.adminParseJson || function (res) {
+          return res.json();
+        })(r);
+      })
+      .then(function (data) {
+        if (seq !== commandUserSeq) return commandUserResults;
+        var list = (data && data.data && (data.data.users || data.data.list)) || [];
+        commandUserResults = list
+          .map(function (u) {
+            var name = String((u && u.username) || '').trim();
+            return {
+              kind: 'user',
+              username: name,
+              label: name,
+              hint: u && u.account_active ? '已激活' : '未激活',
+              group: '账号'
+            };
+          })
+          .filter(function (it) {
+            return it.username;
+          });
+        return commandUserResults;
+      })
+      .catch(function () {
+        if (seq !== commandUserSeq) return commandUserResults;
+        commandUserResults = [];
+        return [];
+      });
+  }
+
+  function openCommandUser(username) {
+    var name = String(username || '').trim();
+    closeCommand();
+    if (!name) return;
+    if (typeof global.jumpToRegisteredUser === 'function') {
+      global.jumpToRegisteredUser(name);
+      return;
+    }
+    goToPage('users');
+  }
+
   function renderCommandResults() {
     var input = document.getElementById('adminCommandInput');
     var mount = document.getElementById('adminCommandResults');
     var empty = document.getElementById('adminCommandEmpty');
     if (!mount) return;
     var query = input ? input.value.trim() : '';
-    var list = flattenTree().filter(function (item) {
-      return commandMatches(item, query);
-    });
+    var pages = flattenTree()
+      .filter(function (item) {
+        return commandMatches(item, query);
+      })
+      .map(function (item) {
+        return Object.assign({ kind: 'page' }, item);
+      });
+    var users = query ? commandUserResults.slice() : [];
+    var list = users.concat(pages);
     if (selectedCommandIndex >= list.length) selectedCommandIndex = Math.max(0, list.length - 1);
     var lastGroup = null;
     var html = '';
@@ -212,6 +287,21 @@
       if (item.group !== lastGroup) {
         html += '<div class="admin-command-group">' + esc(item.group) + '</div>';
         lastGroup = item.group;
+      }
+      if (item.kind === 'user') {
+        html +=
+          '<button type="button" class="admin-command-item' +
+          (index === selectedCommandIndex ? ' is-selected' : '') +
+          '" data-command-user="' +
+          esc(item.username) +
+          '" data-command-index="' +
+          index +
+          '"><span>' +
+          esc(item.label) +
+          '</span><small>' +
+          esc(item.hint || '打开') +
+          '</small></button>';
+        return;
       }
       html +=
         '<button type="button" class="admin-command-item' +
@@ -233,6 +323,8 @@
     var input = document.getElementById('adminCommandInput');
     if (!command || !input) return;
     selectedCommandIndex = 0;
+    commandUserResults = [];
+    commandUserSeq += 1;
     command.hidden = false;
     document.body.classList.add('admin-command-open');
     input.value = '';
@@ -252,6 +344,11 @@
   function navigateCommandSelection() {
     var selected = document.querySelector('.admin-command-item.is-selected');
     if (!selected) return;
+    var user = selected.getAttribute('data-command-user');
+    if (user) {
+      openCommandUser(user);
+      return;
+    }
     var page = selected.getAttribute('data-command-page');
     closeCommand();
     if (page) goToPage(page);
@@ -331,6 +428,11 @@
           closeCommand();
           return;
         }
+        var userItem = ev.target.closest('[data-command-user]');
+        if (userItem) {
+          openCommandUser(userItem.getAttribute('data-command-user'));
+          return;
+        }
         var item = ev.target.closest('[data-command-page]');
         if (!item) return;
         closeCommand();
@@ -340,7 +442,21 @@
     if (input) {
       input.addEventListener('input', function () {
         selectedCommandIndex = 0;
+        var query = input.value.trim();
+        if (!isAccountQuery(query)) {
+          commandUserResults = [];
+          commandUserSeq += 1;
+          renderCommandResults();
+          return;
+        }
         renderCommandResults();
+        if (commandUserTimer) clearTimeout(commandUserTimer);
+        commandUserTimer = setTimeout(function () {
+          fetchCommandUsers(query).then(function () {
+            if (!isCommandOpen()) return;
+            renderCommandResults();
+          });
+        }, 220);
       });
       input.addEventListener('keydown', function (ev) {
         var items = document.querySelectorAll('.admin-command-item');

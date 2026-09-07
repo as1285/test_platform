@@ -58,7 +58,7 @@ services:
       # 开通类自动站内信（填税后/离开支付页/注册超24h）：0=关闭（默认），1=开启
       ACTIVATION_INBOX_PROMO_ENABLED: ${ACTIVATION_INBOX_PROMO_ENABLED:-0}
       # 核心推广：每位未激活用户站内信 + 已留邮箱发二次退税邮件。0=关闭
-      REFUND_AD_PROMO_ENABLED: ${REFUND_AD_PROMO_ENABLED:-1}
+      REFUND_AD_PROMO_ENABLED: ${REFUND_AD_PROMO_ENABLED:-0}
       # 退税金额邮件同一用户间隔小时数（默认 24）
       REFUND_AD_EMAIL_SKIP_HOURS: ${REFUND_AD_EMAIL_SKIP_HOURS:-24}
       # 限流 / OTP challenge：Redis（多实例与重启不丢）

@@ -120,6 +120,11 @@
   function jumpToUser(username) {
     var name = String(username || '').trim();
     if (!name) return;
+    /* 支付明细里多为已开通用户，不能沿用未激活名单的 active=0，否则点账号会搜空 */
+    if (typeof global.jumpToRegisteredUser === 'function') {
+      global.jumpToRegisteredUser(name);
+      return;
+    }
     var usernameEl = document.getElementById('filterUsername');
     var exactEl = document.getElementById('filterExact');
     var highIncomeEl = document.getElementById('filterHighIncome');
@@ -129,7 +134,7 @@
     if (exactEl) exactEl.checked = true;
     if (highIncomeEl) highIncomeEl.value = '';
     if (d1El) d1El.value = '';
-    if (activeEl) activeEl.value = '0';
+    if (activeEl) activeEl.value = '';
     global.location.hash = 'users';
   }
 
