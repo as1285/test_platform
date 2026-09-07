@@ -418,6 +418,84 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(out[0].psych_offer).toBeUndefined();
   });
 
+  it('applyChannelCatalogPrices blank psych clears site-wide strikethrough', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        {
+          id: 'sku_300_7d',
+          amount: '120.00',
+          list_amount: '300.00',
+          psych_offer: true,
+          label: '周卡·心理价特惠',
+          grant_days: 7,
+          grant_hours: 0
+        }
+      ],
+      { sku_300_7d: { amount: '99.00', grant_days: 0, grant_hours: 1, label: '小时卡' } }
+    );
+    const s = out[0];
+    expect(s.amount).toBe('99.00');
+    expect(s.channel_price).toBe(true);
+    expect(s.list_amount).toBeUndefined();
+    expect(s.psych_offer).toBeUndefined();
+    expect(s.label).toBe('小时卡');
+    expect(String(s.label)).not.toContain('心理价');
+  });
+
+  it('applyChannelCatalogPrices blank psych on duration-only override also clears site strikethrough', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        {
+          id: 'sku_348_14d',
+          amount: '200.00',
+          list_amount: '348.00',
+          psych_offer: true,
+          label: '双周卡·心理价特惠',
+          grant_days: 14,
+          grant_hours: 0
+        }
+      ],
+      { sku_348_14d: { grant_days: 30, grant_hours: 0, label: '月卡' } }
+    );
+    const s = out[0];
+    expect(s.amount).toBe('200.00');
+    expect(s.grant_days).toBe(30);
+    expect(s.channel_price).toBe(true);
+    expect(s.list_amount).toBeUndefined();
+    expect(s.psych_offer).toBeUndefined();
+    expect(s.label).toBe('月卡');
+  });
+
+  it('applyChannelCatalogPrices filled psych keeps channel strikethrough only', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        {
+          id: 'sku_398_30d',
+          amount: '300.00',
+          list_amount: '398.00',
+          psych_offer: true,
+          label: '月卡·心理价特惠',
+          grant_days: 30,
+          grant_hours: 0
+        }
+      ],
+      {
+        sku_398_30d: {
+          amount: '399.00',
+          list_amount: '598.00',
+          grant_days: 30,
+          grant_hours: 0,
+          label: '月卡'
+        }
+      }
+    );
+    const s = out[0];
+    expect(s.amount).toBe('399.00');
+    expect(s.list_amount).toBe('598.00');
+    expect(s.psych_offer).toBe(true);
+    expect(s.label).toContain('心理价');
+  });
+
   it('applyChannelCatalogPrices appends extra tier with list_amount', () => {
     const out = applyChannelCatalogPrices(
       [{ id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 }],

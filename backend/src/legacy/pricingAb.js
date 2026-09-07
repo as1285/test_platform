@@ -784,6 +784,13 @@ function applyChannelListAmount(sku, ov) {
   }
 }
 
+/** 去掉全站「·心理价特惠」后缀，避免渠道覆盖后仍挂心理价文案 */
+function stripSitePsychLabelSuffix(label) {
+  var s = String(label || '');
+  if (!s) return s;
+  return s.replace(/·心理价特惠/g, '').trim();
+}
+
 /** 按渠道覆盖货架：金额 / 心理价划线 / 天数 / 小时 / 名称。兼容旧 map 值为纯金额字符串。 */
 function applyChannelCatalogPrices(skus, priceMap) {
   var map = priceMap && typeof priceMap === 'object' ? priceMap : {};
@@ -807,9 +814,6 @@ function applyChannelCatalogPrices(skus, priceMap) {
     var payAmt = resolveChannelOverrideAmount(ov);
     if (payAmt) {
       next[i].amount = payAmt;
-      /* 渠道价覆盖后先清全站心理价划线/文案，避免仍显示「周卡·体验价」 */
-      delete next[i].list_amount;
-      delete next[i].psych_offer;
       touched = true;
     }
     if (ov.grant_days != null || ov.grant_hours != null) {
@@ -832,17 +836,18 @@ function applyChannelCatalogPrices(skus, priceMap) {
       if (auto) next[i].label = auto;
     }
     var listRaw = resolveChannelOverrideListAmount(ov);
-    if (listRaw) {
-      var listN = Number(listRaw);
-      var payN = Number(next[i].amount);
-      if (isFinite(listN) && listN > 0 && isFinite(payN) && payN > 0 && listN > payN) {
-        delete next[i].list_amount;
-        delete next[i].psych_offer;
-        applyChannelListAmount(next[i], ov);
-        if (next[i].list_amount) touched = true;
-      }
-    }
+    if (listRaw) touched = true;
     if (touched) {
+      /*
+       * 渠道档一旦覆盖：先清全站 list_amount / psych_offer。
+       * 心理价位留空则不显示划线，禁止回落全站默认心理价。
+       */
+      delete next[i].list_amount;
+      delete next[i].psych_offer;
+      next[i].label = stripSitePsychLabelSuffix(next[i].label);
+      if (listRaw) {
+        applyChannelListAmount(next[i], ov);
+      }
       next[i].channel_price = true;
       applyChannelPermanentGrant(next[i]);
       next[i].subject = '激活码·' + (next[i].label || next[i].id);

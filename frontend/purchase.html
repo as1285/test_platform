@@ -2612,20 +2612,20 @@
         return (Math.max(1, original - discount) / 100).toFixed(2);
     }
 
-    /** 划线对照原价：仅用本档 list_amount；渠道档禁止借用其它档（如年卡）金额。无划线时对本档实付价上浮约 35% */
+    /**
+     * 划线对照原价：仅用本档 list_amount。
+     * 渠道专属档：心理价位留空则不显示划线（禁止上浮伪造 / 借用其它档 / 回落全站）。
+     * 非渠道档：无 list_amount 时对本档实付价上浮约 35%（或对照永久档）。
+     */
     function skuListAnchorAmount(sku, allSkus) {
         var listAmt = Number(sku && sku.list_amount) || 0;
         var amt = Number(sku && sku.amount) || 0;
         if (listAmt > 0 && listAmt > amt) {
             return listAmt % 1 === 0 ? String(Math.round(listAmt)) : listAmt.toFixed(2);
         }
+        /* 渠道专属价：无本档 list_amount 即不划线（与后台「留空则不显示渠道划线」一致） */
+        if (sku && sku.channel_price) return '';
         if (amt <= 0) return '';
-        /* 渠道专属价：只用本档心理价/上浮，绝不回落到其它档（避免永久显示成年卡 998/1350） */
-        if (sku && sku.channel_price) {
-            var chInflated = Math.ceil((amt * 1.35) / 10) * 10;
-            if (chInflated <= amt) chInflated = Math.ceil(amt + 100);
-            return String(chInflated);
-        }
         var permMax = 0;
         (allSkus || []).forEach(function (s) {
             if (s && s.grant_kind === 'permanent' && !s.channel_price) {
