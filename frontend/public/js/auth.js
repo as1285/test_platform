@@ -2226,11 +2226,14 @@
         isHuaweiP40ProClient() || root.classList.contains('app-android-huawei-p40pro');
       /* 单层底图档（vivo X90）：rpx 必须跟实测画布宽度走，否则胶囊会偏出擦除位 */
       var plainImg = root.classList.contains('app-android-mine-e1-plainimg');
-      var imp = mate60 || mi14pro || p40pro || plainImg ? 'important' : '';
+      /* ColorOS 15 Ace Pro：100vw 常宽于画布，须 important 压过 @sm / HyperOS lock 的 100vw */
+      var acepro =
+        isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro');
+      var imp = mate60 || mi14pro || p40pro || plainImg || acepro ? 'important' : '';
       root.style.setProperty('--mine-rpx', rpx, imp);
       document.body.style.setProperty('--mine-rpx', rpx, imp);
       canvas.style.setProperty('--mine-rpx', rpx, imp);
-      if (mate60 || mi14pro || p40pro) {
+      if (mate60 || mi14pro || p40pro || acepro) {
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('width', '100%', 'important');
       }
@@ -2286,6 +2289,13 @@
   ];
 
   function isHyperOs2MineE1SmClient() {
+    /* Ace Pro 也打 sm class，但不能走 HyperOS 2 的 100vw lock，否则胶囊掉出三宫格 */
+    if (
+      isOnePlusAceProClient() ||
+      document.documentElement.classList.contains('app-android-oneplus-acepro')
+    ) {
+      return false;
+    }
     if (document.documentElement.classList.contains('app-android-mine-e1-sm')) {
       return true;
     }
@@ -2316,7 +2326,8 @@
     HYPEROS2_MINE_E1_SM_CLASSES.forEach(function (cls) {
       var rootSel = 'html.' + cls;
       if (cls === 'app-android-mine-e1-sm') {
-        rootSel += ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15)';
+        rootSel +=
+          ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro)';
       }
       css +=
         rootSel + ' body.page-mine,' +
@@ -2345,10 +2356,103 @@
     return css;
   }
 
-  /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 另走 lock。 */
+  /**
+   * 一加 Ace Pro（PGP110 / ColorOS 15）：
+   * @sm 裁切用 1180 * 100vw 定高，且 HyperOS lock 把 --mine-rpx 钉成 100vw/750。
+   * ColorOS WebView 的 100vw 常宽于画布，三宫格「1人/暂无/1张」会掉到白卡下沿。
+   * 画布高度跟宽度走（750/1180），rpx 由 pinMineE1RpxFromCanvas important 实测。
+   */
+  function aceProMineE1LockCss() {
+    var sel = 'html.app-android-oneplus-acepro';
+    return (
+      sel + ' body.page-mine,' +
+      sel + '.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-client.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-mine-e1-sm body.page-mine{' +
+      '--mine-top-bleed:0px !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
+      'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:750 / 1180 !important;container-type:normal !important;' +
+      'background-color:#f5f6fa !important;background-size:100% auto !important;' +
+      'background-position:top center !important;background-repeat:no-repeat !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas > img,' +
+      sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img{' +
+      'margin-top:0 !important;}' +
+      sel + ' body.page-mine .mine-e1-layer,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-layer,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-layer{' +
+      'top:0 !important;padding-bottom:calc(1180 / 750 * 100%) !important;}'
+    );
+  }
+
+  function pinAceProMineE1Layout() {
+    try {
+      var root = document.documentElement;
+      if (!isOnePlusAceProClient() && !root.classList.contains('app-android-oneplus-acepro')) {
+        return;
+      }
+      root.classList.add('app-android-oneplus-acepro');
+      root.classList.add('app-android-client');
+      root.classList.add('app-android-immersive-white-top');
+      try {
+        var oldLock = document.querySelector('style[data-acepro-mine-e1-lock]');
+        if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
+        var lock = document.createElement('style');
+        lock.setAttribute('data-acepro-mine-e1-lock', '1');
+        lock.textContent = aceProMineE1LockCss();
+        (document.head || document.documentElement).appendChild(lock);
+      } catch (eLock) {}
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      root.style.setProperty('--mine-top-bleed', '0px', 'important');
+      document.body.style.setProperty('--mine-top-bleed', '0px', 'important');
+      var canvas = document.getElementById('mineE1Canvas');
+      var layer = document.getElementById('mineE1Layer');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        canvas.style.setProperty('padding-top', '0', 'important');
+        canvas.style.setProperty('margin-top', '0', 'important');
+        canvas.style.setProperty('width', '100%', 'important');
+        canvas.style.setProperty('height', 'auto', 'important');
+        canvas.style.setProperty('max-height', 'none', 'important');
+        canvas.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+        canvas.style.setProperty('container-type', 'normal', 'important');
+        canvas.style.setProperty('overflow', 'hidden', 'important');
+        canvas.style.setProperty('background-size', '100% auto', 'important');
+        canvas.style.setProperty('background-position', 'top center', 'important');
+      }
+      if (img) {
+        img.style.setProperty('margin-top', '0', 'important');
+      }
+      if (layer) {
+        layer.style.setProperty('top', '0', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(1180 / 750 * 100%)', 'important');
+      }
+      pinMineE1RpxFromCanvas();
+      if (!pinAceProMineE1Layout._rpxRearm) {
+        pinAceProMineE1Layout._rpxRearm = true;
+        [80, 240, 600, 1200].forEach(function (ms) {
+          setTimeout(function () {
+            try {
+              pinMineE1RpxFromCanvas();
+            } catch (eRpxRe) {}
+          }, ms);
+        });
+      }
+    } catch (eAce) {}
+  }
+
+  /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -2600,6 +2704,10 @@
     try {
       var root = document.documentElement;
       if (isIqooMineTailPhone() || isMineE1PlainImgClient()) {
+        return;
+      }
+      if (isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro')) {
+        pinAceProMineE1Layout();
         return;
       }
       if (!hyperOs2MineE1SmRootHit(root)) {
@@ -3255,9 +3363,9 @@
           'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
+          'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine,' +
-          'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine,' +
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine,' +
           'html.app-android-oppo-reno10.app-top-safe-shell body.page-mine,' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell body.page-mine,' +
@@ -3326,6 +3434,7 @@
           'html.app-ios-iphone16promax body.page-message > .bottom-nav,html.app-ios-iphone16promax body.page-mine > .bottom-nav,' +
           'html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}' +
           androidMineE1TailCropCss() +
+          aceProMineE1LockCss() +
           xiaomi14ProMineE1LockCss() +
           /* 单层底图档写在最后：同优先级时靠文档序压过 @sm 裁切与 HyperOS lock */
           mineE1PlainImgLockCss();
@@ -3341,6 +3450,7 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
+      pinAceProMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
@@ -6359,6 +6469,7 @@
     syncAppShellStatusbarTop();
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
+    pinAceProMineE1Layout();
     pinMineE1PlainImgLayout();
     pinNova13MineE1Layout();
     pinHonorMagic5ProHomeCards();
@@ -6433,6 +6544,7 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
+      pinAceProMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
@@ -6444,6 +6556,7 @@
       syncAppShellStatusbarTop();
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
+      pinAceProMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
@@ -6543,6 +6656,7 @@
     syncAppShellStatusbarTop();
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
+    pinAceProMineE1Layout();
     pinMineE1PlainImgLayout();
     pinNova13MineE1Layout();
     applyMinePageChrome();
