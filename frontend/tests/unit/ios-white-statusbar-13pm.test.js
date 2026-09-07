@@ -23,13 +23,11 @@ describe('iOS 白顶栏状态栏（13PM 黑条）', () => {
     expect(fn).not.toContain('#00000000');
   });
 
-  it('明细页首屏把 428×926 打成 13promax，不再误判 15 Plus', () => {
-    expect(shuimingResult).toContain('app-ios-iphone13promax');
-    expect(shuimingResult).toContain('is13pmLike');
-    expect(shuimingResult).toMatch(/long16 >= 922[\s\S]*long16 <= 928/);
-    expect(shuimingResult).toMatch(/!is13pmLike/);
-    /* 15 Plus 视口下限抬到 928，避开 13PM 的 926 */
-    expect(shuimingResult).toMatch(/long16 >= 928[\s\S]*long16 <= 936/);
+  it('明细页 428×926 仍走 15 Plus 贴边 UI（13PM 布局回退）', () => {
+    expect(shuimingResult).not.toContain('is13pmLike');
+    /* 与两天前一致：428×926 命中 15 Plus 档，吃贴边样式 */
+    expect(shuimingResult).toMatch(/long16 >= 926[\s\S]*long16 <= 936/);
+    expect(shuimingResult).toContain('app-ios-iphone15promax');
     expect(shuimingResult).toContain('auth.js?v=20260907-ios-white-bar');
   });
 
