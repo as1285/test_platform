@@ -2769,6 +2769,11 @@ mustInclude(
   'lizhi seal omits bottom seal_code digits'
 );
 mustInclude(
+  'backend/scripts/lizhi_render_pdf.py',
+  ['离职人签字：'],
+  'lizhi cert leaves handwritten employee signature blank'
+);
+mustInclude(
   'backend/src/admin/opsConversion.js',
   [
     'handleOpsInactiveSummary',

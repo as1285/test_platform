@@ -371,6 +371,23 @@ def render_page_image(payload):
     else:
         painter.draw_run(dx, date_y, blank_or(issue_date, 10), date_f, underline=True)
 
+    # 左下：离职人手写签字留白（与右侧单位盖章区大致齐平）
+    emp_label = "离职人签字："
+    emp_y = company_top
+    emp_x = left
+    painter.draw_run(emp_x, emp_y, emp_label, sign_f)
+    blank_start = emp_x + text_width(sign_f, emp_label)
+    blank_right = min(sign_x0 - int(28 * SCALE), blank_start + int(150 * SCALE))
+    blank_w = blank_right - blank_start
+    if blank_w > int(48 * SCALE):
+        ascent = sign_f.getmetrics()[0] if hasattr(sign_f, "getmetrics") else int(sign_f.size * 0.8)
+        uy = emp_y + ascent + max(2, int(sign_f.size * 0.08))
+        painter.draw.line(
+            [(blank_start, uy), (blank_start + blank_w, uy)],
+            fill=INK,
+            width=max(2, int(SCALE)),
+        )
+
     # 离职证明公章不画底弧编号数字
     place_seal(img, company, seal_x, seal_y, seal_pt, seal_code=seal_code, draw_code=False)
 
