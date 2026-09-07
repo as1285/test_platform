@@ -1,18 +1,37 @@
 ---
-description: 每次实质性修改后必须 git commit 并 push
+description: 每个修改点单独 commit，并立即 push
 alwaysApply: true
 ---
 
-# 每次修改都提交并推送
+# 每个修改点单独提交
 
-用户已明确：**以后每次修改都提交推送**。对本仓库做了实质性修改后，在回复用户之前必须完成：
+用户已明确：**以后每次修改都单独提交**。禁止把多个互不依赖的改动点打成一包。
 
-1. `git status` / `git diff` 确认本轮应入库的文件范围。
-2. `git add` 相关路径，用清晰说明 `git commit`（完整句子；可选用 `feat`/`fix` 等前缀）。
-3. **立即** `git push -u origin HEAD`（本站开发分支为 **`lkj`**）。失败时说明原因并保留本地 commit，不要静默跳过。
-4. 不要夹带无关改动、生成物或 `.env`/密钥；无变更时不要空提交。
+## 什么算「一个修改点」
+
+同一用户意图、同一功能闭环（实现 + 直接相关测试/文案/缓存戳）= 一次 commit。
+
+- 离职证明加签字栏、关掉退税弹框、管理端门禁 → **三次 commit**，不要合成一次
+- 改渲染脚本时顺手改对应自测断言 → **可以同一次**
+- 工作区里已有其它 WIP → **不要** `git add` 进去
+
+## 做完立刻提交，不要等用户再说「提交」
+
+对本仓库做了实质性修改后，在回复用户之前必须：
+
+1. `git status` / `git diff` 只确认**本轮这一个修改点**的文件。
+2. `git add` 这些路径，用一句说清「为什么」的 `git commit`（可用 `feat`/`fix` 前缀）。
+3. **立即** `git push -u origin HEAD`（开发分支 **`lkj`**）。失败则说明原因并保留本地 commit，不要静默跳过。
+4. 不要夹带无关改动、生成物、样张、`.env`/密钥；无变更不要空提交。
 5. 不要 `git push --force`（除非用户明确要求）。
 
 仅当用户本轮明确说「不要提交 / 不要推送」时才跳过。
 
-与 `auto-deploy.mdc` / `deploy-commit-push.mdc` 配合时顺序：部署（前端 `./scripts/sync-frontend.sh`）→ `git commit` → `git push`。
+## 反例
+
+```
+# ❌ 一次 commit 里同时有：管理端门禁 + 正式证明 + 退税弹框 + 税单对齐
+# ✅ 每个点各自 commit 后再 push
+```
+
+与 `auto-deploy.mdc` / `deploy-commit-push.mdc` 配合：先提交本点，再按那些规则部署。
