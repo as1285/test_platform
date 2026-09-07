@@ -16,13 +16,13 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260906-page-track',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
-    'feature-survey': '/js/admin/modules/feature-survey.js?v=20260907-survey-ord',
-    'payment-orders': '/js/admin/modules/payment-orders.js?v=20260907-survey-ord',
-    feedback: '/js/admin/modules/feedback.js?v=20260907-fb-user',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260907-pay-user',
-    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260907-no-refund-mail',
-    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-email-hub',
-    'abc-ops': '/js/admin/modules/abc-ops.js?v=20260907-abc-ops'
+    'feature-survey': '/js/admin/modules/feature-survey.js?v=20260907-hub6',
+    'payment-orders': '/js/admin/modules/payment-orders.js?v=20260907-hub6',
+    feedback: '/js/admin/modules/feedback.js?v=20260907-hub6',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260907-hub6',
+    'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260907-hub6',
+    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-hub6',
+    'abc-ops': '/js/admin/modules/abc-ops.js?v=20260907-hub6'
   };
 
   var PAGE_MODULE = {

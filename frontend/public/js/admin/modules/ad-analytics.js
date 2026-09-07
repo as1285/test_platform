@@ -459,8 +459,8 @@
       .replace(/^#/, '')
       .trim()
       .toLowerCase();
-    if (hash === 'ops-ad-analytics/data') return 'data';
-    if (hash === 'ops-ad-analytics/reach') return 'reach';
+    if (hash === 'ops-ad-analytics/data' || hash === 'ops-board/ads-data') return 'data';
+    if (hash === 'ops-ad-analytics/reach' || hash === 'ops-board/ads-reach') return 'reach';
     return 'config';
   }
 

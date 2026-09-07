@@ -873,10 +873,23 @@
             /* hub 合并：有子页权限也可进 hub；有 hub 也可进子页 */
             var hubAlias = {
                 settings: ['install-guide', 'appearance'],
+                'ops-board': ['ops-ad-analytics', 'codes', 'payment-orders', 'ops-research', 'ops-lift', 'abc-ops'],
+                users: ['rename-tax-daily', 'user-emails', 'users-deleted', 'user-data', 'tax-records-edit', 'peer-accounts'],
                 'lizhi-cert': ['zaizhi-cert'],
-                'sbdy-demo': ['gjj-demo'],
-                'login-log': ['user-login-log'],
-                'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback', 'feature-survey'],
+                'sbdy-demo': ['gjj-demo', 'lizhi-cert', 'zaizhi-cert', 'ccb-flow', 'najilu-qr'],
+                'login-log': ['user-login-log', 'admin-accounts', 'downline-admins', 'server-monitor', 'blocked-ips'],
+                'insights-product': [
+                    'analytics-activity',
+                    'analytics-devices',
+                    'tax-fill-survey',
+                    'feedback',
+                    'feature-survey',
+                    'insights-growth',
+                    'channel-analysis',
+                    'install-guide-stats',
+                    'ops-inactive',
+                    'analytics-purchase'
+                ],
                 'insights-growth': ['ops-inactive', 'channel-analysis', 'install-guide-stats'],
                 'abc-ops': ['abc-users', 'abc-install-stats']
             };
@@ -888,19 +901,38 @@
             var contentHub = {
                 'install-guide': 'settings',
                 appearance: 'settings',
-                'zaizhi-cert': 'lizhi-cert',
+                'ops-ad-analytics': 'ops-board',
+                codes: 'ops-board',
+                'payment-orders': 'ops-board',
+                'rename-tax-daily': 'users',
+                'user-emails': 'users',
+                'users-deleted': 'users',
+                'user-data': 'users',
+                'tax-records-edit': 'users',
+                'zaizhi-cert': 'sbdy-demo',
+                'lizhi-cert': 'sbdy-demo',
                 'gjj-demo': 'sbdy-demo',
+                'ccb-flow': 'sbdy-demo',
+                'najilu-qr': 'sbdy-demo',
                 'user-login-log': 'login-log',
+                'admin-accounts': 'login-log',
+                'downline-admins': 'login-log',
+                'server-monitor': 'login-log',
+                'blocked-ips': 'login-log',
                 'analytics-activity': 'insights-product',
                 'analytics-devices': 'insights-product',
                 'tax-fill-survey': 'insights-product',
                 'feature-survey': 'insights-product',
                 feedback: 'insights-product',
-                'ops-inactive': 'insights-growth',
-                'channel-analysis': 'insights-growth',
-                'install-guide-stats': 'insights-growth',
+                'insights-growth': 'insights-product',
+                'ops-inactive': 'insights-product',
+                'channel-analysis': 'insights-product',
+                'install-guide-stats': 'insights-product',
+                'analytics-purchase': 'insights-product',
+                'payment-orders': 'ops-board',
                 'abc-install-stats': 'abc-ops',
-                'abc-users': 'abc-ops'
+                'abc-users': 'abc-ops',
+                'abc-ops': 'ops-board' 
             };
             if (contentHub[menuKey] && menus.indexOf(contentHub[menuKey]) >= 0) return true;
             if (menuKey === 'abc-install-stats' && menus.indexOf('install-guide-stats') >= 0) return true;
@@ -1066,48 +1098,13 @@
         }
 
         var ADMIN_HUB_DEFS = {
-            settings: {
-                nav: 'settings',
-                defaultTab: 'pricing',
-                tabs: [
-                    { id: 'pricing', label: '定价与引导', page: 'settings' },
-                    { id: 'install', label: '安装分发', page: 'install-guide' },
-                    { id: 'appearance', label: '外观', page: 'appearance' }
-                ]
-            },
+            /* 旧 hash 兼容 */
             'lizhi-cert': {
                 nav: 'lizhi-cert',
                 defaultTab: 'lizhi',
                 tabs: [
                     { id: 'lizhi', label: '离职证明', page: 'lizhi-cert' },
                     { id: 'zaizhi', label: '在职证明', page: 'zaizhi-cert' }
-                ]
-            },
-            'sbdy-demo': {
-                nav: 'sbdy-demo',
-                defaultTab: 'sbdy',
-                tabs: [
-                    { id: 'sbdy', label: '社保演示', page: 'sbdy-demo' },
-                    { id: 'gjj', label: '公积金演示', page: 'gjj-demo' }
-                ]
-            },
-            'login-log': {
-                nav: 'login-log',
-                defaultTab: 'admin',
-                tabs: [
-                    { id: 'admin', label: '管理登录', page: 'login-log' },
-                    { id: 'user', label: '用户登录', page: 'user-login-log' }
-                ]
-            },
-            'insights-product': {
-                nav: 'insights-product',
-                defaultTab: 'activity',
-                tabs: [
-                    { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
-                    { id: 'devices', label: '机型', page: 'analytics-devices' },
-                    { id: 'features', label: '功能调研', page: 'feature-survey' },
-                    { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
-                    { id: 'feedback', label: '兼容反馈', page: 'feedback' }
                 ]
             },
             'insights-growth': {
@@ -1136,6 +1133,79 @@
                     { id: 'data', label: '数据', page: 'ops-ad-analytics' },
                     { id: 'reach', label: '触达', page: 'ops-ad-analytics' }
                 ]
+            },
+            settings: {
+                nav: 'settings',
+                defaultTab: 'pricing',
+                tabs: [
+                    { id: 'pricing', label: '定价与引导', page: 'settings' },
+                    { id: 'install', label: '安装分发', page: 'install-guide' },
+                    { id: 'appearance', label: '外观', page: 'appearance' }
+                ]
+            },
+            'ops-board': {
+                nav: 'ops-board',
+                defaultTab: 'board',
+                tabs: [
+                    { id: 'board', label: '运营看板', page: 'ops-board' },
+                    { id: 'ads', label: '广告页', page: 'ops-ad-analytics' },
+                    { id: 'ads-data', label: '广告数据', page: 'ops-ad-analytics' },
+                    { id: 'ads-reach', label: '广告触达', page: 'ops-ad-analytics' },
+                    { id: 'codes', label: '激活码', page: 'codes' },
+                    { id: 'orders', label: '订单检索', page: 'payment-orders' },
+                    { id: 'abc', label: 'ABC渠道', page: 'abc-ops' }
+                ]
+            },
+            users: {
+                nav: 'users',
+                defaultTab: 'list',
+                tabs: [
+                    { id: 'list', label: '注册用户', page: 'users' },
+                    { id: 'rename', label: '同行 · 高频改名', page: 'rename-tax-daily' },
+                    { id: 'emails', label: '邮箱管理', page: 'user-emails' },
+                    { id: 'deleted', label: '已删除', page: 'users-deleted' },
+                    { id: 'data', label: '用户数据', page: 'user-data' },
+                    { id: 'tax', label: '个税维护', page: 'tax-records-edit' }
+                ]
+            },
+            'sbdy-demo': {
+                nav: 'sbdy-demo',
+                defaultTab: 'sbdy',
+                tabs: [
+                    { id: 'sbdy', label: '社保演示', page: 'sbdy-demo' },
+                    { id: 'gjj', label: '公积金演示', page: 'gjj-demo' },
+                    { id: 'lizhi', label: '离职证明', page: 'lizhi-cert' },
+                    { id: 'zaizhi', label: '在职证明', page: 'zaizhi-cert' },
+                    { id: 'ccb', label: '工资流水', page: 'ccb-flow' },
+                    { id: 'najilu', label: '完税二维码', page: 'najilu-qr' }
+                ]
+            },
+            'insights-product': {
+                nav: 'insights-product',
+                defaultTab: 'activity',
+                tabs: [
+                    { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
+                    { id: 'devices', label: '机型', page: 'analytics-devices' },
+                    { id: 'features', label: '功能调研', page: 'feature-survey' },
+                    { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
+                    { id: 'feedback', label: '兼容反馈', page: 'feedback' },
+                    { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
+                    { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
+                    { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
+                    { id: 'purchase', label: '支付分析', page: 'analytics-purchase' }
+                ]
+            },
+            'login-log': {
+                nav: 'login-log',
+                defaultTab: 'admin',
+                tabs: [
+                    { id: 'accounts', label: '账号权限', page: 'admin-accounts' },
+                    { id: 'downline', label: '下线管理员', page: 'downline-admins' },
+                    { id: 'admin', label: '管理登录', page: 'login-log' },
+                    { id: 'user', label: '用户登录', page: 'user-login-log' },
+                    { id: 'monitor', label: '监控', page: 'server-monitor' },
+                    { id: 'ip', label: 'IP 黑名单', page: 'blocked-ips' }
+                ]
             }
         };
         var ADMIN_CONTENT_TO_HUB = {};
@@ -1148,6 +1218,9 @@
             });
         }
         rebuildAdminHubMaps();
+        if (window.AdminNav && typeof AdminNav.setHubs === 'function') {
+            AdminNav.setHubs(ADMIN_HUB_DEFS);
+        }
         var _adminRouteState = { hub: null, tab: null, contentPage: '', navKey: '' };
 
         function parseAdminRouteClient(raw) {
@@ -1254,6 +1327,20 @@
                 panelEl.insertBefore(bar, panelEl.firstChild);
             }
             bar.innerHTML = hubDef.tabs
+                .filter(function (t) {
+                    if (!t || !t.page) return false;
+                    if (t.page === 'downline-admins') {
+                        if (currentAdminProfile && currentAdminProfile.is_super) return false;
+                        var extra = currentAdminProfile && Array.isArray(currentAdminProfile.menus)
+                            ? currentAdminProfile.menus
+                            : [];
+                        return extra.indexOf('downline-admins') >= 0;
+                    }
+                    if (t.page === 'admin-accounts' && !(currentAdminProfile && currentAdminProfile.is_super)) {
+                        return false;
+                    }
+                    return adminHasMenu(t.page);
+                })
                 .map(function (t) {
                     var active = t.id === activeTab ? ' is-active' : '';
                     return (
@@ -1323,7 +1410,21 @@
             }
             var navBtn = document.querySelector('.nav-item[data-page="' + navPageKey + '"]');
             var titleEl = document.getElementById('pageTitle');
-            if (titleEl && navBtn) {
+            if (titleEl && routeState && routeState.hub && ADMIN_HUB_DEFS[routeState.hub]) {
+                var hubTabs = ADMIN_HUB_DEFS[routeState.hub].tabs || [];
+                var titleTab = null;
+                for (var ti = 0; ti < hubTabs.length; ti++) {
+                    if (hubTabs[ti].id === routeState.tab) {
+                        titleTab = hubTabs[ti];
+                        break;
+                    }
+                }
+                titleEl.textContent =
+                    (titleTab && titleTab.label) ||
+                    ADMIN_MENU_LABELS[routeState.hub] ||
+                    (navBtn && navBtn.getAttribute('data-title')) ||
+                    '管理控制台';
+            } else if (titleEl && navBtn) {
                 titleEl.textContent = navBtn.getAttribute('data-title') || '管理控制台';
             } else if (titleEl && routeState && routeState.hub && ADMIN_MENU_LABELS[routeState.hub]) {
                 titleEl.textContent = ADMIN_MENU_LABELS[routeState.hub];
@@ -7076,15 +7177,16 @@
             'install-guide': '安装分发',
             appearance: '外观',
             codes: '激活码',
-            users: '注册用户',
+            users: '用户管理',
             'rename-tax-daily': '同行 · 高频改名',
+            'user-emails': '邮箱管理',
             'users-deleted': '已删除',
             'user-data': '用户数据',
             'tax-records-edit': '个税维护',
-            'login-log': '登录审计',
+            'login-log': '系统与安全',
             'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
-            'ops-board': '运营看板',
+            'ops-board': '转化运营',
             'ops-inactive': '未激活用户',
             'ops-ad-analytics': '广告页',
             'analytics-conversion': '转化概览',
@@ -7100,12 +7202,12 @@
             'abc-users': 'ABC用户',
             'abc-install-stats': 'ABC下载页',
             'channel-analysis': '渠道分析',
-            'insights-product': '产品洞察',
+            'insights-product': '数据分析',
             'insights-growth': '增长洞察',
             'admin-accounts': '账号权限',
             'downline-admins': '下线管理员',
             'server-monitor': '监控',
-            'sbdy-demo': '社保公积金',
+            'sbdy-demo': '业务工具',
             'gjj-demo': '公积金演示',
             'lizhi-cert': '证明工具',
             'zaizhi-cert': '在职证明',
@@ -10449,13 +10551,16 @@
                     }
                 });
                 rebuildAdminHubMaps();
+                if (window.AdminNav && typeof AdminNav.setHubs === 'function') {
+                    AdminNav.setHubs(ADMIN_HUB_DEFS);
+                }
             }
         }
 
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v23-abc-ops';
+                var MENU_TREE_VER = 'ops-ia-v24-hub6';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

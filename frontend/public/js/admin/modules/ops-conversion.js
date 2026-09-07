@@ -701,13 +701,15 @@
       }
       return;
     }
-    if (hash === 'ops-board') {
+    if (hash === 'ops-board' || hash === 'ops-board/board') {
       loadBoard();
       return;
     }
     if (
       hash === 'ops-inactive' ||
       hash === 'insights-growth/inactive' ||
+      hash === 'insights-product/inactive' ||
+      hash === 'ops-board/inactive' ||
       /(?:^|\/)inactive$/.test(hash)
     ) {
       page = 1;

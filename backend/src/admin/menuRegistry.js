@@ -5,7 +5,7 @@
  * - module：前端懒加载模块名
  *
  * 信息架构：转化运营 → 内容配置 → 用户管理 → 业务工具 → 数据分析 → 系统与安全
- * C 档合并：内容配置 / 证明工具 / 社保公积金 / 登录审计 / 产品洞察 / 增长洞察
+ * 侧栏每组只留 1 个 hub；旧 hash（#ops-inactive、#lizhi-cert/zaizhi、#insights-growth/abc）仍可用。
  */
 const config = require('../shared/config');
 const ADMIN_MENU_GROUPS = [
@@ -31,11 +31,11 @@ const ADMIN_MENU_GROUPS = [
 
 /** @type {AdminPageDef[]} */
 const ADMIN_PAGE_DEFS = [
-  /* —— 转化运营：统一看板 + 名单/广告/发码 —— */
+  /* —— 转化运营：统一看板 + 广告/发码/订单/ABC —— */
   {
     page: 'ops-board',
     menu_key: 'ops-board',
-    label: '运营看板',
+    label: '转化运营',
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 5,
@@ -70,7 +70,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'abc-ops',
     order: 12,
-    alias_menus: ['abc-users', 'abc-install-stats', 'insights-growth', 'install-guide-stats']
+    alias_menus: ['abc-users', 'abc-install-stats', 'insights-growth', 'install-guide-stats', 'ops-board'],
+    nav_hidden: true
   },
   {
     page: 'abc-users',
@@ -81,7 +82,7 @@ const ADMIN_PAGE_DEFS = [
     order: 13,
     assignable: false,
     nav_hidden: true,
-    alias_menus: ['abc-ops', 'insights-growth']
+    alias_menus: ['abc-ops', 'insights-growth', 'ops-board']
   },
   {
     page: 'ops-ad-analytics',
@@ -90,7 +91,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ad-analytics',
     order: 35,
-    alias_menus: ['analytics-conversion', 'ops-board']
+    alias_menus: ['analytics-conversion', 'ops-board'],
+    nav_hidden: true
   },
   {
     page: 'analytics-conversion',
@@ -108,9 +110,20 @@ const ADMIN_PAGE_DEFS = [
     label: '支付分析',
     group: 'insights',
     module: 'analytics',
-    order: 40
+    order: 40,
+    alias_menus: ['insights-product'],
+    nav_hidden: true
   },
-  { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 50 },
+  {
+    page: 'codes',
+    menu_key: 'codes',
+    label: '激活码',
+    group: 'ops-desk',
+    module: 'codes',
+    order: 50,
+    alias_menus: ['ops-board'],
+    nav_hidden: true
+  },
   {
     page: 'payment-orders',
     menu_key: 'payment-orders',
@@ -118,7 +131,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'payment-orders',
     order: 55,
-    alias_menus: ['analytics-purchase', 'ops-board', 'codes']
+    alias_menus: ['analytics-purchase', 'ops-board', 'codes'],
+    nav_hidden: true
   },
 
   /* —— 内容配置 hub —— */
@@ -153,7 +167,15 @@ const ADMIN_PAGE_DEFS = [
   },
 
   /* —— 用户 —— */
-  { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
+  {
+    page: 'users',
+    menu_key: 'users',
+    label: '用户管理',
+    group: 'users',
+    module: 'users',
+    order: 10,
+    alias_menus: ['peer-accounts']
+  },
   {
     page: 'rename-tax-daily',
     menu_key: 'rename-tax-daily',
@@ -161,7 +183,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'users',
     module: 'users',
     order: 15,
-    alias_menus: ['peer-accounts']
+    alias_menus: ['peer-accounts', 'users'],
+    nav_hidden: true
   },
   {
     page: 'user-emails',
@@ -170,7 +193,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'users',
     module: 'user-emails',
     order: 20,
-    alias_menus: ['users', 'ops-board']
+    alias_menus: ['users', 'ops-board'],
+    nav_hidden: true
   },
   {
     page: 'users-deleted',
@@ -178,27 +202,40 @@ const ADMIN_PAGE_DEFS = [
     label: '已删除',
     group: 'users',
     module: 'users',
-    order: 30
+    order: 30,
+    alias_menus: ['users'],
+    nav_hidden: true
   },
-  { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 60 },
+  {
+    page: 'user-data',
+    menu_key: 'user-data',
+    label: '用户数据',
+    group: 'users',
+    module: 'user-data',
+    order: 60,
+    alias_menus: ['users'],
+    nav_hidden: true
+  },
   {
     page: 'tax-records-edit',
     menu_key: 'tax-records-edit',
     label: '个税维护',
     group: 'users',
     module: 'user-data',
-    order: 65
+    order: 65,
+    alias_menus: ['users'],
+    nav_hidden: true
   },
 
   /* —— 工具 —— */
   {
     page: 'sbdy-demo',
     menu_key: 'sbdy-demo',
-    label: '社保公积金',
+    label: '业务工具',
     group: 'cert-tools',
     module: 'sbdy-demo',
     order: 10,
-    alias_menus: ['gjj-demo']
+    alias_menus: ['gjj-demo', 'lizhi-cert', 'zaizhi-cert', 'ccb-flow', 'najilu-qr']
   },
   {
     page: 'gjj-demo',
@@ -217,7 +254,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'cert-tools',
     module: 'lizhi-cert',
     order: 20,
-    alias_menus: ['zaizhi-cert']
+    alias_menus: ['zaizhi-cert', 'sbdy-demo'],
+    nav_hidden: true
   },
   {
     page: 'zaizhi-cert',
@@ -226,6 +264,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'cert-tools',
     module: 'zaizhi-cert',
     order: 25,
+    alias_menus: ['lizhi-cert', 'sbdy-demo'],
     assignable: false,
     nav_hidden: true
   },
@@ -235,7 +274,9 @@ const ADMIN_PAGE_DEFS = [
     label: '工资流水',
     group: 'cert-tools',
     module: 'ccb-flow',
-    order: 35
+    order: 35,
+    alias_menus: ['sbdy-demo'],
+    nav_hidden: true
   },
   {
     page: 'najilu-qr',
@@ -243,18 +284,31 @@ const ADMIN_PAGE_DEFS = [
     label: '完税二维码',
     group: 'cert-tools',
     module: 'najilu-qr',
-    order: 40
+    order: 40,
+    alias_menus: ['sbdy-demo'],
+    nav_hidden: true
   },
 
-  /* —— 数据：产品洞察 / 增长洞察 hub —— */
+  /* —— 数据：数据分析 hub（增长洞察旧入口仍走 hash 兼容） —— */
   {
     page: 'insights-product',
     menu_key: 'insights-product',
-    label: '产品洞察',
+    label: '数据分析',
     group: 'insights',
     module: 'analytics',
     order: 18,
-    alias_menus: ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback', 'feature-survey']
+    alias_menus: [
+      'analytics-activity',
+      'analytics-devices',
+      'tax-fill-survey',
+      'feedback',
+      'feature-survey',
+      'channel-analysis',
+      'install-guide-stats',
+      'ops-inactive',
+      'analytics-purchase',
+      'insights-growth'
+    ]
   },
   {
     page: 'insights-growth',
@@ -263,7 +317,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 19,
-    alias_menus: ['ops-inactive', 'channel-analysis', 'install-guide-stats']
+    alias_menus: ['ops-inactive', 'channel-analysis', 'install-guide-stats'],
+    nav_hidden: true
   },
   {
     page: 'ops-inactive',
@@ -272,7 +327,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'ops-conversion',
     order: 21,
-    alias_menus: ['analytics-conversion', 'users', 'ops-board', 'insights-growth'],
+    alias_menus: ['analytics-conversion', 'users', 'ops-board', 'insights-growth', 'insights-product'],
     assignable: false,
     nav_hidden: true
   },
@@ -335,6 +390,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 50,
+    alias_menus: ['insights-growth', 'insights-product'],
     assignable: false,
     nav_hidden: true
   },
@@ -345,6 +401,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 60,
+    alias_menus: ['insights-growth', 'insights-product'],
     assignable: false,
     nav_hidden: true
   },
@@ -357,7 +414,7 @@ const ADMIN_PAGE_DEFS = [
     order: 14,
     assignable: false,
     nav_hidden: true,
-    alias_menus: ['install-guide-stats', 'insights-growth', 'abc-ops']
+    alias_menus: ['install-guide-stats', 'insights-growth', 'abc-ops', 'ops-board']
   },
 
   /* —— 系统 —— */
@@ -368,7 +425,9 @@ const ADMIN_PAGE_DEFS = [
     group: 'system',
     module: 'accounts',
     order: 18,
-    hide_for_super: true
+    hide_for_super: true,
+    alias_menus: ['login-log'],
+    nav_hidden: true
   },
   {
     page: 'admin-accounts',
@@ -378,16 +437,18 @@ const ADMIN_PAGE_DEFS = [
     module: 'accounts',
     order: 20,
     super_only: true,
-    assignable: false
+    assignable: false,
+    alias_menus: ['login-log'],
+    nav_hidden: true
   },
   {
     page: 'login-log',
     menu_key: 'login-log',
-    label: '登录审计',
+    label: '系统与安全',
     group: 'system',
     module: 'logs',
     order: 30,
-    alias_menus: ['user-login-log']
+    alias_menus: ['user-login-log', 'admin-accounts', 'downline-admins', 'server-monitor', 'blocked-ips']
   },
   {
     page: 'user-login-log',
@@ -405,7 +466,9 @@ const ADMIN_PAGE_DEFS = [
     label: '监控',
     group: 'system',
     module: 'monitor',
-    order: 50
+    order: 50,
+    alias_menus: ['login-log'],
+    nav_hidden: true
   },
   {
     page: 'blocked-ips',
@@ -413,7 +476,9 @@ const ADMIN_PAGE_DEFS = [
     label: 'IP 黑名单',
     group: 'system',
     module: 'users',
-    order: 60
+    order: 60,
+    alias_menus: ['login-log'],
+    nav_hidden: true
   }
 ];
 
@@ -435,48 +500,13 @@ const ADMIN_PREFERRED_FIRST_PAGES = [
  * tab → 实际 content page（有独立 #page-*）
  */
 const ADMIN_HUB_DEFS = {
-  settings: {
-    nav: 'settings',
-    defaultTab: 'pricing',
-    tabs: [
-      { id: 'pricing', label: '定价与引导', page: 'settings' },
-      { id: 'install', label: '安装分发', page: 'install-guide' },
-      { id: 'appearance', label: '外观', page: 'appearance' }
-    ]
-  },
+  /* 旧 hash 兼容，侧栏不再展示这些入口 */
   'lizhi-cert': {
     nav: 'lizhi-cert',
     defaultTab: 'lizhi',
     tabs: [
       { id: 'lizhi', label: '离职证明', page: 'lizhi-cert' },
       { id: 'zaizhi', label: '在职证明', page: 'zaizhi-cert' }
-    ]
-  },
-  'sbdy-demo': {
-    nav: 'sbdy-demo',
-    defaultTab: 'sbdy',
-    tabs: [
-      { id: 'sbdy', label: '社保演示', page: 'sbdy-demo' },
-      { id: 'gjj', label: '公积金演示', page: 'gjj-demo' }
-    ]
-  },
-  'login-log': {
-    nav: 'login-log',
-    defaultTab: 'admin',
-    tabs: [
-      { id: 'admin', label: '管理登录', page: 'login-log' },
-      { id: 'user', label: '用户登录', page: 'user-login-log' }
-    ]
-  },
-  'insights-product': {
-    nav: 'insights-product',
-    defaultTab: 'activity',
-    tabs: [
-      { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
-      { id: 'devices', label: '机型', page: 'analytics-devices' },
-      { id: 'features', label: '功能调研', page: 'feature-survey' },
-      { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
-      { id: 'feedback', label: '兼容反馈', page: 'feedback' }
     ]
   },
   'insights-growth': {
@@ -505,8 +535,82 @@ const ADMIN_HUB_DEFS = {
       { id: 'data', label: '数据', page: 'ops-ad-analytics' },
       { id: 'reach', label: '触达', page: 'ops-ad-analytics' }
     ]
+  },
+  settings: {
+    nav: 'settings',
+    defaultTab: 'pricing',
+    tabs: [
+      { id: 'pricing', label: '定价与引导', page: 'settings' },
+      { id: 'install', label: '安装分发', page: 'install-guide' },
+      { id: 'appearance', label: '外观', page: 'appearance' }
+    ]
+  },
+  'ops-board': {
+    nav: 'ops-board',
+    defaultTab: 'board',
+    tabs: [
+      { id: 'board', label: '运营看板', page: 'ops-board' },
+      { id: 'ads', label: '广告页', page: 'ops-ad-analytics' },
+      { id: 'ads-data', label: '广告数据', page: 'ops-ad-analytics' },
+      { id: 'ads-reach', label: '广告触达', page: 'ops-ad-analytics' },
+      { id: 'codes', label: '激活码', page: 'codes' },
+      { id: 'orders', label: '订单检索', page: 'payment-orders' },
+      { id: 'abc', label: 'ABC渠道', page: 'abc-ops' }
+    ]
+  },
+  users: {
+    nav: 'users',
+    defaultTab: 'list',
+    tabs: [
+      { id: 'list', label: '注册用户', page: 'users' },
+      { id: 'rename', label: '同行 · 高频改名', page: 'rename-tax-daily' },
+      { id: 'emails', label: '邮箱管理', page: 'user-emails' },
+      { id: 'deleted', label: '已删除', page: 'users-deleted' },
+      { id: 'data', label: '用户数据', page: 'user-data' },
+      { id: 'tax', label: '个税维护', page: 'tax-records-edit' }
+    ]
+  },
+  'sbdy-demo': {
+    nav: 'sbdy-demo',
+    defaultTab: 'sbdy',
+    tabs: [
+      { id: 'sbdy', label: '社保演示', page: 'sbdy-demo' },
+      { id: 'gjj', label: '公积金演示', page: 'gjj-demo' },
+      { id: 'lizhi', label: '离职证明', page: 'lizhi-cert' },
+      { id: 'zaizhi', label: '在职证明', page: 'zaizhi-cert' },
+      { id: 'ccb', label: '工资流水', page: 'ccb-flow' },
+      { id: 'najilu', label: '完税二维码', page: 'najilu-qr' }
+    ]
+  },
+  'insights-product': {
+    nav: 'insights-product',
+    defaultTab: 'activity',
+    tabs: [
+      { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
+      { id: 'devices', label: '机型', page: 'analytics-devices' },
+      { id: 'features', label: '功能调研', page: 'feature-survey' },
+      { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
+      { id: 'feedback', label: '兼容反馈', page: 'feedback' },
+      { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
+      { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
+      { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
+      { id: 'purchase', label: '支付分析', page: 'analytics-purchase' }
+    ]
+  },
+  'login-log': {
+    nav: 'login-log',
+    defaultTab: 'admin',
+    tabs: [
+      { id: 'accounts', label: '账号权限', page: 'admin-accounts' },
+      { id: 'downline', label: '下线管理员', page: 'downline-admins' },
+      { id: 'admin', label: '管理登录', page: 'login-log' },
+      { id: 'user', label: '用户登录', page: 'user-login-log' },
+      { id: 'monitor', label: '监控', page: 'server-monitor' },
+      { id: 'ip', label: 'IP 黑名单', page: 'blocked-ips' }
+    ]
   }
 };
+
 
 /** 内容页 → 所属 hub（用于侧栏高亮与旧 hash 归一） */
 const ADMIN_CONTENT_TO_HUB = (function () {
@@ -671,6 +775,21 @@ function getPageDef(page) {
 /** 辅助函数：adminProfileCanAccessPage */
 function adminProfileCanAccessPage(admin, page) {
   var parsed = parseAdminRoute(page);
+  /* 具体子页：先应用该页自身的 super_only / hide_for_super */
+  if (parsed.hub && parsed.contentPage && parsed.contentPage !== parsed.hub) {
+    var contentOnlyDef = null;
+    for (var ci = 0; ci < ADMIN_PAGE_DEFS.length; ci++) {
+      if (ADMIN_PAGE_DEFS[ci].page === parsed.contentPage) {
+        contentOnlyDef = ADMIN_PAGE_DEFS[ci];
+        break;
+      }
+    }
+    if (contentOnlyDef) {
+      if (adminProfileCanAccessPageRaw(admin, contentOnlyDef)) return true;
+      if (contentOnlyDef.super_only && !(admin && admin.is_super)) return false;
+      if (contentOnlyDef.hide_for_super && admin && admin.is_super) return false;
+    }
+  }
   /* hub 入口：有 hub menu 或任一 tab 内容页权限即可 */
   if (parsed.hub && ADMIN_HUB_DEFS[parsed.hub] && parsed.page === parsed.hub) {
     var hubDef = null;

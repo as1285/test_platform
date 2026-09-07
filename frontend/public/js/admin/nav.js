@@ -3,6 +3,7 @@
  */
 (function (global) {
   var cachedTree = null;
+  var cachedHubs = null;
   var selectedCommandIndex = 0;
 
   function esc(s) {
@@ -32,8 +33,34 @@
     if (isCommandOpen()) renderCommandResults();
   }
 
+  function setHubs(hubs) {
+    cachedHubs = hubs && typeof hubs === 'object' ? hubs : null;
+    if (isCommandOpen()) renderCommandResults();
+  }
+
   function getMenuTree() {
     return cachedTree || [];
+  }
+
+  function navItemButton(it, activePage, extraClass) {
+    var page = String(it.page || '');
+    var active = page === activePage ? ' active' : '';
+    return (
+      '<button type="button" class="nav-item' +
+      (extraClass ? ' ' + extraClass : '') +
+      active +
+      '" data-page="' +
+      esc(page) +
+      '" data-title="' +
+      esc(it.label || page) +
+      '" data-module="' +
+      esc(it.module || '') +
+      '"' +
+      (active ? ' aria-current="page"' : '') +
+      '>' +
+      esc(it.label || page) +
+      '</button>'
+    );
   }
 
   function renderSidebar(navEl, tree, activePage) {
@@ -43,6 +70,10 @@
     groups.forEach(function (g) {
       var items = Array.isArray(g.items) ? g.items : [];
       if (!items.length) return;
+      if (items.length === 1) {
+        html += navItemButton(items[0], activePage, 'nav-item--root');
+        return;
+      }
       var gid = String(g.id || 'g');
       var hasActive = items.some(function (it) {
         return String(it.page || '') === activePage;
@@ -68,22 +99,7 @@
         '</button>';
       html += '<div class="nav-group-items">';
       items.forEach(function (it) {
-        var page = String(it.page || '');
-        var active = page === activePage ? ' active' : '';
-        html +=
-          '<button type="button" class="nav-item' +
-          active +
-          '" data-page="' +
-          esc(page) +
-          '" data-title="' +
-          esc(it.label || page) +
-          '" data-module="' +
-          esc(it.module || '') +
-          '"' +
-          (active ? ' aria-current="page"' : '') +
-          '>' +
-          esc(it.label || page) +
-          '</button>';
+        html += navItemButton(it, activePage);
       });
       html += '</div></div>';
     });
@@ -121,13 +137,37 @@
 
   function flattenTree() {
     var out = [];
+    var seen = Object.create(null);
     getMenuTree().forEach(function (group) {
       (group.items || []).forEach(function (item) {
+        var page = String(item.page || '');
+        if (!page || seen[page]) return;
+        seen[page] = 1;
         out.push({
-          page: String(item.page || ''),
-          label: String(item.label || item.page || ''),
+          page: page,
+          label: String(item.label || page),
           group: String(group.label || ''),
           groupId: String(group.id || '')
+        });
+      });
+    });
+    var hubs = cachedHubs || {};
+    getMenuTree().forEach(function (group) {
+      (group.items || []).forEach(function (item) {
+        var hubKey = String(item.page || '');
+        var def = hubs[hubKey];
+        if (!def || !Array.isArray(def.tabs)) return;
+        def.tabs.forEach(function (tab) {
+          if (!tab || !tab.id) return;
+          var hash = tab.id === def.defaultTab ? hubKey : hubKey + '/' + tab.id;
+          if (seen[hash]) return;
+          seen[hash] = 1;
+          out.push({
+            page: hash,
+            label: String(tab.label || tab.id),
+            group: String(item.label || group.label || ''),
+            groupId: String(group.id || '')
+          });
         });
       });
     });
@@ -488,6 +528,7 @@
 
   global.AdminNav = {
     setMenuTree: setMenuTree,
+    setHubs: setHubs,
     getMenuTree: getMenuTree,
     renderSidebar: renderSidebar,
     bindNavClicks: bindNavClicks,
