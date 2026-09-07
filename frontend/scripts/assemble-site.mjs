@@ -197,6 +197,29 @@ async function protectAssets() {
     await protectCssFile(abs);
   }
   console.log('[protect] js', jsFiles.length, 'css', cssFiles.length);
+  assertCoreJsProtected();
+}
+
+/** 核心业务脚本必须带压缩戳；避免镜像里再漏出 auth.js / admin_panel.js 原文 */
+const CORE_PROTECT_REL = [
+  'js/auth.js',
+  'js/auth-boot.js',
+  'js/admin_panel.js',
+  'js/admin_auth.js',
+  'js/consult-core.js'
+];
+
+function assertCoreJsProtected() {
+  for (const rel of CORE_PROTECT_REL) {
+    const abs = path.join(SITE, rel);
+    if (!fs.existsSync(abs)) {
+      throw new Error('[protect] missing ' + rel);
+    }
+    const head = fs.readFileSync(abs, 'utf8').slice(0, 32);
+    if (head.indexOf('/*! geshui ') !== 0) {
+      throw new Error('[protect] expected minify stamp on ' + rel);
+    }
+  }
 }
 
 /** 压缩页内无 src 的 script（跳过 JSON-LD / 已 type=module 且过长失败则保留） */

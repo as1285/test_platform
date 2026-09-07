@@ -32,6 +32,6 @@ describe('我的页右上角激活按钮', () => {
     expect(guide).not.toMatch(
       /function removeMineConversionUi[\s\S]*classList\.add\(\s*['"]mine-account-active['"]/
     );
-    expect(auth).toContain('conversion-guide.js?v=20260907-fill-btn');
+    expect(auth).toContain('conversion-guide.js?v=20260907-no-refund-force');
   });
 });

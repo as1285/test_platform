@@ -202,7 +202,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260907-severance'],
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260907-fill-first'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
@@ -223,8 +223,8 @@ mustExclude(
 );
 mustInclude(
   'backend/scripts/zaizhi_render_pdf.py',
-  ['place_seal', 'SEAL_PT'],
-  'zaizhi uses shared vermilion seal'
+  ['place_seal', 'SEAL_PT', 'draw_code=False'],
+  'zaizhi uses shared vermilion seal without bottom digits'
 );
 mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'", '20260907-android-save'], 'lizhi cert shared page + quick generate');
 mustInclude(
@@ -1932,17 +1932,15 @@ mustInclude(
     'maybeGoRefundAdAfterTax',
     'refund_ad.html?from=tax_done',
     'reason=',
-    'track_refund_ad_after_tax_go',
-    'track_refund_ad_after_tax_show',
     "opts.source === 'single_save'",
     'showSpecialDeductionRefundDialog',
     'specialDeductionRefundEstimate',
     'REFUND_CHILD_MONTH',
     'REFUND_PARENT_MONTH',
-    'cg-refund-force-overlay',
+    '已关闭强制退税弹框',
     'REFUND_AD_ESTIMATE_KEY'
   ],
-  'after tax fill go to refund ad when 2023-2025 tax over 5000 or income 150000'
+  'after tax fill keeps refund estimate; force popup disabled'
 );
 mustInclude(
   'frontend/consult.html',
@@ -1972,6 +1970,17 @@ mustInclude(
   ['consultRefundAdEntry" hidden', 'refund_ad.html?from=consult', '未开通也可先看二次退税'],
   'consult refund card hidden until inactive prompt'
 );
+{
+  const src = read('frontend/consult.html');
+  const flow = src.indexOf('id="taxFlowSteps"');
+  const list = src.indexOf('id="taxRecordsListCard"');
+  const refund = src.indexOf('id="consultRefundAdEntry"');
+  if (flow > -1 && list > flow && refund > list) {
+    ok('consult refund card sits below tax fill flow');
+  } else {
+    fail('consult refund card sits below tax fill flow', `flow=${flow} list=${list} refund=${refund}`);
+  }
+}
 mustInclude(
   'frontend/shuiming_result.html',
   [
@@ -1986,6 +1995,16 @@ mustInclude(
     'watermark.js?v=20260831-m60home'
   ],
   'shuiming inactive card guides tax fill'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  [
+    '--list-date-inset',
+    'function syncListDateToSummaryDecimal',
+    'body.page-shuiming-result #recordList .list-date',
+    "setProperty('--list-date-inset'"
+  ],
+  'shuiming list date aligns to summary tax decimal'
 );
 mustExclude(
   'frontend/shuiming_result.html',

@@ -64,6 +64,6 @@ describe('tax-fill-survey', () => {
     expect(html).toContain('consultBackLink');
     expect(html).toContain('compatBugRecordsEntry');
     expect(html).toContain('兼容问题反馈');
-    expect(html).toContain('consult.css?v=20260907-severance');
+    expect(html).toContain('consult.css?v=20260907-fill-first');
   });
 });

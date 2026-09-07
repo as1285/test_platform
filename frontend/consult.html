@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260907-severance">
+    <link rel="stylesheet" href="/css/consult.css?v=20260907-fill-first">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -291,17 +291,9 @@
                 <span class="consult-compat-bug-cta">去反馈</span>
                 <span class="consult-compat-bug-arrow" aria-hidden="true">›</span>
             </a>
-            <div class="card consult-product-card" id="consultRefundAdEntry" hidden>
-                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
-                    <div class="card-title" id="consultRefundAdTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
-                    <span class="consult-product-badge" id="consultRefundAdBadge">建议咨询</span>
-                </div>
-                <p class="hint" id="consultRefundAdHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。</p>
-                <a class="btn btn-primary btn-block" id="btnConsultRefundAd" href="refund_ad.html?from=consult">去计算可退税额</a>
-            </div>
 
             <div class="tax-flow-steps" id="taxFlowSteps" aria-label="税务记录流程">
-                <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">填资料</span></div>
+                <div class="tax-flow-step is-current"><span class="tax-flow-num">1</span><span class="tax-flow-label">填资料</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
                 <div class="tax-flow-step"><span class="tax-flow-num">2</span><span class="tax-flow-label">生成</span></div>
                 <div class="tax-flow-sep" aria-hidden="true"></div>
@@ -493,7 +485,7 @@
                                 <span class="batch-emp-severance-toggle-icon" aria-hidden="true">▼</span>
                             </button>
                             <div class="batch-emp-severance-body">
-                                <p class="batch-emp-severance-hint">填金额后点「单独增加裁员补偿」即可写入，不会改动已有月薪。同一年可多笔（请用不同月份）。不超过当地上年职工平均工资 3 倍的部分免税（演示按 12 万元/年，免税额 36 万）。</p>
+                                <p class="batch-emp-severance-hint">填金额后点「单独增加裁员补偿」即可写入，不会改动已有月薪。同一年可多笔（请用不同月份）。不超过深圳上年职工平均工资 3 倍的部分免税（按市统计局 2025 年城镇非私营单位年平均工资 191367 元，免税额 574101 元）。</p>
                                 <div class="batch-emp-severance-list"></div>
                                 <button type="button" class="batch-emp-severance-add">再加一笔裁员补偿</button>
                                 <button type="button" class="btn btn-default btn-sm batch-emp-severance-solo-btn">单独增加裁员补偿</button>
@@ -619,7 +611,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>裁员补偿 / 解除劳动合同补偿怎么计税？</summary>
-                        <p>解除劳动合同一次性补偿收入：不超过当地上年职工平均工资 3 倍的部分免税，超过部分不并入综合所得，单独适用综合所得税率表。本页演示按上年平均工资 12 万元（免税额 36 万）计算，生成独立记录，所得子项目为「解除劳动合同一次性补偿收入」。</p>
+                        <p>解除劳动合同一次性补偿收入：不超过当地上年职工平均工资 3 倍的部分免税，超过部分不并入综合所得，单独适用综合所得税率表。本页按深圳市统计局 2025 年城镇非私营单位就业人员年平均工资 191367 元计算（免税额 574101 元），生成独立记录，所得子项目为「解除劳动合同一次性补偿收入」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>换工作后个税如何累计？</summary>
@@ -908,6 +900,15 @@
                 </div>
             </div>
 
+            <div class="card consult-product-card" id="consultRefundAdEntry" hidden>
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" id="consultRefundAdTitle" style="margin:0;padding:0;border:none;font-size:15px;">二次退税咨询</div>
+                    <span class="consult-product-badge" id="consultRefundAdBadge">建议咨询</span>
+                </div>
+                <p class="hint" id="consultRefundAdHint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。</p>
+                <a class="btn btn-primary btn-block" id="btnConsultRefundAd" href="refund_ad.html?from=consult">去计算可退税额</a>
+            </div>
+
         </div>
 
         <div id="panel-products" class="tab-panel">
@@ -1029,7 +1030,7 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260907-severance"></script>
+    <script defer src="/js/consult-core.js?v=20260907-sz-wage"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260907-severance"></script>
     <script defer src="/js/consult-records.js?v=20260905-list-tap"></script>
     <script>

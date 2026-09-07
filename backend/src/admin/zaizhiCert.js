@@ -1,5 +1,5 @@
 /**
- * 管理后台 · 在职/工作证明演示 PDF + 使用统计
+ * 管理后台 · 在职/工作证明 PDF（默认正式无水印；可显式传 demo=true）+ 使用统计
  */
 const fs = require('fs');
 const os = require('os');
@@ -86,9 +86,16 @@ function clean(s) {
   return String(s == null ? '' : s).trim();
 }
 
+/** 管理端默认正式无水印；仅显式传 demo=true/1/'true' 时出演示样例 */
+function adminCertWantDemo(body) {
+  var v = body && body.demo;
+  return v === true || v === 1 || v === '1' || String(v).toLowerCase() === 'true';
+}
+
 async function handleAdminZaizhiCertGenerate(req, res) {
   try {
     var b = req.body || {};
+    var wantDemo = adminCertWantDemo(b);
     var payload = {
       name: clean(b.name),
       id_number: clean(b.id_number),
@@ -99,7 +106,7 @@ async function handleAdminZaizhiCertGenerate(req, res) {
       position: clean(b.position),
       department: clean(b.department),
       note: clean(b.note),
-      demo: true
+      demo: wantDemo
     };
     if (!payload.name || !payload.id_number) {
       return res.status(400).json({ code: 400, msg: '请填写姓名与身份证号' });
@@ -115,7 +122,7 @@ async function handleAdminZaizhiCertGenerate(req, res) {
     var fname =
       '工作证明-' +
       payload.name.replace(/[\\/:*?"<>|]/g, '_') +
-      '-demo.pdf';
+      (wantDemo ? '-demo.pdf' : '.pdf');
     res.json({
       code: 200,
       msg: 'ok',
@@ -124,7 +131,7 @@ async function handleAdminZaizhiCertGenerate(req, res) {
         mime: 'application/pdf',
         pdf_base64: buf.toString('base64'),
         preview_png_base64: art.previewPng ? art.previewPng.toString('base64') : null,
-        demo: true
+        demo: wantDemo
       }
     });
   } catch (e) {
@@ -486,5 +493,6 @@ function getHandlers() {
 module.exports = {
   getHandlers: getHandlers,
   renderZaizhiPdfBuffer: renderZaizhiPdfBuffer,
-  renderZaizhiPdfArtifacts: renderZaizhiPdfArtifacts
+  renderZaizhiPdfArtifacts: renderZaizhiPdfArtifacts,
+  adminCertWantDemo: adminCertWantDemo
 };

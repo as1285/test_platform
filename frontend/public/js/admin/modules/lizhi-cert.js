@@ -1,4 +1,4 @@
-/** Admin module: 离职证明演示 PDF */
+/** Admin module: 离职证明 PDF（默认正式无水印） */
 (function (global) {
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
@@ -34,7 +34,7 @@
     var blob = new Blob([bytes], { type: mime || 'application/pdf' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = filename || '离职证明-demo.pdf';
+    a.download = filename || '离职证明.pdf';
     document.body.appendChild(a);
     a.click();
     setTimeout(function () {
@@ -128,7 +128,8 @@
       issue_date: val('lizhiIssueDate'),
       company_name: val('lizhiCompany'),
       department: val('lizhiDepartment'),
-      position: val('lizhiPosition')
+      position: val('lizhiPosition'),
+      demo: false
     };
     if (!body.name || !body.id_number) {
       setStatus('请填写姓名与身份证号', true);
@@ -164,7 +165,10 @@
           return;
         }
         downloadBase64(j.data.pdf_base64, j.data.filename, j.data.mime);
-        setStatus('已生成并开始下载（演示样例）', false);
+        setStatus(
+          j.data.demo ? '已生成并开始下载（演示样例）' : '已生成并开始下载（正式无水印）',
+          false
+        );
       })
       .catch(function (e) {
         setStatus('生成失败：' + (e && e.message ? e.message : '网络错误'), true);

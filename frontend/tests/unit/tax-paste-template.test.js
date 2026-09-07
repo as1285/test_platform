@@ -89,7 +89,7 @@ describe('consult tax paste template simplify', () => {
     expect(html).toContain('生成记录');
     expect(html).not.toContain('解析引擎 v0721d');
     expect(html).not.toContain('id="taxPasteImportParseBtn"');
-    expect(html).toContain('consult-core.js?v=20260907-severance');
+    expect(html).toContain('consult-core.js?v=20260907-sz-wage');
     expect(html).toContain('consult-batch-tax.js?v=20260907-severance');
   });
 

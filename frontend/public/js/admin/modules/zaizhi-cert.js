@@ -1,4 +1,4 @@
-/** Admin module: 在职/工作证明演示 PDF */
+/** Admin module: 在职/工作证明 PDF（默认正式无水印） */
 (function (global) {
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
@@ -34,7 +34,7 @@
     var blob = new Blob([bytes], { type: mime || 'application/pdf' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = filename || '工作证明-demo.pdf';
+    a.download = filename || '工作证明.pdf';
     document.body.appendChild(a);
     a.click();
     setTimeout(function () {
@@ -132,7 +132,8 @@
       issue_date: val('zaizhiIssueDate'),
       company_name: val('zaizhiCompany'),
       department: val('zaizhiDepartment'),
-      position: val('zaizhiPosition')
+      position: val('zaizhiPosition'),
+      demo: false
     };
     if (!body.name || !body.id_number) {
       setStatus('请填写姓名与身份证号', true);
@@ -168,7 +169,10 @@
           return;
         }
         downloadBase64(j.data.pdf_base64, j.data.filename, j.data.mime);
-        setStatus('已生成并开始下载（演示样例）', false);
+        setStatus(
+          j.data.demo ? '已生成并开始下载（演示样例）' : '已生成并开始下载（正式无水印）',
+          false
+        );
       })
       .catch(function (e) {
         setStatus('生成失败：' + (e && e.message ? e.message : '网络错误'), true);

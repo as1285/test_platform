@@ -52,9 +52,21 @@ describe('consult 税务记录 batch generate: simplified period + action hierar
 
   it('keeps the 3-step progress stepper with copy matching the simplified flow', () => {
     expect(html).toContain('id="taxFlowSteps"');
+    expect(html).toContain('tax-flow-step is-current');
     expect(html).toContain('填资料');
     expect(html).toContain('>生成<');
     expect(html).toContain('核对');
+  });
+
+  it('puts 二次退税咨询 below the tax fill flow and record list', () => {
+    const flow = html.indexOf('id="taxFlowSteps"');
+    const batch = html.indexOf('id="batchTaxCard"');
+    const list = html.indexOf('id="taxRecordsListCard"');
+    const refund = html.indexOf('id="consultRefundAdEntry"');
+    expect(flow).toBeGreaterThan(-1);
+    expect(batch).toBeGreaterThan(flow);
+    expect(list).toBeGreaterThan(batch);
+    expect(refund).toBeGreaterThan(list);
   });
 
   it('shortens the batch form instructional copy to a single short line', () => {

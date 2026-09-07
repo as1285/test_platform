@@ -1309,7 +1309,8 @@
             font-weight: 400;
             color: #333;
             line-height: 1.18;
-            margin-right: 25px;
+            /* 官方个税 App：日期末位对齐汇总税额小数点，右侧留出「xx元」宽 */
+            margin-right: var(--list-date-inset, 2.15em);
         }
 
         .list-row {
@@ -3114,6 +3115,14 @@
             margin-top: calc(var(--header-height, 48px) + 70px) !important;
         }
 
+        /*
+         * 日期右缘对齐汇总「5946.01元」的小数点：--list-date-inset 由 JS 按税额小数位实测。
+         * 选择器带 #recordList，压过 15/16/17 等机型把 .list-date 贴边的 margin-right:0。
+         */
+        body.page-shuiming-result #recordList .list-date {
+            margin-right: var(--list-date-inset, 2.15em) !important;
+        }
+
     </style>
 </head>
 <body class="page-shuiming-result">
@@ -3650,6 +3659,7 @@
                 listHtml += detailHref ? '</a>' : '</div>';
             });
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
+            syncListDateToSummaryDecimal();
             syncRecordEmptyUi(records.length > 0);
             bindRecordListNavigation();
             flushShuimingListToViewport();
@@ -3684,7 +3694,45 @@
         function applyTotals(data) {
             document.getElementById('incomeTotal').innerHTML = amountSummaryInnerHtml(formatYuanField(data.income_total) + '元');
             document.getElementById('taxTotal').innerHTML = amountSummaryInnerHtml(formatYuanField(data.tax_total) + '元');
-            requestAnimationFrame(syncTopFixedHeight);
+            requestAnimationFrame(function () {
+                syncListDateToSummaryDecimal();
+                syncTopFixedHeight();
+            });
+        }
+
+        function fractionAfterDecimal(text) {
+            var t = String(text || '').replace(/\s/g, '');
+            var i = t.lastIndexOf('.');
+            return i >= 0 ? t.slice(i + 1) : '00元';
+        }
+
+        /**
+         * 把列表日期往左收到与汇总税额小数点同一竖线（官方个税 App / iPhone 15 Pro / Turbo 4 Pro）。
+         * 右侧空隙 = #taxTotal 小数点后（如「01元」）的实测宽度。
+         */
+        function syncListDateToSummaryDecimal() {
+            var tax = document.getElementById('taxTotal');
+            if (!tax) return;
+            var frac = fractionAfterDecimal(tax.textContent);
+            if (!frac) return;
+            var cs = window.getComputedStyle(tax);
+            var probe = document.createElement('span');
+            probe.setAttribute('aria-hidden', 'true');
+            probe.style.cssText =
+                'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;white-space:nowrap;' +
+                'font-family:' + cs.fontFamily + ';' +
+                'font-size:' + cs.fontSize + ';' +
+                'font-weight:' + cs.fontWeight + ';' +
+                'font-style:' + cs.fontStyle + ';' +
+                'letter-spacing:' + cs.letterSpacing + ';' +
+                'font-variant-numeric:' + (cs.fontVariantNumeric || 'normal') + ';' +
+                'font-feature-settings:' + (cs.fontFeatureSettings || 'normal') + ';';
+            probe.textContent = frac;
+            document.body.appendChild(probe);
+            var w = probe.getBoundingClientRect().width;
+            if (probe.parentNode) probe.parentNode.removeChild(probe);
+            if (!(w > 0) || !isFinite(w)) return;
+            document.documentElement.style.setProperty('--list-date-inset', (Math.round(w * 100) / 100) + 'px');
         }
 
         function createPurchaseWatermarkLayer() {
@@ -4056,9 +4104,21 @@
 
         window.addEventListener('resize', syncTopFixedHeight);
         window.addEventListener('orientationchange', syncTopFixedHeight);
+        window.addEventListener('resize', syncListDateToSummaryDecimal);
+        window.addEventListener('orientationchange', syncListDateToSummaryDecimal);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', syncTopFixedHeight);
+            window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
+        (function bindListDateAlignObserver() {
+            var tax = document.getElementById('taxTotal');
+            if (!tax || typeof ResizeObserver === 'undefined') return;
+            var ro = new ResizeObserver(function () {
+                syncListDateToSummaryDecimal();
+            });
+            ro.observe(tax);
+        })();
+        syncListDateToSummaryDecimal();
 
         initTopFixedHeightObserver();
         resetShuimingScrollTop();
@@ -4071,6 +4131,7 @@
         if (document.fonts && document.fonts.ready) {
             document.fonts.ready.then(function () {
                 syncTopFixedHeight();
+                syncListDateToSummaryDecimal();
             });
         }
 
@@ -4108,6 +4169,7 @@
             refreshActivateUiAfterReturn();
             finishShuimingPageLoading();
             syncTopFixedHeight();
+            syncListDateToSummaryDecimal();
             if (ev && ev.persisted && listStillShowingSpinner()) {
                 loadData({ quiet: true });
             }

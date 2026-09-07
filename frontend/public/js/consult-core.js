@@ -1275,8 +1275,9 @@ function yearEndBonusTaxSeparate(bonus) {
     return 0;
 }
 
-/** 演示用：当地上年职工平均工资（元）。3 倍以内免税。 */
-var SEVERANCE_LOCAL_AVG_WAGE = 120000;
+/** 深圳上年职工平均工资（元）：市统计局 2025 年城镇非私营单位就业人员年平均工资。3 倍以内免税。 */
+var SEVERANCE_LOCAL_AVG_WAGE = 191367;
+var SEVERANCE_TAX_FREE_CAP = SEVERANCE_LOCAL_AVG_WAGE * 3;
 var SEVERANCE_INCOME_SUBTYPE = '解除劳动合同一次性补偿收入';
 
 function isSeveranceCompensationSubtype(sub) {
@@ -1285,7 +1286,7 @@ function isSeveranceCompensationSubtype(sub) {
 }
 
 /**
- * 解除劳动合同一次性补偿：不超过当地上年职工平均工资 3 倍免税，
+ * 解除劳动合同一次性补偿：不超过深圳上年职工平均工资 3 倍免税，
  * 超过部分单独适用综合所得税率表（年度）。
  */
 function severanceCompensationTaxSeparate(amount, avgWage) {

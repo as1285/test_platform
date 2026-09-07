@@ -10,7 +10,7 @@
  * 主要 localStorage / sessionStorage 键（详见下方「状态/缓存」段）：
  * - account_active / tax_record_count / employer_count（与业务页共享）
  * - cg_*：转化 dismiss、日频、截图/编辑模式、我的页填写入口、收入访问计数等
- * - refund_ad_*：填完强制弹框 / 测算金额 / 年收入软推荐 / 微信已复制
+ * - refund_ad_*：测算金额 / 年收入软推荐 / 微信已复制（填完强制弹框已关闭）
  * - cg_profile_summary_v2（sessionStorage）：用户摘要短缓存
  * - cg_post_activate_pending / cg_email_nudge_after_register（sessionStorage）
  *
@@ -731,15 +731,6 @@
       '.cg-value-panel .cg-btn{display:block;width:100%;margin-bottom:8px;padding:11px;border-radius:8px;border:none;font-size:15px;cursor:pointer;font-family:inherit}' +
       '.cg-value-panel .cg-btn-primary{background:#1e6fff;color:#fff}' +
       '.cg-value-panel .cg-btn-ghost{background:#f5f6fa;color:#333}' +
-      '.cg-value-panel.is-refund-force{max-width:360px;padding:20px 18px 16px}' +
-      '.cg-value-panel.is-refund-force .cg-refund-force-kicker{margin:0 0 8px;font-size:12px;font-weight:600;color:#c2410c;text-align:center;line-height:1.45}' +
-      '.cg-value-panel.is-refund-force h3{margin:0 0 6px;font-size:18px;text-align:center}' +
-      '.cg-value-panel.is-refund-force .cg-refund-force-amt{margin:4px 0 6px;font-size:30px;font-weight:800;color:#c2410c;text-align:center;letter-spacing:-0.02em;line-height:1.15}' +
-      '.cg-value-panel.is-refund-force .cg-refund-force-years{margin:0 0 12px;font-size:12px;color:#9a3412;text-align:center;line-height:1.5}' +
-      '.cg-refund-force-why{margin:0 0 10px;padding:10px 12px;background:#fff7ed;border-radius:10px;font-size:13px;color:#7c2d12;line-height:1.55}' +
-      '.cg-refund-force-why strong{display:block;margin:0 0 4px;color:#c2410c}' +
-      '.cg-value-panel.is-refund-force .cg-refund-force-note{margin:0 0 14px;font-size:11px;color:#94a3b8;line-height:1.45;text-align:center}' +
-      '.cg-value-panel.is-refund-force .cg-btn-primary{background:#ff6a00;font-weight:700;font-size:16px;margin-bottom:0}' +
       '.cg-help-qq-card{margin:12px 16px 0;padding:14px;background:#eefbf6;border:1px solid #b7ebdc;border-radius:10px}' +
       '.cg-help-qq-card h4{margin:0 0 6px;font-size:15px;color:#333}' +
       '.cg-help-qq-card p{margin:0 0 10px;font-size:13px;color:#666;line-height:1.45}' +
@@ -2694,118 +2685,20 @@
   }
 
   /**
-   * 填完 2023–2025 后强制弹框：展示专项附加扣除测算金额，只能去广告页。
-   * 无「稍后再说」，点击遮罩不关闭。
+   * 已停用：原先填完 2023–2025 后强制弹「二次退税测算」、只能去广告页。
+   * 保留函数名供埋点/自检引用；入口改为列表横幅、咨询卡与软推荐。
    */
-  function showSpecialDeductionRefundDialog(estimate, hit, opts, year) {
-    opts = opts || {};
-    if (document.getElementById('cg-refund-force-overlay')) return false;
-    ensureGateStyles();
-    persistRefundEstimate(estimate);
-    var total = estimate && estimate.total > 0 ? Math.round(estimate.total) : 0;
-    var yearLines = '';
-    if (estimate && estimate.years && estimate.years.length) {
-      yearLines = estimate.years
-        .filter(function (r) {
-          return r && r.saved > 0;
-        })
-        .map(function (r) {
-          return r.year + ' 年约 ' + formatRefundYuan(r.saved);
-        })
-        .join('  ·  ');
-    }
-    var ov = document.createElement('div');
-    ov.id = 'cg-refund-force-overlay';
-    ov.className = 'cg-value-overlay';
-    ov.setAttribute('data-cg-lock', '1');
-    ov.innerHTML =
-      '<div class="cg-value-panel is-refund-force" role="dialog" aria-modal="true" aria-labelledby="cgRefundForceTitle">' +
-      '<p class="cg-refund-force-kicker">3 个子女 4500 元/月 + 赡养父母 3000 元/月</p>' +
-      '<h3 id="cgRefundForceTitle">二次退税测算</h3>' +
-      '<p class="cg-refund-force-amt" id="cgRefundForceAmt"></p>' +
-      '<p class="cg-refund-force-years" id="cgRefundForceYears"></p>' +
-      '<div class="cg-refund-force-why">' +
-      '<strong>怎么退回来的</strong>' +
-      '年度汇算清缴可以补报专项附加扣除。每月多扣 7500 元会降低应纳税所得额，已经多缴的个税符合条件可以退回。' +
-      '</div>' +
-      '<p class="cg-refund-force-note">测算仅供参考，实际金额以汇算清缴结果为准。</p>' +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgRefundForceGo">查看可退金额与办理说明</button>' +
-      '</div>';
-    document.body.appendChild(ov);
-    var amtEl = document.getElementById('cgRefundForceAmt');
-    if (amtEl) {
-      amtEl.textContent = total > 0 ? '约可退 ' + formatRefundYuan(total) : '顾问按记录核对金额';
-    }
-    var yEl = document.getElementById('cgRefundForceYears');
-    if (yEl) yEl.textContent = yearLines;
-    var allHits = refundAdYearHits((opts && opts._refundRecords) || window.__consultRecordsCache || []);
-    track('track_refund_ad_after_tax_show', {
-      page: currentPage(),
-      source: opts.source || 'batch',
-      estimate_total: total,
-      tax_year_gate: hit && hit.year,
-      reason: hit && hit.reason
-    });
-    var goBtn = document.getElementById('cgRefundForceGo');
-    if (goBtn) {
-      goBtn.onclick = function () {
-        markRefundAdAfterTaxSeen();
-        markIncomeRefundRecommendDismissed();
-        track('track_refund_ad_after_tax_go', {
-          page: currentPage(),
-          source: opts.source || 'batch',
-          tax_count: taxRecordCount(),
-          tax_sum_gate: hit && hit.tax_sum,
-          income_sum_gate: hit && hit.income_sum,
-          tax_year_gate: hit && hit.year,
-          reason: (hit && hit.reason) || 'estimate',
-          estimate_total: total,
-          tax_year_hits: allHits
-            .map(function (h) {
-              return h.year;
-            })
-            .join(',')
-        });
-        window.location.href = refundAdAfterTaxHref(
-          (hit && hit.year) || year,
-          hit && hit.reason,
-          estimate
-        );
-      };
-    }
-    ov.addEventListener('click', function (e) {
-      if (e.target === ov) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    });
-    return true;
+  function showSpecialDeductionRefundDialog() {
+    return false;
   }
 
-  /** 2023–2025 填完后强制弹框去广告页：有测算金额，或税额/收入达原门槛 */
-  function maybeGoRefundAdAfterTax(opts, year, records) {
-    if (isLandingGuest()) return false;
-    if (!isLoggedIn()) return false;
-    if (hasSeenRefundAdAfterTax()) return false;
-    /* 单条保存多半还在补记录，等批量「填完」再带去，少中途打断 */
-    if (opts && opts.source === 'single_save') return false;
-    var list = records || window.__consultRecordsCache || [];
-    var estimate = specialDeductionRefundEstimate(list);
-    var hit = primaryRefundAdTaxHit(list);
-    if (!(estimate && estimate.total > 0) && !hit) return false;
-    markIncomeRefundRecommendDismissed();
-    var dialogOpts = {};
-    if (opts) {
-      Object.keys(opts).forEach(function (k) {
-        dialogOpts[k] = opts[k];
-      });
-    }
-    dialogOpts._refundRecords = list;
-    return showSpecialDeductionRefundDialog(estimate, hit, dialogOpts, year);
+  /** 已关闭强制退税弹框；测算与广告页入口仍可用 */
+  function maybeGoRefundAdAfterTax() {
+    return false;
   }
 
   /**
-   * 填税完成后的统一出口：优先强制退税广告 → 软推荐收入弹窗 → 价值确认 / 明细跳转。
+   * 填税完成后的统一出口：软推荐收入弹窗 → 价值确认 / 明细跳转（不再强制退税弹框）。
    * @param {{source?: string, records?: Array}} [opts]
    */
   function afterTaxRecordsCreated(opts) {

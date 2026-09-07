@@ -49,26 +49,21 @@ mustHave(
     'function iitComprehensiveTax',
     'function specialDeductionRefundEstimate',
     'function showSpecialDeductionRefundDialog',
-    'cg-refund-force-overlay',
-    'data-cg-lock',
-    'track_refund_ad_after_tax_show',
-    "opts.source === 'single_save'",
+    'function maybeGoRefundAdAfterTax',
+    '已关闭强制退税弹框',
     'refund_ad.html?from=tax_done',
     '&est='
   ],
-  'source conversion-guide estimate + force dialog'
+  'source conversion-guide estimate; force dialog disabled'
 );
 
-const forceFn = guide.match(
-  /function showSpecialDeductionRefundDialog[\s\S]*?function maybeGoRefundAdAfterTax/
+mustNotHave(
+  guide,
+  ['cg-refund-force-overlay', 'cgRefundForceGo', 'track_refund_ad_after_tax_show'],
+  'force refund dialog markup removed'
 );
-if (forceFn && !forceFn[0].includes('稍后再说') && forceFn[0].includes('cgRefundForceGo')) {
-  ok('force dialog has CTA only, no 稍后再说');
-} else {
-  fail('force dialog has CTA only, no 稍后再说');
-}
 
-mustHave(auth, ['conversion-guide.js?v=20260905-no-home-refund'], 'auth.js cache-busts conversion-guide');
+mustHave(auth, ['conversion-guide.js?v=20260907-no-refund-force'], 'auth.js cache-busts conversion-guide');
 
 mustHave(
   guide,
@@ -128,8 +123,8 @@ function dockerGrep(path, needle) {
 const containerChecks = [
   [
     '/usr/share/nginx/html/js/conversion-guide.js',
-    'cg-refund-force-overlay',
-    'container conversion-guide force dialog'
+    '已关闭强制退税弹框',
+    'container conversion-guide force dialog disabled'
   ],
   [
     '/usr/share/nginx/html/js/conversion-guide.js',
@@ -138,7 +133,7 @@ const containerChecks = [
   ],
   [
     '/usr/share/nginx/html/js/auth.js',
-    '20260905-no-home-refund',
+    '20260907-no-refund-force',
     'container auth cache-bust'
   ],
   [
@@ -185,25 +180,26 @@ if (adHtml.includes('refundEstCard') && adHtml.includes('二次退税怎么来�
   fail('HTTP refund_ad.html serves estimate card', adHtml ? 'missing markers' : 'empty/failed');
 }
 
-const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260905-no-home-refund');
+const cgJs = curlText('http://127.0.0.1/js/conversion-guide.js?v=20260907-no-refund-force');
 if (
-  cgJs.includes('cg-refund-force-overlay') &&
+  cgJs.includes('已关闭强制退税弹框') &&
   cgJs.includes('4500') &&
+  !cgJs.includes('cg-refund-force-overlay') &&
   !cgJs.includes('cg-inactive-refund-promo')
 ) {
-  ok('HTTP conversion-guide.js serves estimate + force dialog without home promo');
+  ok('HTTP conversion-guide.js serves estimate without force dialog / home promo');
 } else {
   fail(
-    'HTTP conversion-guide.js serves estimate + force dialog without home promo',
-    cgJs ? 'missing markers or home promo still present' : 'empty/failed'
+    'HTTP conversion-guide.js serves estimate without force dialog / home promo',
+    cgJs ? 'missing markers or force/home promo still present' : 'empty/failed'
   );
 }
 
 const authJs = curlText('http://127.0.0.1/js/auth.js');
-if (authJs.includes('conversion-guide.js?v=20260905-no-home-refund')) {
-  ok('HTTP auth.js points at no-home-refund conversion-guide');
+if (authJs.includes('conversion-guide.js?v=20260907-no-refund-force')) {
+  ok('HTTP auth.js points at no-refund-force conversion-guide');
 } else {
-  fail('HTTP auth.js points at no-home-refund conversion-guide');
+  fail('HTTP auth.js points at no-refund-force conversion-guide');
 }
 
 console.log(`[refund-est-selftest] ${passed} ok, ${failed} fail`);

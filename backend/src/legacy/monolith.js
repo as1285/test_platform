@@ -28,6 +28,7 @@ const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const adminDownline = require('../admin/downline');
 const { blockedByFromAdmin, blockedByLabel } = require('../admin/blockedByLabel');
+const adminUiCookie = require('../admin/uiAssetCookie');
 const {
   adminUsernameKey,
   adminHasFullUserScope,
@@ -2627,6 +2628,10 @@ async function checkTrackRate(req) {
 
 /** 管理 API 限流 */
 function adminApiRateLimit(req, res, next) {
+  var p = String(req.originalUrl || req.url || '');
+  if (p.indexOf('/api/admin/ui-asset-auth') >= 0) {
+    return next();
+  }
   var ip = getClientIp(req) || 'unknown';
   consumeRateLimit('admin-api-ip', ip, ADMIN_API_RATE_PER_IP_MIN, 60 * 1000)
     .then(function (result) {
@@ -14128,6 +14133,9 @@ async function handleAdminLogin(req, res) {
       await clearAdminLoginFailure(conn, admin.id);
       recordAdminLoginAttempt(admin.username, true, 'ok', req).catch(function () {});
       var sessionPayload = adminMenuRegistry.buildAdminSessionPayload(admin);
+      try {
+        adminUiCookie.setCookie(res, req);
+      } catch (eUiCk) {}
       return res.json({
         code: 200,
         data: Object.assign({ token: signAdminToken(admin.username) }, sessionPayload)
@@ -24579,6 +24587,9 @@ function getHandlers() {
     handlePublicGuestSession,
     handlePublicEmailClick,
     handleAdminLogin,
+    handleAdminUiAssetAuth: adminUiCookie.handleAssetAuth,
+    handleAdminUiCookie: adminUiCookie.handleIssueCookie,
+    handleAdminLogout: adminUiCookie.handleLogout,
     handleAdminMe,
     handleAdminSettingsGet,
     handleAdminUploadAsset,

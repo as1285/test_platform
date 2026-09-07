@@ -1763,7 +1763,7 @@
                             <button type="button" class="btn btn-default btn-sm batch-emp-bonus-add">再加一笔年终奖</button>
                         </div>
                         <div class="batch-emp-severance-block admin-divider-dashed">
-                            <p class="hint">裁员补偿（解除劳动合同补偿）单独计税，一年可填多笔（请用不同月份）。不超过当地上年职工平均工资 3 倍的部分免税（演示按 12 万元/年，免税额 36 万）。</p>
+                            <p class="hint">裁员补偿（解除劳动合同补偿）单独计税，一年可填多笔（请用不同月份）。不超过深圳上年职工平均工资 3 倍的部分免税（按市统计局 2025 年城镇非私营单位年平均工资 191367 元，免税额 574101 元）。</p>
                             <div class="batch-emp-severance-list"></div>
                             <button type="button" class="btn btn-default btn-sm batch-emp-severance-add">再加一笔裁员补偿</button>
                         </div>
@@ -2311,25 +2311,8 @@
 
                 <div id="page-lizhi-cert" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>离职证明使用统计</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端离职证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。下方「离开页调研」统计用户首次退出证明页时的价格、体验与优化问卷（每账号最多 1 条）。</p></details>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="lizhiStatsDays">统计区间</label>
-                                <select id="lizhiStatsDays" class="filter-select">
-                                    <option value="1">今天</option>
-                                    <option value="7" selected>最近 7 天</option>
-                                    <option value="30">最近 30 天</option>
-                                    <option value="90">最近 90 天</option>
-                                </select>
-                            </div>
-                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshLizhiStats">刷新统计</button>
-                        </div>
-                        <div id="lizhiStatsMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
-                    </section>
-                    <section style="margin-top:28px;">
                         <h2>离职证明生成</h2>
-                        <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式离职证明），带「演示样例」标注，不能用于入职/签证等正式用途。</p>
+                        <p class="hint mt-0">生成<strong>正式无水印</strong>离职证明 PDF（与 C 端付费去水印版一致）。可按用户名预填任职信息后核对再生成。</p>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <label for="lizhiPrefillUser">按用户名预填</label>
@@ -2385,6 +2368,23 @@
                             <p id="lizhiStatus" class="hint" aria-live="polite"></p>
                         </div>
                     </section>
+                    <section style="margin-top:28px;">
+                        <h2>离职证明使用统计</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端离职证明：区间内<strong>使用用户</strong>（有生成或付费）、¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。后台本页「演示生成」不计入用户使用。「离开页调研」统计用户首次退出证明页时的价格、体验与优化问卷（每账号最多 1 条）。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="lizhiStatsDays">统计区间</label>
+                                <select id="lizhiStatsDays" class="filter-select">
+                                    <option value="1">今天</option>
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshLizhiStats">刷新统计</button>
+                        </div>
+                        <div id="lizhiStatsMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
+                    </section>
                 </div>
 
                 <div id="page-zaizhi-cert" class="page-panel" role="tabpanel">
@@ -2407,7 +2407,7 @@
                     </section>
                     <section style="margin-top:28px;">
                         <h2>工作证明生成</h2>
-                        <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式工作证明），带「演示样例」标注，不能用于入职/签证等正式用途。</p>
+                        <p class="hint mt-0">生成<strong>正式无水印</strong>工作证明 PDF（与 C 端付费去水印版一致）。可按用户名预填任职信息后核对再生成。</p>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <label for="zaizhiPrefillUser">按用户名预填</label>

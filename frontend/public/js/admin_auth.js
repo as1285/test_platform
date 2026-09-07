@@ -77,6 +77,7 @@
 
   function adminFetch(url, opts) {
     opts = opts || {};
+    opts.credentials = opts.credentials || 'include';
     opts.headers = Object.assign({}, adminHeaders(), opts.headers || {});
     // 管理域与主站同路径 API；绝对路径更稳
     if (typeof url === 'string' && url.indexOf('http') !== 0 && url.charAt(0) !== '/') {
@@ -100,6 +101,7 @@
     }
     return fetch(url, {
       method: 'POST',
+      credentials: 'include',
       headers: t ? { Authorization: 'Bearer ' + t } : {},
       body: fd
     }).then(function (r) {
@@ -110,13 +112,38 @@
     });
   }
 
+  function issueUiCookie() {
+    return fetch('/api/admin/ui-cookie', {
+      method: 'POST',
+      credentials: 'include',
+      headers: adminHeaders()
+    }).then(function (r) {
+      if (r.status === 401) {
+        return rejectUnauthorized();
+      }
+      return r;
+    });
+  }
+
   function adminLogout() {
+    var done = false;
+    function leave() {
+      if (done) return;
+      done = true;
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem('admin_profile');
+        localStorage.removeItem('admin_menu_tree');
+      } catch (e) {}
+      window.location.href = LOGIN_PAGE;
+    }
     try {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem('admin_profile');
-      localStorage.removeItem('admin_menu_tree');
-    } catch (e) {}
-    window.location.href = LOGIN_PAGE;
+      fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).then(leave, leave);
+    } catch (eFetch) {
+      leave();
+      return;
+    }
+    setTimeout(leave, 2000);
   }
 
   window.adminGetToken = getToken;
@@ -131,7 +158,11 @@
     }
   } else if (isLoginPage()) {
     if (getToken()) {
-      window.location.replace(PANEL_URL);
+      issueUiCookie()
+        .then(function () {
+          window.location.replace(PANEL_URL);
+        })
+        .catch(function () {});
     }
   }
 })();

@@ -9237,7 +9237,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260907-fill-btn';
+      s.src = '/js/conversion-guide.js?v=20260907-no-refund-force';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

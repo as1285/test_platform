@@ -71,6 +71,9 @@ describe('android first-paint load', () => {
     expect(assemble).toContain('auth-boot.js');
     /* 仅 minify，不得进入 OBFUSCATE_REL 集合 */
     expect(assemble).not.toMatch(/OBFUSCATE_REL\s*=\s*new Set\(\[[^\]]*auth-boot\.js/);
+    expect(assemble).toContain("js/auth.js");
+    expect(assemble).toContain("js/admin_panel.js");
+    expect(assemble).toContain('assertCoreJsProtected');
     const core = readFileSync(join(frontend, 'public/js/app/core.js'), 'utf8');
     expect(core).toContain('fn.apply(this, arguments)');
   });

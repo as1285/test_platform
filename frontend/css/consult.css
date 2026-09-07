@@ -580,6 +580,14 @@ html.app-ios-iphone15promax .container {
     display: inline-flex; align-items: center; justify-content: center; line-height: 1;
 }
 #panel-records .tax-flow-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; white-space: nowrap; }
+#panel-records .tax-flow-step:not(.is-current) .tax-flow-num {
+    background: var(--color-border);
+    color: var(--color-text-secondary);
+}
+#panel-records .tax-flow-step.is-current .tax-flow-label {
+    color: var(--color-primary);
+    font-weight: 700;
+}
 #panel-records .tax-flow-sep {
     flex: 1 1 auto; height: 1px; min-width: 12px; background: linear-gradient(90deg, var(--color-border), var(--color-primary-border));
 }
@@ -823,6 +831,10 @@ html.app-ios-iphone15promax .container {
     font-size: 18px;
     color: #60a5fa;
     line-height: 1;
+}
+/* 税务记录页：填写/列表在上，二次退税入口沉底 */
+#panel-records #consultRefundAdEntry {
+    margin-top: 16px;
 }
 #panel-records #consultRefundAdEntry.is-refund-qualified,
 #panel-products #consultRefundAdProductEntry.is-refund-qualified {

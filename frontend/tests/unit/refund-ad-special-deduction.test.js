@@ -148,28 +148,20 @@ function monthsForYear(year, income, tax) {
   return rows;
 }
 
-describe('special deduction refund estimate + force dialog', () => {
-  it('wires 4500/3000 estimate and a lock dialog without 稍后再说', () => {
+describe('special deduction refund estimate + force dialog removed', () => {
+  it('keeps estimate helpers and disables the locked refund force dialog', () => {
     expect(guideSrc).toContain('REFUND_CHILD_MONTH = 4500');
     expect(guideSrc).toContain('REFUND_PARENT_MONTH = 3000');
     expect(guideSrc).toContain('REFUND_MONTHLY_EXTRA');
     expect(guideSrc).toContain('function iitComprehensiveTax');
     expect(guideSrc).toContain('function specialDeductionRefundEstimate');
     expect(guideSrc).toContain('function showSpecialDeductionRefundDialog');
-    expect(guideSrc).toContain('cg-refund-force-overlay');
-    expect(guideSrc).toContain('data-cg-lock');
-    expect(guideSrc).toContain('track_refund_ad_after_tax_show');
-    expect(guideSrc).toContain('refund_ad.html?from=tax_done');
-    expect(guideSrc).toContain('&est=');
-    expect(authSrc).toContain('conversion-guide.js?v=20260907-fill-btn');
-    const forceFn = guideSrc.match(
-      /function showSpecialDeductionRefundDialog[\s\S]*?function maybeGoRefundAdAfterTax/
-    );
-    expect(forceFn).toBeTruthy();
-    expect(forceFn[0]).not.toContain('稍后再说');
-    expect(forceFn[0]).toContain('4500');
-    expect(forceFn[0]).toContain('3000');
-    expect(forceFn[0]).toContain('cgRefundForceGo');
+    expect(guideSrc).toContain('function maybeGoRefundAdAfterTax');
+    expect(guideSrc).toContain('已关闭强制退税弹框');
+    expect(guideSrc).not.toContain('cg-refund-force-overlay');
+    expect(guideSrc).not.toContain('cgRefundForceGo');
+    expect(guideSrc).not.toContain('track_refund_ad_after_tax_show');
+    expect(authSrc).toContain('conversion-guide.js?v=20260907-no-refund-force');
   });
 
   it('uses comprehensive IIT brackets and caps refund by tax paid', () => {
@@ -228,7 +220,7 @@ function loadRealGuide() {
   return window.ConversionGuide;
 }
 
-describe('ConversionGuide runtime: force popup + estimate', () => {
+describe('ConversionGuide runtime: force popup disabled', () => {
   beforeEach(() => {
     localStorage.clear();
     document.head.innerHTML = '';
@@ -263,47 +255,24 @@ describe('ConversionGuide runtime: force popup + estimate', () => {
     expect(CG.iitComprehensiveTax(96000)).toBe(7080);
   });
 
-  it('forces a locked dialog with the amount and no 稍后再说', () => {
+  it('does not show the locked refund force dialog after tax fill', () => {
     const CG = loadRealGuide();
     localStorage.setItem('token', 't');
     const threeYears = []
       .concat(monthsForYear(2023, '13000', '200'))
       .concat(monthsForYear(2024, '13000', '200'))
       .concat(monthsForYear(2025, '13000', '200'));
-    const shown = CG.maybeGoRefundAdAfterTax({ source: 'batch' }, 2025, threeYears);
-    expect(shown).toBe(true);
-    const ov = document.getElementById('cg-refund-force-overlay');
-    expect(ov).toBeTruthy();
-    expect(ov.getAttribute('data-cg-lock')).toBe('1');
-    expect(ov.textContent).not.toContain('稍后再说');
-    expect(ov.querySelectorAll('button').length).toBe(1);
-    expect(document.getElementById('cgRefundForceAmt').textContent).toBe(
-      '约可退 ¥7,200'
+    expect(CG.maybeGoRefundAdAfterTax({ source: 'batch' }, 2025, threeYears)).toBe(
+      false
     );
-    expect(document.getElementById('cgRefundForceYears').textContent).toContain(
-      '2025 年约 ¥2,400'
-    );
-    expect(JSON.parse(localStorage.getItem('refund_ad_estimate_v1')).total).toBe(7200);
-    expect(window.trackUserAction).toHaveBeenCalledWith(
+    expect(document.getElementById('cg-refund-force-overlay')).toBeFalsy();
+    expect(window.trackUserAction).not.toHaveBeenCalledWith(
       'track_refund_ad_after_tax_show',
-      expect.objectContaining({ estimate_total: 7200 })
-    );
-
-    ov.click();
-    expect(document.getElementById('cg-refund-force-overlay')).toBeTruthy();
-    expect(localStorage.getItem('refund_ad_after_tax_v1')).toBe(null);
-
-    document.getElementById('cgRefundForceGo').click();
-    expect(localStorage.getItem('refund_ad_after_tax_v1')).toBe('1');
-    expect(String(window.location.href)).toContain('refund_ad.html?from=tax_done');
-    expect(String(window.location.href)).toContain('est=7200');
-    expect(window.trackUserAction).toHaveBeenCalledWith(
-      'track_refund_ad_after_tax_go',
-      expect.objectContaining({ estimate_total: 7200 })
+      expect.anything()
     );
   });
 
-  it('does not interrupt single_save or logged-out / already-seen users', () => {
+  it('stays quiet for single_save / logged-out / already-seen / low income', () => {
     const records = monthsForYear(2024, '13000', '200');
     const CG = loadRealGuide();
     expect(CG.maybeGoRefundAdAfterTax({ source: 'batch' }, 2024, records)).toBe(false);
@@ -315,15 +284,11 @@ describe('ConversionGuide runtime: force popup + estimate', () => {
 
     localStorage.setItem('refund_ad_after_tax_v1', '1');
     expect(CG.maybeGoRefundAdAfterTax({ source: 'batch' }, 2024, records)).toBe(false);
-    expect(document.getElementById('cg-refund-force-overlay')).toBeFalsy();
-  });
 
-  it('does not pop when 2023–2025 income stays under the deduction and tax gate', () => {
-    const CG = loadRealGuide();
-    localStorage.setItem('token', 't');
     const low = monthsForYear(2024, '4000', '50');
     expect(CG.specialDeductionRefundEstimate(low).total).toBe(0);
     expect(CG.maybeGoRefundAdAfterTax({ source: 'batch' }, 2024, low)).toBe(false);
+    expect(document.getElementById('cg-refund-force-overlay')).toBeFalsy();
   });
 });
 

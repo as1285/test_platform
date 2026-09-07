@@ -10,6 +10,9 @@ app.use('/api/admin/user-data', mw.heavyAdminApiRateLimit);
 app.use('/api/admin', mw.adminApiRateLimit);
 
 app.post('/api/admin/login', h.handleAdminLogin);
+app.get('/api/admin/ui-asset-auth', h.handleAdminUiAssetAuth);
+app.post('/api/admin/logout', h.handleAdminLogout);
+app.post('/api/admin/ui-cookie', mw.requireAdminAuth, h.handleAdminUiCookie);
 app.get('/api/admin/me', mw.requireAdminAuth, h.handleAdminMe);
 app.get(
   '/api/admin/settings',
