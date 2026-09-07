@@ -149,7 +149,7 @@ describe('vivo X90 mine e1 single-layer paint', () => {
     );
     expect(mine).toContain("if (String(hi.getAttribute('src') || '') !== url) hi.src = url;");
     expect(mine).toMatch(/auth-boot\.js\?v=20260907-pay-top/);
-    expect(mine).toMatch(/auth\.js\?v=20260907-fill-btn" defer/);
+    expect(mine).toMatch(/auth\.js\?v=20260907-email-sfx" defer/);
   });
 
   it('turns the translucent blurred nav capsule solid on the plain-img tier', () => {

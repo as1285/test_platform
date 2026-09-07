@@ -35,8 +35,8 @@ describe('我的页左上角填写数据按钮', () => {
     expect(mine).toContain('html.cg-screenshot-mode body.page-mine .mine-fill-data-btn');
     expect(guideSrc).toContain("MINE_FILL_DATA_BTN_KEY = 'cg_mine_fill_data_btn'");
     expect(guideSrc).toContain('#mineFillDataBtn');
-    expect(authSrc).toContain('conversion-guide.js?v=20260907-no-refund-force');
-    expect(mine).toContain('auth.js?v=20260907-fill-btn');
+    expect(authSrc).toContain('conversion-guide.js?v=20260907-email-sfx');
+    expect(mine).toContain('auth.js?v=20260907-email-sfx');
   });
 });
 

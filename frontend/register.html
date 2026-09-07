@@ -20,7 +20,8 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260906-reg-urlch" defer></script>
+    <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
+    <script src="/js/auth.js?v=20260907-email-sfx" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -209,6 +210,25 @@
             color: var(--reg-muted);
             line-height: 1.5;
         }
+        .email-suffix-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 8px 0 2px;
+        }
+        .email-suffix-chip {
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .email-suffix-chip:active { opacity: 0.85; }
         .guest-tip {
             margin: 0 0 14px;
             padding: 10px 12px;
@@ -363,9 +383,13 @@
                     </div>
                     <div class="field">
                         <label for="email">电子邮箱 <span class="opt">选填</span></label>
-                        <input type="email" id="email" name="email" placeholder="例如 name@qq.com，方便收优惠提醒" maxlength="255" autocomplete="email" inputmode="email">
+                        <input type="email" id="email" name="email" placeholder="填 QQ 号或用户名，再点下方后缀" maxlength="255" autocomplete="email" inputmode="email">
+                        <div class="email-suffix-chips" id="emailSuffixChips">
+                            <button type="button" class="email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>
+                            <button type="button" class="email-suffix-chip" data-email-suffix="@163.com">@163.com</button>
+                        </div>
                         <div class="field-msg" id="emailMsg"></div>
-                        <p class="soft-tip" style="margin-top:6px;">不填也能注册；开通提醒、专属价会发到邮箱。</p>
+                        <p class="soft-tip" style="margin-top:6px;">开通成功、专属价会发到这个邮箱。</p>
                     </div>
                     <div class="field source-block" id="registerSourceBlock">
                         <label for="registerSourceChannel">从哪了解到的 <span class="req">*</span></label>
@@ -937,6 +961,26 @@
             e.preventDefault();
             submitRegister();
         });
+        (function bindRegEmailSuffix() {
+            var input = document.getElementById('email');
+            var chips = document.getElementById('emailSuffixChips');
+            if (!input || !chips) return;
+            if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+                window.EmailSuffix.wireEmailSuffixChips(chips, input);
+                return;
+            }
+            chips.addEventListener('click', function (ev) {
+                var t = ev.target;
+                var suf = t && t.getAttribute ? t.getAttribute('data-email-suffix') : '';
+                if (!suf) return;
+                ev.preventDefault();
+                var cur = String(input.value || '').trim();
+                var at = cur.indexOf('@');
+                var local = at >= 0 ? cur.slice(0, at) : cur;
+                input.value = local + suf;
+                try { input.focus(); } catch (eF) {}
+            });
+        })();
     </script>
 </body>
 </html>

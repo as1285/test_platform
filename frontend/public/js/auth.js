@@ -9204,6 +9204,15 @@
     document.head.appendChild(s);
   })();
 
+  (function injectEmailSuffix() {
+    if (currentPageName() === 'admin_panel.html') return;
+    if (document.querySelector('script[data-email-suffix], script[src*="email-suffix.js"]')) return;
+    var s = document.createElement('script');
+    s.src = '/js/email-suffix.js?v=20260907-email-sfx';
+    s.setAttribute('data-email-suffix', '1');
+    document.head.appendChild(s);
+  })();
+
   (function injectConversionGuide() {
     if (currentPageName() === 'admin_panel.html') return;
     var pageCg = currentPageName();
@@ -9237,7 +9246,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260907-no-refund-force';
+      s.src = '/js/conversion-guide.js?v=20260907-email-sfx';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

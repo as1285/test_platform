@@ -10,7 +10,8 @@
     -->
     <script src="/js/tab-shell-escape.js?v=20260907-pay-top2"></script>
     <script src="/js/auth-boot.js?v=20260907-pay-top"></script>
-    <script src="/js/auth.js?v=20260907-pay-top" defer></script>
+    <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
+    <script src="/js/auth.js?v=20260907-email-sfx" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -1240,6 +1241,91 @@
         .price-bid-cancel { background: #f1f5f9; color: #475569; }
         .price-bid-submit { background: #1e6fff; color: #fff; }
         .price-bid-submit:disabled { opacity: 0.6; }
+        .purchase-email-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 470;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .purchase-email-mask[hidden] { display: none; }
+        .purchase-email-sheet {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 14px 14px 0 0;
+            padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -6px 28px rgba(15, 23, 42, 0.18);
+            box-sizing: border-box;
+        }
+        .purchase-email-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 6px;
+        }
+        .purchase-email-sub {
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.55;
+            margin: 0 0 12px;
+        }
+        .purchase-email-sheet input[type="email"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 11px 12px;
+            font-size: 16px;
+            margin-bottom: 0;
+            background: #fff;
+            color: #0f172a;
+            font-family: inherit;
+        }
+        .email-suffix-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 8px 0 8px;
+        }
+        .email-suffix-chip {
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-email-err {
+            min-height: 16px;
+            margin: 0 0 12px;
+            font-size: 12px;
+            color: #dc2626;
+        }
+        .purchase-email-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .purchase-email-actions button {
+            min-height: 44px;
+            border-radius: 11px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-email-save { background: #1e6fff; color: #fff; }
+        .purchase-email-save:disabled { opacity: 0.6; }
+        .purchase-email-skip { background: transparent; color: #94a3b8; font-weight: 400; font-size: 13px; min-height: 36px; }
     </style>
 </head>
 <body class="page-purchase">
@@ -1381,6 +1467,23 @@
             </div>
         </div>
 
+        <div class="purchase-email-mask" id="purchaseEmailMask" hidden>
+            <div class="purchase-email-sheet" role="dialog" aria-modal="true" aria-labelledby="purchaseEmailTitle">
+                <div class="purchase-email-title" id="purchaseEmailTitle">开通回执发到邮箱</div>
+                <p class="purchase-email-sub" id="purchaseEmailSub">付款成功、专属价会发到这个邮箱。先填再付最省事；也可以先付款。</p>
+                <input type="email" id="purchaseEmailInput" maxlength="255" placeholder="填 QQ 号或用户名，再点下方后缀" autocomplete="email" inputmode="email">
+                <div class="email-suffix-chips" id="purchaseEmailSuffixChips">
+                    <button type="button" class="email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>
+                    <button type="button" class="email-suffix-chip" data-email-suffix="@163.com">@163.com</button>
+                </div>
+                <p class="purchase-email-err" id="purchaseEmailErr" aria-live="polite"></p>
+                <div class="purchase-email-actions">
+                    <button type="button" class="purchase-email-save" id="btnPurchaseEmailSave">保存邮箱并付款</button>
+                    <button type="button" class="purchase-email-skip" id="btnPurchaseEmailSkip">先付款，不开通回执</button>
+                </div>
+            </div>
+        </div>
+
         <section class="purchase-faq" id="purchaseFaq" aria-label="支付常见问题">
             <div class="purchase-faq-title">支付常见问题</div>
             <p class="purchase-faq-sub" id="purchaseFaqSub">付款前可先看这几条，减少顾虑。</p>
@@ -1420,7 +1523,7 @@
             </div>
         </section>
 
-        <a class="purchase-yuefu-entry" id="purchaseYuefuEntry" href="douyin_yuefu_ad.html?from=purchase_yuefu" aria-label="抖音月付大额秒到">
+        <a class="purchase-yuefu-entry" id="purchaseYuefuEntry" href="douyin_yuefu_ad.html?from=purchase_yuefu" aria-label="抖音月付大额秒到" hidden>
             <div class="purchase-yuefu-icon" aria-hidden="true">🎵</div>
             <div class="purchase-yuefu-body">
                 <div class="purchase-yuefu-title">抖音月付 · 大额秒到</div>
@@ -1429,7 +1532,7 @@
             <span class="purchase-yuefu-arrow" aria-hidden="true">›</span>
         </a>
 
-        <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询">
+        <aside class="purchase-refund-ad" id="purchaseRefundAd" aria-label="二次退税咨询" hidden>
             <img
                 class="purchase-refund-ad-poster"
                 src="/img/refund-ad.jpg?v=20260831-poster"
@@ -1446,7 +1549,7 @@
             </div>
         </aside>
 
-        <aside class="purchase-gjj-ad" id="purchaseGjjEntry" aria-label="公积金提取">
+        <aside class="purchase-gjj-ad" id="purchaseGjjEntry" aria-label="公积金提取" hidden>
             <img
                 class="purchase-gjj-ad-poster"
                 src="/img/gjj-extract-ad.jpg?v=20260831-poster"
@@ -2981,7 +3084,7 @@
             document.body.classList.remove('has-sticky-cta');
         }
         if (faq) faq.hidden = false;
-        if (refundAdEntry) refundAdEntry.hidden = false;
+        if (refundAdEntry) refundAdEntry.hidden = true;
         if (faqSub) {
             faqSub.textContent = isCodeOnly
                 ? '用激活码开通前可先看这几条。'
@@ -3937,7 +4040,188 @@
             updatePayCtaFromSelection();
         });
     }
+    var PURCHASE_EMAIL_SKIP_KEY = 'purchase_email_skip_v1';
+    var purchaseHasEmail = null;
+    var purchaseEmailContinue = null;
+
+    function purchaseEmailSkipped() {
+        try {
+            return sessionStorage.getItem(PURCHASE_EMAIL_SKIP_KEY) === '1';
+        } catch (eSkip) {
+            return false;
+        }
+    }
+
+    function readPurchaseHasEmailHint() {
+        try {
+            var raw = sessionStorage.getItem('cg_profile_summary_v2');
+            if (!raw) return null;
+            var o = JSON.parse(raw);
+            if (!o || o.has_email == null) return null;
+            if (o.t && Date.now() - o.t > 3 * 60 * 1000) return null;
+            return !!o.has_email;
+        } catch (eHint) {
+            return null;
+        }
+    }
+
+    function markPurchaseHasEmail(on) {
+        purchaseHasEmail = !!on;
+        try {
+            if (window.ConversionGuide && typeof window.ConversionGuide.setHasEmail === 'function') {
+                window.ConversionGuide.setHasEmail(!!on);
+            }
+        } catch (eSet) {}
+    }
+
+    function refreshPurchaseHasEmail() {
+        var hint = readPurchaseHasEmailHint();
+        if (hint != null) purchaseHasEmail = hint;
+        if (typeof window.authFetch !== 'function') return;
+        window
+            .authFetch('api/user?action=info')
+            .then(function (r) {
+                return (window.authParseJson || function (x) { return x.json(); })(r);
+            })
+            .then(function (data) {
+                if (!data || data.code !== 200 || !data.data) return;
+                if (data.data.has_email != null) {
+                    markPurchaseHasEmail(!!data.data.has_email);
+                    return;
+                }
+                if (data.data.email != null && String(data.data.email).trim()) {
+                    markPurchaseHasEmail(true);
+                }
+            })
+            .catch(function () {});
+    }
+
+    function shouldCollectPurchaseEmail() {
+        if (purchaseHasEmail === true) return false;
+        if (purchaseEmailSkipped()) return false;
+        return purchaseHasEmail === false;
+    }
+
+    function purchaseEmailValid(raw) {
+        if (window.EmailSuffix && typeof window.EmailSuffix.isValidUserEmail === 'function') {
+            return window.EmailSuffix.isValidUserEmail(raw);
+        }
+        var s = raw == null ? '' : String(raw).trim();
+        return /.+@.+\..+/.test(s) && s.indexOf(' ') < 0;
+    }
+
+    function closePurchaseEmailGate() {
+        var mask = document.getElementById('purchaseEmailMask');
+        if (mask) mask.hidden = true;
+        purchaseEmailContinue = null;
+    }
+
+    function openPurchaseEmailGate(onContinue) {
+        var mask = document.getElementById('purchaseEmailMask');
+        var errEl = document.getElementById('purchaseEmailErr');
+        var input = document.getElementById('purchaseEmailInput');
+        if (!mask) {
+            if (typeof onContinue === 'function') onContinue();
+            return;
+        }
+        purchaseEmailContinue = onContinue;
+        if (errEl) errEl.textContent = '';
+        mask.hidden = false;
+        trackPurchase('track_purchase_email_gate_open');
+        setTimeout(function () {
+            try {
+                if (input) input.focus();
+            } catch (eF) {}
+        }, 80);
+    }
+
+    function continuePurchaseAfterEmail() {
+        var next = purchaseEmailContinue;
+        closePurchaseEmailGate();
+        if (typeof next === 'function') next();
+    }
+
+    function bindPurchaseEmailGate() {
+        var chips = document.getElementById('purchaseEmailSuffixChips');
+        var input = document.getElementById('purchaseEmailInput');
+        var saveBtn = document.getElementById('btnPurchaseEmailSave');
+        var skipBtn = document.getElementById('btnPurchaseEmailSkip');
+        if (chips && input) {
+            if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+                window.EmailSuffix.wireEmailSuffixChips(chips, input);
+            } else {
+                chips.addEventListener('click', function (ev) {
+                    var t = ev.target;
+                    var suf = t && t.getAttribute ? t.getAttribute('data-email-suffix') : '';
+                    if (!suf || !input) return;
+                    ev.preventDefault();
+                    var cur = String(input.value || '').trim();
+                    var at = cur.indexOf('@');
+                    input.value = (at >= 0 ? cur.slice(0, at) : cur) + suf;
+                });
+            }
+        }
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function () {
+                var val = input ? String(input.value || '').trim() : '';
+                var errEl = document.getElementById('purchaseEmailErr');
+                if (!purchaseEmailValid(val)) {
+                    if (errEl) errEl.textContent = '请填写有效邮箱，例如填 QQ 号后点 @qq.com';
+                    return;
+                }
+                if (typeof window.authFetch !== 'function') {
+                    if (errEl) errEl.textContent = '请先登录';
+                    return;
+                }
+                saveBtn.disabled = true;
+                window
+                    .authFetch('api/user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'save_profile', email: val })
+                    })
+                    .then(function (r) {
+                        return (window.authParseJson || function (x) { return x.json(); })(r);
+                    })
+                    .then(function (data) {
+                        if (!data || data.code !== 200) {
+                            throw new Error((data && data.msg) || '保存失败');
+                        }
+                        markPurchaseHasEmail(true);
+                        trackPurchase('track_purchase_email_gate_save');
+                        continuePurchaseAfterEmail();
+                    })
+                    .catch(function (e) {
+                        saveBtn.disabled = false;
+                        if (errEl) errEl.textContent = (e && e.message) || '保存失败';
+                    });
+            });
+        }
+        if (skipBtn) {
+            skipBtn.addEventListener('click', function () {
+                try {
+                    sessionStorage.setItem(PURCHASE_EMAIL_SKIP_KEY, '1');
+                } catch (eSk) {}
+                trackPurchase('track_purchase_email_gate_skip');
+                continuePurchaseAfterEmail();
+            });
+        }
+    }
+
+    bindPurchaseEmailGate();
+    refreshPurchaseHasEmail();
+
     function startPurchaseAlipayPay(ctaSource) {
+        if (shouldCollectPurchaseEmail() && !alipayPendingPayUrl) {
+            openPurchaseEmailGate(function () {
+                startPurchaseAlipayPayAfterEmail(ctaSource);
+            });
+            return;
+        }
+        startPurchaseAlipayPayAfterEmail(ctaSource);
+    }
+
+    function startPurchaseAlipayPayAfterEmail(ctaSource) {
         var btn = document.getElementById('btnPurchaseAlipay');
         var stickyBtn = document.getElementById('btnPurchaseAlipaySticky');
         var sku = getSelectedAlipaySku();
@@ -4092,6 +4376,9 @@
         var copyBtn = document.getElementById('btnCopyRefundWechat');
         var idEl = document.getElementById('purchaseRefundWechatId');
         if (!ad) return;
+        /* 开通页不再引流二次退税广告 */
+        ad.hidden = true;
+        return;
 
         function markCopied() {
             try {
@@ -4167,6 +4454,9 @@
     (function initPurchaseYuefuEntry() {
         var entry = document.getElementById('purchaseYuefuEntry');
         if (!entry) return;
+        /* 开通页不再引流广告产品 */
+        entry.hidden = true;
+        return;
         if (typeof IntersectionObserver === 'function') {
             var seen = false;
             var io = new IntersectionObserver(
@@ -4202,6 +4492,9 @@
         var copyBtn = document.getElementById('btnCopyGjjWechat');
         var idEl = document.getElementById('purchaseGjjWechatId');
         if (!entry) return;
+        /* 开通页不再引流广告产品 */
+        entry.hidden = true;
+        return;
 
         function markCopied() {
             try {

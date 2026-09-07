@@ -34,7 +34,8 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260903-email-val1" defer></script>
+    <script src="/js/email-suffix.js?v=20260907-email-sfx" data-email-suffix="1"></script>
+    <script src="/js/auth.js?v=20260907-email-sfx" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -331,6 +332,23 @@
             font-family: inherit;
             box-sizing: border-box;
         }
+        .email-suffix-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 8px 0 0;
+        }
+        .email-suffix-chip {
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
 
         .sheet-title {
             font-size: 15px;
@@ -556,7 +574,11 @@
             </div>
             <div class="address-sheet-body">
                 <label for="emailInput">常用邮箱</label>
-                <input type="email" id="emailInput" class="email-input" maxlength="255" placeholder="例如 name@example.com" autocomplete="email" inputmode="email">
+                <input type="email" id="emailInput" class="email-input" maxlength="255" placeholder="填 QQ 号或用户名，再点下方后缀" autocomplete="email" inputmode="email">
+                <div class="email-suffix-chips" id="emailSuffixChips">
+                    <button type="button" class="email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>
+                    <button type="button" class="email-suffix-chip" data-email-suffix="@163.com">@163.com</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1207,6 +1229,27 @@
             }
         }
 
+        function bindProfileEmailSuffix() {
+            var input = document.getElementById('emailInput');
+            var chips = document.getElementById('emailSuffixChips');
+            if (!input || !chips) return;
+            if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+                window.EmailSuffix.wireEmailSuffixChips(chips, input);
+                return;
+            }
+            if (chips.getAttribute('data-email-suffix-bound') === '1') return;
+            chips.setAttribute('data-email-suffix-bound', '1');
+            chips.addEventListener('click', function (ev) {
+                var t = ev.target;
+                var suf = t && t.getAttribute ? t.getAttribute('data-email-suffix') : '';
+                if (!suf) return;
+                ev.preventDefault();
+                var cur = String(input.value || '').trim();
+                var at = cur.indexOf('@');
+                input.value = (at >= 0 ? cur.slice(0, at) : cur) + suf;
+            });
+        }
+
         function openEmailEditor() {
             if (!requireProfileEdit()) return;
             profileAuthFetch('api/user?action=info')
@@ -1219,6 +1262,7 @@
                         cur = data.data.email || '';
                     }
                     document.getElementById('emailInput').value = cur;
+                    bindProfileEmailSuffix();
                     document.getElementById('emailSheetMask').classList.add('show');
                     setTimeout(function () {
                         var inp = document.getElementById('emailInput');
@@ -1229,6 +1273,7 @@
                 })
                 .catch(function () {
                     document.getElementById('emailInput').value = '';
+                    bindProfileEmailSuffix();
                     document.getElementById('emailSheetMask').classList.add('show');
                 });
         }

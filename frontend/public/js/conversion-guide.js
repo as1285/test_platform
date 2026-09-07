@@ -805,6 +805,8 @@
       '.cg-email-nudge-body{margin:0 0 12px;font-size:13px;line-height:1.55;color:#64748b}' +
       '.cg-email-nudge-root.is-strong .cg-email-nudge-body{color:#475569;font-size:14px}' +
       '.cg-email-nudge-input{width:100%;height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;font-family:inherit;box-sizing:border-box;margin:0 0 8px}' +
+      '.cg-email-suffix-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}' +
+      '.cg-email-suffix-chip{border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}' +
       '.cg-email-nudge-err{margin:0 0 10px;font-size:12px;color:#dc2626;min-height:16px}' +
       '.cg-email-nudge-actions{display:flex;flex-direction:column;gap:8px}' +
       '.cg-email-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}' +
@@ -3442,8 +3444,8 @@
     root.setAttribute('aria-modal', 'true');
     var title = afterRegister ? '建议留下邮箱，方便接收优惠' : '留下邮箱，优惠不错过';
     var body = afterRegister
-      ? '开通提醒、专属价会发到邮箱。现在填写最省事；也可跳过，之后在「个人信息」补填。'
-      : '专属价、开通提醒会发到邮箱。可不填，随时在「个人信息」里补充。';
+      ? '开通提醒、专属价会发到邮箱。填 QQ 号后点 @qq.com 即可；也可跳过，之后在「个人信息」补填。'
+      : '专属价、开通提醒会发到邮箱。填 QQ 号后点 @qq.com 即可。';
     var saveLabel = afterRegister ? '保存并继续' : '保存邮箱';
     var dismissLabel = afterRegister ? '跳过，稍后再说' : '暂时不用';
     var badgeHtml = afterRegister
@@ -3461,7 +3463,11 @@
       '<p class="cg-email-nudge-body">' +
       body +
       '</p>' +
-      '<input type="email" class="cg-email-nudge-input" id="cgEmailNudgeInput" maxlength="255" placeholder="例如 name@qq.com" autocomplete="email" inputmode="email">' +
+      '<input type="email" class="cg-email-nudge-input" id="cgEmailNudgeInput" maxlength="255" placeholder="填 QQ 号或用户名，再点下方后缀" autocomplete="email" inputmode="email">' +
+      '<div class="cg-email-suffix-chips" id="cgEmailSuffixChips">' +
+      '<button type="button" class="cg-email-suffix-chip" data-email-suffix="@qq.com">@qq.com</button>' +
+      '<button type="button" class="cg-email-suffix-chip" data-email-suffix="@163.com">@163.com</button>' +
+      '</div>' +
       '<div class="cg-email-nudge-err" id="cgEmailNudgeErr"></div>' +
       '<div class="cg-email-nudge-actions">' +
       '<button type="button" class="cg-email-nudge-btn primary" data-act="save">' +
@@ -3484,6 +3490,25 @@
     } catch (eTr) {}
     var input = document.getElementById('cgEmailNudgeInput');
     var errEl = document.getElementById('cgEmailNudgeErr');
+    var chips = document.getElementById('cgEmailSuffixChips');
+    if (chips && input) {
+      if (window.EmailSuffix && typeof window.EmailSuffix.wireEmailSuffixChips === 'function') {
+        window.EmailSuffix.wireEmailSuffixChips(chips, input);
+      } else {
+        chips.addEventListener('click', function (evChip) {
+          var tChip = evChip.target;
+          var suf = tChip && tChip.getAttribute ? tChip.getAttribute('data-email-suffix') : '';
+          if (!suf) return;
+          evChip.preventDefault();
+          var cur = String(input.value || '').trim();
+          var at = cur.indexOf('@');
+          input.value = (at >= 0 ? cur.slice(0, at) : cur) + suf;
+          try {
+            input.focus();
+          } catch (eChipF) {}
+        });
+      }
+    }
     setTimeout(function () {
       if (input) input.focus();
     }, 80);
@@ -3898,6 +3923,12 @@
     mountNajiluPreviewBar: mountNajiluPreviewBar,
     prependMaintenanceMessages: prependMaintenanceMessages,
     openEmailCollectNudge: openEmailCollectNudge,
+    hasEmail: function () {
+      return !!hasEmailCached;
+    },
+    setHasEmail: function (on) {
+      hasEmailCached = !!on;
+    },
     refresh: fetchProfileCounts,
     hideDemoUiForCapture: hideDemoUiForCapture,
     setScreenshotMode: setScreenshotMode,
