@@ -71,6 +71,106 @@
     }
   }
 
+  function audienceLabel(key) {
+    var k = String(key || '').trim();
+    var map = {
+      refund_ad_amount: '退税测算（已停发）',
+      refund_ad_auto: '退税推广（已停发）',
+      auto_notify: '自动通知（心理价/催付）',
+      selected: '勾选发送',
+      has_email_inactive: '未激活已留邮箱',
+      has_email_all: '全部已留邮箱',
+      all_inactive: '全部未激活',
+      ad_reach_activate: '触达·开通',
+      ad_reach_offer: '触达·优惠',
+      ad_reach_soft_recall: '触达·召回'
+    };
+    if (!k) return '—';
+    if (map[k]) return map[k];
+    if (k.indexOf('ad_reach_') === 0) return '广告触达';
+    if (k.indexOf('refund') === 0) return '退税相关';
+    return k;
+  }
+
+  function jumpUser(name) {
+    var u = String(name || '').trim();
+    if (!u) return;
+    if (typeof global.jumpToRegisteredUser === 'function') {
+      global.jumpToRegisteredUser(u);
+    }
+  }
+
+  function userJumpBtn(uname) {
+    return (
+      '<button type="button" class="admin-user-jump js-user-email-open-user" data-u="' +
+      esc(uname) +
+      '">' +
+      esc(uname) +
+      '</button>'
+    );
+  }
+
+  function loadOverview() {
+    var stat = document.getElementById('userEmailOverviewStat');
+    var cards = document.getElementById('userEmailOverviewCards');
+    var autoList = document.getElementById('userEmailAutoList');
+    fetchAdmin('api/admin/emails/overview?days=7')
+      .then(function (r) {
+        return parseAdminJson(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          if (stat) stat.textContent = (j && j.msg) || '总览加载失败';
+          return;
+        }
+        var d = j.data;
+        var smtp = d.smtp_ready ? 'SMTP 已就绪' : 'SMTP 未配置';
+        if (stat) {
+          stat.textContent =
+            smtp +
+            ' · 已留邮箱 ' +
+            (d.users_with_email != null ? d.users_with_email : 0) +
+            ' 人 · 近 ' +
+            (d.days || 7) +
+            ' 天';
+        }
+        if (cards) {
+          cards.innerHTML =
+            '<button type="button" class="user-data-stat-card ops-summary-card js-email-ov" data-audience="" data-status="sent">' +
+            '<div class="ud-label">近7天成功</div><div class="ud-val">' +
+            esc(String(d.sent || 0)) +
+            '</div></button>' +
+            '<button type="button" class="user-data-stat-card ops-summary-card js-email-ov" data-audience="" data-status="failed">' +
+            '<div class="ud-label">近7天失败</div><div class="ud-val">' +
+            esc(String(d.failed || 0)) +
+            '</div></button>' +
+            '<button type="button" class="user-data-stat-card ops-summary-card js-email-ov" data-audience="" data-clicked="1">' +
+            '<div class="ud-label">近7天已点击</div><div class="ud-val">' +
+            esc(String(d.clicked || 0)) +
+            '</div></button>';
+        }
+        if (autoList) {
+          var html = '';
+          (d.auto || []).forEach(function (it) {
+            html +=
+              '<div class="user-email-auto-item' +
+              (it.enabled ? ' is-on' : ' is-off') +
+              '"><strong>' +
+              esc(it.label || it.key) +
+              '</strong><span>' +
+              (it.enabled ? '自动开着' : '不会自动发') +
+              '</span><p>' +
+              esc(it.note || '') +
+              '</p></div>';
+          });
+          autoList.innerHTML = html || '';
+        }
+      })
+      .catch(function (e) {
+        if (stat) stat.textContent = (e && e.message) || '总览加载失败';
+      });
+  }
+
   function selectedCount() {
     return Object.keys(selected).length;
   }
@@ -105,12 +205,14 @@
     var pageInfo = document.getElementById('userEmailPageInfo');
     if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载中…</td></tr>';
     var active = String((document.getElementById('userEmailActive') || {}).value || '');
+    var half = String((document.getElementById('userEmailHalf') || {}).value || '');
     var q = String((document.getElementById('userEmailQ') || {}).value || '').trim();
     var url =
       'api/admin/emails/users?page=' +
       page +
       '&limit=20' +
       (active ? '&active=' + encodeURIComponent(active) : '') +
+      (half ? '&half_price=' + encodeURIComponent(half) : '') +
       (q ? '&q=' + encodeURIComponent(q) : '');
     fetchAdmin(url)
       .then(function (r) {
@@ -151,7 +253,7 @@
             checked +
             '></td>' +
             '<td>' +
-            esc(uname) +
+            userJumpBtn(uname) +
             '</td>' +
             '<td>' +
             esc(u.real_name || '—') +
@@ -171,7 +273,13 @@
             '<td title="' +
             esc(u.last_email_subject || '') +
             '">' +
-            esc(formatDt(u.last_email_at)) +
+            (u.last_email_at
+              ? '<button type="button" class="admin-user-jump js-user-email-open-sends" data-u="' +
+                esc(uname) +
+                '">' +
+                esc(formatDt(u.last_email_at)) +
+                '</button>'
+              : '—') +
             '</td>' +
             '<td>' +
             (Number(u.last_email_click_count) > 0
@@ -210,11 +318,19 @@
     var pageInfo = document.getElementById('userEmailSendPageInfo');
     if (tbody) tbody.innerHTML = '<tr><td colspan="8">加载中…</td></tr>';
     var q = String((document.getElementById('userEmailSendQ') || {}).value || '').trim();
+    var audience = String((document.getElementById('userEmailSendAudience') || {}).value || '');
+    var status = String((document.getElementById('userEmailSendStatus') || {}).value || '');
+    var days = String((document.getElementById('userEmailSendDays') || {}).value || '');
+    var clicked = String((document.getElementById('userEmailSendClicked') || {}).value || '');
     var url =
       'api/admin/emails/sends?page=' +
       sendPage +
       '&limit=20' +
-      (q ? '&q=' + encodeURIComponent(q) : '');
+      (q ? '&q=' + encodeURIComponent(q) : '') +
+      (audience ? '&audience=' + encodeURIComponent(audience) : '') +
+      (status ? '&status=' + encodeURIComponent(status) : '') +
+      (days ? '&days=' + encodeURIComponent(days) : '') +
+      (clicked ? '&clicked=' + encodeURIComponent(clicked) : '');
     fetchAdmin(url)
       .then(function (r) {
         return parseAdminJson(r);
@@ -254,7 +370,7 @@
             esc(formatDt(it.created_at)) +
             '</td>' +
             '<td>' +
-            esc(it.username || '') +
+            userJumpBtn(it.username || '') +
             '</td>' +
             '<td>' +
             esc(it.email || '') +
@@ -262,8 +378,10 @@
             '<td>' +
             esc(it.subject || '') +
             '</td>' +
-            '<td>' +
-            esc(it.audience || '—') +
+            '<td title="' +
+            esc(it.audience || '') +
+            '">' +
+            esc(it.audience_label || audienceLabel(it.audience)) +
             '</td>' +
             '<td title="' +
             esc(it.error_msg || '') +
@@ -353,8 +471,7 @@
     pendingSendNames = [];
   }
 
-  function confirmSend() {
-    if (!pendingSendNames.length) return;
+  function collectSendPayload(dryRun) {
     var subject = String((document.getElementById('userEmailSendSubject') || {}).value || '').trim();
     var content = String((document.getElementById('userEmailSendContent') || {}).value || '').trim();
     var link =
@@ -363,25 +480,86 @@
     var cta =
       String((document.getElementById('userEmailSendCta') || {}).value || '').trim() || '立即开通';
     var poster = String((document.getElementById('userEmailSendPoster') || {}).value || 'activate');
+    return {
+      usernames: pendingSendNames.slice(),
+      subject: subject,
+      content: content,
+      link_url: link,
+      cta_label: cta,
+      poster: poster,
+      dry_run: !!dryRun
+    };
+  }
+
+  function isRefundSendPayload(payload) {
+    var p = payload || {};
+    return (
+      p.poster === 'refund' ||
+      String(p.subject || '').indexOf('二次退税') >= 0 ||
+      String(p.content || '').indexOf('二次退税') >= 0 ||
+      String(p.subject || '').indexOf('测算约可退') >= 0 ||
+      /refund_ad\.html/i.test(String(p.link_url || ''))
+    );
+  }
+
+  function previewSend() {
+    if (!pendingSendNames.length) return;
+    var payload = collectSendPayload(true);
     var status = document.getElementById('userEmailSendStatus');
-    var btn = document.getElementById('userEmailSendConfirm');
-    if (!subject || !content) {
+    var btn = document.getElementById('userEmailSendPreview');
+    if (!payload.subject || !payload.content) {
       if (status) status.textContent = '请填写标题和正文';
       return;
     }
-    if (
-      poster === 'refund' ||
-      subject.indexOf('二次退税') >= 0 ||
-      content.indexOf('二次退税') >= 0 ||
-      subject.indexOf('测算约可退') >= 0 ||
-      /refund_ad\.html/i.test(link)
-    ) {
+    if (isRefundSendPayload(payload)) {
+      if (status) status.textContent = '退税邮件已停发';
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (status) status.textContent = '预览中…';
+    fetchAdmin('api/admin/emails/send', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) {
+        return parseAdminJson(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          if (status) status.textContent = (j && j.msg) || '预览失败';
+          return;
+        }
+        if (status) {
+          status.textContent =
+            '将发给 ' +
+            (j.data.matched != null ? j.data.matched : pendingSendNames.length) +
+            ' 人（已留有效邮箱）';
+        }
+      })
+      .catch(function (e) {
+        if (status) status.textContent = (e && e.message) || '预览失败';
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  function confirmSend() {
+    if (!pendingSendNames.length) return;
+    var payload = collectSendPayload(false);
+    var status = document.getElementById('userEmailSendStatus');
+    var btn = document.getElementById('userEmailSendConfirm');
+    if (!payload.subject || !payload.content) {
+      if (status) status.textContent = '请填写标题和正文';
+      return;
+    }
+    if (isRefundSendPayload(payload)) {
       if (status) status.textContent = '退税邮件已停发';
       return;
     }
     if (
       !confirm(
-        '确认向 ' + pendingSendNames.length + ' 人发送邮件「' + subject.slice(0, 40) + '」？'
+        '确认向 ' + pendingSendNames.length + ' 人发送邮件「' + payload.subject.slice(0, 40) + '」？'
       )
     ) {
       return;
@@ -390,14 +568,7 @@
     if (status) status.textContent = '发送中…';
     fetchAdmin('api/admin/emails/send', {
       method: 'POST',
-      body: JSON.stringify({
-        usernames: pendingSendNames,
-        subject: subject,
-        content: content,
-        link_url: link,
-        cta_label: cta,
-        poster: poster
-      })
+      body: JSON.stringify(payload)
     })
       .then(function (r) {
         return parseAdminJson(r);
@@ -416,6 +587,7 @@
         if (status) status.textContent = msg;
         alert(msg);
         closeSendModal();
+        loadOverview();
         loadUsers();
         loadSends();
       })
@@ -494,6 +666,56 @@
     }, 800);
   }
 
+  function filterSendsForUser(uname) {
+    var u = String(uname || '').trim();
+    if (!u) return;
+    var q = document.getElementById('userEmailSendQ');
+    var days = document.getElementById('userEmailSendDays');
+    if (q) q.value = u;
+    if (days) days.value = '';
+    sendPage = 1;
+    loadSends();
+    var log = document.getElementById('userEmailSendTbody');
+    if (log && log.scrollIntoView) {
+      try {
+        log.scrollIntoView({ block: 'start' });
+      } catch (e0) {}
+    }
+  }
+
+  function applyOverviewFilter(btn) {
+    if (!btn) return;
+    var audience = btn.getAttribute('data-audience');
+    var status = btn.getAttribute('data-status');
+    var clicked = btn.getAttribute('data-clicked');
+    var audEl = document.getElementById('userEmailSendAudience');
+    var stEl = document.getElementById('userEmailSendStatus');
+    var dayEl = document.getElementById('userEmailSendDays');
+    var clickEl = document.getElementById('userEmailSendClicked');
+    if (audEl && audience != null) audEl.value = audience;
+    if (stEl) stEl.value = status || '';
+    if (clickEl) clickEl.value = clicked || '';
+    if (dayEl) dayEl.value = '7';
+    sendPage = 1;
+    loadSends();
+  }
+
+  function resetSendFilters() {
+    var ids = [
+      ['userEmailSendAudience', ''],
+      ['userEmailSendStatus', ''],
+      ['userEmailSendDays', '7'],
+      ['userEmailSendClicked', ''],
+      ['userEmailSendQ', '']
+    ];
+    ids.forEach(function (pair) {
+      var el = document.getElementById(pair[0]);
+      if (el) el.value = pair[1];
+    });
+    sendPage = 1;
+    loadSends();
+  }
+
   function bind() {
     if (bound) return;
     bound = true;
@@ -507,6 +729,13 @@
     var active = document.getElementById('userEmailActive');
     if (active) {
       active.addEventListener('change', function () {
+        page = 1;
+        loadUsers();
+      });
+    }
+    var half = document.getElementById('userEmailHalf');
+    if (half) {
+      half.addEventListener('change', function () {
         page = 1;
         loadUsers();
       });
@@ -578,6 +807,17 @@
         if (clearBtn) {
           clearEmail(clearBtn.getAttribute('data-u'));
         }
+        var jumpBtn =
+          ev.target && ev.target.closest ? ev.target.closest('.js-user-email-open-user') : null;
+        if (jumpBtn) {
+          jumpUser(jumpBtn.getAttribute('data-u'));
+          return;
+        }
+        var sendLogBtn =
+          ev.target && ev.target.closest ? ev.target.closest('.js-user-email-open-sends') : null;
+        if (sendLogBtn) {
+          filterSendsForUser(sendLogBtn.getAttribute('data-u'));
+        }
       });
     }
     var sendSelected = document.getElementById('btnUserEmailSendSelected');
@@ -596,6 +836,33 @@
       sendSearch.addEventListener('click', function () {
         sendPage = 1;
         loadSends();
+      });
+    }
+    var sendReset = document.getElementById('btnUserEmailSendReset');
+    if (sendReset) sendReset.addEventListener('click', resetSendFilters);
+    ['userEmailSendAudience', 'userEmailSendStatus', 'userEmailSendDays', 'userEmailSendClicked'].forEach(
+      function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', function () {
+          sendPage = 1;
+          loadSends();
+        });
+      }
+    );
+    var ovCards = document.getElementById('userEmailOverviewCards');
+    if (ovCards) {
+      ovCards.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.js-email-ov') : null;
+        if (btn) applyOverviewFilter(btn);
+      });
+    }
+    var sendTbody = document.getElementById('userEmailSendTbody');
+    if (sendTbody) {
+      sendTbody.addEventListener('click', function (ev) {
+        var jumpBtn =
+          ev.target && ev.target.closest ? ev.target.closest('.js-user-email-open-user') : null;
+        if (jumpBtn) jumpUser(jumpBtn.getAttribute('data-u'));
       });
     }
     var sendQ = document.getElementById('userEmailSendQ');
@@ -630,6 +897,8 @@
     if (cancel) cancel.addEventListener('click', closeSendModal);
     var confirmBtn = document.getElementById('userEmailSendConfirm');
     if (confirmBtn) confirmBtn.addEventListener('click', confirmSend);
+    var previewBtn = document.getElementById('userEmailSendPreview');
+    if (previewBtn) previewBtn.addEventListener('click', previewSend);
     var tpl = document.getElementById('userEmailSendTemplate');
     if (tpl) {
       tpl.addEventListener('change', function () {
@@ -648,6 +917,7 @@
     bind();
     page = 1;
     sendPage = 1;
+    loadOverview();
     loadUsers();
     loadSends();
   }

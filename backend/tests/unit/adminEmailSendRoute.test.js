@@ -24,6 +24,11 @@ describe('admin emails/send HTML-safe API surface', () => {
     expect(routes).toContain('ops-ad-analytics');
   });
 
+  it('exposes emails overview for the mailbox console', () => {
+    expect(routes).toContain("'/api/admin/emails/overview'");
+    expect(routes).toContain('handleAdminEmailsOverview');
+  });
+
   it('API unknown routes respond with JSON 404', () => {
     expect(boot).toContain('jsonApiNotFound');
     expect(boot).toContain('code: 404');

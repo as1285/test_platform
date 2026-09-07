@@ -5,7 +5,8 @@ const {
   buildEmailBodies,
   buildCtaUrl,
   EMAIL_COPY_TEMPLATES,
-  createUserEmailBulk
+  createUserEmailBulk,
+  audienceLabel
 } = require('../../src/admin/userEmailBulk');
 
 describe('userEmailBulk helpers', () => {
@@ -239,6 +240,80 @@ describe('userEmailBulk list/send API surface', () => {
     expect(out.total).toBe(0);
     expect(sqls[0]).toContain('EXISTS (SELECT 1 FROM users u WHERE');
     expect(sqls[0]).not.toMatch(/s\.user_type/);
+  });
+
+  test('audienceLabel maps campaign keys', () => {
+    expect(audienceLabel('refund_ad_amount')).toBe('退税测算（已停发）');
+    expect(audienceLabel('auto_notify')).toBe('自动通知（心理价/催付）');
+    expect(audienceLabel('')).toBe('—');
+  });
+
+  test('listSends filters audience/status/days/clicked', async () => {
+    var sqls = [];
+    var paramsList = [];
+    var api = createUserEmailBulk({
+      getPool: function () {
+        return mockPool({
+          execute: async function () {
+            return [{}, []];
+          },
+          query: async function (sql, params) {
+            sqls.push(sql);
+            paramsList.push(params || []);
+            if (/COUNT\(\*\)/.test(sql)) return [[{ total: 0 }], []];
+            return [[], []];
+          }
+        });
+      },
+      mail: { isMailConfigured: function () { return true; }, sendMail: async function () {} }
+    });
+    await api.listSends({
+      page: 1,
+      limit: 20,
+      audience: 'auto_notify',
+      status: 'sent',
+      days: 7,
+      clicked: '1'
+    });
+    expect(sqls[0]).toContain('s.audience = ?');
+    expect(sqls[0]).toContain('s.status = ?');
+    expect(sqls[0]).toContain('INTERVAL 7 DAY');
+    expect(sqls[0]).toContain('IFNULL(s.click_count, 0) > 0');
+    expect(paramsList[0]).toContain('auto_notify');
+    expect(paramsList[0]).toContain('sent');
+  });
+
+  test('overviewStats returns auto-send flags and 7-day buckets', async () => {
+    var api = createUserEmailBulk({
+      getPool: function () {
+        return mockPool({
+          execute: async function () {
+            return [{}, []];
+          },
+          query: async function (sql) {
+            if (/GROUP BY s.audience/.test(sql)) {
+              return [
+                [
+                  { audience: 'auto_notify', status: 'sent', n: 3, clicked: 1 },
+                  { audience: 'refund_ad_amount', status: 'sent', n: 5, clicked: 0 }
+                ],
+                []
+              ];
+            }
+            return [[{ total: 12 }], []];
+          }
+        });
+      },
+      mail: { isMailConfigured: function () { return true; }, sendMail: async function () {} }
+    });
+    var out = await api.overviewStats({ days: 7 });
+    expect(out.smtp_ready).toBe(true);
+    expect(out.sent).toBe(8);
+    expect(out.clicked).toBe(1);
+    expect(out.users_with_email).toBe(12);
+    expect(out.auto.some(function (x) { return x.key === 'refund_ad_amount' && x.enabled === false; })).toBe(true);
+    expect(out.auto.some(function (x) { return x.key === 'auto_notify_bid' && x.enabled === true; })).toBe(true);
+    expect(out.by_audience[0].label).toBeTruthy();
   });
 
   test('refund template points to refund ad page, not purchase', () => {

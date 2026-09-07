@@ -8,6 +8,59 @@ var MSG_EMAIL_BULK_MAX = 200;
 var MSG_EMAIL_SEND_GAP_MS = 120;
 var EMAIL_SKIP_MARKER_PREFIX = '@@email_bulk:';
 var REFUND_EMAIL_STOPPED_MSG = '退税邮件已停发';
+var EMAIL_AUDIENCE_LABELS = {
+  refund_ad_amount: '退税测算（已停发）',
+  refund_ad_auto: '退税推广（已停发）',
+  auto_notify: '自动通知（心理价/催付）',
+  selected: '勾选发送',
+  has_email_inactive: '未激活已留邮箱',
+  has_email_all: '全部已留邮箱',
+  all_inactive: '全部未激活',
+  ad_reach_activate: '触达·开通',
+  ad_reach_offer: '触达·优惠',
+  ad_reach_soft_recall: '触达·召回'
+};
+
+function audienceLabel(key) {
+  var k = String(key || '').trim();
+  if (!k) return '—';
+  if (EMAIL_AUDIENCE_LABELS[k]) return EMAIL_AUDIENCE_LABELS[k];
+  if (k.indexOf('ad_reach_') === 0) return '广告触达';
+  if (k.indexOf('refund') === 0) return '退税相关';
+  return k;
+}
+
+function autoSendStatus() {
+  return [
+    {
+      key: 'refund_ad_amount',
+      label: '退税测算邮件',
+      enabled: false,
+      note: '已停发，定时任务和后台都拦'
+    },
+    {
+      key: 'auto_notify_bid',
+      label: '心理价通过 / 驳回',
+      enabled: true,
+      note: '出价达标自动通过，或后台审核时发'
+    },
+    {
+      key: 'auto_notify_remind',
+      label: '专属优惠催付',
+      enabled: false,
+      note: '后台点催付才发，不是定时'
+    }
+  ];
+}
+
+function halfPriceExistsSql(usernameCol) {
+  var col = usernameCol || 'u.username';
+  return (
+    'EXISTS (SELECT 1 FROM user_email_sends sh WHERE sh.username = ' +
+    col +
+    " AND sh.status = 'sent' AND (sh.subject LIKE '%半价%' OR IFNULL(sh.batch_id,'') LIKE '%half%' OR IFNULL(sh.audience,'') LIKE '%half%' OR IFNULL(sh.dest_url,'') LIKE '%email_half%'))"
+  );
+}
 
 function isRefundEmailRequest(opts) {
   opts = opts || {};
@@ -800,7 +853,7 @@ function createUserEmailBulk(deps) {
 
   /**
    * 已留邮箱用户列表
-   * opts: { page, limit, q, active, admin }
+   * opts: { page, limit, q, active, half_price, admin }
    * active: '' | '1' | '0'
    */
   async function listUsers(opts) {
@@ -814,6 +867,7 @@ function createUserEmailBulk(deps) {
     var offset = (page - 1) * limit;
     var q = opts.q != null ? String(opts.q).trim() : '';
     var active = opts.active != null ? String(opts.active).trim() : '';
+    var halfPrice = opts.half_price != null ? String(opts.half_price).trim() : '';
     var where = [hasEmailWhereSql()];
     var params = [];
     if (typeof deps.nonGuestUsernameSql === 'function') {
@@ -823,6 +877,11 @@ function createUserEmailBulk(deps) {
       where.push('u.account_active = 1');
     } else if (active === '0') {
       where.push('(u.account_active IS NULL OR u.account_active = 0)');
+    }
+    if (halfPrice === '1') {
+      where.push(halfPriceExistsSql('u.username'));
+    } else if (halfPrice === '0') {
+      where.push('NOT ' + halfPriceExistsSql('u.username'));
     }
     if (q) {
       where.push('(u.username LIKE ? OR u.real_name LIKE ? OR u.email LIKE ?)');
@@ -895,6 +954,7 @@ function createUserEmailBulk(deps) {
       limit: limit,
       q: q,
       active: active,
+      half_price: halfPrice,
       smtp_ready: !!(mail && mail.isMailConfigured && mail.isMailConfigured())
     };
   }
@@ -1044,7 +1104,7 @@ function createUserEmailBulk(deps) {
 
   /**
    * 发送记录
-   * opts: { page, limit, q, username, admin }
+   * opts: { page, limit, q, username, audience, status, days, clicked, admin }
    */
   async function listSends(opts) {
     opts = opts || {};
@@ -1057,6 +1117,10 @@ function createUserEmailBulk(deps) {
     var offset = (page - 1) * limit;
     var q = opts.q != null ? String(opts.q).trim() : '';
     var username = opts.username != null ? String(opts.username).trim() : '';
+    var audience = opts.audience != null ? String(opts.audience).trim() : '';
+    var status = opts.status != null ? String(opts.status).trim() : '';
+    var clicked = opts.clicked != null ? String(opts.clicked).trim() : '';
+    var days = parseInt(opts.days, 10);
     /* user_email_sends 无 user_type；游客/归属过滤走 users 子查询 */
     var where = ['1=1'];
     var params = [];
@@ -1067,6 +1131,31 @@ function createUserEmailBulk(deps) {
     if (q) {
       where.push('(s.username LIKE ? OR s.email LIKE ? OR s.subject LIKE ?)');
       params.push('%' + q + '%', '%' + q + '%', '%' + q + '%');
+    }
+    if (/^[A-Za-z0-9_]{1,64}$/.test(audience)) {
+      where.push('s.audience = ?');
+      params.push(audience);
+    } else {
+      audience = '';
+    }
+    if (status === 'sent' || status === 'failed') {
+      where.push('s.status = ?');
+      params.push(status);
+    } else {
+      status = '';
+    }
+    if (clicked === '1') {
+      where.push('IFNULL(s.click_count, 0) > 0');
+    } else if (clicked === '0') {
+      where.push('IFNULL(s.click_count, 0) = 0');
+    } else {
+      clicked = '';
+    }
+    if (isFinite(days) && days > 0) {
+      if (days > 365) days = 365;
+      where.push('s.created_at >= (UTC_TIMESTAMP() - INTERVAL ' + days + ' DAY)');
+    } else {
+      days = 0;
     }
     if (opts.admin && typeof deps.appendAdminUserScope === 'function') {
       var scopeWhere = ['u.username = s.username'];
@@ -1110,10 +1199,107 @@ function createUserEmailBulk(deps) {
         dest_url: r.dest_url != null ? String(r.dest_url) : '',
         clicked_at: r.clicked_at ? new Date(r.clicked_at).toISOString() : '',
         click_count: Number(r.click_count) || 0,
-        has_track: !!(r.click_token && String(r.click_token).trim())
+        has_track: !!(r.click_token && String(r.click_token).trim()),
+        audience_label: audienceLabel(r.audience)
       };
     });
-    return { items: items, total: total, page: page, limit: limit, q: q, username: username };
+    return {
+      items: items,
+      total: total,
+      page: page,
+      limit: limit,
+      q: q,
+      username: username,
+      audience: audience,
+      status: status,
+      days: days,
+      clicked: clicked
+    };
+  }
+
+  /**
+   * 邮箱管理总览：近 N 天发送量 + 当前自动邮件开关。
+   * opts: { days, admin }
+   */
+  async function overviewStats(opts) {
+    opts = opts || {};
+    await ensureTable();
+    var days = parseInt(opts.days, 10);
+    if (!isFinite(days) || days < 1) days = 7;
+    if (days > 90) days = 90;
+    var where = ['s.created_at >= (UTC_TIMESTAMP() - INTERVAL ' + days + ' DAY)'];
+    var params = [];
+    if (opts.admin && typeof deps.appendAdminUserScope === 'function') {
+      var scopeWhere = ['u.username = s.username'];
+      var scopeParams = [];
+      deps.appendAdminUserScope(scopeWhere, scopeParams, opts.admin, 'u.username');
+      where.push('EXISTS (SELECT 1 FROM users u WHERE ' + scopeWhere.join(' AND ') + ')');
+      for (var si = 0; si < scopeParams.length; si++) {
+        params.push(scopeParams[si]);
+      }
+    } else {
+      where.push("LEFT(s.username, 8) <> '__guest_'");
+    }
+    var whereSql = ' WHERE ' + where.join(' AND ');
+    var pool = deps.getPool();
+    const [rows] = await pool.query(
+      'SELECT s.audience, s.status, COUNT(*) AS n, SUM(CASE WHEN IFNULL(s.click_count,0) > 0 THEN 1 ELSE 0 END) AS clicked FROM user_email_sends s' +
+        whereSql +
+        ' GROUP BY s.audience, s.status',
+      params
+    );
+    var userWhere = [hasEmailWhereSql()];
+    var userParams = [];
+    if (typeof deps.nonGuestUsernameSql === 'function') {
+      userWhere.push(deps.nonGuestUsernameSql('u.username'));
+    }
+    if (opts.admin && typeof deps.appendAdminUserScope === 'function') {
+      deps.appendAdminUserScope(userWhere, userParams, opts.admin, 'u.username');
+    }
+    const [userRows] = await pool.query(
+      'SELECT COUNT(*) AS total FROM users u WHERE ' + userWhere.join(' AND '),
+      userParams
+    );
+    var sent = 0;
+    var failed = 0;
+    var clicked = 0;
+    var byMap = {};
+    (rows || []).forEach(function (r) {
+      var aud = r && r.audience != null ? String(r.audience) : '';
+      var st = r && r.status != null ? String(r.status) : '';
+      var n = Number(r && r.n) || 0;
+      var c = Number(r && r.clicked) || 0;
+      if (!byMap[aud]) {
+        byMap[aud] = { audience: aud, label: audienceLabel(aud), sent: 0, failed: 0, clicked: 0 };
+      }
+      if (st === 'sent') {
+        byMap[aud].sent += n;
+        sent += n;
+      } else if (st === 'failed') {
+        byMap[aud].failed += n;
+        failed += n;
+      }
+      byMap[aud].clicked += c;
+      clicked += c;
+    });
+    var byAudience = Object.keys(byMap)
+      .map(function (k) {
+        return byMap[k];
+      })
+      .sort(function (a, b) {
+        return b.sent + b.failed - (a.sent + a.failed);
+      });
+    return {
+      smtp_ready: !!(mail && mail.isMailConfigured && mail.isMailConfigured()),
+      days: days,
+      sent: sent,
+      failed: failed,
+      clicked: clicked,
+      attempts: sent + failed,
+      users_with_email: Number(userRows[0] && userRows[0].total) || 0,
+      by_audience: byAudience,
+      auto: autoSendStatus()
+    };
   }
 
   /**
@@ -1237,6 +1423,7 @@ function createUserEmailBulk(deps) {
     sendToUsernames: sendToUsernames,
     listUsers: listUsers,
     listSends: listSends,
+    overviewStats: overviewStats,
     campaignStats: campaignStats,
     clearUserEmail: clearUserEmail,
     notifyUserEmail: notifyUserEmail,
@@ -1259,5 +1446,7 @@ module.exports = {
   safeDestRedirect: safeDestRedirect,
   resolvePosterUrl: resolvePosterUrl,
   EMAIL_COPY_TEMPLATES: EMAIL_COPY_TEMPLATES,
-  EMAIL_POSTER_PATHS: EMAIL_POSTER_PATHS
+  EMAIL_POSTER_PATHS: EMAIL_POSTER_PATHS,
+  EMAIL_AUDIENCE_LABELS: EMAIL_AUDIENCE_LABELS,
+  audienceLabel: audienceLabel
 };
