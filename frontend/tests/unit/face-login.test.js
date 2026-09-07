@@ -45,7 +45,7 @@ describe('扫脸登录 continues past 安全验证', () => {
     expect(face).toContain('识别成功');
     expect(face).toContain('forceHidePageLoading');
     expect(face).toContain('forceClearLoader');
-    expect(face).toContain('20260905-facelogin-ui3');
+    expect(face).toContain('20260907-ios-white-bar');
     expect(face).not.toContain('face_msg');
     expect(face).not.toContain('扫脸演示已完成，请使用账号密码登录');
     expect(face).not.toContain('扫脸验证已通过，请输入密码完成登录');

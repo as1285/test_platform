@@ -73,11 +73,7 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('23127PN');
     Object.entries(pages).forEach(([name, html]) => {
       expect(html).toContain('auth-boot.js?v=20260904-android-inset');
-      if (name === 'shuimingResult') {
-        expect(html).toContain('auth.js?v=20260907-ios-white-bar');
-      } else {
-        expect(html).toContain('auth.js?v=20260904-android-inset');
-      }
+      expect(html).toContain('auth.js?v=20260907-ios-white-bar');
     });
   });
 });
