@@ -2,7 +2,7 @@
  * consult-batch-tax.js — 工作经历批量生成 / 粘贴导入 / 示例填写
  *
  * 角色：批量税务主流程——多段工作经历表单、示例与模板、粘贴导入、按月自定义工资、
- *       一键/确认生成与覆盖修改、年终奖单独写入；亦被管理端个税维护复用。
+ *       一键/确认生成与覆盖修改、年终奖/裁员补偿单独写入；亦被管理端个税维护复用。
  * 加载页：consult.html（defer；位于 consult-core 之后、consult-records 之前）；
  *         管理端可通过 admin/loader 动态加载。
  * 依赖：consult-core（税额公式、formObject、页签、showMsg 等）；authFetch；
@@ -427,6 +427,262 @@ function buildBatchBonusConfirmText(employments) {
     return parts.join('') + (parts.length ? '。' : '');
 }
 
+// === 裁员补偿（解除劳动合同一次性补偿）行内编辑 ===
+function defaultBatchSeveranceYearForRow(row) {
+    var ey = row ? row.querySelector('.batch-emp-ey') : null;
+    var y = ey ? parseInt(ey.value, 10) : 0;
+    if (y > 0) return y;
+    return defaultBatchBonusYearForRow(row);
+}
+
+function defaultBatchSeveranceMonthForRow(row) {
+    var em = row ? row.querySelector('.batch-emp-em') : null;
+    var m = em ? parseInt(em.value, 10) : 0;
+    if (m >= 1 && m <= 12) return m;
+    return 12;
+}
+
+function employmentSeveranceList(emp) {
+    if (!emp) return [];
+    if (Array.isArray(emp.severances) && emp.severances.length) {
+        return filledBatchEmpBonuses(emp.severances);
+    }
+    return [];
+}
+
+function collectBatchEmpSeverancesFromRow(row) {
+    if (!row) return [];
+    var items = row.querySelectorAll('.batch-emp-severance-item');
+    var out = [];
+    items.forEach(function (item) {
+        var amtEl = item.querySelector('.batch-emp-severance');
+        var yEl = item.querySelector('.batch-emp-severance-year');
+        var mEl = item.querySelector('.batch-emp-severance-month');
+        out.push({
+            amount: amtEl ? parseFloat(amtEl.value) || 0 : 0,
+            year: yEl ? parseInt(yEl.value, 10) || 0 : 0,
+            month: mEl ? parseInt(mEl.value, 10) || 0 : 0
+        });
+    });
+    return out;
+}
+
+function refreshBatchEmpSeveranceItemTitles(row) {
+    if (!row) return;
+    var items = row.querySelectorAll('.batch-emp-severance-item');
+    items.forEach(function (item, i) {
+        var t = item.querySelector('.batch-emp-severance-item-title');
+        if (t) t.textContent = items.length > 1 ? '裁员补偿 ' + (i + 1) : '裁员补偿';
+        var rm = item.querySelector('.batch-emp-severance-remove');
+        if (rm) rm.hidden = items.length <= 1;
+    });
+}
+
+function createBatchEmpSeveranceItemNode() {
+    var tpl = document.getElementById('batchEmpSeveranceItemTpl');
+    if (tpl && tpl.content && tpl.content.firstElementChild) {
+        return tpl.content.firstElementChild.cloneNode(true);
+    }
+    return null;
+}
+
+function bindBatchEmpSeveranceItem(item) {
+    if (!item || item.getAttribute('data-severance-item-bound') === '1') return;
+    item.setAttribute('data-severance-item-bound', '1');
+    bindBatchMonthInput(item.querySelector('.batch-emp-severance-month'));
+    bindBatchYearInput(item.querySelector('.batch-emp-severance-year'));
+    var rm = item.querySelector('.batch-emp-severance-remove');
+    if (rm) {
+        rm.addEventListener('click', function () {
+            var row = item.closest('.batch-emp-row');
+            var list = row && row.querySelector('.batch-emp-severance-list');
+            if (!list) return;
+            if (list.querySelectorAll('.batch-emp-severance-item').length <= 1) {
+                var amt = item.querySelector('.batch-emp-severance');
+                if (amt) amt.value = '0';
+                scheduleBatchTaxDraftSave();
+                syncBatchEmpSeveranceMetaExpanded(row);
+                return;
+            }
+            item.remove();
+            refreshBatchEmpSeveranceItemTitles(row);
+            scheduleBatchTaxDraftSave();
+            syncBatchEmpSeveranceMetaExpanded(row);
+        });
+    }
+    var amt = item.querySelector('.batch-emp-severance');
+    if (amt && amt.getAttribute('data-severance-amt-bound') !== '1') {
+        amt.setAttribute('data-severance-amt-bound', '1');
+        amt.addEventListener('input', function () {
+            syncBatchEmpSeveranceMetaExpanded(item.closest('.batch-emp-row'));
+        });
+    }
+}
+
+function addBatchEmpSeveranceItem(row, preset) {
+    if (!row) return null;
+    var list = row.querySelector('.batch-emp-severance-list');
+    if (!list) return null;
+    var node = createBatchEmpSeveranceItemNode();
+    if (!node) return null;
+    var year = defaultBatchSeveranceYearForRow(row);
+    var month = defaultBatchSeveranceMonthForRow(row);
+    var amount = 0;
+    var last = list.querySelector('.batch-emp-severance-item:last-child');
+    if (preset && typeof preset === 'object') {
+        if (preset.year) year = parseInt(preset.year, 10) || year;
+        if (preset.month) month = parseInt(preset.month, 10) || month;
+        if (preset.amount != null && preset.amount !== '') amount = preset.amount;
+    } else if (last) {
+        var ly = last.querySelector('.batch-emp-severance-year');
+        var lm = last.querySelector('.batch-emp-severance-month');
+        var lastYear = ly ? parseInt(ly.value, 10) : 0;
+        var lastMonth = lm ? parseInt(lm.value, 10) : 0;
+        if (lastYear > 0) year = lastYear;
+        month = nextBatchBonusMonthSuggestion(lastMonth);
+    }
+    var amtEl = node.querySelector('.batch-emp-severance');
+    var yEl = node.querySelector('.batch-emp-severance-year');
+    var mEl = node.querySelector('.batch-emp-severance-month');
+    if (amtEl) amtEl.value = amount === 0 || amount === '0' ? '0' : String(amount);
+    if (yEl) yEl.value = String(year || new Date().getFullYear());
+    if (mEl) mEl.value = String(month || 12);
+    bindBatchEmpSeveranceItem(node);
+    list.appendChild(node);
+    refreshBatchEmpSeveranceItemTitles(row);
+    return node;
+}
+
+function setBatchEmpSeverancesOnRow(row, severances) {
+    if (!row) return;
+    var list = row.querySelector('.batch-emp-severance-list');
+    if (!list) return;
+    list.innerHTML = '';
+    var items = Array.isArray(severances) ? severances.map(normalizeBatchBonusItem) : [];
+    if (!items.length) {
+        items = [{
+            amount: 0,
+            year: defaultBatchSeveranceYearForRow(row),
+            month: defaultBatchSeveranceMonthForRow(row)
+        }];
+    }
+    items.forEach(function (s) {
+        addBatchEmpSeveranceItem(row, {
+            amount: s.amount,
+            year: s.year || defaultBatchSeveranceYearForRow(row),
+            month: s.month || defaultBatchSeveranceMonthForRow(row)
+        });
+    });
+    syncBatchEmpSeveranceMetaExpanded(row);
+}
+
+function bindBatchEmpSeveranceList(row) {
+    if (!row) return;
+    var addBtn = row.querySelector('.batch-emp-severance-add');
+    if (addBtn && addBtn.getAttribute('data-severance-add-bound') !== '1') {
+        addBtn.setAttribute('data-severance-add-bound', '1');
+        addBtn.addEventListener('click', function () {
+            addBatchEmpSeveranceItem(row);
+            setBatchEmpSeveranceMetaExpanded(row, true);
+            scheduleBatchTaxDraftSave();
+        });
+    }
+    var soloBtn = row.querySelector('.batch-emp-severance-solo-btn');
+    if (soloBtn && soloBtn.getAttribute('data-severance-solo-bound') !== '1') {
+        soloBtn.setAttribute('data-severance-solo-bound', '1');
+        soloBtn.addEventListener('click', function () {
+            setBatchEmpSeveranceMetaExpanded(row, true);
+            batchAddSeveranceOnly();
+        });
+    }
+    if (!row.querySelector('.batch-emp-severance-item')) {
+        addBatchEmpSeveranceItem(row);
+    } else {
+        row.querySelectorAll('.batch-emp-severance-item').forEach(bindBatchEmpSeveranceItem);
+        refreshBatchEmpSeveranceItemTitles(row);
+    }
+}
+
+function collectBatchSeveranceSnapshot() {
+    var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
+    var out = [];
+    rows.forEach(function (row) {
+        var prof = getBatchEmpProfileFromRow(row);
+        collectBatchEmpSeverancesFromRow(row).forEach(function (s) {
+            out.push({
+                company: prof.name,
+                amount: s.amount,
+                year: s.year,
+                month: s.month
+            });
+        });
+    });
+    return out;
+}
+
+function buildBatchSeveranceConfirmText(employments) {
+    var parts = [];
+    var taxFn =
+        typeof severanceCompensationTaxSeparate === 'function'
+            ? severanceCompensationTaxSeparate
+            : function () {
+                  return 0;
+              };
+    (employments || []).forEach(function (emp) {
+        employmentSeveranceList(emp).forEach(function (s) {
+            parts.push(
+                '\n裁员补偿 ' +
+                    s.amount +
+                    ' 元（解除劳动合同补偿，扣缴义务人「' +
+                    emp.company +
+                    '」，单独计税约 ' +
+                    taxFn(s.amount) +
+                    ' 元，归属 ' +
+                    s.year +
+                    ' 年 ' +
+                    s.month +
+                    ' 月）'
+            );
+        });
+    });
+    return parts.join('') + (parts.length ? '。' : '');
+}
+
+function setBatchEmpSeveranceMetaExpanded(row, expanded) {
+    if (!row) return;
+    var wrap = row.querySelector('.batch-emp-severance-meta');
+    var btn = row.querySelector('.batch-emp-severance-toggle');
+    if (!wrap) return;
+    wrap.classList.toggle('is-open', !!expanded);
+    if (btn) btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
+function syncBatchEmpSeveranceMetaExpanded(row) {
+    if (!row) return;
+    var any = collectBatchEmpSeverancesFromRow(row).some(function (s) {
+        return isFinite(s.amount) && s.amount > 0;
+    });
+    if (any) {
+        setBatchEmpSeveranceMetaExpanded(row, true);
+    }
+}
+
+function bindBatchEmpSeveranceMetaToggle(row) {
+    if (!row) return;
+    var btn = row.querySelector('.batch-emp-severance-toggle');
+    var wrap = row.querySelector('.batch-emp-severance-meta');
+    if (!btn || !wrap || btn.getAttribute('data-batch-severance-bound') === '1') return;
+    btn.setAttribute('data-batch-severance-bound', '1');
+    if (!wrap.classList.contains('is-open')) {
+        setBatchEmpSeveranceMetaExpanded(row, false);
+    }
+    btn.addEventListener('click', function () {
+        var open = !wrap.classList.contains('is-open');
+        setBatchEmpSeveranceMetaExpanded(row, open);
+        scheduleBatchTaxDraftSave();
+    });
+}
+
 // === 所得小类常量 / 自动去重提示 ===
 var INCOME_TYPE_DEFAULT_SUBTYPES = {
     '工资薪金': '正常工资薪金',
@@ -476,8 +732,10 @@ function serializeBatchEmpRow(row) {
     var optionalMeta = row.querySelector('.batch-emp-optional-meta');
     var deductMeta = row.querySelector('.batch-emp-deduct-meta');
     var bonusMeta = row.querySelector('.batch-emp-bonus-meta');
+    var severanceMeta = row.querySelector('.batch-emp-severance-meta');
     var bonuses = collectBatchEmpBonusesFromRow(row);
     var firstBonus = bonuses[0] || {};
+    var severances = collectBatchEmpSeverancesFromRow(row);
     return {
         company: batchEmpRowInputVal(row, '.batch-emp-company'),
         company_tax_id: batchEmpRowInputVal(row, '.batch-emp-company-tax-id'),
@@ -507,7 +765,9 @@ function serializeBatchEmpRow(row) {
         monthTaxMap: row._monthTaxMap ? JSON.parse(JSON.stringify(row._monthTaxMap)) : {},
         optionalOpen: !!(optionalMeta && optionalMeta.classList.contains('is-open')),
         deductOpen: !!(deductMeta && deductMeta.classList.contains('is-open')),
-        bonusOpen: !!(bonusMeta && bonusMeta.classList.contains('is-open'))
+        bonusOpen: !!(bonusMeta && bonusMeta.classList.contains('is-open')),
+        severances: severances,
+        severanceOpen: !!(severanceMeta && severanceMeta.classList.contains('is-open'))
     };
 }
 
@@ -535,6 +795,14 @@ function batchTaxDraftHasContent(draft) {
             Array.isArray(r.bonuses) &&
             r.bonuses.some(function (b) {
                 return parseFloat(b && (b.amount != null ? b.amount : b.yearEndBonus)) > 0;
+            })
+        ) {
+            return true;
+        }
+        if (
+            Array.isArray(r.severances) &&
+            r.severances.some(function (s) {
+                return parseFloat(s && s.amount) > 0;
             })
         ) {
             return true;
@@ -1300,6 +1568,9 @@ function bindBatchEmpRow(node) {
     bindBatchEmpBonusMetaToggle(node);
     bindBatchEmpBonusList(node);
     syncBatchEmpBonusMetaExpanded(node);
+    bindBatchEmpSeveranceMetaToggle(node);
+    bindBatchEmpSeveranceList(node);
+    syncBatchEmpSeveranceMetaExpanded(node);
     bindBatchEmpDeductionCalc(node);
     syncBatchEmpDeductionsFromBase(node);
     bindBatchMonthInput(node.querySelector('.batch-emp-sm'));
@@ -1495,6 +1766,14 @@ function setBatchEmpRowValues(row, data) {
         has('bonusMonth')
     ) {
         syncBatchEmpBonusMetaExpanded(row);
+    }
+    if (has('severances') && Array.isArray(data.severances)) {
+        setBatchEmpSeverancesOnRow(row, data.severances);
+    }
+    if (typeof data.severanceOpen === 'boolean') {
+        setBatchEmpSeveranceMetaExpanded(row, data.severanceOpen);
+    } else if (has('severances')) {
+        syncBatchEmpSeveranceMetaExpanded(row);
     }
     updateBatchEmpMonthSalaryBadge(row);
     refreshBatchEmpPeriodDisplay(row);
@@ -1970,6 +2249,9 @@ function isBatchSalaryRecord(r) {
     if (sub.indexOf('全年一次性') >= 0 || sub.indexOf('年终奖') >= 0) {
         return false;
     }
+    if (sub.indexOf('解除劳动合同') >= 0 || sub.indexOf('裁员补偿') >= 0) {
+        return false;
+    }
     if (sub.indexOf('正常工资') >= 0) {
         return true;
     }
@@ -1978,6 +2260,11 @@ function isBatchSalaryRecord(r) {
 
 function isBatchBonusRecord(r) {
     return String(r.income_subtype || '').indexOf('全年一次性') >= 0;
+}
+
+function isBatchSeveranceRecord(r) {
+    var sub = String(r.income_subtype || '');
+    return sub.indexOf('解除劳动合同') >= 0 || sub.indexOf('裁员补偿') >= 0;
 }
 
 function recordYmKey(r) {
@@ -2132,6 +2419,10 @@ function enterBatchTaxEditMode(scopeIds, opts) {
         bonusSnapshot: opts.bonusSnapshot || null,
         bonusRecordIds: (opts.bonusRecordIds || []).map(function (id) {
             return String(id);
+        }),
+        severanceSnapshot: opts.severanceSnapshot || null,
+        severanceRecordIds: (opts.severanceRecordIds || []).map(function (id) {
+            return String(id);
         })
     };
     updateBatchTaxCardUi();
@@ -2163,7 +2454,7 @@ function updateBatchTaxCardUi() {
         hint.textContent = inEdit
             ? '已载入 ' +
               batchTaxEditMode.scopeIds.length +
-              ' 条月薪记录。修改后点「保存覆盖」将替换原记录；未改动的年终奖默认保留。'
+              ' 条月薪记录。修改后点「保存覆盖」将替换原记录；未改动的年终奖、裁员补偿默认保留。'
             : '填公司、起止月、月薪，点「一键生成」；其余选项按需展开。';
     }
     if (banner) {
@@ -2173,11 +2464,18 @@ function updateBatchTaxCardUi() {
                 batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length
                     ? '已有 ' + batchTaxEditMode.bonusRecordIds.length + ' 条年终奖将保留不变（除非您修改对应工作经历中的年终奖字段）。'
                     : '未检测到年终奖记录；仅当您在某段工作经历中填写年终奖时才会新增。';
+            var severanceKeepNote =
+                batchTaxEditMode.severanceRecordIds && batchTaxEditMode.severanceRecordIds.length
+                    ? '已有 ' +
+                      batchTaxEditMode.severanceRecordIds.length +
+                      ' 条裁员补偿将保留不变（除非您修改对应工作经历中的裁员补偿字段）。'
+                    : '';
             banner.textContent =
                 '正在修改已有数据：将覆盖回填关联的 ' +
                 batchTaxEditMode.scopeIds.length +
                 ' 条月薪记录。可增删工作经历行、改月薪与社保；未回填的其他记录不受影响。' +
-                bonusKeepNote;
+                bonusKeepNote +
+                severanceKeepNote;
         } else {
             banner.hidden = true;
             banner.textContent = '';
@@ -2538,6 +2836,27 @@ function batchBonusWasManuallyChanged() {
     return batchBonusSnapshotKey(cur) !== batchBonusSnapshotKey(batchTaxEditMode.bonusSnapshot);
 }
 
+function batchSeveranceSnapshotKey(items) {
+    return JSON.stringify(
+        (items || []).map(function (s) {
+            return [
+                round2(parseFloat(s && s.amount) || 0).toFixed(2),
+                String(parseInt(s && s.year, 10) || 0),
+                String(parseInt(s && s.month, 10) || 0),
+                String((s && s.company) || '')
+            ];
+        })
+    );
+}
+
+function batchSeveranceWasManuallyChanged() {
+    if (!batchTaxEditMode || !batchTaxEditMode.severanceSnapshot) {
+        return false;
+    }
+    var cur = collectBatchSeveranceSnapshot();
+    return batchSeveranceSnapshotKey(cur) !== batchSeveranceSnapshotKey(batchTaxEditMode.severanceSnapshot);
+}
+
 /**
  * 从已有税务记录反推工作经历并进入修改模式。
  * 副作用：重建行、enterBatchTaxEditMode。
@@ -2582,6 +2901,11 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
                 return String(br.id);
             });
             var bonusesByPayload = assignBonusRecordsToPayloads(payloads, bonusRecs);
+            var severanceRecs = (list || []).filter(isBatchSeveranceRecord);
+            var severanceRecordIds = severanceRecs.map(function (sr) {
+                return String(sr.id);
+            });
+            var severancesByPayload = assignBonusRecordsToPayloads(payloads, severanceRecs);
             var listEl = document.getElementById('batch_employment_list');
             if (!listEl) {
                 return;
@@ -2600,6 +2924,10 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
                 if (bonusesByPayload[pi] && bonusesByPayload[pi].length) {
                     rowData.bonuses = bonusesByPayload[pi];
                     rowData.bonusOpen = true;
+                }
+                if (severancesByPayload[pi] && severancesByPayload[pi].length) {
+                    rowData.severances = severancesByPayload[pi];
+                    rowData.severanceOpen = true;
                 }
                 setBatchEmpRowValues(row, rowData);
                 var am = payloads[pi].amounts;
@@ -2622,9 +2950,12 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
             refreshBatchCompanyHistoryDatalist();
             listEl.querySelectorAll('.batch-emp-company').forEach(bindBatchEmpCompanyHistoryInput);
             var bonusSnapshot = collectBatchBonusSnapshot();
+            var severanceSnapshot = collectBatchSeveranceSnapshot();
             enterBatchTaxEditMode(scopeIds, {
                 bonusSnapshot: bonusSnapshot,
-                bonusRecordIds: bonusRecordIds
+                bonusRecordIds: bonusRecordIds,
+                severanceSnapshot: severanceSnapshot,
+                severanceRecordIds: severanceRecordIds
             });
             window.__batchTaxUserExpanded = true;
             setBatchTaxCardCollapsed(false);
@@ -2639,6 +2970,9 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
                     salaryRecs.length +
                     ' 条月薪记录' +
                     (bonusRecs.length ? '，检测到 ' + bonusRecs.length + ' 条年终奖（已按公司与月份回填，默认保留）' : '') +
+                    (severanceRecs.length
+                        ? '，检测到 ' + severanceRecs.length + ' 条裁员补偿（已按公司与月份回填，默认保留）'
+                        : '') +
                     '），请修改后点击「保存覆盖」',
                 true
             );
@@ -2737,7 +3071,7 @@ function buildBatchConfirmLines(employments) {
     return lines;
 }
 
-/** 组装待提交的月薪 + 年终奖 record 数组。 */
+/** 组装待提交的月薪 + 年终奖 + 裁员补偿 record 数组。 */
 function assembleBatchTaxRecords(writes, base, uidKey, employments) {
     var records = [];
     var wi;
@@ -2760,6 +3094,22 @@ function assembleBatchTaxRecords(writes, base, uidKey, employments) {
                         b.year,
                         b.month,
                         b.amount,
+                        emp.empIdx,
+                        seq
+                    )
+                );
+            }
+        });
+        employmentSeveranceList(emp).forEach(function (s, seq) {
+            if (s.amount > 0 && s.year > 0 && s.month >= 1 && s.month <= 12) {
+                records.push(
+                    buildBatchSeveranceRecord(
+                        uidKey,
+                        base,
+                        bonusCompany,
+                        s.year,
+                        s.month,
+                        s.amount,
                         emp.empIdx,
                         seq
                     )
@@ -2944,6 +3294,27 @@ function parseOneBatchEmpRow(row, rowIdx) {
         }
         bonusYmSeen[bonusYmKey] = true;
     }
+    var collectedSeverances = collectBatchEmpSeverancesFromRow(row);
+    var severances = filledBatchEmpBonuses(collectedSeverances);
+    var si;
+    var severanceYmSeen = {};
+    for (si = 0; si < severances.length; si++) {
+        var severanceItem = severances[si];
+        if (!severanceItem.month || severanceItem.month < 1 || severanceItem.month > 12) {
+            return { ok: false, error: '第 ' + seg + ' 段第 ' + (si + 1) + ' 笔裁员补偿归属月份不合法（1–12 月）' };
+        }
+        if (!severanceItem.year || severanceItem.year < 2000 || severanceItem.year > 2100) {
+            return { ok: false, error: '第 ' + seg + ' 段第 ' + (si + 1) + ' 笔裁员补偿归属年度不合法（须为 2000–2100）' };
+        }
+        var severanceYmKey = severanceItem.year + '-' + severanceItem.month;
+        if (severanceYmSeen[severanceYmKey]) {
+            return {
+                ok: false,
+                error: '第 ' + seg + ' 段有两笔裁员补偿同属 ' + severanceItem.year + ' 年 ' + severanceItem.month + ' 月，请改成不同月份'
+            };
+        }
+        severanceYmSeen[severanceYmKey] = true;
+    }
     var yearEndBonus = bonuses.length ? bonuses[0].amount : 0;
     var bonusYear = bonuses.length ? bonuses[0].year : 0;
     var bonusMonth = bonuses.length ? bonuses[0].month : 0;
@@ -2989,7 +3360,8 @@ function parseOneBatchEmpRow(row, rowIdx) {
             bonusMonth: bonusMonth,
             bonusYear: bonusYear,
             extraBonuses: bonuses.slice(1),
-            bonuses: bonuses
+            bonuses: bonuses,
+            severances: severances
         }
     };
 }
@@ -3035,6 +3407,31 @@ function parseBatchEmploymentsFromDom() {
                 };
             }
             companyBonusYm[companyYm] = true;
+        }
+    }
+    var companySeveranceYm = {};
+    for (ei = 0; ei < employments.length; ei++) {
+        var empSev = employments[ei];
+        var filledSev = employmentSeveranceList(empSev);
+        var sj;
+        for (sj = 0; sj < filledSev.length; sj++) {
+            var fs = filledSev[sj];
+            var companySevYm = empSev.company + '|' + fs.year + '|' + fs.month;
+            if (companySeveranceYm[companySevYm]) {
+                return {
+                    ok: false,
+                    employments: [],
+                    error:
+                        '「' +
+                        empSev.company +
+                        '」' +
+                        fs.year +
+                        '年' +
+                        fs.month +
+                        '月已有一笔裁员补偿，请改成不同月份（同一单位同一月只能有一条解除劳动合同补偿）'
+                };
+            }
+            companySeveranceYm[companySevYm] = true;
         }
     }
     return { ok: true, employments: employments };
@@ -4635,6 +5032,64 @@ function buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMon
     return b;
 }
 
+/** 构建解除劳动合同一次性补偿收入 record（3 倍平均工资以上单独计税）。 */
+function buildBatchSeveranceRecord(uidKey, base, companyProfile, year, month, amount, empIdx, seq) {
+    var taxFn =
+        typeof severanceCompensationTaxSeparate === 'function'
+            ? severanceCompensationTaxSeparate
+            : function () {
+                  return 0;
+              };
+    var freeFn =
+        typeof severanceTaxFreeIncome === 'function'
+            ? severanceTaxFreeIncome
+            : function (a) {
+                  return 0;
+              };
+    var tax = taxFn(amount);
+    var free = freeFn(amount);
+    var subtype =
+        typeof SEVERANCE_INCOME_SUBTYPE === 'string' && SEVERANCE_INCOME_SUBTYPE
+            ? SEVERANCE_INCOME_SUBTYPE
+            : '解除劳动合同一次性补偿收入';
+    var b = JSON.parse(JSON.stringify(base || {}));
+    b.company_name = companyProfile && companyProfile.name != null ? companyProfile.name : '';
+    b.company_tax_id =
+        companyProfile && companyProfile.company_tax_id != null ? String(companyProfile.company_tax_id) : '';
+    b.tax_authority =
+        companyProfile && companyProfile.tax_authority != null ? String(companyProfile.tax_authority) : '';
+    b.year = year;
+    b.month = month;
+    b.tax_period = taxPeriodFromYearMonth(year, month);
+    b.report_date = reportDateOneMonthAfterBelonging(year, month, 15);
+    b.id =
+        'tr_' +
+        uidKey +
+        '_' +
+        year +
+        '_' +
+        month +
+        '_severance_' +
+        (empIdx != null ? empIdx : 0) +
+        '_' +
+        (seq != null ? seq : 0);
+    b.income_type = '工资薪金';
+    b.income_subtype = subtype;
+    b.income = String(round2(amount));
+    b.income_this_period = String(round2(amount));
+    b.tax_reported = String(round2(tax));
+    b.deduction_fee = '0.00';
+    b.special_deduction = '0.00';
+    b.other_deduction = '0.00';
+    b.donation_deduction = '0.00';
+    b.pension_insurance = '0.00';
+    b.medical_insurance = '0.00';
+    b.unemployment_insurance = '0.00';
+    b.housing_fund = '0.00';
+    b.tax_free_income = String(round2(free));
+    return b;
+}
+
 /**
  * 分块 batch_save_records（每批最多 100）。
  * 副作用：多次 API；汇总 saved/ids。
@@ -4758,6 +5213,81 @@ function batchAddYearEndBonusOnly() {
         });
 }
 
+// === 仅写裁员补偿 ===
+/**
+ * 仅提交各行解除劳动合同补偿记录。
+ * 副作用：确认框 + batch_save + 刷新列表。
+ */
+function batchAddSeveranceOnly() {
+    document.querySelectorAll('#batch_employment_list .batch-emp-row').forEach(function (row) {
+        setBatchEmpSeveranceMetaExpanded(row, true);
+    });
+    var parsed = parseBatchEmploymentsFromDom();
+    if (!parsed.ok) {
+        showConsultStrongAlert(parsed.error || '请检查工作经历');
+        return;
+    }
+    var employments = parsed.employments.filter(function (emp) {
+        return employmentSeveranceList(emp).length > 0;
+    });
+    if (!employments.length) {
+        showConsultStrongAlert('请先展开「裁员补偿」并填写金额（大于 0）');
+        return;
+    }
+    var uid = currentUserId();
+    var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
+    var base = formObjectFromInputs();
+    delete base.id;
+    var confirmLines = buildBatchSeveranceConfirmText(employments).replace(/^\n/, '');
+    var severanceRecs = [];
+    employments.forEach(function (emp) {
+        employmentSeveranceList(emp).forEach(function (s, seq) {
+            severanceRecs.push(
+                buildBatchSeveranceRecord(
+                    uidKey,
+                    base,
+                    {
+                        name: emp.company,
+                        company_tax_id: emp.company_tax_id || '',
+                        tax_authority: emp.tax_authority || ''
+                    },
+                    s.year,
+                    s.month,
+                    s.amount,
+                    emp.empIdx,
+                    seq
+                )
+            );
+        });
+    });
+    if (
+        !confirm(
+            '将写入 ' +
+                severanceRecs.length +
+                ' 笔裁员补偿（解除劳动合同补偿）：' +
+                confirmLines +
+                '\n是否确认？'
+        )
+    ) {
+        return;
+    }
+    setBatchSubmitBtnLoading(true);
+    postBatchTaxRecordsPromise(severanceRecs)
+        .then(function (data) {
+            rememberBatchEmploymentsProfiles(employments);
+            var tip = appendAutoDedupedTip('已保存 ' + severanceRecs.length + ' 条裁员补偿记录', data);
+            showMsg(tip, true);
+            return refreshRecordList();
+        })
+        .catch(function (err) {
+            showConsultStrongAlert('保存失败：' + (err.message || ''));
+            return refreshRecordList();
+        })
+        .finally(function () {
+            setBatchSubmitBtnLoading(false);
+        });
+}
+
 
 function randomChineseCompanyName() {
     var p1 = ['华泰', '智联', '恒远', '百川', '鼎盛', '启航', '嘉禾', '明润', '云程', '信德', '拓维', '联创', '宏图', '优策', '思凯', '锐达', '坤元'];
@@ -4828,6 +5358,16 @@ function employmentsForBonusAssembly(employments, includeBonus) {
     });
 }
 
+function employmentsForAssembly(employments, includeBonus, includeSeverance) {
+    var list = employmentsForBonusAssembly(employments, includeBonus);
+    if (includeSeverance) {
+        return list;
+    }
+    return list.map(function (emp) {
+        return Object.assign({}, emp, { severances: [] });
+    });
+}
+
 function countEmploymentBonuses(employments) {
     var n = 0;
     (employments || []).forEach(function (emp) {
@@ -4836,9 +5376,17 @@ function countEmploymentBonuses(employments) {
     return n;
 }
 
+function countEmploymentSeverances(employments) {
+    var n = 0;
+    (employments || []).forEach(function (emp) {
+        n += employmentSeveranceList(emp).length;
+    });
+    return n;
+}
+
 // === 一键写入 / 覆盖修改主流程 ===
 /**
- * 主流程：确认后按工作经历生成月薪（及年终奖）并保存。
+ * 主流程：确认后按工作经历生成月薪（及年终奖、裁员补偿）并保存。
  * 副作用：可能删示例旧记录、API 写入、清草稿、刷新列表、转化引导。
  */
 function batchAddEmploymentTaxRecords() {
@@ -4857,9 +5405,11 @@ function batchAddEmploymentTaxRecords() {
     var writes = built.writes;
     var taxSumSalary = built.taxSumSalary;
     var bonusTaxSum = sumEmploymentBonusTax(employments);
-    var totalTax = round2(taxSumSalary + bonusTaxSum);
+    var severanceTaxSum = sumEmploymentSeveranceTax(employments);
+    var totalTax = round2(taxSumSalary + bonusTaxSum + severanceTaxSum);
     var lines = buildBatchConfirmLines(employments);
     var bonusLine = buildBatchBonusConfirmText(employments);
+    var severanceLine = buildBatchSeveranceConfirmText(employments);
     apiFetchRecords()
         .then(function (existingList) {
             var examplePlan = planBatchExampleRecordDeletion(employments, existingList);
@@ -4881,6 +5431,7 @@ function batchAddEmploymentTaxRecords() {
                     lines.join('\n'),
                     '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
                     bonusLine,
+                    severanceLine,
                     '税额总计约 ' + totalTax + ' 元。',
                     exampleDeleteLine,
                     '将新增写入，不会覆盖列表中已有记录（若编号已占用则自动使用新编号）。是否写入？'
@@ -4907,14 +5458,18 @@ function batchAddEmploymentTaxRecords() {
             var deletedExample = result.deletedExample;
             rememberBatchEmploymentsProfiles(employments);
             var bonusCount = countEmploymentBonuses(employments);
+            var severanceCount = countEmploymentSeverances(employments);
             var tip =
                 '已按工作经历生成 ' +
                 employments.length +
                 ' 段用工共 ' +
                 writes.length +
                 ' 条月薪记录';
-            if (bonusCount > 0) {
-                tip += '（另含 ' + bonusCount + ' 条年终奖）';
+            var extras = [];
+            if (bonusCount > 0) extras.push(bonusCount + ' 条年终奖');
+            if (severanceCount > 0) extras.push(severanceCount + ' 条裁员补偿');
+            if (extras.length) {
+                tip += '（另含 ' + extras.join('、') + '）';
             }
             if (deletedExample > 0) {
                 tip += '（已删除示例记录 ' + deletedExample + ' 条）';
@@ -4970,8 +5525,10 @@ function batchUpdateEmploymentTaxRecords() {
     var writes = built.writes;
     var taxSumSalary = built.taxSumSalary;
     var bonusChanged = batchBonusWasManuallyChanged();
-    var bonusTaxSum = sumEmploymentBonusTax(employments);
-    var totalTax = round2(taxSumSalary + (bonusChanged ? bonusTaxSum : 0));
+    var severanceChanged = batchSeveranceWasManuallyChanged();
+    var bonusTaxSum = bonusChanged ? sumEmploymentBonusTax(employments) : 0;
+    var severanceTaxSum = severanceChanged ? sumEmploymentSeveranceTax(employments) : 0;
+    var totalTax = round2(taxSumSalary + bonusTaxSum + severanceTaxSum);
     var lines = buildBatchConfirmLines(employments);
     var scopeN = batchTaxEditMode.scopeIds.length;
     var bonusLine = '';
@@ -4988,11 +5545,26 @@ function batchUpdateEmploymentTaxRecords() {
             batchTaxEditMode.bonusRecordIds.length +
             ' 条年终奖记录将保留不变（未修改年终奖字段）。';
     }
+    var severanceLine = '';
+    if (severanceChanged) {
+        severanceLine = buildBatchSeveranceConfirmText(employments);
+        if (!severanceLine) {
+            severanceLine = '\n裁员补偿已清空，将删除原有解除劳动合同补偿记录。';
+        } else {
+            severanceLine = severanceLine.replace(/。$/, '，将更新裁员补偿记录。');
+        }
+    } else if (batchTaxEditMode.severanceRecordIds && batchTaxEditMode.severanceRecordIds.length) {
+        severanceLine =
+            '\n已有 ' +
+            batchTaxEditMode.severanceRecordIds.length +
+            ' 条裁员补偿记录将保留不变（未修改裁员补偿字段）。';
+    }
     var msgParts = [
         '将删除回填时关联的 ' + scopeN + ' 条月薪旧记录，并重新生成：',
         lines.join('\n'),
         '新工资薪金 ' + writes.length + ' 条，预扣税额合计约 ' + taxSumSalary + ' 元。',
         bonusLine,
+        severanceLine,
         '税额总计约 ' + totalTax + ' 元。此操作不可撤销，是否覆盖？'
     ];
     if (!confirm(msgParts.join('\n'))) {
@@ -5002,11 +5574,14 @@ function batchUpdateEmploymentTaxRecords() {
         writes,
         base,
         uidKey,
-        employmentsForBonusAssembly(employments, bonusChanged)
+        employmentsForAssembly(employments, bonusChanged, severanceChanged)
     );
     var idsToDelete = batchTaxEditMode.scopeIds.slice();
     if (bonusChanged && batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length) {
         idsToDelete = idsToDelete.concat(batchTaxEditMode.bonusRecordIds);
+    }
+    if (severanceChanged && batchTaxEditMode.severanceRecordIds && batchTaxEditMode.severanceRecordIds.length) {
+        idsToDelete = idsToDelete.concat(batchTaxEditMode.severanceRecordIds);
     }
     setBatchTaxActionLoading(true, true);
     postBatchReplaceTaxRecordsPromise(idsToDelete, records)
@@ -5022,6 +5597,13 @@ function batchUpdateEmploymentTaxRecords() {
                 tip += '，已移除年终奖';
             } else if (batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length) {
                 tip += '，年终奖未改动已保留';
+            }
+            if (severanceChanged && countEmploymentSeverances(employments) > 0) {
+                tip += '，已更新裁员补偿';
+            } else if (severanceChanged) {
+                tip += '，已移除裁员补偿';
+            } else if (batchTaxEditMode.severanceRecordIds && batchTaxEditMode.severanceRecordIds.length) {
+                tip += '，裁员补偿未改动已保留';
             }
             tip = appendAutoDedupedTip(tip, data);
             clearBatchTaxDraft();
@@ -5048,6 +5630,7 @@ window.oneClickGenerateBatchTaxRecords = oneClickGenerateBatchTaxRecords;
 window.batchAddEmploymentTaxRecords = batchAddEmploymentTaxRecords;
 window.batchUpdateEmploymentTaxRecords = batchUpdateEmploymentTaxRecords;
 window.batchAddYearEndBonusOnly = batchAddYearEndBonusOnly;
+window.batchAddSeveranceOnly = batchAddSeveranceOnly;
 window.fillBatchTaxExample = fillBatchTaxExample;
 window.openTaxStartPath = openTaxStartPath;
 window.openTaxPasteImportModal = openTaxPasteImportModal;
@@ -5058,6 +5641,8 @@ window.addBatchEmpRow = addBatchEmpRow;
 window.setBatchEmpRowValues = setBatchEmpRowValues;
 window.setBatchEmpBonusesOnRow = setBatchEmpBonusesOnRow;
 window.collectBatchEmpBonusesFromRow = collectBatchEmpBonusesFromRow;
+window.setBatchEmpSeverancesOnRow = setBatchEmpSeverancesOnRow;
+window.collectBatchEmpSeverancesFromRow = collectBatchEmpSeverancesFromRow;
 window.loadBatchEmploymentsFromExistingRecords = loadBatchEmploymentsFromExistingRecords;
 window.exitBatchTaxEditMode = exitBatchTaxEditMode;
 window.closeBatchTaxMoreMenu = closeBatchTaxMoreMenu;

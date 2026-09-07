@@ -248,6 +248,14 @@ function shellSnippet(manifest) {
   ].join('\n    ');
 }
 
+/** 插到最后一个真实闭合标签前。内联 JS 字符串里的同名标签不能当锚点（开通页 document.write 曾因此把脚本插坏）。 */
+function insertBeforeLastCloseTag(html, tag, insert) {
+  const lower = html.toLowerCase();
+  const idx = lower.lastIndexOf(tag.toLowerCase());
+  if (idx < 0) return html + insert;
+  return html.slice(0, idx) + insert + html.slice(idx);
+}
+
 function injectSiteConfig(html) {
   if (/\/js\/site-config\.js/i.test(html)) return html;
   const tag = '<script src="/js/site-config.js"></script>';
@@ -259,14 +267,15 @@ function injectSiteConfig(html) {
   if (authRe.test(html)) {
     return html.replace(authRe, `${tag}\n    $1`);
   }
-  return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
+  return insertBeforeLastCloseTag(html, '</head>', `    ${tag}\n`);
 }
 
 function injectForensicMark(html) {
   if (/\/js\/forensic-mark\.js/i.test(html)) return html;
   const tag = '<script src="/js/forensic-mark.js" defer></script>';
-  if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, `    ${tag}\n</body>`);
+  const lower = html.toLowerCase();
+  if (lower.lastIndexOf('</body>') >= 0) {
+    return insertBeforeLastCloseTag(html, '</body>', `    ${tag}\n`);
   }
   return html + '\n' + tag + '\n';
 }
@@ -285,9 +294,10 @@ function injectShell(html, snippet) {
       `$1\n    ${markerStart}\n    ${snippet}\n    ${markerEnd}`
     );
   }
-  return html.replace(
-    /<\/head>/i,
-    `    ${markerStart}\n    ${snippet}\n    ${markerEnd}\n</head>`
+  return insertBeforeLastCloseTag(
+    html,
+    '</head>',
+    `    ${markerStart}\n    ${snippet}\n    ${markerEnd}\n`
   );
 }
 
@@ -388,7 +398,20 @@ async function main() {
   console.log('[assemble-site] manifest', manifest);
 }
 
-main().catch((err) => {
-  console.error('[assemble-site] FAILED', err);
-  process.exit(1);
-});
+const invokedAsScript =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (invokedAsScript) {
+  main().catch((err) => {
+    console.error('[assemble-site] FAILED', err);
+    process.exit(1);
+  });
+}
+
+export {
+  insertBeforeLastCloseTag,
+  injectSiteConfig,
+  injectForensicMark,
+  injectShell
+};

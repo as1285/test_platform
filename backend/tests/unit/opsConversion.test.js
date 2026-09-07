@@ -41,6 +41,15 @@ describe('opsConversion helpers', () => {
     expect(sql).toContain('users.username');
   });
 
+  it('today activate excludes cancelled activations', () => {
+    const src = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../../src/admin/opsConversion.js'),
+      'utf8'
+    );
+    expect(src).toContain('u.activation_cancelled_at IS NULL');
+    expect(src).toContain('LEFT JOIN users u ON u.username = ac.used_by_username');
+  });
+
   it('refund copied audiences share eligible sql', () => {
     expect(isRefundBulkAudience('refund_eligible')).toBe(true);
     expect(isRefundBulkAudience('refund_eligible_copied')).toBe(true);

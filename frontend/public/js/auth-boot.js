@@ -240,6 +240,23 @@
     return appendSalesChannelToUrl(u.pathname + u.search + u.hash);
   }
 
+  /** iframe 内跳转开通/登录等页时提到顶层，避免 iOS WKWebView 子框请求挂起 */
+  function assignTopLocation(url) {
+    var dest = String(url || '');
+    if (!dest) return;
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.assign(dest);
+        return;
+      }
+    } catch (e0) {}
+    try {
+      window.location.assign(dest);
+    } catch (e1) {
+      window.location.href = dest;
+    }
+  }
+
   /** 轻量 Bearer fetch 占位；auth.js 加载后会覆盖为完整 authFetch */
   function bearerTokenFetch(url, opts) {
     opts = opts || {};
@@ -372,6 +389,9 @@
   } catch (eAuthStub) {}
 
   window.authGetToken = getToken;
+  if (typeof window.assignTopLocation !== 'function') {
+    window.assignTopLocation = assignTopLocation;
+  }
   window.currentPageName = currentPageName;
   window.isPublicPage = isPublicPage;
   window.sanitizeLoginNext = sanitizeLoginNext;

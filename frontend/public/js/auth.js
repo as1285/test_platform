@@ -5299,7 +5299,7 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:0 !important;padding-top:var(--app-shell-statusbar-top,0px) !important;overflow:hidden !important;background:#2286ee !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;position:relative !important;z-index:1 !important;display:block !important;width:100% !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn,html.app-ios-client.app-top-safe-shell body.page-mine .mine-fill-data-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px)) !important;}' +
           'html body.page-mine,html body.page-shouye{--bottom-nav-bottom:var(--bottom-nav-gap,8px)!important;min-height:100vh!important;}' +
           'html body.page-mine > .bottom-nav,html body.page-shouye > .bottom-nav{bottom:var(--bottom-nav-bottom,8px)!important;top:auto!important;margin:0!important;height:var(--bottom-nav-height,54px)!important;min-height:var(--bottom-nav-height,54px)!important;max-height:var(--bottom-nav-height,54px)!important;padding-top:8px!important;padding-bottom:8px!important;box-sizing:border-box!important;transform:none!important;-webkit-transform:none!important;}' +
           'html.app-ios-client body.page-mine,html.app-ios-client body.page-shouye{--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;}' +
@@ -5318,7 +5318,7 @@
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg{padding-top:env(safe-area-inset-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .mine-activate-btn,html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .mine-fill-data-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + env(safe-area-inset-top,0px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:48px !important;--android-status-inset:48px !important;--app-cordova-statusbar-chrome:48px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,48px)) !important;}' +
@@ -5343,6 +5343,7 @@
           'html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText{white-space:nowrap !important;letter-spacing:-0.02em !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn{font-size:10.5px !important;padding:4px 8px 4px 10px !important;}' +
           'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;right:18px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;left:18px !important;z-index:500 !important;}' +
           /* 红米 Note 13 Pro：缩小个人信息按钮与税号字号，右侧留白避免挡住眼睛 */
           'html.app-android-redmi-note13-pro body.page-mine .user-card{padding:12px 88px 14px 14px !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .user-name{font-size:13px !important;margin-bottom:4px !important;line-height:1.25 !important;}' +
@@ -5353,6 +5354,7 @@
           'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn{font-size:10px !important;padding:4px 8px 4px 10px !important;border-radius:16px 0 0 16px !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after{font-size:10px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;left:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           /* 收入纳税明细：小米 14 页内黑条 + 顶距，标题避开时间/灵动岛 */
@@ -6941,8 +6943,8 @@
   }
 
   /** 注册时绑定代理渠道：优先 URL；安装页 / App 壳可沿用本地已存渠道。
-   *  URL-only（abc）：页面带 ?ch=abc 时仍写入注册归因（后台过滤用），专属价仍须打开页带参；
-   *  本地残留的 abc 不绑定。 */
+   *  URL-only（abc）：页面带 ?ch=abc 时写入注册归因；本地残留的 abc 不绑定。
+   *  开通价由服务端按账号绑定 / 安装下载归因决定，不依赖本页 URL。 */
   function getRegisterSalesChannel(fromInstallGuide) {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -9235,7 +9237,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260906-najilu-track';
+      s.src = '/js/conversion-guide.js?v=20260907-fill-btn';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
@@ -9364,7 +9366,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260906-login-top';
+    s.src = '/js/tab-shell.js?v=20260907-pay-top';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);

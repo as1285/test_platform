@@ -53,6 +53,8 @@ describe('URL-only channel admin visibility', () => {
       /function appendAdminRegisteredUsersScope[\s\S]*isAbcChannelViewerAdmin[\s\S]*appendExcludeUrlOnlySalesChannelUsers/
     );
     expect(monolith).toContain("adminUsernameKey(admin) === 'admin'");
-    expect(monolith).toContain('仍写入 sales_promo_channel 做归因');
+    expect(monolith).toContain('仍写入 sales_promo_channel 做归因与开通价');
+    expect(monolith).toContain('resolveUrlOnlyChannelFromInstallDownload');
+    expect(monolith).toContain('maybeBindUrlOnlySalesChannel');
   });
 });

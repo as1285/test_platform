@@ -658,7 +658,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260904-android-inset"></script>
-    <script src="/js/auth.js?v=20260906-iphone16pro-std" defer></script>
+    <script src="/js/auth.js?v=20260907-sm-taxfill" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -961,12 +961,12 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
         .sm-activate-btn:active { opacity: 0.92; transform: scale(0.98); }
-        .sm-activate-card.is-refund-prompt {
-            background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 55%, #ef4444 100%);
-            box-shadow: 0 8px 20px rgba(185, 28, 28, 0.2);
+        .sm-activate-card.is-tax-fill {
+            background: linear-gradient(135deg, #9a3412 0%, #ea580c 55%, #fb923c 100%);
+            box-shadow: 0 8px 20px rgba(234, 88, 12, 0.22);
         }
-        .sm-activate-card.is-refund-prompt .sm-activate-btn {
-            color: #b91c1c;
+        .sm-activate-card.is-tax-fill .sm-activate-btn {
+            color: #c2410c;
         }
 
         .summary-label {
@@ -3140,10 +3140,10 @@
                 <span class="summary-label"><span class="summary-label-text">已申报税额合计：</span></span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
-            <div class="sm-activate-card" id="smActivateCard" hidden>
-                <p class="sm-activate-title" id="smActivateTitle">二次退税咨询</p>
-                <p class="sm-activate-desc" id="smActivateDesc">未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。</p>
-                <a href="refund_ad.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">去计算可退税额</a>
+            <div class="sm-activate-card is-tax-fill" id="smActivateCard" hidden>
+                <p class="sm-activate-title" id="smActivateTitle">填写个税</p>
+                <p class="sm-activate-desc" id="smActivateDesc">推荐按模板生成 2023、2024、2025 记录，也可上传个税 APP 截图识别，或自己填公司与月薪。</p>
+                <a href="consult.html?tab=records&onboarding=tax" class="sm-activate-btn" id="smActivateBtn">去填写个税</a>
             </div>
             <!-- 15万推荐卡已移至 consult.html「我要咨询 / 填写个税」；保留空壳避免旧缓存脚本报错 -->
             <div class="sm-refund-browse-card" id="smRefundBrowseCard" hidden aria-hidden="true"></div>
@@ -3971,7 +3971,7 @@
             if (confirmedActive || guest) {
                 card.hidden = true;
                 card.setAttribute('hidden', '');
-                card.classList.remove('is-refund-prompt');
+                card.classList.remove('is-refund-prompt', 'is-tax-fill');
                 window.__smAccountActiveConfirmed = true;
                 try {
                     document.documentElement.classList.add('sm-account-active');
@@ -3979,7 +3979,7 @@
             } else if (!confirmedInactive) {
                 card.hidden = true;
                 card.setAttribute('hidden', '');
-                card.classList.remove('is-refund-prompt');
+                card.classList.remove('is-refund-prompt', 'is-tax-fill');
             } else {
                 try {
                     document.documentElement.classList.remove('sm-account-active');
@@ -4026,17 +4026,17 @@
                 btn.addEventListener('click', function () {
                     try {
                         if (typeof window.trackUserAction === 'function') {
-                            window.trackUserAction('track_refund_ad_inactive_promo_click', {
+                            window.trackUserAction('track_tax_fill_banner_ok', {
                                 page: 'shuiming_result',
-                                source: 'summary_activate_card'
+                                source: 'shuiming_result_card'
                             });
                         } else if (
                             window.ConversionGuide &&
                             typeof ConversionGuide.track === 'function'
                         ) {
-                            ConversionGuide.track('track_refund_ad_inactive_promo_click', {
+                            ConversionGuide.track('track_tax_fill_banner_ok', {
                                 page: 'shuiming_result',
-                                source: 'summary_activate_card'
+                                source: 'shuiming_result_card'
                             });
                         }
                     } catch (e1) {}

@@ -9,7 +9,7 @@
  *
  * 主要 localStorage / sessionStorage 键（详见下方「状态/缓存」段）：
  * - account_active / tax_record_count / employer_count（与业务页共享）
- * - cg_*：转化 dismiss、日频、截图/编辑模式、收入访问计数等
+ * - cg_*：转化 dismiss、日频、截图/编辑模式、我的页填写入口、收入访问计数等
  * - refund_ad_*：填完强制弹框 / 测算金额 / 年收入软推荐 / 微信已复制
  * - cg_profile_summary_v2（sessionStorage）：用户摘要短缓存
  * - cg_post_activate_pending / cg_email_nudge_after_register（sessionStorage）
@@ -71,6 +71,8 @@
   var SCREENSHOT_MODE_CLASS = 'cg-screenshot-mode';
   var TAX_EDIT_MODE_KEY = 'cg_tax_edit_mode';
   var TAX_EDIT_OFF_CLASS = 'cg-tax-edit-off';
+  var MINE_FILL_DATA_BTN_KEY = 'cg_mine_fill_data_btn';
+  var MINE_FILL_DATA_OFF_CLASS = 'cg-mine-fill-data-off';
   var PROFILE_CACHE_KEY = 'cg_profile_summary_v2';
   var PROFILE_CACHE_TTL_MS = 3 * 60 * 1000;
   /** 纯展示 Tab：不阻塞首屏，延后拉用户摘要 */
@@ -345,7 +347,7 @@
         if (id === 'smActivateCard') {
           el.hidden = true;
           el.setAttribute('hidden', '');
-          el.classList.remove('is-refund-prompt');
+          el.classList.remove('is-refund-prompt', 'is-tax-fill');
           return;
         }
         if (el.parentNode) el.parentNode.removeChild(el);
@@ -388,7 +390,18 @@
       }
     } catch (e) {}
     var src = String(from || '').trim() || currentPage().replace(/\.html$/, '') || 'app';
-    window.location.href = 'purchase.html?from=' + encodeURIComponent(src);
+    var dest = 'purchase.html?from=' + encodeURIComponent(src);
+    if (typeof window.assignTopLocation === 'function') {
+      window.assignTopLocation(dest);
+      return;
+    }
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.assign(dest);
+        return;
+      }
+    } catch (eTop) {}
+    window.location.href = dest;
   }
 
   /**
@@ -415,6 +428,71 @@
       return;
     }
     window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
+  }
+
+  function isMineFillDataBtnOn() {
+    try {
+      return localStorage.getItem(MINE_FILL_DATA_BTN_KEY) !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function syncMineFillDataBtnClass() {
+    document.documentElement.classList.toggle(MINE_FILL_DATA_OFF_CLASS, !isMineFillDataBtnOn());
+    var mineBtn = document.getElementById('mineFillDataBtn');
+    if (mineBtn) {
+      mineBtn.setAttribute('aria-hidden', isMineFillDataBtnOn() ? 'false' : 'true');
+    }
+    syncConsultFillEntryToggleLabel();
+  }
+
+  function syncConsultFillEntryToggleLabel() {
+    var btn = document.getElementById('consultFillEntryToggle');
+    if (!btn) return;
+    var on = isMineFillDataBtnOn();
+    btn.textContent = on ? '隐藏填写' : '显示填写';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? '隐藏我的页填写数据按钮' : '显示我的页填写数据按钮');
+  }
+
+  function setMineFillDataBtn(on) {
+    try {
+      if (on) localStorage.removeItem(MINE_FILL_DATA_BTN_KEY);
+      else localStorage.setItem(MINE_FILL_DATA_BTN_KEY, '0');
+    } catch (e) {}
+    syncMineFillDataBtnClass();
+    if (currentPage() === 'consult.html') {
+      showCaptureToast(on ? '我的页已显示「填写数据」' : '我的页已隐藏「填写数据」', {
+        duration: Math.max(1800, getToastDurationMs())
+      });
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('cgMineFillDataBtnChange', { detail: { on: !!on } }));
+    } catch (e2) {}
+  }
+
+  function toggleMineFillDataBtn() {
+    setMineFillDataBtn(!isMineFillDataBtnOn());
+  }
+
+  function goMineFillData() {
+    if (!isTaxEditModeOn()) {
+      try {
+        localStorage.removeItem(TAX_EDIT_MODE_KEY);
+      } catch (eOn) {}
+      syncTaxEditModeClass();
+    }
+    if (!hasTaxRecords()) {
+      window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
+      return;
+    }
+    window.location.href = 'consult.html?tab=records';
+  }
+
+  function bindConsultFillEntryToggle() {
+    if (currentPage() !== 'consult.html') return;
+    syncConsultFillEntryToggleLabel();
   }
 
   function goManageTaxRecords() {
@@ -779,6 +857,16 @@
       SCREENSHOT_MODE_CLASS +
       ' #mineActivateBtn,html.' +
       SCREENSHOT_MODE_CLASS +
+      ' #mineFillDataBtn,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' #mineFillDataBtn,html.' +
+      MINE_FILL_DATA_OFF_CLASS +
+      ' #mineFillDataBtn,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #consultFillEntryToggle,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' #consultFillEntryToggle,html.' +
+      SCREENSHOT_MODE_CLASS +
       ' #cg-mine-task-card,html.' +
       SCREENSHOT_MODE_CLASS +
       ' #cg-shouye-retention{display:none!important}' +
@@ -889,7 +977,12 @@
       window.__cgScreenshotLongPress = false;
       return;
     }
-    if (e && e.target && e.target.closest && e.target.closest('#mineActivateBtn')) {
+    if (
+      e &&
+      e.target &&
+      e.target.closest &&
+      (e.target.closest('#mineActivateBtn') || e.target.closest('#mineFillDataBtn'))
+    ) {
       return;
     }
     var now = Date.now();
@@ -957,7 +1050,12 @@
     }
 
     function onShortTap(e) {
-      if (e && e.target && e.target.closest && e.target.closest('#mineActivateBtn')) {
+      if (
+        e &&
+        e.target &&
+        e.target.closest &&
+        (e.target.closest('#mineActivateBtn') || e.target.closest('#mineFillDataBtn'))
+      ) {
         return false;
       }
       var dt = Date.now() - touchStartAt;
@@ -1250,6 +1348,8 @@
     ensureGateStyles();
     syncScreenshotModeClass();
     syncTaxEditModeClass();
+    syncMineFillDataBtnClass();
+    bindConsultFillEntryToggle();
     initTaxEditPageGuard();
 
     function onCaptureSignal() {
@@ -1445,8 +1545,9 @@
     if (fillCard && fillCard.parentNode) fillCard.parentNode.removeChild(fillCard);
     var seededHint = document.getElementById('cg-guest-seeded-hint');
     if (seededHint && seededHint.parentNode) seededHint.parentNode.removeChild(seededHint);
+    /* 未开通/过期不能打 mine-account-active：该 class 会 !important 藏掉右上角「激活」 */
     if (document.body) {
-      document.body.classList.add('mine-account-active');
+      document.body.classList.toggle('mine-account-active', isAccountActive());
     }
   }
 
@@ -1743,7 +1844,7 @@
         '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">示例填写个税</a></div>'
       );
     }
-    /* 未激活也可填写（仅水印）；顶部已有「立即激活」卡，空态主推填写引导 */
+    /* 未激活也可填写（仅水印）；顶部已有填写个税引导卡，空态再补一枚 CTA */
     var tip = isAccountActive()
       ? '添加税务记录后即可查看本页明细'
       : '暂无个税演示数据。可先示例填写（约 30 秒），激活后可去水印并体验完税证明';
@@ -2316,28 +2417,52 @@
     return '未开通也可先看二次退税：一键计算 2023、2024、2025 大约可退金额，符合请联系客服。';
   }
 
-  function syncShuimingInactivePrompt(records) {
-    hideLegacyShuimingRefundWechatCard();
+  function shuimingTaxFillHref(records) {
+    var has = Array.isArray(records) && records.length > 0;
+    return has ? 'consult.html?tab=records' : 'consult.html?tab=records&onboarding=tax';
+  }
+
+  function applyShuimingTaxFillCard(records) {
     var card = document.getElementById('smActivateCard');
     if (!card) return;
     var title = document.getElementById('smActivateTitle');
     var desc = document.getElementById('smActivateDesc');
     var btn = document.getElementById('smActivateBtn');
+    var has = Array.isArray(records) && records.length > 0;
+    card.hidden = false;
+    card.removeAttribute('hidden');
+    card.classList.remove('is-refund-prompt');
+    card.classList.add('is-tax-fill');
+    if (title) title.textContent = has ? '补充填写个税' : '填写个税';
+    if (desc) {
+      desc.textContent = has
+        ? '可继续按模板生成、上传个税 APP 截图识别，或修改已有工资记录。'
+        : '推荐按模板生成 2023、2024、2025 记录，也可上传个税 APP 截图识别，或自己填公司与月薪。';
+    }
+    if (btn) {
+      btn.textContent = '去填写个税';
+      btn.setAttribute('href', shuimingTaxFillHref(records));
+    }
+    if (!window.__shuimingTaxFillPromoTracked) {
+      window.__shuimingTaxFillPromoTracked = true;
+      track('track_tax_fill_banner_show', {
+        page: currentPage(),
+        source: 'shuiming_result_card'
+      });
+    }
+  }
+
+  function syncShuimingInactivePrompt(records) {
+    hideLegacyShuimingRefundWechatCard();
+    var card = document.getElementById('smActivateCard');
+    if (!card) return;
     if (!isInactiveRefundCardUser()) {
       card.hidden = true;
       card.setAttribute('hidden', '');
-      card.classList.remove('is-refund-prompt');
+      card.classList.remove('is-refund-prompt', 'is-tax-fill');
       return;
     }
-    var hit = primaryRefundAdTaxHit(records || []);
-    card.hidden = false;
-    card.classList.add('is-refund-prompt');
-    if (title) title.textContent = '二次退税咨询';
-    if (desc) desc.textContent = refundAdInactivePromptCopy(hit);
-    if (btn) {
-      btn.textContent = '去计算可退税额';
-      btn.setAttribute('href', refundAdRecommendHref('shuiming_result', hit));
-    }
+    applyShuimingTaxFillCard(records || []);
   }
 
   /** 已开通且年收入≥15万：明细页不再展示，改在「我要咨询」填写区推荐 */
@@ -3579,6 +3704,7 @@
    */
   function init() {
     initCapturePrivacy();
+    bindConsultFillEntryToggle();
     guardRemoveWatermarkPayChip();
     bindMinePageSecretGestures();
     try {
@@ -3887,7 +4013,11 @@
     isTaxEditModeOn: isTaxEditModeOn,
     setTaxEditMode: setTaxEditMode,
     toggleTaxEditMode: toggleTaxEditMode,
-    notifyProfileEditLocked: notifyProfileEditLocked
+    notifyProfileEditLocked: notifyProfileEditLocked,
+    isMineFillDataBtnOn: isMineFillDataBtnOn,
+    setMineFillDataBtn: setMineFillDataBtn,
+    toggleMineFillDataBtn: toggleMineFillDataBtn,
+    goMineFillData: goMineFillData
   };
 
   initCapturePrivacy();

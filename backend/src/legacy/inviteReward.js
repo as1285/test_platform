@@ -107,12 +107,14 @@ function createInviteReward(deps) {
     if (sourceChannel) {
       await conn.execute(
         `UPDATE users SET account_active = 1, activation_kind = 'permanent', active_until = NULL,
+         activation_cancelled_at = NULL, activation_cancelled_by = NULL,
          activation_source_channel = COALESCE(?, activation_source_channel) WHERE username = ?`,
         [sourceChannel, username]
       );
     } else {
       await conn.execute(
-        `UPDATE users SET account_active = 1, activation_kind = 'permanent', active_until = NULL WHERE username = ?`,
+        `UPDATE users SET account_active = 1, activation_kind = 'permanent', active_until = NULL,
+         activation_cancelled_at = NULL, activation_cancelled_by = NULL WHERE username = ?`,
         [username]
       );
     }
@@ -145,7 +147,8 @@ function createInviteReward(deps) {
     var until = new Date(base + d * 86400000 + h * 3600000 + m * 60000);
     var grantDaysLog = d + (h > 0 ? h / 24 : 0) + (m > 0 ? m / 1440 : 0);
     await conn.execute(
-      `UPDATE users SET account_active = 1, activation_kind = 'trial', active_until = ? WHERE username = ?`,
+      `UPDATE users SET account_active = 1, activation_kind = 'trial', active_until = ?,
+       activation_cancelled_at = NULL, activation_cancelled_by = NULL WHERE username = ?`,
       [until, username]
     );
     await conn.execute(

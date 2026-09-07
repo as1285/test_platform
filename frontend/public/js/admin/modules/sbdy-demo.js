@@ -2193,7 +2193,7 @@
 
   function isBonusLikeRecord(r) {
     var t = String((r && (r.income_subtype || r.income_type)) || '');
-    return /全年一次性|年终奖|奖金/.test(t);
+    return /全年一次性|年终奖|奖金|解除劳动合同|裁员补偿/.test(t);
   }
 
   function typicalAmount(nums) {

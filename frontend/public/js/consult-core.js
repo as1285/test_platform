@@ -435,6 +435,7 @@ function syncConsultPurchaseEntry(user) {
         if (btn) {
             btn.textContent = '去支付开通';
             btn.setAttribute('href', 'purchase.html?from=consult_products');
+            btn.setAttribute('target', '_top');
         }
         return;
     }
@@ -455,6 +456,7 @@ function syncConsultPurchaseEntry(user) {
     if (btn) {
         btn.textContent = kind === 'permanent' ? '打开支付页' : '去支付续费';
         btn.setAttribute('href', 'purchase.html?from=consult_products');
+        btn.setAttribute('target', '_top');
     }
 }
 
@@ -541,6 +543,56 @@ function updateProfileForm(user) {
     applyConsultTestRestrictions(user);
 }
 
+var MINE_FILL_DATA_BTN_KEY = 'cg_mine_fill_data_btn';
+var MINE_FILL_DATA_OFF_CLASS = 'cg-mine-fill-data-off';
+
+function isMineFillDataBtnOn() {
+    if (window.ConversionGuide && typeof window.ConversionGuide.isMineFillDataBtnOn === 'function') {
+        return window.ConversionGuide.isMineFillDataBtnOn();
+    }
+    try {
+        return localStorage.getItem(MINE_FILL_DATA_BTN_KEY) !== '0';
+    } catch (e) {
+        return true;
+    }
+}
+
+function setMineFillDataBtn(on) {
+    if (window.ConversionGuide && typeof window.ConversionGuide.setMineFillDataBtn === 'function') {
+        window.ConversionGuide.setMineFillDataBtn(on);
+        return;
+    }
+    try {
+        if (on) localStorage.removeItem(MINE_FILL_DATA_BTN_KEY);
+        else localStorage.setItem(MINE_FILL_DATA_BTN_KEY, '0');
+    } catch (e) {}
+    document.documentElement.classList.toggle(MINE_FILL_DATA_OFF_CLASS, !on);
+    try {
+        window.dispatchEvent(new CustomEvent('cgMineFillDataBtnChange', { detail: { on: !!on } }));
+    } catch (e2) {}
+}
+
+function syncConsultFillEntryToggle() {
+    var btn = document.getElementById('consultFillEntryToggle');
+    if (!btn) return;
+    var on = isMineFillDataBtnOn();
+    btn.textContent = on ? '隐藏填写' : '显示填写';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? '隐藏我的页填写数据按钮' : '显示我的页填写数据按钮');
+}
+
+function initConsultFillEntryToggle() {
+    var btn = document.getElementById('consultFillEntryToggle');
+    if (!btn || btn.getAttribute('data-fill-entry-bound') === '1') return;
+    btn.setAttribute('data-fill-entry-bound', '1');
+    syncConsultFillEntryToggle();
+    btn.addEventListener('click', function () {
+        setMineFillDataBtn(!isMineFillDataBtnOn());
+        syncConsultFillEntryToggle();
+    });
+    window.addEventListener('cgMineFillDataBtnChange', syncConsultFillEntryToggle);
+}
+
 /**
  * 首屏头：同步所属期、证明价、本地开通入口；延迟拉用户。
  * 副作用：定时 loadUserInfoFromApi。
@@ -550,6 +602,7 @@ function initHeader() {
         var name = localStorage.getItem('real_name') || '杰瑞';
         document.title = '个人中心 - ' + name;
 
+        initConsultFillEntryToggle();
         initBelongingPeriodSync();
         initTaxReportedManualEditTracking();
         /* 本地激活态先亮支付入口，接口返回后再校正文案 */
@@ -595,6 +648,24 @@ function sumEmploymentBonusTax(employments) {
             var amt = round2(parseFloat(b && (b.amount != null ? b.amount : b.yearEndBonus)) || 0);
             if (amt > 0) {
                 sum = round2(sum + yearEndBonusTaxSeparate(amt));
+            }
+        });
+    });
+    return sum;
+}
+
+/** 各段工作经历裁员补偿税额合计（3 倍平均工资以上单独计税）。 */
+function sumEmploymentSeveranceTax(employments) {
+    var sum = 0;
+    (employments || []).forEach(function (emp) {
+        var list = [];
+        if (emp && Array.isArray(emp.severances) && emp.severances.length) {
+            list = emp.severances;
+        }
+        list.forEach(function (s) {
+            var amt = round2(parseFloat(s && s.amount) || 0);
+            if (amt > 0) {
+                sum = round2(sum + severanceCompensationTaxSeparate(amt));
             }
         });
     });
@@ -1202,6 +1273,51 @@ function yearEndBonusTaxSeparate(bonus) {
         }
     }
     return 0;
+}
+
+/** 演示用：当地上年职工平均工资（元）。3 倍以内免税。 */
+var SEVERANCE_LOCAL_AVG_WAGE = 120000;
+var SEVERANCE_INCOME_SUBTYPE = '解除劳动合同一次性补偿收入';
+
+function isSeveranceCompensationSubtype(sub) {
+    var s = String(sub || '').trim();
+    return s.indexOf('解除劳动合同') >= 0 || s.indexOf('裁员补偿') >= 0;
+}
+
+/**
+ * 解除劳动合同一次性补偿：不超过当地上年职工平均工资 3 倍免税，
+ * 超过部分单独适用综合所得税率表（年度）。
+ */
+function severanceCompensationTaxSeparate(amount, avgWage) {
+    var a = Number(amount);
+    if (!a || a <= 0) return 0;
+    var avg = Number(avgWage);
+    if (!avg || avg <= 0) avg = SEVERANCE_LOCAL_AVG_WAGE;
+    var taxable = Math.max(0, a - avg * 3);
+    if (!taxable) return 0;
+    var brackets = [
+        { max: 36000, rate: 0.03, qd: 0 },
+        { max: 144000, rate: 0.10, qd: 2520 },
+        { max: 300000, rate: 0.20, qd: 16920 },
+        { max: 420000, rate: 0.25, qd: 31920 },
+        { max: 660000, rate: 0.30, qd: 52920 },
+        { max: 960000, rate: 0.35, qd: 85920 },
+        { max: Infinity, rate: 0.45, qd: 181920 }
+    ];
+    for (var i = 0; i < brackets.length; i++) {
+        if (taxable <= brackets[i].max) {
+            return Math.max(0, round2(taxable * brackets[i].rate - brackets[i].qd));
+        }
+    }
+    return 0;
+}
+
+function severanceTaxFreeIncome(amount, avgWage) {
+    var a = Number(amount);
+    if (!a || a <= 0) return 0;
+    var avg = Number(avgWage);
+    if (!avg || avg <= 0) avg = SEVERANCE_LOCAL_AVG_WAGE;
+    return round2(Math.min(a, avg * 3));
 }
 
 /** 税额格式化为两位小数字符串。 */
@@ -2395,6 +2511,9 @@ function recordMatchesSingleTaxCohort(rec, record) {
     if (String(rec.income_subtype || '').trim() === '全年一次性奖金收入') {
         return false;
     }
+    if (isSeveranceCompensationSubtype(rec.income_subtype)) {
+        return false;
+    }
     var companyTaxId = String(record.company_tax_id || '').trim();
     var company = String(record.company_name || '').trim();
     if (companyTaxId && String(rec.company_tax_id || '').trim() === companyTaxId) {
@@ -2410,6 +2529,9 @@ function recordMatchesSingleTaxCohort(rec, record) {
 function computeSingleRecordTaxReported(record, allRecords) {
     if (String(record.income_subtype || '').trim() === '全年一次性奖金收入') {
         return String(yearEndBonusTaxSeparate(parseFloat(record.income) || 0));
+    }
+    if (isSeveranceCompensationSubtype(record.income_subtype)) {
+        return String(severanceCompensationTaxSeparate(parseFloat(record.income) || 0));
     }
     var year = parseInt(record.year, 10);
     var month = parseInt(record.month, 10);

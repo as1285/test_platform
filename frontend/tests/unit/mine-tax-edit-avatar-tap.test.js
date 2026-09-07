@@ -86,7 +86,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
     );
     expect(guideSrc).toContain("再点 ' + left + ' 次");
     expect(guideSrc).toContain('--app-shell-statusbar-top, env(safe-area-inset-top,0px)');
-    expect(authSrc).toContain('conversion-guide.js?v=20260906-najilu-track');
+    expect(authSrc).toContain('conversion-guide.js?v=20260907-fill-btn');
     expect(authSrc).toContain('mineNeedsCg');
     expect(authSrc).toContain('inTabEmbed && !mineNeedsCg');
     expect(mineHtml).toContain('html.app-ios-client body.page-mine .mine-avatar-edit-hit');
@@ -94,7 +94,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
     expect(mineHtml).toContain('width: calc(220 * var(--mine-rpx))');
     expect(mineHtml).toContain('pointer-events: auto');
     expect(mineHtml).toContain('app-cordova-shell:not(.app-android-xiaomi-14pro)');
-    expect(mineHtml).toMatch(/auth\.js\?v=20260906-najilu-track/);
+    expect(mineHtml).toMatch(/auth\.js\?v=20260907-fill-btn/);
   });
 
   it('auth injects conversion-guide on mine even inside tab_embed', () => {

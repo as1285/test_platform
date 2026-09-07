@@ -396,6 +396,12 @@ app.post(
   mw.requireAdminMenu('users'),
   h.handleAdminUserMakePermanent
 );
+app.post(
+  '/api/admin/user-deactivate',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserDeactivate
+);
 app.get(
   '/api/admin/price-bids',
   mw.requireAdminAuth,

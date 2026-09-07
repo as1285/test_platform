@@ -14,6 +14,8 @@ const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const registerGuard = require('../../register-guard');
 const serverMonitor = require('../../serverMonitor');
+const { requireOptionalPurchaseUxMonitor } = require('../shared/optionalRootModule');
+const purchaseUxMonitor = requireOptionalPurchaseUxMonitor();
 const dbLogRetention = require('../../dbLogRetention');
 const unusedActivationCodes = require('../../unusedActivationCodes');
 const opsStatsReport = require('../../opsStatsReport');
@@ -134,9 +136,8 @@ function resolveSalesChannelForChannelPrices(userCh, requestCh) {
   var acctCh = String(userCh == null ? '' : userCh)
     .trim()
     .toLowerCase();
-  if (reqCh === 'abc') return reqCh;
-  if (acctCh && acctCh !== 'abc') return acctCh;
-  if (reqCh && reqCh !== 'abc') return reqCh;
+  if (reqCh) return reqCh;
+  if (acctCh) return acctCh;
   return '';
 }
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
@@ -1327,8 +1328,8 @@ async function resolveForcedAbcForSalesChannel(salesCh) {
 
 /**
  * 按渠道专属价覆盖 offer.skus。
- * 普通渠道：账号 sales_promo_channel 优先，其次请求 ch / header / UA。
- * URL-only 渠道（如 abc）：只认本次请求显式渠道，账号留存不改价。
+ * 普通渠道与已绑定的 abc：账号 sales_promo_channel 优先，其次请求 ch / header / UA。
+ * 账号尚未绑渠道时，按安装下载埋点补绑 URL-only（abc）。
  * 用户专属报价应在本函数之后再套用。
  */
 async function applyAgentChannelPricesToOffer(offer, username, req) {
@@ -1337,9 +1338,12 @@ async function applyAgentChannelPricesToOffer(offer, username, req) {
   try {
     if (username) {
       userCh = await getUserSalesPromoChannel(username);
+      if (!userCh) {
+        userCh = await maybeBindUrlOnlySalesChannel(username, req);
+      }
     }
   } catch (e0) {
-    userCh = '';
+    userCh = userCh || '';
   }
   var reqCh = '';
   if (req) {
@@ -1391,9 +1395,20 @@ async function attachUserFromSalesChannel(username, salesCh) {
   if (!u || !ch) {
     return null;
   }
-  /* abc 等 URL-only：不写入账号渠道，避免离开带参页后仍走渠道专属价 */
+  /* abc 等 URL-only：写入账号归因供开通价使用，不挂下属代理 */
   if (isUrlOnlySalesChannel(ch)) {
-    return null;
+    try {
+      await writeSalesPromoChannelIfEmpty(u, ch);
+    } catch (eUrlOnly) {
+      console.error('attachUserFromSalesChannel url-only', eUrlOnly);
+    }
+    return {
+      channel_id: ch,
+      owner_admin_username: '',
+      default_pricing_abc: 'b',
+      enabled: true,
+      note: ''
+    };
   }
   var pol = null;
   try {
@@ -1485,6 +1500,14 @@ async function attachUserFromRequestChannel(username, req, body) {
     try {
       ch = await resolveSalesChannelForRequestStrict(req);
     } catch (e4) {
+      ch = '';
+    }
+  }
+  /* 装过 abc 描述文件/安装包：client_id 常会变，按下载埋点补绑 */
+  if (!ch) {
+    try {
+      ch = await resolveUrlOnlyChannelFromInstallDownload(req, { username: u });
+    } catch (e5) {
       ch = '';
     }
   }
@@ -1895,12 +1918,12 @@ async function resolveInstallPackagesContext(req) {
    * 已登录：只用账号渠道或 URL 显式 ?ch=，禁止 IP/设备归因兜底。
    * 否则测过代理链接的同一出口 IP 会把直客 A 方案也标成 code_only，购买页看不到支付宝。
    * 未登录：仍可用归因，方便 install_guide 匿名下载/藏闲鱼。
-   * URL-only（abc）：账号留存不参与，须本次请求显式带渠道。
+   * URL-only（abc）：账号已绑定则沿用，便于开通价与再次下载渠道包。
    */
   var salesCh = '';
   if (queryCh) {
     salesCh = queryCh;
-  } else if (userCh && !isUrlOnlySalesChannel(userCh)) {
+  } else if (userCh) {
     salesCh = userCh;
   }
   if (!salesCh && !uid) {
@@ -2129,6 +2152,151 @@ async function resolveSalesChannelForRequest(req, opts) {
 /** 仅 client_id / 设备指纹归因（不含裸 IP） */
 async function resolveSalesChannelForRequestStrict(req) {
   return resolveSalesChannelForRequest(req, { allowIp: false });
+}
+
+/** 账号尚未绑渠道时写入 sales_promo_channel */
+async function writeSalesPromoChannelIfEmpty(username, salesCh) {
+  var u = String(username || '').trim();
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!pool || !u || !ch) return false;
+  const [ret] = await pool.execute(
+    `UPDATE users
+     SET sales_promo_channel = ?
+     WHERE username = ?
+       AND (sales_promo_channel IS NULL OR TRIM(sales_promo_channel) = '')`,
+    [ch, u]
+  );
+  try {
+    _salesPromoChannelCache.delete(u);
+  } catch (eCache) {}
+  return !!(ret && ret.affectedRows);
+}
+
+/**
+ * 从 iOS 描述文件 / Android 安装包点击埋点解析 URL-only 渠道（abc）。
+ * 优先 client_id、设备指纹；否则同 IP 且落在安装下载时间窗内（装完描述文件后会话会变）。
+ */
+async function resolveUrlOnlyChannelFromInstallDownload(req, opts) {
+  if (!pool) return '';
+  opts = opts || {};
+  var cid = readClientIdFromRequest(req);
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  if (!cid && !fp && !ip) return '';
+  var username = String(opts.username || '').trim();
+  var urlOnlyIds =
+    typeof agentChannelsLib.listUrlOnlySalesChannelIds === 'function'
+      ? agentChannelsLib.listUrlOnlySalesChannelIds()
+      : ['abc'];
+  if (!urlOnlyIds.length) return '';
+  var chPh = urlOnlyIds
+    .map(function () {
+      return '?';
+    })
+    .join(',');
+  var ipWindowSql = username
+    ? `(? <> '' AND ip = ?
+         AND created_at >= DATE_SUB((SELECT created_at FROM users WHERE username = ? LIMIT 1), INTERVAL 2 HOUR)
+         AND created_at <= DATE_ADD((SELECT created_at FROM users WHERE username = ? LIMIT 1), INTERVAL 15 MINUTE))`
+    : `(? <> '' AND ip = ?
+         AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 2 HOUR)
+         AND created_at <= DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE))`;
+  var params = ['track_install_ios_click', 'track_install_apk_click']
+    .concat(urlOnlyIds)
+    .concat(urlOnlyIds)
+    .concat([cid || '', cid || '', fp || '', fp || '', ip || '', ip || '']);
+  if (username) {
+    params.push(username, username);
+  }
+  params.push(cid || '', cid || '', fp || '', fp || '');
+  try {
+    const [rows] = await pool.execute(
+      `SELECT LOWER(TRIM(IFNULL(
+           NULLIF(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.sales_ch')), ''),
+           JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.ch'))
+         ))) AS sales_ch
+       FROM install_guide_track_events
+       WHERE event_key IN (?, ?)
+         AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)
+         AND (
+           LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.sales_ch')), ''))) IN (` +
+        chPh +
+        `)
+           OR LOWER(TRIM(IFNULL(JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.ch')), ''))) IN (` +
+        chPh +
+        `)
+         )
+         AND (
+           (? <> '' AND client_id = ?)
+           OR (? <> '' AND device_fp = ?)
+           OR ` +
+        ipWindowSql +
+        `
+         )
+       ORDER BY
+         CASE
+           WHEN ? <> '' AND client_id = ? THEN 1
+           WHEN ? <> '' AND device_fp = ? THEN 2
+           ELSE 3
+         END,
+         created_at DESC
+       LIMIT 1`,
+      params
+    );
+    var ch = rows && rows[0] ? sanitizeSalesChannelId(rows[0].sales_ch) : '';
+    return isUrlOnlySalesChannel(ch) ? ch : '';
+  } catch (eQ) {
+    console.error('resolveUrlOnlyChannelFromInstallDownload', eQ);
+    return '';
+  }
+}
+
+/**
+ * 账号未绑渠道时，把 abc 安装下载 / 本次显式 abc 写进 sales_promo_channel。
+ */
+async function maybeBindUrlOnlySalesChannel(username, req) {
+  var u = String(username || '').trim();
+  if (!u) return '';
+  var existing = '';
+  try {
+    existing = await getUserSalesPromoChannel(u);
+  } catch (e0) {
+    existing = '';
+  }
+  if (existing) return existing;
+  var ch = '';
+  try {
+    ch = readSalesChannelFromRequest(req);
+  } catch (e1) {
+    ch = '';
+  }
+  if (!isUrlOnlySalesChannel(ch)) {
+    ch = '';
+    try {
+      ch = await resolveSalesChannelForRequestStrict(req);
+    } catch (e2) {
+      ch = '';
+    }
+  }
+  if (!isUrlOnlySalesChannel(ch)) {
+    ch = '';
+    try {
+      ch = await resolveUrlOnlyChannelFromInstallDownload(req, { username: u });
+    } catch (e3) {
+      ch = '';
+    }
+  }
+  if (!isUrlOnlySalesChannel(ch)) return '';
+  try {
+    await writeSalesPromoChannelIfEmpty(u, ch);
+  } catch (eW) {
+    console.error('maybeBindUrlOnlySalesChannel', eW);
+  }
+  try {
+    return (await getUserSalesPromoChannel(u)) || ch;
+  } catch (eR) {
+    return ch;
+  }
 }
 
 /** 从库读安装包设置 */
@@ -3132,6 +3300,26 @@ async function createTables() {
   try {
     await conn.execute(`
       ALTER TABLE users ADD COLUMN activation_refunded_by VARCHAR(255) NULL COMMENT '执行激活退款的管理员'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_cancelled_at DATETIME(3) NULL COMMENT '管理端取消激活时间，运营看板今日激活不计入'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_cancelled_by VARCHAR(255) NULL COMMENT '执行取消激活的管理员'
     `);
   } catch (e) {
     if (e.errno !== 1060) {
@@ -7805,6 +7993,8 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
          SET account_active = 1,
              activation_kind = 'permanent',
              active_until = NULL,
+             activation_cancelled_at = NULL,
+             activation_cancelled_by = NULL,
              activation_source_channel = CASE
                WHEN activation_source_channel IS NULL OR activation_source_channel = '' THEN 'alipay'
                ELSE activation_source_channel END
@@ -7817,6 +8007,8 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
          SET account_active = 1,
              activation_kind = 'trial',
              active_until = ?,
+             activation_cancelled_at = NULL,
+             activation_cancelled_by = NULL,
              activation_source_channel = CASE
                WHEN activation_source_channel IS NULL OR activation_source_channel = '' THEN 'alipay'
                ELSE activation_source_channel END
@@ -8544,8 +8736,8 @@ async function registerUser(
       ? String(registerSourceChannel).trim()
       : null;
   salesPromoChannel = sanitizeSalesChannelId(salesPromoChannel);
-  /* abc 等 URL-only：仍写入 sales_promo_channel 做归因/后台过滤；
-   * 定价不认账号留存（见 resolveSalesChannelForChannelPrices），也不挂 owner_agent_admin */
+  /* abc 等 URL-only：仍写入 sales_promo_channel 做归因与开通价；
+   * 不挂 owner_agent_admin。开通价认账号留存。 */
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
@@ -9845,6 +10037,9 @@ async function handleUserPost(req, res) {
       maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
       recordAdPageTrackEvent(req, action, body.meta);
+      try {
+        purchaseUxMonitor.recordFromTrack(req, action, body.meta, pool);
+      } catch (ePux) {}
       var trackActUser = String(action || '').trim().toLowerCase();
       if (
         userId &&
@@ -13540,6 +13735,9 @@ async function handleAuthPost(req, res) {
       maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
       recordAdPageTrackEvent(req, action, body.meta);
+      try {
+        purchaseUxMonitor.recordFromTrack(req, action, body.meta, pool);
+      } catch (ePuxAuth) {}
       return res.json({ code: 200, data: { ok: true } });
     }
     if (action === 'admin_issue_code') {
@@ -13616,6 +13814,20 @@ async function handleAuthPost(req, res) {
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
         var regSalesCh = readSalesChannelFromRequest(req, body);
+        if (!regSalesCh) {
+          try {
+            regSalesCh = await resolveSalesChannelForRequestStrict(req);
+          } catch (eRegCh) {
+            regSalesCh = '';
+          }
+        }
+        if (!regSalesCh) {
+          try {
+            regSalesCh = await resolveUrlOnlyChannelFromInstallDownload(req, {});
+          } catch (eRegDl) {
+            regSalesCh = '';
+          }
+        }
         var fromShareReg = parseFromShareFlag(body);
         var out = await registerUser(
           body.username,
@@ -19590,7 +19802,8 @@ async function handleAdminCodes(req, res) {
               ac.used_by_username, ac.owner_admin_username,
               aa.full_name AS owner_admin_full_name,
               u.register_source_channel AS used_user_register_source,
-              u.activation_source_channel AS used_user_activation_source
+              u.activation_source_channel AS used_user_activation_source,
+              u.activation_cancelled_at AS used_user_activation_cancelled_at
        FROM activation_codes ac
        LEFT JOIN users u ON u.username = ac.used_by_username
        LEFT JOIN admin_accounts aa ON aa.username = ac.owner_admin_username
@@ -19631,7 +19844,8 @@ async function handleAdminCodes(req, res) {
         used_user_channel_label:
           r.used_by_username && String(r.used_by_username).trim() !== ''
             ? userChannelAnalysisLabel(regCh, actCh)
-            : null
+            : null,
+        activation_cancelled: !!(r.used_user_activation_cancelled_at)
       };
     });
     res.json({ code: 200, data: { codes: out, total: total, page: page, limit: limit } });
@@ -19906,6 +20120,84 @@ async function handleAdminUserMakePermanent(req, res) {
       code: 200,
       data: { username: target, activation_kind: 'permanent', active_until: null },
       msg: '已改为永久账号'
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    try {
+      conn.release();
+    } catch (e3) {}
+    return res.status(500).json({ code: 500, msg: e.message || String(e) });
+  }
+}
+
+/** 管理端：取消激活（恢复未开通；不封禁、不隐藏、不按退款剔除统计） */
+async function handleAdminUserDeactivate(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [urows] = await conn.execute(
+      `SELECT id, account_active, activation_kind, active_until, list_hidden_at
+       FROM users WHERE username = ? FOR UPDATE`,
+      [target]
+    );
+    if (!urows.length) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].list_hidden_at) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      await conn.rollback();
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var row = urows[0];
+    var rawActive = row.account_active === 1 || row.account_active === true;
+    if (!rawActive && !isUserEffectivelyActive(row)) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, account_active: false, activation_kind: 'none', active_until: null },
+        msg: '账号已是未激活'
+      });
+    }
+    var cancelBy =
+      req.admin && req.admin.username ? String(req.admin.username).trim() : '';
+    await conn.execute(
+      `UPDATE users
+       SET account_active = 0,
+           activation_kind = 'none',
+           active_until = NULL,
+           session_rev = session_rev + 1,
+           activation_cancelled_at = NOW(3),
+           activation_cancelled_by = ?
+       WHERE username = ?`,
+      [cancelBy || null, target]
+    );
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    invalidateUserInfoApiCache(target);
+    return res.json({
+      code: 200,
+      data: { username: target, account_active: false, activation_kind: 'none', active_until: null },
+      msg: '已取消激活'
     });
   } catch (e) {
     try {
@@ -24329,6 +24621,7 @@ function getHandlers() {
     handleAdminCodes,
     handleAdminUserActivate,
     handleAdminUserMakePermanent,
+    handleAdminUserDeactivate,
     handleAdminUserPriceOfferGet,
     handleAdminUserPriceOfferSet,
     handleAdminUserPriceOfferClear,
@@ -24401,6 +24694,9 @@ async function startServer() {
     return pool;
   });
   unusedActivationCodes.scheduleUnusedCodesPurge(function () {
+    return pool;
+  });
+  purchaseUxMonitor.schedulePurchaseUxMonitor(function () {
     return pool;
   });
   app.listen(PORT, '0.0.0.0', function () {

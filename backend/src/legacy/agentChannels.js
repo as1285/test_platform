@@ -6,11 +6,13 @@
 const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
 
 /**
- * URL-only 渠道：专属价只认本次请求显式 ch（query/header/UA），
- * 不认账号 sales_promo_channel 留存定价。注册仍可写入 sales_promo_channel 做归因，
- * 且子管理员后台不可见。与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
+ * URL-only 渠道：不写入浏览器 localStorage、不挂 owner_agent_admin。
+ * 装过渠道包 / 描述文件后会把 abc 写进账号 sales_promo_channel，开通价认账号留存。
+ * 未绑定账号时，专属价仍只认本次请求显式 ch。与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
  */
 var URL_ONLY_SALES_CHANNELS = { abc: true };
+var INSTALL_DOWNLOAD_LOOKBACK_MS = 2 * 60 * 60 * 1000;
+var INSTALL_DOWNLOAD_AFTER_REGISTER_MS = 15 * 60 * 1000;
 
 function sanitizeChannelIdLoose(raw) {
   var s = String(raw == null ? '' : raw).trim().toLowerCase();
@@ -82,15 +84,35 @@ function excludeUrlOnlySalesChannelSinceSql(channelCol, createdCol, sinceUtc, pa
 
 /**
  * 解析用于渠道专属价的渠道 ID。
- * URL-only（如 abc）：只认本次请求显式渠道；账号上即便绑了 abc 也不改价。
+ * 本次请求显式 ch 优先；否则认账号渠道（含已绑定的 abc）。
  */
 function resolveSalesChannelForChannelPrices(userCh, requestCh) {
   var reqCh = sanitizeChannelIdLoose(requestCh);
   var acctCh = sanitizeChannelIdLoose(userCh);
-  if (reqCh && isUrlOnlySalesChannel(reqCh)) return reqCh;
-  if (acctCh && !isUrlOnlySalesChannel(acctCh)) return acctCh;
-  if (reqCh && !isUrlOnlySalesChannel(reqCh)) return reqCh;
+  if (reqCh) return reqCh;
+  if (acctCh) return acctCh;
   return '';
+}
+
+/**
+ * 用安装下载埋点反绑 URL-only 渠道时的时间窗。
+ * 有注册时间：注册前 2 小时～注册后 15 分钟（装完描述文件后 client_id 会变，只能对 IP）。
+ * 无注册时间：最近 2 小时。
+ */
+function installDownloadBindWindow(registeredAt, now) {
+  var nowMs = now != null ? new Date(now).getTime() : Date.now();
+  if (!isFinite(nowMs)) nowMs = Date.now();
+  var regMs = registeredAt != null && registeredAt !== '' ? new Date(registeredAt).getTime() : NaN;
+  if (isFinite(regMs)) {
+    return {
+      start: new Date(regMs - INSTALL_DOWNLOAD_LOOKBACK_MS),
+      end: new Date(regMs + INSTALL_DOWNLOAD_AFTER_REGISTER_MS)
+    };
+  }
+  return {
+    start: new Date(nowMs - INSTALL_DOWNLOAD_LOOKBACK_MS),
+    end: new Date(nowMs + 60 * 1000)
+  };
 }
 
 function createAgentChannels(deps) {
@@ -742,5 +764,6 @@ module.exports = {
   excludeUrlOnlySalesChannelSql: excludeUrlOnlySalesChannelSql,
   matchUrlOnlySalesChannelSql: matchUrlOnlySalesChannelSql,
   excludeUrlOnlySalesChannelSinceSql: excludeUrlOnlySalesChannelSinceSql,
-  resolveSalesChannelForChannelPrices: resolveSalesChannelForChannelPrices
+  resolveSalesChannelForChannelPrices: resolveSalesChannelForChannelPrices,
+  installDownloadBindWindow: installDownloadBindWindow
 };

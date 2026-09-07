@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <!--
       开通/支付页（C 端）：激活码 + 支付宝当面付 + 专属价/心理价出价。
-      脚本：auth-boot（同步）→ auth.js（defer，注入 conversion-guide 等）→ 文末内联主逻辑。
+      脚本：tab-shell-escape（iframe 提到顶层）→ auth-boot（同步）→ auth.js（defer）→ 文末内联主逻辑。
       关键：?from= 标高意向；专属价由后端 user_price_offers 覆盖套餐；ABC 以服务端为准。
       构建会剥离本注释；请以源码为准。
     -->
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260903-mate60pay" defer></script>
+    <script src="/js/tab-shell-escape.js?v=20260907-pay-top2"></script>
+    <script src="/js/auth-boot.js?v=20260907-pay-top"></script>
+    <script src="/js/auth.js?v=20260907-pay-top" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通演示</title>
     <style>
@@ -151,6 +152,8 @@
             animation: purchaseSkel 1.2s ease-in-out infinite;
         }
         .skel-bar.is-cta { height: 52px; margin-top: 12px; margin-bottom: 0; }
+        .card-alipay-retry[hidden] { display: none !important; }
+        .card-alipay-retry .card-hint { margin-bottom: 12px; }
         @keyframes purchaseSkel {
             0% { background-position: 100% 0; }
             100% { background-position: -100% 0; }
@@ -1289,19 +1292,42 @@
             新用户 24 小时内可享体验价（划线为对照原价）。
         </div>
 
-        <div class="card card-alipay-skel" id="cardAlipaySkel" aria-hidden="true">
+        <div class="card card-alipay-skel" id="cardAlipaySkel" hidden aria-hidden="true">
             <div class="skel-bar"></div>
             <div class="skel-bar"></div>
             <div class="skel-bar"></div>
             <div class="skel-bar is-cta"></div>
         </div>
-        <div class="card" id="cardAlipay" hidden>
+        <div class="card card-alipay-retry" id="cardAlipayRetry" hidden>
+            <p class="card-hint" id="alipayRetryHint">套餐暂时加载不出来，请点重试。若仍不行，可返回「我的」再进开通页。</p>
+            <button type="button" class="btn btn-alipay" id="btnAlipayRetryLoad" data-no-page-loading="1">重新加载套餐</button>
+        </div>
+        <div class="card" id="cardAlipay">
             <div class="card-head">
                 <div class="card-title">选套餐 · 支付宝付款</div>
                 <span class="badge-auto">付款后自动开通</span>
             </div>
             <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，点选其他套餐即可改价。</p>
-            <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
+            <div class="pricing-sku-list" id="alipaySkuList">
+                <button type="button" class="pricing-sku-item is-selected" data-sku-id="sku_300_7d">
+                    <span class="pricing-sku-radio" aria-hidden="true"></span>
+                    <span class="pricing-sku-price">¥300</span>
+                    <span class="pricing-sku-label">周卡<span class="pricing-sku-badge">体验价</span></span>
+                    <span class="pricing-sku-tag">7天</span>
+                </button>
+                <button type="button" class="pricing-sku-item" data-sku-id="sku_348_14d">
+                    <span class="pricing-sku-radio" aria-hidden="true"></span>
+                    <span class="pricing-sku-price">¥348</span>
+                    <span class="pricing-sku-label">双周卡</span>
+                    <span class="pricing-sku-tag">14天</span>
+                </button>
+                <button type="button" class="pricing-sku-item" data-sku-id="sku_398_30d">
+                    <span class="pricing-sku-radio" aria-hidden="true"></span>
+                    <span class="pricing-sku-price">¥398</span>
+                    <span class="pricing-sku-label">月卡<span class="pricing-sku-badge is-rec">更划算</span></span>
+                    <span class="pricing-sku-tag">30天</span>
+                </button>
+            </div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay" data-no-page-loading="1">体验价 · 打开支付宝付款</button>
             <a class="btn btn-alipay-fallback" id="alipayOpenFallback" href="#" hidden data-no-page-loading="1">未弹出？点此打开支付宝</a>
             <ul class="purchase-trust" id="purchaseTrustRow" aria-label="开通保障">
@@ -1796,16 +1822,55 @@
         window.trackUserAction(action, payload);
     }
 
+    function readLocalPurchaseAbc() {
+        try {
+            if (typeof window.getPurchaseAbcVariant === 'function') {
+                var fromAuth = String(window.getPurchaseAbcVariant() || '').trim();
+                if (fromAuth) return fromAuth;
+            }
+        } catch (e0) {}
+        try {
+            var raw = localStorage.getItem('purchase_abc_assignment_v1');
+            if (!raw) return '';
+            var o = JSON.parse(raw);
+            var v = String((o && o.variant) || '').trim().toLowerCase();
+            if (v === 'c') v = 'b';
+            return v === 'a' || v === 'b' ? v : '';
+        } catch (e1) {}
+        return '';
+    }
+
     function getPurchaseAbc() {
         try {
             if (typeof window.migratePurchaseAbcFromLanding === 'function') {
                 window.migratePurchaseAbcFromLanding();
             }
-            if (typeof window.getPurchaseAbcVariant === 'function') {
-                return window.getPurchaseAbcVariant() || '';
-            }
         } catch (e) {}
-        return '';
+        return readLocalPurchaseAbc();
+    }
+
+    function fetchWithTimeout(url, opts, ms) {
+        opts = opts || {};
+        ms = ms || 8000;
+        if (typeof AbortController !== 'function' || opts.signal) {
+            return fetch(url, opts);
+        }
+        var controller = new AbortController();
+        var timer = setTimeout(function () {
+            try {
+                controller.abort();
+            } catch (eAbort) {}
+        }, ms);
+        return fetch(url, Object.assign({}, opts, { signal: controller.signal })).then(
+            function (r) {
+                clearTimeout(timer);
+                return r;
+            },
+            function (err) {
+                clearTimeout(timer);
+                return Promise.reject(err);
+            }
+        );
     }
 
     function isPurchaseVariantC() {
@@ -1819,13 +1884,13 @@
 
     function ensurePurchaseAbcAssigned() {
         if (getPurchaseAbc()) return Promise.resolve(getPurchaseAbc());
-        return fetch('/api/public/landing-ab-config', {
+        return fetchWithTimeout('/api/public/landing-ab-config', {
             credentials: 'same-origin',
             cache: 'no-store',
             headers: typeof window.getClientDeviceHeaders === 'function'
                 ? window.getClientDeviceHeaders()
                 : {}
-        })
+        }, 8000)
             .then(function (r) {
                 return (window.authParseJson||function(r){return r.json();})(r);
             })
@@ -1951,7 +2016,10 @@
             if (w) {
                 try {
                     w.document.write(
-                        '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>正在打开支付宝</title></head><body style="font-family:-apple-system,sans-serif;padding:24px;color:#334155;font-size:16px">正在打开支付宝…</body></html>'
+                        '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>正在打开支付宝</title><' +
+                            '/head><body style="font-family:-apple-system,sans-serif;padding:24px;color:#334155;font-size:16px">正在打开支付宝...<' +
+                            '/body><' +
+                            '/html>'
                     );
                     w.document.close();
                 } catch (eDoc) {}
@@ -2297,7 +2365,11 @@
                     return window.authFetch(url, opts);
                 }
         var headers = Object.assign({}, purchaseAuthHeaders(), opts.headers || {});
-        return fetch(url, Object.assign({}, opts, { headers: headers, credentials: 'same-origin' }));
+        return fetchWithTimeout(
+            url,
+            Object.assign({}, opts, { headers: headers, credentials: 'same-origin' }),
+            opts.timeoutMs || 8000
+        );
     }
 
     function formatPurchaseCertFeeYuan(raw) {
@@ -2371,11 +2443,33 @@
     function paymentFetch(url, options) {
         var opts = options || {};
         opts.headers = Object.assign({ 'Content-Type': 'application/json' }, purchaseAuthHeaders(), opts.headers || {});
-        return purchaseAuthFetch(url, opts).then(function (r) {
-            return (window.authParseJson||function(r){return r.json();})(r).then(function (body) {
-                return { status: r.status, body: body };
+        return purchaseAuthFetch(url, opts)
+            .then(function (r) {
+                return (window.authParseJson || function (r) {
+                    return r.json();
+                })(r).then(function (body) {
+                    return { status: r.status, body: body };
+                });
+            })
+            .catch(function (err) {
+                if (err && err.activation_expired) {
+                    return {
+                        status: 401,
+                        body: {
+                            code: 401,
+                            msg: '试用已过期，请重新登录',
+                            activation_expired: true
+                        }
+                    };
+                }
+                return Promise.reject(err);
             });
-        });
+    }
+
+    function trackPurchaseUxFail(action, meta) {
+        var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
+        if (payload.activation_expired === true) payload.activation_expired = 1;
+        trackPurchase(action, payload);
     }
 
     var BILIBILI_SHARE_PENDING_KEY = 'purchase_bilibili_share_pending_v1';
@@ -2795,10 +2889,42 @@
         }
     }
 
+    var FALLBACK_ALIPAY_SKUS = [
+        {
+            id: 'sku_300_7d',
+            amount: '300.00',
+            label: '周卡',
+            subject: '激活码·周卡',
+            grant_kind: 'trial',
+            grant_days: 7,
+            grant_hours: 0,
+            grant_minutes: 0
+        },
+        {
+            id: 'sku_348_14d',
+            amount: '348.00',
+            label: '双周卡',
+            subject: '激活码·双周卡',
+            grant_kind: 'trial',
+            grant_days: 14,
+            grant_hours: 0,
+            grant_minutes: 0
+        },
+        {
+            id: 'sku_398_30d',
+            amount: '398.00',
+            label: '月卡',
+            subject: '激活码·月卡',
+            grant_kind: 'trial',
+            grant_days: 30,
+            grant_hours: 0,
+            grant_minutes: 0
+        }
+    ];
     var alipayPricing = {
-        variant: 'control',
-        skus: [],
-        selectedSkuId: ''
+        variant: 'treatment',
+        skus: FALLBACK_ALIPAY_SKUS.slice(),
+        selectedSkuId: 'sku_300_7d'
     };
     /** legacy=支付宝+激活码；treatment=多档支付宝+激活码 */
     var purchaseUiMode = 'legacy';
@@ -2829,6 +2955,7 @@
         var page = document.querySelector('.page');
         var hero = document.querySelector('.hero');
         var skel = document.getElementById('cardAlipaySkel');
+        var retryCard = document.getElementById('cardAlipayRetry');
         var highIntent = document.body.classList.contains('is-high-intent');
 
         /* A/B 均保留激活码出口 */
@@ -2932,6 +3059,7 @@
                 benefits,
                 offerBanner,
                 skel,
+                retryCard,
                 cardAlipay,
                 foldActivate,
                 foldMore,
@@ -3053,6 +3181,40 @@
         purchaseAlipayUiSettled = true;
         var skel = document.getElementById('cardAlipaySkel');
         if (skel) skel.hidden = true;
+        var retry = document.getElementById('cardAlipayRetry');
+        if (retry) retry.hidden = true;
+    }
+
+    function paintFallbackAlipayOffer() {
+        var card = document.getElementById('cardAlipay');
+        if (card) card.hidden = false;
+        hideAlipaySkeleton();
+        if (!alipayPricing.skus || !alipayPricing.skus.length) {
+            alipayPricing.skus = FALLBACK_ALIPAY_SKUS.slice();
+            alipayPricing.selectedSkuId = 'sku_300_7d';
+        }
+        try {
+            renderAlipaySkus(alipayPricing.skus, alipayPricing.variant || 'treatment');
+            updatePayCtaFromSelection();
+        } catch (ePaint) {}
+    }
+    paintFallbackAlipayOffer();
+
+    function showAlipayRetry(msg) {
+        paintFallbackAlipayOffer();
+        try {
+            showToast(msg || '套餐仍在更新，可先按当前价格付款');
+        } catch (eToast) {}
+    }
+
+    function showAlipaySkeletonAgain() {
+        purchaseAlipayUiSettled = false;
+        var retry = document.getElementById('cardAlipayRetry');
+        if (retry) retry.hidden = true;
+        var skel = document.getElementById('cardAlipaySkel');
+        if (skel) skel.hidden = false;
+        var card = document.getElementById('cardAlipay');
+        if (card) card.hidden = true;
     }
 
     /* 心理价出价：达线自动改价并立即生效，未达线转人工（站内信通知结果）；待审可修改重提 */
@@ -3469,11 +3631,19 @@
                 }
                 /* 以服务端 abc 为准；忽略残留 code_only */
                 if (x.status === 401 || x.status === 403) {
-                    if (card) card.hidden = true;
+                    /* 鉴权失败也保留兜底套餐，避免 iPhone 骨架屏一直转 */
+                    if (card) card.hidden = false;
                     setShareUiVisible(false);
                     purchaseUiMode = 'legacy';
                     applyPurchaseUiMode();
                     hideAlipaySkeleton();
+                    trackPurchaseUxFail('track_purchase_boot_fail', {
+                        route: '/api/payments/alipay/config',
+                        http_status: x.status,
+                        biz_code: x.body && x.body.code,
+                        activation_expired: !!(x.body && x.body.activation_expired) ? 1 : 0,
+                        reason: (x.body && x.body.msg) || 'auth_failed'
+                    });
                     try {
                         showToast((x.body && x.body.msg) || '登录已失效，请重新登录后再开通');
                     } catch (eToast) {}
@@ -3547,29 +3717,36 @@
                     purchaseUiMode = 'legacy';
                     alipayPricing.variant = 'control';
                     setShareUiVisible(false);
-                    if (card && purchaseUiMode !== 'code_only' && x.status === 200) {
-                        /* enabled=false 且非 C：保持隐藏（配置未就绪） */
-                        card.hidden = true;
+                    if (card) card.hidden = false;
+                    if (!alipayPricing.skus.length) {
+                        renderAlipaySkus(FALLBACK_ALIPAY_SKUS, 'treatment');
                     }
                     hideAlipaySkeleton();
                     applyPurchaseUiMode();
                 }
                 return checkAlipayLatestOrder();
             })
-            .catch(function () {
-                hideAlipaySkeleton();
-                var cardFail = document.getElementById('cardAlipay');
-                if (cardFail) cardFail.hidden = true;
+            .catch(function (eLoad) {
                 var foldShareFail = document.getElementById('foldShareDiscount');
                 var teaserFail = document.getElementById('shareInlineTeaser');
                 var shareFail = document.getElementById('cardShareActivity');
                 if (foldShareFail) foldShareFail.hidden = true;
                 if (teaserFail) teaserFail.hidden = true;
                 if (shareFail) shareFail.hidden = true;
-                /* 接口失败时不要用本地 sticky 把整页切成仅激活码 */
                 purchaseUiMode = 'legacy';
-                alipayPricing.variant = 'control';
+                alipayPricing.variant = 'treatment';
+                if (!alipayPricing.skus.length) {
+                    renderAlipaySkus(FALLBACK_ALIPAY_SKUS, 'treatment');
+                }
+                var cardKeep = document.getElementById('cardAlipay');
+                if (cardKeep) cardKeep.hidden = false;
+                hideAlipaySkeleton();
                 applyPurchaseUiMode();
+                updatePayCtaFromSelection();
+                trackPurchaseUxFail('track_purchase_boot_fail', {
+                    route: '/api/payments/alipay/config',
+                    reason: (eLoad && eLoad.message) || 'network_error'
+                });
             });
     }
 
@@ -3618,11 +3795,12 @@
         var req =
             typeof fetchPublicInstallPackages === 'function'
                 ? fetchPublicInstallPackages()
-                : fetch(
+                : fetchWithTimeout(
                       typeof getPublicInstallPackagesUrl === 'function'
                           ? getPublicInstallPackagesUrl()
                           : '/api/public/install-packages',
-                      { credentials: 'same-origin' }
+                      { credentials: 'same-origin' },
+                      8000
                   );
         return req
             .then(function (r) {
@@ -3731,7 +3909,8 @@
         });
     }
 
-    document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
+    var btnPurchaseActivateEl = document.getElementById('btnPurchaseActivate');
+    if (btnPurchaseActivateEl) btnPurchaseActivateEl.addEventListener('click', submitActivate);
 
     (function initPurchaseDownload() {
         var card = document.getElementById('cardDownloadApp');
@@ -3794,7 +3973,12 @@
         })
             .then(function (x) {
                 if (x.status !== 200 || !x.body || !x.body.data) {
-                    throw new Error((x.body && x.body.msg) || '创建支付订单失败');
+                    var failBody = x.body || {};
+                    var err = new Error(failBody.msg || '创建支付订单失败');
+                    err.http_status = x.status;
+                    err.biz_code = failBody.code;
+                    err.activation_expired = !!failBody.activation_expired;
+                    throw err;
                 }
                 var createdOrder = x.body.data.order || {};
                 trackPurchase('track_alipay_order_create_ok', {
@@ -3842,11 +4026,24 @@
                     if (gestureWin && !gestureWin.closed) gestureWin.close();
                 } catch (eCloseFail) {}
                 var failMsg = e && e.message ? e.message : '创建支付订单失败，请稍后重试';
+                var expiredFlag = !!(e && e.activation_expired);
                 trackPurchase('track_alipay_order_create_fail', {
                     pricing_variant: alipayPricing.variant,
                     sku_id: sku.id,
                     message: String(failMsg).slice(0, 120),
-                    cta_source: ctaSource || 'main'
+                    cta_source: ctaSource || 'main',
+                    http_status: e && e.http_status,
+                    biz_code: e && e.biz_code,
+                    activation_expired: expiredFlag ? 1 : 0,
+                    route: '/api/payments/alipay/create'
+                });
+                trackPurchaseUxFail('track_purchase_pay_blocked', {
+                    route: '/api/payments/alipay/create',
+                    sku_id: sku.id,
+                    http_status: e && e.http_status,
+                    biz_code: e && e.biz_code,
+                    activation_expired: expiredFlag ? 1 : 0,
+                    reason: String(failMsg).slice(0, 120)
                 });
                 setAlipayStatus('下单失败：' + failMsg + '。可重试或联系客服。', 'fail');
                 if (typeof showPaymentCreateFailDialog === 'function') {
@@ -3859,9 +4056,12 @@
             });
     }
 
-    document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
-        startPurchaseAlipayPay('main');
-    });
+    var btnPurchaseAlipayEl = document.getElementById('btnPurchaseAlipay');
+    if (btnPurchaseAlipayEl) {
+        btnPurchaseAlipayEl.addEventListener('click', function () {
+            startPurchaseAlipayPay('main');
+        });
+    }
     var stickyPayBtn = document.getElementById('btnPurchaseAlipaySticky');
     if (stickyPayBtn) {
         stickyPayBtn.addEventListener('click', function () {
@@ -4215,7 +4415,8 @@
         }
     })();
 
-    document.getElementById('purchaseActivateCode').addEventListener('keydown', function (e) {
+    var purchaseActivateCodeEl = document.getElementById('purchaseActivateCode');
+    if (purchaseActivateCodeEl) purchaseActivateCodeEl.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             submitActivate();
@@ -4882,19 +5083,45 @@
         });
     }
 
-    ensurePurchaseAbcAssigned()
-        .then(function () {
-            return loadConfig();
-        })
-        .then(function () {
-            return loadAlipayPurchase();
-        })
-        .then(function () {
-            return loadBilibiliShareStatus();
-        })
-        .then(function () {
-            return loadShebaoPhotos();
+    function bootPurchaseOffers() {
+        /* 套餐接口不再等 ABC / 安装包配置：任一前置请求挂起都会让骨架屏一直转 */
+        ensurePurchaseAbcAssigned().catch(function () {
+            return 'b';
         });
+        loadConfig();
+        var payP = loadAlipayPurchase();
+        var retried = false;
+        var watch = setTimeout(function () {
+            if (purchaseAlipayUiSettled || retried) return;
+            retried = true;
+            try {
+                showToast('套餐加载较慢，正在重试…');
+            } catch (eSlow) {}
+            loadAlipayPurchase();
+        }, 4000);
+        var hard = setTimeout(function () {
+            if (purchaseAlipayUiSettled) return;
+            showAlipayRetry('套餐加载失败，请点重试');
+        }, 10000);
+        payP
+            .then(function () {
+                clearTimeout(watch);
+                if (purchaseAlipayUiSettled) clearTimeout(hard);
+            })
+            .catch(function () {
+                clearTimeout(watch);
+            });
+        loadBilibiliShareStatus();
+        loadShebaoPhotos();
+    }
+    var btnAlipayRetryLoad = document.getElementById('btnAlipayRetryLoad');
+    if (btnAlipayRetryLoad) {
+        btnAlipayRetryLoad.addEventListener('click', function () {
+            showAlipaySkeletonAgain();
+            loadAlipayPurchase();
+        });
+    }
+    bootPurchaseOffers();
     /* 防止加载遮罩在华为 WebView 上未及时关闭导致下方渠道点不动 */
     setTimeout(function () {
         try {

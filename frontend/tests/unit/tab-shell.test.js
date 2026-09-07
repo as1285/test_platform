@@ -33,6 +33,7 @@ describe('tab shell (bottom nav cache)', () => {
     expect(tabShellEscape).toContain('tab-shell-iframe');
     expect(tabShellEscape).toContain('shuiming_result');
     expect(tabShellEscape).toContain('top.location.replace');
+    expect(tabShellEscape).toContain('purchase');
   });
 
   it('login/register escape the tab iframe and assign top-level location', () => {
@@ -42,6 +43,7 @@ describe('tab shell (bottom nav cache)', () => {
     expect(tabShellEscape).toContain('assignTopLocation');
     expect(tabShell).toContain('promoteIframeIfLeftAssignedTab');
     expect(tabShell).toContain("file === 'login.html'");
+    expect(tabShell).toContain("file === 'purchase.html'");
     expect(loginHtml).toContain('tab-shell-escape.js?v=20260906-login-top');
     expect(loginHtml).toContain('assignTopLocation');
     expect(mineHtml).toContain('login.html?next=mine.html');

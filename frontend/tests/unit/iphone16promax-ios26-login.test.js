@@ -29,7 +29,10 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
 
   it('keeps standalone login page background white (only status strip blue)', () => {
     expect(auth).toMatch(/html\.app-ios-standalone-entry\{background:#ffffff/);
-    expect(auth).toContain('body.page-login{background:#ffffff');
+    expect(auth).toContain('html.app-ios-standalone-entry body.page-login,');
+    expect(auth).toContain(
+      'html.app-ios-standalone-entry body.page-face-login{background:#ffffff'
+    );
     expect(auth).toContain('iphone17promax.app-top-safe-shell');
   });
 
@@ -43,7 +46,7 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
     expect(shuimingResult).toContain('app-ios-iphone16promax');
     expect(shuimingResult).toContain('app-ios-promax-wide');
     expect(shuimingResult).toContain('tax_ios_promax_wide_v1');
-    expect(shuimingResult).toContain('auth.js?v=20260906-iphone16pro-std');
+    expect(shuimingResult).toContain('auth.js?v=20260907-sm-taxfill');
     expect(shuimingResult).toContain('tax_device_model_v1');
     expect(shuimingResult).toMatch(/short16 >= 428/);
     expect(shuimingResult).toContain('@media screen and (min-width: 414px)');

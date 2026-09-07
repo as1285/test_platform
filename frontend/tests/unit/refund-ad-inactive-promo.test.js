@@ -34,7 +34,7 @@ describe('inactive users always see refund ad (source)', () => {
     expect(guideSrc).toContain('去计算可退税额');
     expect(guideSrc).toContain('track_refund_ad_inactive_promo_show');
     expect(guideSrc).toContain('track_refund_ad_inactive_promo_click');
-    expect(authSrc).toContain('conversion-guide.js?v=20260906-najilu-track');
+    expect(authSrc).toContain('conversion-guide.js?v=20260907-fill-btn');
     expect(guideSrc).toContain('id="cgValueGoRefund"');
     expect(guideSrc).toContain('查看可退税额');
     expect(guideSrc).not.toContain('id="cgValueGoPay"');
@@ -43,15 +43,18 @@ describe('inactive users always see refund ad (source)', () => {
     );
   });
 
-  it('consult and shuiming CTAs go to refund_ad, not purchase', () => {
+  it('consult CTAs go to refund_ad; shuiming card goes to tax fill', () => {
     expect(consultHtml).toContain('href="refund_ad.html?from=consult"');
     expect(consultHtml).toContain('href="refund_ad.html?from=consult_products"');
     expect(consultHtml).toContain('href="refund_ad.html?from=tax_done"');
     expect(consultHtml).toContain('href="purchase.html?from=consult_products"');
     expect(consultHtml).toContain('未开通也可先看二次退税');
-    expect(shuimingHtml).toContain('href="refund_ad.html?from=shuiming_result"');
-    expect(shuimingHtml).toContain('去计算可退税额');
-    expect(shuimingHtml).toContain('track_refund_ad_inactive_promo_click');
+    expect(shuimingHtml).toContain('href="consult.html?tab=records&onboarding=tax"');
+    expect(shuimingHtml).toContain('去填写个税');
+    expect(shuimingHtml).toContain('is-tax-fill');
+    expect(shuimingHtml).toContain('track_tax_fill_banner_ok');
+    expect(shuimingHtml).not.toContain('href="refund_ad.html?from=shuiming_result"');
+    expect(shuimingHtml).not.toContain('去计算可退税额');
   });
 });
 
@@ -99,7 +102,26 @@ describe('ConversionGuide runtime: inactive refund cards without tax hit', () =>
     );
     const card = document.getElementById('smActivateCard');
     expect(card.hidden).toBe(false);
-    expect(document.getElementById('smActivateBtn').textContent).toBe('去计算可退税额');
+    expect(card.classList.contains('is-tax-fill')).toBe(true);
+    expect(document.getElementById('smActivateTitle').textContent).toBe('填写个税');
+    expect(document.getElementById('smActivateBtn').textContent).toBe('去填写个税');
+    expect(document.getElementById('smActivateBtn').getAttribute('href')).toContain(
+      'consult.html?tab=records'
+    );
+  });
+
+  it('shuiming card switches to 补充填写 when records already exist', () => {
+    const CG = loadGuide();
+    localStorage.setItem('token', 't');
+    localStorage.setItem('account_active', '0');
+    window.__smAccountActiveConfirmed = false;
+    CG.syncRefundAdRecommendCards([{ income_item: '工资薪金', period: '2026-09' }]);
+    expect(document.getElementById('smActivateCard').hidden).toBe(false);
+    expect(document.getElementById('smActivateTitle').textContent).toBe('补充填写个税');
+    expect(document.getElementById('smActivateBtn').getAttribute('href')).toBe(
+      'consult.html?tab=records'
+    );
+    expect(document.getElementById('btnConsultRefundAd').textContent).toBe('去计算可退税额');
   });
 
   it('hides the cards for activated users without 15万 income', () => {

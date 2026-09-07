@@ -4486,6 +4486,18 @@
                     }
                 });
             }
+            var batchSeveranceOnly = document.querySelector('#adminTaxBatchRoot .batch-severance-only-btn');
+            if (batchSeveranceOnly && !batchSeveranceOnly.__adminBound) {
+                batchSeveranceOnly.__adminBound = true;
+                batchSeveranceOnly.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window.batchAddSeveranceOnly === 'function') {
+                        window.batchAddSeveranceOnly();
+                    } else if (typeof batchAddSeveranceOnly === 'function') {
+                        batchAddSeveranceOnly();
+                    }
+                });
+            }
             function bindAdminBatchClick(sel, fnName) {
                 var el = document.querySelector(sel);
                 if (!el || el.__adminBound) return;
@@ -4520,9 +4532,16 @@
                 });
             }
             bindAdminBatchClick('#btnBatchTaxMoreBonus', 'batchAddYearEndBonusOnly');
+            bindAdminBatchClick('#btnBatchTaxMoreSeverance', 'batchAddSeveranceOnly');
             var moreBonus = document.getElementById('btnBatchTaxMoreBonus');
             if (moreBonus && moreBonus.__adminBound) {
                 moreBonus.addEventListener('click', function () {
+                    if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
+                });
+            }
+            var moreSeverance = document.getElementById('btnBatchTaxMoreSeverance');
+            if (moreSeverance && moreSeverance.__adminBound) {
+                moreSeverance.addEventListener('click', function () {
                     if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
                 });
             }
@@ -5704,6 +5723,13 @@
                                 esc(u.username) +
                                 '" title="将临时激活改为永久激活（清除过期时间）">临时→永久</button> ';
                         }
+                        /* 当前仍有效的已激活：可取消开通（与退款不同，不封禁、不剔除统计） */
+                        if (u.account_active && !isExpired) {
+                            ops +=
+                                '<button type="button" class="btn-sm btn-deactivate btn-user-deactivate" data-u="' +
+                                esc(u.username) +
+                                '" title="取消激活，恢复为未开通（不封禁、不按退款剔除）">取消激活</button> ';
+                        }
                         var ipLast = u.ip_last || '';
                         ops += (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
@@ -5915,6 +5941,42 @@
                                 .then(function (d) {
                                     if (d.code === 200) {
                                         alert(d.msg || '已改为永久激活');
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-deactivate').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            if (
+                                !confirm(
+                                    '确定取消激活账号「' +
+                                        name +
+                                        '」？\n将恢复为未开通，C 端重新显示激活入口。\n不会封禁，也不会按退款从统计中剔除。之后可再次点「激活」开通。'
+                                )
+                            ) {
+                                return;
+                            }
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-deactivate', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name })
+                            })
+                                .then(function (r) {
+                                    return (window.adminParseJson||function(r){return r.json();})(r);
+                                })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        alert(d.msg || '已取消激活');
                                         loadUsers();
                                     } else {
                                         alert(d.msg || '操作失败');
@@ -6647,6 +6709,9 @@
                       '<span class="cell-break">' +
                       esc(usedName) +
                       '</span> ' +
+                      (c.activation_cancelled
+                          ? '<span class="badge badge-cancelled" title="该账号已在管理端取消激活，不计入运营看板今日激活">取消激活</span> '
+                          : '') +
                       '<button type="button" class="btn-sm btn-detail btn-goto-user" data-u="' +
                       esc(usedName) +
                       '" title="跳转到注册用户列表并定位该账号">定位</button>' +

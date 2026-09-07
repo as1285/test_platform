@@ -67,6 +67,7 @@ html.app-ios-iphone15promax body.page-consult {
     color: var(--color-text);
     line-height: 1.3;
     letter-spacing: -0.01em;
+    padding: 0 76px;
 }
 .header .user-name {
     font-size: 12px;
@@ -88,6 +89,30 @@ html.app-ios-iphone15promax body.page-consult {
 }
 .back-link:active { opacity: 0.6; }
 .header .back-link span { font-size: 13px; }
+
+.consult-fill-entry-toggle {
+    position: absolute;
+    right: 12px;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    height: 28px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 14px;
+    background: var(--color-primary-bg);
+    color: var(--color-primary-dark);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.consult-fill-entry-toggle:active { opacity: 0.7; }
+html.cg-screenshot-mode .consult-fill-entry-toggle,
+html.cg-capture-hide .consult-fill-entry-toggle {
+    display: none !important;
+}
 
 /* ===== Tab 导航 ===== */
 .tabs {
@@ -998,30 +1023,32 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
 #panel-records .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
 #panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
 #panel-records .batch-emp-remove-btn:active { opacity: 0.7; }
-#panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta, #panel-records .batch-emp-bonus-meta { margin-bottom: 6px; }
-#panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle, #panel-records .batch-emp-bonus-toggle {
+#panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta, #panel-records .batch-emp-bonus-meta, #panel-records .batch-emp-severance-meta { margin-bottom: 6px; }
+#panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle, #panel-records .batch-emp-bonus-toggle, #panel-records .batch-emp-severance-toggle {
     display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 8px; padding: 9px 12px;
     font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 8px;
     cursor: pointer; -webkit-tap-highlight-color: transparent; font-weight: 500;
 }
-#panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active, #panel-records .batch-emp-bonus-toggle:active { opacity: 0.92; }
-#panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon, #panel-records .batch-emp-bonus-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active, #panel-records .batch-emp-bonus-toggle:active, #panel-records .batch-emp-severance-toggle:active { opacity: 0.92; }
+#panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon, #panel-records .batch-emp-bonus-toggle-icon, #panel-records .batch-emp-severance-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
 #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon,
 #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon,
-#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-toggle-icon { transform: rotate(180deg); }
-#panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body, #panel-records .batch-emp-bonus-body { display: none; }
+#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-toggle-icon,
+#panel-records .batch-emp-severance-meta.is-open .batch-emp-severance-toggle-icon { transform: rotate(180deg); }
+#panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body, #panel-records .batch-emp-bonus-body, #panel-records .batch-emp-severance-body { display: none; }
 #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body,
 #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body,
-#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-body { display: block; }
-#panel-records .batch-emp-bonus-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
-#panel-records .batch-emp-bonus-meta { margin-top: 4px; }
-#panel-records .batch-emp-bonus-list { display: flex; flex-direction: column; gap: 10px; }
-#panel-records .batch-emp-bonus-item { padding: 10px 10px 4px; border: 1px solid var(--color-border-light); border-radius: 10px; background: var(--color-surface-alt, #f8fafc); }
-#panel-records .batch-emp-bonus-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-#panel-records .batch-emp-bonus-item-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
-#panel-records .batch-emp-bonus-remove { background: transparent; border: none; color: var(--color-danger); font-size: 12px; padding: 2px 4px; cursor: pointer; }
-#panel-records .batch-emp-bonus-add { display: block; width: 100%; margin: 8px 0 2px; padding: 8px 10px; font-size: 13px; color: var(--color-primary); background: transparent; border: 1px dashed var(--color-primary-border, #93c5fd); border-radius: 8px; cursor: pointer; }
-#panel-records .batch-emp-bonus-solo-btn {
+#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-body,
+#panel-records .batch-emp-severance-meta.is-open .batch-emp-severance-body { display: block; }
+#panel-records .batch-emp-bonus-hint, #panel-records .batch-emp-severance-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+#panel-records .batch-emp-bonus-meta, #panel-records .batch-emp-severance-meta { margin-top: 4px; }
+#panel-records .batch-emp-bonus-list, #panel-records .batch-emp-severance-list { display: flex; flex-direction: column; gap: 10px; }
+#panel-records .batch-emp-bonus-item, #panel-records .batch-emp-severance-item { padding: 10px 10px 4px; border: 1px solid var(--color-border-light); border-radius: 10px; background: var(--color-surface-alt, #f8fafc); }
+#panel-records .batch-emp-bonus-item-head, #panel-records .batch-emp-severance-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#panel-records .batch-emp-bonus-item-title, #panel-records .batch-emp-severance-item-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+#panel-records .batch-emp-bonus-remove, #panel-records .batch-emp-severance-remove { background: transparent; border: none; color: var(--color-danger); font-size: 12px; padding: 2px 4px; cursor: pointer; }
+#panel-records .batch-emp-bonus-add, #panel-records .batch-emp-severance-add { display: block; width: 100%; margin: 8px 0 2px; padding: 8px 10px; font-size: 13px; color: var(--color-primary); background: transparent; border: 1px dashed var(--color-primary-border, #93c5fd); border-radius: 8px; cursor: pointer; }
+#panel-records .batch-emp-bonus-solo-btn, #panel-records .batch-emp-severance-solo-btn {
     display: block;
     width: 100%;
     margin: 8px 0 4px;
@@ -1035,7 +1062,7 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.22);
 }
-#panel-records .batch-emp-bonus-solo-btn:active { opacity: 0.92; }
+#panel-records .batch-emp-bonus-solo-btn:active, #panel-records .batch-emp-severance-solo-btn:active { opacity: 0.92; }
 
 /* 年月输入（旧：四个数字框，管理端仍在用） */
 #panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }

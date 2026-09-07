@@ -238,7 +238,12 @@
   function promoteIframeIfLeftAssignedTab(iframe, key) {
     var file = iframePageFile(iframe);
     if (!file) return;
-    if (file === 'login.html' || file === 'register.html' || file === 'face_login.html') {
+    if (
+      file === 'login.html' ||
+      file === 'register.html' ||
+      file === 'face_login.html' ||
+      file === 'purchase.html'
+    ) {
       try {
         var href = iframe.contentWindow.location.href;
         global.location.replace(href);

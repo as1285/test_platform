@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260906-tax-ocr">
+    <link rel="stylesheet" href="/css/consult.css?v=20260907-severance">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -26,6 +26,7 @@
     <div class="header">
         <a href="mine.html" class="back-link" id="consultBackLink"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
         <h1 id="consultPageTitle">个人中心</h1>
+        <button type="button" class="consult-fill-entry-toggle" id="consultFillEntryToggle" aria-pressed="true" aria-label="隐藏我的页填写数据按钮">隐藏填写</button>
     </div>
 
     <div id="consultActivateModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="consultActivateModalTitle">
@@ -336,6 +337,7 @@
                             <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
                                 <button type="button" class="batch-tax-more-item" onclick="loadBatchEmploymentsFromExistingRecords(); closeBatchTaxMoreMenu();">从已有回填</button>
                                 <button type="button" class="batch-tax-more-item" onclick="batchAddYearEndBonusOnly(); closeBatchTaxMoreMenu();">仅添加年终奖</button>
+                                <button type="button" class="batch-tax-more-item" onclick="batchAddSeveranceOnly(); closeBatchTaxMoreMenu();">仅添加裁员补偿</button>
                                 <button type="button" class="batch-tax-more-item" id="btnBatchTaxQuickStart" style="display:none;" onclick="openTaxStartPath('example'); closeBatchTaxMoreMenu();">30秒体验</button>
                                 <button type="button" class="batch-tax-more-item" onclick="openTaxStartPath('chooser'); closeBatchTaxMoreMenu();">返回开始方式</button>
                             </div>
@@ -485,6 +487,18 @@
                                 <button type="button" class="btn btn-default btn-sm batch-emp-bonus-solo-btn">单独增加年终奖</button>
                             </div>
                         </div>
+                        <div class="batch-emp-severance-meta">
+                            <button type="button" class="batch-emp-severance-toggle" aria-expanded="false">
+                                <span>裁员补偿（解除劳动合同补偿，可单独增加）</span>
+                                <span class="batch-emp-severance-toggle-icon" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="batch-emp-severance-body">
+                                <p class="batch-emp-severance-hint">填金额后点「单独增加裁员补偿」即可写入，不会改动已有月薪。同一年可多笔（请用不同月份）。不超过当地上年职工平均工资 3 倍的部分免税（演示按 12 万元/年，免税额 36 万）。</p>
+                                <div class="batch-emp-severance-list"></div>
+                                <button type="button" class="batch-emp-severance-add">再加一笔裁员补偿</button>
+                                <button type="button" class="btn btn-default btn-sm batch-emp-severance-solo-btn">单独增加裁员补偿</button>
+                            </div>
+                        </div>
                     </div>
                 </template>
                 <template id="batchEmpBonusItemTpl">
@@ -509,11 +523,34 @@
                         </div>
                     </div>
                 </template>
+                <template id="batchEmpSeveranceItemTpl">
+                    <div class="batch-emp-severance-item">
+                        <div class="batch-emp-severance-item-head">
+                            <span class="batch-emp-severance-item-title">裁员补偿</span>
+                            <button type="button" class="batch-emp-severance-remove">删除这笔</button>
+                        </div>
+                        <div class="form-group">
+                            <label>解除劳动合同补偿（元）</label>
+                            <input type="number" class="batch-emp-severance" step="0.01" min="0" value="0" placeholder="无则填 0">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>补偿归属年度</label>
+                                <input type="text" class="batch-emp-severance-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
+                            </div>
+                            <div class="form-group">
+                                <label>归属月份（1–12 月）</label>
+                                <input type="text" class="batch-emp-severance-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
+                            </div>
+                        </div>
+                    </div>
+                </template>
                 <datalist id="batchCompanyHistoryDatalist"></datalist>
                 <div class="batch-tax-actions">
                     <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="oneClickGenerateBatchTaxRecords()">一键生成税务记录</button>
                     <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">保存覆盖</button>
                     <button type="button" class="batch-bonus-only-btn" onclick="batchAddYearEndBonusOnly()">单独增加年终奖</button>
+                    <button type="button" class="batch-bonus-only-btn" onclick="batchAddSeveranceOnly()">单独增加裁员补偿</button>
                 </div>
                 </div>
                 </div>
@@ -579,6 +616,10 @@
                     <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>年终奖应该单独计税还是并入综合所得？</summary>
                         <p>政策允许对全年一次性奖金选择单独计税（奖金÷12 对照月度税率表）或并入综合所得。单独计税可能在部分收入区间更省税，也可能更贵，可对照下方「更多」里的公式试算。本页填写年终奖时按单独计税生成独立记录。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="calc">
+                        <summary>裁员补偿 / 解除劳动合同补偿怎么计税？</summary>
+                        <p>解除劳动合同一次性补偿收入：不超过当地上年职工平均工资 3 倍的部分免税，超过部分不并入综合所得，单独适用综合所得税率表。本页演示按上年平均工资 12 万元（免税额 36 万）计算，生成独立记录，所得子项目为「解除劳动合同一次性补偿收入」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="calc">
                         <summary>换工作后个税如何累计？</summary>
@@ -988,8 +1029,8 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260906-tax-ocr"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260906-ocr-fd"></script>
+    <script defer src="/js/consult-core.js?v=20260907-severance"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260907-severance"></script>
     <script defer src="/js/consult-records.js?v=20260905-list-tap"></script>
     <script>
     (function () {

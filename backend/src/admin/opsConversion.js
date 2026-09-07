@@ -428,8 +428,10 @@ async function handleOpsBoard(req, res) {
         }
       }
       actWhere.push(cnActDay + ' = ' + todayBjSql);
+      actWhere.push('(u.activation_cancelled_at IS NULL)');
       const [actRows] = await conn.query(
-        'SELECT COUNT(DISTINCT ac.used_by_username) AS activate_today FROM activation_codes ac WHERE ' +
+        'SELECT COUNT(DISTINCT ac.used_by_username) AS activate_today FROM activation_codes ac' +
+          ' LEFT JOIN users u ON u.username = ac.used_by_username WHERE ' +
           actWhere.join(' AND '),
         actParams
       );

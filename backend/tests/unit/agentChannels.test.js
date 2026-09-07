@@ -136,7 +136,8 @@ describe('agentChannels normalize', () => {
 describe('abc is URL-only for channel prices', () => {
   const {
     isUrlOnlySalesChannel,
-    resolveSalesChannelForChannelPrices
+    resolveSalesChannelForChannelPrices,
+    installDownloadBindWindow
   } = require('../../src/legacy/agentChannels');
 
   it('marks abc as URL-only', () => {
@@ -149,19 +150,31 @@ describe('abc is URL-only for channel prices', () => {
     const mod = require('../../src/legacy/agentChannels');
     expect(typeof mod.isUrlOnlySalesChannel).toBe('function');
     expect(typeof mod.resolveSalesChannelForChannelPrices).toBe('function');
+    expect(typeof mod.installDownloadBindWindow).toBe('function');
     expect(typeof mod.createAgentChannels).toBe('function');
   });
 
-  it('uses abc prices only when the request carries abc', () => {
-    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('');
-    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('');
+  it('uses bound account abc when the request has no channel', () => {
+    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('abc');
+    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('abc');
     expect(resolveSalesChannelForChannelPrices('abc', 'abc')).toBe('abc');
     expect(resolveSalesChannelForChannelPrices('', 'abc')).toBe('abc');
   });
 
-  it('still prefers normal account channels without request ch', () => {
+  it('still prefers the current request channel over the account', () => {
     expect(resolveSalesChannelForChannelPrices('quan_c', '')).toBe('quan_c');
     expect(resolveSalesChannelForChannelPrices('quan_c', 'abc')).toBe('abc');
     expect(resolveSalesChannelForChannelPrices('', 'quan_c')).toBe('quan_c');
+    expect(resolveSalesChannelForChannelPrices('abc', 'quan_c')).toBe('quan_c');
+  });
+
+  it('windows install-download bind around registration', () => {
+    var registeredAt = new Date('2026-09-07T04:04:25.000Z');
+    var win = installDownloadBindWindow(registeredAt, new Date('2026-09-07T12:00:00.000Z'));
+    expect(win.start.toISOString()).toBe('2026-09-07T02:04:25.000Z');
+    expect(win.end.toISOString()).toBe('2026-09-07T04:19:25.000Z');
+    var live = installDownloadBindWindow(null, new Date('2026-09-07T04:17:00.000Z'));
+    expect(live.start.toISOString()).toBe('2026-09-07T02:17:00.000Z');
+    expect(live.end.toISOString()).toBe('2026-09-07T04:18:00.000Z');
   });
 });

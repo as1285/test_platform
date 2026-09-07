@@ -15,6 +15,7 @@ describe('iOS Safari 支付宝唤起', () => {
   it('keeps a blank window before async create so Safari does not drop the gesture', () => {
     expect(purchase).toContain('function openAlipayGestureWindow');
     expect(purchase).toContain("window.open('about:blank', '_blank')");
+    expect(purchase).not.toMatch(/document\.write\([\s\S]{0,400}<\/body>/);
     expect(purchase).toContain('function navigateAlipayGestureWindow');
     expect(purchase).toContain('var gestureWin = openAlipayGestureWindow()');
     expect(purchase).toContain('navigateAlipayGestureWindow(gestureWin, payUrl)');

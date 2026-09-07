@@ -274,8 +274,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260905-mine-safe-edit"></script>
-    <script src="/js/auth.js?v=20260906-login-top" defer></script>
+    <script src="/js/auth-boot.js?v=20260907-pay-top"></script>
+    <script src="/js/auth.js?v=20260907-fill-btn" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -348,6 +348,81 @@
              * 画布 padding、图片负 margin、叠层 top 必须同用此值，否则叠字与热区会整体偏移。
              */
             --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            /* 右上角激活按钮：相对状态栏下移，避开刘海 */
+            --mine-activate-btn-top-offset: 10px;
+        }
+
+        /* 左上角「填写数据」/ 右上角「激活」：固定定位避免被 e1 叠层挡住 */
+        .mine-activate-btn,
+        .mine-fill-data-btn {
+            position: fixed;
+            height: 36px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.96);
+            color: #1658dc;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            align-items: center;
+            justify-content: center;
+            padding: 0 16px;
+            z-index: 500;
+            pointer-events: auto;
+        }
+        .mine-activate-btn {
+            right: 16px;
+            top: calc(
+                var(--mine-activate-btn-top-offset, 10px) + var(--mine-top-bleed, 0px)
+            );
+            min-width: 72px;
+            display: none;
+        }
+        .mine-fill-data-btn {
+            left: 16px;
+            top: calc(
+                var(--mine-activate-btn-top-offset, 10px) + var(--mine-top-bleed, 0px)
+            );
+            min-width: 88px;
+            display: inline-flex;
+        }
+        .mine-activate-btn:active,
+        .mine-fill-data-btn:active {
+            opacity: 0.9;
+            transform: scale(0.98);
+        }
+        body.page-mine.mine-account-active .mine-activate-btn {
+            display: none !important;
+        }
+        html.cg-mine-fill-data-off body.page-mine .mine-fill-data-btn,
+        html.cg-screenshot-mode body.page-mine .mine-fill-data-btn,
+        html.cg-capture-hide body.page-mine .mine-fill-data-btn {
+            display: none !important;
+        }
+        html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn,
+        html.app-ios-client.app-top-safe-shell body.page-mine .mine-fill-data-btn {
+            top: calc(
+                var(--mine-activate-btn-top-offset, 10px) +
+                    var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px))
+            );
+        }
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn,
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn {
+            top: calc(
+                var(--mine-activate-btn-top-offset, 10px) +
+                    var(--app-cordova-statusbar-chrome, 40px)
+            );
+        }
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn {
+            right: 14px;
+        }
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn {
+            left: 14px;
         }
 
         .mine-e1-canvas {
@@ -2282,7 +2357,20 @@
     </style>
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('cg_mine_fill_data_btn') === '0') {
+                    document.documentElement.classList.add('cg-mine-fill-data-off');
+                }
+            } catch (eFillEarly) {}
+        })();
+    </script>
     <div class="mine-stack">
+        <!-- 左上角填写入口：个税记录修改页右上角可隐藏；默认显示 -->
+        <button type="button" class="mine-fill-data-btn" id="mineFillDataBtn" aria-label="填写个税数据">填写数据</button>
+        <!-- 未激活 / 已过期：右上角激活入口；已激活由 updateMineActivateButton 隐藏 -->
+        <button type="button" class="mine-activate-btn header-activate-btn" id="mineActivateBtn" aria-label="激活账号">激活</button>
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
         <div class="mine-e1-canvas" id="mineE1Canvas">
             <img
@@ -2800,7 +2888,11 @@
                         }
                         /* App 内 → 购买页；Web 端 → 下载引导 */
                         if (isMineAppShell()) {
-                            window.location.href = 'purchase.html';
+                            if (typeof window.assignTopLocation === 'function') {
+                                window.assignTopLocation('purchase.html');
+                            } else {
+                                window.location.href = 'purchase.html';
+                            }
                         } else {
                             goGuestDownload('guest_name');
                         }
@@ -3365,18 +3457,71 @@
                 window.location.href = 'consult.html?tab=records';
             }
 
+            function isMineFillDataBtnOn() {
+                if (
+                    window.ConversionGuide &&
+                    typeof window.ConversionGuide.isMineFillDataBtnOn === 'function'
+                ) {
+                    return window.ConversionGuide.isMineFillDataBtnOn();
+                }
+                try {
+                    return localStorage.getItem('cg_mine_fill_data_btn') !== '0';
+                } catch (eFill) {
+                    return true;
+                }
+            }
+
+            function syncMineFillDataButton() {
+                var on = isMineFillDataBtnOn();
+                document.documentElement.classList.toggle('cg-mine-fill-data-off', !on);
+                var btn = document.getElementById('mineFillDataBtn');
+                if (btn) {
+                    btn.setAttribute('aria-hidden', on ? 'false' : 'true');
+                }
+            }
+
+            function goMineFillDataPage() {
+                if (
+                    window.ConversionGuide &&
+                    typeof window.ConversionGuide.goMineFillData === 'function'
+                ) {
+                    window.ConversionGuide.goMineFillData();
+                    return;
+                }
+                goConsultPage();
+            }
+
             function applyAvatarGender(gender) {
                 applyMineHeaderImage(gender);
             }
 
             function updateMineActivateButton(user) {
+                var btn = document.getElementById('mineActivateBtn');
                 var active = false;
                 if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
                     active = true;
+                } else if (
+                    user &&
+                    (user.account_active === false || user.account_active === 0 || user.account_active === '0')
+                ) {
+                    active = false;
                 } else {
                     try {
                         active = localStorage.getItem('account_active') === '1';
                     } catch (e0) {}
+                }
+                /* 试用过期：接口会把 account_active 置为 false，按钮重新显示 */
+                var guest = typeof isLandingGuestMode === 'function' ? isLandingGuestMode() : false;
+                if (btn) {
+                    if (active) {
+                        btn.style.display = 'none';
+                        btn.textContent = '已激活';
+                        btn.setAttribute('aria-hidden', 'true');
+                    } else {
+                        btn.style.display = 'inline-flex';
+                        btn.textContent = guest ? '下载' : '激活';
+                        btn.setAttribute('aria-hidden', 'false');
+                    }
                 }
                 if (document.body) {
                     document.body.classList.toggle('mine-account-active', active);
@@ -3842,7 +3987,11 @@
                 if (typeof window.trackUserAction === 'function') {
                     window.trackUserAction('track_activate_prompt_open', { page: 'mine' });
                 }
-                window.location.href = 'purchase.html';
+                if (typeof window.assignTopLocation === 'function') {
+                    window.assignTopLocation('purchase.html');
+                } else {
+                    window.location.href = 'purchase.html';
+                }
             }
 
             function closeMineActivateModal() {
@@ -4135,6 +4284,30 @@
             var consultModifyLink = document.getElementById('consultModifyLink');
             if (consultModifyLink) {
                 consultModifyLink.addEventListener('click', handleConsultMenuClick);
+            }
+
+            var mineActivateBtn = document.getElementById('mineActivateBtn');
+            if (mineActivateBtn) {
+                mineActivateBtn.addEventListener('touchend', function (e) {
+                    e.stopPropagation();
+                });
+                mineActivateBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    openMineActivateModal();
+                });
+            }
+
+            syncMineFillDataButton();
+            window.addEventListener('cgMineFillDataBtnChange', syncMineFillDataButton);
+            var mineFillDataBtn = document.getElementById('mineFillDataBtn');
+            if (mineFillDataBtn) {
+                mineFillDataBtn.addEventListener('touchend', function (e) {
+                    e.stopPropagation();
+                });
+                mineFillDataBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    goMineFillDataPage();
+                });
             }
 
             var mineOkBtn = document.getElementById('btnMineActivateOk');

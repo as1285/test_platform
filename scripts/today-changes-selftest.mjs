@@ -77,7 +77,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine_mate60_aug12.html',
-  ['冻结 2026-08-12', 'auth-mate60-aug12.js?v=20260903-mate60pay', 'nav-mate60-aug12.css?v=20260824-aug12r6', 'theme-loader-mate60-aug12.js', 'UI:aug12-r6', 'mineE1Canvas', "location.replace('mine.html'", 'pinAug12Rpx'],
+  ['冻结 2026-08-12', 'auth-mate60-aug12.js?v=20260905-mine-safe-edit', 'nav-mate60-aug12.css?v=20260824-aug12r6', 'theme-loader-mate60-aug12.js', 'UI:aug12-r6', 'mineE1Canvas', "location.replace('mine.html'", 'pinAug12Rpx'],
   'frozen aug12 mine page with guard and pinned assets'
 );
 mustInclude(
@@ -202,7 +202,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260906-tax-ocr'],
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260907-severance'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
@@ -267,7 +267,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/najilu.html',
-  ['najilu.js?v=20260903-qr-wm'],
+  ['najilu.js?v=20260906-first-qr-guide'],
   'najilu qr watermark cache'
 );
 mustInclude(
@@ -379,7 +379,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260903-chart-opt', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260907-deact-note', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -871,7 +871,8 @@ mustInclude(
     'list-company-name',
     'max-width: 13em',
     'iosCompanyEllipsis',
-    'truncateChars(company, iosCompanyEllipsis ? 13 : 12)',
+    'var companyMaxChars = iosCompanyEllipsis ? 13 : 12',
+    'truncateChars(company, companyMaxChars)',
     'maybeRerenderCompanyEllipsis',
     'text-overflow: clip',
     '#recordList .list-label',
@@ -1175,7 +1176,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260906-tax-ocr', 'consult-batch-tax.js?v=20260906-ocr-fd', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
+  ['consult-core.js?v=20260907-severance', 'consult-batch-tax.js?v=20260907-severance', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
   '20260906 consult tax screenshot OCR'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴', '上传截图识别'], 'consult copy tpl btn');
@@ -1270,7 +1271,7 @@ mustInclude(
   'backend/src/legacy/monolith.js',
   [
     "require('../admin/fullUserScope')",
-    'if (!admin || adminHasFullUserScope(admin)) return true',
+    'if (adminHasFullUserScope(admin)) return true',
     'fullUserScopeUsernameSqlIn()'
   ],
   'admin 19106014552 full registered user scope'
@@ -1343,7 +1344,7 @@ mustInclude(
 /* loader cache must point at the latest sbdy-demo bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260831-xiamen'],
+  ['20260906-js-new-441'],
   'sbdy-demo loader cache for Beijing layout'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
@@ -1423,7 +1424,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionBj', '20260831-xiamen'],
+  ['sbdyRegionBj', '20260906-js-new-441'],
   'sbdy Beijing C-end radio + cache'
 );
 mustInclude(
@@ -1485,7 +1486,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionXm', '20260831-xiamen'],
+  ['sbdyRegionXm', '20260906-js-new-441'],
   'sbdy Xiamen C-end radio + cache'
 );
 if (!exists('backend/assets/sbdy/xm_seal.png') || !exists('frontend/public/img/sbdy_xm_seal.png')) {
@@ -1682,7 +1683,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260906-ocr-fd'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260907-severance'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -1735,7 +1736,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['auth-boot.js?v=20260902-adopt', 'auth.js?v=20260902-adopt'],
+  ['auth-boot.js?v=20260904-abc-stats', 'auth.js?v=20260904-abc-stats'],
   'install_guide auth cache for skip-hide'
 );
 mustInclude(
@@ -1746,7 +1747,7 @@ mustInclude(
     'function refreshMobilePageChrome()',
     'onDocumentReadyChrome',
     'if (document.body)',
-    "androidLike && primaryTabs[currentPageName()]",
+    "androidLike && primaryTabsDefer[pageCg]",
   ],
   'auth.js defer OEM chrome after first paint'
 );
@@ -1773,8 +1774,8 @@ mustInclude(
 mustInclude(
   'frontend/shouye.html',
   [
-    'auth-boot.js?v=20260902-adopt',
-    'auth.js?v=20260903-email-reg1" defer',
+    'auth-boot.js?v=20260905-no-home-refund',
+    'auth.js?v=20260906-login-top" defer',
     'ahead.png?v=20260828-android-load',
     '--shouye-status-inset: 12px',
     'html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead',
@@ -1784,7 +1785,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260905-vivox90-mine', 'auth.js?v=20260905-vivox90-mine" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  ['auth-boot.js?v=20260907-pay-top', 'auth.js?v=20260907-fill-btn" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -1976,18 +1977,27 @@ mustInclude(
   [
     'smActivateCard',
     'smActivateTitle',
-    'is-refund-prompt',
+    'is-tax-fill',
+    '去填写个税',
+    'consult.html?tab=records&onboarding=tax',
     'syncShuimingInactivePrompt',
     'sm-account-active',
     '__smAccountActiveConfirmed',
     'watermark.js?v=20260831-m60home'
   ],
-  'shuiming inactive activate card with refund prompt'
+  'shuiming inactive card guides tax fill'
 );
 mustExclude(
   'frontend/shuiming_result.html',
-  ['id="smRefundAdCard"', 'syncShuimingRefundAdCard', 'id="smRefundAdBtn"'],
-  'shuiming result has no wechat refund card'
+  [
+    'id="smRefundAdCard"',
+    'syncShuimingRefundAdCard',
+    'id="smRefundAdBtn"',
+    'refund_ad.html?from=shuiming_result',
+    '去计算可退税额',
+    '二次退税咨询'
+  ],
+  'shuiming result has no wechat or summary refund card'
 );
 mustInclude(
   'frontend/public/js/conversion-guide.js',
@@ -2152,12 +2162,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['page-ops-ad-analytics', 'opsAdUserTbody', '广告数据'],
+  ['page-ops-ad-analytics', 'opsAdUserTbody', '广告页'],
   'admin ad page ops panel'
 );
 mustInclude(
   'backend/src/admin/menuRegistry.js',
-  ["page: 'ops-ad-analytics'", '广告数据'],
+  ["page: 'ops-ad-analytics'", '广告页'],
   'admin menu ad page ops'
 );
 mustInclude(
@@ -2399,9 +2409,14 @@ mustExclude(
   'install-guide chart destroy lives in admin_panel.js only'
 );
 mustInclude(
-  'frontend/public/js/admin_panel.js',
-  ["label: '百度贴吧'"],
+  'backend/src/legacy/monolith.js',
+  ["tieba: '百度贴吧'"],
   'channel link label matches backend REGISTER_SOURCE_CHANNELS'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['value="tieba">贴吧'],
+  'admin register source includes 贴吧'
 );
 mustExclude(
   'frontend/css/admin_panel.css',
@@ -2486,27 +2501,49 @@ if (
   const PAGE_STAMP_ALLOW = {
     auth: {
       'gerenxinxi.html': ['20260903-email-val1'],
-      'register.html': ['20260903-email-val1', '20260903-email-reg1'],
-      'login.html': ['20260903-email-reg1'],
+      'login.html': ['20260905-agent-reg2'],
       'face_login.html': ['20260905-facelogin-ui3'],
       'message.html': ['20260903-email-reg1'],
-      'shouye.html': ['20260903-email-reg1'],
+      'shouye.html': ['20260906-login-top'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260905-vivox90-mine'],
-      'purchase.html': ['20260903-mate60pay'],
+      'mine.html': ['20260907-fill-btn'],
+      'purchase.html': ['20260907-pay-top'],
       'shuiming.html': ['20260904-android-inset'],
-      'shuiming_result.html': ['20260904-air-gap'],
+      'shuiming_result.html': ['20260907-sm-taxfill'],
       'xiangqing.html': ['20260904-android-inset'],
-      'consult.html': ['20260904-funnel-cta']
+      'consult.html': ['20260904-funnel-cta'],
+      'compat_bug.html': ['20260905-compat-bug'],
+      'install_guide.html': ['20260904-abc-stats'],
+      'jingshi.html': ['20260905-no-home-refund'],
+      'sousuo.html': ['20260905-no-home-refund'],
+      'najilu.html': ['20260905-qr-guide'],
+      'register.html': ['20260903-email-val1', '20260903-email-reg1', '20260906-reg-urlch'],
+      'scan.html': ['20260905-scan'],
+      'zhongdian_fuwu.html': ['20260905-zdfw'],
+      'zixun.html': ['20260905-zixun']
     },
     'auth-boot': {
       'login.html': ['20260902-ip16pm-login'],
       'face_login.html': ['20260905-facelogin-ui3'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260905-vivox90-mine'],
+      'mine.html': ['20260907-pay-top'],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260904-android-inset'],
-      'xiangqing.html': ['20260904-android-inset']
+      'xiangqing.html': ['20260904-android-inset'],
+      'install_guide.html': ['20260904-abc-stats'],
+      'jingshi.html': ['20260905-no-home-refund'],
+      'sousuo.html': ['20260905-no-home-refund'],
+      'shouye.html': ['20260905-no-home-refund'],
+      'purchase.html': ['20260907-pay-top'],
+      'scan.html': ['20260905-scan'],
+      'zhongdian_fuwu.html': ['20260905-zdfw'],
+      'zixun.html': ['20260905-zixun']
+    },
+    watermark: {
+      'zhongdian_fuwu.html': ['20260905-zdfw']
+    },
+    'theme-loader': {
+      'zhongdian_fuwu.html': ['20260905-zdfw']
     }
   };
   const htmlPages = readdirSync(join(root, 'frontend')).filter(
@@ -2671,7 +2708,6 @@ mustInclude(
     'SBDY_JS_NEW_RENDER_SCRIPT',
     "region: isNew ? 'js_new' : 'js'",
     'js_cgbzm_v1',
-    '核查内容真实，欢迎登录江苏社保APP扫描验证',
     'writing-mode:horizontal-tb',
     'class="detail-wrap"',
     'class="wm-block"',
@@ -2695,12 +2731,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['sbdy-demo.js?v=20260906-js-new-wm3'],
+  ['sbdy-demo.js?v=20260906-js-new-441'],
   '20260906 sbdy-demo cache bust after js_new 3-line watermark + seal below'
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdy-demo.js?v=20260906-js-new-wm3'],
+  ['sbdy-demo.js?v=20260906-js-new-441'],
   '20260906 user sbdy page cache matches admin loader'
 );
 mustInclude(
@@ -2720,7 +2756,6 @@ mustInclude(
     'draw_watermark',
     'WM_LINE1',
     'line_gap',
-    '核查内容真实，欢迎登录江苏社保APP扫描验证',
     'draw_seal',
     'table_bottom',
     '打印时间：',
@@ -2816,7 +2851,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['injectTabShell', '/js/tab-shell.js?v=20260906-login-top', "get('tab_embed') === '1'"],
+  ['injectTabShell', '/js/tab-shell.js?v=20260907-pay-top', "get('tab_embed') === '1'"],
   'auth injects tab-shell and skips CG in embed'
 );
 mustInclude(
@@ -2859,7 +2894,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['theme-color" content="#000000"', 'auth.js?v=20260905-vivox90-mine'],
+  ['theme-color" content="#000000"', 'auth.js?v=20260907-fill-btn'],
   '20260903 mine black theme-color + cache'
 );
 mustInclude(
@@ -2875,18 +2910,17 @@ mustInclude(
 );
 mustInclude(
   'frontend/purchase.html',
-  ['forceHidePageLoading', 'auth.js?v=20260903-mate60pay', 'visibilitychange'],
+  ['forceHidePageLoading', 'auth.js?v=20260907-pay-top', 'visibilitychange'],
   '20260903 purchase hides loading on return'
 );
 mustInclude(
   'frontend/shuiming_result.html',
   [
-    '仅限 iOS：安卓/鸿蒙',
     'html.platform-ios body.page-shuiming-result .list',
     'html.platform-android body.page-shuiming-result .list-item',
     '--list-inline-pad: 16px',
     'margin-left: 2px',
-    'auth.js?v=20260903-android-wide'
+    'auth.js?v=20260907-sm-taxfill'
   ],
   '20260903 android wide list + question-mark spacing revert'
 );
@@ -2906,9 +2940,14 @@ mustInclude(
   '20260903 deductionSplit module'
 );
 mustInclude(
-  'backend/src/admin/opsConversion.js',
+  'backend/src/admin/fullUserScope.js',
   ["'18671741907'", "'13691947741'"],
-  '20260903 full-scope phones in opsConversion'
+  '20260903 full-scope phones in fullUserScope'
+);
+mustInclude(
+  'backend/src/admin/opsConversion.js',
+  ['adminHasFullUserScope', 'activation_cancelled_at IS NULL'],
+  '20260903 opsConversion uses fullUserScope and excludes cancelled activations'
 );
 mustInclude(
   'backend/opsStatsReport.js',
@@ -3017,6 +3056,59 @@ mustInclude(
     'K80[\\s_-]*(?:至尊|Ultra)'
   ],
   '20260905 K80 Ultra immersive 40px'
+);
+
+
+/* —— 2026-09-07：取消激活 / 我的页激活按钮 / 打包注入 / 支付页 iframe —— */
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'async function handleAdminUserDeactivate',
+    "activation_kind = 'none'",
+    'activation_cancelled_at = NOW(3)',
+    'activation_cancelled: !!(r.used_user_activation_cancelled_at)'
+  ],
+  '20260907 admin cancel activation API'
+);
+mustInclude(
+  'backend/src/admin/routes.js',
+  ["'/api/admin/user-deactivate'", 'h.handleAdminUserDeactivate'],
+  '20260907 user-deactivate route'
+);
+mustInclude(
+  'frontend/public/js/admin_panel.js',
+  ['btn-user-deactivate', "adminFetch('api/admin/user-deactivate'", 'badge-cancelled', 'c.activation_cancelled'],
+  '20260907 admin cancel activation UI + code badge'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['橙色<strong>取消激活</strong>', '不计入运营看板「今日激活」', 'admin_panel.js?v=20260907-deact-note'],
+  '20260907 admin cancel activation copy + cache'
+);
+mustInclude(
+  'frontend/mine.html',
+  ['id="mineActivateBtn"', 'class="mine-activate-btn header-activate-btn"', 'body.page-mine.mine-account-active .mine-activate-btn', 'id="mineFillDataBtn"'],
+  '20260907 mine activate + fill-data buttons'
+);
+mustInclude(
+  'frontend/public/js/conversion-guide.js',
+  ["classList.toggle('mine-account-active', isAccountActive())"],
+  '20260907 conversion-guide does not hide activate for inactive users'
+);
+mustInclude(
+  'frontend/scripts/assemble-site.mjs',
+  ['function insertBeforeLastCloseTag', 'lastIndexOf(tag.toLowerCase())'],
+  '20260907 assemble injects before last close tag'
+);
+mustInclude(
+  'frontend/purchase.html',
+  ['tab-shell-escape.js?v=20260907-pay-top2'],
+  '20260907 purchase iframe escape script'
+);
+mustInclude(
+  'frontend/public/js/tab-shell-escape.js',
+  ['isNestedWindow', 'assignTopLocation'],
+  '20260907 tab-shell-escape lifts iframe to top'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

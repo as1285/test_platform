@@ -35,11 +35,16 @@ RUN npm config set registry https://registry.npmmirror.com \
   && test -f node_modules/mysql2/package.json \
   && test -f node_modules/jsonwebtoken/package.json
 
-COPY server.js alipay.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js opsStatsReport.js unusedActivationCodes.js ./
+COPY server.js alipay.js register-guard.js mail.js serverMonitor.js purchaseUxMonitor.js dbLogRetention.js bank_card_bins.js opsStatsReport.js unusedActivationCodes.js ./
 COPY src ./src
 COPY migrations ./migrations
 COPY scripts ./scripts
 COPY assets ./assets
+
+# 启动关键根模块存在性校验，避免漏 COPY 导致容器重启风暴
+RUN test -f /app/purchaseUxMonitor.js \
+  && test -f /app/serverMonitor.js \
+  && test -f /app/server.js
 
 # 预抽取简体 Serif CJK，避免首份 PDF 冷启动抽字库过慢
 RUN python3 /app/scripts/sbdy_extract_cjk_font.py \

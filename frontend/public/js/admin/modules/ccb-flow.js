@@ -178,6 +178,7 @@
     var t = String(rec.income_type || '');
     var sub = String(rec.income_subtype || '');
     if (isBonusSubtype(sub)) return false;
+    if (/解除劳动合同|裁员补偿/.test(sub)) return false;
     if (/工资|薪金|劳务/.test(t) || /工资|薪金|劳务/.test(sub)) return true;
     if (!t && !sub) return true;
     return /正常工资/.test(sub);
