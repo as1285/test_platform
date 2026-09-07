@@ -353,6 +353,60 @@ var NAJILU_QR_SKU_ID = najiluQrFeePolicy.NAJILU_QR_SKU_ID;
 var USERNAME_JOIN_SAVES =
   'u.username COLLATE utf8mb4_unicode_ci = g.username COLLATE utf8mb4_unicode_ci';
 
+/** 测试账号 / 游客沙盒不计入 C 端使用与浏览统计 */
+var NAJILU_QR_EXCLUDE_USER_TYPES_SQL = 'COALESCE(u.user_type, 0) NOT IN (1, 2)';
+
+var NAJILU_QR_TRACK_EVENT_KEYS = [
+  'track_najilu_qr_page_view',
+  'track_najilu_qr_entry_click',
+  'track_najilu_qr_upload_click',
+  'track_najilu_qr_preview_click',
+  'track_najilu_qr_save_click',
+  'track_najilu_qr_clear_click',
+  'track_najilu_qr_pay_click',
+  'track_najilu_qr_download_click',
+  'track_najilu_qr_faq_expand'
+];
+
+var NAJILU_QR_TRACK_EVENT_LABELS = {
+  track_najilu_qr_page_view: '页面浏览',
+  track_najilu_qr_entry_click: '入口点击',
+  track_najilu_qr_upload_click: '上传图片',
+  track_najilu_qr_preview_click: '预览',
+  track_najilu_qr_save_click: '保存替换',
+  track_najilu_qr_clear_click: '清除自定义码',
+  track_najilu_qr_pay_click: '点击去水印付款',
+  track_najilu_qr_download_click: '下载预览图',
+  track_najilu_qr_faq_expand: '展开 FAQ'
+};
+
+var NAJILU_QR_TRACK_EVENT_SQL =
+  '(' +
+  NAJILU_QR_TRACK_EVENT_KEYS.map(function (k) {
+    return "e.route_key LIKE '%#" + k + "'";
+  }).join(' OR ') +
+  ')';
+
+function najiluQrTrackEventLabel(eventKey) {
+  var k = String(eventKey || '').trim();
+  return NAJILU_QR_TRACK_EVENT_LABELS[k] || k;
+}
+
+function emptyNajiluQrTrackSummary() {
+  return {
+    page_views: 0,
+    page_view_users: 0,
+    entry_clicks: 0,
+    entry_click_users: 0,
+    upload_clicks: 0,
+    preview_clicks: 0,
+    save_clicks: 0,
+    pay_clicks: 0,
+    download_clicks: 0,
+    faq_expands: 0
+  };
+}
+
 function mapNajiluUsageUserRow(r) {
   return {
     username: r.username != null ? String(r.username) : '',
@@ -364,6 +418,9 @@ function mapNajiluUsageUserRow(r) {
     saves_unlocked: Number(r.saves_unlocked) || 0,
     paid_orders: Number(r.paid_orders) || 0,
     paid_amount: money2(r.paid_amount),
+    page_views: Number(r.page_views) || 0,
+    entry_clicks: Number(r.entry_clicks) || 0,
+    last_viewed_at: r.last_viewed_at ? new Date(r.last_viewed_at).toISOString() : '',
     last_saved_at: r.last_saved_at ? new Date(r.last_saved_at).toISOString() : '',
     last_paid_at: r.last_paid_at ? new Date(r.last_paid_at).toISOString() : '',
     last_used_at: r.last_used_at ? new Date(r.last_used_at).toISOString() : ''
@@ -501,10 +558,14 @@ async function handleAdminNajiluQrStats(req, res) {
              COALESCE(p.paid_orders, 0) AS paid_orders,
              COALESCE(p.paid_amount, 0) AS paid_amount,
              p.last_paid_at,
+             COALESCE(v.page_views, 0) AS page_views,
+             COALESCE(v.entry_clicks, 0) AS entry_clicks,
+             v.last_viewed_at,
              GREATEST(
                COALESCE(g.last_saved_at, '1970-01-01'),
                COALESCE(p.last_paid_at, '1970-01-01'),
-               COALESCE(ov.updated_at, '1970-01-01')
+               COALESCE(ov.updated_at, '1970-01-01'),
+               COALESCE(v.last_viewed_at, '1970-01-01')
              ) AS last_used_at
            FROM (
              SELECT username FROM najilu_qr_saves
@@ -522,6 +583,11 @@ async function handleAdminNajiluQrStats(req, res) {
                OR (qr_block_image_url IS NOT NULL AND qr_block_image_url <> '')
              )
              AND ${cnUpdatedDay}${sinceSql}
+             UNION
+             SELECT e.username FROM user_page_events e
+             WHERE ${cnCreatedDay.replace(/created_at/g, 'e.created_at')}${sinceSql}
+               AND ${NAJILU_QR_TRACK_EVENT_SQL}
+               AND e.username IS NOT NULL AND TRIM(e.username) <> ''
            ) base
            LEFT JOIN users u
              ON u.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
@@ -549,6 +615,17 @@ async function handleAdminNajiluQrStats(req, res) {
                AND ${cnPaidDay}${sinceSql}
              GROUP BY username
            ) p ON p.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           LEFT JOIN (
+             SELECT e.username,
+                    SUM(CASE WHEN e.route_key LIKE '%#track_najilu_qr_page_view' THEN 1 ELSE 0 END) AS page_views,
+                    SUM(CASE WHEN e.route_key LIKE '%#track_najilu_qr_entry_click' THEN 1 ELSE 0 END) AS entry_clicks,
+                    MAX(e.created_at) AS last_viewed_at
+             FROM user_page_events e
+             WHERE ${cnCreatedDay.replace(/created_at/g, 'e.created_at')}${sinceSql}
+               AND ${NAJILU_QR_TRACK_EVENT_SQL}
+             GROUP BY e.username
+           ) v ON v.username COLLATE utf8mb4_unicode_ci = base.username COLLATE utf8mb4_unicode_ci
+           WHERE ${NAJILU_QR_EXCLUDE_USER_TYPES_SQL}
            ORDER BY last_used_at DESC, base.username ASC
            LIMIT 200`,
           [
@@ -557,7 +634,9 @@ async function handleAdminNajiluQrStats(req, res) {
             days,
             days,
             days,
+            days,
             NAJILU_QR_SKU_ID,
+            days,
             days
           ]
         );
@@ -581,21 +660,7 @@ async function handleAdminNajiluQrStats(req, res) {
         [NAJILU_QR_SKU_ID, days]
       );
       var dayMap = {};
-      (dailyPayRows || []).forEach(function (r) {
-        var key = r.d ? String(r.d).slice(0, 10) : '';
-        if (!key) return;
-        dayMap[key] = {
-          day: key,
-          paid_orders: Number(r.paid_orders) || 0,
-          paid_users: Number(r.paid_users) || 0,
-          gmv: money2(r.gmv),
-          saves: 0,
-          save_users: 0,
-          saves_demo: 0,
-          saves_unlocked: 0
-        };
-      });
-      Object.keys(dailySaveMap).forEach(function (key) {
+      function ensureDay(key) {
         if (!dayMap[key]) {
           dayMap[key] = {
             day: key,
@@ -605,11 +670,132 @@ async function handleAdminNajiluQrStats(req, res) {
             saves: 0,
             save_users: 0,
             saves_demo: 0,
-            saves_unlocked: 0
+            saves_unlocked: 0,
+            page_views: 0,
+            page_view_users: 0,
+            entry_clicks: 0,
+            entry_click_users: 0
           };
         }
-        Object.assign(dayMap[key], dailySaveMap[key]);
+        return dayMap[key];
+      }
+      (dailyPayRows || []).forEach(function (r) {
+        var key = r.d ? String(r.d).slice(0, 10) : '';
+        if (!key) return;
+        var row = ensureDay(key);
+        row.paid_orders = Number(r.paid_orders) || 0;
+        row.paid_users = Number(r.paid_users) || 0;
+        row.gmv = money2(r.gmv);
       });
+      Object.keys(dailySaveMap).forEach(function (key) {
+        Object.assign(ensureDay(key), dailySaveMap[key]);
+      });
+
+      var trackSummary = emptyNajiluQrTrackSummary();
+      var trackEvents = [];
+      var recentViews = [];
+      try {
+        var eCreatedDay = cnCreatedDay.replace(/created_at/g, 'e.created_at');
+        const [trackSumRows] = await conn.query(
+          `SELECT SUBSTRING_INDEX(e.route_key, '#', -1) AS event_key,
+                  COUNT(*) AS cnt,
+                  COUNT(DISTINCT e.username) AS users
+           FROM user_page_events e
+           LEFT JOIN users u
+             ON u.username COLLATE utf8mb4_unicode_ci = e.username COLLATE utf8mb4_unicode_ci
+           WHERE ${eCreatedDay}${sinceSql}
+             AND ${NAJILU_QR_TRACK_EVENT_SQL}
+             AND ${NAJILU_QR_EXCLUDE_USER_TYPES_SQL}
+           GROUP BY event_key
+           ORDER BY cnt DESC`,
+          [days]
+        );
+        (trackSumRows || []).forEach(function (r) {
+          var ek = r.event_key != null ? String(r.event_key) : '';
+          var cnt = Number(r.cnt) || 0;
+          var users = Number(r.users) || 0;
+          trackEvents.push({
+            event_key: ek,
+            event_label: najiluQrTrackEventLabel(ek),
+            cnt: cnt,
+            users: users
+          });
+          if (ek === 'track_najilu_qr_page_view') {
+            trackSummary.page_views = cnt;
+            trackSummary.page_view_users = users;
+          } else if (ek === 'track_najilu_qr_entry_click') {
+            trackSummary.entry_clicks = cnt;
+            trackSummary.entry_click_users = users;
+          } else if (ek === 'track_najilu_qr_upload_click') {
+            trackSummary.upload_clicks = cnt;
+          } else if (ek === 'track_najilu_qr_preview_click') {
+            trackSummary.preview_clicks = cnt;
+          } else if (ek === 'track_najilu_qr_save_click') {
+            trackSummary.save_clicks = cnt;
+          } else if (ek === 'track_najilu_qr_pay_click') {
+            trackSummary.pay_clicks = cnt;
+          } else if (ek === 'track_najilu_qr_download_click') {
+            trackSummary.download_clicks = cnt;
+          } else if (ek === 'track_najilu_qr_faq_expand') {
+            trackSummary.faq_expands = cnt;
+          }
+        });
+
+        const [dailyTrackRows] = await conn.query(
+          `SELECT ${eCreatedDay} AS d,
+                  SUM(CASE WHEN e.route_key LIKE '%#track_najilu_qr_page_view' THEN 1 ELSE 0 END) AS page_views,
+                  COUNT(DISTINCT CASE WHEN e.route_key LIKE '%#track_najilu_qr_page_view' THEN e.username END) AS page_view_users,
+                  SUM(CASE WHEN e.route_key LIKE '%#track_najilu_qr_entry_click' THEN 1 ELSE 0 END) AS entry_clicks,
+                  COUNT(DISTINCT CASE WHEN e.route_key LIKE '%#track_najilu_qr_entry_click' THEN e.username END) AS entry_click_users
+           FROM user_page_events e
+           LEFT JOIN users u
+             ON u.username COLLATE utf8mb4_unicode_ci = e.username COLLATE utf8mb4_unicode_ci
+           WHERE ${eCreatedDay}${sinceSql}
+             AND (
+               e.route_key LIKE '%#track_najilu_qr_page_view'
+               OR e.route_key LIKE '%#track_najilu_qr_entry_click'
+             )
+             AND ${NAJILU_QR_EXCLUDE_USER_TYPES_SQL}
+           GROUP BY ${eCreatedDay}
+           ORDER BY d ASC`,
+          [days]
+        );
+        (dailyTrackRows || []).forEach(function (r) {
+          var key = r.d ? String(r.d).slice(0, 10) : '';
+          if (!key) return;
+          var row = ensureDay(key);
+          row.page_views = Number(r.page_views) || 0;
+          row.page_view_users = Number(r.page_view_users) || 0;
+          row.entry_clicks = Number(r.entry_clicks) || 0;
+          row.entry_click_users = Number(r.entry_click_users) || 0;
+        });
+
+        const [recentViewRows] = await conn.query(
+          `SELECT e.username, e.created_at, u.real_name,
+                  SUBSTRING_INDEX(e.route_key, '#', -1) AS event_key
+           FROM user_page_events e
+           LEFT JOIN users u
+             ON u.username COLLATE utf8mb4_unicode_ci = e.username COLLATE utf8mb4_unicode_ci
+           WHERE ${eCreatedDay}${sinceSql}
+             AND e.route_key LIKE '%#track_najilu_qr_page_view'
+             AND ${NAJILU_QR_EXCLUDE_USER_TYPES_SQL}
+           ORDER BY e.id DESC
+           LIMIT 50`,
+          [days]
+        );
+        recentViews = (recentViewRows || []).map(function (r) {
+          return {
+            username: r.username != null ? String(r.username) : '',
+            real_name: r.real_name != null ? String(r.real_name) : '',
+            event_key: r.event_key != null ? String(r.event_key) : '',
+            event_label: najiluQrTrackEventLabel(r.event_key),
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+          };
+        });
+      } catch (trackErr) {
+        console.error('[najilu-qr] stats track', trackErr);
+      }
+
       var daily = Object.keys(dayMap)
         .sort()
         .map(function (k) {
@@ -676,25 +862,30 @@ async function handleAdminNajiluQrStats(req, res) {
             period_key: String(days)
           },
           note:
-            '使用用户 = 区间内有 C 端替换保存、付费解锁，或更新了账号锁定二维码的账号；后台本页手动替换不计入。保存次数自统计上线后累计。',
-          summary: {
-            unlocked_users: unlockRows && unlockRows[0] ? Number(unlockRows[0].n) || 0 : 0,
-            locked_qr_users: lockedQrUsers,
-            paid_orders: Number(paid.orders) || 0,
-            paid_users: Number(paid.users) || 0,
-            gmv: money2(paid.gmv),
-            pending_orders:
-              pendingRows && pendingRows[0] ? Number(pendingRows[0].n) || 0 : 0,
-            saves: saveSummary.saves,
-            save_users: saveSummary.save_users,
-            saves_demo: saveSummary.saves_demo,
-            saves_unlocked: saveSummary.saves_unlocked,
-            usage_users: usageUsers.length
-          },
+            '使用用户 = 区间内有 C 端浏览/入口点击、替换保存、付费解锁，或更新了账号锁定二维码的账号；测试账号与游客已排除；后台本页手动替换不计入。浏览/点击自埋点上线后累计。',
+          summary: Object.assign(
+            {
+              unlocked_users: unlockRows && unlockRows[0] ? Number(unlockRows[0].n) || 0 : 0,
+              locked_qr_users: lockedQrUsers,
+              paid_orders: Number(paid.orders) || 0,
+              paid_users: Number(paid.users) || 0,
+              gmv: money2(paid.gmv),
+              pending_orders:
+                pendingRows && pendingRows[0] ? Number(pendingRows[0].n) || 0 : 0,
+              saves: saveSummary.saves,
+              save_users: saveSummary.save_users,
+              saves_demo: saveSummary.saves_demo,
+              saves_unlocked: saveSummary.saves_unlocked,
+              usage_users: usageUsers.length
+            },
+            trackSummary
+          ),
+          track_events: trackEvents,
           daily: daily,
           usage_users: usageUsers,
           recent_paid: recentPaid,
-          recent_saves: recentSaves
+          recent_saves: recentSaves,
+          recent_views: recentViews
         }
       });
     } finally {

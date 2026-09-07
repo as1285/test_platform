@@ -1125,11 +1125,8 @@
   }
 
   function renderQrReplaceLink(from) {
-    return (
-      '<a href="' +
-      esc(najiluQrReplaceHref(from || 'najilu')) +
-      '" class="header-qr-replace" id="najiluQrReplaceLink">替换二维码</a>'
-    );
+    /* 顶栏入口已下线：首次生成时弹框引导到替换页 */
+    return '';
   }
 
   function renderHeader(title, backHref, rightHtml) {
@@ -1160,7 +1157,7 @@
     function paint(list) {
       var html =
         '<div class="record-page">' +
-        renderHeader('纳税记录申请记录', 'back', renderQrReplaceLink('najilu_records')) +
+        renderHeader('纳税记录申请记录', 'back') +
         '<div class="record-tips">' +
         '<div>温馨提示：</div>' +
         '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
@@ -1331,7 +1328,24 @@
   }
 
   function goNajiluQrReplace(from) {
+    if (typeof window.trackUserAction === 'function') {
+      window.trackUserAction('track_najilu_qr_entry_click', {
+        page: 'najilu',
+        from: from || 'najilu'
+      });
+    }
     window.location.href = najiluQrReplaceHref(from);
+  }
+
+  function hasLockedQrOverride() {
+    var o = loadCachedQrOverride();
+    return !!(o && (o.qr_image_url || o.qr_block_image_url));
+  }
+
+  /** 尚无开具记录且未锁定自定义码 → 首次生成时引导去替换页 */
+  function shouldGuideFirstGenerateQr() {
+    if (hasLockedQrOverride()) return false;
+    return loadApplications().length === 0;
   }
 
   function ensureInactiveGenerateGuideStyles() {
@@ -1351,12 +1365,27 @@
     document.head.appendChild(st);
   }
 
-  function showInactiveGenerateGuide() {
-    if (window.ConversionGuide && typeof window.ConversionGuide.openInactiveNajiluGenerateGuide === 'function') {
+  /**
+   * 首次生成引导：弹框去替换完税二维码。
+   * opts.allowContinue=true 时显示「继续生成」；未激活则只能去替换或取消。
+   */
+  function showFirstGenerateQrGuide(opts) {
+    opts = opts || {};
+    var allowContinue = !!opts.allowContinue;
+    var onContinue = typeof opts.onContinue === 'function' ? opts.onContinue : null;
+    if (
+      !allowContinue &&
+      window.ConversionGuide &&
+      typeof window.ConversionGuide.openInactiveNajiluGenerateGuide === 'function'
+    ) {
       window.ConversionGuide.openInactiveNajiluGenerateGuide();
       return;
     }
-    if (window.ConversionGuide && typeof window.ConversionGuide.openPayGateModal === 'function') {
+    if (
+      !allowContinue &&
+      window.ConversionGuide &&
+      typeof window.ConversionGuide.openPayGateModal === 'function'
+    ) {
       window.ConversionGuide.openPayGateModal({
         feature: '纳税记录',
         from: 'gate_najilu_generate',
@@ -1373,17 +1402,27 @@
     ensureInactiveGenerateGuideStyles();
     var existing = document.getElementById('najilu-qr-guide-root');
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    var title = allowContinue ? '建议先替换完税二维码' : '请先替换完税二维码';
+    var body = allowContinue
+      ? '首次开具前，建议先把你手里完税证明上的二维码锁定到本账号，之后生成纳税记录都能用官方 APP 扫码查验。未付款也可试用（含水印）。'
+      : '当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。';
     var root = document.createElement('div');
     root.id = 'najilu-qr-guide-root';
     root.className = 'najilu-qr-guide-root';
     root.innerHTML =
       '<div class="najilu-qr-guide-mask" data-act="close"></div>' +
       '<div class="najilu-qr-guide-panel" role="dialog" aria-modal="true" aria-labelledby="najiluQrGuideTitle">' +
-      '<h3 id="najiluQrGuideTitle" class="najilu-qr-guide-title">请先替换完税二维码</h3>' +
-      '<p class="najilu-qr-guide-body">当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。</p>' +
+      '<h3 id="najiluQrGuideTitle" class="najilu-qr-guide-title">' +
+      title +
+      '</h3>' +
+      '<p class="najilu-qr-guide-body">' +
+      body +
+      '</p>' +
       '<div class="najilu-qr-guide-actions">' +
       '<button type="button" class="najilu-qr-guide-btn primary" data-act="primary">去替换</button>' +
-      '<button type="button" class="najilu-qr-guide-btn ghost" data-act="close">取消</button>' +
+      (allowContinue
+        ? '<button type="button" class="najilu-qr-guide-btn ghost" data-act="continue">继续生成</button>'
+        : '<button type="button" class="najilu-qr-guide-btn ghost" data-act="close">取消</button>') +
       '</div></div>';
     root.addEventListener('click', function (ev) {
       var t = ev.target.closest('[data-act]');
@@ -1393,11 +1432,27 @@
         if (root.parentNode) root.parentNode.removeChild(root);
         return;
       }
+      if (act === 'continue') {
+        if (root.parentNode) root.parentNode.removeChild(root);
+        if (onContinue) onContinue();
+        return;
+      }
       if (act === 'primary') {
         goNajiluQrReplace('najilu_generate');
       }
     });
     document.body.appendChild(root);
+    if (typeof window.trackUserAction === 'function') {
+      window.trackUserAction('track_najilu_qr_entry_click', {
+        page: 'najilu',
+        from: 'najilu_generate_guide',
+        allow_continue: allowContinue ? 1 : 0
+      });
+    }
+  }
+
+  function showInactiveGenerateGuide() {
+    showFirstGenerateQrGuide({ allowContinue: false });
   }
 
   function initForm() {
@@ -1496,13 +1551,9 @@
       true
     );
 
-    btn.addEventListener('click', function () {
+    function runGenerate() {
       if (btn.disabled) return;
       if (btn.getAttribute('data-generating') === '1') return;
-      if (!isClientAccountActive()) {
-        showInactiveGenerateGuide();
-        return;
-      }
       btn.setAttribute('data-generating', '1');
       btn.disabled = true;
       btn.textContent = '正在生成...';
@@ -1543,6 +1594,23 @@
           alert(err && err.message ? err.message : '生成失败');
           resetGenerateBtn();
         });
+    }
+
+    btn.addEventListener('click', function () {
+      if (btn.disabled) return;
+      if (btn.getAttribute('data-generating') === '1') return;
+      if (!isClientAccountActive()) {
+        showInactiveGenerateGuide();
+        return;
+      }
+      if (shouldGuideFirstGenerateQr()) {
+        showFirstGenerateQrGuide({
+          allowContinue: true,
+          onContinue: runGenerate
+        });
+        return;
+      }
+      runGenerate();
     });
 
     document.getElementById('viewRecordsLink').addEventListener('click', function (e) {
@@ -2788,8 +2856,10 @@
     shouldGuideInactiveGenerate: function () {
       return !isClientAccountActive();
     },
+    shouldGuideFirstGenerateQr: shouldGuideFirstGenerateQr,
     najiluQrReplaceHref: najiluQrReplaceHref,
-    showInactiveGenerateGuide: showInactiveGenerateGuide
+    showInactiveGenerateGuide: showInactiveGenerateGuide,
+    showFirstGenerateQrGuide: showFirstGenerateQrGuide
   };
 
   if (isNajiluPage()) {

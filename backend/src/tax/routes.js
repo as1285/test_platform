@@ -6,6 +6,28 @@ function registerTaxRoutes(app, deps) {
   var h = deps.handlers;
   var mw = deps.middleware;
 
+  /* 个税 APP 截图 OCR：仅需登录（未激活也可填税务记录） */
+  app.post(
+    '/api/tax/screenshot-ocr',
+    mw.requireAuth,
+    function (req, res, next) {
+      var upload = mw.taxScreenshotUpload;
+      if (!upload || typeof upload.single !== 'function') {
+        return res.status(500).json({ code: 500, msg: '识图上传组件未就绪' });
+      }
+      upload.single('file')(req, res, function (err) {
+        if (err) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ code: 413, msg: '图片过大，单张不超过 8MB' });
+          }
+          return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+        }
+        next();
+      });
+    },
+    h.handleTaxScreenshotOcr
+  );
+
   async function taxGetEntry(req, res) {
     if (String(req.query.action || '') === 'verify_issue') {
       try {

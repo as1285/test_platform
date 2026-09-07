@@ -445,8 +445,13 @@ describe('sbdyDemo', () => {
     expect(html).toContain('3359a909b3600273');
     expect(html).toContain('/img/sbdy_sz_new_si_seal.png');
     expect(html).toContain('/img/sbdy_sz_new_mi_seal.png');
+    expect(html).toContain('seal-date');
+    expect(html).toContain('seal-label');
+    expect(html).toContain('深圳市社会保险基金管理局');
+    expect(html).toContain('本《参保证明》');
+    expect(html).toContain('单位信息');
     expect(html).toContain('下载文件');
-    expect(html).toContain('本服务由深圳市人力资源和社会保障局提供');
+    expect(html).not.toContain('本服务由深圳市人力资源和社会保障局提供');
     expect(html).toContain('缴费基数');
     expect(html).toContain('档次');
     expect(html).toContain('.sz-sec{');
@@ -461,21 +466,276 @@ describe('sbdyDemo', () => {
     expect(html).not.toContain('/img/sbdy_sz_seal.png');
   });
 
-  it('Shenzhen-new PDF selftest keeps titles left and embeds dual seals', () => {
-    const { spawnSync } = require('child_process');
-    const script = require('path').join(__dirname, '../../scripts/sbdy_sz_new_render_pdf.py');
-    const r = spawnSync('python3', [script, '--selftest'], {
-      encoding: 'utf8',
-      timeout: 60000
+  it('sz_new accepts injury_base and unemp_base from form', () => {
+    const p = normalizePayload({
+      region: 'sz_new',
+      name: '李懋',
+      id_number: '440923199909181496',
+      company_name: '深圳市本原生活科技有限公司',
+      unit_code: '31327084',
+      computer_no: '089216473',
+      period_start: '2025-03',
+      period_end: '2025-06',
+      base_amount: 4775,
+      medical_base: 6727,
+      injury_base: 2520,
+      unemp_base: 2520,
+      print_date: '2026年09月01日'
     });
-    const out = String(r.stdout || '') + String(r.stderr || '');
-    if (r.status !== 0 && /ModuleNotFoundError|missing CJK font/.test(out)) {
-      return;
-    }
-    expect(r.status, out).toBe(0);
-    expect(out).toMatch(/selftest ok/);
-    expect(out).not.toMatch(/missing|not left-aligned/);
+    expect(p.error).toBeFalsy();
+    expect(p.injury_base).toBe(2520);
+    expect(p.unemp_base).toBe(2520);
+    expect(p.months.length).toBe(4);
+    p.months.forEach((row) => {
+      expect(row.pension_base).toBe(4775);
+      expect(row.medical_base).toBe(6727);
+      expect(row.injury_base).toBe(2520);
+      expect(row.unemp_base).toBe(2520);
+    });
   });
+
+  it('sz_new injury_base alone also sets unemp_base', () => {
+    const p = normalizePayload({
+      region: 'sz_new',
+      name: '李懋',
+      id_number: '440923199909181496',
+      company_name: '深圳市本原生活科技有限公司',
+      unit_code: '31327084',
+      period_start: '2025-05',
+      period_end: '2025-05',
+      base_amount: 5000,
+      medical_base: 6727,
+      injury_base: 2500
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.months[0].injury_base).toBe(2500);
+    expect(p.months[0].unemp_base).toBe(2500);
+  });
+
+  it('sz_new injury/unemp base changes from 2500 to 2520 at 2025-03', () => {
+    const p = normalizePayload({
+      region: 'sz_new',
+      name: '李懋',
+      id_number: '440923199909181496',
+      company_name: '深圳市本原生活科技有限公司',
+      unit_code: '31327084',
+      computer_no: '089216473',
+      period_start: '2024-09',
+      period_end: '2026-08',
+      base_amount: 4775,
+      medical_base: 6727,
+      injury_base: 2500,
+      unemp_base: 2500,
+      iu_base_change_ym: '2025-03',
+      injury_base_after: 2520,
+      unemp_base_after: 2520,
+      print_date: '2026年09月01日',
+      years_months: {
+        pension: 27,
+        medical: 27,
+        maternity: 27,
+        maternity_medical: 0,
+        injury: 27,
+        unemployment: 27
+      }
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.months.length).toBe(24);
+    const before = p.months.filter((r) => r.ym < '202503');
+    const after = p.months.filter((r) => r.ym >= '202503');
+    expect(before.length).toBeGreaterThan(0);
+    expect(after.length).toBeGreaterThan(0);
+    before.forEach((r) => {
+      expect(r.injury_base).toBe(2500);
+      expect(r.unemp_base).toBe(2500);
+      expect(r.pension_base).toBe(4775);
+      expect(r.medical_base).toBe(6727);
+    });
+    after.forEach((r) => {
+      expect(r.injury_base).toBe(2520);
+      expect(r.unemp_base).toBe(2520);
+    });
+    const m202502 = p.months.find((r) => r.ym === '202502');
+    const m202503 = p.months.find((r) => r.ym === '202503');
+    expect(m202502.injury_base).toBe(2500);
+    expect(m202503.injury_base).toBe(2520);
+  });
+
+  it('sz 历年明细 switches injury/unemp from 2500 to 2520 at 2025-03', () => {
+    const p = normalizePayload({
+      region: 'sz',
+      name: '李懋',
+      id_number: '440923199909181496',
+      company_name: '深圳市本原生活科技有限公司',
+      credit_code: '91440300MA5FLEK18W',
+      unit_code: '91440300MA5FLEK18W',
+      computer_no: '909181496',
+      period_start: '2024-06',
+      period_end: '2026-08',
+      base_amount: 4775,
+      medical_base: 6727,
+      injury_base: 2500,
+      unemp_base: 2500,
+      iu_base_change_ym: '2025-03',
+      injury_base_after: 2520,
+      unemp_base_after: 2520,
+      print_date: '2026年09月06日'
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.region).toBe('sz');
+    expect(p.months.length).toBe(27);
+    const before = p.months.filter((r) => Number(r.year) * 100 + Number(r.month) < 202503);
+    const after = p.months.filter((r) => Number(r.year) * 100 + Number(r.month) >= 202503);
+    expect(before).toHaveLength(9);
+    expect(after).toHaveLength(18);
+    before.forEach((r) => {
+      expect(r.pension_base).toBe(4775);
+      expect(r.medical_base).toBe(6727);
+      expect(r.injury_base).toBe(2500);
+      expect(r.unemp_base).toBe(2500);
+      expect(r.injury_unit).toBeCloseTo(5, 2);
+      expect(r.unemp_unit).toBeCloseTo(20, 2);
+      expect(r.unemp_person).toBeCloseTo(5, 2);
+    });
+    after.forEach((r) => {
+      expect(r.injury_base).toBe(2520);
+      expect(r.unemp_base).toBe(2520);
+      expect(r.injury_unit).toBeCloseTo(5.04, 2);
+      expect(r.unemp_unit).toBeCloseTo(20.16, 2);
+      expect(r.unemp_person).toBeCloseTo(5.04, 2);
+    });
+  });
+
+  it('zj / js / sc / ha / hn / bj accept custom injury_base and unemp_base', () => {
+    const zj = normalizePayload({
+      region: 'zj',
+      name: '王龙雪',
+      id_number: '371323199701195223',
+      company_name: '杭州测试有限公司',
+      credit_code: '91330110MADG8JH092',
+      period_start: '2025-01',
+      period_end: '2025-02',
+      base_amount: 5000,
+      injury_base: 2500,
+      unemp_base: 2500
+    });
+    expect(zj.error).toBeFalsy();
+    expect(zj.months[0].pension_base).toBe(5000);
+    expect(zj.months[0].unemp_base).toBe(2500);
+    expect(zj.months[0].unemp_pay).toBeCloseTo(12.5, 2);
+    expect(zj.injury_base).toBe(2500);
+    expect(zj.unemp_base).toBe(2500);
+
+    const js = normalizePayload({
+      region: 'js',
+      name: '樊宜',
+      id_number: '342501199307088233',
+      company_name: '南京越诚信息技术有限公司',
+      period_start: '2024-01',
+      period_end: '2024-01',
+      base_amount: 5000,
+      injury_base: 2500,
+      unemp_base: 2500
+    });
+    expect(js.error).toBeFalsy();
+    expect(js.detail_rows[0].pension_base).toBe(5000);
+    expect(js.detail_rows[0].pension_pay).toBeCloseTo(400, 2);
+    expect(js.detail_rows[0].unemp_base).toBe(2500);
+    expect(js.detail_rows[0].unemp_pay).toBeCloseTo(12.5, 2);
+    expect(js.detail_rows[0].injury_base).toBe(2500);
+
+    const sc = normalizePayload({
+      region: 'sc',
+      name: '马海燕',
+      id_number: '510723199208191285',
+      company_name: '成都测试有限公司',
+      credit_code: '10010759311',
+      period_start: '2025-05',
+      period_end: '2025-05',
+      base_amount: 5000,
+      injury_base: 2500,
+      unemp_base: 2500
+    });
+    expect(sc.error).toBeFalsy();
+    expect(sc.sc_months[0].pension_base).toBe(5000);
+    expect(sc.sc_months[0].injury_base).toBe(2500);
+    expect(sc.sc_months[0].unemp_base).toBe(2500);
+
+    const ha = normalizePayload({
+      region: 'ha',
+      name: '蒋飞龙',
+      id_number: '341281199112124710',
+      company_name: '人力宝科技有限公司郑州分公司',
+      period_start: '2026-01',
+      period_end: '2026-01',
+      base_amount: 4200,
+      injury_base: 2500,
+      unemp_base: 2500
+    });
+    expect(ha.error).toBeFalsy();
+    const haJan = ha.ha_months.find((r) => r.month === '01');
+    expect(haJan.pension_base).toBe(4200);
+    expect(haJan.unemp_base).toBe(2500);
+    expect(haJan.injury_base).toBe(2500);
+
+    const hn = normalizePayload({
+      region: 'hn',
+      name: '杨坤斌',
+      id_number: '430522199711297813',
+      company_name: '湖南旭昱新能源科技有限公司',
+      period_start: '2025-04',
+      period_end: '2025-04',
+      base_amount: 4053,
+      injury_base: 2500,
+      unemp_base: 2500
+    });
+    expect(hn.error).toBeFalsy();
+    const hnInjury = hn.detail_rows.find((r) => r.type === '工伤保险');
+    const hnUnemp = hn.detail_rows.find((r) => r.type === '失业保险');
+    const hnPension = hn.detail_rows.find((r) => r.type === '企业职工基本养老保险');
+    expect(hnInjury.base).toBe(2500);
+    expect(hnInjury.unit_pay).toBeCloseTo(35, 2);
+    expect(hnUnemp.base).toBe(2500);
+    expect(hnPension.base).toBe(4053);
+
+    const bj = normalizePayload({
+      region: 'bj',
+      name: '李明',
+      id_number: '110105198203151239',
+      company_name: '北京华信科技有限公司',
+      period_start: '2024-01',
+      period_end: '2024-12',
+      base_amount: 6000,
+      injury_base: 3000,
+      unemp_base: 3000
+    });
+    expect(bj.error).toBeFalsy();
+    expect(bj.year_rows).toHaveLength(1);
+    expect(bj.year_rows[0].pension_base).toBe(72000);
+    expect(bj.year_rows[0].injury_base).toBe(36000);
+    expect(bj.year_rows[0].unemp_base).toBe(36000);
+    expect(bj.year_rows[0].unemp_pay).toBeCloseTo(180, 2);
+  });
+
+  it(
+    'Shenzhen-new PDF selftest keeps titles left and embeds dual seals',
+    () => {
+      const { spawnSync } = require('child_process');
+      const script = require('path').join(__dirname, '../../scripts/sbdy_sz_new_render_pdf.py');
+      const r = spawnSync('python3', [script, '--selftest'], {
+        encoding: 'utf8',
+        timeout: 60000
+      });
+      const out = String(r.stdout || '') + String(r.stderr || '');
+      if (r.status !== 0 && /ModuleNotFoundError|missing CJK font/.test(out)) {
+        return;
+      }
+      expect(out).toMatch(/selftest ok/);
+      expect(r.status).toBe(0);
+      expect(out).not.toMatch(/missing|not left-aligned/);
+    },
+    60000
+  );
 
   it('Shenzhen-new aliases and multi-employer segments stay off the old sz template', () => {
     const p = normalizePayload({
@@ -918,7 +1178,7 @@ describe('sbdyDemo', () => {
       area: '经济技术开发区',
       period_start: '1990-01',
       period_end: '2026-09',
-      span_months: 439,
+      span_months: 441,
       period_compact: '199001-202609',
       base_amount: 12000,
       segments: [
@@ -934,7 +1194,7 @@ describe('sbdyDemo', () => {
     expect(p.region).toBe('js_new');
     expect(p.layout).toBe('js_cgbzm_v1');
     expect(p.watermark_id).toMatch(/^\d{12}-\d{11}$/);
-    expect(p.span_months).toBe(439);
+    expect(p.span_months).toBe(441);
     expect(p.period_compact).toBe('199001-202609');
     /* 2023-12～2026-07 = 32 个月明细 */
     expect(p.detail_rows.length).toBe(32);
@@ -952,9 +1212,22 @@ describe('sbdyDemo', () => {
     expect(last.pension_pay).toBeCloseTo(960, 2);
     const html = renderCertHtml(p, { show_url: 'https://example.test/show.pdf' });
     expect(html).toContain('江苏省社会保险权益记录单');
-    expect(html).toContain('出具证明前439个月缴费情况（199001-202609）');
-    expect(html).toContain('该核查内容真实，欢迎登录人社APP扫描验证');
-    expect(html).toContain('本文件由全国社保卡服务平台提供，任何第三方机构不得进行二次加工');
+    expect(html).toContain('出具证明前441个月缴费情况（199001-202609）');
+    expect(html).toContain('请使用官方江苏智慧人社APP扫描验证');
+    expect(html).toContain('writing-mode:horizontal-tb');
+    expect(html).toContain('white-space:nowrap');
+    expect(html).toContain('class="qr-cap"');
+    expect(html).not.toContain('class="qr-id"');
+    expect(html).toContain('class="detail-wrap"');
+    expect(html).toContain('/img/sbdy_js_seal.png');
+    expect(html).toContain('class="after-table"');
+    expect(html).toContain('class="wm-block"');
+    expect(html).toContain('打印时间：');
+    expect(html.indexOf('class="notes"')).toBeLessThan(html.indexOf('class="seal-wrap"'));
+    expect(html.indexOf('class="detail-wrap"')).toBeLessThan(html.indexOf('class="notes"'));
+    expect(html).toContain('本文件由全国社保卡服务平台提供，任何第三方机构不得进行');
+    expect(html).toContain('二次加工、处理、解析或以任何形式用于商业用途，否则将追究');
+    expect(html).toContain('法律责任。(' + p.watermark_id + ')');
     expect(html).toContain('class="wm"');
     expect(html).toContain(p.watermark_id);
     expect(html).toContain('南京市经济技术开发区暂时中止单位');
@@ -962,8 +1235,8 @@ describe('sbdyDemo', () => {
     expect(html).toContain('12000.00');
     expect(html).toContain('960.00');
     expect(html).toContain('60.00');
-    expect(html).toContain('/img/sbdy_js_seal.png');
-    expect(html).not.toContain('请使用官方江苏智慧人社APP扫描验证');
+    expect(html).not.toContain('核查内容真实，欢迎登录江苏社保APP扫描验证');
+    expect(html).not.toContain('该核查内容真实，欢迎登录人社APP扫描验证');
   });
 
   it('js_cgbzm_v1 layout alias normalizes to js_new', () => {

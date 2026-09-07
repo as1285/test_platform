@@ -9,12 +9,16 @@
 """
 from __future__ import print_function
 
+import hashlib
 import json
 import os
 import sys
 import tempfile
 
-import fitz
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz  # noqa: F401
 import qrcode
 from fontTools.ttLib import TTCollection, TTFont
 from fontTools import subset as ft_subset
@@ -78,31 +82,68 @@ def ensure_bold_cjk_font():
 
 
 def make_subset_font(src_path, text_blob, prefix='sbdy_sub_'):
-    """裁切 CJK CFF 字库；retain_gids 避免 MuPDF 缺字/乱码。"""
+    """裁切 CJK CFF 字库；retain_gids 避免 MuPDF 缺字/乱码。按字形内容缓存，避免每次 show.pdf 重裁 7s+。
+
+    返回值仍是临时文件路径（调用方可安全 os.remove）；缓存文件留在 /tmp 供下次复用。
+    """
+    import shutil
+
     text_blob = (text_blob or '') + (
         ' 0123456789.-/():（）%，第页共年月授权码验证平台：、'
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
     )
-    opts = ft_subset.Options()
-    opts.layout_closure = False
-    opts.layout_features = []  # 去掉替换特征，减少竖排/异体干扰
-    opts.name_IDs = ['*']
-    opts.name_languages = ['*']
-    opts.notdef_outline = True
-    opts.recalc_bounds = True
-    opts.retain_gids = True
-    opts.ignore_missing_unicodes = True
-    font = TTFont(src_path)
-    subsetter = ft_subset.Subsetter(options=opts)
-    subsetter.populate(text=text_blob)
-    subsetter.subset(font)
-    for tag in ('VORG', 'vhea', 'vmtx'):
-        if tag in font:
-            del font[tag]
-    fd, path = tempfile.mkstemp(suffix='.otf', prefix=prefix)
-    os.close(fd)
-    font.save(path)
-    return path
+    # 稳定排序字符，相同字形集合命中同一缓存文件
+    uniq = ''.join(sorted(set(text_blob)))
+    try:
+        src_stat = os.stat(src_path)
+        src_tag = '%s:%s:%s' % (src_path, int(src_stat.st_mtime), int(src_stat.st_size))
+    except OSError:
+        src_tag = src_path
+    digest = hashlib.sha1((src_tag + '\0' + uniq).encode('utf-8')).hexdigest()[:28]
+    safe_prefix = ''.join(ch if ch.isalnum() or ch in '_-' else '_' for ch in (prefix or 'sbdy_sub_'))
+    cache_path = os.path.join(tempfile.gettempdir(), 'sbdy_fontcache_%s%s.otf' % (safe_prefix, digest))
+    if not (os.path.isfile(cache_path) and os.path.getsize(cache_path) > 1000):
+        opts = ft_subset.Options()
+        opts.layout_closure = False
+        opts.layout_features = []  # 去掉替换特征，减少竖排/异体干扰
+        opts.name_IDs = ['*']
+        opts.name_languages = ['*']
+        opts.notdef_outline = True
+        opts.recalc_bounds = True
+        opts.retain_gids = True
+        opts.ignore_missing_unicodes = True
+        font = TTFont(src_path)
+        subsetter = ft_subset.Subsetter(options=opts)
+        subsetter.populate(text=text_blob)
+        subsetter.subset(font)
+        for tag in ('VORG', 'vhea', 'vmtx'):
+            if tag in font:
+                del font[tag]
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix='.otf', prefix=safe_prefix + 'build_')
+        os.close(tmp_fd)
+        try:
+            font.save(tmp_path)
+            try:
+                os.replace(tmp_path, cache_path)
+            except OSError:
+                if not (os.path.isfile(cache_path) and os.path.getsize(cache_path) > 1000):
+                    cache_path = tmp_path
+                else:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+    # 每次返回独立临时副本，兼容各区域脚本 finally 里 os.remove
+    out_fd, out_path = tempfile.mkstemp(suffix='.otf', prefix=safe_prefix)
+    os.close(out_fd)
+    shutil.copy2(cache_path, out_path)
+    return out_path
 
 
 def money(n):

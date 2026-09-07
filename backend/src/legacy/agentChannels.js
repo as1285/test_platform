@@ -5,6 +5,94 @@
  */
 const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
 
+/**
+ * URL-only 渠道：专属价只认本次请求显式 ch（query/header/UA），
+ * 不认账号 sales_promo_channel 留存定价。注册仍可写入 sales_promo_channel 做归因，
+ * 且子管理员后台不可见。与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
+ */
+var URL_ONLY_SALES_CHANNELS = { abc: true };
+
+function sanitizeChannelIdLoose(raw) {
+  var s = String(raw == null ? '' : raw).trim().toLowerCase();
+  if (!s || !CHANNEL_ID_RE.test(s)) return '';
+  return s;
+}
+
+function isUrlOnlySalesChannel(ch) {
+  var k = sanitizeChannelIdLoose(ch);
+  return !!k && Object.prototype.hasOwnProperty.call(URL_ONLY_SALES_CHANNELS, k);
+}
+
+/** URL-only 渠道 id 列表（小写），供后台过滤 / 单测 */
+function listUrlOnlySalesChannelIds() {
+  return Object.keys(URL_ONLY_SALES_CHANNELS).map(function (k) {
+    return String(k).trim().toLowerCase();
+  }).filter(Boolean);
+}
+
+/**
+ * 子管理员范围：排除 URL-only 渠道注册用户（如 abc）。
+ * @param {string} channelCol 如 u.sales_promo_channel / users.sales_promo_channel
+ * @param {Array} params SQL 参数数组（会 push 渠道 id）
+ * @returns {string} SQL 片段；无 URL-only 渠道时返回 '1=1'
+ */
+function excludeUrlOnlySalesChannelSql(channelCol, params) {
+  var col = String(channelCol || '').trim() || 'sales_promo_channel';
+  var ids = listUrlOnlySalesChannelIds();
+  if (!ids.length) return '1=1';
+  var ph = ids
+    .map(function () {
+      return '?';
+    })
+    .join(',');
+  if (Array.isArray(params)) {
+    for (var i = 0; i < ids.length; i++) params.push(ids[i]);
+  }
+  return '(LOWER(TRIM(IFNULL(' + col + ', \'\'))) NOT IN (' + ph + '))';
+}
+
+/**
+ * 匹配 URL-only 渠道：channel IN (...)
+ */
+function matchUrlOnlySalesChannelSql(channelCol, params) {
+  var col = String(channelCol || '').trim() || 'sales_promo_channel';
+  var ids = listUrlOnlySalesChannelIds();
+  if (!ids.length) return '1=0';
+  var ph = ids
+    .map(function () {
+      return '?';
+    })
+    .join(',');
+  if (Array.isArray(params)) {
+    for (var i = 0; i < ids.length; i++) params.push(ids[i]);
+  }
+  return '(LOWER(TRIM(IFNULL(' + col + ', \'\'))) IN (' + ph + '))';
+}
+
+/**
+ * 排除「截止时间起」新注册的 URL-only 渠道用户（历史账号不受影响）。
+ * NOT (channel IN abc AND created_at >= since)
+ */
+function excludeUrlOnlySalesChannelSinceSql(channelCol, createdCol, sinceUtc, params) {
+  var chSql = matchUrlOnlySalesChannelSql(channelCol, params);
+  var created = String(createdCol || '').trim() || 'created_at';
+  if (Array.isArray(params)) params.push(String(sinceUtc || '').trim());
+  return '(NOT (' + chSql + ' AND ' + created + ' >= ?))';
+}
+
+/**
+ * 解析用于渠道专属价的渠道 ID。
+ * URL-only（如 abc）：只认本次请求显式渠道；账号上即便绑了 abc 也不改价。
+ */
+function resolveSalesChannelForChannelPrices(userCh, requestCh) {
+  var reqCh = sanitizeChannelIdLoose(requestCh);
+  var acctCh = sanitizeChannelIdLoose(userCh);
+  if (reqCh && isUrlOnlySalesChannel(reqCh)) return reqCh;
+  if (acctCh && !isUrlOnlySalesChannel(acctCh)) return acctCh;
+  if (reqCh && !isUrlOnlySalesChannel(reqCh)) return reqCh;
+  return '';
+}
+
 function createAgentChannels(deps) {
   var getPool = deps.getPool;
   var sanitizeSalesChannelId =
@@ -646,4 +734,13 @@ function createAgentChannels(deps) {
   };
 }
 
-module.exports = { createAgentChannels: createAgentChannels };
+module.exports = {
+  createAgentChannels: createAgentChannels,
+  URL_ONLY_SALES_CHANNELS: URL_ONLY_SALES_CHANNELS,
+  isUrlOnlySalesChannel: isUrlOnlySalesChannel,
+  listUrlOnlySalesChannelIds: listUrlOnlySalesChannelIds,
+  excludeUrlOnlySalesChannelSql: excludeUrlOnlySalesChannelSql,
+  matchUrlOnlySalesChannelSql: matchUrlOnlySalesChannelSql,
+  excludeUrlOnlySalesChannelSinceSql: excludeUrlOnlySalesChannelSinceSql,
+  resolveSalesChannelForChannelPrices: resolveSalesChannelForChannelPrices
+};

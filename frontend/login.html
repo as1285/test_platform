@@ -72,6 +72,7 @@
             } catch (e) {}
         })();
     </script>
+    <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
     <script src="/js/auth-boot.js?v=20260902-ip16pm-login"></script>
     <script src="/js/auth.js?v=20260905-agent-reg2" defer></script>
     <script src="/js/browser-install-prompt.js?v=20260827-cend-sync" defer></script>
@@ -1290,7 +1291,18 @@
 
         var __loginPeerNextHref = '';
         function finishLoginRedirect(href) {
-            window.location.href = href || 'shouye.html';
+            var dest = href || 'shouye.html';
+            if (typeof window.assignTopLocation === 'function') {
+                window.assignTopLocation(dest);
+                return;
+            }
+            try {
+                if (window.top && window.top !== window) {
+                    window.top.location.href = dest;
+                    return;
+                }
+            } catch (eTop) {}
+            window.location.href = dest;
         }
         function showLoginPeerNotice(msg, nextHref) {
             __loginPeerNextHref = nextHref || 'shouye.html';

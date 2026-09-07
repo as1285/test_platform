@@ -74,7 +74,7 @@ describe('Android white-page default immersive inset', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html).toContain('auth-boot.js?v=20260904-android-inset');
       if (name === 'shuimingResult') {
-        expect(html).toContain('auth.js?v=20260904-air-gap');
+        expect(html).toContain('auth.js?v=20260906-iphone16pro-std');
       } else {
         expect(html).toContain('auth.js?v=20260904-android-inset');
       }

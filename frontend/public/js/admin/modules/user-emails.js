@@ -103,7 +103,7 @@
     var tbody = document.getElementById('userEmailTbody');
     var stat = document.getElementById('userEmailStat');
     var pageInfo = document.getElementById('userEmailPageInfo');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="8">加载中…</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载中…</td></tr>';
     var active = String((document.getElementById('userEmailActive') || {}).value || '');
     var q = String((document.getElementById('userEmailQ') || {}).value || '').trim();
     var url =
@@ -118,7 +118,7 @@
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="8">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="10">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
           if (stat) stat.textContent = (j && j.msg) || '加载失败';
           return;
         }
@@ -134,7 +134,7 @@
         var pages = Math.max(1, Math.ceil(lastTotal / lastLimit) || 1);
         if (pageInfo) pageInfo.textContent = '第 ' + page + ' / ' + pages + ' 页';
         if (!lastUsers.length) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="8">暂无已留邮箱用户</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="10">暂无已留邮箱用户</td></tr>';
           syncCheckAll();
           syncSendSelectedBtn();
           return;
@@ -163,12 +163,23 @@
             (u.account_active ? '已开通' : '未开通') +
             '</td>' +
             '<td>' +
+            (u.half_price_email_sent ? '是' : '否') +
+            '</td>' +
+            '<td>' +
             esc(formatDt(u.created_at)) +
             '</td>' +
             '<td title="' +
             esc(u.last_email_subject || '') +
             '">' +
             esc(formatDt(u.last_email_at)) +
+            '</td>' +
+            '<td>' +
+            (Number(u.last_email_click_count) > 0
+              ? esc(formatDt(u.last_email_clicked_at)) +
+                ' · ' +
+                esc(String(u.last_email_click_count)) +
+                '次'
+              : '—') +
             '</td>' +
             '<td class="flex-actions">' +
             '<button type="button" class="btn-page js-user-email-send" data-u="' +
@@ -187,7 +198,7 @@
       .catch(function (e) {
         if (tbody) {
           tbody.innerHTML =
-            '<tr><td colspan="8">' + esc((e && e.message) || '加载失败') + '</td></tr>';
+            '<tr><td colspan="10">' + esc((e && e.message) || '加载失败') + '</td></tr>';
         }
         if (stat) stat.textContent = (e && e.message) || '加载失败';
       });
@@ -197,7 +208,7 @@
     var tbody = document.getElementById('userEmailSendTbody');
     var stat = document.getElementById('userEmailSendStat');
     var pageInfo = document.getElementById('userEmailSendPageInfo');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="8">加载中…</td></tr>';
     var q = String((document.getElementById('userEmailSendQ') || {}).value || '').trim();
     var url =
       'api/admin/emails/sends?page=' +
@@ -210,7 +221,7 @@
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="7">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="8">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
           if (stat) stat.textContent = (j && j.msg) || '加载失败';
           return;
         }
@@ -222,7 +233,7 @@
         var pages = Math.max(1, Math.ceil(lastSendsTotal / lastSendsLimit) || 1);
         if (pageInfo) pageInfo.textContent = '第 ' + sendPage + ' / ' + pages + ' 页';
         if (!items.length) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="7">暂无发送记录</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="8">暂无发送记录</td></tr>';
           return;
         }
         var html = '';
@@ -230,6 +241,13 @@
           var st = String(it.status || '');
           var stLabel = st === 'sent' ? '成功' : st === 'failed' ? '失败' : st || '—';
           var err = it.error_msg ? ' · ' + it.error_msg : '';
+          var clickN = Number(it.click_count) || 0;
+          var clickLabel =
+            clickN > 0
+              ? esc(formatDt(it.clicked_at)) + ' · ' + clickN + '次'
+              : it.has_track
+                ? '未点'
+                : '—';
           html +=
             '<tr>' +
             '<td>' +
@@ -252,6 +270,11 @@
             '">' +
             esc(stLabel + err) +
             '</td>' +
+            '<td title="' +
+            esc(it.dest_url || '') +
+            '">' +
+            clickLabel +
+            '</td>' +
             '<td>' +
             esc(it.admin_username || '—') +
             '</td>' +
@@ -262,7 +285,7 @@
       .catch(function (e) {
         if (tbody) {
           tbody.innerHTML =
-            '<tr><td colspan="7">' + esc((e && e.message) || '加载失败') + '</td></tr>';
+            '<tr><td colspan="8">' + esc((e && e.message) || '加载失败') + '</td></tr>';
         }
       });
   }
@@ -421,7 +444,18 @@
 
   function exportCsv() {
     if (!lastUsers.length) return;
-    var header = ['账号', '姓名', '邮箱', '开通', '注册', '最近发信', '最近标题'];
+    var header = [
+      '账号',
+      '姓名',
+      '邮箱',
+      '开通',
+      '是否发送半价邮件',
+      '注册',
+      '最近发信',
+      '最近标题',
+      '最近点击',
+      '点击次数'
+    ];
     var lines = [header.join(',')];
     lastUsers.forEach(function (u) {
       var cells = [
@@ -429,9 +463,12 @@
         u.real_name || '',
         u.email || '',
         u.account_active ? '已开通' : '未开通',
+        u.half_price_email_sent ? '是' : '否',
         formatDt(u.created_at),
         formatDt(u.last_email_at),
-        u.last_email_subject || ''
+        u.last_email_subject || '',
+        formatDt(u.last_email_clicked_at),
+        Number(u.last_email_click_count) || 0
       ].map(function (v) {
         return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
       });

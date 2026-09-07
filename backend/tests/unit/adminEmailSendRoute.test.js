@@ -29,4 +29,9 @@ describe('admin emails/send HTML-safe API surface', () => {
     expect(boot).toContain('code: 404');
     expect(boot).toContain('jsonApiError');
   });
+
+  it('rewrites multipart-as-JSON parse errors into a readable upload message', () => {
+    expect(boot).toContain('------WebK');
+    expect(boot).toContain('上传格式不正确，请重新选择文件后重试');
+  });
 });

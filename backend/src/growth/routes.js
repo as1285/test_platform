@@ -47,6 +47,7 @@ function registerGrowthRoutes(app, deps) {
   app.get('/api/public/ad-pages', h.handlePublicAdPages);
   app.get('/api/public/landing-ab-config', h.handlePublicLandingAbConfig);
   app.post('/api/public/guest-session', h.handlePublicGuestSession);
+  app.get('/api/public/email-click/:token', h.handlePublicEmailClick);
   app.get('/api/public/sbdy-demo/verify', h.handlePublicSbdyDemoVerify);
   app.get('/api/public/sbdy-demo/show/:token', h.handlePublicSbdyDemoShow);
   app.get('/api/public/gjj-demo/verify', h.handlePublicGjjDemoVerify);

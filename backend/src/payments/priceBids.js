@@ -451,14 +451,287 @@ function createPriceBids(deps) {
     const [cnt] = await pool.execute(
       "SELECT SUM(status='pending') AS pending, SUM(status='accepted') AS accepted, SUM(status='rejected') AS rejected FROM user_price_bids"
     );
+    var items = rows.map(plainBidRow);
+    /* 列表直接带付费情况，避免「已通过」页还要再翻跟进表 */
+    try {
+      var maps = await loadUserPayMaps(
+        items.map(function (b) {
+          return b.username;
+        })
+      );
+      items = items.map(function (b) {
+        var user = maps.userMap[b.username] || {};
+        var paid = maps.paidMap[b.username] || null;
+        var active = isAccountActive(user.account_active);
+        return Object.assign({}, b, {
+          account_active: active,
+          pay_status: active || paid ? 'paid' : 'unpaid',
+          paid_at: paid && paid.paid_at ? paid.paid_at : null,
+          paid_amount: paid && paid.amount != null ? String(paid.amount) : ''
+        });
+      });
+    } catch (ePayList) {}
     return {
-      items: rows.map(plainBidRow),
+      items: items,
       counts: {
         pending: Number(cnt[0].pending || 0),
         accepted: Number(cnt[0].accepted || 0),
         rejected: Number(cnt[0].rejected || 0)
       }
     };
+  }
+
+  function isAccountActive(v) {
+    return v === 1 || v === true || v === '1';
+  }
+
+  function plainFollowupRow(bid, userMap, paidMap, offerMap) {
+    var u = String(bid.username || '');
+    var user = userMap[u] || {};
+    var paid = paidMap[u] || null;
+    var offer = offerMap[u] || null;
+    var active = isAccountActive(user.account_active);
+    var payStatus = active || paid ? 'paid' : 'unpaid';
+    return {
+      id: bid.id,
+      username: u,
+      sku_id: bid.sku_id,
+      sku_label: bid.sku_label,
+      list_amount: bid.list_amount,
+      bid_amount: bid.bid_amount,
+      accepted_amount: bid.accepted_amount || bid.bid_amount,
+      auto: bid.auto,
+      reviewed_by: bid.reviewed_by,
+      reviewed_at: bid.reviewed_at || bid.created_at,
+      created_at: bid.created_at,
+      email: user.email != null ? String(user.email) : '',
+      account_active: active,
+      pay_status: payStatus,
+      paid_at: paid && paid.paid_at ? paid.paid_at : null,
+      paid_amount: paid && paid.amount != null ? String(paid.amount) : '',
+      paid_subject: paid && paid.subject != null ? String(paid.subject) : '',
+      offer_enabled: !!(offer && (offer.enabled === 1 || offer.enabled === true || offer.enabled === '1')),
+      offer_amount: offer && offer.amount != null ? String(offer.amount) : ''
+    };
+  }
+
+  async function loadUserPayMaps(usernames) {
+    var userMap = {};
+    var paidMap = {};
+    var offerMap = {};
+    var names = [];
+    var seen = {};
+    for (var i = 0; i < usernames.length; i++) {
+      var n = String(usernames[i] || '').trim();
+      if (!n || seen[n]) continue;
+      seen[n] = 1;
+      names.push(n);
+    }
+    if (!names.length) {
+      return { userMap: userMap, paidMap: paidMap, offerMap: offerMap };
+    }
+    var ph = names.map(function () {
+      return '?';
+    }).join(',');
+    try {
+      const [urows] = await pool.execute(
+        'SELECT username, email, account_active FROM users WHERE username IN (' + ph + ')',
+        names
+      );
+      for (var ui = 0; ui < urows.length; ui++) {
+        userMap[String(urows[ui].username || '')] = urows[ui];
+      }
+    } catch (eUser) {}
+    try {
+      const [prows] = await pool.execute(
+        'SELECT po.username, po.amount, po.subject, po.paid_at FROM payment_orders po ' +
+          'INNER JOIN (' +
+          'SELECT username, MAX(id) AS mid FROM payment_orders ' +
+          "WHERE status = 'paid' AND username IN (" +
+          ph +
+          ') GROUP BY username' +
+          ') t ON po.id = t.mid',
+        names
+      );
+      for (var pi = 0; pi < prows.length; pi++) {
+        paidMap[String(prows[pi].username || '')] = prows[pi];
+      }
+    } catch (ePay) {}
+    try {
+      const [orows] = await pool.execute(
+        'SELECT username, enabled, amount FROM user_price_offers WHERE username IN (' + ph + ')',
+        names
+      );
+      for (var oi = 0; oi < orows.length; oi++) {
+        offerMap[String(orows[oi].username || '')] = orows[oi];
+      }
+    } catch (eOffer) {}
+    return { userMap: userMap, paidMap: paidMap, offerMap: offerMap };
+  }
+
+  /**
+   * 已通过出价的付费跟进列表。
+   * pay: all | unpaid | paid
+   */
+  async function listFollowup(opts) {
+    await ensureTable();
+    var pay = String((opts && opts.pay) || 'all').trim();
+    if (pay !== 'unpaid' && pay !== 'paid') pay = 'all';
+    var limit = clampInt(opts && opts.limit, 1, 500, 200);
+    const [rows] = await pool.execute(
+      "SELECT * FROM user_price_bids WHERE status = 'accepted' " +
+        'ORDER BY COALESCE(reviewed_at, created_at) DESC, id DESC LIMIT ' +
+        limit
+    );
+    var bids = rows.map(plainBidRow);
+    var maps = await loadUserPayMaps(
+      bids.map(function (b) {
+        return b.username;
+      })
+    );
+    var all = bids.map(function (b) {
+      return plainFollowupRow(b, maps.userMap, maps.paidMap, maps.offerMap);
+    });
+    var unpaidN = 0;
+    var paidN = 0;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].pay_status === 'paid') paidN += 1;
+      else unpaidN += 1;
+    }
+    var items = all;
+    if (pay === 'unpaid') {
+      items = all.filter(function (x) {
+        return x.pay_status === 'unpaid';
+      });
+    } else if (pay === 'paid') {
+      items = all.filter(function (x) {
+        return x.pay_status === 'paid';
+      });
+    }
+    return {
+      items: items,
+      counts: { all: all.length, unpaid: unpaidN, paid: paidN }
+    };
+  }
+
+  /** 单条跟进详情：出价 + 专属价 + 近几笔支付 */
+  async function getFollowupDetail(id) {
+    await ensureTable();
+    var bidId = parseInt(id, 10);
+    if (!bidId) {
+      var e0 = new Error('参数不完整');
+      e0.statusCode = 400;
+      throw e0;
+    }
+    const [rows] = await pool.execute('SELECT * FROM user_price_bids WHERE id = ? LIMIT 1', [bidId]);
+    if (!rows.length || String(rows[0].status) !== 'accepted') {
+      var e1 = new Error('已通过出价不存在');
+      e1.statusCode = 404;
+      throw e1;
+    }
+    var bid = plainBidRow(rows[0]);
+    var maps = await loadUserPayMaps([bid.username]);
+    var item = plainFollowupRow(bid, maps.userMap, maps.paidMap, maps.offerMap);
+    var payments = [];
+    try {
+      const [prows] = await pool.execute(
+        "SELECT id, out_trade_no, subject, amount, status, paid_at, created_at, pricing_variant " +
+          'FROM payment_orders WHERE username = ? ORDER BY id DESC LIMIT 10',
+        [bid.username]
+      );
+      payments = prows.map(function (p) {
+        return {
+          id: p.id != null ? Number(p.id) : 0,
+          out_trade_no: String(p.out_trade_no || ''),
+          subject: String(p.subject || ''),
+          amount: p.amount != null ? String(p.amount) : '',
+          status: String(p.status || ''),
+          paid_at: p.paid_at || null,
+          created_at: p.created_at || null,
+          pricing_variant: p.pricing_variant != null ? String(p.pricing_variant) : ''
+        };
+      });
+    } catch (ePay) {
+      payments = [];
+    }
+    return { item: item, payments: payments };
+  }
+
+  var REMIND_OFFER_COPY = {
+    title: '你的专属优惠仍有效，打开即可按优惠价开通',
+    body:
+      '你好，\n\n你的专属优惠价仍然有效。打开支付页将按该价格下单；开通后去除水印，完整使用收入明细与纳税记录。\n优惠可能随时调整，建议尽早开通。',
+    link: 'purchase.html?from=email_offer'
+  };
+
+  /**
+   * 催付：单条 { id } 或批量未付费 { unpaid: true }（最多 50）。
+   * 仅已通过 + 未激活 + 有邮箱。
+   */
+  async function remindAccepted(opts) {
+    await ensureTable();
+    var bidId = parseInt(opts && opts.id, 10);
+    var unpaidBulk = !!(opts && opts.unpaid);
+    if (!bidId && !unpaidBulk) {
+      var e0 = new Error('请指定出价 id 或 unpaid=true');
+      e0.statusCode = 400;
+      throw e0;
+    }
+    var targets = [];
+    if (bidId) {
+      var detail = await getFollowupDetail(bidId);
+      targets = [detail.item];
+    } else {
+      var list = await listFollowup({ pay: 'unpaid', limit: 50 });
+      targets = list.items.slice(0, 50);
+    }
+    var sent = 0;
+    var skipped = 0;
+    var failed = 0;
+    var reasons = [];
+    for (var i = 0; i < targets.length; i++) {
+      var t = targets[i];
+      if (!t || t.pay_status === 'paid' || t.account_active) {
+        skipped += 1;
+        reasons.push({ id: t && t.id, username: t && t.username, reason: 'already_paid' });
+        continue;
+      }
+      var email = String(t.email || '').trim();
+      if (!email) {
+        skipped += 1;
+        reasons.push({ id: t.id, username: t.username, reason: 'no_email' });
+        continue;
+      }
+      if (!notifyUser) {
+        failed += 1;
+        reasons.push({ id: t.id, username: t.username, reason: 'no_notify' });
+        continue;
+      }
+      try {
+        var body =
+          REMIND_OFFER_COPY.body +
+          (t.accepted_amount
+            ? '\n\n当前专属价：¥' + t.accepted_amount + '（' + (t.sku_label || '开通套餐') + '）'
+            : '');
+        var out = await notifyUser(t.username, REMIND_OFFER_COPY.title, body, REMIND_OFFER_COPY.link);
+        if (out && out.email_sent) {
+          sent += 1;
+          reasons.push({ id: t.id, username: t.username, reason: 'sent' });
+        } else {
+          var r = (out && out.reason) || 'send_failed';
+          if (r === 'no_email' || r === 'no_smtp') {
+            skipped += 1;
+          } else {
+            failed += 1;
+          }
+          reasons.push({ id: t.id, username: t.username, reason: r });
+        }
+      } catch (eSend) {
+        failed += 1;
+        reasons.push({ id: t.id, username: t.username, reason: 'send_error' });
+      }
+    }
+    return { sent: sent, skipped: skipped, failed: failed, reasons: reasons, total: targets.length };
   }
 
   /** 人工审核：accept 可带 counter 价（默认按用户出价成交），reject 驳回 */
@@ -541,6 +814,9 @@ function createPriceBids(deps) {
     getLatestBid: getLatestBid,
     getBackPromptContext: getBackPromptContext,
     listBids: listBids,
+    listFollowup: listFollowup,
+    getFollowupDetail: getFollowupDetail,
+    remindAccepted: remindAccepted,
     reviewBid: reviewBid
   };
 }

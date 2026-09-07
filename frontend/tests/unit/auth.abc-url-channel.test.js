@@ -56,4 +56,17 @@ describe('abc channel is URL-only', () => {
     );
     expect(window.getPublicInstallPackagesUrl()).toBe('/api/public/install-packages');
   });
+
+  it('binds abc into register sales channel only when URL has ch=abc', () => {
+    setPageSearch('?ch=abc');
+    expect(window.getRegisterSalesChannel(true)).toBe('abc');
+    setPageSearch('?ch=github');
+    expect(window.getRegisterSalesChannel(false)).toBe('github');
+    window.localStorage.setItem(
+      'sales_channel_v1',
+      JSON.stringify({ ch: 'abc', at: Date.now(), source: 'url', permanent: true })
+    );
+    setPageSearch('');
+    expect(window.getRegisterSalesChannel(true)).toBe('');
+  });
 });

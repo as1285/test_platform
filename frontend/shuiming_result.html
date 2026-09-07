@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <link rel="stylesheet" href="/css/device-tokens.css?v=20260904-tokens">
+    <link rel="stylesheet" href="/css/device-tokens.css?v=20260906-16pro-std">
     <script>
         (function () {
             try {
@@ -456,6 +456,60 @@
                     try {
                         cssW16 = window.innerWidth ? Number(window.innerWidth) : 0;
                     } catch (eCssW16) {}
+                    /* iPhone 16 Pro（非 Max）：首屏打标；顶栏 44px 贴 Island，汇总顶 12px 灰缝对齐官方 */
+                    var is16proUa =
+                        /iPhone\s*16\s*Pro\b(?!\s*Max)|iPhone17,1\b/i.test(blob16) &&
+                        !/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|MYTN3/i.test(blob16) &&
+                        !/iPhone\s*17\s*Pro\b|iPhone18,1\b|iPhone18,3\b/i.test(blob16);
+                    var is16proVp =
+                        short16 >= 399 &&
+                        short16 <= 405 &&
+                        long16 >= 868 &&
+                        long16 <= 878 &&
+                        !is16pmUa &&
+                        !/iPhone\s*17\s*Pro\b|iPhone18,1\b|iPhone18,3\b|iPhone\s*Air\b|iPhone18,4\b/i.test(
+                            blob16
+                        );
+                    if (is16proUa || is16proVp) {
+                        document.documentElement.classList.add('app-ios-iphone16pro');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                        document.documentElement.classList.add('app-ios-client');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        if (!document.querySelector('style[data-iphone16pro-result-firstpaint]')) {
+                            var p16St = document.createElement('style');
+                            p16St.setAttribute('data-iphone16pro-result-firstpaint', '1');
+                            p16St.textContent =
+                                'html.app-ios-iphone16pro{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;--device-list-edge:0px;--device-list-inline-pad:16px;--device-header-inline:16px;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top,59px) !important;--shuiming-chrome-top:var(--app-shell-statusbar-top,59px) !important;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,44px) + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(var(--header-height,44px) + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;box-sizing:border-box !important;background:#fff !important;box-shadow:none !important;z-index:120 !important;align-items:center !important;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .header .back-btn{left:16px !important;top:var(--app-shell-statusbar-top,59px) !important;height:var(--header-height,44px) !important;display:flex !important;align-items:center !important;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .header .header-right{right:16px !important;top:var(--app-shell-statusbar-top,59px) !important;height:var(--header-height,44px) !important;display:flex !important;align-items:center !important;}' +
+                                /* 官方：标题下 12px 灰缝再接「收入合计」；勿贴死顶栏 */
+                                'html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,44px) + var(--app-shell-statusbar-top,59px)) !important;background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;border-radius:0 !important;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .list{margin-top:calc(var(--header-height,44px) + var(--app-shell-statusbar-top,59px)) !important;padding-left:0 !important;padding-right:0 !important;width:100% !important;max-width:100% !important;box-sizing:border-box !important;background:#f5f6fa !important;}' +
+                                'html.app-ios-iphone16pro body.page-shuiming-result .list-item{--list-inline-pad:16px;padding:17px 16px 16px !important;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}';
+                            (document.head || document.documentElement).appendChild(p16St);
+                        }
+                    }
+                    /* 无 class 时（UA 无型号）也按 402×874 锁汇总灰缝，避免白底吞掉上下边；勿伤 17 Pro 白底 */
+                    if (
+                        !document.querySelector('style[data-iphone16pro-vp-grey-seam]') &&
+                        short16 >= 399 &&
+                        short16 <= 405 &&
+                        long16 >= 868 &&
+                        long16 <= 878 &&
+                        !is16pmUa &&
+                        !/iPhone\s*17(?:\s*Pro)?\b|iPhone18,1\b|iPhone18,3\b|iPhone19,1\b/i.test(blob16)
+                    ) {
+                        var p16Grey = document.createElement('style');
+                        p16Grey.setAttribute('data-iphone16pro-vp-grey-seam', '1');
+                        p16Grey.textContent =
+                            'body.page-shuiming-result .top-fixed .header{box-shadow:none !important;}' +
+                            'body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
+                            'body.page-shuiming-result .list{background:#f5f6fa !important;}';
+                        (document.head || document.documentElement).appendChild(p16Grey);
+                    }
                     var isLargePmVp =
                         (short16 >= 414 &&
                             short16 <= 520 &&
@@ -604,7 +658,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260904-android-inset"></script>
-    <script src="/js/auth.js?v=20260904-air-gap" defer></script>
+    <script src="/js/auth.js?v=20260906-iphone16pro-std" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1585,30 +1639,100 @@
             z-index: 121;
         }
 
-        /* iPhone 16 Pro：状态栏与顶栏/汇总区同为白底（auth.js 亦注入） */
-        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root {
-            --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+        /* iPhone 16 Pro：状态栏与顶栏同白；顶栏 44px 贴 Island；汇总顶 12px 灰缝对齐官方 */
+        html.app-ios-iphone16pro.app-top-safe-shell {
+            --app-shell-statusbar-top: max(59px, env(safe-area-inset-top, 59px));
+        }
+
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-ios-iphone16pro body.page-shuiming-result .page-root {
+            --header-height: 44px;
+            --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px));
+            --shuiming-chrome-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px));
         }
 
         html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0;
-            height: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-            padding: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)) 16px 0;
+            height: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+            min-height: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+            padding: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) 16px 0;
             background: #fff;
             box-sizing: border-box;
+            align-items: center;
+            box-shadow: none !important;
         }
 
         html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
-            top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
-            height: var(--header-height, 52px);
+            top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px));
+            height: var(--header-height, 44px);
             display: flex;
             align-items: center;
         }
 
-        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
-            top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-            background: #fff;
+        /*
+         * iPhone 16 Pro：官方标题下有一条灰缝再接「收入合计」。
+         * 顶栏去阴影、高度 44px，避免 Island 下多一截白；汇总 padding 12px 0 10px。
+         */
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+            background: #f5f6fa !important;
+            padding: 12px 0 10px !important;
+            box-sizing: border-box !important;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .summary > .summary-item {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            border-radius: 0 !important;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .list,
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .list {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+            background: #f5f6fa !important;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .list-item {
+            --list-inline-pad: 16px;
+            padding: 17px 16px 16px !important;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .back-btn {
+            left: 16px !important;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .header-right {
+            right: 16px !important;
+        }
+
+        /* 402×874：无 class 也压回灰缝（同 Air 防白底吞边）；排除已挂 17 Pro 白底档 */
+        @media screen and (min-device-width: 399px) and (max-device-width: 405px) and (min-device-height: 868px) and (max-device-height: 878px),
+            screen and (min-width: 399px) and (max-width: 405px) and (min-height: 868px) and (max-height: 878px) {
+            html:not(.app-ios-iphone17pro) body.page-shuiming-result .top-fixed .header {
+                box-shadow: none !important;
+            }
+            html:not(.app-ios-iphone17pro) body.page-shuiming-result .top-fixed .summary {
+                background: #f5f6fa !important;
+                padding: 12px 0 10px !important;
+                box-sizing: border-box !important;
+            }
+            html:not(.app-ios-iphone17pro) body.page-shuiming-result .list {
+                background: #f5f6fa !important;
+            }
         }
 
         /* iPhone 17 Pro：顶栏白底与安全区（与 16 Pro 一致） */
@@ -2307,7 +2431,7 @@
             align-items: center;
         }
 
-        html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+        html.app-ios-iphone-promax-font.app-top-safe-shell:not(.app-ios-iphone16pro) body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             background: #fff;
         }
@@ -3188,6 +3312,7 @@
                 var headerBottom = syncChromeBelowHeader();
                 var isAndroid = false;
                 var isIphone15Wide = false;
+                var isIphone16ProSeam = false;
                 try {
                     isAndroid =
                         document.documentElement.classList.contains('platform-android') ||
@@ -3203,6 +3328,18 @@
                                 return false;
                             }
                         })();
+                    /* 16 Pro：灰缝按汇总盒底起算，避免白条贴死列表 */
+                    isIphone16ProSeam =
+                        document.documentElement.classList.contains('app-ios-iphone16pro') ||
+                        (function () {
+                            try {
+                                var sw16 = Math.min(screen.width || 0, screen.height || 0);
+                                var sh16 = Math.max(screen.width || 0, screen.height || 0);
+                                return sw16 >= 399 && sw16 <= 405 && sh16 >= 868 && sh16 <= 878;
+                            } catch (e16s) {
+                                return false;
+                            }
+                        })();
                 } catch (eA) {}
                 /*
                  * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
@@ -3212,10 +3349,11 @@
                 var summaryRect = summary.getBoundingClientRect();
                 if (!(summaryRect.height > 0)) return;
                 var contentBottom = summaryContentBottom(summary, summaryRect);
-                if (isIphone15Wide) {
+                if (isIphone15Wide || isIphone16ProSeam) {
                     contentBottom = Math.max(contentBottom, summaryRect.bottom);
                 }
-                var gap = isAndroid ? 8 : isIphone15Wide ? 10 : 8;
+                /* 16 Pro 灰缝已写在汇总 padding-bottom，勿再叠 JS gap */
+                var gap = isAndroid ? 8 : isIphone16ProSeam ? 0 : isIphone15Wide ? 10 : 8;
                 var listTop = Math.ceil(contentBottom + gap);
                 if (listTop < headerBottom + 24) listTop = headerBottom + 24;
                 if (root) {
@@ -3230,7 +3368,7 @@
                 if (firstItem) {
                     var sr = summary.getBoundingClientRect();
                     var cb = summaryContentBottom(summary, sr);
-                    if (isIphone15Wide) {
+                    if (isIphone15Wide || isIphone16ProSeam) {
                         cb = Math.max(cb, sr.bottom);
                     }
                     var visualGap = firstItem.getBoundingClientRect().top - cb;

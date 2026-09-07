@@ -8,19 +8,19 @@
   /* 空壳模块（仅 ready:true）已删除；PAGE_MODULE 仍映射以便按页拉 Chart/QR 等依赖 */
   var MODULE_SRC = {
     charts: '/js/admin/modules/charts.js?v=20260903-chart-opt',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260906-js-new-12000',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260906-js-new-441',
     'gjj-demo': '/js/admin/modules/gjj-demo.js?v=20260826-deadcode',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260828-cert-survey',
     'zaizhi-cert': '/js/admin/modules/zaizhi-cert.js?v=20260828-cert-survey',
     'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'ccb-flow': '/js/admin/modules/ccb-flow.js?v=20260826-expense-sum',
-    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260903-cend-stats',
+    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260906-page-track',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
     feedback: '/js/admin/modules/feedback.js?v=20260905-compat-bug',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260905-ch-psych-col',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260904-smtp-stats',
-    'user-emails': '/js/admin/modules/user-emails.js?v=20260903-sendjson'
+    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-halfprice'
   };
 
   var PAGE_MODULE = {
@@ -129,8 +129,8 @@
    *  consult-core / consult-batch-tax 的 ?v= 必须与 C 端 consult.html 同步，否则管理端跑旧缓存逻辑 */
   function ensureTaxBatchScripts() {
     var scripts = [
-      '/js/consult-core.js?v=20260905-ym-range',
-      '/js/consult-batch-tax.js?v=20260905-list-tap',
+      '/js/consult-core.js?v=20260906-tax-ocr',
+      '/js/consult-batch-tax.js?v=20260906-ocr-fd',
       '/js/admin-tax-batch-bridge.js?v=20260806-admin-tax-align'
     ];
     var chain = Promise.resolve();

@@ -10,6 +10,7 @@ const zaizhiCert = require('./admin/zaizhiCert');
 const zaizhiCertUser = require('./user/zaizhiCertUser');
 const sbdyDemoUser = require('./user/sbdyDemoUser');
 const shebaoPhoto = require('./user/shebaoPhoto');
+const taxScreenshotOcr = require('./tax/screenshotOcr');
 const compatFeedback = require('./user/compatFeedback');
 const ylbxPs = require('./admin/ylbxPs');
 const ccbFlow = require('./admin/ccbFlow');
@@ -46,6 +47,7 @@ function buildApp() {
       zaizhiCertUser.getHandlers(),
       sbdyDemoUser.getHandlers(),
       shebaoPhoto.getHandlers(),
+      taxScreenshotOcr.getHandlers(),
       compatFeedback.getHandlers(),
       ylbxPs.getHandlers(),
       ccbFlow.getHandlers(),
@@ -61,6 +63,7 @@ function buildApp() {
     ),
     middleware: Object.assign({}, getMiddleware(), {
       userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload,
+      taxScreenshotUpload: taxScreenshotOcr.taxScreenshotUpload,
       userCompatFeedbackUpload: compatFeedback.userCompatFeedbackUpload,
       userNajiluQrUpload: najiluQr.userNajiluQrUpload
     })
@@ -88,9 +91,13 @@ function buildApp() {
     if (res.headersSent) return next(err);
     if (path.indexOf('/api') !== 0) return next(err);
     console.error('[api]', err);
+    var msg = String((err && err.message) || '服务器错误');
+    if (/Unexpected token|is not valid JSON|------WebK|WebKitFormBoundary/i.test(msg)) {
+      msg = '上传格式不正确，请重新选择文件后重试';
+    }
     return res.status(500).json({
       code: 500,
-      msg: String((err && err.message) || '服务器错误')
+      msg: msg
     });
   });
 

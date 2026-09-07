@@ -29,6 +29,28 @@ function makeStubPool(state) {
       if (sql.indexOf('SELECT * FROM user_price_bids WHERE id') >= 0) {
         return [state.bidRow ? [state.bidRow] : []];
       }
+      if (sql.indexOf("status = 'accepted'") >= 0 && sql.indexOf('SELECT * FROM user_price_bids') >= 0) {
+        return [state.acceptedRows || []];
+      }
+      if (sql.indexOf('SELECT * FROM user_price_bids WHERE status = ?') >= 0) {
+        var st = params && params[0];
+        if (st === 'accepted') return [state.acceptedRows || []];
+        if (st === 'pending') return [state.pendingRows || (state.pendingRow ? [state.pendingRow] : [])];
+        if (st === 'rejected') return [state.rejectedRows || []];
+        return [[]];
+      }
+      if (sql.indexOf('FROM users WHERE username IN') >= 0) {
+        return [state.userRows || []];
+      }
+      if (sql.indexOf('FROM payment_orders po') >= 0 || sql.indexOf('MAX(id) AS mid FROM payment_orders') >= 0) {
+        return [state.paidRows || []];
+      }
+      if (sql.indexOf('FROM payment_orders WHERE username = ?') >= 0) {
+        return [state.paymentHistory || []];
+      }
+      if (sql.indexOf('FROM user_price_offers WHERE username IN') >= 0) {
+        return [state.offerRows || []];
+      }
       if (sql.indexOf('UPDATE user_price_bids') >= 0) return [{}];
       if (sql.indexOf('INSERT INTO app_settings') >= 0) return [{}];
       if (sql.indexOf('SELECT * FROM user_price_bids WHERE username') >= 0) return [[]];
@@ -62,15 +84,17 @@ function makeStubOffers(calls) {
   };
 }
 
-function makeApi(state, offerCalls, notifications, onBidRecorded, listPurchaseSkusForUser) {
+function makeApi(state, offerCalls, notifications, onBidRecorded, listPurchaseSkusForUser, notifyImpl) {
   return createPriceBids({
     pool: makeStubPool(state),
     normalizeAmount: normalizeAmount,
     offers: makeStubOffers(offerCalls),
-    notifyUser: async function (username, title, body, link) {
-      notifications.push({ username: username, title: title, body: body, link: link });
-      return { email_sent: false, reason: 'no_email' };
-    },
+    notifyUser:
+      notifyImpl ||
+      (async function (username, title, body, link) {
+        notifications.push({ username: username, title: title, body: body, link: link });
+        return { email_sent: false, reason: 'no_email' };
+      }),
     onBidRecorded: onBidRecorded,
     listPurchaseSkusForUser: listPurchaseSkusForUser
   });
@@ -303,5 +327,150 @@ describe('getBackPromptContext', () => {
     const old = await apiOld.getBackPromptContext('u1');
     expect(old.within_48h).toBe(false);
     expect(old.eligible).toBe(false);
+  });
+});
+
+describe('listFollowup and remindAccepted', () => {
+  const acceptedUnpaid = {
+    id: 11,
+    username: 'u_unpaid',
+    sku_id: 'sku_300_7d',
+    sku_label: '周卡',
+    list_amount: '300.00',
+    bid_amount: '120.00',
+    accepted_amount: '120.00',
+    status: 'accepted',
+    auto: 0,
+    reviewed_at: '2026-09-01 10:00:00',
+    created_at: '2026-09-01 09:00:00'
+  };
+  const acceptedPaid = {
+    id: 12,
+    username: 'u_paid',
+    sku_id: 'sku_398_30d',
+    sku_label: '月卡',
+    list_amount: '398.00',
+    bid_amount: '298.00',
+    accepted_amount: '298.00',
+    status: 'accepted',
+    auto: 1,
+    reviewed_at: '2026-09-02 10:00:00',
+    created_at: '2026-09-02 09:00:00'
+  };
+
+  it('filters unpaid vs paid using account_active and paid orders', async () => {
+    const state = {
+      queries: [],
+      acceptedRows: [acceptedUnpaid, acceptedPaid],
+      userRows: [
+        { username: 'u_unpaid', email: 'a@x.com', account_active: 0 },
+        { username: 'u_paid', email: 'b@x.com', account_active: 1 }
+      ],
+      paidRows: [
+        {
+          username: 'u_paid',
+          amount: '298.00',
+          subject: '月卡',
+          paid_at: '2026-09-02 12:00:00'
+        }
+      ],
+      offerRows: [
+        { username: 'u_unpaid', enabled: 1, amount: '120.00' },
+        { username: 'u_paid', enabled: 1, amount: '298.00' }
+      ]
+    };
+    const api = makeApi(state, [], []);
+    const all = await api.listFollowup({ pay: 'all' });
+    expect(all.counts).toEqual({ all: 2, unpaid: 1, paid: 1 });
+    const unpaid = await api.listFollowup({ pay: 'unpaid' });
+    expect(unpaid.items.length).toBe(1);
+    expect(unpaid.items[0].username).toBe('u_unpaid');
+    expect(unpaid.items[0].pay_status).toBe('unpaid');
+    expect(unpaid.items[0].offer_enabled).toBe(true);
+    const paid = await api.listFollowup({ pay: 'paid' });
+    expect(paid.items.length).toBe(1);
+    expect(paid.items[0].username).toBe('u_paid');
+    expect(paid.items[0].paid_amount).toBe('298.00');
+  });
+
+  it('listBids includes pay_status on accepted rows', async () => {
+    const state = {
+      queries: [],
+      acceptedRows: [acceptedUnpaid, acceptedPaid],
+      userRows: [
+        { username: 'u_unpaid', email: 'a@x.com', account_active: 0 },
+        { username: 'u_paid', email: 'b@x.com', account_active: 1 }
+      ],
+      paidRows: [
+        {
+          username: 'u_paid',
+          amount: '298.00',
+          subject: '月卡',
+          paid_at: '2026-09-02 12:00:00'
+        }
+      ],
+      offerRows: []
+    };
+    const api = makeApi(state, [], []);
+    const out = await api.listBids({ status: 'accepted' });
+    expect(out.items.length).toBe(2);
+    const byUser = {};
+    out.items.forEach(function (row) {
+      byUser[row.username] = row;
+    });
+    expect(byUser.u_unpaid.pay_status).toBe('unpaid');
+    expect(byUser.u_paid.pay_status).toBe('paid');
+    expect(byUser.u_paid.paid_amount).toBe('298.00');
+  });
+
+  it('remind skips already paid and no-email; sends when unpaid with email', async () => {
+    const notes = [];
+    const state = {
+      queries: [],
+      acceptedRows: [acceptedUnpaid, acceptedPaid],
+      bidRow: Object.assign({}, acceptedUnpaid),
+      userRows: [
+        { username: 'u_unpaid', email: 'a@x.com', account_active: 0 },
+        { username: 'u_paid', email: 'b@x.com', account_active: 1 }
+      ],
+      paidRows: [
+        {
+          username: 'u_paid',
+          amount: '298.00',
+          subject: '月卡',
+          paid_at: '2026-09-02 12:00:00'
+        }
+      ],
+      offerRows: [{ username: 'u_unpaid', enabled: 1, amount: '120.00' }],
+      paymentHistory: []
+    };
+    const api = makeApi(state, [], notes, null, null, async function (username, title, body, link) {
+      notes.push({ username: username, title: title, body: body, link: link });
+      return { email_sent: true };
+    });
+    const one = await api.remindAccepted({ id: 11 });
+    expect(one.sent).toBe(1);
+    expect(one.skipped).toBe(0);
+    expect(notes.length).toBe(1);
+    expect(notes[0].link).toContain('email_offer');
+
+    const bulk = await api.remindAccepted({ unpaid: true });
+    expect(bulk.total).toBe(1);
+    expect(bulk.sent).toBe(1);
+
+    const noMailState = {
+      queries: [],
+      acceptedRows: [acceptedUnpaid],
+      bidRow: Object.assign({}, acceptedUnpaid),
+      userRows: [{ username: 'u_unpaid', email: '', account_active: 0 }],
+      paidRows: [],
+      offerRows: [],
+      paymentHistory: []
+    };
+    const apiNoMail = makeApi(noMailState, [], []);
+    const skipped = await apiNoMail.remindAccepted({ id: 11 });
+    expect(skipped.sent).toBe(0);
+    expect(skipped.skipped).toBe(1);
+    expect(skipped.reasons[0].reason).toBe('no_email');
   });
 });

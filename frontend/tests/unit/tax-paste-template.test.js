@@ -64,7 +64,7 @@ function loadPasteParser() {
     coreSrc.slice(coreStart, coreEnd) +
     batchSrc.slice(batchStart, batchEnd) +
     batchSrc.slice(parseStart, parseEnd) +
-    '; return { parseTaxPasteText: parseTaxPasteText, formatTaxPastePreview: formatTaxPastePreview, expandTaxPasteYear: expandTaxPasteYear, TAX_PASTE_IMPORT_TEMPLATE: TAX_PASTE_IMPORT_TEMPLATE };';
+    '; return { parseTaxPasteText: parseTaxPasteText, formatTaxPastePreview: formatTaxPastePreview, expandTaxPasteYear: expandTaxPasteYear, collapseTaxOcrMonthBlocks: collapseTaxOcrMonthBlocks, TAX_PASTE_IMPORT_TEMPLATE: TAX_PASTE_IMPORT_TEMPLATE };';
   // eslint-disable-next-line no-new-func
   return new Function(fnBody)();
 }
@@ -78,15 +78,19 @@ function monthCount(range) {
 describe('consult tax paste template simplify', () => {
   it('makes template generate the primary start path', () => {
     expect(html).toContain('按模板生成个税');
+    expect(html).toContain('上传个税截图识别');
     expect(html).toContain('重新填入模板');
     expect(html).toContain('清空去粘贴');
+    expect(html).toContain('上传截图识别');
     expect(html).toContain('id="btnTaxStartPaste"');
+    expect(html).toContain('id="btnTaxStartScreenshot"');
+    expect(html).toContain('id="taxScreenshotOcrInput"');
     expect(html.indexOf('btnTaxStartPaste')).toBeLessThan(html.indexOf('btnTaxStartExample'));
     expect(html).toContain('生成记录');
     expect(html).not.toContain('解析引擎 v0721d');
     expect(html).not.toContain('id="taxPasteImportParseBtn"');
-    expect(html).toContain('consult-core.js?v=20260905-ym-range');
-    expect(html).toContain('consult-batch-tax.js?v=20260905-list-tap');
+    expect(html).toContain('consult-core.js?v=20260906-tax-ocr');
+    expect(html).toContain('consult-batch-tax.js?v=20260906-ocr-fd');
   });
 
   it('opens with a 2023–2025 template and live preview wiring', () => {
@@ -206,5 +210,30 @@ describe('consult tax paste template simplify', () => {
     expect(appPaste.employments[0].mode).toBe('detail');
     expect(appPaste.employments[0].months.length).toBe(2);
     expect(appPaste.employments[0].range).toEqual({ sy: 2023, sm: 1, ey: 2023, em: 2 });
+  });
+
+  it('collapses multi-line OCR month blocks from official APP screenshots', () => {
+    const api = loadPasteParser();
+    expect(typeof api.collapseTaxOcrMonthBlocks).toBe('function');
+    const ocrLike =
+      '南京某某科技有限公司\n' +
+      '统计区间：2024-01 至 2024-03\n' +
+      '2024年01月\n正常工资薪金\n收入 20,000.00\n税额 150.50\n' +
+      '2024年02月\n正常工资薪金\n收入 20,000.00\n税额 160.20\n' +
+      '2024年03月\n正常工资薪金\n收入 21,000.00\n税额 180.00';
+    const collapsed = api.collapseTaxOcrMonthBlocks(ocrLike);
+    expect(collapsed).toContain('2024年1月 收入20000.00元 税额150.50元');
+    expect(collapsed).toContain('2024年3月 收入21000.00元 税额180.00元');
+    const parsed = api.parseTaxPasteText(ocrLike);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.employments[0].mode).toBe('detail');
+    expect(parsed.employments[0].months.length).toBe(3);
+    expect(parsed.employments[0].months[0]).toMatchObject({
+      year: 2024,
+      month: 1,
+      income: 20000,
+      tax: 150.5
+    });
+    expect(parsed.employments[0].months[2].income).toBe(21000);
   });
 });

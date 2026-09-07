@@ -397,24 +397,6 @@ app.post(
   h.handleAdminUserMakePermanent
 );
 app.get(
-  '/api/admin/user-price-offer',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
-  h.handleAdminUserPriceOfferGet
-);
-app.post(
-  '/api/admin/user-price-offer',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
-  h.handleAdminUserPriceOfferSet
-);
-app.post(
-  '/api/admin/user-price-offer/clear',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('users'),
-  h.handleAdminUserPriceOfferClear
-);
-app.get(
   '/api/admin/price-bids',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['settings', 'users']),
@@ -431,6 +413,24 @@ app.post(
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['settings', 'users']),
   h.handleAdminPriceBidsConfigSet
+);
+app.get(
+  '/api/admin/price-bids/followup',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['settings', 'users']),
+  h.handleAdminPriceBidsFollowup
+);
+app.get(
+  '/api/admin/price-bids/followup-detail',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['settings', 'users']),
+  h.handleAdminPriceBidsFollowupDetail
+);
+app.post(
+  '/api/admin/price-bids/remind',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['settings', 'users']),
+  h.handleAdminPriceBidsRemind
 );
 app.post(
   '/api/admin/user-rename-fee-exempt',

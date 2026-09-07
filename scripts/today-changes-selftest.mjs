@@ -202,7 +202,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260905-no-survey'],
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260906-tax-ocr'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
@@ -1175,11 +1175,35 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260905-ym-range', 'consult-batch-tax.js?v=20260905-list-tap', '23年4月到26年8月'],
-  '20260905 consult ym-range cache bust'
+  ['consult-core.js?v=20260906-tax-ocr', 'consult-batch-tax.js?v=20260906-ocr-fd', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
+  '20260906 consult tax screenshot OCR'
 );
-mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴'], 'consult copy tpl btn');
-mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '重新填入模板'], 'admin copy tpl btn');
+mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴', '上传截图识别'], 'consult copy tpl btn');
+mustInclude('frontend/admin_panel.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '上传截图识别'], 'admin copy tpl btn');
+mustInclude(
+  'backend/src/tax/screenshotOcr.js',
+  ['normalizeOcrTaxText', 'handleTaxScreenshotOcr', 'chi_sim+eng'],
+  'tax screenshot OCR module'
+);
+mustInclude(
+  'backend/src/tax/routes.js',
+  ['/api/tax/screenshot-ocr', 'taxScreenshotUpload'],
+  'tax screenshot OCR route'
+);
+mustInclude(
+  'frontend/public/js/consult-batch-tax.js',
+  [
+    "fetch('/api/tax/screenshot-ocr'",
+    '勿用 authFetch',
+    '截图上传失败，请重新选择图片后重试'
+  ],
+  'tax screenshot OCR uses raw multipart fetch'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  ['function isFormDataBody', 'function mergeAuthRequestHeaders', "delete headers['Content-Type']"],
+  'authFetch strips JSON content-type for FormData'
+);
 mustInclude(
   'frontend/admin_panel.html',
   ['col-cert-perm', '/js/admin_panel.js?v='],
@@ -1658,7 +1682,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260905-list-tap'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260906-ocr-fd'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -1980,6 +2004,22 @@ mustInclude(
   'admin refund eligible list and bulk audience'
 );
 mustInclude(
+  'backend/src/utils/ipCity.js',
+  ['cityLabelFromIp', 'ip2region'],
+  'ip city uses ip2region for CN users'
+);
+mustInclude(
+  'backend/package.json',
+  ['"ip2region"'],
+  'backend depends on ip2region'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  ["require('../utils/ipCity')"],
+  'monolith uses ipCity helper'
+);
+
+mustInclude(
   'backend/src/payments/priceBids.js',
   [
     'createPriceBids',
@@ -1991,6 +2031,8 @@ mustInclude(
     '199',
     '298',
     'resolveAutoFloor',
+    'listFollowup',
+    'remindAccepted',
     'acceptToOffer'
   ],
   'price bid module with per-sku auto accept floor'
@@ -2002,7 +2044,14 @@ mustInclude(
 );
 mustInclude(
   'backend/src/admin/routes.js',
-  ['/api/admin/price-bids', '/api/admin/price-bids/review', '/api/admin/price-bids/config'],
+  [
+    '/api/admin/price-bids',
+    '/api/admin/price-bids/review',
+    '/api/admin/price-bids/config',
+    '/api/admin/price-bids/followup',
+    '/api/admin/price-bids/followup-detail',
+    '/api/admin/price-bids/remind'
+  ],
   'price bid admin routes'
 );
 mustInclude(
@@ -2052,13 +2101,27 @@ mustInclude(
     'bidCfgFloorMonth',
     'bidPsychPriceBar',
     '当前心理价位',
-    'sectionPriceBids'
+    'sectionPriceBids',
+    'sectionPriceBidFollowup',
+    'bidFollowTbody',
+    'btnBulkRemindBidFollowup',
+    '已通过跟进'
   ],
   'admin price bids section'
 );
 mustInclude(
   'frontend/public/js/admin_panel.js',
-  ['api/admin/price-bids', 'bid-accept', 'bid-reject', 'api/admin/price-bids/config', 'renderBidPsychPriceBar'],
+  [
+    'api/admin/price-bids',
+    'bid-accept',
+    'bid-reject',
+    'api/admin/price-bids/config',
+    'renderBidPsychPriceBar',
+    'api/admin/price-bids/followup',
+    'api/admin/price-bids/remind',
+    'bid-follow-remind',
+    'bindBidFollowup'
+  ],
   'admin price bids wiring'
 );
 mustInclude(
@@ -2282,6 +2345,22 @@ mustInclude(
   ['loadCatalogAmounts', 'listOfferableSkusLive'],
   'user price offers aligned to admin catalog prices'
 );
+mustExclude(
+  'frontend/admin_panel.html',
+  ['用户专属报价', 'btnSavePriceOffer', 'priceOfferUsername'],
+  'admin UI drops manual user price offer form'
+);
+mustExclude(
+  'frontend/public/js/admin_panel.js',
+  ['bindUserPriceOfferForm', 'btn-user-price-offer', 'btnSavePriceOffer'],
+  'admin JS drops manual user price offer wiring'
+);
+mustExclude(
+  'backend/src/admin/routes.js',
+  ["'/api/admin/user-price-offer'", "'/api/admin/user-price-offer/clear'"],
+  'admin routes drop manual user-price-offer endpoints'
+);
+
 mustExclude(
   'backend/src/admin/routes.js',
   ['ccb-flow/template', 'user-price-offer/catalog'],
@@ -2551,8 +2630,11 @@ mustInclude(
     '历年参保年限',
     '近两年参保缴费明细',
     'sz_new_si_seal',
+    'sz_new_mi_seal',
     'ensure_full_cjk_font',
-    'right_x = X1 - seal_size'
+    'right_x = X1 - seal_size',
+    'expected 2 seals',
+    '深圳市医疗保险基金管理中心'
   ],
   'Shenzhen-new PDF renderer title and dual seals'
 );
@@ -2563,9 +2645,12 @@ mustInclude(
     'text-align:left',
     'font-synthesis:none',
     'justify-content:flex-end',
-    'Noto Serif CJK SC'
+    'Noto Serif CJK SC',
+    'sbdy_sz_new_si_seal.png',
+    'sbdy_sz_new_mi_seal.png',
+    '深圳市医疗保险基金管理中心'
   ],
-  'Shenzhen-new HTML section titles left + Song font + right seals'
+  'Shenzhen-new HTML section titles left + Song font + dual seals'
 );
 if (
   exists('backend/assets/sbdy/sz_new_si_seal.png') &&
@@ -2586,15 +2671,37 @@ mustInclude(
     'SBDY_JS_NEW_RENDER_SCRIPT',
     "region: isNew ? 'js_new' : 'js'",
     'js_cgbzm_v1',
-    '该核查内容真实，欢迎登录人社APP扫描验证',
-    '本文件由全国社保卡服务平台提供，任何第三方机构不得进行二次加工'
+    '核查内容真实，欢迎登录江苏社保APP扫描验证',
+    'writing-mode:horizontal-tb',
+    'class="detail-wrap"',
+    'class="wm-block"',
+    'class="after-table"',
+    'sbdy_js_seal.png',
+    '打印时间：',
+    '本文件由全国社保卡服务平台提供，任何第三方机构不得进行'
   ],
   'sbdyDemo Jiangsu-new normalize + HTML watermark'
 );
 mustInclude(
   'frontend/public/js/admin/modules/sbdy-demo.js',
-  ['sbdyRegionJsNew', "return 'js_new'", '已填充江苏新示例', 'isJsStyle'],
+  [
+    'sbdyRegionJsNew',
+    "return 'js_new'",
+    "input[name=\"sbdyRegion\"]:checked",
+    '已填充江苏新示例',
+    'isJsStyle'
+  ],
   'sbdy admin Jiangsu-new radio + sample'
+);
+mustInclude(
+  'frontend/public/js/admin/loader.js',
+  ['sbdy-demo.js?v=20260906-js-new-wm3'],
+  '20260906 sbdy-demo cache bust after js_new 3-line watermark + seal below'
+);
+mustInclude(
+  'frontend/sbdy_demo.html',
+  ['sbdy-demo.js?v=20260906-js-new-wm3'],
+  '20260906 user sbdy page cache matches admin loader'
 );
 mustInclude(
   'frontend/sbdy_demo.html',
@@ -2611,7 +2718,12 @@ mustInclude(
   [
     'WATERMARK_BASE',
     'draw_watermark',
-    '该核查内容真实，欢迎登录人社APP扫描验证',
+    'WM_LINE1',
+    'line_gap',
+    '核查内容真实，欢迎登录江苏社保APP扫描验证',
+    'draw_seal',
+    'table_bottom',
+    '打印时间：',
     '不得进行二次加工'
   ],
   'Jiangsu-new PDF watermark script'
@@ -2687,12 +2799,24 @@ mustInclude(
 /* —— 2026-09-01 全安卓卡顿优化（对照小米）—— */
 mustInclude(
   'frontend/public/js/tab-shell.js',
-  ['TaxAppTabShell', 'tab_embed=1', 'warmOtherTabs', 'isAndroidLike', 'baseDelay'],
+  [
+    'TaxAppTabShell',
+    'tab_embed=1',
+    'warmOtherTabs',
+    'isAndroidLike',
+    'baseDelay',
+    'promoteIframeIfLeftAssignedTab'
+  ],
   'tab-shell iframe cache + android warm delay'
 );
 mustInclude(
+  'frontend/login.html',
+  ['tab-shell-escape.js?v=20260906-login-top', 'assignTopLocation'],
+  'login escapes tab-shell iframe after success'
+);
+mustInclude(
   'frontend/public/js/auth.js',
-  ['injectTabShell', '/js/tab-shell.js?v=20260901-ios16pro-tabembed', "get('tab_embed') === '1'"],
+  ['injectTabShell', '/js/tab-shell.js?v=20260906-login-top', "get('tab_embed') === '1'"],
   'auth injects tab-shell and skips CG in embed'
 );
 mustInclude(

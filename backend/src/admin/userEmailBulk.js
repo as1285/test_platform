@@ -1,11 +1,52 @@
 /**
  * 运营：向已留邮箱的用户群发邮件（复用站内信人群筛选 + SMTP）
+ * 邮件 CTA 走 /api/public/email-click/:token，写入 click_token / clicked_at / click_count。
  */
+var crypto = require('crypto');
 var refundEstimate = require('./refundEstimate');
 var MSG_EMAIL_BULK_MAX = 200;
 var MSG_EMAIL_SEND_GAP_MS = 120;
 var EMAIL_SKIP_MARKER_PREFIX = '@@email_bulk:';
 
+function newClickToken() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+function buildClickTrackUrl(deps, token) {
+  var t = String(token || '').trim();
+  if (!t) return buildCtaUrl(deps, 'purchase.html');
+  var path = '/api/public/email-click/' + encodeURIComponent(t);
+  var origin = resolvePublicOrigin(deps);
+  if (!origin) return path;
+  return origin + path;
+}
+
+/** 仅允许跳回本站 origin，避免开放重定向 */
+function safeDestRedirect(deps, destUrl) {
+  var d = String(destUrl || '').trim();
+  var fallback = buildCtaUrl(deps, 'purchase.html');
+  if (!d) return fallback;
+  var origin = resolvePublicOrigin(deps);
+  if (/^https?:\/\//i.test(d)) {
+    if (!origin) return d;
+    if (d === origin || d.indexOf(origin + '/') === 0) return d;
+    return fallback;
+  }
+  if (d.charAt(0) === '/') {
+    return origin ? origin + d : d;
+  }
+  return buildCtaUrl(deps, d);
+}
+
+function makeTrackedCta(deps, linkUrl) {
+  var destUrl = buildCtaUrl(deps, linkUrl || 'purchase.html');
+  var token = newClickToken();
+  return {
+    token: token,
+    destUrl: destUrl,
+    trackUrl: buildClickTrackUrl(deps, token)
+  };
+}
 /**
  * 用户邮箱格式校验（注册 / 资料 / 运营发信共用）。
  * 比「有 @ 和点」更严：限制字符集、标签形态、连续点，并拒绝明显占位乱填。
@@ -317,6 +358,54 @@ function createUserEmailBulk(deps) {
     all_inactive: true
   };
 
+  async function ensureClickTrackingColumns(pool) {
+    async function ensureCol(name, alterSql) {
+      try {
+        const [rows] = await pool.execute(
+          `SELECT COUNT(*) AS c FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'user_email_sends'
+             AND COLUMN_NAME = ?`,
+          [name]
+        );
+        if (!rows || !rows[0] || Number(rows[0].c) === 0) {
+          await pool.execute('ALTER TABLE user_email_sends ' + alterSql);
+        }
+      } catch (e) {
+        if (!e || !/Duplicate/i.test(String(e.message || e))) {
+          console.warn(
+            '[user-email] ensure column ' + name,
+            e && e.message ? e.message : e
+          );
+        }
+      }
+    }
+    await ensureCol('click_token', 'ADD COLUMN click_token VARCHAR(32) NULL');
+    await ensureCol('dest_url', 'ADD COLUMN dest_url VARCHAR(512) NULL');
+    await ensureCol('clicked_at', 'ADD COLUMN clicked_at DATETIME NULL');
+    await ensureCol(
+      'click_count',
+      'ADD COLUMN click_count INT UNSIGNED NOT NULL DEFAULT 0'
+    );
+    try {
+      const [idx] = await pool.execute(
+        `SELECT COUNT(*) AS c FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'user_email_sends'
+           AND INDEX_NAME = 'uk_ues_click_token'`
+      );
+      if (!idx || !idx[0] || Number(idx[0].c) === 0) {
+        await pool.execute(
+          'ALTER TABLE user_email_sends ADD UNIQUE KEY uk_ues_click_token (click_token)'
+        );
+      }
+    } catch (eIdx) {
+      if (!eIdx || !/Duplicate/i.test(String(eIdx.message || eIdx))) {
+        console.warn('[user-email] ensure click_token index', eIdx && eIdx.message);
+      }
+    }
+  }
+
   async function ensureTable() {
     var pool = deps.getPool();
     await pool.execute(
@@ -330,12 +419,39 @@ function createUserEmailBulk(deps) {
         status VARCHAR(16) NOT NULL DEFAULT 'sent',
         error_msg VARCHAR(512) NULL,
         admin_username VARCHAR(64) NULL,
+        click_token VARCHAR(32) NULL,
+        dest_url VARCHAR(512) NULL,
+        clicked_at DATETIME NULL,
+        click_count INT UNSIGNED NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
+        UNIQUE KEY uk_ues_click_token (click_token),
         KEY idx_ues_batch (batch_id),
         KEY idx_ues_user (username),
         KEY idx_ues_created (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+    await ensureClickTrackingColumns(pool);
+  }
+
+  async function insertSendLog(pool, row) {
+    await pool.execute(
+      `INSERT INTO user_email_sends
+        (batch_id, username, email, subject, audience, status, error_msg, admin_username,
+         click_token, dest_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        row.batchId,
+        row.username,
+        row.email,
+        row.subject,
+        row.audience,
+        row.status,
+        row.errorMsg,
+        row.adminName,
+        row.clickToken || null,
+        row.destUrl || null
+      ]
     );
   }
 
@@ -482,9 +598,7 @@ function createUserEmailBulk(deps) {
     var defaultLink =
       opts.linkUrl || (personalizeRefundAmount ? 'refund_ad.html?from=email_refund' : 'purchase.html');
     var ctaUrl = buildCtaUrl(deps, defaultLink);
-    var sharedBodies = personalizeRefundAmount
-      ? null
-      : buildEmailBodies(subject, content, ctaUrl, resolveBodyOpts(deps, opts));
+    var bodyOptsShared = personalizeRefundAmount ? null : resolveBodyOpts(deps, opts);
     var recordsByUser = {};
     if (personalizeRefundAmount) {
       recordsByUser = await loadRefundRecordsByUsername(
@@ -509,7 +623,10 @@ function createUserEmailBulk(deps) {
         failed += 1;
         continue;
       }
-      var bodies = sharedBodies;
+      var rowSubject = subject;
+      var rowContent = content;
+      var rowLink = defaultLink;
+      var rowBodyOpts = bodyOptsShared;
       if (personalizeRefundAmount) {
         var est = refundEstimate.specialDeductionRefundEstimate(recordsByUser[uname] || []);
         if (!est.has_any_records) {
@@ -517,19 +634,18 @@ function createUserEmailBulk(deps) {
           continue;
         }
         var copy = refundEstimate.buildRefundAmountEmailCopy(est);
-        var rowCta = buildCtaUrl(deps, copy.link_url);
-        bodies = buildEmailBodies(
-          copy.subject,
-          copy.content,
-          rowCta,
-          resolveBodyOpts(deps, {
-            poster: opts.poster || 'refund',
-            ctaLabel: copy.cta_label,
-            benefits: copy.benefits,
-            audience: campaign || audience
-          })
-        );
+        rowSubject = copy.subject;
+        rowContent = copy.content;
+        rowLink = copy.link_url;
+        rowBodyOpts = resolveBodyOpts(deps, {
+          poster: opts.poster || 'refund',
+          ctaLabel: copy.cta_label,
+          benefits: copy.benefits,
+          audience: campaign || audience
+        });
       }
+      var tracked = makeTrackedCta(deps, rowLink);
+      var bodies = buildEmailBodies(rowSubject, rowContent, tracked.trackUrl, rowBodyOpts);
       var status = 'sent';
       var errMsg = null;
       try {
@@ -546,12 +662,18 @@ function createUserEmailBulk(deps) {
         failed += 1;
       }
       try {
-        await pool.execute(
-          `INSERT INTO user_email_sends
-            (batch_id, username, email, subject, audience, status, error_msg, admin_username)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [batchId, uname, email, bodies.subject, recordAudience, status, errMsg, adminName || null]
-        );
+        await insertSendLog(pool, {
+          batchId: batchId,
+          username: uname,
+          email: email,
+          subject: bodies.subject,
+          audience: recordAudience,
+          status: status,
+          errorMsg: errMsg,
+          adminName: adminName || null,
+          clickToken: tracked.token,
+          destUrl: tracked.destUrl
+        });
       } catch (eLog) {
         console.error('[user-email-bulk] log', eLog);
       }
@@ -612,11 +734,11 @@ function createUserEmailBulk(deps) {
     );
     var email = rows[0] && rows[0].email != null ? String(rows[0].email).trim() : '';
     if (!isValidUserEmail(email)) return { sent: false, reason: 'no_email' };
-    var ctaUrl = buildCtaUrl(deps, linkUrl || 'purchase.html');
+    var tracked = makeTrackedCta(deps, linkUrl || 'purchase.html');
     var bodies = buildEmailBodies(
       subject,
       content,
-      ctaUrl,
+      tracked.trackUrl,
       resolveBodyOpts(deps, Object.assign({ poster: 'offer', ctaLabel: '查看专属价' }, extra || {}))
     );
     await mail.sendMail({
@@ -627,19 +749,18 @@ function createUserEmailBulk(deps) {
     });
     try {
       await ensureTable();
-      await pool.execute(
-        `INSERT INTO user_email_sends
-          (batch_id, username, email, subject, audience, status, error_msg, admin_username)
-         VALUES (?, ?, ?, ?, ?, 'sent', NULL, ?)`,
-        [
-          'auto_' + Date.now().toString(36),
-          uid,
-          email,
-          bodies.subject,
-          'auto_notify',
-          'system'
-        ]
-      );
+      await insertSendLog(pool, {
+        batchId: 'auto_' + Date.now().toString(36),
+        username: uid,
+        email: email,
+        subject: bodies.subject,
+        audience: 'auto_notify',
+        status: 'sent',
+        errorMsg: null,
+        adminName: 'system',
+        clickToken: tracked.token,
+        destUrl: tracked.destUrl
+      });
     } catch (eLog) {
       /* 日志失败忽略 */
     }
@@ -697,7 +818,23 @@ function createUserEmailBulk(deps) {
                 WHERE s.username = u.username AND s.status = 'sent') AS last_email_at,
               (SELECT s2.subject FROM user_email_sends s2
                 WHERE s2.username = u.username AND s2.status = 'sent'
-                ORDER BY s2.created_at DESC LIMIT 1) AS last_email_subject
+                ORDER BY s2.created_at DESC LIMIT 1) AS last_email_subject,
+              (SELECT s3.clicked_at FROM user_email_sends s3
+                WHERE s3.username = u.username AND s3.status = 'sent'
+                ORDER BY s3.created_at DESC LIMIT 1) AS last_email_clicked_at,
+              (SELECT s4.click_count FROM user_email_sends s4
+                WHERE s4.username = u.username AND s4.status = 'sent'
+                ORDER BY s4.created_at DESC LIMIT 1) AS last_email_click_count,
+              EXISTS (
+                SELECT 1 FROM user_email_sends sh
+                WHERE sh.username = u.username AND sh.status = 'sent'
+                  AND (
+                    sh.subject LIKE '%半价%'
+                    OR IFNULL(sh.batch_id, '') LIKE '%half%'
+                    OR IFNULL(sh.audience, '') LIKE '%half%'
+                    OR IFNULL(sh.dest_url, '') LIKE '%email_half%'
+                  )
+              ) AS half_price_email_sent
        FROM users u` +
         whereSql +
         ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?',
@@ -713,7 +850,15 @@ function createUserEmailBulk(deps) {
         register_source_channel:
           r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
         last_email_at: r.last_email_at ? new Date(r.last_email_at).toISOString() : '',
-        last_email_subject: r.last_email_subject != null ? String(r.last_email_subject) : ''
+        last_email_subject: r.last_email_subject != null ? String(r.last_email_subject) : '',
+        last_email_clicked_at: r.last_email_clicked_at
+          ? new Date(r.last_email_clicked_at).toISOString()
+          : '',
+        last_email_click_count: Number(r.last_email_click_count) || 0,
+        half_price_email_sent:
+          r.half_price_email_sent === true ||
+          r.half_price_email_sent === 1 ||
+          Number(r.half_price_email_sent) === 1
       };
     });
     return {
@@ -807,8 +952,9 @@ function createUserEmailBulk(deps) {
     }
 
     var batchId = 'em_sel_' + Date.now().toString(36);
-    var ctaUrl = buildCtaUrl(deps, opts.linkUrl || 'purchase.html');
-    var bodies = buildEmailBodies(subject, content, ctaUrl, resolveBodyOpts(deps, opts));
+    var linkUrl = opts.linkUrl || 'purchase.html';
+    var bodyOpts = resolveBodyOpts(deps, opts);
+    var ctaUrl = buildCtaUrl(deps, linkUrl);
     var adminName =
       opts.admin && opts.admin.username != null ? String(opts.admin.username).trim() : '';
     var sent = 0;
@@ -821,6 +967,8 @@ function createUserEmailBulk(deps) {
         failed += 1;
         continue;
       }
+      var tracked = makeTrackedCta(deps, linkUrl);
+      var bodies = buildEmailBodies(subject, content, tracked.trackUrl, bodyOpts);
       var status = 'sent';
       var errMsg = null;
       try {
@@ -837,12 +985,18 @@ function createUserEmailBulk(deps) {
         failed += 1;
       }
       try {
-        await pool.execute(
-          `INSERT INTO user_email_sends
-            (batch_id, username, email, subject, audience, status, error_msg, admin_username)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [batchId, uname, email, bodies.subject, 'selected', status, errMsg, adminName || null]
-        );
+        await insertSendLog(pool, {
+          batchId: batchId,
+          username: uname,
+          email: email,
+          subject: bodies.subject,
+          audience: 'selected',
+          status: status,
+          errorMsg: errMsg,
+          adminName: adminName || null,
+          clickToken: tracked.token,
+          destUrl: tracked.destUrl
+        });
       } catch (eLog) {
         console.error('[user-email-selected] log', eLog);
       }
@@ -906,7 +1060,8 @@ function createUserEmailBulk(deps) {
     var total = Number(countRows[0] && countRows[0].total) || 0;
     const [rows] = await pool.query(
       `SELECT s.id, s.batch_id, s.username, s.email, s.subject, s.audience, s.status,
-              s.error_msg, s.admin_username, s.created_at
+              s.error_msg, s.admin_username, s.created_at,
+              s.click_token, s.dest_url, s.clicked_at, s.click_count
        FROM user_email_sends s` +
         whereSql +
         ' ORDER BY s.created_at DESC, s.id DESC LIMIT ? OFFSET ?',
@@ -923,10 +1078,40 @@ function createUserEmailBulk(deps) {
         status: r.status != null ? String(r.status) : '',
         error_msg: r.error_msg != null ? String(r.error_msg) : '',
         admin_username: r.admin_username != null ? String(r.admin_username) : '',
-        created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+        created_at: r.created_at ? new Date(r.created_at).toISOString() : '',
+        dest_url: r.dest_url != null ? String(r.dest_url) : '',
+        clicked_at: r.clicked_at ? new Date(r.clicked_at).toISOString() : '',
+        click_count: Number(r.click_count) || 0,
+        has_track: !!(r.click_token && String(r.click_token).trim())
       };
     });
     return { items: items, total: total, page: page, limit: limit, q: q, username: username };
+  }
+
+  /**
+   * 公开跳转：记一次点击后 302 到 dest_url
+   */
+  async function consumeEmailClick(token) {
+    await ensureTable();
+    var t = String(token || '').trim();
+    if (!/^[a-fA-F0-9]{32}$/.test(t)) return null;
+    var pool = deps.getPool();
+    const [found] = await pool.execute(
+      'SELECT id, dest_url FROM user_email_sends WHERE click_token = ? LIMIT 1',
+      [t]
+    );
+    if (!found || !found.length) return null;
+    await pool.execute(
+      `UPDATE user_email_sends
+       SET click_count = click_count + 1,
+           clicked_at = IFNULL(clicked_at, CURRENT_TIMESTAMP)
+       WHERE click_token = ?`,
+      [t]
+    );
+    return {
+      dest_url: safeDestRedirect(deps, found[0].dest_url),
+      id: Number(found[0].id) || 0
+    };
   }
 
   /**
@@ -1027,6 +1212,7 @@ function createUserEmailBulk(deps) {
     campaignStats: campaignStats,
     clearUserEmail: clearUserEmail,
     notifyUserEmail: notifyUserEmail,
+    consumeEmailClick: consumeEmailClick,
     isValidUserEmail: isValidUserEmail,
     MSG_EMAIL_BULK_MAX: MSG_EMAIL_BULK_MAX,
     EMAIL_SKIP_MARKER_PREFIX: EMAIL_SKIP_MARKER_PREFIX
@@ -1038,6 +1224,9 @@ module.exports = {
   isValidUserEmail: isValidUserEmail,
   buildEmailBodies: buildEmailBodies,
   buildCtaUrl: buildCtaUrl,
+  buildClickTrackUrl: buildClickTrackUrl,
+  makeTrackedCta: makeTrackedCta,
+  safeDestRedirect: safeDestRedirect,
   resolvePosterUrl: resolvePosterUrl,
   EMAIL_COPY_TEMPLATES: EMAIL_COPY_TEMPLATES,
   EMAIL_POSTER_PATHS: EMAIL_POSTER_PATHS

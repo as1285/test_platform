@@ -275,7 +275,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260905-mine-safe-edit"></script>
-    <script src="/js/auth.js?v=20260905-mine-safe-edit" defer></script>
+    <script src="/js/auth.js?v=20260906-login-top" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -2403,7 +2403,7 @@
                 <div id="mineProfileEditHit" hidden aria-hidden="true"></div>
                 <div id="mineUserCardEditHit" hidden aria-hidden="true"></div>
                 <a href="personal_info.html" class="mine-hit mine-hit-profile" id="minePersonalInfoHit" aria-label="个人信息"></a>
-                <a href="login.html" class="mine-guest-login-btn" id="mineGuestLoginBtn">注册/登录</a>
+                <a href="login.html?next=mine.html" class="mine-guest-login-btn" id="mineGuestLoginBtn" target="_top">注册/登录</a>
 
                 <a href="jtcy.html" class="mine-hit mine-hit-family" aria-label="家庭成员"></a>
                 <a href="renzhi.html" class="mine-hit mine-hit-employer" aria-label="任职受雇"></a>
@@ -2728,13 +2728,14 @@
                     return;
                 }
                 btn.removeAttribute('hidden');
-                var href = 'login.html';
+                var href = 'login.html?next=mine.html';
                 try {
                     if (typeof window.buildLoginPageUrl === 'function') {
                         href = window.buildLoginPageUrl('mine.html');
                     }
                 } catch (e1) {}
                 btn.setAttribute('href', href);
+                btn.setAttribute('target', '_top');
             }
 
             function isMineAppShell() {

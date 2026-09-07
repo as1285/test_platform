@@ -3,7 +3,9 @@
 """深圳社会保险参保证明（「深圳新」）演示 PDF。
 
 版式对齐移动端「个人权益记录（参保证明）」：
-标题、文号、信息行、（一）历年参保年限、（二）近两年缴费明细、备注、双章、页脚。
+标题、文号、信息行、（一）历年参保年限、（二）近两年缴费明细、备注、
+双章（社保基金管理局 + 医疗保险基金管理中心，原图扣章）、页脚。
+机构名和日期是 PDF 黑字底文，红章图盖在上面（与官方下载件同一层序）。
 """
 from __future__ import print_function
 
@@ -30,8 +32,11 @@ from sbdy_render_pdf import (  # noqa: E402
 ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 SEAL_SI = os.path.join(ASSETS, 'sz_new_si_seal.png')
 SEAL_MI = os.path.join(ASSETS, 'sz_new_mi_seal.png')
-# 缺第二枚章时回退到既有深圳章，避免渲染失败
+# 缺章时回退到既有深圳章，避免渲染失败
 SEAL_FALLBACK = os.path.join(ASSETS, 'sz_seal.png')
+
+SEAL_SI_LABEL = '深圳市社会保险基金管理局'
+SEAL_MI_LABEL = '深圳市医疗保险基金管理中心'
 
 PAGE_W, PAGE_H = 595.0, 842.0
 X0, X1 = 28.0, 567.0
@@ -62,11 +67,12 @@ def doc_serial_of(p):
 
 
 def seal_date_label(p):
+    """官方样张章心日期形如「2026年09 月06 日」。"""
     parsed = parse_print_date(p.get('print_date') or p.get('printDate'))
     if not parsed:
         return ''
     y, mo, d = parsed
-    return '%d年%02d月%02d日' % (y, mo, d)
+    return '%d年%02d 月%02d 日' % (y, mo, d)
 
 
 def years_months_of(p, n_rows):
@@ -175,14 +181,15 @@ def base_text(n):
 
 
 def note_lines(auth_code):
+    """备注文案对齐官方《参保证明》下载件。"""
     return [
-        '1.本证明可作为参保人参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（%s）核查，验真码有效期三个月。'
+        '1、本《参保证明》可作为参保人在我市参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（%s）核查，验真码有效期三个月。'
         % (_s(auth_code)),
-        '2.生育保险中的险种“1”为生育保险，“2”为生育医疗。',
-        '3.医疗保险档次“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险，“6”为统筹医疗保险。',
-        '4.上述“缴费明细”表中带“*”标识为补缴，带“#”标识为补差，空行为断缴。',
-        '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。',
-        '6.单位编号对应的单位名称：',
+        '2、“缴费明细”表中带“*”标识的为补缴，表示未在缴费时段当月及时缴纳社保费用，跨月补缴到账。空行为断缴，表示缴费时段未缴纳社保费。',
+        '3、医疗险种“1”为基本医疗保险一档、“2”为基本医疗保险二档、“4”为基本医疗保险三档。',
+        '4、生育险种“1”为生育保险、“2”为生育医疗。',
+        '5、带“#”特指退役士兵补缴时段。带“&”标识为参保单位申请缓缴社会保险费单位缴费部分的时段。该参保人带&标志的缴费年月，养老保险在2026年12月前视同到账，工伤保险、失业保险在2026年12月前视同到账。',
+        '6、单位信息：（单位编号）/（单位名称）',
     ]
 
 
@@ -194,9 +201,14 @@ def collect_blob(p, months, auth_code, years):
         '（二）近两年参保缴费明细缴费时段单位编号缴费基数档次险种',
         '备注：',
         '　　',  # 信息行全角空格，缺字会变成方框
-        '本服务由深圳市人力资源和社会保障局提供',
-        '深圳市社会保险基金管理局深圳市医疗保障基金管理中心',
-        '社保费缴纳清单证明专用章医疗与生育保险业务专用章',
+        SEAL_SI_LABEL,
+        SEAL_MI_LABEL,
+        '社保费缴纳清单证明专用章',
+        '医疗与生育保险业务专用章',
+        '本《参保证明》',
+        '单位信息',
+        '视同到账',
+        '退役士兵',
         _s(p.get('name')),
         _s(p.get('id_number')),
         _s(p.get('computer_no')),
@@ -232,24 +244,73 @@ def draw_rect(page, x0, y0, x1, y1, width=0.6):
     page.draw_rect(fitz.Rect(x0, y0, x1, y1), color=(0, 0, 0), width=width)
 
 
-def draw_seal_with_date(page, path, rect, date_text, font_path, fontname):
-    if path and os.path.isfile(path):
-        page.insert_image(rect, filename=path, keep_proportion=True)
-    elif os.path.isfile(SEAL_FALLBACK):
-        page.insert_image(rect, filename=SEAL_FALLBACK, keep_proportion=True)
-    if not date_text:
-        return
-    # 叠印日期，落在五角星下方、专用章名上方
+def _seal_font_path():
+    try:
+        return ensure_full_cjk_font()
+    except Exception:
+        pass
+    for p in (
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+        '/usr/share/fonts/truetype/arphic-gbsn00lp/gbsn00lp.ttf',
+    ):
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def _seal_overlay_png(path, ink_alpha=0.86):
+    """红章保留透明底；去掉抠图白边，印泥略透明，黑字才能从红印里透出。"""
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    im = Image.open(path).convert('RGBA')
+    arr = np.array(im)
+    r, g, b, a = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2], arr[:, :, 3]
+    white = (r > 240) & (g > 240) & (b > 240)
+    a = a.astype(np.float32)
+    a[white] = 0
+    a = np.clip(a * float(ink_alpha), 0, 255).astype(np.uint8)
+    out = Image.fromarray(np.dstack([r, g, b, a]), 'RGBA')
+    buf = io.BytesIO()
+    out.save(buf, format='PNG')
+    return buf.getvalue()
+
+
+def draw_seal_pair_item(page, path, rect, label, date_text, font_path, fontname):
+    """官方层序：先写机构名/日期黑字，再盖红章。字在章洞里，红印压住笔划处透出。"""
     cx = (rect.x0 + rect.x1) / 2.0
-    size = 6.4
-    tw = text_width(font_path, date_text, size)
-    page.insert_text(
-        (cx - tw / 2.0, rect.y0 + (rect.y1 - rect.y0) * 0.58),
-        date_text,
-        fontname=fontname,
-        fontsize=size,
-        color=(0.77, 0.19, 0.20),
-    )
+    h = rect.y1 - rect.y0
+    # 官方 120pt 章：机构名约 10pt、基线在章高 40%；日期基线约 63%
+    if label:
+        size = max(7.5, h * (10.0 / 120.0))
+        tw = text_width(font_path, label, size)
+        page.insert_text(
+            (cx - tw / 2.0, rect.y0 + h * 0.403),
+            label,
+            fontname=fontname,
+            fontsize=size,
+            color=(0.05, 0.05, 0.05),
+        )
+    if date_text:
+        size = max(7.2, h * (10.0 / 120.0))
+        tw = text_width(font_path, date_text, size)
+        page.insert_text(
+            (cx - tw / 2.0, rect.y0 + h * 0.628),
+            date_text,
+            fontname=fontname,
+            fontsize=size,
+            color=(0.05, 0.05, 0.05),
+        )
+    seal_path = path if path and os.path.isfile(path) else SEAL_FALLBACK
+    if not seal_path or not os.path.isfile(seal_path):
+        return
+    try:
+        png = _seal_overlay_png(seal_path)
+        page.insert_image(rect, stream=png, keep_proportion=True, overlay=True)
+    except Exception:
+        page.insert_image(rect, filename=seal_path, keep_proportion=True, overlay=True)
 
 
 def render(payload, auth_code, qr_url, out_path):
@@ -431,39 +492,43 @@ def render(payload, auth_code, qr_url, out_path):
             line = '%s / %s' % (item.get('unit_code') or '', item.get('unit_name') or '')
             page.insert_text((X0 + 12, y), line, fontname=body_name, fontsize=7.4)
 
-        # 双章靠右、略压在备注下方，对齐官方参保证明（不再页心居中）
-        seal_size = 80.0
-        seal_y = min(ph - 108.0, y + 8.0)
-        date_lab = seal_date_label(p)
-        gap = 22.0
+        # 双章靠右：先写机构名/日期黑字，再盖红章（官方 120pt）
+        seal_size = 120.0
+        gap = 31.0
+        seal_y = min(ph - 148.0, y + 10.0)
         right_x = X1 - seal_size
         left_x = right_x - gap - seal_size
-        draw_seal_with_date(
+        date_lab = seal_date_label(p)
+        draw_seal_pair_item(
             page,
             SEAL_SI,
             fitz.Rect(left_x, seal_y, left_x + seal_size, seal_y + seal_size),
+            SEAL_SI_LABEL,
             date_lab,
             subset_body,
             body_name,
         )
-        draw_seal_with_date(
+        draw_seal_pair_item(
             page,
             SEAL_MI,
             fitz.Rect(right_x, seal_y, right_x + seal_size, seal_y + seal_size),
+            SEAL_MI_LABEL,
             date_lab,
             subset_body,
             body_name,
         )
 
-        foot = '本服务由深圳市人力资源和社会保障局提供'
-        fw = text_width(subset_body, foot, 8.0)
-        page.insert_text(
-            ((PAGE_W - fw) / 2.0, ph - 22.0),
-            foot,
-            fontname=body_name,
-            fontsize=8.0,
-            color=(0.45, 0.45, 0.45),
-        )
+        # 官方下载件底部为验真码，不再放「本服务由…」灰字
+        code = _s(auth_code).strip()
+        if code:
+            cw = text_width(subset_body, code, 9.0)
+            page.insert_text(
+                ((PAGE_W - cw) / 2.0, ph - 20.0),
+                code,
+                fontname=body_name,
+                fontsize=9.0,
+                color=(0.15, 0.15, 0.15),
+            )
 
         doc.save(out_path, deflate=True, garbage=4)
         doc.close()
@@ -536,17 +601,64 @@ def selftest():
                 print('selftest title not left-aligned', text, x0, file=sys.stderr)
                 return 1
         doc = fitz.open(out_path)
-        n_img = len(doc[0].get_images())
+        page = doc[0]
+        n_img = len(page.get_images())
+        text = page.get_text('text')
+        seal_boxes = [info.get('bbox') for info in page.get_image_info()]
+        company_hit = None
+        agency_hits = []
+        for w in page.get_text('words'):
+            if '易满星' in w[4]:
+                company_hit = w
+            if '基金管理局' in w[4] or '管理中心' in w[4]:
+                agency_hits.append(w)
         doc.close()
         if n_img < 2:
             print('selftest expected 2 seals, got', n_img, file=sys.stderr)
             return 1
-        doc = fitz.open(out_path)
-        text = doc[0].get_text('text')
-        doc.close()
-        for needle in ('向相关部门提供', '查验部门可通过登录网址', '统筹医疗保险', '林晓薇', '31327084'):
+        if len(seal_boxes) < 2:
+            print('selftest missing seal boxes', seal_boxes, file=sys.stderr)
+            return 1
+        # 用人单位名称不得压进公章
+        if company_hit:
+            cx = (company_hit[0] + company_hit[2]) / 2.0
+            cy = (company_hit[1] + company_hit[3]) / 2.0
+            for box in seal_boxes:
+                x0, y0, x1, y1 = box
+                if x0 <= cx <= x1 and y0 <= cy <= y1:
+                    print(
+                        'selftest employer company must not sit under seal',
+                        company_hit[:4],
+                        box,
+                        file=sys.stderr,
+                    )
+                    return 1
+        for needle in (
+            '向相关部门提供',
+            '查验部门可通过登录网址',
+            '本《参保证明》',
+            '单位信息',
+            '林晓薇',
+            '31327084',
+        ):
             if needle not in text:
                 print('selftest missing glyph/text', needle, file=sys.stderr)
+                return 1
+        if not (os.path.isfile(SEAL_SI) and os.path.isfile(SEAL_MI)):
+            print('selftest missing seal png', SEAL_SI, SEAL_MI, file=sys.stderr)
+            return 1
+        if SEAL_SI_LABEL not in text or SEAL_MI_LABEL not in text:
+            print('selftest missing agency labels as PDF text', file=sys.stderr)
+            return 1
+        # 机构名必须落在对应章框内（黑字底文，不是画进 PNG）
+        if len(agency_hits) < 2:
+            print('selftest agency words not found', agency_hits, file=sys.stderr)
+            return 1
+        for w in agency_hits:
+            cx = (w[0] + w[2]) / 2.0
+            cy = (w[1] + w[3]) / 2.0
+            if not any(b[0] <= cx <= b[2] and b[1] <= cy <= b[3] for b in seal_boxes):
+                print('selftest agency label not inside seal', w[4], w[:4], seal_boxes, file=sys.stderr)
                 return 1
         print('selftest ok titles=%s seals=%s' % (len(hits), n_img))
         return 0

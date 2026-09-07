@@ -17,6 +17,8 @@ ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 FRONTEND_IMG = os.path.join(HERE, '..', '..', 'frontend', 'public', 'img')
 TEXT_REFERENCE_PNG = os.path.join(ASSETS, 'js_seal_text_reference.png')
 ZJ_STYLE_SEAL_PNG = os.path.join(ASSETS, 'seal.png')
+# 用户提供的干净红章原图（白底亦可）；存在时优先使用，避免手动画线覆盖。
+USER_SEAL_SRC_PNG = os.path.join(ASSETS, 'js_seal_user_src.png')
 FONT_CANDIDATES = [
     os.path.join(ASSETS, 'NotoSerifCJKsc-Regular.otf'),
     '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',
@@ -87,7 +89,52 @@ def _make_zj_style_seal(out_path, size):
     return out_path
 
 
+def _make_from_user_src(out_path, size=1024):
+    """把用户白底/透明红章转成透明底正方形 PNG。"""
+    import numpy as np
+
+    rgb = np.array(Image.open(USER_SEAL_SRC_PNG).convert('RGB'), dtype=np.int16)
+    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    whiteness = np.minimum(np.minimum(r, g), b)
+    red_score = r - np.maximum(g, b)
+    ink = (r > 100) & (red_score > 25)
+    soft = (r > 140) & (red_score > 8) & (whiteness < 245)
+    alpha = np.zeros(r.shape, np.uint8)
+    alpha[soft] = np.clip((255 - whiteness[soft]) * 2, 40, 255).astype(np.uint8)
+    alpha[ink] = 255
+    rgba = np.zeros((rgb.shape[0], rgb.shape[1], 4), np.uint8)
+    rgba[:, :, 0] = 255
+    rgba[:, :, 3] = alpha
+    ys, xs = np.where(alpha > 20)
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0, x1 = int(xs.min()), int(xs.max())
+    pad = 4
+    y0 = max(0, y0 - pad)
+    x0 = max(0, x0 - pad)
+    y1 = min(rgba.shape[0] - 1, y1 + pad)
+    x1 = min(rgba.shape[1] - 1, x1 + pad)
+    crop = rgba[y0:y1 + 1, x0:x1 + 1]
+    ch, cw = crop.shape[:2]
+    side = max(ch, cw) + 8
+    sq = np.zeros((side, side, 4), np.uint8)
+    oy = (side - ch) // 2
+    ox = (side - cw) // 2
+    sq[oy:oy + ch, ox:ox + cw] = crop
+    out = Image.fromarray(sq).resize((max(64, int(size)), max(64, int(size))), Image.LANCZOS)
+    arr = np.array(out)
+    arr[:, :, 0] = 255
+    arr[:, :, 1] = 0
+    arr[:, :, 2] = 0
+    arr[:, :, 3] = np.where(arr[:, :, 3] > 18, arr[:, :, 3], 0)
+    out = Image.fromarray(arr)
+    os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
+    out.save(out_path, 'PNG')
+    return out_path
+
+
 def make_js_seal(out_path, size=1024):
+    if os.path.isfile(USER_SEAL_SRC_PNG):
+        return _make_from_user_src(out_path, size)
     if os.path.isfile(ZJ_STYLE_SEAL_PNG):
         return _make_zj_style_seal(out_path, size)
 

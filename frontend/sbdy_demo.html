@@ -287,9 +287,26 @@
             </div>
             <label class="field-label" for="sbdyBase">缴费基数（元）</label>
             <input class="field" type="number" id="sbdyBase" value="4986" step="0.01">
+            <div class="sbdy-js-new-only" hidden>
+                <label class="field-label" for="sbdyTitleMonths">标题月数</label>
+                <input class="field" type="number" id="sbdyTitleMonths" min="1" max="600" step="1" placeholder="如 441">
+                <label class="field-label" for="sbdyTitleCompact">标题区间</label>
+                <input class="field" type="text" id="sbdyTitleCompact" maxlength="16" placeholder="如 199001-202609">
+                <p class="card-hint">明细按上面起止月；标题「出具证明前 N 个月（YYYYMM-YYYYMM）」可单独填。养老个人=基数×8%，失业个人=基数×0.5%。</p>
+            </div>
+            <label class="field-label" for="sbdyInjuryBase">工伤基数（元，空则同养老）</label>
+            <input class="field" type="number" id="sbdyInjuryBase" step="0.01" placeholder="如 2500">
+            <label class="field-label" for="sbdyUnempBase">失业基数（元，空则同工伤）</label>
+            <input class="field" type="number" id="sbdyUnempBase" step="0.01" placeholder="如 2500">
+            <p class="card-hint">工伤/失业可与养老不同；留空则工伤同养老、失业同工伤。</p>
             <div class="sbdy-sz-only" hidden>
                 <label class="field-label" for="sbdyMedicalBase">医保基数（元）</label>
                 <input class="field" type="number" id="sbdyMedicalBase" value="4492" step="0.01">
+                <label class="field-label" for="sbdyIuBaseChangeYm">工伤/失业基数变更起月</label>
+                <input class="field" type="month" id="sbdyIuBaseChangeYm">
+                <label class="field-label" for="sbdyIuBaseAfter">变更后工伤/失业基数</label>
+                <input class="field" type="number" id="sbdyIuBaseAfter" step="0.01" placeholder="如 2520">
+                <p class="card-hint">深圳/广州：变更起月起用新基数（例：2025-03 前 2500、起 2520）。</p>
             </div>
 
             <details class="advanced">
@@ -341,7 +358,7 @@
     <script>
 window.SBDY_DEMO_APP = { mode: 'app', autoPrefill: false };
     </script>
-    <script src="/js/admin/modules/sbdy-demo.js?v=20260905-sz-new"></script>
+    <script src="/js/admin/modules/sbdy-demo.js?v=20260906-js-new-441"></script>
     <script>
 (function () {
     function token() {

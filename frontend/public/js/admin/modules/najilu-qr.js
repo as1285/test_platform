@@ -851,6 +851,18 @@
     }
     html += '<div class="share-kpi-grid">';
     html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">页面浏览</div><div class="ud-val">' +
+      esc(String(s.page_views || 0)) +
+      '</div><div class="share-kpi-sub">访客 ' +
+      esc(String(s.page_view_users || 0)) +
+      ' · C 端 najilu_qr</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">入口点击</div><div class="ud-val">' +
+      esc(String(s.entry_clicks || 0)) +
+      '</div><div class="share-kpi-sub">用户数 ' +
+      esc(String(s.entry_click_users || 0)) +
+      ' · 咨询/开具页等</div></div>';
+    html +=
       '<div class="share-kpi-card"><div class="ud-label">已解锁用户（累计）</div><div class="ud-val">' +
       esc(String(s.unlocked_users || 0)) +
       '</div><div class="share-kpi-sub">najilu_qr_unlocked=1</div></div>';
@@ -882,24 +894,48 @@
       '</div></div>';
     html += '</div>';
 
+    var clicks = data.track_events || [];
+    html += '<div class="share-kpi-section-label">C 端点击明细</div>';
+    if (!clicks.length) {
+      html +=
+        '<div class="share-stats-empty">该区间暂无浏览/点击（埋点上线前无历史；请让用户打开 C 端页后再刷新）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>事件</th><th>次数</th><th>用户数</th></tr></thead><tbody>';
+      clicks.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(row.event_label || row.event_key || '—') + '</td>';
+        html += '<td>' + esc(String(row.cnt || 0)) + '</td>';
+        html += '<td>' + esc(String(row.users || 0)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
     var users = data.usage_users || [];
     html +=
       '<div class="share-kpi-section-label">使用用户（' +
       esc(String(users.length)) +
       '，最多 200）</div>';
     if (!users.length) {
-      html += '<div class="share-stats-empty">该区间暂无使用用户（无保存或付费）</div>';
+      html += '<div class="share-stats-empty">该区间暂无使用用户（无浏览、保存或付费）</div>';
     } else {
       html +=
-        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>最近使用</th><th>用户</th><th>姓名</th><th>已解锁</th><th>已锁定码</th><th>保存</th><th>水印</th><th>去水印</th><th>付费单</th><th>付费金额</th></tr></thead><tbody>';
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>最近使用</th><th>用户</th><th>姓名</th><th>浏览</th><th>入口点</th><th>已解锁</th><th>已锁定码</th><th>保存</th><th>水印</th><th>去水印</th><th>付费单</th><th>付费金额</th></tr></thead><tbody>';
       users.forEach(function (row) {
         html += '<tr>';
         html +=
           '<td>' +
-          esc(formatDt(row.last_used_at || row.last_saved_at || row.last_paid_at)) +
+          esc(
+            formatDt(
+              row.last_used_at || row.last_viewed_at || row.last_saved_at || row.last_paid_at
+            )
+          ) +
           '</td>';
         html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
         html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + esc(String(row.page_views || 0)) + '</td>';
+        html += '<td>' + esc(String(row.entry_clicks || 0)) + '</td>';
         html += '<td>' + (row.unlocked ? '是' : '否') + '</td>';
         html += '<td>' + (row.has_override ? '是' : '否') + '</td>';
         html += '<td>' + esc(String(row.saves || 0)) + '</td>';
@@ -918,10 +954,14 @@
       html += '<div class="share-stats-empty">该区间暂无按日数据</div>';
     } else {
       html +=
-        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>日期</th><th>付费单</th><th>付费用户</th><th>GMV</th><th>保存</th><th>保存用户</th><th>水印</th><th>去水印</th></tr></thead><tbody>';
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>日期</th><th>浏览</th><th>浏览用户</th><th>入口点</th><th>入口用户</th><th>付费单</th><th>付费用户</th><th>GMV</th><th>保存</th><th>保存用户</th><th>水印</th><th>去水印</th></tr></thead><tbody>';
       daily.forEach(function (row) {
         html += '<tr>';
         html += '<td>' + esc(row.day || '—') + '</td>';
+        html += '<td>' + esc(String(row.page_views || 0)) + '</td>';
+        html += '<td>' + esc(String(row.page_view_users || 0)) + '</td>';
+        html += '<td>' + esc(String(row.entry_clicks || 0)) + '</td>';
+        html += '<td>' + esc(String(row.entry_click_users || 0)) + '</td>';
         html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
         html += '<td>' + esc(String(row.paid_users || 0)) + '</td>';
         html += '<td>¥' + esc(String(row.gmv || '0.00')) + '</td>';
@@ -929,6 +969,24 @@
         html += '<td>' + esc(String(row.save_users || 0)) + '</td>';
         html += '<td>' + esc(String(row.saves_demo || 0)) + '</td>';
         html += '<td>' + esc(String(row.saves_unlocked || 0)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var views = data.recent_views || [];
+    html += '<div class="share-kpi-section-label">最近浏览（最多 50）</div>';
+    if (!views.length) {
+      html += '<div class="share-stats-empty">该区间暂无浏览记录</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>事件</th></tr></thead><tbody>';
+      views.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + esc(row.event_label || row.event_key || '—') + '</td>';
         html += '</tr>';
       });
       html += '</tbody></table></div>';

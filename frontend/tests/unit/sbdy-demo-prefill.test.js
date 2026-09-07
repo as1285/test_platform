@@ -38,6 +38,7 @@ describe('社保演示预填分段', () => {
     document.body.innerHTML = `
       <input id="sbdyRegionZj" type="radio" checked>
       <input id="sbdyRegionJs" type="radio">
+      <input id="sbdyRegionJsNew" type="radio">
       <input id="sbdyRegionHa" type="radio">
       <input id="sbdyPrefillUser" value="13555226712">
       <input id="sbdyPrefillStart" type="month" value="2024-08">
@@ -52,6 +53,8 @@ describe('社保演示预填分段', () => {
       <input id="sbdyBase" value="4879">
       <input id="sbdyPeriodStart" type="month">
       <input id="sbdyPeriodEnd" type="month">
+      <input id="sbdyTitleMonths">
+      <input id="sbdyTitleCompact">
       <span id="sbdyDemoStatus"></span>
       <div id="sbdySegments"></div>
       <table><tbody id="sbdyDemoListTbody"></tbody></table>
@@ -418,6 +421,32 @@ describe('社保演示预填分段', () => {
     expect(Number(parsed.base_amount)).toBe(12000);
   });
 
+  it('江苏新样张粘贴：标题保留 441 个月及 199001-202609，明细用 2023.12-2026.7', () => {
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    const parsed = window.AdminModules['sbdy-demo'].parsePasteTemplate(`
+江苏省社会保险权益记录单 (参保人员)
+姓名：张某某
+身份证号320102199001011234
+性别：男
+出具证明前441个月缴费情况 (199001-202609)
+缴纳月份:2023.12-2026.7
+缴费基数:12000
+该公司核查内容真实，欢迎登录人社APP扫描验证
+全国社保卡服务平台
+公司名称：南京晶升装备股份有限公司
+`);
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.region).toBe('js_new');
+    expect(parsed.period_start).toBe('2023-12');
+    expect(parsed.period_end).toBe('2026-07');
+    expect(parsed.span_months).toBe(441);
+    expect(parsed.period_compact).toBe('199001-202609');
+    expect(Number(parsed.base_amount)).toBe(12000);
+    expect(parsed.company_name).toContain('南京晶升');
+  });
+
   it('粘贴河南社保模版识别为河南并默认参保缴费', () => {
     // eslint-disable-next-line no-eval
     eval(sbdyCode);
@@ -505,5 +534,58 @@ describe('社保演示预填分段', () => {
       window.adminFetch.mock.calls.some((c) => String(c[0]).includes('/delete'))
     ).toBe(true);
     confirmSpy.mockRestore();
+  });
+
+  it('选中江苏新后填充示例用南京数据，不走浙江杭州样例', () => {
+    document.body.innerHTML = `
+      <input name="sbdyRegion" id="sbdyRegionZj" type="radio" value="zj">
+      <input name="sbdyRegion" id="sbdyRegionJs" type="radio" value="js">
+      <input name="sbdyRegion" id="sbdyRegionJsNew" type="radio" value="js_new" checked>
+      <input id="sbdyName">
+      <input id="sbdyIdNumber">
+      <select id="sbdyGender"><option value="女">女</option><option value="男">男</option></select>
+      <input id="sbdyCompany">
+      <input id="sbdyCredit">
+      <input id="sbdyArea">
+      <input id="sbdyStatus">
+      <input id="sbdyStatusPension">
+      <input id="sbdyStatusMedical">
+      <input id="sbdyStatusInjury">
+      <input id="sbdyStatusUnemp">
+      <input id="sbdyBase">
+      <input id="sbdyPeriodStart" type="month">
+      <input id="sbdyPeriodEnd" type="month">
+      <input id="sbdyTitleMonths">
+      <input id="sbdyTitleCompact">
+      <input id="sbdyPrintDate">
+      <span id="sbdyDemoStatus"></span>
+      <div id="sbdySegments"></div>
+    `;
+    // eslint-disable-next-line no-eval
+    eval(sbdyCode);
+    window.AdminModules['sbdy-demo'].fillSample();
+    expect(document.getElementById('sbdyName').value).toBe('张某某');
+    expect(document.getElementById('sbdyCompany').value).toContain('南京');
+    expect(document.getElementById('sbdyArea').value).toBe('经济技术开发区');
+    expect(document.getElementById('sbdyPeriodStart').value).toBe('2023-12');
+    expect(document.getElementById('sbdyPeriodEnd').value).toBe('2026-07');
+    expect(document.getElementById('sbdyBase').value).toBe('12000');
+    expect(document.getElementById('sbdyTitleMonths').value).toBe('441');
+    expect(document.getElementById('sbdyTitleCompact').value).toBe('199001-202609');
+    expect(document.getElementById('sbdyDemoStatus').textContent).toContain('江苏新');
+    expect(document.getElementById('sbdyDemoStatus').textContent).not.toContain('王思远');
+    expect(document.getElementById('sbdyDemoStatus').textContent).not.toContain('李晓晴');
+  });
+});
+
+describe('江苏新标题字段', () => {
+  it('后台页有标题月数/区间，生成不再绑死示例姓名', () => {
+    const html = readFileSync(resolve(__dirname, '../../admin_panel.html'), 'utf8');
+    expect(html).toContain('id="sbdyTitleMonths"');
+    expect(html).toContain('id="sbdyTitleCompact"');
+    expect(html).toContain('199001-202609');
+    expect(sbdyCode).toContain("val('sbdyTitleMonths')");
+    expect(sbdyCode).toContain("val('sbdyTitleCompact')");
+    expect(sbdyCode).not.toContain("jsNewSampleExtras && val('sbdyName') === '张某某'");
   });
 });

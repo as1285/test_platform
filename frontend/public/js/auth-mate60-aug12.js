@@ -5519,7 +5519,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260905-mine-safe-edit';
+    s.src = '/js/conversion-guide.js?v=20260906-najilu-track';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     s.defer = true;

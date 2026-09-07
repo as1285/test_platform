@@ -112,9 +112,37 @@ describe('C 端完税二维码入口位置', () => {
     expect(najiluQrHtml).toContain('consult.html?tab=products');
   });
 
-  it('纳税记录开具页右上角有替换二维码入口', () => {
-    expect(najiluHtml).toContain('id="najiluQrReplaceLink"');
-    expect(najiluHtml).toContain('najilu_qr.html?from=najilu');
-    expect(najiluHtml).toContain('替换二维码');
+  it('纳税记录开具页顶栏不再常驻替换二维码入口，首次生成走引导', () => {
+    expect(najiluHtml).not.toContain('id="najiluQrReplaceLink"');
+    expect(najiluHtml).not.toContain('>替换二维码</a>');
+    const najiluJs = readFileSync(resolve(__dirname, '../../public/js/najilu.js'), 'utf8');
+    expect(najiluJs).toContain('najilu_qr.html?from=');
+    expect(najiluJs).toContain('showFirstGenerateQrGuide');
+  });
+});
+
+describe('C 端完税二维码返回路径', () => {
+  beforeEach(() => {
+    delete window.NajiluQrUser;
+    // eslint-disable-next-line no-eval
+    eval(userModuleCode);
+  });
+
+  it('从纳税记录开具引导进入时返回 najilu.html，而不是裸 from 标记', () => {
+    const resolve = window.NajiluQrUser._resolveBackHref;
+    expect(resolve('najilu_generate')).toBe('najilu.html');
+    expect(resolve('najilu')).toBe('najilu.html');
+    expect(resolve('purchase')).toBe('purchase.html');
+    expect(resolve('consult')).toBe('consult.html?tab=products');
+    expect(resolve('')).toBe('consult.html?tab=products');
+    expect(resolve('najilu_generate')).not.toBe('najilu_generate');
+  });
+
+  it('拒绝把未知标记当路径，避免返回 404', () => {
+    const resolve = window.NajiluQrUser._resolveBackHref;
+    expect(resolve('not-a-page')).toBe('consult.html?tab=products');
+    expect(resolve('../evil.html')).toBe('consult.html?tab=products');
+    expect(resolve('najilu.html')).toBe('najilu.html');
+    expect(resolve('purchase.html?from=mine')).toBe('purchase.html?from=mine');
   });
 });

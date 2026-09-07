@@ -8,6 +8,8 @@ const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8')
 const authBoot = readFileSync(resolve(__dirname, '../../public/js/auth-boot.js'), 'utf8');
 const nav = readFileSync(resolve(__dirname, '../../public/js/app/nav.js'), 'utf8');
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
+const loginHtml = readFileSync(resolve(__dirname, '../../login.html'), 'utf8');
+const mineHtml = readFileSync(resolve(__dirname, '../../mine.html'), 'utf8');
 
 describe('tab shell (bottom nav cache)', () => {
   it('tab-shell.js intercepts tab navigation via iframe cache', () => {
@@ -31,6 +33,19 @@ describe('tab shell (bottom nav cache)', () => {
     expect(tabShellEscape).toContain('tab-shell-iframe');
     expect(tabShellEscape).toContain('shuiming_result');
     expect(tabShellEscape).toContain('top.location.replace');
+  });
+
+  it('login/register escape the tab iframe and assign top-level location', () => {
+    expect(tabShellEscape).toContain('login');
+    expect(tabShellEscape).toContain('register');
+    expect(tabShellEscape).toContain('face_login');
+    expect(tabShellEscape).toContain('assignTopLocation');
+    expect(tabShell).toContain('promoteIframeIfLeftAssignedTab');
+    expect(tabShell).toContain("file === 'login.html'");
+    expect(loginHtml).toContain('tab-shell-escape.js?v=20260906-login-top');
+    expect(loginHtml).toContain('assignTopLocation');
+    expect(mineHtml).toContain('login.html?next=mine.html');
+    expect(mineHtml).toContain('target="_top"');
   });
 
   it('shuiming_result.html loads tab-shell-escape and hides bottom nav', () => {

@@ -235,12 +235,35 @@
     }
   }
 
-  function bindIframeNavWatch(iframe) {
+  function promoteIframeIfLeftAssignedTab(iframe, key) {
+    var file = iframePageFile(iframe);
+    if (!file) return;
+    if (file === 'login.html' || file === 'register.html' || file === 'face_login.html') {
+      try {
+        var href = iframe.contentWindow.location.href;
+        global.location.replace(href);
+      } catch (e0) {
+        try {
+          global.location.replace(file);
+        } catch (e1) {}
+      }
+      return;
+    }
+    var loadedKey = TAB_BY_FILE[file];
+    if (loadedKey && loadedKey !== key) {
+      try {
+        global.location.replace(FILE_BY_KEY[loadedKey]);
+      } catch (e2) {}
+    }
+  }
+
+  function bindIframeNavWatch(iframe, key) {
     if (!iframe || iframe.getAttribute('data-tab-shell-watch') === '1') return;
     iframe.setAttribute('data-tab-shell-watch', '1');
     iframe.addEventListener('load', function () {
       scrubIframeBottomNav(iframe);
       syncSubpageChrome();
+      promoteIframeIfLeftAssignedTab(iframe, key);
     });
   }
 
@@ -255,7 +278,7 @@
     iframe.src = FILE_BY_KEY[key] + '?tab_embed=1';
     iframe.style.display = 'none';
     stageEl.appendChild(iframe);
-    bindIframeNavWatch(iframe);
+    bindIframeNavWatch(iframe, key);
     iframes[key] = iframe;
     return iframe;
   }

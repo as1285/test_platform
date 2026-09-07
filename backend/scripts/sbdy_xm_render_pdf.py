@@ -17,7 +17,10 @@ import math
 import os
 import sys
 
-import fitz
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz  # noqa: F401
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)

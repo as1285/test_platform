@@ -48,10 +48,35 @@
     github: 'GitHub'
   };
 
+  function isFormDataBody(body) {
+    try {
+      return typeof FormData !== 'undefined' && !!body && body instanceof FormData;
+    } catch (eFd) {
+      return false;
+    }
+  }
+
+  /**
+   * 合并鉴权头。FormData 必须由浏览器带 multipart boundary，
+   * 若写死 application/json，服务端会把 ------WebKitFormBoundary 当 JSON 解析失败。
+   */
+  function mergeAuthRequestHeaders(baseHeaders, opts) {
+    opts = opts || {};
+    var headers = Object.assign({}, baseHeaders || {}, opts.headers || {});
+    if (isFormDataBody(opts.body)) {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+    }
+    return headers;
+  }
+
   /** 尽早占位：后半段初始化异常时，业务页仍可用带 Bearer 的请求（正常路径会被真实 authFetch 覆盖） */
   function bearerTokenFetch(url, opts) {
     opts = opts || {};
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    var headers = mergeAuthRequestHeaders(
+      isFormDataBody(opts.body) ? {} : { 'Content-Type': 'application/json' },
+      opts
+    );
     if (!headers.Authorization && !headers.authorization) {
       var t = '';
       try {
@@ -3045,9 +3070,25 @@
        * translucent 时给出真实刘海高度，装机时被固化成不透明状态栏时则为 0。
        * 后者页面无法铺色，若再兜底 47/59px 只会在白色状态栏下多出一条蓝带。
        */
+      /*
+       * WebClip 且 env≈0：多数蓝顶页勿再垫 59（会多一条蓝带）。
+       * 收入纳税明细等白顶栏 + Dynamic Island 机：overlays 仍压栏，须保留 59，
+       * 否则「返回/标题」贴顶（16 Pro 对比正确 UI 的典型差）。
+       */
       if (measured < 20 && isIosStandaloneApp() && !isCordovaTaxAppShell()) {
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
-        return;
+        var islandWhitePage =
+          isIosWhiteStatusPage() &&
+          (isIPhone16ProLikeClient() ||
+            isIPhone16ProMaxClient() ||
+            isIPhone15PlusProMaxLikeClient() ||
+            isIPhone17ProLikeClient() ||
+            isIPhone17ProMaxClient() ||
+            isIPhone14LikeClient() ||
+            isIPhone12ProLikeClient());
+        if (!islandWhitePage) {
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
+          return;
+        }
       }
       if (inset < 20) {
         /* 仅真 iOS：刘海 / Dynamic Island。鸿蒙 Cordova 勿套 59px，否则「我的」e1 会被裁切 */
@@ -5348,11 +5389,11 @@
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
           /* iPhone 16 Pro：收入纳税明细结果页顶栏+汇总区铺满安全区，状态栏与导航同为白底 */
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;background:#fff !important;box-sizing:border-box !important;box-shadow:none !important;z-index:120 !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,44px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;padding-left:0 !important;padding-right:0 !important;width:100% !important;max-width:100% !important;box-sizing:border-box !important;background:#f5f6fa !important;}' +
           /* iPhone 14：筛选页顶栏铺满安全区白底（同 16 Pro，避免 top 偏移露出空白） */
           'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
@@ -5429,7 +5470,7 @@
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn{font-size:18px !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
-          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell:not(.app-ios-iphone16pro) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           cssDeviceShuiming17ProMax() +
                     '@media screen and (min-width:428px),screen and (min-device-width:428px){' +
@@ -5442,13 +5483,33 @@
           'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
           'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
           cssDeviceShuiming17ProMax() +
-          /* 浏览器/非 Cordova：收入纳税明细结果页顶栏仅用真实 safe-area，去掉固定 24/48px 占位（小米 14 Pro / iQOO 15 仍沉浸压栏，排除） */
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
-          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          /*
+           * 浏览器/非 Cordova：结果页顶栏仅用真实 safe-area（去掉 24/48 占位）。
+           * 排除：Android 沉浸白顶；以及已单独适配的 iOS 刘海/Island 机——
+           * 否则 :not 链优先级更高会盖掉 16 Pro 等机型的 59px 规则，env=0 时标题贴顶。
+           */
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell):not(.app-android-xiaomi-14pro):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-meizu-20pro):not(.app-ios-iphone16pro):not(.app-ios-iphone17pro):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone15promax):not(.app-ios-iphone14):not(.app-ios-iphone-promax-font):not(.app-ios-iphoneair) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          /* iPhone 16 Pro：压过上文——Island 顶距；顶栏 44px；汇总顶 12px 灰缝对齐官方 */
+          'html.app-ios-iphone16pro.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;--device-list-edge:0px;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top) !important;--shuiming-chrome-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;min-height:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;background:#fff !important;box-sizing:border-box !important;box-shadow:none !important;z-index:120 !important;align-items:center !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn{left:16px !important;top:var(--app-shell-statusbar-top) !important;height:var(--header-height,44px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{right:16px !important;top:var(--app-shell-statusbar-top) !important;height:var(--header-height,44px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone16pro body.page-shuiming-result .list{margin-top:calc(var(--header-height,44px) + var(--app-shell-statusbar-top)) !important;padding-left:0 !important;padding-right:0 !important;width:100% !important;max-width:100% !important;margin-left:0 !important;margin-right:0 !important;box-sizing:border-box !important;background:#f5f6fa !important;}' +
+          'html.app-ios-iphone16pro body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;border-radius:0 !important;}' +
+          'html.app-ios-iphone16pro body.page-shuiming-result .list-item{--list-inline-pad:16px;padding:17px 16px 16px !important;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
+          /* 402×874 无 class：仍锁官方顶灰缝 */
+          '@media screen and (min-device-width:399px) and (max-device-width:405px) and (min-device-height:868px) and (max-device-height:878px),screen and (min-width:399px) and (max-width:405px) and (min-height:868px) and (max-height:878px){' +
+          'html:not(.app-ios-iphone17pro) body.page-shuiming-result .top-fixed .header{box-shadow:none !important;}' +
+          'html:not(.app-ios-iphone17pro) body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
+          'html:not(.app-ios-iphone17pro) body.page-shuiming-result .list{background:#f5f6fa !important;}' +
+          '}' +
           /* 收入纳税明细筛选页：顶栏统一贴顶；浏览器仅用真实 safe-area（覆盖各机型 48px 兜底） */
           'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;padding-bottom:15px !important;padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;min-height:0 !important;height:auto !important;}' +
           'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming > .content{padding-top:calc(46px + env(safe-area-inset-top,0px)) !important;}' +
@@ -6879,7 +6940,9 @@
     return false;
   }
 
-  /** 注册时绑定代理渠道：优先 URL；安装页 / App 壳可沿用本地已存渠道 */
+  /** 注册时绑定代理渠道：优先 URL；安装页 / App 壳可沿用本地已存渠道。
+   *  URL-only（abc）：页面带 ?ch=abc 时仍写入注册归因（后台过滤用），专属价仍须打开页带参；
+   *  本地残留的 abc 不绑定。 */
   function getRegisterSalesChannel(fromInstallGuide) {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -6903,6 +6966,9 @@
         return '';
       }
       if (!isSalesChannelStickyRecordValid(o)) {
+        return '';
+      }
+      if (isUrlOnlySalesChannel(o.ch)) {
         return '';
       }
       /* 专属渠道依赖安装页/壳写入的 ch；不得因 source=install_packages/server_resolve 丢掉 */
@@ -8587,7 +8653,7 @@
    */
   function authFetch(url, opts) {
     opts = opts || {};
-    opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
+    opts.headers = mergeAuthRequestHeaders(authHeaders(), opts);
     var method = String(opts.method || 'GET').toUpperCase();
     var coalesceKey = null;
     if (method === 'GET') {
@@ -8623,7 +8689,9 @@
     var timeoutMs =
       opts.timeoutMs != null && isFinite(Number(opts.timeoutMs))
         ? Math.max(1000, Math.min(Math.round(Number(opts.timeoutMs)), 120000))
-        : AUTH_FETCH_TIMEOUT_MS;
+        : isFormDataBody(opts.body)
+          ? 60000
+          : AUTH_FETCH_TIMEOUT_MS;
     if (typeof AbortController === 'function' && !opts.signal) {
       controller = new AbortController();
       fetchOpts = Object.assign({}, opts, { signal: controller.signal });
@@ -8685,6 +8753,28 @@
             /* 未带 Bearer 的 401 不得清会话，避免并发裸请求误杀刚登录的 token */
             if (!sentAuth) {
               return Promise.reject(new Error('unauthorized'));
+            }
+            /*
+             * 开通页自助复购：试用过期不得清会话/踢登录。
+             * 否则付款成功 UI 与「试用已过期」弹窗竞态，且用户无法继续下单。
+             */
+            if (j && j.activation_expired) {
+              var onPurchasePage = false;
+              try {
+                var locHref = String(window.location.href || '');
+                var locPath = String(window.location.pathname || '');
+                onPurchasePage =
+                  /(?:^|\/)purchase\.html(?:$|\?|#)/i.test(locPath) ||
+                  /(?:^|\/)purchase\.html(?:$|\?|#)/i.test(locHref);
+              } catch (ePg) {}
+              if (onPurchasePage || opts.allowActivationExpired) {
+                try {
+                  localStorage.setItem('account_active', '0');
+                } catch (eAct) {}
+                var errExpSoft = new Error('activation_expired');
+                errExpSoft.activation_expired = true;
+                return Promise.reject(errExpSoft);
+              }
             }
             clearSession();
             if (j && j.banned) {
@@ -9145,7 +9235,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260905-mine-safe-edit';
+      s.src = '/js/conversion-guide.js?v=20260906-najilu-track';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
@@ -9274,7 +9364,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260901-ios16pro-tabembed';
+    s.src = '/js/tab-shell.js?v=20260906-login-top';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);

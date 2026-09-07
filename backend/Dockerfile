@@ -15,6 +15,8 @@ RUN set -eux; \
     python3 \
     python3-pip \
     fonts-noto-cjk \
+    tesseract-ocr \
+    tesseract-ocr-chi-sim \
   && pip3 install --break-system-packages --no-cache-dir \
     -i https://mirrors.aliyun.com/pypi/simple/ \
     --trusted-host mirrors.aliyun.com \

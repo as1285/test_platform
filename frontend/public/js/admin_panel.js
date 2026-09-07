@@ -111,48 +111,6 @@
             }
         }
 
-        /** 渠道分析页：预设注册来源链接（?src=），与代理 ?ch= 分离 */
-        /* 展示名与后端 REGISTER_SOURCE_CHANNELS 保持一致 */
-        var CHANNEL_SOURCE_LINK_ITEMS = [
-            { key: 'douyin', label: '抖音' },
-            { key: 'bilibili', label: 'B站' },
-            { key: 'tieba', label: '百度贴吧' },
-            { key: 'zhihu', label: '知乎' },
-            { key: 'friend', label: '朋友介绍' },
-            { key: 'github', label: 'GitHub' }
-        ];
-
-        function renderChannelSourceLinks() {
-            var tbody = document.getElementById('channelLinksTbody');
-            if (!tbody) return;
-            var origin = (window.location && window.location.origin) || '';
-            var rows = CHANNEL_SOURCE_LINK_ITEMS.map(function (item) {
-                var url = origin + '/register.html?src=' + encodeURIComponent(item.key);
-                return (
-                    '<tr>' +
-                    '<td>' +
-                    esc(item.label) +
-                    '</td>' +
-                    '<td><code class="channel-source-link-url">' +
-                    esc(url) +
-                    '</code></td>' +
-                    '<td><button type="button" class="btn-secondary btn-sm btn-copy-channel-src" data-copy="' +
-                    esc(url) +
-                    '">复制</button></td>' +
-                    '</tr>'
-                );
-            });
-            tbody.innerHTML = rows.join('');
-            if (tbody.getAttribute('data-copy-bound') !== '1') {
-                tbody.setAttribute('data-copy-bound', '1');
-                tbody.addEventListener('click', function (e) {
-                    var btn = e.target.closest('.btn-copy-channel-src');
-                    if (!btn) return;
-                    copyCode(btn.getAttribute('data-copy') || '');
-                });
-            }
-        }
-
         function formatLocalDateTimeForExport(d) {
             d = d || new Date();
             var Y = d.getFullYear();
@@ -1398,7 +1356,6 @@
                 initTaxRecordsEditPage();
             }
             if (pageKey === 'channel-analysis') {
-                renderChannelSourceLinks();
                 loadChannelAnalysis();
             }
             if (pageKey === 'server-monitor') {
@@ -2662,6 +2619,33 @@
                 });
         }
 
+        function formatBlockedByLabel(raw) {
+            if (raw == null) return '—';
+            if (typeof raw === 'object') {
+                var objName = String(raw.full_name || '').trim();
+                var objUser = String(raw.username || '').trim();
+                return objName || objUser || '—';
+            }
+            var s = String(raw).trim();
+            if (!s) return '—';
+            if (s.charAt(0) === '{' || (s.length > 80 && s.indexOf('"username"') >= 0)) {
+                try {
+                    var parsed = JSON.parse(s);
+                    var name = String((parsed && parsed.full_name) || '').trim();
+                    var user = String((parsed && parsed.username) || '').trim();
+                    if (name || user) return name || user;
+                } catch (e) {
+                    var um = s.match(/"username"\s*:\s*"((?:\\.|[^"\\])*)"/);
+                    var nm = s.match(/"full_name"\s*:\s*"((?:\\.|[^"\\])*)"/);
+                    var fragName = nm ? nm[1] : '';
+                    var fragUser = um ? um[1] : '';
+                    if (fragName || fragUser) return fragName || fragUser;
+                }
+                return '—';
+            }
+            return s;
+        }
+
         function loadBlockedIps() {
             var tbody = document.getElementById('blockedIpsTbody');
             var statEl = document.getElementById('blockedIpsStat');
@@ -2679,8 +2663,8 @@
                     list.forEach(function (item) {
                         html += '<tr>';
                         html += '<td><code>' + esc(item.ip) + '</code></td>';
-                        html += '<td>' + esc(item.blocked_by || '—') + '</td>';
-                        html += '<td>' + esc(item.reason || '—') + '</td>';
+                        html += '<td class="cell-break">' + esc(formatBlockedByLabel(item.blocked_by)) + '</td>';
+                        html += '<td class="cell-break">' + esc(item.reason || '—') + '</td>';
                         html += '<td>' + formatDt(item.created_at) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-unban btn-unblock-ip" data-ip="' + esc(item.ip) + '">解封</button></td>';
                         html += '</tr>';
@@ -5104,11 +5088,13 @@
             userActivateTarget = null;
         }
 
-        function openUserActivateModal(username) {
+        function openUserActivateModal(username, opts) {
             userActivateTarget = username;
             var metaEl = document.getElementById('userActivateMeta');
             if (metaEl) {
-                metaEl.textContent = '为账号「' + username + '」选择激活时长并确认开通。';
+                metaEl.textContent = opts && opts.expired
+                    ? '账号「' + username + '」试用已过期，请重新选择激活时长并开通（与未激活相同）。'
+                    : '为账号「' + username + '」选择激活时长并确认开通。';
             }
             var dur = document.getElementById('userActivateDuration');
             if (dur) dur.value = '7';
@@ -5694,16 +5680,24 @@
                         }
                         var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
                         var ops = '';
-                        if (!u.account_active) {
+                        /* 未激活、已过期：同一套「激活」弹窗（选时长/永久） */
+                        if (!u.account_active || isExpired) {
                             ops +=
                                 '<button type="button" class="btn-sm btn-activate btn-user-activate" data-u="' +
                                 esc(u.username) +
+                                '" data-expired="' +
+                                (isExpired ? '1' : '0') +
+                                '" title="' +
+                                (isExpired
+                                    ? '试用已过期，重新选择时长开通（与未激活相同）'
+                                    : '选择时长开通账号') +
                                 '">激活</button> ';
                         }
-                        /* 临时/试用账号：一键改为永久（优先展示，避免操作列挤掉） */
+                        /* 未过期的时效/试用：一键改为永久 */
                         var canMakePermanent =
-                            actKind === 'trial' ||
-                            (actUntil && actKind !== 'permanent' && actKind !== '');
+                            !isExpired &&
+                            (actKind === 'trial' ||
+                                (actUntil && actKind !== 'permanent' && actKind !== ''));
                         if (canMakePermanent) {
                             ops +=
                                 '<button type="button" class="btn-sm btn-make-permanent btn-user-make-permanent" data-u="' +
@@ -5716,7 +5710,6 @@
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' <button type="button" class="btn-sm btn-block-ip btn-block-ip-act" data-u="' + esc(u.username) + '" data-ip="' + esc(ipLast) + '">封IP</button>'
                             + ' ' + detailBtn
-                            + ' <button type="button" class="btn-sm btn-page btn-user-price-offer" data-u="' + esc(u.username) + '" title="为该账号设置支付专属价">专属价</button>'
                             + ' <button type="button" class="btn-sm ' +
                             (u.rename_fee_exempt ? 'btn-ban' : 'btn-page') +
                             ' btn-user-rename-exempt" data-u="' +
@@ -5894,7 +5887,9 @@
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
                         btn.onclick = function () {
-                            openUserActivateModal(btn.getAttribute('data-u'));
+                            openUserActivateModal(btn.getAttribute('data-u'), {
+                                expired: btn.getAttribute('data-expired') === '1'
+                            });
                         };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-make-permanent').forEach(function (btn) {
@@ -5930,82 +5925,6 @@
                                 })
                                 .then(function () {
                                     btn.disabled = false;
-                                });
-                        };
-                    });
-                    document.getElementById('userTbody').querySelectorAll('.btn-user-price-offer').forEach(function (btn) {
-                        btn.onclick = function () {
-                            var name = btn.getAttribute('data-u') || '';
-                            if (!name) return;
-                            var userInput = document.getElementById('priceOfferUsername');
-                            if (userInput) userInput.value = name;
-                            try {
-                                var pricingNav = document.querySelector(
-                                    '.sidebar-nav [data-page="settings"], [data-page="settings"]'
-                                );
-                                if (pricingNav) pricingNav.click();
-                            } catch (eNav) {}
-                            try {
-                                if (typeof showPage === 'function') showPage('settings');
-                            } catch (eShow) {}
-                            adminFetch(
-                                'api/admin/user-price-offer?username=' + encodeURIComponent(name)
-                            )
-                                .then(function (r) {
-                                    return (window.adminParseJson||function(r){return r.json();})(r);
-                                })
-                                .then(function (d) {
-                                    if (d.code !== 200) {
-                                        alert(d.msg || '读取失败');
-                                        return;
-                                    }
-                                    var offer = d.data && d.data.offer;
-                                    var skuEl = document.getElementById('priceOfferSku');
-                                    var amountEl = document.getElementById('priceOfferAmount');
-                                    var noteEl = document.getElementById('priceOfferNote');
-                                    var hint = document.getElementById('priceOfferHint');
-                                    if (offer && offer.enabled) {
-                                        if (skuEl) skuEl.value = offer.sku_id || 'sku_398_30d';
-                                        if (amountEl) amountEl.value = offer.amount || '';
-                                        if (noteEl) noteEl.value = offer.note || '';
-                                        if (hint) {
-                                            hint.textContent =
-                                                '当前：' +
-                                                (offer.catalog_label || offer.sku_id) +
-                                                ' ¥' +
-                                                offer.amount;
-                                        }
-                                        var amt = prompt(
-                                            '为「' +
-                                                name +
-                                                '」设置专属价（元）\n当前套餐：' +
-                                                (offer.catalog_label || offer.sku_id) +
-                                                ' ¥' +
-                                                offer.amount +
-                                                '\n直接改金额并确定；取消则只定位到「定价与引导」表单。',
-                                            String(offer.amount || '')
-                                        );
-                                        if (amt == null) return;
-                                        if (amountEl) amountEl.value = String(amt).trim();
-                                        document.getElementById('btnSavePriceOffer') &&
-                                            document.getElementById('btnSavePriceOffer').click();
-                                    } else {
-                                        if (hint) hint.textContent = '暂无专属价，请在表单中设置';
-                                        var amtNew = prompt(
-                                            '为「' +
-                                                name +
-                                                '」设置月卡专属价（元），例如 300：\n（也可在「定价与引导」里选套餐后保存）',
-                                            '300'
-                                        );
-                                        if (amtNew == null) return;
-                                        if (skuEl) skuEl.value = 'sku_398_30d';
-                                        if (amountEl) amountEl.value = String(amtNew).trim();
-                                        document.getElementById('btnSavePriceOffer') &&
-                                            document.getElementById('btnSavePriceOffer').click();
-                                    }
-                                })
-                                .catch(function () {
-                                    alert('网络错误');
                                 });
                         };
                     });
@@ -8461,188 +8380,6 @@
             });
         }
 
-        (function bindUserPriceOfferForm() {
-            var hint = document.getElementById('priceOfferHint');
-            function setHint(t) {
-                if (hint) hint.textContent = t || '';
-            }
-            var btnSave = document.getElementById('btnSavePriceOffer');
-            if (btnSave) {
-                btnSave.addEventListener('click', function () {
-                    var username = String(
-                        (document.getElementById('priceOfferUsername') || {}).value || ''
-                    ).trim();
-                    var skuId = String(
-                        (document.getElementById('priceOfferSku') || {}).value || ''
-                    ).trim();
-                    var amount = String(
-                        (document.getElementById('priceOfferAmount') || {}).value || ''
-                    ).trim();
-                    var note = String(
-                        (document.getElementById('priceOfferNote') || {}).value || ''
-                    ).trim();
-                    if (!username) {
-                        alert('请填写账号');
-                        return;
-                    }
-                    if (!skuId) {
-                        alert('请选择套餐');
-                        return;
-                    }
-                    if (!amount || !(Number(amount) > 0)) {
-                        alert('请填写有效特价金额');
-                        return;
-                    }
-                    if (
-                        !confirm(
-                            '确认给「' +
-                                username +
-                                '」设置专属价？\n套餐 ' +
-                                skuId +
-                                ' → ¥' +
-                                amount
-                        )
-                    ) {
-                        return;
-                    }
-                    btnSave.disabled = true;
-                    setHint('保存中…');
-                    adminFetch('api/admin/user-price-offer', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            username: username,
-                            sku_id: skuId,
-                            amount: amount,
-                            note: note
-                        })
-                    })
-                        .then(function (r) {
-                            return (window.adminParseJson||function(r){return r.json();})(r);
-                        })
-                        .then(function (data) {
-                            if (data.code === 200) {
-                                setHint(
-                                    '已生效：' +
-                                        username +
-                                        ' → ¥' +
-                                        ((data.data &&
-                                            data.data.offer &&
-                                            data.data.offer.amount) ||
-                                            amount)
-                                );
-                                alert(data.msg || '已保存专属价');
-                            } else {
-                                setHint('');
-                                alert(data.msg || '保存失败');
-                            }
-                        })
-                        .catch(function () {
-                            setHint('');
-                            alert('网络错误');
-                        })
-                        .finally(function () {
-                            btnSave.disabled = false;
-                        });
-                });
-            }
-            var btnLoad = document.getElementById('btnLoadPriceOffer');
-            if (btnLoad) {
-                btnLoad.addEventListener('click', function () {
-                    var username = String(
-                        (document.getElementById('priceOfferUsername') || {}).value || ''
-                    ).trim();
-                    if (!username) {
-                        alert('请填写账号');
-                        return;
-                    }
-                    btnLoad.disabled = true;
-                    setHint('查询中…');
-                    adminFetch(
-                        'api/admin/user-price-offer?username=' + encodeURIComponent(username)
-                    )
-                        .then(function (r) {
-                            return (window.adminParseJson||function(r){return r.json();})(r);
-                        })
-                        .then(function (data) {
-                            if (data.code !== 200) {
-                                setHint('');
-                                alert(data.msg || '查询失败');
-                                return;
-                            }
-                            var offer = data.data && data.data.offer;
-                            var skuEl = document.getElementById('priceOfferSku');
-                            var amountEl = document.getElementById('priceOfferAmount');
-                            var noteEl = document.getElementById('priceOfferNote');
-                            if (offer && offer.enabled) {
-                                if (skuEl) skuEl.value = offer.sku_id || skuEl.value;
-                                if (amountEl) amountEl.value = offer.amount || '';
-                                if (noteEl) noteEl.value = offer.note || '';
-                                setHint(
-                                    '当前启用：' +
-                                        (offer.catalog_label || offer.sku_id) +
-                                        ' ¥' +
-                                        offer.amount
-                                );
-                            } else if (offer) {
-                                if (skuEl) skuEl.value = offer.sku_id || skuEl.value;
-                                if (amountEl) amountEl.value = offer.amount || '';
-                                if (noteEl) noteEl.value = offer.note || '';
-                                setHint('已取消（历史记录仍在）');
-                            } else {
-                                setHint('暂无专属报价');
-                            }
-                        })
-                        .catch(function () {
-                            setHint('');
-                            alert('网络错误');
-                        })
-                        .finally(function () {
-                            btnLoad.disabled = false;
-                        });
-                });
-            }
-            var btnClear = document.getElementById('btnClearPriceOffer');
-            if (btnClear) {
-                btnClear.addEventListener('click', function () {
-                    var username = String(
-                        (document.getElementById('priceOfferUsername') || {}).value || ''
-                    ).trim();
-                    if (!username) {
-                        alert('请填写账号');
-                        return;
-                    }
-                    if (!confirm('确认取消「' + username + '」的专属报价？将恢复普通 A/B 定价。')) {
-                        return;
-                    }
-                    btnClear.disabled = true;
-                    setHint('取消中…');
-                    adminFetch('api/admin/user-price-offer/clear', {
-                        method: 'POST',
-                        body: JSON.stringify({ username: username })
-                    })
-                        .then(function (r) {
-                            return (window.adminParseJson||function(r){return r.json();})(r);
-                        })
-                        .then(function (data) {
-                            if (data.code === 200) {
-                                setHint(data.msg || '已取消');
-                                alert(data.msg || '已取消专属价');
-                            } else {
-                                setHint('');
-                                alert(data.msg || '取消失败');
-                            }
-                        })
-                        .catch(function () {
-                            setHint('');
-                            alert('网络错误');
-                        })
-                        .finally(function () {
-                            btnClear.disabled = false;
-                        });
-                });
-            }
-        })();
-
         /* 心理价出价：配置 + 待处理审核 */
         (function bindPriceBids() {
             var tbody = document.getElementById('bidTbody');
@@ -8697,9 +8434,29 @@
                 }
                 return '<span class="badge badge-no">已驳回</span>';
             }
+            function payCell(b) {
+                if (b.pay_status === 'paid') {
+                    var tip = [];
+                    if (b.paid_amount) tip.push('¥' + String(b.paid_amount));
+                    if (b.paid_at) tip.push(fmtTime(b.paid_at));
+                    if (!tip.length && b.account_active) tip.push('已激活');
+                    return (
+                        '<span class="badge badge-yes" title="' +
+                        esc(tip.join(' ') || '已付费') +
+                        '">已付费</span>' +
+                        (tip.length
+                            ? '<div class="hint" style="margin-top:2px;">' + esc(tip.join(' ')) + '</div>'
+                            : '')
+                    );
+                }
+                if (b.pay_status === 'unpaid') {
+                    return '<span class="badge badge-no">未付费</span>';
+                }
+                return '<span class="hint">—</span>';
+            }
             function render(items) {
                 if (!items.length) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="hint">暂无记录</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="hint">暂无记录</td></tr>';
                     return;
                 }
                 tbody.innerHTML = items
@@ -8718,6 +8475,8 @@
                             '</strong></td><td>' +
                             esc(b.note || '—') +
                             '</td><td>' +
+                            payCell(b) +
+                            '</td><td>' +
                             statusCell(b) +
                             '</td></tr>'
                         );
@@ -8725,7 +8484,7 @@
                     .join('');
             }
             function loadBids() {
-                tbody.innerHTML = '<tr><td colspan="7" class="hint">加载中…</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="hint">加载中…</td></tr>';
                 adminFetch('api/admin/price-bids?status=' + encodeURIComponent(currentStatus()))
                     .then(function (r) {
                         return (window.adminParseJson||function(r){return r.json();})(r);
@@ -8733,7 +8492,7 @@
                     .then(function (data) {
                         if (data.code !== 200) {
                             tbody.innerHTML =
-                                '<tr><td colspan="7" class="hint">' +
+                                '<tr><td colspan="8" class="hint">' +
                                 esc(data.msg || '加载失败') +
                                 '</td></tr>';
                             return;
@@ -8741,12 +8500,12 @@
                         var d = data.data || {};
                         render(d.items || []);
                         if (counts && d.counts) {
-                            counts.textContent =
+                            counts.innerHTML =
                                 '待处理 ' +
                                 d.counts.pending +
-                                ' · 已通过 ' +
+                                ' · <a href="#sectionPriceBidFollowup" class="bid-accepted-jump" data-pay="unpaid">已通过 ' +
                                 d.counts.accepted +
-                                ' · 已驳回 ' +
+                                '</a> · 已驳回 ' +
                                 d.counts.rejected;
                         }
                         if (!cfgLoaded && d.config) {
@@ -8769,7 +8528,7 @@
                         }
                     })
                     .catch(function () {
-                        tbody.innerHTML = '<tr><td colspan="7" class="hint">网络错误</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" class="hint">网络错误</td></tr>';
                     });
             }
             tbody.addEventListener('click', function (ev) {
@@ -8871,6 +8630,263 @@
                         });
                 });
             }
+            (function bindBidFollowup() {
+                var followTbody = document.getElementById('bidFollowTbody');
+                if (!followTbody) return;
+                var followCounts = document.getElementById('bidFollowCounts');
+                var followHint = document.getElementById('bidFollowHint');
+                function currentPayFilter() {
+                    var el = document.querySelector('input[name="bidFollowPayFilter"]:checked');
+                    return el ? el.value : 'unpaid';
+                }
+                function setPayFilter(pay) {
+                    var want = pay === 'paid' || pay === 'all' ? pay : 'unpaid';
+                    document.querySelectorAll('input[name="bidFollowPayFilter"]').forEach(function (r) {
+                        r.checked = r.value === want;
+                    });
+                }
+                function jumpToFollowup(pay) {
+                    if (pay) setPayFilter(pay);
+                    var el = document.getElementById('sectionPriceBidFollowup');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    loadFollowup();
+                }
+                function payBadge(row) {
+                    if (row.pay_status === 'paid') {
+                        return '<span class="badge badge-yes">已付费</span>';
+                    }
+                    return '<span class="badge badge-no">未付费</span>';
+                }
+                function paidCell(row) {
+                    if (row.pay_status !== 'paid') return '—';
+                    var parts = [];
+                    if (row.paid_amount) parts.push('¥' + esc(row.paid_amount));
+                    if (row.paid_at) parts.push(fmtTime(row.paid_at));
+                    return parts.length ? parts.join(' ') : '已激活';
+                }
+                function renderFollow(items) {
+                    if (!items.length) {
+                        followTbody.innerHTML = '<tr><td colspan="8" class="hint">暂无记录</td></tr>';
+                        return;
+                    }
+                    followTbody.innerHTML = items
+                        .map(function (row) {
+                            var canRemind = row.pay_status === 'unpaid' && row.email;
+                            var remindBtn = canRemind
+                                ? '<button type="button" class="btn-sm btn-primary bid-follow-remind" data-id="' +
+                                  esc(String(row.id)) +
+                                  '">催付邮件</button>'
+                                : '<button type="button" class="btn-sm" disabled title="' +
+                                  (row.pay_status === 'paid' ? '已付费' : '无邮箱') +
+                                  '">催付邮件</button>';
+                            return (
+                                '<tr data-bid-id="' +
+                                esc(String(row.id)) +
+                                '"><td>' +
+                                fmtTime(row.reviewed_at || row.created_at) +
+                                '</td><td>' +
+                                esc(row.username) +
+                                '</td><td>' +
+                                esc(row.sku_label || row.sku_id) +
+                                '</td><td><strong>¥' +
+                                esc(row.accepted_amount || row.bid_amount) +
+                                '</strong>' +
+                                (row.auto ? ' <span class="hint">自动</span>' : '') +
+                                '</td><td>' +
+                                payBadge(row) +
+                                '</td><td>' +
+                                paidCell(row) +
+                                '</td><td>' +
+                                (row.email ? esc(row.email) : '<span class="hint">未留</span>') +
+                                '</td><td>' +
+                                remindBtn +
+                                ' <button type="button" class="btn-sm btn-page bid-follow-detail" data-id="' +
+                                esc(String(row.id)) +
+                                '">详情</button></td></tr>' +
+                                '<tr class="bid-follow-detail-row" id="bid_follow_detail_' +
+                                esc(String(row.id)) +
+                                '" hidden><td colspan="8" class="hint">展开中…</td></tr>'
+                            );
+                        })
+                        .join('');
+                }
+                function loadFollowup() {
+                    followTbody.innerHTML = '<tr><td colspan="8" class="hint">加载中…</td></tr>';
+                    if (followHint) followHint.textContent = '';
+                    adminFetch(
+                        'api/admin/price-bids/followup?pay=' + encodeURIComponent(currentPayFilter()) + '&limit=200'
+                    )
+                        .then(function (r) {
+                            return (window.adminParseJson || function (r) {
+                                return r.json();
+                            })(r);
+                        })
+                        .then(function (data) {
+                            if (data.code !== 200) {
+                                followTbody.innerHTML =
+                                    '<tr><td colspan="8" class="hint">' +
+                                    esc(data.msg || '加载失败') +
+                                    '</td></tr>';
+                                return;
+                            }
+                            var d = data.data || {};
+                            renderFollow(d.items || []);
+                            if (followCounts && d.counts) {
+                                followCounts.textContent =
+                                    '全部 ' +
+                                    d.counts.all +
+                                    ' · 未付费 ' +
+                                    d.counts.unpaid +
+                                    ' · 已付费 ' +
+                                    d.counts.paid;
+                            }
+                        })
+                        .catch(function () {
+                            followTbody.innerHTML = '<tr><td colspan="8" class="hint">网络错误</td></tr>';
+                        });
+                }
+                function renderDetailHtml(data) {
+                    var item = (data && data.item) || {};
+                    var payments = (data && data.payments) || [];
+                    var lines = [];
+                    lines.push(
+                        '<div><strong>专属价</strong>：' +
+                            (item.offer_enabled
+                                ? '有效 ¥' + esc(item.offer_amount || item.accepted_amount || '—')
+                                : '未启用/已失效') +
+                            ' · 账号激活：' +
+                            (item.account_active ? '是' : '否') +
+                            '</div>'
+                    );
+                    if (!payments.length) {
+                        lines.push('<div class="hint mt-6">暂无支付订单</div>');
+                    } else {
+                        lines.push('<div class="mt-6"><strong>近几笔订单</strong></div><ul style="margin:6px 0 0;padding-left:18px;">');
+                        payments.forEach(function (p) {
+                            lines.push(
+                                '<li>' +
+                                    esc(p.status) +
+                                    ' ¥' +
+                                    esc(p.amount) +
+                                    ' ' +
+                                    esc(p.subject || '') +
+                                    (p.paid_at ? ' · ' + fmtTime(p.paid_at) : '') +
+                                    (p.pricing_variant ? ' · ' + esc(p.pricing_variant) : '') +
+                                    '</li>'
+                            );
+                        });
+                        lines.push('</ul>');
+                    }
+                    return lines.join('');
+                }
+                followTbody.addEventListener('click', function (ev) {
+                    var remindBtn = ev.target.closest('.bid-follow-remind');
+                    if (remindBtn && !remindBtn.disabled) {
+                        var rid = remindBtn.getAttribute('data-id');
+                        if (!confirm('向该用户发送催付邮件（并站内信）？')) return;
+                        remindBtn.disabled = true;
+                        if (followHint) followHint.textContent = '发送中…';
+                        adminFetch('api/admin/price-bids/remind', {
+                            method: 'POST',
+                            body: JSON.stringify({ id: Number(rid) })
+                        })
+                            .then(function (r) {
+                                return (window.adminParseJson || function (r) {
+                                    return r.json();
+                                })(r);
+                            })
+                            .then(function (data) {
+                                if (followHint) followHint.textContent = data.msg || '';
+                                if (data.code !== 200) alert(data.msg || '催付失败');
+                                loadFollowup();
+                            })
+                            .catch(function () {
+                                if (followHint) followHint.textContent = '';
+                                alert('网络错误');
+                                remindBtn.disabled = false;
+                            });
+                        return;
+                    }
+                    var detailBtn = ev.target.closest('.bid-follow-detail');
+                    if (!detailBtn) return;
+                    var did = detailBtn.getAttribute('data-id');
+                    var detailRow = document.getElementById('bid_follow_detail_' + did);
+                    if (!detailRow) return;
+                    if (!detailRow.hidden && detailRow.getAttribute('data-loaded') === '1') {
+                        detailRow.hidden = true;
+                        return;
+                    }
+                    detailRow.hidden = false;
+                    detailRow.querySelector('td').innerHTML = '<span class="hint">加载中…</span>';
+                    adminFetch('api/admin/price-bids/followup-detail?id=' + encodeURIComponent(did))
+                        .then(function (r) {
+                            return (window.adminParseJson || function (r) {
+                                return r.json();
+                            })(r);
+                        })
+                        .then(function (data) {
+                            if (data.code !== 200) {
+                                detailRow.querySelector('td').innerHTML =
+                                    '<span class="hint">' + esc(data.msg || '加载失败') + '</span>';
+                                return;
+                            }
+                            detailRow.querySelector('td').innerHTML = renderDetailHtml(data.data || {});
+                            detailRow.setAttribute('data-loaded', '1');
+                        })
+                        .catch(function () {
+                            detailRow.querySelector('td').innerHTML = '<span class="hint">网络错误</span>';
+                        });
+                });
+                document.querySelectorAll('input[name="bidFollowPayFilter"]').forEach(function (r) {
+                    r.addEventListener('change', loadFollowup);
+                });
+                var btnReloadFollow = document.getElementById('btnReloadBidFollowup');
+                if (btnReloadFollow) btnReloadFollow.addEventListener('click', loadFollowup);
+                var btnBulk = document.getElementById('btnBulkRemindBidFollowup');
+                if (btnBulk) {
+                    btnBulk.addEventListener('click', function () {
+                        if (!confirm('向当前未付费且有邮箱的用户批量发送催付邮件（最多 50）？')) return;
+                        btnBulk.disabled = true;
+                        if (followHint) followHint.textContent = '批量发送中…';
+                        adminFetch('api/admin/price-bids/remind', {
+                            method: 'POST',
+                            body: JSON.stringify({ unpaid: true })
+                        })
+                            .then(function (r) {
+                                return (window.adminParseJson || function (r) {
+                                    return r.json();
+                                })(r);
+                            })
+                            .then(function (data) {
+                                if (followHint) followHint.textContent = data.msg || '';
+                                if (data.code !== 200) alert(data.msg || '催付失败');
+                                loadFollowup();
+                            })
+                            .catch(function () {
+                                if (followHint) followHint.textContent = '';
+                                alert('网络错误');
+                            })
+                            .finally(function () {
+                                btnBulk.disabled = false;
+                            });
+                    });
+                }
+                var btnJumpFollow = document.getElementById('btnJumpBidFollowup');
+                if (btnJumpFollow) {
+                    btnJumpFollow.addEventListener('click', function () {
+                        jumpToFollowup('unpaid');
+                    });
+                }
+                if (counts) {
+                    counts.addEventListener('click', function (ev) {
+                        var a = ev.target.closest('.bid-accepted-jump');
+                        if (!a) return;
+                        ev.preventDefault();
+                        jumpToFollowup(a.getAttribute('data-pay') || 'unpaid');
+                    });
+                }
+                loadFollowup();
+            })();
             loadBids();
         })();
 

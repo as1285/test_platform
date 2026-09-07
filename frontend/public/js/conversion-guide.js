@@ -1813,6 +1813,12 @@
   }
 
   function goNajiluQrReplace(from) {
+    if (typeof window.trackUserAction === 'function') {
+      window.trackUserAction('track_najilu_qr_entry_click', {
+        page: 'conversion_guide',
+        from: from || 'najilu'
+      });
+    }
     window.location.href = 'najilu_qr.html?from=' + encodeURIComponent(from || 'najilu');
   }
 

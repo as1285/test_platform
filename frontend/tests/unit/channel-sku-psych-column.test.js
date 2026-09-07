@@ -5,7 +5,7 @@ import { resolve } from 'path';
 const frontend = resolve(__dirname, '../..');
 const adminHtml = readFileSync(resolve(frontend, 'admin_panel.html'), 'utf8');
 const adminCss = readFileSync(resolve(frontend, 'css/admin_panel.css'), 'utf8');
-const CACHE = '20260905-ch-psych-col';
+const CACHE = '20260906-no-user-offer';
 
 function extractChannelSkuTable(html) {
   const start = html.indexOf('class="data-table agent-ch-sku-table"');
@@ -34,7 +34,7 @@ describe('channel 专属套餐 心理价位 column', () => {
   });
 
   it('busts admin_panel asset cache for the column', () => {
-    expect(adminHtml).toContain(`admin_panel.js?v=${CACHE}`);
+    expect(adminHtml).toMatch(/admin_panel\.js\?v=20260906-/);
     expect(adminHtml).toContain(`admin_panel.css?v=${CACHE}`);
     expect(adminCss).toContain('.agent-ch-sku-table');
     expect(adminCss).toContain('.max-w-920');

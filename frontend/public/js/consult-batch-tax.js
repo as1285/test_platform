@@ -62,6 +62,12 @@ function friendlyConsultTaxError(raw) {
     if (/ER_|SQLSTATE|mysql|ECONN/i.test(msg)) {
         return '保存失败，请稍后重试；若反复出现请联系客服';
     }
+    if (/Unexpected token|is not valid JSON|------WebK|WebKitFormBoundary/i.test(msg)) {
+        return '截图上传失败，请重新选择图片后重试';
+    }
+    if (/network_timeout|The user aborted|aborted a request/i.test(msg)) {
+        return '识别超时，请换更清晰或更小的截图后重试';
+    }
     return msg;
 }
 
@@ -2281,7 +2287,7 @@ function startExampleAndGenerate() {
     }
 }
 
-/** 起步路径分发：example / paste / manual 等。 */
+/** 起步路径分发：example / paste / screenshot / manual 等。 */
 function openTaxStartPath(path) {
     var p = String(path || '').trim();
     if (p === 'chooser') {
@@ -2291,6 +2297,12 @@ function openTaxStartPath(path) {
     if (p === 'paste') {
         if (typeof openTaxPasteImportModal === 'function') {
             openTaxPasteImportModal();
+        }
+        return;
+    }
+    if (p === 'screenshot') {
+        if (typeof openTaxScreenshotOcrPicker === 'function') {
+            openTaxScreenshotOcrPicker();
         }
         return;
     }
@@ -3433,6 +3445,231 @@ function clearTaxPasteImportText() {
     showMsg('已清空，可粘贴个税 APP 明细', true);
 }
 
+/** 确保存在隐藏的相册选图 input（C 端 HTML 已写；管理端动态补）。 */
+function ensureTaxScreenshotOcrInput() {
+    var input = document.getElementById('taxScreenshotOcrInput');
+    if (input) return input;
+    input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'taxScreenshotOcrInput';
+    input.className = 'tax-screenshot-file-input';
+    input.accept = 'image/jpeg,image/png,image/gif,image/webp,image/bmp,image/*';
+    input.hidden = true;
+    document.body.appendChild(input);
+    return input;
+}
+
+/** 打开系统相册选择个税截图。 */
+function openTaxScreenshotOcrPicker() {
+    var input = ensureTaxScreenshotOcrInput();
+    try {
+        input.value = '';
+    } catch (e0) {}
+    try {
+        input.click();
+    } catch (e1) {
+        showConsultStrongAlert('当前环境无法打开相册，请改用粘贴文本或模板生成');
+    }
+}
+
+/**
+ * 压缩大图后再上传，缩短 OCR 耗时。
+ * @returns {Promise<Blob>}
+ */
+function compressTaxScreenshotForOcr(file) {
+    return new Promise(function (resolve) {
+        if (!file || !/^image\//.test(String(file.type || 'image/jpeg'))) {
+            return resolve(file);
+        }
+        if (file.size && file.size < 1.2 * 1024 * 1024) {
+            return resolve(file);
+        }
+        var url = '';
+        try {
+            url = URL.createObjectURL(file);
+        } catch (eUrl) {
+            return resolve(file);
+        }
+        var img = new Image();
+        img.onload = function () {
+            try {
+                URL.revokeObjectURL(url);
+            } catch (eRev) {}
+            var maxSide = 1600;
+            var w = img.naturalWidth || img.width || 0;
+            var h = img.naturalHeight || img.height || 0;
+            if (!w || !h) {
+                return resolve(file);
+            }
+            var scale = Math.min(1, maxSide / Math.max(w, h));
+            var cw = Math.max(1, Math.round(w * scale));
+            var ch = Math.max(1, Math.round(h * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            var ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return resolve(file);
+            }
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, cw, ch);
+            ctx.drawImage(img, 0, 0, cw, ch);
+            canvas.toBlob(
+                function (blob) {
+                    resolve(blob && blob.size ? blob : file);
+                },
+                'image/jpeg',
+                0.86
+            );
+        };
+        img.onerror = function () {
+            try {
+                URL.revokeObjectURL(url);
+            } catch (e2) {}
+            resolve(file);
+        };
+        img.src = url;
+    });
+}
+
+/** 将 OCR 文本写入粘贴框并打开弹窗预览。 */
+function applyTaxScreenshotOcrText(text) {
+    var ta = document.getElementById('taxPasteImportText');
+    if (!ta) {
+        showConsultStrongAlert('找不到粘贴输入框，请刷新后重试');
+        return false;
+    }
+    ta.value = String(text || '').trim();
+    openTaxPasteImportModal();
+    previewTaxPasteImport({ silent: true });
+    var parsed = _taxPasteImportLastParsed;
+    if (parsed && parsed.ok) {
+        showMsg('截图已识别，请核对预览后点「生成记录」', true);
+    } else {
+        showMsg('已填入识别文字，请核对并按需改公司名/月份后生成', true);
+    }
+    try {
+        ta.focus();
+    } catch (e0) {}
+    return true;
+}
+
+/** 上传截图并 OCR；成功后写入粘贴导入弹窗。 */
+function uploadTaxScreenshotForOcr(file) {
+    if (!file) {
+        return Promise.reject(new Error('no_file'));
+    }
+    var name = String(file.name || 'tax-screenshot.jpg');
+    showMsg('正在识别截图…', true);
+    return compressTaxScreenshotForOcr(file).then(function (blob) {
+        var fd = new FormData();
+        var uploadName = name.replace(/\.\w+$/, '') + '.jpg';
+        if (blob instanceof File) {
+            fd.append('file', blob);
+        } else {
+            try {
+                fd.append('file', blob, uploadName);
+            } catch (eAppend) {
+                fd.append('file', blob);
+            }
+        }
+        var headers = {};
+        try {
+            var token = String(localStorage.getItem('token') || '').trim();
+            if (token) headers.Authorization = 'Bearer ' + token;
+        } catch (eTok) {}
+        try {
+            if (typeof window.getClientDeviceHeaders === 'function') {
+                var extra = window.getClientDeviceHeaders();
+                if (extra && extra['X-Client-Device']) {
+                    headers['X-Client-Device'] = extra['X-Client-Device'];
+                }
+            }
+        } catch (eHdr) {}
+        /* 勿用 authFetch：会带 application/json，Express 会把 multipart 当 JSON 解析 */
+        return fetch('/api/tax/screenshot-ocr', {
+            method: 'POST',
+            headers: headers,
+            body: fd,
+            credentials: 'same-origin'
+        }).then(function (r) {
+            return (window.authParseJson || function (res) {
+                return res.json();
+            })(r).then(function (j) {
+                return { status: r.status, body: j };
+            });
+        });
+    }).then(function (x) {
+        if (x.status === 401) {
+            showConsultStrongAlert('请先登录后再上传截图');
+            setTimeout(function () {
+                window.location.href = 'login.html';
+            }, 900);
+            throw new Error('unauthorized');
+        }
+        if (x.status === 413) {
+            showConsultStrongAlert((x.body && x.body.msg) || '图片过大，请压缩后重试');
+            throw new Error('too_large');
+        }
+        if (!x.body || x.body.code !== 200 || !x.body.data || !x.body.data.text) {
+            showConsultStrongAlert(
+                (x.body && x.body.msg) || '识别失败，请换更清晰的收入纳税明细截图'
+            );
+            throw new Error('ocr_failed');
+        }
+        applyTaxScreenshotOcrText(x.body.data.text);
+        return x.body.data;
+    }).catch(function (err) {
+        var known =
+            err &&
+            (err.message === 'unauthorized' ||
+                err.message === 'too_large' ||
+                err.message === 'ocr_failed' ||
+                err.message === 'no_file');
+        if (!known) {
+            showConsultStrongAlert((err && err.message) || '识别失败，请稍后重试');
+        }
+        throw err;
+    });
+}
+
+(function bindTaxScreenshotOcrUi() {
+    function onPick(ev) {
+        var input = ev && ev.target;
+        var file = input && input.files && input.files[0];
+        if (!file) return;
+        uploadTaxScreenshotForOcr(file).catch(function () {});
+        try {
+            input.value = '';
+        } catch (e0) {}
+    }
+    function wire() {
+        var input = ensureTaxScreenshotOcrInput();
+        input.removeEventListener('change', onPick);
+        input.addEventListener('change', onPick);
+        var btn = document.getElementById('taxPasteImportScreenshotBtn');
+        if (btn && !btn.__taxOcrBound) {
+            btn.__taxOcrBound = true;
+            btn.addEventListener('click', function () {
+                openTaxScreenshotOcrPicker();
+            });
+        }
+        var startBtn = document.getElementById('btnTaxStartScreenshot');
+        if (startBtn && !startBtn.__taxOcrBound) {
+            startBtn.__taxOcrBound = true;
+            startBtn.addEventListener('click', function (e) {
+                /* onclick 已调 openTaxStartPath；此处仅兜底 */
+                if (e && e.defaultPrevented) return;
+            });
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wire);
+    } else {
+        wire();
+    }
+})();
+
 
 /**
  * 聊天摘要里「改为 / 数字改为」覆盖原金额。
@@ -3645,12 +3882,13 @@ function parseTaxPasteDetailMonths(block) {
         seen[key] = true;
         months.push({ year: y, month: mo, income: inc, tax: tx, key: key });
     }
+    var collapsed = collapseTaxOcrMonthBlocks(String(block || ''));
     var monthRe =
         /(\d{4})\s*年\s*(\d{1,2})\s*月[^\n\r]*?收入\s*([\d,.]+)\s*元?[^\n\r]*?税额\s*([\d,.]+)\s*元?/g;
     var m;
-    while ((m = monthRe.exec(block)) !== null) {
-        var lineStart = block.lastIndexOf('\n', m.index);
-        var line = block.slice(lineStart + 1, m.index + m[0].length);
+    while ((m = monthRe.exec(collapsed)) !== null) {
+        var lineStart = collapsed.lastIndexOf('\n', m.index);
+        var line = collapsed.slice(lineStart + 1, m.index + m[0].length);
         if (/合计|汇总|全年|累计|【注|📌|收入合计|税额合计/.test(line)) {
             continue;
         }
@@ -3659,9 +3897,9 @@ function parseTaxPasteDetailMonths(block) {
     /* 宽松：YYYY年M月 后直接两个金额（收入、税额） */
     var looseRe =
         /(\d{4})\s*年\s*(\d{1,2})\s*月\s*[：:]?\s*([\d,.]+)\s*元?\s+[^\d\n]{0,12}([\d,.]+)\s*元?/g;
-    while ((m = looseRe.exec(block)) !== null) {
-        var ls = block.lastIndexOf('\n', m.index);
-        var ln = block.slice(ls + 1, m.index + m[0].length);
+    while ((m = looseRe.exec(collapsed)) !== null) {
+        var ls = collapsed.lastIndexOf('\n', m.index);
+        var ln = collapsed.slice(ls + 1, m.index + m[0].length);
         if (/合计|汇总|全年|累计|【注|📌|奖金|提成|分红/.test(ln)) {
             continue;
         }
@@ -3685,11 +3923,13 @@ function parseTaxPasteDetailMonths(block) {
  */
 function parseTaxPasteText(rawText) {
     var text = applyTaxPasteGaiweiOverrides(
-        normalizeTaxPasteLabels(
-            String(rawText || '')
-                .replace(/\u00a0/g, ' ')
-                .replace(/\r\n/g, '\n')
-                .replace(/\r/g, '\n')
+        collapseTaxOcrMonthBlocks(
+            normalizeTaxPasteLabels(
+                String(rawText || '')
+                    .replace(/\u00a0/g, ' ')
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\r/g, '\n')
+            )
         )
     );
     if (!String(text).trim()) {
@@ -4811,6 +5051,9 @@ window.batchAddYearEndBonusOnly = batchAddYearEndBonusOnly;
 window.fillBatchTaxExample = fillBatchTaxExample;
 window.openTaxStartPath = openTaxStartPath;
 window.openTaxPasteImportModal = openTaxPasteImportModal;
+window.openTaxScreenshotOcrPicker = openTaxScreenshotOcrPicker;
+window.uploadTaxScreenshotForOcr = uploadTaxScreenshotForOcr;
+window.applyTaxScreenshotOcrText = applyTaxScreenshotOcrText;
 window.addBatchEmpRow = addBatchEmpRow;
 window.setBatchEmpRowValues = setBatchEmpRowValues;
 window.setBatchEmpBonusesOnRow = setBatchEmpBonusesOnRow;

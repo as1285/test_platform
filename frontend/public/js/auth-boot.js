@@ -243,7 +243,15 @@
   /** 轻量 Bearer fetch 占位；auth.js 加载后会覆盖为完整 authFetch */
   function bearerTokenFetch(url, opts) {
     opts = opts || {};
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    var isFd = false;
+    try {
+      isFd = typeof FormData !== 'undefined' && !!opts.body && opts.body instanceof FormData;
+    } catch (eFd) {}
+    var headers = Object.assign(isFd ? {} : { 'Content-Type': 'application/json' }, opts.headers || {});
+    if (isFd) {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+    }
     if (!headers.Authorization && !headers.authorization) {
       var t = '';
       try {

@@ -3,6 +3,8 @@
 const {
   isUserEffectivelyActive,
   isTrialExpired,
+  userActivationExpiredSql,
+  userEffectivelyActiveSql,
   activationFieldsForApi
 } = require('../../src/legacy/inviteReward');
 
@@ -30,6 +32,13 @@ describe('inviteReward activation', () => {
 
   it('legacy account_active=1 is active', () => {
     expect(isUserEffectivelyActive({ account_active: 1 })).toBe(true);
+  });
+
+  it('list SQL helpers mark expired vs still-active', () => {
+    expect(userActivationExpiredSql('users')).toContain("activation_kind, '') <> 'permanent'");
+    expect(userActivationExpiredSql('users')).toContain('active_until <= ?');
+    expect(userEffectivelyActiveSql('users')).toContain("activation_kind, '') = 'permanent'");
+    expect(userEffectivelyActiveSql('users')).toContain('active_until > ?');
   });
 
   it('activationFieldsForApi maps trial days left', () => {

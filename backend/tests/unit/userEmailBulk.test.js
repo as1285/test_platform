@@ -43,6 +43,58 @@ describe('userEmailBulk helpers', () => {
     );
     expect(buildCtaUrl({ publicSiteUrl: '' }, 'purchase.html')).toBe('purchase.html');
   });
+
+  test('makeTrackedCta builds per-send click URL', () => {
+    const { makeTrackedCta, buildClickTrackUrl, safeDestRedirect } = require('../../src/admin/userEmailBulk');
+    var deps = { publicSiteUrl: 'https://lkj.qiyun888.top' };
+    var tracked = makeTrackedCta(deps, 'purchase.html?from=email_half');
+    expect(tracked.token).toMatch(/^[a-f0-9]{32}$/);
+    expect(tracked.destUrl).toBe('https://lkj.qiyun888.top/purchase.html?from=email_half');
+    expect(tracked.trackUrl).toBe(
+      'https://lkj.qiyun888.top/api/public/email-click/' + tracked.token
+    );
+    expect(buildClickTrackUrl(deps, tracked.token)).toBe(tracked.trackUrl);
+    expect(safeDestRedirect(deps, tracked.destUrl)).toBe(tracked.destUrl);
+    expect(safeDestRedirect(deps, 'https://evil.example/phish')).toBe(
+      'https://lkj.qiyun888.top/purchase.html'
+    );
+  });
+});
+
+describe('userEmailBulk click consume', () => {
+  test('consumeEmailClick increments and returns dest', async () => {
+    var updates = [];
+    var api = createUserEmailBulk({
+      getPool: function () {
+        return {
+          execute: async function (sql, params) {
+            if (/CREATE TABLE/i.test(sql) || /information_schema/i.test(sql) || /ALTER TABLE/i.test(sql)) {
+              return [[{ c: 1 }], []];
+            }
+            if (/SELECT id, dest_url/.test(sql)) {
+              return [[{ id: 9, dest_url: 'https://lkj.qiyun888.top/purchase.html?from=email_half' }], []];
+            }
+            if (/UPDATE user_email_sends/.test(sql)) {
+              updates.push(params);
+              return [{ affectedRows: 1 }, []];
+            }
+            return [[], []];
+          },
+          query: async function () {
+            return [[], []];
+          }
+        };
+      },
+      publicSiteUrl: 'https://lkj.qiyun888.top',
+      mail: { isMailConfigured: function () { return true; }, sendMail: async function () {} }
+    });
+    var token = 'a'.repeat(32);
+    var out = await api.consumeEmailClick(token);
+    expect(out.dest_url).toBe('https://lkj.qiyun888.top/purchase.html?from=email_half');
+    expect(updates.length).toBe(1);
+    expect(updates[0][0]).toBe(token);
+    expect(await api.consumeEmailClick('bad')).toBeNull();
+  });
 });
 
 describe('userEmailBulk list/send API surface', () => {
@@ -77,7 +129,8 @@ describe('userEmailBulk list/send API surface', () => {
                   created_at: new Date('2026-01-01T00:00:00Z'),
                   register_source_channel: 'douyin',
                   last_email_at: null,
-                  last_email_subject: null
+                  last_email_subject: null,
+                  half_price_email_sent: 1
                 }
               ],
               []
@@ -96,6 +149,10 @@ describe('userEmailBulk list/send API surface', () => {
     expect(out.users[0].username).toBe('u1');
     expect(out.users[0].email).toBe('a@qq.com');
     expect(out.users[0].account_active).toBe(false);
+    expect(out.users[0].half_price_email_sent).toBe(true);
+    expect(calls.some(function (c) {
+      return c[0] === 'query' && String(c[1] || '').indexOf('half_price_email_sent') >= 0;
+    })).toBe(true);
   });
 
   test('sendToUsernames dryRun counts matched', async () => {
@@ -309,10 +366,12 @@ describe('userEmailBulk list/send API surface', () => {
 
   test('sendBulk personalizeRefundAmount puts that user refund into the mail', async () => {
     var mails = [];
+    var inserts = [];
     var api = createUserEmailBulk({
       getPool: function () {
         return mockPool({
-          execute: async function () {
+          execute: async function (sql, params) {
+            if (/INSERT INTO user_email_sends/.test(sql)) inserts.push(params);
             return [{ affectedRows: 1 }, []];
           },
           query: async function (sql) {
@@ -338,6 +397,7 @@ describe('userEmailBulk list/send API surface', () => {
           }
         });
       },
+      publicSiteUrl: 'https://lkj.qiyun888.top',
       mail: {
         isMailConfigured: function () {
           return true;
@@ -359,8 +419,9 @@ describe('userEmailBulk list/send API surface', () => {
     expect(mails[0].subject).toContain('¥7,200');
     expect(mails[0].text).toContain('大约可退 ¥7,200');
     expect(mails[0].text).toContain('2025 年约 ¥2,400');
-    expect(mails[0].text).toContain('refund_ad.html?from=email_refund&est=7200');
-    expect(mails[0].html).toContain('refund_ad.html?from=email_refund&amp;est=7200');
+    expect(mails[0].text).toMatch(/\/api\/public\/email-click\/[a-f0-9]{32}/);
+    expect(mails[0].html).toMatch(/\/api\/public\/email-click\/[a-f0-9]{32}/);
+    expect(inserts[0][9]).toContain('refund_ad.html?from=email_refund&est=7200');
   });
 
   test('sendBulk personalizeRefundAmount skips users with no tax records', async () => {

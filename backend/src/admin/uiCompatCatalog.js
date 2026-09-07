@@ -182,6 +182,20 @@ var MODELS = [
     issues: [
       { page: 'shouye', title: '状态栏白边改顶栏蓝', summary: '首页刘海白边接缝。', since: '2026-05-20' },
       { page: 'shuiming', title: '结果页状态栏改白 + 义务人完整', summary: '白顶栏浅色图标看不见；扣缴义务人不能截断。', since: '2026-05-20' },
+      {
+        page: 'shuiming',
+        title: '结果页顶距勿被非 Cordova 通用规则盖掉',
+        summary:
+          '非 Cordova 的 env(safe-area)=0 规则优先级更高时，「返回/标题」贴顶。须排除 16 Pro 并强制至少 59px，汇总灰底对齐正确 UI。',
+        since: '2026-09-06'
+      },
+      {
+        page: 'shuiming',
+        title: '结果页顶栏贴 Island + 汇总顶灰缝',
+        summary:
+          '官方标题下有 12px 灰缝再接「收入合计」。顶栏收为 44px 避免 Island 下多白，汇总 padding 12px 0 10px。',
+        since: '2026-09-06'
+      },
       { page: 'nav', title: '五 Tab 底栏间距统一', summary: '「我的」最容易悬空；100dvh 在 16 Pro 会少一截刘海。', since: '2026-08-16' }
     ]
   },

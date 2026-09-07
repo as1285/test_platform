@@ -21,6 +21,39 @@ function isUserEffectivelyActive(row) {
   return false;
 }
 
+/**
+ * 管理端列表：试用已过期（account_active 仍为 1，但到期时间已过且非永久）
+ * 占位符 `?` 传入当前时间（与 JS Date.now 对齐）。
+ */
+function userActivationExpiredSql(alias) {
+  var p = alias ? String(alias).replace(/[^\w.]/g, '') + '.' : '';
+  return (
+    p +
+    'account_active = 1 AND IFNULL(' +
+    p +
+    "activation_kind, '') <> 'permanent' AND " +
+    p +
+    'active_until IS NOT NULL AND ' +
+    p +
+    'active_until <= ?'
+  );
+}
+
+/** 管理端列表：当前仍有效激活（已激活且未过期） */
+function userEffectivelyActiveSql(alias) {
+  var p = alias ? String(alias).replace(/[^\w.]/g, '') + '.' : '';
+  return (
+    p +
+    'account_active = 1 AND (IFNULL(' +
+    p +
+    "activation_kind, '') = 'permanent' OR " +
+    p +
+    'active_until IS NULL OR ' +
+    p +
+    'active_until > ?)'
+  );
+}
+
 /** 时效试用已过期（仍记为 trial，但 active_until 已过） */
 function isTrialExpired(row) {
   if (!row) return false;
@@ -235,5 +268,7 @@ module.exports = {
   createInviteReward: createInviteReward,
   isUserEffectivelyActive: isUserEffectivelyActive,
   isTrialExpired: isTrialExpired,
+  userActivationExpiredSql: userActivationExpiredSql,
+  userEffectivelyActiveSql: userEffectivelyActiveSql,
   activationFieldsForApi: activationFieldsForApi
 };

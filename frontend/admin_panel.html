@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260905-ch-psych-col">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260906-no-user-offer">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -112,6 +112,7 @@
                             <label><input type="radio" name="bidStatusFilter" value="rejected"> 已驳回</label>
                             <button type="button" class="btn-sm btn-page" id="btnReloadBids">刷新</button>
                             <span class="hint" id="bidCounts"></span>
+                            <button type="button" class="btn-sm btn-page" id="btnJumpBidFollowup" title="查看已通过用户是否付费">已通过跟进</button>
                         </div>
                         <div class="scroll-x">
                             <table>
@@ -123,10 +124,41 @@
                                         <th>目录价</th>
                                         <th>出价</th>
                                         <th>留言</th>
+                                        <th>付费</th>
                                         <th>状态 / 操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="bidTbody"><tr><td colspan="7" class="hint">加载中…</td></tr></tbody>
+                                <tbody id="bidTbody"><tr><td colspan="8" class="hint">加载中…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section id="sectionPriceBidFollowup">
+                        <h2>已通过跟进</h2>
+                        <p class="hint mt-0" style="margin-bottom:8px;">跟踪心理价已通过用户是否付费开通；可发催付邮件（复用专属优惠提醒文案）。点击上方「已通过」计数或本按钮进入时默认看未付费。</p>
+                        <div class="form-row" style="align-items:center;gap:12px;flex-wrap:wrap;">
+                            <label><input type="radio" name="bidFollowPayFilter" value="unpaid" checked> 未付费</label>
+                            <label><input type="radio" name="bidFollowPayFilter" value="paid"> 已付费</label>
+                            <label><input type="radio" name="bidFollowPayFilter" value="all"> 全部</label>
+                            <button type="button" class="btn-sm btn-page" id="btnReloadBidFollowup">刷新</button>
+                            <button type="button" class="btn-sm btn-primary" id="btnBulkRemindBidFollowup">批量催未付费</button>
+                            <span class="hint" id="bidFollowCounts"></span>
+                            <span class="hint" id="bidFollowHint"></span>
+                        </div>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>通过时间</th>
+                                        <th>账号</th>
+                                        <th>套餐</th>
+                                        <th>成交价</th>
+                                        <th>付费状态</th>
+                                        <th>最近付款</th>
+                                        <th>邮箱</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bidFollowTbody"><tr><td colspan="8" class="hint">加载中…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -222,38 +254,6 @@
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveTaxEditFee">保存个税修改收费</button>
                                 <span class="hint" id="taxEditFeeHint" style="margin-left:8px;"></span>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>用户专属报价</h2>
-                        <div class="form-row form-stack">
-                            <p class="hint mt-0">为指定账号设置「套餐 + 特价」。用户打开购买页只看到该档，支付宝按特价下单；优先于全站套餐价。支付成功后报价仍保留，可手动取消。</p>
-                            <div class="form-field form-field-narrow">
-                                <label for="priceOfferUsername">账号</label>
-                                <input type="text" id="priceOfferUsername" maxlength="64" placeholder="用户名 / 手机号">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="priceOfferSku">套餐</label>
-                                <select id="priceOfferSku">
-                                    <option value="sku_300_7d">周卡（原价 ¥300）</option>
-                                    <option value="sku_348_14d">双周卡（原价 ¥348）</option>
-                                    <option value="sku_398_30d">月卡（原价 ¥398）</option>
-                                </select>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="priceOfferAmount">特价（元）</label>
-                                <input type="number" id="priceOfferAmount" min="0.01" max="99999.99" step="0.01" placeholder="如 300">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="priceOfferNote">备注（可选）</label>
-                                <input type="text" id="priceOfferNote" maxlength="255" placeholder="如：客服议价">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSavePriceOffer">保存专属价</button>
-                                <button type="button" class="btn-sm btn-page" id="btnLoadPriceOffer">查询</button>
-                                <button type="button" class="btn-sm btn-ban" id="btnClearPriceOffer">取消专属价</button>
-                                <span class="hint" id="priceOfferHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
                     </section>
@@ -393,7 +393,7 @@
                             </div>
                             <div class="form-field mt-10">
                                 <label>渠道专属套餐（可自定义价格 / 天数 / 小时 / 心理价位；留空跟随全站）</label>
-                                <p class="hint mt-6 mb-8">最多 5 档。前 3 档对应全站周卡/双周卡/月卡（留空跟随全站）。第 4、5 档需填写<strong>价格</strong>和<strong>天数或小时</strong>才会出现在支付页。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。<strong>心理价位</strong>为划线对照原价（须高于实付价）；留空则不显示渠道划线。账号「用户专属报价」优先于渠道价。</p>
+                                <p class="hint mt-6 mb-8">最多 5 档。前 3 档对应全站周卡/双周卡/月卡（留空跟随全站）。第 4、5 档需填写<strong>价格</strong>和<strong>天数或小时</strong>才会出现在支付页。<strong>名称</strong>会显示在支付页（如「小时卡」「日卡」「月卡」）；天数 0–3650，小时 0–23（可组合）。只改价格不改名称时，支付页仍显示全站默认「周卡/双周卡」文案。<strong>心理价位</strong>为划线对照原价（须高于实付价）；留空则不显示渠道划线。</p>
                                 <div class="mine-ui-block max-w-920" style="overflow-x:auto">
                                     <table class="data-table agent-ch-sku-table" style="min-width:720px">
                                         <thead>
@@ -994,10 +994,11 @@
                                 </div>
                                 <div class="user-filter-field">
                                     <label for="filterActive">激活状态</label>
-                                    <select class="filter-control" id="filterActive">
+                                    <select class="filter-control" id="filterActive" title="已激活不含试用过期；已过期为时效开通已到期">
                                         <option value="">全部</option>
                                         <option value="1">已激活</option>
                                         <option value="0">未激活</option>
+                                        <option value="expired">已过期</option>
                                     </select>
                                 </div>
                                 <div class="user-filter-field">
@@ -1081,7 +1082,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code>、<code>13691947741</code>、<code>18671741907</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。时效/试用账号操作列有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「同行 · 高频改名」。30 天未登录按最近成功登录判断。<strong>注册次日回访</strong>：未激活且注册次日有日活；「仅次日回访」表示次日之后再无日活。<strong>填写收入</strong>：未激活，且自己填写的个税月收入（本期收入或收入取较大值）大于 1.5 万；公司名含「示例」的记录不计入。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>19106014552</code>、<code>13691947741</code>、<code>18671741907</code> 在本页与「用户数据」可见<strong>全部注册用户</strong>。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。渠道 <code>abc</code>：截止后新注册仅 <code>admin</code> 可见（含 <code>19106014552</code> 等全量运营也不可见）；历史 abc 账号仍按原可见范围。普通子管理员不可见全部 abc。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。激活状态筛选：<strong>已激活</strong>为当前仍有效（不含试用过期）；<strong>未激活</strong>为从未开通；<strong>已过期</strong>为时效开通已到期。已过期账号操作列与未激活相同，显示绿色<strong>激活</strong>按钮，可按时长重新开通；未过期的时效/试用账号仍有青绿按钮<strong>临时→永久</strong>，一键清除过期时间改为永久激活。<strong>证明权限</strong>列可开通/关闭该账号的离职证明、在职证明（免付费去水印，与主套餐无关）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；筛选项可手填数字，例如填 5 表示至少有 5 个不同日期改过个税。改名次数手填数字表示大于该次数；留空为全部。<strong>白名单</strong>为永久免改名费与个税修改费的账号，筛选项可只看白名单或非白名单。<strong>代理标识</strong>可手动设置/取消，筛选项可只看代理或非代理。<strong>同时</strong>满足改名大于阈值且个税修改天数大于阈值、且未永久免改名费的账号标记为<strong>同行</strong>，后续每天修改个税需先付当天无限费用（阈值与金额见「定价与引导」，默认改名大于 6 次且修改大于 8 天）。改名超过 5 次或修改个税天数超过 8 天的用户，其每日个税修改次数见侧栏「同行 · 高频改名」。30 天未登录按最近成功登录判断。<strong>注册次日回访</strong>：未激活且注册次日有日活；「仅次日回访」表示次日之后再无日活。<strong>填写收入</strong>：未激活，且自己填写的个税月收入（本期收入或收入取较大值）大于 1.5 万；公司名含「示例」的记录不计入。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -1296,12 +1297,14 @@
                                         <th>姓名</th>
                                         <th>邮箱</th>
                                         <th>开通</th>
+                                        <th>是否发送半价邮件</th>
                                         <th>注册</th>
                                         <th>最近发信</th>
+                                        <th>最近点击</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="userEmailTbody"><tr><td colspan="8">进入本页后加载…</td></tr></tbody>
+                                <tbody id="userEmailTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
                             </table>
                         </div>
                         <div class="pagination">
@@ -1334,10 +1337,11 @@
                                         <th>标题</th>
                                         <th>人群/来源</th>
                                         <th>状态</th>
+                                        <th>点击</th>
                                         <th>操作人</th>
                                     </tr>
                                 </thead>
-                                <tbody id="userEmailSendTbody"><tr><td colspan="7">进入本页后加载…</td></tr></tbody>
+                                <tbody id="userEmailSendTbody"><tr><td colspan="8">进入本页后加载…</td></tr></tbody>
                             </table>
                         </div>
                         <div class="pagination">
@@ -2017,11 +2021,38 @@
                                     <label for="sbdyBase">缴费基数（元）</label>
                                     <input type="number" id="sbdyBase" value="4986" step="0.01">
                                 </div>
+                                <div class="sbdy-js-new-only" hidden>
+                                    <label for="sbdyTitleMonths">标题月数</label>
+                                    <input type="number" id="sbdyTitleMonths" min="1" max="600" step="1" placeholder="如 441">
+                                </div>
+                                <div class="sbdy-js-new-only" hidden>
+                                    <label for="sbdyTitleCompact">标题区间</label>
+                                    <input type="text" id="sbdyTitleCompact" maxlength="16" placeholder="如 199001-202609">
+                                </div>
                                 <div class="sbdy-sz-only" hidden>
                                     <label for="sbdyMedicalBase">医保基数（元，可同养老）</label>
                                     <input type="number" id="sbdyMedicalBase" value="4492" step="0.01">
                                 </div>
+                                <div>
+                                    <label for="sbdyInjuryBase">工伤基数（元，空则同养老）</label>
+                                    <input type="number" id="sbdyInjuryBase" step="0.01" placeholder="如 2500">
+                                </div>
+                                <div>
+                                    <label for="sbdyUnempBase">失业基数（元，空则同工伤）</label>
+                                    <input type="number" id="sbdyUnempBase" step="0.01" placeholder="如 2500">
+                                </div>
+                                <div class="sbdy-sz-only" hidden>
+                                    <label for="sbdyIuBaseChangeYm">工伤/失业基数变更起月</label>
+                                    <input type="month" id="sbdyIuBaseChangeYm" placeholder="如 2025-03">
+                                </div>
+                                <div class="sbdy-sz-only" hidden>
+                                    <label for="sbdyIuBaseAfter">变更后工伤/失业基数</label>
+                                    <input type="number" id="sbdyIuBaseAfter" step="0.01" placeholder="如 2520">
+                                </div>
                             </div>
+                            <p class="hint mt-4 mb-0">工伤/失业基数可单独填写；留空则工伤同养老、失业同工伤。</p>
+                            <p class="hint mt-4 mb-0 sbdy-sz-only" hidden>深圳/广州：填「变更起月 + 变更后基数」时，该月起用新基数（例：2025-03 前 2500、起 2520）。</p>
+                            <p class="hint mt-4 mb-0 sbdy-js-new-only" hidden>江苏新：上面「缴费起止月」只控制明细行；标题「出具证明前 N 个月（YYYYMM-YYYYMM）」单独填，可与明细不同。养老个人=基数×8%，失业个人=基数×0.5%。</p>
                             <details class="page-hint-details admin-tool-advanced">
                                 <summary>参保状态与打印日期（可选）</summary>
                                 <div class="form-row flex-wrap gap-10 mt-8">
@@ -2580,7 +2611,7 @@
                 <div id="page-najilu-qr" class="page-panel" role="tabpanel">
                     <section>
                         <h2>完税二维码使用统计</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端完税二维码：区间内<strong>使用用户</strong>（有替换保存或付费）、付费去水印解锁、已解锁用户数、当前锁定自定义二维码用户数、保存次数（含水印演示 / 去水印）。后台本页「手动替换」不计入用户使用。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端完税二维码：区间内<strong>页面浏览 / 入口点击</strong>、使用用户（有浏览、保存或付费）、付费去水印解锁、已解锁用户数、当前锁定自定义二维码用户数、保存次数（含水印演示 / 去水印）。测试账号与游客已排除；后台本页「手动替换」不计入用户使用。浏览/点击自埋点上线后累计。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="najiluQrStatsDays">统计区间</label>
@@ -3524,7 +3555,7 @@
                                 </table>
                             </div>
                         </div>
-                        <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
+                        <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。监控探活与接口自测假账号（如 <code>__monitor_no__</code>）已排除，不计入本页。</p>
                     </section>
                 </div>
 
@@ -3625,22 +3656,6 @@
                                 <select id="channelAnalysisDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
                             </div>
                             <button type="button" class="btn-page" id="btnRefreshChannelAnalysis">刷新分析</button>
-                        </div>
-                        <div id="channelLinksSection" class="channel-links-section mt-14">
-                            <p class="stat mb-6">渠道连接</p>
-                            <p class="hint mt-0 mb-10">投放各平台时复制对应链接发给用户。用户打开后注册会<strong>自动记入该来源渠道</strong>，无需再选手动填写。参数为 <code>src</code>（与代理推广 <code>ch</code> 不同）。</p>
-                            <div class="scroll-x">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>渠道</th>
-                                            <th>注册链接</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="channelLinksTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
                         </div>
                         <div id="channelAnalysisWrap" class="channel-analysis-wrap" aria-live="polite">
                             <p id="channelAnalysisSummary" class="stat">加载中…</p>
@@ -4028,10 +4043,13 @@
                 <span id="taxPasteImportTitle">按模板生成个税</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪后点生成。区间可写「2023年全年」或「23年4月到26年8月」。也可清空后粘贴个税 APP 明细。</p>
+            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪后点生成。区间可写「2023年全年」或「23年4月到26年8月」。也可清空后粘贴个税 APP 明细，或上传官方截图自动识别。</p>
             <div class="tax-paste-import-toolbar">
                 <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">重新填入模板</button>
-                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
+                <div class="tax-paste-import-toolbar-right">
+                    <button type="button" class="btn btn-default btn-sm" id="taxPasteImportScreenshotBtn">上传截图识别</button>
+                    <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
+                </div>
             </div>
             <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="14" placeholder="公司名称：某某有限公司&#10;扣缴义务人纳税人识别号：91110105MA01K9XH2B&#10;主管税务机关：国家税务总局北京市朝阳区税务局&#10;2023年全年&#10;2024年全年&#10;2025年全年&#10;月薪：20000元&#10;基本养老保险：1600元&#10;基本医疗保险：400元&#10;失业保险：100元&#10;住房公积金：2400元&#10;&#10;（任职区间也可写：23年4月到26年8月）"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
@@ -4068,9 +4086,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260905-ch-psych-col"></script>
+    <script src="/js/admin/loader.js?v=20260906-js-new-441"></script>
     <script src="/js/admin/nav.js?v=20260905-ch-psych-col"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20260905-ch-psych-col"></script>
+    <script src="/js/admin_panel.js?v=20260907-expired-filter"></script>
 </body>
 </html>

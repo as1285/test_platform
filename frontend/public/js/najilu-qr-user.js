@@ -41,6 +41,50 @@
     return fetch(url, Object.assign({}, opts || {}, { headers: headers }));
   }
 
+  /** C 端完税二维码埋点（管理台「完税二维码」页统计浏览/点击） */
+  function trackNajiluQr(action, meta) {
+    var payload = Object.assign({ page: 'najilu_qr' }, meta || {});
+    try {
+      var from = new URLSearchParams(window.location.search).get('from') || '';
+      if (from && payload.from == null) payload.from = from;
+    } catch (eFrom) {}
+    if (typeof global.trackUserAction === 'function') {
+      global.trackUserAction(action, payload);
+    }
+  }
+
+  function pageFromQuery() {
+    try {
+      return new URLSearchParams(window.location.search).get('from') || '';
+    } catch (e0) {
+      return '';
+    }
+  }
+
+  var DEFAULT_BACK_HREF = 'consult.html?tab=products';
+
+  /**
+   * 来源标记 → 返回页。开具页传入 from=najilu / najilu_generate，
+   * 不能把标记当路径，否则返回会落到 /najilu_generate 导致 404。
+   */
+  function resolveBackHref(from) {
+    var key = String(from == null ? '' : from).trim();
+    try {
+      key = decodeURIComponent(key);
+    } catch (eDec) {}
+    key = String(key || '').trim();
+    if (key === 'purchase') return 'purchase.html';
+    if (key === 'consult') return 'consult.html?tab=products';
+    if (key === 'najilu' || key === 'najilu_generate') return 'najilu.html';
+    if (
+      /^[a-zA-Z0-9_.-]+\.html(?:[?#][a-zA-Z0-9_=&%./?#-]*)?$/.test(key) &&
+      key.indexOf('..') < 0
+    ) {
+      return key;
+    }
+    return DEFAULT_BACK_HREF;
+  }
+
   function val(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || '').trim() : '';
@@ -580,6 +624,7 @@
     var input = document.getElementById('najiluQrFile');
     var file = input && input.files && input.files[0] ? input.files[0] : null;
     if (!file) return;
+    trackNajiluQr('track_najilu_qr_upload_click', { kind: 'patch' });
     extractedPatchBlob = null;
     var fullInput = document.getElementById('najiluQrFullFile');
     if (fullInput) fullInput.value = '';
@@ -590,6 +635,7 @@
   function onFullFileChange() {
     var file = selectedFullFile();
     if (!file) return;
+    trackNajiluQr('track_najilu_qr_upload_click', { kind: 'full' });
     extractedPatchBlob = null;
     currentRegion = null;
     var directInput = document.getElementById('najiluQrFile');
@@ -693,6 +739,9 @@
   }
 
   function save(clear) {
+    trackNajiluQr(clear ? 'track_najilu_qr_clear_click' : 'track_najilu_qr_save_click', {
+      from: pageFromQuery()
+    });
     var code = normalizeCode(val('najiluQrQueryCode'));
     if (code && !/^[A-Z0-9]{16}$/.test(code)) {
       setStatus('查询验证码须为 16 位字母或数字', true);
@@ -735,6 +784,7 @@
   }
 
   function previewCert() {
+    trackNajiluQr('track_najilu_qr_preview_click', { from: pageFromQuery() });
     var patch = selectedPatchFile();
     var full = selectedFullFile();
     if (full && !patch) {
@@ -870,6 +920,7 @@
    * 4) 全失败：提示长按上方图片保存
    */
   function downloadResult() {
+    trackNajiluQr('track_najilu_qr_download_click', { from: pageFromQuery() });
     if (!resultDataUrl) {
       setStatus('请先生成预览', true);
       return;
@@ -1024,6 +1075,7 @@
   }
 
   function startPay() {
+    trackNajiluQr('track_najilu_qr_pay_click', { from: pageFromQuery() });
     setPayStatus('正在创建订单…');
     var qrWrap = document.getElementById('najiluQrPayQrWrap');
     if (qrWrap) {
@@ -1090,10 +1142,7 @@
     var back = document.getElementById('najiluQrBack');
     if (back) {
       try {
-        var from = new URLSearchParams(window.location.search).get('from') || '';
-        if (from === 'purchase') back.href = 'purchase.html';
-        else if (from === 'consult') back.href = 'consult.html?tab=products';
-        else if (from) back.href = decodeURIComponent(from);
+        back.href = resolveBackHref(pageFromQuery());
       } catch (eFrom) {}
     }
     var payBtn = document.getElementById('btnNajiluQrPay');
@@ -1140,10 +1189,22 @@
       });
     });
     window.addEventListener('resize', drawCropBox);
+    var faq = document.getElementById('cardNajiluQrFaq');
+    if (faq) {
+      faq.addEventListener('toggle', function (ev) {
+        var t = ev && ev.target;
+        if (!t || t.tagName !== 'DETAILS' || !t.open) return;
+        var summary = t.querySelector('summary');
+        trackNajiluQr('track_najilu_qr_faq_expand', {
+          q: summary ? String(summary.textContent || '').trim().substring(0, 80) : ''
+        });
+      }, true);
+    }
   }
 
   function init() {
     bind();
+    trackNajiluQr('track_najilu_qr_page_view', { from: pageFromQuery() });
     loadStatus();
   }
 
@@ -1158,6 +1219,7 @@
     previewCert: previewCert,
     _regionFromQrBox: regionFromQrBox,
     _regionForMode: regionForMode,
-    _drawDemoWatermark: drawDemoWatermark
+    _drawDemoWatermark: drawDemoWatermark,
+    _resolveBackHref: resolveBackHref
   };
 })(window);

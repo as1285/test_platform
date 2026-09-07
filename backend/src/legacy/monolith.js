@@ -9,7 +9,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const geoip = require('geoip-lite');
+const { cityLabelFromIp } = require('../utils/ipCity');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const registerGuard = require('../../register-guard');
@@ -25,6 +25,7 @@ const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const adminDownline = require('../admin/downline');
+const { blockedByFromAdmin, blockedByLabel } = require('../admin/blockedByLabel');
 const {
   adminUsernameKey,
   adminHasFullUserScope,
@@ -46,10 +47,98 @@ const {
   createInviteReward,
   isUserEffectivelyActive,
   isTrialExpired,
+  userActivationExpiredSql,
+  userEffectivelyActiveSql,
   activationFieldsForApi
 } = require('./inviteReward');
 const { createPricingAb, DEFAULT_PRICING_AB, applyChannelCatalogPrices } = require('./pricingAb');
-const { createAgentChannels } = require('./agentChannels');
+const agentChannelsLib = require('./agentChannels');
+const createAgentChannels = agentChannelsLib.createAgentChannels;
+
+/** 兼容旧包未导出时仍可注册，避免 TypeError 直接返回给客户端 */
+function isUrlOnlySalesChannel(ch) {
+  if (typeof agentChannelsLib.isUrlOnlySalesChannel === 'function') {
+    return agentChannelsLib.isUrlOnlySalesChannel(ch);
+  }
+  var k = String(ch == null ? '' : ch)
+    .trim()
+    .toLowerCase();
+  return k === 'abc';
+}
+
+/**
+ * 新注册 abc（及其它 URL-only）仅 admin 可见的起始时间（UTC）。
+ * 历史 abc 账号不按此规则收紧；可用 ABC_CHANNEL_ADMIN_ONLY_SINCE 覆盖。
+ */
+const ABC_CHANNEL_ADMIN_ONLY_SINCE_UTC = String(
+  process.env.ABC_CHANNEL_ADMIN_ONLY_SINCE || '2026-09-07 02:41:00'
+).trim();
+
+/** 仅 username=admin 可查看截止后新注册的 abc 渠道用户 */
+function isAbcChannelViewerAdmin(admin) {
+  return adminUsernameKey(admin) === 'admin';
+}
+
+function abcChannelAdminOnlySinceUtc() {
+  return ABC_CHANNEL_ADMIN_ONLY_SINCE_UTC || '2026-09-07 02:41:00';
+}
+
+/**
+ * URL-only 渠道可见性：
+ * - admin：全部可见（含新注册 abc）
+ * - 全量运营等：历史 abc 仍可见，截止后新注册 abc 不可见
+ * - 普通子管理员：全部 abc 不可见
+ */
+function appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol) {
+  if (!whereClauses || !admin) return;
+  if (isAbcChannelViewerAdmin(admin)) return;
+  var alias = userTableAliasFromCol(userCol);
+  var chCol = alias + '.sales_promo_channel';
+  var createdCol = alias + '.created_at';
+  if (adminHasFullUserScope(admin)) {
+    if (typeof agentChannelsLib.excludeUrlOnlySalesChannelSinceSql === 'function') {
+      whereClauses.push(
+        agentChannelsLib.excludeUrlOnlySalesChannelSinceSql(
+          chCol,
+          createdCol,
+          abcChannelAdminOnlySinceUtc(),
+          params
+        )
+      );
+      return;
+    }
+    whereClauses.push(
+      "(NOT (LOWER(TRIM(IFNULL(" +
+        chCol +
+        ", ''))) IN ('abc') AND " +
+        createdCol +
+        ' >= ?))'
+    );
+    params.push(abcChannelAdminOnlySinceUtc());
+    return;
+  }
+  if (typeof agentChannelsLib.excludeUrlOnlySalesChannelSql === 'function') {
+    whereClauses.push(agentChannelsLib.excludeUrlOnlySalesChannelSql(chCol, params));
+    return;
+  }
+  whereClauses.push("(LOWER(TRIM(IFNULL(" + chCol + ", ''))) NOT IN ('abc'))");
+}
+
+function resolveSalesChannelForChannelPrices(userCh, requestCh) {
+  if (typeof agentChannelsLib.resolveSalesChannelForChannelPrices === 'function') {
+    return agentChannelsLib.resolveSalesChannelForChannelPrices(userCh, requestCh);
+  }
+  var reqCh = String(requestCh == null ? '' : requestCh)
+    .trim()
+    .toLowerCase();
+  var acctCh = String(userCh == null ? '' : userCh)
+    .trim()
+    .toLowerCase();
+  if (reqCh === 'abc') return reqCh;
+  if (acctCh && acctCh !== 'abc') return acctCh;
+  if (reqCh && reqCh !== 'abc') return reqCh;
+  return '';
+}
 const { createUserPriceOffers } = require('../payments/userPriceOffers');
 const { createPriceBids } = require('../payments/priceBids');
 const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
@@ -1237,27 +1326,30 @@ async function resolveForcedAbcForSalesChannel(salesCh) {
 }
 
 /**
- * 按渠道专属价覆盖 offer.skus（用户账号渠道优先，其次请求 ch / header）。
+ * 按渠道专属价覆盖 offer.skus。
+ * 普通渠道：账号 sales_promo_channel 优先，其次请求 ch / header / UA。
+ * URL-only 渠道（如 abc）：只认本次请求显式渠道，账号留存不改价。
  * 用户专属报价应在本函数之后再套用。
  */
 async function applyAgentChannelPricesToOffer(offer, username, req) {
   if (!offer || !offer.skus) return offer;
-  var ch = '';
+  var userCh = '';
   try {
     if (username) {
-      ch = await getUserSalesPromoChannel(username);
+      userCh = await getUserSalesPromoChannel(username);
     }
   } catch (e0) {
-    ch = '';
+    userCh = '';
   }
-  if (!ch && req) {
+  var reqCh = '';
+  if (req) {
     try {
-      ch = readSalesChannelFromRequest(req);
+      reqCh = readSalesChannelFromRequest(req);
     } catch (e1) {
-      ch = '';
+      reqCh = '';
     }
   }
-  ch = sanitizeSalesChannelId(ch);
+  var ch = resolveSalesChannelForChannelPrices(userCh, reqCh);
   if (!ch) return offer;
   var pol = null;
   try {
@@ -1297,6 +1389,10 @@ async function attachUserFromSalesChannel(username, salesCh) {
   var u = String(username || '').trim();
   var ch = sanitizeSalesChannelId(salesCh);
   if (!u || !ch) {
+    return null;
+  }
+  /* abc 等 URL-only：不写入账号渠道，避免离开带参页后仍走渠道专属价 */
+  if (isUrlOnlySalesChannel(ch)) {
     return null;
   }
   var pol = null;
@@ -1799,8 +1895,14 @@ async function resolveInstallPackagesContext(req) {
    * 已登录：只用账号渠道或 URL 显式 ?ch=，禁止 IP/设备归因兜底。
    * 否则测过代理链接的同一出口 IP 会把直客 A 方案也标成 code_only，购买页看不到支付宝。
    * 未登录：仍可用归因，方便 install_guide 匿名下载/藏闲鱼。
+   * URL-only（abc）：账号留存不参与，须本次请求显式带渠道。
    */
-  var salesCh = queryCh || userCh || '';
+  var salesCh = '';
+  if (queryCh) {
+    salesCh = queryCh;
+  } else if (userCh && !isUrlOnlySalesChannel(userCh)) {
+    salesCh = userCh;
+  }
   if (!salesCh && !uid) {
     try {
       salesCh = await resolveSalesChannelForRequest(req);
@@ -2381,27 +2483,7 @@ function heavyAdminApiRateLimit(req, res, next) {
     });
 }
 
-/** 由 IP 解析城市展示名 */
-function cityLabelFromIp(ip) {
-  if (!ip) return '—';
-  if (ip === '::1' || ip === '127.0.0.1') return '本地';
-  var g = geoip.lookup(ip);
-  if (!g) return '—';
-  if (g.country === 'CN') {
-    var c = g.city && String(g.city).trim();
-    if (c) return c;
-    /* geoip-lite 对大量国内 IP 只有国家、无 city；避免误读成「用户城市就是中国」 */
-    var r = g.region && String(g.region).trim();
-    if (r) return '中国（' + r + '）';
-    return '中国（IP 库无城市）';
-  }
-  var parts = [];
-  if (g.city) parts.push(g.city);
-  if (g.country) parts.push(g.country);
-  return parts.join(' · ') || '—';
-}
-
-/** 解析：device city label */
+/** 由 IP 解析城市展示名（见 utils/ipCity，ip2region） */
 function resolveDeviceCityLabel(ip, cityStored) {
   var c = cityStored != null ? String(cityStored).trim() : '';
   if (c && c !== '—') return c.substring(0, 255);
@@ -7959,11 +8041,30 @@ function isRetainedTrackAction(action) {
     act.indexOf('track_browser_') === 0 ||
     act.indexOf('track_refund_ad_') === 0 ||
     act.indexOf('track_douyin_yuefu_ad_') === 0 ||
-    act.indexOf('track_gjj_extract_ad_') === 0
+    act.indexOf('track_gjj_extract_ad_') === 0 ||
+    act.indexOf('track_najilu_qr_') === 0
   ) {
     return true;
   }
   return act === 'track_conversion_gate_activate' || act === 'track_conversion_activate_success';
+}
+
+/**
+ * 试用已过期但仍允许的自助续开路径。
+ * 与激活码 action=activate 同等放行：过期账号可在开通页拉价、下单、轮询、心理价与相关增长活动，
+ * 避免 JWT 仍带 act=1 时被 requireAuth 401 踢登录导致无法复购。
+ */
+function isTrialExpiredSelfServeAllowedRequest(req) {
+  var path = normalizeUserApiPath(req);
+  if (path.indexOf('/api/payments/alipay') === 0) return true;
+  if (path === '/api/payments/price-bid' || path.indexOf('/api/payments/price-bid/') === 0) {
+    return true;
+  }
+  if (path.indexOf('/api/growth/bilibili-share') === 0) return true;
+  if (path.indexOf('/api/growth/purchase-price-survey') === 0) return true;
+  /* 开通页标价文案会回退请求此接口 */
+  if (path === '/api/lizhi-cert/status') return true;
+  return false;
 }
 
 /** 是否：unactivated allowed request */
@@ -8225,7 +8326,33 @@ function requireAdminAnyMenu(menuKeys) {
 /** 管理辅助：can access target user */
 async function adminCanAccessTargetUser(conn, admin, username) {
   if (!username) return false;
-  if (!admin || adminHasFullUserScope(admin)) return true;
+  if (!admin) return false;
+  if (isAbcChannelViewerAdmin(admin)) return true;
+  /* abc 渠道：截止后新注册仅 admin 可见；历史账号按原规则 */
+  try {
+    const [newAbcRows] = await conn.execute(
+      `SELECT id FROM users
+       WHERE username = ?
+         AND LOWER(TRIM(IFNULL(sales_promo_channel, ''))) IN ('abc')
+         AND created_at >= ?
+       LIMIT 1`,
+      [String(username), abcChannelAdminOnlySinceUtc()]
+    );
+    if (newAbcRows.length) return false;
+    if (!adminHasFullUserScope(admin)) {
+      const [anyAbcRows] = await conn.execute(
+        `SELECT id FROM users
+         WHERE username = ?
+           AND LOWER(TRIM(IFNULL(sales_promo_channel, ''))) IN ('abc')
+         LIMIT 1`,
+        [String(username)]
+      );
+      if (anyAbcRows.length) return false;
+    }
+  } catch (eCh) {
+    console.error('adminCanAccessTargetUser channel check', eCh);
+  }
+  if (adminHasFullUserScope(admin)) return true;
   var owners = adminDownline.adminScopeUsernames(admin);
   if (!owners.length) return false;
   var codeParams = [];
@@ -8342,17 +8469,19 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
     /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录。
-       例外：提交激活码（action=activate）必须放行，否则过期用户无法续开。 */
+       例外：激活码续开 + 支付宝/心理价等自助续开路径必须放行，否则过期用户无法复购。 */
     var tokAct = payload.act != null && payload.act !== '' ? Number(payload.act) : null;
     var isActivateAction =
       req.body &&
       (String(req.body.action || '') === 'activate' ||
         String(req.query && req.query.action ? req.query.action : '') === 'activate');
+    var allowExpiredSelfServe =
+      isActivateAction || isTrialExpiredSelfServeAllowedRequest(req);
     if (
       tokAct === 1 &&
       !rowUserTypeIsGuest(row) &&
       isTrialExpired(row) &&
-      !isActivateAction
+      !allowExpiredSelfServe
     ) {
       return res.status(401).json({
         code: 401,
@@ -8415,6 +8544,8 @@ async function registerUser(
       ? String(registerSourceChannel).trim()
       : null;
   salesPromoChannel = sanitizeSalesChannelId(salesPromoChannel);
+  /* abc 等 URL-only：仍写入 sales_promo_channel 做归因/后台过滤；
+   * 定价不认账号留存（见 resolveSalesChannelForChannelPrices），也不挂 owner_agent_admin */
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
@@ -8952,6 +9083,9 @@ async function handlePublicGuestSession(req, res) {
   try {
     /* 游客永久绑渠道：显式 ?ch= / header / UA，禁止裸 IP 归因写进账号 */
     salesCh = readSalesChannelFromRequest(req);
+    if (isUrlOnlySalesChannel(salesCh)) {
+      salesCh = '';
+    }
   } catch (eSales) {
     salesCh = '';
   }
@@ -11721,6 +11855,28 @@ async function recordUserRegistrationAttempt(username, ok, req, reason) {
   }
 }
 
+/**
+ * 探活/自测假账号（如 serverMonitor `__monitor_no__`、api-selftest `__selftest_no__`）。
+ * 不写入登录事件，也不计入日活页登录成功/失败与失败原因统计。
+ */
+function isInternalLoginProbeUsername(username) {
+  var u = String(username || '').trim();
+  if (!u) return false;
+  return u === '__monitor_no__' || u === '__selftest_no__' || /^__[A-Za-z0-9._-]+_no__$/.test(u);
+}
+
+/** SQL：排除探活/自测假账号（列名默认 username） */
+function sqlExcludeInternalLoginProbeUsernames(column) {
+  var col = column || 'username';
+  return (
+    '(' +
+    col +
+    " NOT IN ('__monitor_no__', '__selftest_no__') AND " +
+    col +
+    " NOT REGEXP '^__[A-Za-z0-9._-]+_no__$')"
+  );
+}
+
 /** 记录：user login attempt */
 async function recordUserLoginAttempt(username, ok, req, reason) {
   if (!pool || !username) {
@@ -11728,6 +11884,9 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   }
   var uname = String(username).trim().substring(0, 255);
   if (!uname) {
+    return;
+  }
+  if (isInternalLoginProbeUsername(uname)) {
     return;
   }
   var ip = getClientIp(req);
@@ -17080,6 +17239,27 @@ async function handleAdminEmailsSend(req, res) {
   }
 }
 
+/** 邮件 CTA 点击追踪：记一次后跳转目的页 */
+async function handlePublicEmailClick(req, res) {
+  try {
+    var token = req.params && req.params.token != null ? String(req.params.token).trim() : '';
+    var out = await getUserEmailBulk().consumeEmailClick(token);
+    if (out && out.dest_url) {
+      return res.redirect(302, out.dest_url);
+    }
+  } catch (e) {
+    console.error('[public email-click]', e);
+  }
+  var fallback = '';
+  try {
+    fallback = require('../admin/userEmailBulk').buildCtaUrl(
+      { publicSiteUrl: config.PUBLIC_SITE_URL },
+      'purchase.html'
+    );
+  } catch (eFb) {}
+  return res.redirect(302, fallback || '/purchase.html');
+}
+
 /** 清空用户邮箱 */
 async function handleAdminEmailsClear(req, res) {
   try {
@@ -17832,7 +18012,7 @@ async function handleAdminUsers(req, res) {
     var qUsername = String(req.query.username || '').trim();
     var qSameRegisterIpOf = String(req.query.same_register_ip_of || '').trim();
     var qRealName = String(req.query.real_name || '').trim();
-    var qActive = req.query.active; // '1' or '0'
+    var qActive = req.query.active; // '1' 已激活(未过期) | '0' 未激活 | 'expired' 已过期
     var qBanned = req.query.banned; // '1' or '0'
     var qExact = req.query.exact === '1' || req.query.exact === 'true';
     var qRisk = req.query.risk; // '1' 仅风险, '0' 非风险
@@ -17895,9 +18075,14 @@ async function handleAdminUsers(req, res) {
     } else if (qRisk === '0') {
       whereClauses.push('NOT ' + userLoginRiskMatchSql('users.username'));
     }
-    if (qActive === '1' || qActive === '0') {
-      whereClauses.push('account_active = ?');
-      params.push(qActive === '1' ? 1 : 0);
+    if (qActive === 'expired') {
+      whereClauses.push(userActivationExpiredSql('users'));
+      params.push(new Date());
+    } else if (qActive === '1') {
+      whereClauses.push(userEffectivelyActiveSql('users'));
+      params.push(new Date());
+    } else if (qActive === '0') {
+      whereClauses.push('(users.account_active IS NULL OR users.account_active = 0)');
     }
     if (qBanned === '1' || qBanned === '0') {
       whereClauses.push('banned = ?');
@@ -18525,14 +18710,23 @@ function summarizeTextList(items, maxItems, maxChars) {
 /** append admin user scope */
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
-  if (!admin || adminHasFullUserScope(admin)) return;
+  if (!admin) return;
+  if (isAbcChannelViewerAdmin(admin)) return;
+  appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol);
+  if (adminHasFullUserScope(admin)) return;
   appendSubAdminOwnedUsersScopeForAdmin(whereClauses, params, admin, userCol);
 }
 
 /** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
-  /* 超级管理员 / 全量用户数据账号：全部注册用户 */
+  /* admin：全部注册用户（含截止后新注册 abc） */
+  if (isAbcChannelViewerAdmin(admin)) return;
+  /*
+   * 全量运营：历史 abc 仍可见，截止后新 abc 不可见。
+   * 普通子管理员：全部 abc 不可见。
+   */
+  appendExcludeUrlOnlySalesChannelUsers(whereClauses, params, admin, userCol);
   if (adminHasFullUserScope(admin)) return;
   /*
    * 运营子账号 admin：本人激活码开通用户 ∪ 截止时间后新注册用户。
@@ -18579,6 +18773,8 @@ function conversionAnalyticsOwnerAdmin(admin) {
 /** append conversion analytics registration scope */
 function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
   whereParts.push(nonGuestUsernameSql(userCol));
+  if (isAbcChannelViewerAdmin(admin)) return;
+  appendExcludeUrlOnlySalesChannelUsers(whereParts, params, admin, userCol);
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
     return;
@@ -19475,7 +19671,7 @@ async function handleAdminUserActivate(req, res) {
     const connLegacy = await pool.getConnection();
     try {
       const [urows] = await connLegacy.execute(
-        'SELECT id, account_active, list_hidden_at FROM users WHERE username = ?',
+        'SELECT id, account_active, activation_kind, active_until, list_hidden_at FROM users WHERE username = ?',
         [target]
       );
       if (urows.length === 0) {
@@ -19491,10 +19687,7 @@ async function handleAdminUserActivate(req, res) {
         connLegacy.release();
         return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
       }
-      var alreadyLegacy =
-        urows[0].account_active === 1 ||
-        urows[0].account_active === true ||
-        Number(urows[0].account_active) === 1;
+      var alreadyLegacy = isUserEffectivelyActive(urows[0]);
       connLegacy.release();
       if (alreadyLegacy) {
         return res.json({
@@ -19557,10 +19750,8 @@ async function handleAdminUserActivate(req, res) {
         msg: '账号已是永久激活'
       });
     }
-    var already =
-      row.account_active === 1 ||
-      row.account_active === true ||
-      Number(row.account_active) === 1;
+    /* 以当前是否有效激活为准：试用已过期与未激活一样，可重新选时长开通 */
+    var already = isUserEffectivelyActive(row);
     if (already && !isPermanent && kind === 'trial') {
       /* 已时效激活：允许用更长档覆盖/续期 */
     } else if (already && isPermanent) {
@@ -19926,6 +20117,57 @@ async function handleAdminPriceBidsConfigSet(req, res) {
   }
 }
 
+/** 管理端：已通过出价的付费跟进列表 */
+async function handleAdminPriceBidsFollowup(req, res) {
+  try {
+    var q = req.query || {};
+    var out = await getPriceBids().listFollowup({ pay: q.pay, limit: q.limit });
+    return res.json({ code: 200, data: out });
+  } catch (e) {
+    console.error('admin price bids followup', e);
+    return res.status(500).json({ code: 500, msg: '读取跟进列表失败' });
+  }
+}
+
+/** 管理端：单条跟进详情（支付流水） */
+async function handleAdminPriceBidsFollowupDetail(req, res) {
+  try {
+    var q = req.query || {};
+    var out = await getPriceBids().getFollowupDetail(q.id);
+    return res.json({ code: 200, data: out });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('admin price bids followup detail', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '读取详情失败' });
+  }
+}
+
+/** 管理端：催付邮件（单条 id 或 unpaid 批量） */
+async function handleAdminPriceBidsRemind(req, res) {
+  try {
+    var body = req.body || {};
+    var out = await getPriceBids().remindAccepted({
+      id: body.id,
+      unpaid: body.unpaid === true || body.unpaid === 1 || String(body.unpaid || '') === '1'
+    });
+    var msg =
+      '催付完成：发送 ' +
+      out.sent +
+      '，跳过 ' +
+      out.skipped +
+      '，失败 ' +
+      out.failed +
+      '（共 ' +
+      out.total +
+      '）';
+    return res.json({ code: 200, msg: msg, data: out });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    if (code === 500) console.error('admin price bids remind', e);
+    return res.status(code).json({ code: code, msg: (e && e.message) || '催付失败' });
+  }
+}
+
 /** 管理端：取消或恢复指定账号的改名费 / 个税修改费（同一白名单） */
 async function handleAdminUserRenameFeeExempt(req, res) {
   var body = req.body || {};
@@ -20200,7 +20442,12 @@ async function handleAdminBlockIp(req, res) {
   }
   try {
     const conn = await pool.getConnection();
-    await conn.execute('INSERT IGNORE INTO blocked_ips (ip, blocked_by, reason) VALUES (?, ?, ?)', [ip, req.admin, reason || null]);
+    var blockedBy = blockedByFromAdmin(req.admin);
+    await conn.execute('INSERT IGNORE INTO blocked_ips (ip, blocked_by, reason) VALUES (?, ?, ?)', [
+      ip,
+      blockedBy,
+      reason || null
+    ]);
     conn.release();
     return res.json({ code: 200, data: { ip: ip, blocked: true } });
   } catch (e) {
@@ -20232,10 +20479,22 @@ async function handleAdminBlockedIpsList(req, res) {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute(
-      'SELECT id, ip, blocked_by, reason, created_at FROM blocked_ips ORDER BY created_at DESC LIMIT 500'
+      'SELECT b.id, b.ip, b.blocked_by, b.reason, b.created_at, a.username AS admin_username, a.full_name AS admin_full_name ' +
+        'FROM blocked_ips b LEFT JOIN admin_accounts a ON a.username = b.blocked_by ' +
+        'ORDER BY b.created_at DESC LIMIT 500'
     );
     conn.release();
-    return res.json({ code: 200, data: rows || [] });
+    var list = (rows || []).map(function (r) {
+      var joined = String(r.admin_full_name || r.admin_username || '').trim();
+      return {
+        id: r.id,
+        ip: r.ip,
+        blocked_by: joined || blockedByLabel(r.blocked_by),
+        reason: r.reason,
+        created_at: r.created_at
+      };
+    });
+    return res.json({ code: 200, data: list });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -22087,12 +22346,14 @@ async function handleAdminAnalyticsOverview(req, res) {
          GROUP BY uda.activity_date ORDER BY uda.activity_date ASC`,
         actPf.params
       );
+      var loginProbeExcl = sqlExcludeInternalLoginProbeUsernames('username');
       const [loginRows] = await conn.execute(
         `SELECT DATE(created_at) AS d,
            SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS success_cnt,
            SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS fail_cnt
          FROM user_login_events
          WHERE ${loginPf.sql}
+           AND ${loginProbeExcl}
          GROUP BY DATE(created_at) ORDER BY d ASC`,
         loginPf.params
       );
@@ -22101,6 +22362,7 @@ async function handleAdminAnalyticsOverview(req, res) {
          FROM user_login_events
          WHERE ok = 0
            AND ${loginPf.sql}
+           AND ${loginProbeExcl}
          GROUP BY reason_key
          ORDER BY cnt DESC
          LIMIT 20`,
@@ -23612,6 +23874,8 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       params.push(qOk === '1' ? 1 : 0);
     }
     appendUserLoginReasonFilter(where, params, qReason);
+    /* 探活/自测假账号不出现在「用户登录」列表（与日活页登录统计口径一致） */
+    where.push(sqlExcludeInternalLoginProbeUsernames('username'));
     if (!req.admin || !req.admin.is_super) {
       appendSubAdminOwnedUsersScopeForAdmin(
         where,
@@ -24021,6 +24285,7 @@ function getHandlers() {
     handlePublicConversionConfig,
     handlePublicLandingAbConfig,
     handlePublicGuestSession,
+    handlePublicEmailClick,
     handleAdminLogin,
     handleAdminMe,
     handleAdminSettingsGet,
@@ -24070,6 +24335,9 @@ function getHandlers() {
     handleAdminPriceBidsList,
     handleAdminPriceBidsReview,
     handleAdminPriceBidsConfigSet,
+    handleAdminPriceBidsFollowup,
+    handleAdminPriceBidsFollowupDetail,
+    handleAdminPriceBidsRemind,
     handleAdminUserRenameFeeExempt,
     handleAdminUserAgentFlag,
     handleAdminUserLizhiCertUnlock,

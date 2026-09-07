@@ -22,6 +22,41 @@ html.app-ios-iphone17promax {
   --device-list-inline-pad: 16px;
 }
 
+/* iPhone 16 Pro：列表左右铺满；「边」靠汇总灰底上下留白，不靠左右 gutter */
+html.app-ios-iphone16pro {
+  --device-list-edge: 0px;
+  --device-header-inline: 16px;
+  --device-list-inline-pad: 16px;
+}
+
+html.app-ios-iphone16pro body.page-shuiming-result .list {
+  padding-left: var(--device-list-edge) !important;
+  padding-right: var(--device-list-edge) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  background: #f5f6fa !important;
+}
+
+html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .header {
+  box-shadow: none !important;
+}
+
+html.app-ios-iphone16pro body.page-shuiming-result .page-root {
+  --header-height: 44px;
+}
+
+html.app-ios-iphone16pro body.page-shuiming-result .top-fixed .summary {
+  background: #f5f6fa !important;
+  padding: 12px 0 10px !important;
+  box-sizing: border-box !important;
+}
+
+html.app-ios-iphone16pro body.page-shuiming-result .list-item {
+  --list-inline-pad: var(--device-list-inline-pad);
+  border-radius: 0 !important;
+}
+
 html.app-ios-iphone17promax body.page-shuiming-result .list,
 html.app-ios-iphone17promax.app-ios-promax-wide body.page-shuiming-result .list,
 html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .list {

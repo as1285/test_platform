@@ -41,6 +41,9 @@
         body.page-purchase.has-sticky-cta {
             padding-bottom: calc(88px + var(--safe-b));
         }
+        body.page-purchase.has-sticky-cta.has-alipay-fallback {
+            padding-bottom: calc(148px + var(--safe-b));
+        }
         .header {
             position: relative;
             z-index: 10;
@@ -292,6 +295,20 @@
         .btn-primary:hover,
         .btn-alipay:hover,
         .btn-download:hover { background: var(--accent-deep); }
+        .btn-alipay-fallback {
+            display: block;
+            margin-top: 10px;
+            text-align: center;
+            text-decoration: none;
+            background: #fff;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-weight: 600;
+            box-sizing: border-box;
+        }
+        .btn-alipay-fallback[hidden] { display: none !important; }
         .btn-secondary {
             background: #fff;
             color: var(--ink-soft);
@@ -1099,6 +1116,12 @@
             margin: 0;
             min-height: 48px;
         }
+        .purchase-sticky-cta .btn-alipay-fallback {
+            margin-top: 8px;
+            min-height: 42px;
+            padding: 10px 16px;
+            font-size: 14px;
+        }
         .purchase-sticky-cta .sticky-cta-note {
             margin: 0 0 6px;
             text-align: center;
@@ -1280,6 +1303,7 @@
             <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，点选其他套餐即可改价。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay" data-no-page-loading="1">体验价 · 打开支付宝付款</button>
+            <a class="btn btn-alipay-fallback" id="alipayOpenFallback" href="#" hidden data-no-page-loading="1">未弹出？点此打开支付宝</a>
             <ul class="purchase-trust" id="purchaseTrustRow" aria-label="开通保障">
                 <li>秒级开通</li>
                 <li>支付宝官方</li>
@@ -1498,6 +1522,7 @@
         <div class="purchase-sticky-cta-inner">
             <p class="sticky-cta-note" id="purchaseStickyNote">付款后自动开通，请勿关闭页面</p>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipaySticky" data-no-page-loading="1">体验价 · 打开支付宝付款</button>
+            <a class="btn btn-alipay-fallback" id="alipayOpenFallbackSticky" href="#" hidden data-no-page-loading="1">未弹出？点此打开支付宝</a>
         </div>
     </div>
 
@@ -1888,6 +1913,13 @@
         return /Huawei|HUAWEI|HarmonyOS|HMSCore|Honor|HONOR|Harmony/i.test(ua);
     }
 
+    function buildAlipayHttpsBridge(schemeUrl) {
+        var s = String(schemeUrl || '').trim();
+        if (!s) return '';
+        /* Safari 对 https 不拦；ds.alipay.com 再 302 到 alipays://，比直接打开当面付扫码页稳 */
+        return 'https://ds.alipay.com/?scheme=' + encodeURIComponent(s);
+    }
+
     function buildAlipayLaunchUrls(qrCode) {
         var q = encodeURIComponent(String(qrCode || '').trim());
         var path = 'platformapi/startapp?saId=10000007&qrcode=' + q;
@@ -1903,7 +1935,52 @@
             path +
             '#Intent;scheme=alipays;package=com.alipay.mobile.client;' +
             'category=android.intent.category.BROWSABLE;action=android.intent.action.VIEW;end';
-        return { scheme: scheme, intentAndroid: intentAndroid, intentHarmony: intentHarmony };
+        return {
+            scheme: scheme,
+            intentAndroid: intentAndroid,
+            intentHarmony: intentHarmony,
+            httpsBridge: buildAlipayHttpsBridge(scheme)
+        };
+    }
+
+    /** iOS：点击当下同步打开空白页，下单返回后再跳转，避免 Safari 拦截异步 window.open */
+    function openAlipayGestureWindow() {
+        if (isAndroidUa()) return null;
+        try {
+            var w = window.open('about:blank', '_blank');
+            if (w) {
+                try {
+                    w.document.write(
+                        '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>正在打开支付宝</title></head><body style="font-family:-apple-system,sans-serif;padding:24px;color:#334155;font-size:16px">正在打开支付宝…</body></html>'
+                    );
+                    w.document.close();
+                } catch (eDoc) {}
+            }
+            return w;
+        } catch (eOpen) {
+            return null;
+        }
+    }
+
+    function navigateAlipayGestureWindow(win, qrCode) {
+        if (!win || win.closed) return false;
+        var urls = buildAlipayLaunchUrls(qrCode);
+        var target = urls.httpsBridge || urls.scheme;
+        if (!target) return false;
+        try {
+            win.location.replace(target);
+            return true;
+        } catch (e1) {
+            try {
+                win.location.href = target;
+                return true;
+            } catch (e2) {
+                try {
+                    win.close();
+                } catch (e3) {}
+                return false;
+            }
+        }
     }
 
     /**
@@ -1914,9 +1991,40 @@
         var u = url != null ? String(url).trim() : '';
         if (!u) return false;
 
-        /* 壳内：绝不要用 window.open 打开支付宝 https 页（Android WebView 常会导航当前 iframe） */
+        /*
+         * 壳/iframe 内：支付宝 https 收银页不能用本页 window.open（会顶掉 iframe）。
+         * 交给父壳 InAppBrowser/_system；勿直接 return false，否则 iOS 无法付款。
+         */
         if (isEmbeddedInAppShell() && isAlipayHttpUrl(u)) {
-            return false;
+            var handed = false;
+            try {
+                if (window.parent && window.parent !== window) {
+                    try {
+                        if (typeof window.parent.openTaxPlatformExternal === 'function') {
+                            window.parent.openTaxPlatformExternal(u);
+                            handed = true;
+                        }
+                    } catch (eParentHttps) {}
+                    try {
+                        window.parent.postMessage(
+                            { source: 'tax-platform-h5', type: 'open-external', url: u },
+                            '*'
+                        );
+                        handed = true;
+                    } catch (eMsgHttps) {}
+                }
+            } catch (eHttps) {}
+            try {
+                if (
+                    window.cordova &&
+                    window.cordova.InAppBrowser &&
+                    typeof window.cordova.InAppBrowser.open === 'function'
+                ) {
+                    window.cordova.InAppBrowser.open(u, '_system');
+                    handed = true;
+                }
+            } catch (eCordovaHttps) {}
+            return handed;
         }
 
         try {
@@ -2057,7 +2165,7 @@
 
     /**
      * 唤起已安装的支付宝付款。
-     * Android/华为优先 Intent+包名；勿打开 https 收银页（易白屏），勿带应用市场回落（易误提示下载）。
+     * Android/华为优先 Intent+包名；iOS 另补 https 收银链（壳内走父页 InAppBrowser）。
      */
     function openAlipayPay(qrCode) {
         var code = qrCode != null ? String(qrCode).trim() : '';
@@ -2075,7 +2183,71 @@
             }
             return;
         }
-        openExternalUrl(urls.scheme);
+        /* iOS：当面付 qr.alipay.com 是扫码页，Safari 打开后经常不唤起 App。
+         * 先走 ds.alipay.com scheme 桥（https，Safari 较松），再兜底 alipays://。 */
+        var iosHttps = urls.httpsBridge || (isAlipayHttpUrl(code) ? code : '');
+        if (iosHttps) {
+            openExternalUrl(iosHttps);
+            setTimeout(function () {
+                openExternalUrl(urls.scheme);
+            }, 400);
+        } else {
+            openExternalUrl(urls.scheme);
+        }
+    }
+
+    function bindAlipayFallbackLink(el, code, urls) {
+        if (!el) return;
+        if (!code) {
+            el.hidden = true;
+            return;
+        }
+        if (isAndroidUa()) {
+            el.href = urls.intentAndroid || urls.scheme;
+        } else {
+            el.href = urls.httpsBridge || urls.scheme;
+        }
+        el.hidden = false;
+        el.onclick = function (ev) {
+            if (isAndroidUa()) {
+                try {
+                    ev.preventDefault();
+                } catch (ePrev) {}
+                launchAlipayPay(code);
+                return false;
+            }
+            /* iOS：保留 <a> 默认跳 https 桥（用户手势，Safari 不拦），同时补一次 scheme */
+            try {
+                openExternalUrl(urls.scheme);
+            } catch (eSch) {}
+            return true;
+        };
+    }
+
+    function showAlipayOpenFallback(payUrl) {
+        var code = payUrl != null ? String(payUrl).trim() : '';
+        var mainEl = document.getElementById('alipayOpenFallback');
+        var stickyEl = document.getElementById('alipayOpenFallbackSticky');
+        if (!code) {
+            if (mainEl) mainEl.hidden = true;
+            if (stickyEl) stickyEl.hidden = true;
+            try {
+                document.body.classList.remove('has-alipay-fallback');
+            } catch (eClsOff) {}
+            return;
+        }
+        var urls = buildAlipayLaunchUrls(code);
+        bindAlipayFallbackLink(mainEl, code, urls);
+        bindAlipayFallbackLink(stickyEl, code, urls);
+        try {
+            document.body.classList.add('has-alipay-fallback');
+        } catch (eClsOn) {}
+        try {
+            var vis = stickyEl && !stickyEl.hidden ? stickyEl : mainEl;
+            if (vis && typeof vis.scrollIntoView === 'function') {
+                vis.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        } catch (eScroll) {}
     }
 
     function openExternalUrlOrHint(url, failHint) {
@@ -2607,6 +2779,7 @@
         var code = payUrl != null ? String(payUrl).trim() : '';
         if (!code) throw new Error('未获取到付款链接');
         alipayPendingPayUrl = code;
+        showAlipayOpenFallback(code);
         trackPurchase('track_alipay_open_click');
         try {
             if (typeof window.forceHidePageLoading === 'function') {
@@ -2615,8 +2788,8 @@
         } catch (ePayHide) {}
         openAlipayPay(code);
         startAlipayOrderPolling();
-        if (isHuaweiLikeUa() || isEmbeddedInAppShell()) {
-            setAlipayStatus('若未弹出支付宝，请再点一次付款按钮；付款成功后将自动开通', 'wait');
+        if (isHuaweiLikeUa() || isEmbeddedInAppShell() || !isAndroidUa()) {
+            setAlipayStatus('若未弹出支付宝，请点「未弹出？点此打开支付宝」或再点付款按钮', 'wait');
         } else {
             setAlipayStatus('已打开支付宝…请完成付款，成功后将自动开通', 'wait');
         }
@@ -3613,6 +3786,8 @@
             cta_source: ctaSource || 'main'
         });
         setAlipayStatus('正在创建付款订单，请稍候…', 'wait');
+        /* 必须在 await 前打开，否则 iOS Safari 会丢掉用户手势、拦支付宝跳转 */
+        var gestureWin = openAlipayGestureWindow();
         paymentFetch('/api/payments/alipay/create', {
             method: 'POST',
             body: JSON.stringify({ sku_id: sku.id })
@@ -3651,12 +3826,21 @@
                     });
                 }
                 var payUrl = x.body.data.qr_code || x.body.data.payment_url;
+                var usedGesture = navigateAlipayGestureWindow(gestureWin, payUrl);
                 launchAlipayPay(payUrl);
+                if (!usedGesture && gestureWin && !gestureWin.closed) {
+                    try {
+                        gestureWin.close();
+                    } catch (eCloseUnused) {}
+                }
                 if (btn) btn.disabled = false;
                 if (stickyBtn) stickyBtn.disabled = false;
                 return loadBilibiliShareStatus();
             })
             .catch(function (e) {
+                try {
+                    if (gestureWin && !gestureWin.closed) gestureWin.close();
+                } catch (eCloseFail) {}
                 var failMsg = e && e.message ? e.message : '创建支付订单失败，请稍后重试';
                 trackPurchase('track_alipay_order_create_fail', {
                     pricing_variant: alipayPricing.variant,

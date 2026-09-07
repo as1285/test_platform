@@ -132,3 +132,36 @@ describe('agentChannels normalize', () => {
     });
   });
 });
+
+describe('abc is URL-only for channel prices', () => {
+  const {
+    isUrlOnlySalesChannel,
+    resolveSalesChannelForChannelPrices
+  } = require('../../src/legacy/agentChannels');
+
+  it('marks abc as URL-only', () => {
+    expect(isUrlOnlySalesChannel('abc')).toBe(true);
+    expect(isUrlOnlySalesChannel('ABC')).toBe(true);
+    expect(isUrlOnlySalesChannel('github')).toBe(false);
+  });
+
+  it('exports helpers so register does not call undefined', () => {
+    const mod = require('../../src/legacy/agentChannels');
+    expect(typeof mod.isUrlOnlySalesChannel).toBe('function');
+    expect(typeof mod.resolveSalesChannelForChannelPrices).toBe('function');
+    expect(typeof mod.createAgentChannels).toBe('function');
+  });
+
+  it('uses abc prices only when the request carries abc', () => {
+    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('');
+    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('');
+    expect(resolveSalesChannelForChannelPrices('abc', 'abc')).toBe('abc');
+    expect(resolveSalesChannelForChannelPrices('', 'abc')).toBe('abc');
+  });
+
+  it('still prefers normal account channels without request ch', () => {
+    expect(resolveSalesChannelForChannelPrices('quan_c', '')).toBe('quan_c');
+    expect(resolveSalesChannelForChannelPrices('quan_c', 'abc')).toBe('abc');
+    expect(resolveSalesChannelForChannelPrices('', 'quan_c')).toBe('quan_c');
+  });
+});

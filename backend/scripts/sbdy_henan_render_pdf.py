@@ -3,7 +3,7 @@
 """河南省社会保险个人权益记录单演示 PDF。
 
 版式对齐官方样张：宋体正文 + 窄黑体数字（字宽 4.62、字距 1.8~2.27）、
-1pt 格线、说明区表格 + 郑东新区业务查询章。
+1pt 格线、说明区整框（无竖分栏）+ 框外页脚 + 郑东新区业务查询章。
 """
 from __future__ import print_function
 
@@ -286,8 +286,8 @@ def render_henan(payload, auth_code, qr_url, out_path):
         + '  2、扫描二维码验证表单真伪。'
         + '  3、●表示已经实缴，△表示欠费，○表示外地转入，-表示未制定计划。'
         + '  4、若参保对象存在在多个单位参保时，以参加养老保险所在单位为准。'
-        + '5、工伤保险个人不缴费，如果缴费基数显示正常，—表示正常参保。'
-        + '电子签章预留_经办机构数据统计截止至:打印时间：'
+        + '5、工伤保险个人不缴费，如果缴费基数显示正常，-表示正常参保。'
+        + '数据统计截止至：打印时间：'
     )
     _CJK_PATH = make_subset_font(ensure_full_cjk_font(), blob, prefix='sbdy_ha_')
     doc = fitz.open()
@@ -467,38 +467,53 @@ def render_henan(payload, auth_code, qr_url, out_path):
             else:
                 putc_num(page, b, c, yb, flag or '-', 'pay')
 
-    # —— 说明表格 + 签章栏 ——
-    note_ys = [603.0, 617.0, 631.0, 645.0, 673.0, 687.0, 701.0, 719.0, 733.0]
-    for y in note_ys:
-        hline(page, y)
-    vline(page, X0, 603, 733)
-    vline(page, 383, 603, 733)
-    vline(page, 446, 603, 733)
-    vline(page, X1, 603, 733)
+    # —— 说明区：官方为整框（无竖分栏、无说明条横线），页脚在框外 ——
+    note_top = 603.0
+    note_bottom = 719.0
+    hline(page, note_top)
+    hline(page, note_bottom)
+    vline(page, X0, note_top, note_bottom)
+    vline(page, X1, note_top, note_bottom)
 
-    put_left(page, 27.0, 614.2, '说明：')
-    put_left(page, 27.0, 628.2, '  1、本权益单仅供参保人员核对信息。')
-    put_left(page, 27.0, 642.2, '  2、扫描二维码验证表单真伪。')
-    put_left(page, 27.0, 663.2, '  3、●表示已经实缴，△表示欠费，○表示外地转入，-表示未制定计划。')
-    put_left(page, 27.0, 684.2, '  4、若参保对象存在在多个单位参保时，以参加养老保险所在单位为准。')
-    put_left(page, 27.0, 698.2, '5、工伤保险个人不缴费，如果缴费基数显示正常，—表示正常参保。')
-    put_left(page, 446.0, 657.3, '电子签章预留_经办机', 11.0)
-    put_left(page, 446.0, 671.3, '构', 11.0)
+    put_left(page, 33.0, 617.0, '说明：')
+    put_left(page, 33.0, 635.0, '1、本权益单仅供参保人员核对信息。')
+    put_left(page, 33.0, 653.0, '2、扫描二维码验证表单真伪。')
+    put_left(page, 33.0, 671.0, '3、●表示已经实缴，△表示欠费，○表示外地转入，-表示未制定计划。')
+    put_left(page, 33.0, 689.0, '4、若参保对象存在在多个单位参保时，以参加养老保险所在单位为准。')
+    put_left(page, 33.0, 707.0, '5、工伤保险个人不缴费，如果缴费基数显示正常，-表示正常参保。')
 
     if os.path.isfile(SEAL_PNG):
+        # 盖在说明框右侧，略压说明文字（官方叠印效果）
         page.insert_image(
-            fitz.Rect(400.0, 598.0, 528.0, 726.0),
+            fitz.Rect(392.0, 588.0, 540.0, 736.0),
             filename=SEAL_PNG,
             keep_proportion=True,
             overlay=True,
         )
 
-    put_left(page, 27.0, 730.2, '数据统计截止至:')
-    put_num(page, 133.0, 730.2, data_as_of.replace(' ', ''), 'foot')
-    pd = print_date.replace('打印时间：', '').replace('打印时间:', '')
+    # 页脚在说明框下方外侧；标签与时间留空，整行宋体
+    foot_y = 736.0
+    as_of = norm_text(data_as_of)
+    if as_of:
+        as_of = (
+            as_of.replace('数据统计截止至：', '')
+            .replace('数据统计截止至:', '')
+            .strip()
+        )
+    left_label = '数据统计截止至：'
+    if as_of:
+        put_left(page, 27.0, foot_y, left_label)
+        # 样张标签与时间之间有明显空档
+        put_left(page, 27.0 + tw(left_label) + 18.0, foot_y, as_of)
+    else:
+        put_left(page, 27.0, foot_y, left_label)
+
+    pd = norm_text(print_date)
     if pd:
-        put(page, 396.0, 730.2, '打印时间：')
-        put_num(page, 396.0 + tw('打印时间：'), 730.2, pd, 'print')
+        pd = pd.replace('打印时间：', '').replace('打印时间:', '').strip()
+    if pd:
+        right_text = '打印时间：' + pd
+        put(page, X1 - tw(right_text), foot_y, right_text)
 
     doc.save(out_path, deflate=True, garbage=4)
     doc.close()

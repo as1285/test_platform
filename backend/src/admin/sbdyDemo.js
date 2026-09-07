@@ -198,6 +198,140 @@ function applySbdyDemoWatermark(pdfBuffer) {
   });
 }
 
+/** 渲染结果磁盘缓存：避免每次打开 show.pdf 都重跑 Python（CJK 子集化约 7–10s） */
+var SBDY_PDF_CACHE_DIR =
+  process.env.SBDY_PDF_CACHE_DIR || path.join(os.tmpdir(), 'sbdy-pdf-cache');
+var SBDY_PDF_CACHE_TTL_MS = Math.max(
+  60 * 1000,
+  parseInt(process.env.SBDY_PDF_CACHE_TTL_MS, 10) || 7 * 24 * 60 * 60 * 1000
+);
+var _sbdyPdfMemCache = new Map();
+var _sbdyPdfInflight = new Map();
+
+function ensureSbdyPdfCacheDir() {
+  try {
+    fs.mkdirSync(SBDY_PDF_CACHE_DIR, { recursive: true });
+  } catch (e) {}
+}
+
+/** 深圳新版渲染脚本改版号：改章位/叠印时递增，避免磁盘缓存仍吐旧 PDF */
+var SBDY_SZ_NEW_RENDER_REV = '20260906-seal-under-ink';
+
+function sbdyPdfCacheFingerprint(token, payload, authCode, showUrl) {
+  return crypto
+    .createHash('sha256')
+    .update(
+      JSON.stringify({
+        t: String(token || ''),
+        a: String(authCode || ''),
+        u: String(showUrl || ''),
+        d: !!(payload && payload.demo),
+        r: SBDY_SZ_NEW_RENDER_REV,
+        p: payload || {}
+      })
+    )
+    .digest('hex')
+    .slice(0, 40);
+}
+
+function sbdyPdfCachePath(token, fingerprint) {
+  var safeTok = String(token || 'tok').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
+  return path.join(SBDY_PDF_CACHE_DIR, safeTok + '_' + fingerprint + '.pdf');
+}
+
+function readSbdyPdfCache(token, fingerprint) {
+  var mem = _sbdyPdfMemCache.get(fingerprint);
+  if (mem && mem.buf && mem.buf.length && Date.now() - mem.at < SBDY_PDF_CACHE_TTL_MS) {
+    return mem.buf;
+  }
+  try {
+    var fp = sbdyPdfCachePath(token, fingerprint);
+    var st = fs.statSync(fp);
+    if (!st.isFile() || st.size < 100) return null;
+    if (Date.now() - st.mtimeMs > SBDY_PDF_CACHE_TTL_MS) return null;
+    var buf = fs.readFileSync(fp);
+    if (!buf || !buf.length) return null;
+    _sbdyPdfMemCache.set(fingerprint, { buf: buf, at: Date.now() });
+    if (_sbdyPdfMemCache.size > 80) {
+      var oldest = null;
+      _sbdyPdfMemCache.forEach(function (v, k) {
+        if (!oldest || v.at < oldest.at) oldest = { k: k, at: v.at };
+      });
+      if (oldest) _sbdyPdfMemCache.delete(oldest.k);
+    }
+    return buf;
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeSbdyPdfCache(token, fingerprint, buf) {
+  if (!Buffer.isBuffer(buf) || !buf.length || !fingerprint) return;
+  _sbdyPdfMemCache.set(fingerprint, { buf: buf, at: Date.now() });
+  try {
+    ensureSbdyPdfCacheDir();
+    var fp = sbdyPdfCachePath(token, fingerprint);
+    var tmp = fp + '.' + process.pid + '.tmp';
+    fs.writeFileSync(tmp, buf);
+    fs.renameSync(tmp, fp);
+  } catch (e) {}
+}
+
+function invalidateSbdyPdfCacheForToken(token) {
+  var safeTok = String(token || '').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
+  if (!safeTok) return;
+  try {
+    _sbdyPdfMemCache.forEach(function (_v, k) {
+      /* mem key is fingerprint only；磁盘按前缀清 */
+    });
+    var names = fs.readdirSync(SBDY_PDF_CACHE_DIR);
+    names.forEach(function (name) {
+      if (String(name).indexOf(safeTok + '_') === 0) {
+        try {
+          fs.unlinkSync(path.join(SBDY_PDF_CACHE_DIR, name));
+        } catch (e0) {}
+      }
+    });
+  } catch (e) {}
+}
+
+/**
+ * 带缓存的 PDF 渲染（含演示水印）。同 fingerprint 并发只跑一次。
+ */
+function renderSbdyPdfCached(token, payload, authCode, showUrl) {
+  var fingerprint = sbdyPdfCacheFingerprint(token, payload, authCode, showUrl);
+  var hit = readSbdyPdfCache(token, fingerprint);
+  if (hit) return Promise.resolve({ buf: hit, fingerprint: fingerprint, cache: 'hit' });
+  if (_sbdyPdfInflight.has(fingerprint)) {
+    return _sbdyPdfInflight.get(fingerprint);
+  }
+  var job = renderSbdyPdfBuffer(payload, authCode, showUrl)
+    .then(function (buf) {
+      if (payload && payload.demo) {
+        return applySbdyDemoWatermark(buf);
+      }
+      return buf;
+    })
+    .then(function (buf) {
+      writeSbdyPdfCache(token, fingerprint, buf);
+      return { buf: buf, fingerprint: fingerprint, cache: 'miss' };
+    })
+    .finally(function () {
+      _sbdyPdfInflight.delete(fingerprint);
+    });
+  _sbdyPdfInflight.set(fingerprint, job);
+  return job;
+}
+
+/** 生成后后台预热缓存，首次扫码打开更快 */
+function warmSbdyPdfCache(token, payload, authCode, showUrl) {
+  try {
+    renderSbdyPdfCached(token, payload, authCode, showUrl).catch(function (e) {
+      console.error('[sbdy-demo] warm pdf cache', e && e.message ? e.message : e);
+    });
+  } catch (e0) {}
+}
+
 /** 未付费演示：HTML 预览注入「演示样例」平铺水印（不改 renderCertHtml，避免影响单测/正式版式） */
 function injectHtmlDemoWatermark(html) {
   var spans = '';
@@ -607,7 +741,10 @@ function bjEraMonthlyBase(year, formBase) {
   return round2(base * (factor[year] != null ? factor[year] : 1));
 }
 
-function buildBjYearRows(periodStart, periodEnd, monthlyBase) {
+function buildBjYearRows(periodStart, periodEnd, monthlyBase, iu) {
+  iu = iu || {};
+  var injuryMonthly = iu.injury_base > 0 ? iu.injury_base : monthlyBase;
+  var unempMonthly = iu.unemp_base > 0 ? iu.unemp_base : injuryMonthly;
   var a = parseYm(periodStart);
   var b = parseYm(periodEnd);
   var rows = [];
@@ -618,7 +755,11 @@ function buildBjYearRows(periodStart, periodEnd, monthlyBase) {
     var em = y === b.y ? b.m : 12;
     var n = em - sm + 1;
     var monthPay = bjEraMonthlyBase(y, monthlyBase);
+    var unempMonthPay = bjEraMonthlyBase(y, unempMonthly);
+    var injuryMonthPay = bjEraMonthlyBase(y, injuryMonthly);
     var annualBase = round2(monthPay * 12);
+    var unempAnnual = round2(unempMonthPay * 12);
+    var injuryAnnual = round2(injuryMonthPay * 12);
     var unempOn = y >= 1999;
     var injuryOn = y >= 2004;
     var medicalOn = y >= 2001;
@@ -634,10 +775,10 @@ function buildBjYearRows(periodStart, periodEnd, monthlyBase) {
       pension_base: annualBase,
       pension_pay: round2(monthPay * 0.08 * n),
       unemp_months: unempOn ? n : 0,
-      unemp_base: unempOn ? annualBase : 0,
-      unemp_pay: unempOn ? round2(monthPay * 0.005 * n) : 0,
+      unemp_base: unempOn ? unempAnnual : 0,
+      unemp_pay: unempOn ? round2(unempMonthPay * 0.005 * n) : 0,
       injury_months: injuryOn ? n : 0,
-      injury_base: injuryOn ? annualBase : 0,
+      injury_base: injuryOn ? injuryAnnual : 0,
       medical_months: medicalOn ? n : 0,
       medical_base: medicalOn ? annualBase : 0,
       medical_pay: medicalOn ? round2(monthPay * 0.02 * n) : 0,
@@ -682,7 +823,8 @@ function normalizeBjPayload(body) {
     a0 = parseYm(periodStart);
     b0 = parseYm(periodEnd);
   }
-  var yearRows = buildBjYearRows(periodStart, periodEnd, baseAmt);
+  var iuBases = pickSzInjuryUnempBases(b);
+  var yearRows = buildBjYearRows(periodStart, periodEnd, baseAmt, iuBases);
   if (!yearRows.length) {
     return { error: '缴费月份区间无效' };
   }
@@ -754,6 +896,8 @@ function normalizeBjPayload(body) {
     query_period_label: formatYmCnRange(periodStart, periodEnd),
     query_date_label: printDate,
     base_amount: baseAmt,
+    injury_base: iuBases.injury_base,
+    unemp_base: iuBases.unemp_base,
     print_date: printDate,
     verify_code: verifyCode,
     query_serial: querySerial,
@@ -1777,6 +1921,212 @@ function makeSzMonthRow(y, m, opts) {
   };
 }
 
+/** 从表单/请求体解析工伤、失业基数（正数才生效，否则走默认） */
+function pickSzInjuryUnempBases(b) {
+  b = b || {};
+  var injuryBase = Number(b.injury_base != null ? b.injury_base : b.injuryBase);
+  var unempBase = Number(b.unemp_base != null ? b.unemp_base : b.unempBase);
+  var injuryAfter = Number(
+    b.injury_base_after != null
+      ? b.injury_base_after
+      : b.injuryBaseAfter != null
+        ? b.injuryBaseAfter
+        : b.iu_base_after != null
+          ? b.iu_base_after
+          : b.iuBaseAfter
+  );
+  var unempAfter = Number(
+    b.unemp_base_after != null
+      ? b.unemp_base_after
+      : b.unempBaseAfter != null
+        ? b.unempBaseAfter
+        : injuryAfter
+  );
+  var changeYm = String(
+    b.iu_base_change_ym ||
+      b.iuBaseChangeYm ||
+      b.injury_unemp_change_ym ||
+      b.injuryUnempChangeYm ||
+      ''
+  ).trim();
+  if (/^\d{6}$/.test(changeYm)) {
+    changeYm = changeYm.slice(0, 4) + '-' + changeYm.slice(4, 6);
+  }
+  if (!/^\d{4}-\d{2}$/.test(changeYm)) changeYm = '';
+  return {
+    injury_base: isFinite(injuryBase) && injuryBase > 0 ? injuryBase : undefined,
+    unemp_base: isFinite(unempBase) && unempBase > 0 ? unempBase : undefined,
+    injury_base_after: isFinite(injuryAfter) && injuryAfter > 0 ? injuryAfter : undefined,
+    unemp_base_after: isFinite(unempAfter) && unempAfter > 0 ? unempAfter : undefined,
+    iu_base_change_ym: changeYm || undefined
+  };
+}
+
+function rowYmKey(r) {
+  if (!r) return '';
+  function compactToYm(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (d.length >= 6) return d.slice(0, 4) + '-' + d.slice(4, 6);
+    return '';
+  }
+  if (r.ym) {
+    var fromYm = compactToYm(r.ym);
+    if (fromYm) return fromYm;
+  }
+  if (r.pay_month) {
+    var fromPay = compactToYm(r.pay_month);
+    if (fromPay) return fromPay;
+  }
+  if (r.period) {
+    var fromPeriod = compactToYm(r.period);
+    if (fromPeriod) return fromPeriod;
+  }
+  if (r.start_ym && /^\d{4}-\d{2}/.test(String(r.start_ym))) {
+    return String(r.start_ym).slice(0, 7);
+  }
+  var y = r.year;
+  var m = String(r.month || '').padStart(2, '0');
+  if (y && m && m !== '00') return String(y) + '-' + m;
+  return '';
+}
+
+/** 按「变更起月」解析当月工伤/失业基数 */
+function resolveSzInjuryUnempForYm(ym, iu) {
+  iu = iu || {};
+  var key = String(ym || '').trim();
+  if (/^\d{6}$/.test(key)) key = key.slice(0, 4) + '-' + key.slice(4, 6);
+  var useAfter =
+    iu.iu_base_change_ym &&
+    key &&
+    key >= iu.iu_base_change_ym &&
+    (iu.injury_base_after > 0 || iu.unemp_base_after > 0);
+  var injury = useAfter
+    ? iu.injury_base_after != null
+      ? iu.injury_base_after
+      : iu.unemp_base_after
+    : iu.injury_base;
+  var unemp = useAfter
+    ? iu.unemp_base_after != null
+      ? iu.unemp_base_after
+      : iu.injury_base_after != null
+        ? iu.injury_base_after
+        : iu.unemp_base
+    : iu.unemp_base != null
+      ? iu.unemp_base
+      : iu.injury_base;
+  return {
+    injury_base: isFinite(injury) && injury > 0 ? injury : undefined,
+    unemp_base: isFinite(unemp) && unemp > 0 ? unemp : undefined
+  };
+}
+
+/** 覆盖明细行的工伤/失业基数；支持变更起月前后两套基数（失业未填时跟随工伤） */
+function patchSzMonthsInjuryUnemp(months, injuryBase, unempBase, iuOpts) {
+  if (!months || !months.length) return;
+  var iu =
+    iuOpts && typeof iuOpts === 'object'
+      ? iuOpts
+      : {
+          injury_base: injuryBase,
+          unemp_base: unempBase
+        };
+  if (
+    !(
+      (iu.injury_base > 0 || iu.unemp_base > 0) ||
+      (iu.iu_base_change_ym && (iu.injury_base_after > 0 || iu.unemp_base_after > 0))
+    )
+  ) {
+    return;
+  }
+  months.forEach(function (r) {
+    var resolved = resolveSzInjuryUnempForYm(rowYmKey(r), iu);
+    var hasI = resolved.injury_base > 0;
+    var hasU = resolved.unemp_base > 0;
+    if (hasI) {
+      r.injury_base = resolved.injury_base;
+      if (r.injury_unit != null) r.injury_unit = round2(resolved.injury_base * 0.002);
+    }
+    var u = hasU ? resolved.unemp_base : hasI ? resolved.injury_base : null;
+    if (u != null) {
+      r.unemp_base = u;
+      if (r.unemp_unit != null) r.unemp_unit = round2(u * 0.008);
+      if (r.unemp_person != null) r.unemp_person = round2(u * 0.002);
+    }
+  });
+}
+
+function iuHasCustom(iu) {
+  iu = iu || {};
+  return (
+    iu.injury_base > 0 ||
+    iu.unemp_base > 0 ||
+    !!(iu.iu_base_change_ym && (iu.injury_base_after > 0 || iu.unemp_base_after > 0))
+  );
+}
+
+function replaceRowBase(r, key, next, amountKeys) {
+  var old = Number(r[key]);
+  r[key] = next;
+  if (!(isFinite(old) && old > 0)) return;
+  var ratio = next / old;
+  (amountKeys || []).forEach(function (k) {
+    if (r[k] == null || r[k] === '') return;
+    var n = Number(r[k]);
+    if (isFinite(n)) r[k] = round2(n * ratio);
+  });
+}
+
+/** 各社保模板共用：表单填了工伤/失业基数时覆盖明细行，金额按原比例折算 */
+function applyInjuryUnempToRows(rows, iu) {
+  if (!rows || !rows.length || !iuHasCustom(iu)) return;
+  rows.forEach(function (r) {
+    if (!r) return;
+    var resolved = resolveSzInjuryUnempForYm(rowYmKey(r), iu);
+    var injury = resolved.injury_base > 0 ? resolved.injury_base : undefined;
+    var unemp = resolved.unemp_base > 0 ? resolved.unemp_base : injury;
+    var typ = String(r.type || r.insure_type || '');
+    if (typ === '工伤保险' && injury != null) {
+      replaceRowBase(r, 'base', injury, ['unit_pay', 'person_pay']);
+      return;
+    }
+    if (typ === '失业保险' && unemp != null) {
+      replaceRowBase(r, 'base', unemp, ['unit_pay', 'person_pay']);
+      return;
+    }
+    if (injury != null && r.injury_base != null && Number(r.injury_base) > 0) {
+      replaceRowBase(r, 'injury_base', injury, ['injury_unit']);
+    }
+    if (unemp != null && r.unemp_base != null && Number(r.unemp_base) > 0) {
+      replaceRowBase(r, 'unemp_base', unemp, [
+        'unemp_unit',
+        'unemp_person',
+        'unemp_personal',
+        'unemp_pay'
+      ]);
+    }
+  });
+}
+
+function applyInjuryUnempToPayload(p, body) {
+  if (!p || p.error || p.region === 'bj') return p;
+  var iu = pickSzInjuryUnempBases(body);
+  if (!iuHasCustom(iu)) return p;
+  var seen = [];
+  function patchOnce(rows) {
+    if (!rows || !rows.length) return;
+    if (seen.indexOf(rows) >= 0) return;
+    seen.push(rows);
+    applyInjuryUnempToRows(rows, iu);
+  }
+  patchOnce(p.months);
+  patchOnce(p.detail_rows);
+  patchOnce(p.sc_months);
+  patchOnce(p.ha_months);
+  if (iu.injury_base > 0) p.injury_base = iu.injury_base;
+  if (iu.unemp_base > 0) p.unemp_base = iu.unemp_base;
+  return p;
+}
+
 function buildSzMonthRows(periodStart, periodEnd, opts) {
   opts = opts || {};
   var a = parseYm(periodStart);
@@ -1803,8 +2153,14 @@ function buildSzMonthRows(periodStart, periodEnd, opts) {
       makeSzMonthRow(y, m, {
         pension_base: opts.pension_base,
         medical_base: opts.medical_base,
-        injury_base: opts.injury_base,
-        unemp_base: opts.unemp_base,
+        injury_base: (function () {
+          var r = resolveSzInjuryUnempForYm(ym, opts);
+          return r.injury_base != null ? r.injury_base : opts.injury_base;
+        })(),
+        unemp_base: (function () {
+          var r = resolveSzInjuryUnempForYm(ym, opts);
+          return r.unemp_base != null ? r.unemp_base : opts.unemp_base;
+        })(),
         unit_code: rowUnit,
         company_name: nameByCode[rowUnit] || unitName
       })
@@ -1924,6 +2280,7 @@ function normalizeSzPayload(body) {
   var medicalBase = Number(b.medical_base != null ? b.medical_base : b.medicalBase);
   if (!isFinite(pensionBase) || pensionBase <= 0) pensionBase = 4492;
   if (!isFinite(medicalBase) || medicalBase <= 0) medicalBase = pensionBase;
+  var iuBases = pickSzInjuryUnempBases(b);
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
   if (!name || !idNumber) {
     return { error: '姓名与证件号码必填' };
@@ -2018,6 +2375,11 @@ function normalizeSzPayload(body) {
     months = buildSzMonthRows(periodStart, periodEnd, {
       pension_base: pensionBase,
       medical_base: medicalBase,
+      injury_base: iuBases.injury_base,
+      unemp_base: iuBases.unemp_base,
+      injury_base_after: iuBases.injury_base_after,
+      unemp_base_after: iuBases.unemp_base_after,
+      iu_base_change_ym: iuBases.iu_base_change_ym,
       unit_code: unitCode,
       company_name: company,
       month_units: monthUnits,
@@ -2037,6 +2399,7 @@ function normalizeSzPayload(body) {
       if (latestEmp2.credit_code) unitCode = latestEmp2.credit_code;
     }
   }
+  patchSzMonthsInjuryUnemp(months, null, null, iuBases);
   var unitMap = [];
   if (gz && segments.length) {
     segments.forEach(function (s) {
@@ -2064,6 +2427,11 @@ function normalizeSzPayload(body) {
       formatYmCn(parseYm(periodEnd).y, parseYm(periodEnd).m),
     pension_base: pensionBase,
     medical_base: medicalBase,
+    injury_base: iuBases.injury_base,
+    unemp_base: iuBases.unemp_base,
+    injury_base_after: iuBases.injury_base_after,
+    unemp_base_after: iuBases.unemp_base_after,
+    iu_base_change_ym: iuBases.iu_base_change_ym,
     base_amount: pensionBase,
     print_date: printDate,
     months: months
@@ -2161,6 +2529,7 @@ function normalizeSzNewPayload(body) {
   var medicalBase = Number(b.medical_base != null ? b.medical_base : b.medicalBase);
   if (!isFinite(pensionBase) || pensionBase <= 0) pensionBase = 4492;
   if (!isFinite(medicalBase) || medicalBase <= 0) medicalBase = pensionBase;
+  var iuBases = pickSzInjuryUnempBases(b);
   var medicalTier = String(b.medical_tier || b.medicalTier || b.medical_type || '2').trim() || '2';
   var maternityType = String(b.maternity_type || b.maternityType || '1').trim() || '1';
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
@@ -2197,6 +2566,7 @@ function normalizeSzNewPayload(body) {
       months[months.length - 1].year +
       '-' +
       String(months[months.length - 1].month).padStart(2, '0');
+    patchSzMonthsInjuryUnemp(months, null, null, iuBases);
   } else {
     if (!parseYm(periodStart) || !parseYm(periodEnd)) {
       return { error: '缴费起止月份格式应为 YYYY-MM' };
@@ -2229,6 +2599,11 @@ function normalizeSzNewPayload(body) {
     months = buildSzMonthRows(periodStart, periodEnd, {
       pension_base: pensionBase,
       medical_base: medicalBase,
+      injury_base: iuBases.injury_base,
+      unemp_base: iuBases.unemp_base,
+      injury_base_after: iuBases.injury_base_after,
+      unemp_base_after: iuBases.unemp_base_after,
+      iu_base_change_ym: iuBases.iu_base_change_ym,
       unit_code: unitCode,
       company_name: company,
       month_units: monthUnits,
@@ -2249,9 +2624,23 @@ function normalizeSzNewPayload(body) {
       if (!isFinite(base) || base <= 0) return;
       var med =
         typeof ov === 'object' ? Number(ov.medical_base != null ? ov.medical_base : base) : base;
+      var ovIu = typeof ov === 'object' ? pickSzInjuryUnempBases(ov) : {};
+      var sched = resolveSzInjuryUnempForYm(key, iuBases);
       var rebuilt = makeSzMonthRow(r.year, Number(r.month), {
         pension_base: base,
         medical_base: isFinite(med) && med > 0 ? med : base,
+        injury_base:
+          ovIu.injury_base != null
+            ? ovIu.injury_base
+            : sched.injury_base != null
+              ? sched.injury_base
+              : iuBases.injury_base,
+        unemp_base:
+          ovIu.unemp_base != null
+            ? ovIu.unemp_base
+            : sched.unemp_base != null
+              ? sched.unemp_base
+              : iuBases.unemp_base,
         unit_code: r.unit_code,
         company_name: r.unit_name
       });
@@ -2297,6 +2686,11 @@ function normalizeSzNewPayload(body) {
       formatYmCn(parseYm(periodEnd).y, parseYm(periodEnd).m),
     pension_base: pensionBase,
     medical_base: medicalBase,
+    injury_base: iuBases.injury_base,
+    unemp_base: iuBases.unemp_base,
+    injury_base_after: iuBases.injury_base_after,
+    unemp_base_after: iuBases.unemp_base_after,
+    iu_base_change_ym: iuBases.iu_base_change_ym,
     medical_tier: medicalTier,
     maternity_type: maternityType,
     base_amount: pensionBase,
@@ -2771,7 +3165,7 @@ function normalizeJsPayload(body) {
   var periodCompact =
     String(startY) + pad2(startM) + '-' + String(endY) + pad2(endM);
   var isNew = isJsNewRegion(b);
-  /* 江苏新示例可覆盖标题月数/区间文案（如「439个月（199001-202609）」），不影响明细行 */
+  /* 江苏新示例可覆盖标题月数/区间文案（如「441个月（199001-202609）」），不影响明细行 */
   var titleSpan = Number(b.span_months != null ? b.span_months : b.spanMonths);
   if (isNew && isFinite(titleSpan) && titleSpan > 0) {
     spanMonths = Math.round(titleSpan);
@@ -3083,18 +3477,23 @@ function buildSichuanMonthsFromZjMonths(months, segments) {
     var m = months[i];
     if (!m) continue;
     var base = Number(m.pension_base != null ? m.pension_base : m.base_amount) || 0;
+    var unempBase = Number(m.unemp_base != null ? m.unemp_base : base) || 0;
+    var injuryBase = Number(m.injury_base != null ? m.injury_base : base) || 0;
     var personal =
       m.pension_pay != null && isFinite(Number(m.pension_pay))
         ? Number(m.pension_pay)
         : Math.round(base * 0.08 * 100) / 100;
     var unitPen = Math.round(base * 0.16 * 100) / 100;
-    var unempPers = Math.round(base * 0.004 * 100) / 100;
-    var unempUnit = Math.round(base * 0.006 * 100) / 100;
-    var injuryUnit = base > 0 ? Math.round(base * (base >= 8000 ? 0.0016 : 0.007) * 100) / 100 : 0;
+    var unempPers = Math.round(unempBase * 0.004 * 100) / 100;
+    var unempUnit = Math.round(unempBase * 0.006 * 100) / 100;
+    var injuryUnit =
+      injuryBase > 0
+        ? Math.round(injuryBase * (injuryBase >= 8000 ? 0.0016 : 0.007) * 100) / 100
+        : 0;
     var unitCode = String(m.unit_code || m.credit_code || '').trim();
     var seg = segByCode[unitCode];
     if (seg && seg.sc_injury_rate != null && isFinite(Number(seg.sc_injury_rate))) {
-      injuryUnit = Math.round(base * Number(seg.sc_injury_rate) * 100) / 100;
+      injuryUnit = Math.round(injuryBase * Number(seg.sc_injury_rate) * 100) / 100;
     }
     out.push({
       pay_month: String(m.year) + String(m.month).padStart(2, '0'),
@@ -3108,11 +3507,11 @@ function buildSichuanMonthsFromZjMonths(months, segments) {
       pension_unit: unitPen,
       pension_personal: personal,
       pension_pay: personal,
-      unemp_base: base,
+      unemp_base: unempBase,
       unemp_unit: unempUnit,
       unemp_personal: unempPers,
       unemp_pay: unempPers,
-      injury_base: base,
+      injury_base: injuryBase,
       injury_unit: injuryUnit,
       area: m.area || ''
     });
@@ -3255,6 +3654,12 @@ function normalizeScPayload(body) {
 }
 
 function normalizePayload(body) {
+  var p = normalizePayloadInner(body);
+  if (p && !p.error) applyInjuryUnempToPayload(p, body);
+  return p;
+}
+
+function normalizePayloadInner(body) {
   if (isScRegion(body)) {
     return normalizeScPayload(body);
   }
@@ -3988,7 +4393,13 @@ function renderSzNewCertHtml(payload, links, opts) {
   var years = p.years_months || {};
   var pdfHref = (links && (links.show_url || links.show_api_url)) || '#';
   var serial = p.doc_serial || szNewDocSerial(p.print_date);
-  var sealDate = p.print_date || defaultPrintDateCn();
+  var sealDateRaw = p.print_date || defaultPrintDateCn();
+  var sealDate = String(sealDateRaw).replace(
+    /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/,
+    function (_m, y, mo, d) {
+      return y + '年' + String(mo).padStart(2, '0') + ' 月' + String(d).padStart(2, '0') + ' 日';
+    }
+  );
   var rowsHtml = '';
   months.forEach(function (r) {
     if (!r) return;
@@ -4044,11 +4455,16 @@ function renderSzNewCertHtml(payload, links, opts) {
     '.notes{font-size:11px;line-height:1.7;margin-top:10px;text-align:left}' +
     '.notes .t{font-weight:400}' +
     '.unit-line{margin-left:1.2em}' +
-    '.seals{display:flex;justify-content:flex-end;align-items:flex-start;gap:20px;margin:4px 0 2px}' +
-    '.seal-box{position:relative;width:96px;height:96px;flex:0 0 96px}' +
-    '.seal-box img{width:100%;height:100%;display:block}' +
-    '.seal-date{position:absolute;left:6px;right:6px;top:52%;text-align:center;color:#c43034;font-size:8px;font-weight:400;line-height:1.2;pointer-events:none}' +
-    '.svc{text-align:center;color:#666;font-size:11px;margin:8px 0 14px}' +
+    '.seals{display:flex;justify-content:flex-end;align-items:flex-start;gap:36px;margin:14px 8px 4px}' +
+    '.seal-box{position:relative;width:118px;height:132px;flex:0 0 118px}' +
+    '.seal-box img{position:absolute;left:0;right:0;top:16px;width:118px;height:118px;display:block;z-index:2}' +
+    '.seal-label{position:absolute;left:-18px;right:-18px;top:0;text-align:center;color:#111;font-size:9px;' +
+    'font-weight:400;line-height:1.15;z-index:3;pointer-events:none;' +
+    'font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif}' +
+    '.seal-date{position:absolute;left:2px;right:2px;top:66px;text-align:center;color:#111;font-size:8px;' +
+    'font-weight:400;line-height:1.15;z-index:1;pointer-events:none;' +
+    'font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif}' +
+    '.auth-foot{text-align:center;color:#222;font-size:12px;margin:10px 0 12px;letter-spacing:.3px}' +
     '.dl-btn{display:block;width:100%;background:#2b7de1;color:#fff;text-align:center;padding:13px 12px;border-radius:4px;text-decoration:none;font-size:16px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}' +
     '@media print{html,body{background:#fff}.page{max-width:none;margin:0;padding:10mm}.dl-btn{display:none}}' +
     '</style></head><body><div class="page">' +
@@ -4090,26 +4506,34 @@ function renderSzNewCertHtml(payload, links, opts) {
     rowsHtml +
     '</tbody></table>' +
     '<div class="notes"><div class="t">备注：</div>' +
-    '1.本证明可作为参保人参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（' +
+    '1、本《参保证明》可作为参保人在我市参加社会保险的证明。向相关部门提供，查验部门可通过登录网址：https://sipub.sz.gov.cn/vp/，输入下列验真码（' +
     escHtml(authCode) +
     '）核查，验真码有效期三个月。<br>' +
-    '2.生育保险中的险种“1”为生育保险，“2”为生育医疗。<br>' +
-    '3.医疗保险档次“1”为基本医疗保险一档，“2”为基本医疗保险二档，“4”为基本医疗保险三档，“5”为居民医疗保险，“6”为统筹医疗保险。<br>' +
-    '4.上述“缴费明细”表中带“*”标识为补缴，带“#”标识为补差，空行为断缴。<br>' +
-    '5.居民养老保险、居民（含少儿/学生）医疗保险不在本清单。<br>' +
-    '6.单位编号对应的单位名称：' +
+    '2、“缴费明细”表中带“*”标识的为补缴，表示未在缴费时段当月及时缴纳社保费用，跨月补缴到账。空行为断缴，表示缴费时段未缴纳社保费。<br>' +
+    '3、医疗险种“1”为基本医疗保险一档、“2”为基本医疗保险二档、“4”为基本医疗保险三档。<br>' +
+    '4、生育险种“1”为生育保险、“2”为生育医疗。<br>' +
+    '5、带“#”特指退役士兵补缴时段。带“&”标识为参保单位申请缓缴社会保险费单位缴费部分的时段。该参保人带&标志的缴费年月，养老保险在2026年12月前视同到账，工伤保险、失业保险在2026年12月前视同到账。<br>' +
+    '6、单位信息：（单位编号）/（单位名称）' +
     mapHtml +
     '</div>' +
     '<div class="seals">' +
-    '<div class="seal-box"><img src="/img/sbdy_sz_new_si_seal.png" alt="">' +
+    '<div class="seal-box">' +
+    '<div class="seal-label">深圳市社会保险基金管理局</div>' +
     '<div class="seal-date">' +
     escHtml(sealDate) +
+    '</div>' +
+    '<img src="/img/sbdy_sz_new_si_seal.png?v=20260906-native" alt="">' +
+    '</div>' +
+    '<div class="seal-box">' +
+    '<div class="seal-label">深圳市医疗保险基金管理中心</div>' +
+    '<div class="seal-date">' +
+    escHtml(sealDate) +
+    '</div>' +
+    '<img src="/img/sbdy_sz_new_mi_seal.png?v=20260906-native" alt="">' +
     '</div></div>' +
-    '<div class="seal-box"><img src="/img/sbdy_sz_new_mi_seal.png" alt="">' +
-    '<div class="seal-date">' +
-    escHtml(sealDate) +
-    '</div></div></div>' +
-    '<div class="svc">本服务由深圳市人力资源和社会保障局提供</div>' +
+    '<div class="auth-foot">' +
+    escHtml(authCode) +
+    '</div>' +
     '<a class="dl-btn" href="' +
     String(pdfHref).replace(/"/g, '&quot;') +
     '" target="_blank" rel="noopener">下载文件</a>' +
@@ -4379,7 +4803,7 @@ function renderJsCertHtml(payload, links, opts) {
     '</div>' +
     '<div class="foot">' +
     '<div class="print-date">打印时间：' + escHtml(sealDate) + '</div>' +
-    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260825-zj-seal-style" alt=""></div>' +
+    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260906-js-user" alt=""></div>' +
     '</div>' +
     '</div>' +
     '<script src="/js/vendor/qrcode.min.js"><\/script>' +
@@ -4392,7 +4816,7 @@ function renderJsCertHtml(payload, links, opts) {
   );
 }
 
-/** 江苏新：全国社保卡服务平台斜向水印 + 人社 APP 核验提示（保留旧江苏版不动） */
+/** 江苏新：全国社保卡服务平台斜向水印（3 行）；核验文案横排在二维码下方；章与打印时间在表下 */
 function renderJsNewCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
@@ -4451,14 +4875,20 @@ function renderJsNewCertHtml(payload, links, opts) {
     '）';
   var pageNo = '共' + (p.total_pages || 1) + '页，第' + (p.page_idx || 1) + '页';
   var wmId = String(p.watermark_id || '').trim();
-  var wmLine =
-    '本文件由全国社保卡服务平台提供，任何第三方机构不得进行二次加工、处理、解析或以任何形式用于商业用途，否则将追究法律责任。(' +
-    wmId +
-    ')';
+  var wmL1 = '本文件由全国社保卡服务平台提供，任何第三方机构不得进行';
+  var wmL2 = '二次加工、处理、解析或以任何形式用于商业用途，否则将追究';
+  var wmL3 = '法律责任。(' + wmId + ')';
   var wmTiles = '';
   var wi;
-  for (wi = 0; wi < 48; wi++) {
-    wmTiles += '<span>' + escHtml(wmLine) + '</span>';
+  for (wi = 0; wi < 36; wi++) {
+    wmTiles +=
+      '<span class="wm-block"><i>' +
+      escHtml(wmL1) +
+      '</i><i>' +
+      escHtml(wmL2) +
+      '</i><i>' +
+      escHtml(wmL3) +
+      '</i></span>';
   }
   return (
     '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
@@ -4471,20 +4901,21 @@ function renderJsNewCertHtml(payload, links, opts) {
     '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
     '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
     'padding:14mm 12mm 16mm;position:relative;overflow:hidden}' +
-    '.wm{position:absolute;inset:-20%;z-index:0;pointer-events:none;display:flex;flex-wrap:wrap;' +
-    'align-content:flex-start;gap:28px 18px;transform:rotate(-32deg);transform-origin:center center;' +
-    'opacity:.18;color:#9a9a9a;font-size:11px;line-height:1.35;user-select:none}' +
-    '.wm span{display:inline-block;white-space:nowrap;width:52%;max-width:420px;' +
-    'overflow:hidden;text-overflow:clip}' +
+    '.wm{position:absolute;inset:-22%;z-index:0;pointer-events:none;display:flex;flex-wrap:wrap;' +
+    'align-content:flex-start;gap:56px 42px;transform:rotate(-32deg);transform-origin:center center;' +
+    'opacity:.17;color:#9a9a9a;font-size:10.5px;user-select:none}' +
+    '.wm-block{display:inline-flex;flex-direction:column;gap:5px;white-space:nowrap;line-height:1.4}' +
+    '.wm-block i{font-style:normal;display:block}' +
     '.page-inner{position:relative;z-index:1}' +
-    '.head{position:relative;min-height:116px}' +
-    '.qr-box{position:absolute;top:0;right:0;width:88px;text-align:center;z-index:2}' +
-    '.qr-box canvas,.qr-box img.qr{width:82px;height:82px;display:block;margin:0 auto}' +
-    '.qr-ph{width:82px;height:82px;margin:0 auto}' +
-    '.qr-cap{position:absolute;right:94px;top:4px;width:18px;writing-mode:vertical-rl;' +
-    'text-orientation:mixed;font-size:11px;letter-spacing:1px;line-height:1.15;color:#000;' +
-    'white-space:nowrap}' +
-    'h1{margin:14px 110px 0 8px;text-align:center;font-size:20px;font-weight:700;line-height:1.35}' +
+    '.head{position:relative;min-height:128px}' +
+    '.qr-box{position:absolute;top:0;right:0;width:86px;text-align:center;z-index:2;overflow:visible}' +
+    '.qr-box canvas,.qr-box img.qr{width:80px;height:80px;display:block;margin:0 auto}' +
+    '.qr-ph{width:80px;height:80px;margin:0 auto}' +
+    '.qr-cap{display:block;margin:14px 0 0;width:max-content;max-width:none;' +
+    'position:relative;left:50%;transform:translateX(-50%);' +
+    'writing-mode:horizontal-tb;text-orientation:mixed;font-size:10px;letter-spacing:0;' +
+    'line-height:1.2;color:#000;white-space:nowrap;z-index:2;text-align:center}' +
+    'h1{margin:14px 118px 0 8px;text-align:center;font-size:20px;font-weight:700;line-height:1.35}' +
     'h1 .sub{display:block;font-size:16px;margin-top:2px;font-weight:700}' +
     'table.g{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px}' +
     'table.g th,table.g td{border:1px solid #333;padding:3px 3px;text-align:center;' +
@@ -4499,18 +4930,22 @@ function renderJsNewCertHtml(payload, links, opts) {
     'table.d td.cn{font-size:10.5px}' +
     'table.d col.c-y{width:7%}table.d col.c-m{width:5%}table.d col.c-u{width:23%}' +
     'table.d col.c-b{width:11%}table.d col.c-p{width:10.5%}table.d col.c-i{width:11%}table.d col.c-r{width:10%}' +
-    '.notes{font-size:12px;line-height:1.8;margin-top:16px}' +
+    '.detail-wrap{position:relative}' +
+    '.after-table{position:relative;margin-top:10px;padding-bottom:8px}' +
+    '.notes{font-size:12px;line-height:1.75;margin-top:0;max-width:98%;padding-right:4px}' +
     '.notes .n2{padding-left:1.1em;text-indent:-1.1em}' +
-    '.foot{position:relative;margin-top:14px;min-height:150px}' +
-    '.print-date{position:absolute;right:150px;bottom:70px;font-size:12px;white-space:nowrap;z-index:4}' +
-    '.seal-wrap{position:absolute;right:20px;bottom:0;width:150px;height:150px;z-index:3;pointer-events:none}' +
-    '.seal-wrap img{width:150px;height:150px;display:block}' +
+    '.notes .n3{max-width:100%}' +
+    '.sign-col{display:block;width:148px;margin:6px 0 0 auto;text-align:center;position:relative}' +
+    '.seal-wrap{position:relative;width:148px;height:148px;margin:0 auto;pointer-events:none}' +
+    '.seal-wrap img{width:148px;height:148px;display:block}' +
+    '.seal-copy{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);' +
+    'z-index:4;font-size:9pt;line-height:1.55;white-space:nowrap;pointer-events:none;' +
+    'color:#000;font-family:SimSun,宋体,"Songti SC","STSong",serif;' +
+    'text-align:center}' +
+    '.seal-copy .seal-mark{display:block;text-align:center}' +
+    '.seal-copy .print-date{display:block;position:relative;left:-18px;text-align:left;' +
+    'margin-top:2px}' +
     '@media print{.page{padding:12mm}}' +
-    '@media (max-width:720px){.page{padding:8px}' +
-    '.head{min-height:0}.qr-box{position:static;margin:0 auto 8px}h1{margin:8px 0 0}' +
-    '.qr-cap{position:static;writing-mode:horizontal-tb;width:auto;text-align:center;white-space:normal;' +
-    'letter-spacing:0;margin:6px 0}' +
-    '.print-date{position:static;text-align:right;margin:8px 0}.seal-wrap{position:static;margin:0 0 0 auto}}' +
     '</style></head><body>' +
     '<div class="page">' +
     '<div class="wm" aria-hidden="true">' +
@@ -4518,9 +4953,10 @@ function renderJsNewCertHtml(payload, links, opts) {
     '</div>' +
     '<div class="page-inner">' +
     '<div class="head">' +
-    '<div class="qr-cap">该核查内容真实，欢迎登录人社APP扫描验证</div>' +
     '<div class="qr-box"><div class="qr-ph" id="qrPh"></div>' +
-    '<canvas id="qrCanvas" class="qr" width="82" height="82" style="display:none"></canvas></div>' +
+    '<canvas id="qrCanvas" class="qr" width="80" height="80" style="display:none"></canvas>' +
+    '<div class="qr-cap">请使用官方江苏智慧人社APP扫描验证</div>' +
+    '</div>' +
     '<h1>江苏省社会保险权益记录单<span class="sub">（参保人员）</span></h1>' +
     '</div>' +
     '<table class="g"><colgroup><col style="width:9%"><col style="width:18%"><col style="width:26%">' +
@@ -4558,6 +4994,7 @@ function renderJsNewCertHtml(payload, links, opts) {
     '<table class="g" style="margin-top:0;"><tr><td class="sec">' +
     sec +
     '</td></tr></table>' +
+    '<div class="detail-wrap">' +
     '<table class="d"><colgroup>' +
     '<col class="c-y"><col class="c-m"><col class="c-u"><col class="c-b"><col class="c-p">' +
     '<col class="c-b"><col class="c-p"><col class="c-i"><col class="c-r"></colgroup>' +
@@ -4569,17 +5006,21 @@ function renderJsNewCertHtml(payload, links, opts) {
     '</thead><tbody>' +
     rowsHtml +
     '</tbody></table>' +
+    '<div class="after-table">' +
     '<div class="notes">' +
     '<div>说明：</div>' +
     '<div class="n2">1.本权益单信息为打印时参保情况，供参考，由参保人员自行保管。</div>' +
     '<div class="n2">2.本权益单已签具电子印章，不再加盖鲜章。</div>' +
-    '<div class="n2">3.本权益记录单出具后有效期（6个月）内，如需核对真伪，请使用江苏智慧人社APP，扫描右上方二维码进行验证（可多次验证）。</div>' +
+    '<div class="n2 n3">3.本权益记录单出具后有效期（6个月）内，如需核对真伪，请使用江苏智慧人社APP，扫描右上方二维码进行验证（可多次验证）。</div>' +
     '</div>' +
-    '<div class="foot">' +
-    '<div class="print-date">打印时间：' +
+    '<div class="sign-col">' +
+    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260906-js-user" alt="">' +
+    '<div class="seal-copy"><span class="seal-mark">（盖章）</span>' +
+    '<span class="print-date">打印时间：' +
     escHtml(sealDate) +
+    '</span></div></div>' +
     '</div>' +
-    '<div class="seal-wrap"><img src="/img/sbdy_js_seal.png?v=20260906-js-new" alt=""></div>' +
+    '</div>' +
     '</div>' +
     '</div></div>' +
     '<script src="/js/vendor/qrcode.min.js"><\/script>' +
@@ -4587,7 +5028,7 @@ function renderJsNewCertHtml(payload, links, opts) {
     JSON.stringify(qrUrl) +
     ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
     'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
-    'QRCode.toCanvas(c,u,{width:82,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
+    'QRCode.toCanvas(c,u,{width:80,margin:1},function(err){if(!err){c.style.display="block";if(ph)ph.style.display="none";}});})();<\/script>' +
     '</body></html>'
   );
 }
@@ -5388,10 +5829,14 @@ async function createSbdyDemoCert(req, body, creator) {
       throw eIns;
     }
   }
+  var linksOut = buildLinks(req, authCode, token);
+  try {
+    warmSbdyPdfCache(token, normalized, authCode, linksOut.show_url);
+  } catch (eWarmCreate) {}
   return {
     auth_code: authCode,
     token: token,
-    links: buildLinks(req, authCode, token),
+    links: linksOut,
     payload: normalized
   };
 }
@@ -5492,12 +5937,27 @@ async function handleAdminSbdyDemoDelete(req, res) {
     if (!id || id < 1) {
       return res.status(400).json({ code: 400, msg: '缺少记录 id' });
     }
+    var delToken = '';
+    try {
+      const [tokRows] = await getPool().execute(
+        'SELECT token FROM sbdy_demo_certs WHERE id = ? LIMIT 1',
+        [id]
+      );
+      if (tokRows && tokRows[0] && tokRows[0].token) {
+        delToken = String(tokRows[0].token);
+      }
+    } catch (eTok) {}
     const [result] = await getPool().execute(
       'DELETE FROM sbdy_demo_certs WHERE id = ? LIMIT 1',
       [id]
     );
     if (!result || !result.affectedRows) {
       return res.status(404).json({ code: 404, msg: '记录不存在或已删除' });
+    }
+    if (delToken) {
+      try {
+        invalidateSbdyPdfCacheForToken(delToken);
+      } catch (eInv) {}
     }
     return res.json({ code: 200, msg: '已删除', data: { id: id } });
   } catch (e) {
@@ -5652,13 +6112,24 @@ async function handlePublicSbdyDemoShow(req, res) {
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       return res.status(200).send(html);
     }
-    var pdfBuf = await renderSbdyPdfBuffer(payload, row.auth_code, links.show_url);
-    if (payload && payload.demo) {
-      pdfBuf = await applySbdyDemoWatermark(pdfBuf);
+    var pdfOut = await renderSbdyPdfCached(token, payload, row.auth_code, links.show_url);
+    var pdfBuf = pdfOut && pdfOut.buf;
+    if (!pdfBuf || !pdfBuf.length) {
+      return res.status(500).send('error');
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="show.pdf"');
-    res.setHeader('Cache-Control', 'private, max-age=60');
+    /* 改电脑号等字段后必须立刻回源，不能让浏览器继续用旧 PDF */
+    res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    if (pdfOut.fingerprint) {
+      res.setHeader('ETag', '"' + pdfOut.fingerprint + '"');
+      var inm = String(req.headers['if-none-match'] || '').trim();
+      if (inm && inm.replace(/^W\//, '').replace(/"/g, '') === pdfOut.fingerprint) {
+        return res.status(304).end();
+      }
+    }
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     res.setHeader('Content-Length', String(pdfBuf.length));
     return res.status(200).end(pdfBuf);
@@ -5682,5 +6153,7 @@ module.exports = {
   getHandlers: getHandlers,
   renderCertHtml: renderCertHtml,
   normalizePayload: normalizePayload,
-  createSbdyDemoCert: createSbdyDemoCert
+  createSbdyDemoCert: createSbdyDemoCert,
+  sbdyPdfCacheFingerprint: sbdyPdfCacheFingerprint,
+  renderSbdyPdfCached: renderSbdyPdfCached
 };

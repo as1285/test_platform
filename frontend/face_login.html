@@ -8,6 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>安全验证</title>
+    <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
     <script src="/js/auth-boot.js?v=20260905-facelogin-ui3"></script>
     <script src="/js/auth.js?v=20260905-facelogin-ui3" defer></script>
     <style>
@@ -401,9 +402,24 @@
                 return href;
             }
 
+            function goTop(href) {
+                var dest = href || 'shouye.html';
+                if (typeof window.assignTopLocation === 'function') {
+                    window.assignTopLocation(dest);
+                    return;
+                }
+                try {
+                    if (window.top && window.top !== window) {
+                        window.top.location.href = dest;
+                        return;
+                    }
+                } catch (eTop) {}
+                window.location.href = dest;
+            }
+
             function goLogin(extras) {
                 forceClearLoader();
-                window.location.href = buildLoginReturnUrl(extras);
+                goTop(buildLoginReturnUrl(extras));
             }
 
             function nextHrefAfterLogin(d) {
@@ -490,7 +506,7 @@
                             applySession(data.data, draft.username);
                             clearDraft();
                             if (!data.data.account_active && data.data.account_active !== 1) {
-                                window.location.href = 'login.html?need_activate=1';
+                                goTop('login.html?need_activate=1');
                                 return;
                             }
                             if (data.data.peer_account) {
@@ -501,7 +517,7 @@
                                     );
                                 } catch (e9) {}
                             }
-                            window.location.href = nextHrefAfterLogin(data.data);
+                            goTop(nextHrefAfterLogin(data.data));
                             return;
                         }
                         clearDraft();

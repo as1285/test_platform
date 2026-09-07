@@ -203,6 +203,27 @@
   }
 
   function currentRegion() {
+    var checked = document.querySelector('input[name="sbdyRegion"]:checked');
+    if (checked) {
+      var fromValue = String(checked.value || '').trim();
+      if (fromValue) return fromValue;
+      var idMap = {
+        sbdyRegionJsNew: 'js_new',
+        sbdyRegionJs: 'js',
+        sbdyRegionSzNew: 'sz_new',
+        sbdyRegionSz: 'sz',
+        sbdyRegionGz: 'gz',
+        sbdyRegionWh: 'wh',
+        sbdyRegionHn: 'hn',
+        sbdyRegionHa: 'ha',
+        sbdyRegionBj: 'bj',
+        sbdyRegionSh: 'sh',
+        sbdyRegionXm: 'xm',
+        sbdyRegionSc: 'sc',
+        sbdyRegionZj: 'zj'
+      };
+      if (checked.id && idMap[checked.id]) return idMap[checked.id];
+    }
     var hn = document.getElementById('sbdyRegionHn');
     var ha = document.getElementById('sbdyRegionHa');
     var sz = document.getElementById('sbdyRegionSz');
@@ -278,6 +299,9 @@
     document.querySelectorAll('.sbdy-js-only').forEach(function (el) {
       el.hidden = !isJsStyle(region);
     });
+    document.querySelectorAll('.sbdy-js-new-only').forEach(function (el) {
+      el.hidden = region !== 'js_new';
+    });
     document.querySelectorAll('.sbdy-zj-js').forEach(function (el) {
       el.hidden =
         region !== 'zj' &&
@@ -318,6 +342,16 @@
     }
     if (area && defaultAreas.indexOf(area.value) >= 0) {
       area.value = next.area;
+    }
+    if (region === 'js_new') {
+      var titleMonths = document.getElementById('sbdyTitleMonths');
+      var titleCompact = document.getElementById('sbdyTitleCompact');
+      if (titleMonths && !String(titleMonths.value || '').trim()) titleMonths.value = '441';
+      if (titleCompact && !String(titleCompact.value || '').trim()) titleCompact.value = '199001-202609';
+      var ps = document.getElementById('sbdyPeriodStart');
+      var pe = document.getElementById('sbdyPeriodEnd');
+      if (ps && !ps.value) ps.value = '2023-12';
+      if (pe && !pe.value) pe.value = '2026-07';
     }
     if (region === 'wh') {
       var insure = document.getElementById('sbdyInsureType');
@@ -515,6 +549,26 @@
     return 0;
   }
 
+  /** 江苏新标题：「出具证明前441个月缴费情况（199001-202609）」与明细区间分开 */
+  function extractJsNewTitle(text) {
+    var t = String(text || '');
+    var span = 0;
+    var compact = '';
+    var m1 = t.match(/出具证明前\s*(\d+)\s*个?月/);
+    if (m1) span = Number(m1[1]) || 0;
+    var m2 = t.match(/\(?\s*(\d{6})\s*[-~—～]\s*(\d{6})\s*\)?/);
+    if (m2) compact = m2[1] + '-' + m2[2];
+    /* 1990-01～2026-09 含首尾共 441 个月；未写月数时按此补 */
+    if (compact === '199001-202609' && !span) span = 441;
+    return { span_months: span, period_compact: compact };
+  }
+
+  function stripJsNewTitleNoise(text) {
+    return String(text || '')
+      .replace(/出具证明前\s*\d+\s*个?月缴费情况/g, ' ')
+      .replace(/\(?\s*\d{6}\s*[-~—～]\s*\d{6}\s*\)?/g, ' ');
+  }
+
   function wantsActiveStatus(text) {
     var s = String(text || '');
     if (/不要停保|别停保|正常参保|参保缴费|正常缴费|在保/.test(s)) return true;
@@ -559,10 +613,11 @@
     var area = pickLabeled(text, ['区域', '参保地', '地区', '区县']);
     if (area) area = area.replace(/[。.;；]+$/, '');
 
+    var jsNewTitle = extractJsNewTitle(text);
     var periodRaw =
-      pickLabeled(text, ['时间', '缴费时间', '参保时间', '缴费区间', '期间', '起止']) || '';
+      pickLabeled(text, ['时间', '缴费时间', '参保时间', '缴费区间', '期间', '起止', '缴纳月份']) || '';
     var period = parsePeriodText(periodRaw);
-    if (!period) period = parsePeriodText(text);
+    if (!period) period = parsePeriodText(stripJsNewTitleNoise(text));
 
     var monthCnt = extractMonthCount(text);
     if (period && monthCnt > 0) {
@@ -626,7 +681,9 @@
     if (looksWh && /深圳|广州/.test(text) && !/武汉|湖北/.test(text)) looksWh = false;
     if (looksHn && /武汉|湖北/.test(text) && !/湖南|常德/.test(text)) looksHn = false;
     if (looksHn && looksHa) looksHn = false;
-    var looksJsNew = !!(/江苏新|全国社保卡服务平台|该核查内容真实/.test(text));
+    var looksJsNew = !!(
+      /江苏新|全国社保卡服务平台|该核查内容真实|核查内容真实|江苏省社会保险权益记录单/.test(text)
+    );
     var looksJs = !!(
       /江苏|权益记录单|南京|苏州|无锡|常州|徐州|南通|扬州|盐城|泰州|镇江|淮安|连云港|宿迁/.test(text)
     );
@@ -743,6 +800,10 @@
                           ? 5000
                           : 4986;
     }
+    var injuryRaw = pickLabeled(text, ['工伤基数', '工伤保险基数']);
+    var injuryBase = injuryRaw ? Number(String(injuryRaw).replace(/[^\d.]/g, '')) : NaN;
+    var unempBaseRaw = pickLabeled(text, ['失业基数', '失业保险基数']);
+    var unempBase = unempBaseRaw ? Number(String(unempBaseRaw).replace(/[^\d.]/g, '')) : NaN;
     var pension = Math.round(base * 0.08 * 100) / 100;
     var unemp = Math.round(base * (isSzStyle(region) ? 0.002 : 0.005) * 100) / 100;
 
@@ -758,6 +819,15 @@
       : NaN;
 
     if (!name) return { error: '模版中未识别到姓名' };
+    if (
+      region === 'js_new' &&
+      (!period ||
+        !period.start ||
+        !period.end ||
+        (period.start === '1990-01' && period.end === '2026-09'))
+    ) {
+      period = { start: '2023-12', end: '2026-07' };
+    }
     if (!period || !period.start || !period.end) {
       return { error: '模版中未识别到缴费时间（如 2025.7-2026.6）' };
     }
@@ -804,11 +874,17 @@
       month_count: monthCountBetween(period.start, period.end),
       base_amount: base,
       medical_base: base,
+      injury_base: isFinite(injuryBase) && injuryBase > 0 ? injuryBase : undefined,
+      unemp_base: isFinite(unempBase) && unempBase > 0 ? unempBase : undefined,
       pension_pay: pension,
       unemployment_pay: unemp,
       total_months: isFinite(totalMonths) && totalMonths > 0 ? totalMonths : undefined,
       status: status,
-      print_date: defaultPrintDateCn()
+      print_date: defaultPrintDateCn(),
+      span_months:
+        region === 'js_new' && jsNewTitle.span_months > 0 ? jsNewTitle.span_months : undefined,
+      period_compact:
+        region === 'js_new' && jsNewTitle.period_compact ? jsNewTitle.period_compact : undefined
     };
   }
 
@@ -893,7 +969,23 @@
     setField('sbdyPeriodStart', parsed.period_start);
     setField('sbdyPeriodEnd', parsed.period_end);
     setField('sbdyBase', parsed.base_amount);
+    if (parsed.region === 'js_new') {
+      if (parsed.span_months) setField('sbdyTitleMonths', parsed.span_months);
+      else if (!val('sbdyTitleMonths')) setField('sbdyTitleMonths', 441);
+      if (parsed.period_compact) setField('sbdyTitleCompact', parsed.period_compact);
+      else if (!val('sbdyTitleCompact')) setField('sbdyTitleCompact', '199001-202609');
+      jsNewSampleExtras = {
+        span_months: Number(val('sbdyTitleMonths')) || 441,
+        period_compact: val('sbdyTitleCompact') || '199001-202609'
+      };
+    }
     if (parsed.medical_base) setField('sbdyMedicalBase', parsed.medical_base);
+    if (parsed.injury_base) setField('sbdyInjuryBase', parsed.injury_base);
+    if (parsed.unemp_base) setField('sbdyUnempBase', parsed.unemp_base);
+    if (parsed.iu_base_change_ym) setField('sbdyIuBaseChangeYm', parsed.iu_base_change_ym);
+    if (parsed.injury_base_after || parsed.iu_base_after) {
+      setField('sbdyIuBaseAfter', parsed.injury_base_after || parsed.iu_base_after);
+    }
     setField('sbdyPensionPay', parsed.pension_pay);
     setField('sbdyUnempPay', parsed.unemployment_pay);
     setField('sbdyStatusPension', parsed.status);
@@ -1359,6 +1451,26 @@
       base_amount: num('sbdyBase', defaultBase),
       pension_base: num('sbdyBase', 4492),
       medical_base: num('sbdyMedicalBase', num('sbdyBase', 4492)),
+      injury_base: (function () {
+        var n = Number(val('sbdyInjuryBase'));
+        return isFinite(n) && n > 0 ? n : undefined;
+      })(),
+      unemp_base: (function () {
+        var n = Number(val('sbdyUnempBase'));
+        return isFinite(n) && n > 0 ? n : undefined;
+      })(),
+      iu_base_change_ym: (function () {
+        var ym = normalizeYm(val('sbdyIuBaseChangeYm'));
+        return ym || undefined;
+      })(),
+      injury_base_after: (function () {
+        var n = Number(val('sbdyIuBaseAfter'));
+        return isFinite(n) && n > 0 ? n : undefined;
+      })(),
+      unemp_base_after: (function () {
+        var n = Number(val('sbdyIuBaseAfter'));
+        return isFinite(n) && n > 0 ? n : undefined;
+      })(),
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
       status_pension: val('sbdyStatusPension') || (isZjOpsRegion(region) ? '参保缴费' : '正常参保'),
@@ -1499,9 +1611,15 @@
       }
     }
     if (region === 'js_new') {
-      if (jsNewSampleExtras && val('sbdyName') === '张某某') {
-        if (jsNewSampleExtras.span_months != null) body.span_months = jsNewSampleExtras.span_months;
-        if (jsNewSampleExtras.period_compact) body.period_compact = jsNewSampleExtras.period_compact;
+      var titleMonths = Number(val('sbdyTitleMonths'));
+      var titleCompact = val('sbdyTitleCompact');
+      if (isFinite(titleMonths) && titleMonths > 0) body.span_months = Math.round(titleMonths);
+      else if (jsNewSampleExtras && jsNewSampleExtras.span_months != null) {
+        body.span_months = jsNewSampleExtras.span_months;
+      }
+      if (/^\d{6}-\d{6}$/.test(titleCompact)) body.period_compact = titleCompact;
+      else if (jsNewSampleExtras && jsNewSampleExtras.period_compact) {
+        body.period_compact = jsNewSampleExtras.period_compact;
       }
     }
     if (region === 'hn' && body.company_name === '湖南旭昱新能源科技有限公司') {
@@ -1571,6 +1689,10 @@
   function fillSample() {
     prefillMonthUnits = {};
     clearSegments();
+    setField('sbdyInjuryBase', '');
+    setField('sbdyUnempBase', '');
+    setField('sbdyIuBaseChangeYm', '');
+    setField('sbdyIuBaseAfter', '');
     var now = new Date();
     var bj = new Date(now.getTime() + 8 * 3600 * 1000);
     var endY = bj.getUTCFullYear();
@@ -1747,13 +1869,15 @@
       );
       setField('sbdyArea', jsNewSample ? '经济技术开发区' : '溧水区');
       setField('sbdyBase', jsNewSample ? 12000 : 4879);
-      /* 江苏新：标题区间 1990-01～2026-09（文案 439 个月 / 199001-202609）；明细行仅 2023-12～2026-07 */
-      setField('sbdyPeriodStart', jsNewSample ? '1990-01' : '2025-08');
-      setField('sbdyPeriodEnd', jsNewSample ? '2026-09' : '2026-08');
+      /* 江苏新：明细 2023-12～2026-07；标题单独写 441 个月 / 199001-202609 */
+      setField('sbdyPeriodStart', jsNewSample ? '2023-12' : '2025-08');
+      setField('sbdyPeriodEnd', jsNewSample ? '2026-07' : '2026-08');
       setField('sbdyPrintDate', printDate);
       if (jsNewSample) {
+        setField('sbdyTitleMonths', 441);
+        setField('sbdyTitleCompact', '199001-202609');
         jsNewSampleExtras = {
-          span_months: 439,
+          span_months: 441,
           period_compact: '199001-202609'
         };
         renderSegments([
@@ -1765,7 +1889,7 @@
           }
         ]);
         setStatus(
-          '已填充江苏新示例：张某某（明细 2023.12–2026.7，基数 12000，标题 439 个月，可再点生成）',
+          '已填充江苏新示例：张某某（明细 2023.12–2026.7，基数 12000，标题 441 个月，可再点生成）',
           false
         );
       } else {
@@ -1841,6 +1965,10 @@
       setField('sbdyPeriodEnd', '2026-08');
       setField('sbdyBase', 4492);
       setField('sbdyMedicalBase', 4492);
+      setField('sbdyInjuryBase', '');
+      setField('sbdyUnempBase', '');
+      setField('sbdyIuBaseChangeYm', '');
+      setField('sbdyIuBaseAfter', '');
       setField('sbdyPrintDate', '2026年09月01日');
       szNewSampleExtras = {
         doc_serial: '2026:09:01E',
@@ -1918,6 +2046,24 @@
           base: 5280
         }
       ];
+      if (city === '深圳') {
+        szSamples.unshift({
+          name: '李懋',
+          id_number: '440923199909181496',
+          gender: '男',
+          company: '深圳市本原生活科技有限公司',
+          unit_code: '91440300MA5FLEK18W',
+          computer_no: '909181496',
+          base: 4775,
+          medical: 6727,
+          injury: 2500,
+          unemp: 2500,
+          iu_change_ym: '2025-03',
+          iu_after: 2520,
+          period_start: '2024-06',
+          period_end: '2026-08'
+        });
+      }
       var sz =
         Math.random() < 0.6 ? szSamples[0] : szSamples[Math.floor(Math.random() * szSamples.length)];
       setField('sbdyName', sz.name);
@@ -1927,10 +2073,14 @@
       setField('sbdyUnitCode', sz.unit_code);
       setField('sbdyComputerNo', sz.computer_no);
       setField('sbdyArea', city + '市');
-      setField('sbdyPeriodStart', startY + '-' + String(startM).padStart(2, '0'));
-      setField('sbdyPeriodEnd', endY + '-' + String(endM).padStart(2, '0'));
+      setField('sbdyPeriodStart', sz.period_start || startY + '-' + String(startM).padStart(2, '0'));
+      setField('sbdyPeriodEnd', sz.period_end || endY + '-' + String(endM).padStart(2, '0'));
       setField('sbdyBase', sz.base);
-      setField('sbdyMedicalBase', sz.base);
+      setField('sbdyMedicalBase', sz.medical != null ? sz.medical : sz.base);
+      setField('sbdyInjuryBase', sz.injury != null ? sz.injury : '');
+      setField('sbdyUnempBase', sz.unemp != null ? sz.unemp : '');
+      setField('sbdyIuBaseChangeYm', sz.iu_change_ym || '');
+      setField('sbdyIuBaseAfter', sz.iu_after != null ? sz.iu_after : '');
       setField('sbdyPrintDate', printDate);
       setStatus('已填充' + city + '示例：' + sz.name + '（可再点生成）', false);
       return;
@@ -2591,6 +2741,26 @@
         if (currentRegion() !== 'sz_new') szNewSampleExtras = null;
         if (currentRegion() !== 'js_new') jsNewSampleExtras = null;
         syncRegionUi();
+        var r = currentRegion();
+        var labels = {
+          js_new: '江苏新',
+          js: '江苏',
+          zj: '浙江',
+          sz: '深圳',
+          sz_new: '深圳新',
+          gz: '广州',
+          wh: '武汉',
+          hn: '湖南',
+          ha: '河南',
+          bj: '北京',
+          sh: '上海',
+          xm: '厦门',
+          sc: '四川'
+        };
+        setStatus(
+          '已切换到' + (labels[r] || r) + '版式，请点「填充示例」后再生成，避免沿用上一地区的杭州/外地单位',
+          false
+        );
       });
     });
     syncRegionUi();
@@ -2648,6 +2818,7 @@
     generate: generate,
     fillSample: fillSample,
     parsePasteTemplate: parsePasteTemplate,
+    extractJsNewTitle: extractJsNewTitle,
     pasteFillOnly: pasteFillOnly,
     pasteAndGenerate: pasteAndGenerate
   };

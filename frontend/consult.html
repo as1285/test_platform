@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260905-no-survey">
+    <link rel="stylesheet" href="/css/consult.css?v=20260906-tax-ocr">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -125,10 +125,13 @@
                 <span id="taxPasteImportTitle">按模板生成个税</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪，点生成即可。区间可写「2023年全年」或「23年4月到26年8月」。也可以清空后粘贴个税 APP 明细。</p>
+            <p class="batch-ms-modal-hint" id="taxPasteImportHint">改公司名、年份和月薪，点生成即可。区间可写「2023年全年」或「23年4月到26年8月」。也可清空后粘贴个税 APP 明细，或上传官方截图自动识别。</p>
             <div class="tax-paste-import-toolbar">
                 <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportCopyTplBtn">重新填入模板</button>
-                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
+                <div class="tax-paste-import-toolbar-right">
+                    <button type="button" class="btn btn-default btn-sm" id="taxPasteImportScreenshotBtn">上传截图识别</button>
+                    <button type="button" class="btn btn-default btn-sm" id="taxPasteImportClearBtn">清空去粘贴</button>
+                </div>
             </div>
             <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="14" placeholder="公司名称：某某有限公司&#10;扣缴义务人纳税人识别号：91110105MA01K9XH2B&#10;主管税务机关：国家税务总局北京市朝阳区税务局&#10;2023年全年&#10;2024年全年&#10;2025年全年&#10;月薪：20000元&#10;基本养老保险：1600元&#10;基本医疗保险：400元&#10;失业保险：100元&#10;住房公积金：2400元&#10;&#10;（任职区间也可写：23年4月到26年8月）"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
@@ -312,12 +315,14 @@
                 <div id="batchTaxCardBody">
                 <div class="tax-start-chooser" id="taxStartChooser">
                     <p class="tax-start-chooser-title">怎么填写个税？</p>
-                    <p class="tax-start-chooser-desc">推荐先改模板生成 2023–2025 记录；有个税 APP 明细也可以直接粘贴。</p>
+                    <p class="tax-start-chooser-desc">推荐先改模板生成 2023–2025 记录；也可上传官方个税 APP 截图自动识别，或粘贴明细文本。</p>
                     <div class="tax-start-chooser-actions">
                         <button type="button" class="btn btn-primary btn-block tax-start-btn" id="btnTaxStartPaste" onclick="openTaxStartPath('paste')">按模板生成个税</button>
+                        <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartScreenshot" onclick="openTaxStartPath('screenshot')">上传个税截图识别</button>
                         <button type="button" class="btn btn-default btn-block tax-start-btn" id="btnTaxStartManual" onclick="openTaxStartPath('manual')">自己填公司与月薪</button>
                         <button type="button" class="btn btn-default btn-block tax-start-btn tax-start-btn-quiet" id="btnTaxStartExample" onclick="openTaxStartPath('example')">先用示例看看</button>
                     </div>
+                    <input type="file" id="taxScreenshotOcrInput" class="tax-screenshot-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/*" hidden>
                 </div>
                 <div id="batchTaxFormSection" class="batch-tax-form-section" hidden>
                 <p class="batch-hint" id="batchTaxCardHint">填公司、起止月、月薪，点「一键生成」；其余选项按需展开。</p>
@@ -589,7 +594,7 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>本页三步怎么走最快？</summary>
-                        <p>① 点「按模板生成个税」，改公司名、月薪、社保和机关后生成；② 或自己填公司与起止年月；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
+                        <p>① 点「按模板生成个税」，改公司名、月薪、社保和机关后生成；② 或点「上传个税截图识别」从相册选官方 APP 截图；③ 在「税务记录列表」核对每月收入与税额。需要改某段经历时用列表旁的「回填修改」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>示例填写适合谁？</summary>
@@ -597,7 +602,11 @@
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>粘贴导入怎么用？</summary>
-                        <p>点「按模板生成个税」会带出一份 2023–2025 的填写模板，含税号、主管税务机关和三险一金。改公司名和月薪后点「生成记录」即可。任职区间也可写成「23年4月到26年8月」。有个税 APP 明细时，可点「清空去粘贴」再粘贴文本。</p>
+                        <p>点「按模板生成个税」会带出一份 2023–2025 的填写模板，含税号、主管税务机关和三险一金。改公司名和月薪后点「生成记录」即可。任职区间也可写成「23年4月到26年8月」。有个税 APP 明细时，可点「清空去粘贴」再粘贴文本，或点「上传截图识别」从相册识图。</p>
+                    </details>
+                    <details class="tax-faq-item" data-faq-cat="howto">
+                        <summary>上传个税截图怎么用？</summary>
+                        <p>在个人所得税 APP 打开「收入纳税明细」，截取含公司名与各月「收入 / 税额」的完整页面，点「上传个税截图识别」从相册选择。识别后会填入文本框供核对，确认无误再点「生成记录」。</p>
                     </details>
                     <details class="tax-faq-item" data-faq-cat="howto">
                         <summary>如何核对列表里的税额是否合理？</summary>
@@ -979,8 +988,8 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260905-ym-range"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260905-list-tap"></script>
+    <script defer src="/js/consult-core.js?v=20260906-tax-ocr"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260906-ocr-fd"></script>
     <script defer src="/js/consult-records.js?v=20260905-list-tap"></script>
     <script>
     (function () {

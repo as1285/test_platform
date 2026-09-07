@@ -389,6 +389,21 @@ function loadConsultNajiluQrFeeCopy() {
         .catch(function () {});
 }
 
+/** 咨询页完税二维码入口点击埋点（去替换页前上报） */
+function bindConsultNajiluQrEntryTrack() {
+    var card = document.getElementById('najiluQrEntryCard');
+    if (!card || card.getAttribute('data-najilu-track') === '1') return;
+    card.setAttribute('data-najilu-track', '1');
+    card.addEventListener('click', function () {
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_najilu_qr_entry_click', {
+                page: 'consult',
+                from: 'consult'
+            });
+        }
+    });
+}
+
 /**
  * 附加产品页：收拢开通/续费支付入口（始终展示）。
  * 副作用：按激活态改标题/按钮文案与 href。
@@ -1531,6 +1546,36 @@ function normalizeTaxPasteLabels(text) {
         .replace(/所得期间/g, '统计区间')
         .replace(/已申报税额/g, '税额')
         .replace(/申报税额/g, '税额');
+}
+
+/**
+ * 将个税 APP 截图 OCR 常见的多行月块折叠为单行明细，便于 parseTaxPasteDetailMonths。
+ * 例：
+ *   2024年01月
+ *   正常工资薪金
+ *   收入 20,000.00
+ *   税额 150.50
+ * → 2024年01月 收入20000元 税额150.50元
+ */
+function collapseTaxOcrMonthBlocks(text) {
+    var s = String(text || '');
+    if (!s) return s;
+    s = s.replace(
+        /(\d{4})\s*年\s*(\d{1,2})\s*月[^\S\n]*(?:\n[^\n]{0,80}){0,8}?\n?\s*收入\s*([\d,.]+)\s*(?:元)?[^\S\n]*(?:\n[^\n]{0,60}){0,5}?\n?\s*税额\s*([\d,.]+)\s*(?:元)?/gi,
+        function (_m, y, mo, inc, tax) {
+            return (
+                y +
+                '年' +
+                parseInt(mo, 10) +
+                '月 收入' +
+                String(inc).replace(/,/g, '') +
+                '元 税额' +
+                String(tax).replace(/,/g, '') +
+                '元\n'
+            );
+        }
+    );
+    return s;
 }
 
 /**
@@ -2953,6 +2998,7 @@ function boot() {
         });
     }
     bindConsultCompactFormToggles();
+    bindConsultNajiluQrEntryTrack();
     initHeader();
     initIncomeTypeSelect();
     initBatchEmploymentRows();

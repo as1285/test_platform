@@ -1135,7 +1135,9 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
 .batch-ms-row input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
 .batch-ms-modal-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 16px; border-top: 1px solid var(--color-border-light); background: var(--color-surface-alt); }
 #batchMsModalClear { margin-right: auto; }
-.tax-paste-import-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; }
+.tax-paste-import-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; flex-wrap: wrap; }
+.tax-paste-import-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tax-screenshot-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0,0,0,0); }
 .tax-paste-import-textarea { width: 100%; box-sizing: border-box; min-height: 180px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; line-height: 1.55; font-family: inherit; resize: vertical; }
 .tax-paste-import-preview { margin: 0 0 10px; padding: 10px 12px; background: var(--color-surface-alt); border-radius: 8px; font-size: 13px; color: var(--color-text); max-height: 160px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
 .tax-paste-import-preview.is-ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }

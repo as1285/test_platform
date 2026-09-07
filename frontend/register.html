@@ -18,8 +18,9 @@
         /* 清除旧代理包禁注册标记，确保渠道 App 可进入创建账号流 */
         try { localStorage.removeItem('distributor_app_v1'); } catch (e) {}
     </script>
+    <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260905-agent-reg2" defer></script>
+    <script src="/js/auth.js?v=20260906-reg-urlch" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -749,10 +750,14 @@
                 });
             }
 
-            var regSalesCh =
-                typeof window.getRegisterSalesChannel === 'function'
-                    ? window.getRegisterSalesChannel(fromInstallGuide)
-                    : '';
+            var regSalesCh = '';
+            try {
+                if (typeof window.getRegisterSalesChannel === 'function') {
+                    regSalesCh = window.getRegisterSalesChannel(fromInstallGuide) || '';
+                }
+            } catch (eRegCh) {
+                regSalesCh = '';
+            }
 
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
@@ -899,8 +904,20 @@
                             if (goDownload) {
                                 window.location.href = 'install_guide.html?download=1#download';
                             } else {
-                                /* 注册成功进「我的」，不强制跳转支付页 */
-                                window.location.href = 'mine.html';
+                                /* 注册成功进「我的」，不强制跳转支付页；须顶层跳转，避免 Tab 壳底栏停在「我的」却显示首页 */
+                                if (typeof window.assignTopLocation === 'function') {
+                                    window.assignTopLocation('mine.html');
+                                } else {
+                                    try {
+                                        if (window.top && window.top !== window) {
+                                            window.top.location.href = 'mine.html';
+                                        } else {
+                                            window.location.href = 'mine.html';
+                                        }
+                                    } catch (eTopReg) {
+                                        window.location.href = 'mine.html';
+                                    }
+                                }
                             }
                         }, 450);
                         return;
