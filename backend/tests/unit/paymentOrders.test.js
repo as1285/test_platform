@@ -48,19 +48,24 @@ describe('paymentOrders helpers', () => {
     expect(scoped.params).toEqual([30]);
   });
 
-  it('applies admin user scope when provided', () => {
+  it('applies admin user scope on users alias (not payment_orders)', () => {
     const calls = [];
     const scoped = buildWhere(
       { q: '', status: 'pending', issue: '', days: 0 },
       { username: 'op1' },
       function (where, params, admin, col) {
         calls.push({ admin: admin.username, col: col });
+        /* 模拟 nonGuestUsernameSql：按表别名拼 user_type */
+        var alias = String(col).split('.')[0];
+        where.push('COALESCE(' + alias + '.user_type, 0) <> 2');
         where.push(col + ' = ?');
         params.push(admin.username);
       }
     );
-    expect(calls[0]).toEqual({ admin: 'op1', col: 'po.username' });
-    expect(scoped.sql).toMatch(/po\.username = \?/);
+    expect(calls[0]).toEqual({ admin: 'op1', col: 'u.username' });
+    expect(scoped.sql).toMatch(/COALESCE\(u\.user_type, 0\) <> 2/);
+    expect(scoped.sql).not.toMatch(/po\.user_type/);
+    expect(scoped.sql).toMatch(/u\.username = \?/);
     expect(scoped.params).toEqual(['pending', 'op1']);
   });
 

@@ -102,7 +102,9 @@ function buildWhere(opts, admin, appendScope) {
     );
   }
   if (typeof appendScope === 'function' && admin) {
-    appendScope(where, params, admin, 'po.username');
+    /* 必须用 users 别名：appendAdminUserScope / nonGuestUsernameSql 会读 alias.user_type、
+       sales_promo_channel；payment_orders 无这些列（否则 Unknown column 'po.user_type'）。 */
+    appendScope(where, params, admin, 'u.username');
   }
   return { sql: where.join(' AND '), params: params };
 }
