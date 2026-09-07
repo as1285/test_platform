@@ -226,10 +226,10 @@ mustInclude(
   ['place_seal', 'SEAL_PT'],
   'zaizhi uses shared vermilion seal'
 );
-mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'", '20260902-lizhi-fee'], 'lizhi cert shared page + quick generate');
+mustInclude('frontend/lizhi_cert.html', ['employment-cert-page.js', 'btnLizhiQuick', '一键生成最后一家公司', "apiPrefix: '/api/lizhi-cert'", '20260907-android-save'], 'lizhi cert shared page + quick generate');
 mustInclude(
   'frontend/public/js/employment-cert-page.js',
-  ['androidSaveLocal', 'TaxNativeSave', 'forceDownloadUrl', '保存到手机'],
+  ['androidSaveLocal', 'TaxNativeSave', 'forceDownloadUrl', '保存到手机', 'shellDownloadUrl', 'download-url'],
   'android cert save to local'
 );
 mustInclude(
@@ -1176,7 +1176,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260907-severance', 'consult-batch-tax.js?v=20260907-severance', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
+  ['consult-core.js?v=20260907-sz-wage', 'consult-batch-tax.js?v=20260907-severance', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
   '20260906 consult tax screenshot OCR'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴', '上传截图识别'], 'consult copy tpl btn');
@@ -2765,8 +2765,8 @@ mustInclude(
 );
 mustInclude(
   'backend/scripts/lizhi_render_pdf.py',
-  ['default_seal_code', 'seal_code', 'place_seal'],
-  'lizhi seal supports bottom seal_code'
+  ['place_seal', 'draw_code=False'],
+  'lizhi seal omits bottom seal_code digits'
 );
 mustInclude(
   'backend/src/admin/opsConversion.js',

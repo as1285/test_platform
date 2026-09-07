@@ -350,6 +350,46 @@
                 replySaveLocal(id, false, 'no_native');
             }
 
+            function downloadUrlFromH5(data) {
+                var id = data && data.id;
+                var url = data && data.url != null ? String(data.url).trim() : '';
+                var filename = (data && data.filename) || 'file.bin';
+                var mime = (data && data.mime) || 'application/octet-stream';
+                function reply(ok, detail) {
+                    var f = document.getElementById('app-frame');
+                    try {
+                        if (f && f.contentWindow) {
+                            f.contentWindow.postMessage(
+                                {
+                                    source: 'tax-shell',
+                                    type: 'download-url-result',
+                                    id: id,
+                                    ok: !!ok,
+                                    detail: detail || ''
+                                },
+                                '*'
+                            );
+                        }
+                    } catch (eReply) {}
+                }
+                if (!url) {
+                    reply(false, 'empty_url');
+                    return;
+                }
+                try {
+                    if (window.TaxNativeSave && typeof window.TaxNativeSave.downloadUrl === 'function') {
+                        var r = String(window.TaxNativeSave.downloadUrl(url, filename, mime) || '');
+                        reply(r.indexOf('ok') === 0, r);
+                        return;
+                    }
+                } catch (eDl) {
+                    reply(false, String((eDl && eDl.message) || eDl));
+                    return;
+                }
+                /* 旧包无 downloadUrl：丢给系统浏览器，由浏览器落盘 */
+                reply(openTaxPlatformExternal(url), 'external');
+            }
+
             window.addEventListener('message', function (ev) {
                 var data = ev && ev.data;
                 if (!data) return;
@@ -360,6 +400,10 @@
                 }
                 if (data.type === 'save-local-file') {
                     saveLocalFileFromH5(data);
+                    return;
+                }
+                if (data.type === 'download-url') {
+                    downloadUrlFromH5(data);
                     return;
                 }
                 if (data.type === 'clipboard-copy') {

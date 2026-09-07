@@ -155,10 +155,27 @@
         if (/TaxPlatformCordovaApp/i.test(navigator.userAgent || '')) return true;
       } catch (e0) {}
       try {
-        if (global.TaxNativeSave && typeof global.TaxNativeSave.saveBase64 === 'function') {
+        if (typeof global.isCordovaTaxAppShell === 'function' && global.isCordovaTaxAppShell()) {
           return true;
         }
+      } catch (eBoot) {}
+      try {
+        if (resolveNativeSaveApi()) return true;
       } catch (e1) {}
+      try {
+        /* Cordova 壳把 H5 放在 app-frame iframe 里，原生桥在父页 */
+        if (global.parent && global.parent !== global) {
+          if (global.parent.TaxNativeSave && typeof global.parent.TaxNativeSave.saveBase64 === 'function') {
+            return true;
+          }
+          if (
+            global.parent.cordova ||
+            /TaxPlatformCordovaApp/i.test(String(global.parent.navigator && global.parent.navigator.userAgent || ''))
+          ) {
+            return true;
+          }
+        }
+      } catch (e2) {}
       return false;
     }
 
@@ -229,22 +246,153 @@
       });
     }
 
-    function hasNativeSave() {
+    function resolveNativeSaveApi() {
       try {
-        return !!(global.TaxNativeSave && typeof global.TaxNativeSave.saveBase64 === 'function');
-      } catch (e0) {
-        return false;
+        if (global.TaxNativeSave && typeof global.TaxNativeSave.saveBase64 === 'function') {
+          return global.TaxNativeSave;
+        }
+      } catch (e0) {}
+      try {
+        if (
+          global.parent &&
+          global.parent !== global &&
+          global.parent.TaxNativeSave &&
+          typeof global.parent.TaxNativeSave.saveBase64 === 'function'
+        ) {
+          return global.parent.TaxNativeSave;
+        }
+      } catch (e1) {}
+      try {
+        if (
+          global.top &&
+          global.top !== global &&
+          global.top.TaxNativeSave &&
+          typeof global.top.TaxNativeSave.saveBase64 === 'function'
+        ) {
+          return global.top.TaxNativeSave;
+        }
+      } catch (e2) {}
+      return null;
+    }
+
+    function hasNativeSave() {
+      return !!resolveNativeSaveApi();
+    }
+
+    function postToShell(payload, resultType, timeoutMs) {
+      return new Promise(function (resolve, reject) {
+        var id = 'shell_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        var done = false;
+        var timer = setTimeout(function () {
+          if (done) return;
+          done = true;
+          global.removeEventListener('message', onMsg);
+          reject(new Error('shell_timeout'));
+        }, timeoutMs || 10000);
+        function onMsg(ev) {
+          var d = ev && ev.data;
+          if (!d || d.source !== 'tax-shell' || d.type !== resultType) return;
+          if (String(d.id || '') !== id) return;
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          global.removeEventListener('message', onMsg);
+          if (d.ok) resolve(d.detail || 'ok');
+          else reject(new Error(d.detail || 'shell_fail'));
+        }
+        global.addEventListener('message', onMsg);
+        var msg = Object.assign({ source: 'tax-platform-h5', id: id }, payload || {});
+        var sent = false;
+        try {
+          if (global.parent && global.parent !== global) {
+            global.parent.postMessage(msg, '*');
+            sent = true;
+          }
+        } catch (eParent) {}
+        try {
+          if (global.top && global.top !== global && global.top !== global.parent) {
+            global.top.postMessage(msg, '*');
+            sent = true;
+          }
+        } catch (eTop) {}
+        if (!sent) {
+          done = true;
+          clearTimeout(timer);
+          global.removeEventListener('message', onMsg);
+          reject(new Error('no_shell'));
+        }
+      });
+    }
+
+    /** App 壳：本页 / 父页 TaxNativeSave，或 postMessage 让壳层代存（iframe 场景） */
+    function shellSaveBase64(filename, mime, b64) {
+      var api = resolveNativeSaveApi();
+      if (api) {
+        try {
+          var r = String(api.saveBase64(filename, mime, b64) || '');
+          if (r.indexOf('ok') === 0) return Promise.resolve('native');
+          return Promise.reject(new Error(r || 'native_fail'));
+        } catch (eCall) {
+          return Promise.reject(eCall);
+        }
       }
+      return postToShell(
+        {
+          type: 'save-local-file',
+          filename: filename,
+          mime: mime,
+          base64: b64
+        },
+        'save-local-file-result',
+        10000
+      ).then(function () {
+        return 'native_shell';
+      });
+    }
+
+    /** 让壳层 DownloadManager / 系统浏览器拉取 HTTPS 附件 */
+    function shellDownloadUrl(url, filename, mime) {
+      var u = String(url || '').trim();
+      if (!u) return Promise.reject(new Error('no_url'));
+      var api = resolveNativeSaveApi();
+      if (api && typeof api.downloadUrl === 'function') {
+        try {
+          var r = String(api.downloadUrl(u, filename || defaultFilename, mime || 'application/octet-stream') || '');
+          if (r.indexOf('ok') === 0) return Promise.resolve('native_dl');
+          return Promise.reject(new Error(r || 'native_dl_fail'));
+        } catch (eCall) {
+          return Promise.reject(eCall);
+        }
+      }
+      /*
+       * 已安装 App 的壳多数还没有 download-url 消息；
+       * 直接走已有的 open-external / InAppBrowser / intent，避免干等 12 秒超时。
+       * 新包带 downloadUrl 时上面原生分支会先命中。
+       */
+      if (openExternalUrl(u)) return Promise.resolve('external_dl');
+      if (inCordovaApp()) {
+        return postToShell(
+          {
+            type: 'download-url',
+            url: u,
+            filename: filename || defaultFilename,
+            mime: mime || 'application/octet-stream'
+          },
+          'download-url-result',
+          4000
+        ).then(function () {
+          return 'shell_dl';
+        });
+      }
+      return Promise.reject(new Error('no_download'));
     }
 
     function nativeSaveBlob(blob, filename, mime) {
       if (!blob) return Promise.reject(new Error('no_blob'));
-      if (!hasNativeSave()) return Promise.reject(new Error('no_native'));
       if (blob.size > 650000) return Promise.reject(new Error('too_large'));
       return blobToBase64(blob).then(function (b64) {
-        var r = String(global.TaxNativeSave.saveBase64(filename, mime, b64) || '');
-        if (r.indexOf('ok') === 0) return 'native';
-        throw new Error(r || 'native_fail');
+        if (b64.length > 900000) throw new Error('too_large');
+        return shellSaveBase64(filename, mime, b64);
       });
     }
 
@@ -415,53 +563,77 @@
       var pngName = String(filename || lastPdfName || defaultFilename).replace(/\.pdf$/i, '') + '.png';
       var pdfName = filename || lastPdfName || defaultFilename;
       var steps = [];
+      var previewBlob = lastPreviewBlob;
+      var pdfBlob = blob || lastPdfBlob;
+      var previewShare = forceDownloadUrl(lastPreviewShareUrl);
+      var pdfShare = forceDownloadUrl(lastPdfShareUrl);
 
       function tryNative(nextBlob, name, mime) {
         if (!nextBlob) return Promise.reject(new Error('no_blob'));
         return nativeSaveBlob(nextBlob, name, mime);
       }
 
-      if (inCordovaApp()) {
-        function enqueueUrlDownload() {
+      /* 1) 原生/壳写相册：优先预览图（用户看得见），再 PDF */
+      if (previewBlob) {
+        steps.push(function () {
+          return tryNative(previewBlob, pngName, 'image/png');
+        });
+      }
+      if (pdfBlob) {
+        steps.push(function () {
+          return tryNative(pdfBlob, pdfName, 'application/pdf');
+        });
+      }
+
+      /* 2) App 壳 DownloadManager / 系统浏览器拉 HTTPS 附件 */
+      if (inCordovaApp() || isLikelyMobileAppShell()) {
+        if (previewShare) {
           steps.push(function () {
-            var url = forceDownloadUrl(lastPdfShareUrl || lastPreviewShareUrl);
-            var name = lastPdfShareUrl ? pdfName : pngName;
-            if (!url || !triggerInPageDownload(url, name)) {
-              return Promise.reject(new Error('no_share_url'));
-            }
-            return 'webview_dl';
+            return shellDownloadUrl(previewShare, pngName, 'image/png');
           });
         }
-        if (hasNativeSave()) {
-          if (lastPreviewBlob) {
-            steps.push(function () {
-              return tryNative(lastPreviewBlob, pngName, 'image/png');
-            });
-          }
-          if (blob || lastPdfBlob) {
-            steps.push(function () {
-              return tryNative(blob || lastPdfBlob, pdfName, 'application/pdf');
-            });
-          }
-          enqueueUrlDownload();
-        } else {
+        if (pdfShare) {
           steps.push(function () {
-            return sharePdfBlob(blob || lastPdfBlob, pdfName).then(function () {
-              return 'shared';
-            });
+            return shellDownloadUrl(pdfShare, pdfName, 'application/pdf');
           });
-          enqueueUrlDownload();
         }
-      } else {
-        if (blob || lastPdfBlob) {
-          triggerAnchorDownload(blob || lastPdfBlob, pdfName);
-          return Promise.resolve('chrome_pdf');
+      }
+
+      /* 3) 系统分享面板（安卓 Chrome / 部分 WebView） */
+      steps.push(function () {
+        return sharePdfBlob(pdfBlob, pdfName).then(function () {
+          return 'shared';
+        });
+      });
+
+      /* 4) 系统浏览器打开附件链接（比页内假 download 可靠） */
+      if (pdfShare) {
+        steps.push(function () {
+          if (!openExternalUrl(pdfShare)) return Promise.reject(new Error('external_fail'));
+          return 'external_dl';
+        });
+      }
+      if (previewShare) {
+        steps.push(function () {
+          if (!openExternalUrl(previewShare)) return Promise.reject(new Error('external_fail'));
+          return 'external_dl';
+        });
+      }
+
+      /* 5) 普通安卓浏览器：blob a[download] */
+      if (!inCordovaApp()) {
+        if (pdfBlob) {
+          steps.push(function () {
+            triggerAnchorDownload(pdfBlob, pdfName);
+            return 'chrome_pdf';
+          });
         }
-        if (lastPreviewBlob) {
-          triggerAnchorDownload(lastPreviewBlob, pngName);
-          return Promise.resolve('chrome_png');
+        if (previewBlob) {
+          steps.push(function () {
+            triggerAnchorDownload(previewBlob, pngName);
+            return 'chrome_png';
+          });
         }
-        return Promise.reject(new Error('no_blob'));
       }
 
       function run(i) {
@@ -546,10 +718,10 @@
       if (pdfTip) {
         pdfTip.textContent = androidApp
           ? lastPreviewUrl
-            ? '点「保存到手机」会写入系统下载/相册。也可长按上方图片保存。需要 PDF 时点「浏览器下载 PDF」。'
-            : '点「保存到手机」写入系统下载目录；也可点「浏览器下载 PDF」。'
+            ? '点「保存到手机」写入相册/下载。若无反应会改用系统浏览器下载。也可长按上方图片保存。'
+            : '点「保存到手机」写入本机；若无反应会改用系统浏览器打开下载链接。'
           : android
-            ? '点「下载到手机」即可保存到本机下载。也可长按预览图保存。'
+            ? '点「下载到手机」即可保存。也可长按预览图，或用系统浏览器下载 PDF。'
             : mobile
               ? lastPreviewUrl
                 ? '请点「系统分享保存」把预览图存到相册/文件；也可长按上方图片保存。需要 PDF 文件时可用下方「浏览器下载 PDF」。'
@@ -593,7 +765,9 @@
           }
           if (
             String(mode).indexOf('native') === 0 ||
+            String(mode).indexOf('shell') === 0 ||
             String(mode).indexOf('webview_dl') === 0 ||
+            String(mode).indexOf('external') === 0 ||
             String(mode).indexOf('chrome_') === 0 ||
             String(mode).indexOf('browser_') === 0 ||
             String(mode).indexOf('anchor') === 0 ||
@@ -604,7 +778,9 @@
               isAndroidLike()
                 ? mode.indexOf('native') === 0
                   ? '已保存到手机（下载或相册），可在系统文件管理里查看'
-                  : '已开始保存到手机；若未出现文件请再点「保存到手机」或长按预览图'
+                  : mode.indexOf('external') === 0 || mode.indexOf('shell') === 0
+                    ? '已调起系统下载/浏览器，请到通知栏或「下载」查看'
+                    : '已开始保存到手机；若未出现文件请再点「保存到手机」或长按预览图'
                 : '已尝试下载；也可长按预览图保存'
             );
             setStatus(
@@ -612,7 +788,9 @@
               isAndroidLike()
                 ? mode.indexOf('native') === 0
                   ? '已写入手机本地'
-                  : '已开始下载到本地'
+                  : mode.indexOf('external') === 0 || mode.indexOf('shell') === 0
+                    ? '请查看通知栏或系统浏览器下载结果'
+                    : '已开始下载到本地'
                 : '已尝试下载保存'
             );
             return mode;
@@ -974,7 +1152,11 @@
               isAndroidLike()
                 ? String(mode).indexOf('native') === 0
                   ? '已保存到手机本地'
-                  : '已开始保存到手机；若未看到文件请长按预览图'
+                  : String(mode).indexOf('external') === 0 || String(mode).indexOf('shell') === 0
+                    ? '已调起系统下载/浏览器，请到通知栏或「下载」查看'
+                    : mode === 'shared'
+                      ? '请在分享面板选择「存储到文件」或「保存到相册」'
+                      : '已开始保存到手机；若未看到文件请长按预览图'
                 : '已尝试下载保存'
             );
           })
@@ -997,6 +1179,32 @@
     var openBtn = el(ids.openPdfBtn);
     if (openBtn) {
       openBtn.addEventListener('click', function () {
+        var httpsPreview = forceDownloadUrl(lastPreviewShareUrl);
+        var httpsPdf = forceDownloadUrl(lastPdfShareUrl);
+        /* 安卓 WebView 打不开 blob:，优先用 HTTPS 短期链接进系统浏览器/下载器 */
+        if (isAndroidLike() && (httpsPreview || httpsPdf)) {
+          var target = httpsPreview || httpsPdf;
+          shellDownloadUrl(
+            target,
+            httpsPreview ? String(lastPdfName || defaultFilename).replace(/\.pdf$/i, '') + '.png' : lastPdfName,
+            httpsPreview ? 'image/png' : 'application/pdf'
+          )
+            .then(function () {
+              setStatus(saveStatus, '已调起系统下载/浏览器，请到通知栏或「下载」查看');
+            })
+            .catch(function () {
+              if (openExternalUrl(target)) {
+                setStatus(saveStatus, '已用系统浏览器打开，可在浏览器里保存');
+                return;
+              }
+              if (lastPreviewUrl) {
+                setStatus(saveStatus, '请直接查看上方预览图，长按即可保存', true);
+                return;
+              }
+              setStatus(saveStatus, '预览打开失败，请改点「保存到手机」', true);
+            });
+          return;
+        }
         var url = lastPreviewUrl || lastPdfUrl;
         if (!url) {
           setStatus(saveStatus, '请先生成 PDF', true);
@@ -1031,15 +1239,28 @@
         }
         if (isAndroidLike() && lastPdfShareUrl) {
           var url = forceDownloadUrl(lastPdfShareUrl);
-          var started = triggerInPageDownload(url, lastPdfName);
-          if (!started) {
-            started = openExternalUrl(url);
-          }
-          setStatus(
-            saveStatus,
-            started ? '已开始下载 PDF 到手机' : '下载未开始，请再试一次或长按预览图',
-            !started
-          );
+          setStatus(saveStatus, '正在调起系统下载…');
+          shellDownloadUrl(url, lastPdfName, 'application/pdf')
+            .then(function (mode) {
+              setStatus(
+                saveStatus,
+                String(mode).indexOf('native') === 0 || String(mode).indexOf('shell') === 0
+                  ? '已开始下载，请到通知栏或系统「下载」查看'
+                  : '已用系统浏览器打开下载链接，请在浏览器里确认保存'
+              );
+            })
+            .catch(function () {
+              if (openExternalUrl(url)) {
+                setStatus(saveStatus, '已用系统浏览器打开，请在浏览器下载 PDF');
+                return;
+              }
+              if (lastPdfBlob) {
+                triggerAnchorDownload(lastPdfBlob, lastPdfName);
+                setStatus(saveStatus, '已尝试本地下载；若无文件请长按预览图', true);
+                return;
+              }
+              setStatus(saveStatus, '下载未开始，请再试「保存到手机」或长按预览图', true);
+            });
           return;
         }
         if (lastPdfBlob) {

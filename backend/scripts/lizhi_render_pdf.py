@@ -371,7 +371,8 @@ def render_page_image(payload):
     else:
         painter.draw_run(dx, date_y, blank_or(issue_date, 10), date_f, underline=True)
 
-    place_seal(img, company, seal_x, seal_y, seal_pt, seal_code=seal_code)
+    # 离职证明公章不画底弧编号数字
+    place_seal(img, company, seal_x, seal_y, seal_pt, seal_code=seal_code, draw_code=False)
 
     note_y = max(date_y + int(70 * SCALE), PAGE_H - int(96 * SCALE))
     if note:

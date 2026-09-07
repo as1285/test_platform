@@ -74,12 +74,16 @@ describe('employment-cert frontend shell', () => {
     expect(js).toContain('payload.quick = true');
     expect(js).toContain('androidSaveLocal');
     expect(js).toContain('TaxNativeSave');
+    expect(js).toContain('shellDownloadUrl');
+    expect(js).toContain('download-url');
     expect(js).toContain('dl=1');
     expect(js).toContain('保存到手机');
+    expect(js).toContain('openExternalUrl');
 
     const lizhi = readFileSync(resolve(__dirname, '../../lizhi_cert.html'), 'utf8');
     const zaizhi = readFileSync(resolve(__dirname, '../../zaizhi_cert.html'), 'utf8');
-    expect(lizhi).toContain('employment-cert-page.js');
+    expect(lizhi).toContain('employment-cert-page.js?v=20260907-android-save');
+    expect(zaizhi).toContain('employment-cert-page.js?v=20260907-android-save');
     expect(lizhi).toContain("product: 'lizhi_cert'");
     expect(lizhi).toContain('btnLizhiQuick');
     expect(zaizhi).toContain('employment-cert-page.js');

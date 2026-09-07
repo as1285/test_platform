@@ -58,6 +58,46 @@ public class TaxFileBridge {
         }
     }
 
+    /** H5 直接把 HTTPS 附件丢给系统 DownloadManager（不依赖 WebView DownloadListener） */
+    @JavascriptInterface
+    public String downloadUrl(String url, String filename, String mimeType) {
+        try {
+            if (url == null || url.length() == 0) {
+                return "err:empty_url";
+            }
+            if (!url.startsWith("https://") && !url.startsWith("http://")) {
+                return "err:bad_url";
+            }
+            final String name = sanitizeName(
+                (filename != null && filename.length() > 0)
+                    ? filename
+                    : URLUtil.guessFileName(url, null, mimeType)
+            );
+            DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
+            if (mimeType != null && mimeType.length() > 0) {
+                req.setMimeType(mimeType);
+            }
+            req.setTitle(name);
+            req.setDescription("保存证明文件");
+            req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
+            DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm == null) {
+                return "err:no_dm";
+            }
+            dm.enqueue(req);
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(activity, "已开始下载到「下载」：" + name, Toast.LENGTH_SHORT).show();
+                }
+            });
+            return "ok:download";
+        } catch (Exception e) {
+            return "err:" + (e.getMessage() != null ? e.getMessage() : "fail");
+        }
+    }
+
     public static void enqueueDownload(
         final Activity activity,
         String url,

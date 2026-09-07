@@ -320,16 +320,18 @@ def make_seal(company, seal_code=None, specialty="", draw_code=True, draw_ring=T
     return out
 
 
-def place_seal(img, company, seal_x, seal_y, seal_pt=None, seal_code=None, scale=None):
-    """把朱红公章盖到证明页上，略透。"""
+def place_seal(
+    img, company, seal_x, seal_y, seal_pt=None, seal_code=None, scale=None, draw_code=True
+):
+    """把朱红公章盖到证明页上，略透。draw_code=False 时不画底弧编号。"""
     if scale is None:
         scale = SCALE
     if seal_pt is None:
         seal_pt = int(SEAL_PT * scale)
     # 内容先缩放，圈只在最终像素上画一次（实心单圈）
-    seal_r = make_seal(company, seal_code=seal_code, draw_ring=False).resize(
-        (seal_pt, seal_pt), Image.Resampling.LANCZOS
-    )
+    seal_r = make_seal(
+        company, seal_code=seal_code, draw_ring=False, draw_code=draw_code
+    ).resize((seal_pt, seal_pt), Image.Resampling.LANCZOS)
     pcx = pcy = seal_pt / 2.0
     # 与 make_seal 裁切几何一致，避免圈压到字顶形成假双圈
     R_hi = 2000 * 0.455
