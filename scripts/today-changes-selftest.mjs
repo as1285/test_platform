@@ -674,7 +674,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260824-aug12r6', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done'],
+  ['20260824-aug12r6', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done', 'data-acepro-mine-e1-firstpaint', 'aspect-ratio:1284/2127'],
   'mine.html mate60 e1 (plan B / c93c3cc) + reno10 + neo8 + nova13 cache'
 );
 mustExclude(
@@ -745,7 +745,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isOnePlusAceProClient', 'PGP110', 'app-android-oneplus-acepro'],
+  ['isOnePlusAceProClient', 'PGP110', 'app-android-oneplus-acepro', 'aceProMineE1LockCss', 'pinAceProMineE1Layout', 'data-acepro-mine-e1-lock'],
   'oneplus ace pro immersive top'
 );
 mustInclude(
@@ -1580,7 +1580,7 @@ mustInclude(
     'data-mine-e1-plainimg-lock',
     'data-vivox90-mine-e1-paint',
     'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg)',
-    ':not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas'
+    ':not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas'
   ],
   'auth.js single-layer e1 lock excludes @sm crop and generic bleed'
 );
@@ -1788,7 +1788,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['auth-boot.js?v=20260907-pay-top', 'auth.js?v=20260907-email-sfx" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
+  ['auth-boot.js?v=20260907-acepro-pill', 'auth.js?v=20260907-acepro-pill" defer', 'e1_01@sm.png?v=20260901-android-mine-sm'],
   'mine auth-boot + compressed e1 sm'
 );
 mustInclude(
@@ -2530,7 +2530,7 @@ if (
       'message.html': ['20260903-email-reg1'],
       'shouye.html': ['20260906-login-top'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260907-email-sfx'],
+      'mine.html': ['20260907-acepro-pill'],
       'purchase.html': ['20260907-email-sfx'],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260907-no-sm-fill'],
@@ -2550,7 +2550,7 @@ if (
       'login.html': ['20260902-ip16pm-login'],
       'face_login.html': ['20260905-facelogin-ui3'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260907-pay-top'],
+      'mine.html': ['20260907-acepro-pill'],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260904-android-inset'],
       'xiangqing.html': ['20260904-android-inset'],
@@ -2851,7 +2851,7 @@ mustInclude(
     '没有匹配的功能或账号',
     'nav.js?v=20260907-user-search',
     'admin_panel.js?v=20260907-amt-enter',
-    'loader.js?v=20260907-no-refund-mail'
+    'loader.js?v=20260907-email-hub'
   ],
   'admin search copy and cache for account jump'
 );
@@ -2864,6 +2864,11 @@ mustInclude(
   'backend/src/admin/userEmailBulk.js',
   ['REFUND_EMAIL_STOPPED_MSG', 'function isRefundEmailRequest', '退税邮件已停发'],
   'refund emails are blocked at sendBulk'
+);
+mustInclude(
+  'frontend/public/js/admin/modules/user-emails.js',
+  ['function loadOverview', 'function previewSend', 'api/admin/emails/overview'],
+  'email console overview and preview'
 );
 mustInclude(
   'backend/src/legacy/monolith.js',
@@ -2964,7 +2969,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['theme-color" content="#000000"', 'auth.js?v=20260907-email-sfx'],
+  ['theme-color" content="#000000"', 'auth.js?v=20260907-acepro-pill'],
   '20260903 mine black theme-color + cache'
 );
 mustInclude(
@@ -3105,15 +3110,18 @@ mustInclude(
   'frontend/tests/e2e/ui-smoke-devices.mjs',
   [
     "spec === 'popular'",
+    "spec === 'mainstream'",
     'POPULAR_DEVICE_IDS',
+    'MAINSTREAM_DEVICE_IDS',
     "id: 'redmi-k80ultra'",
     "id: 'oppo-findx8'",
     "id: 'vivo-x100'",
     "id: 'iphone-ios18-7'",
+    "id: 'oneplus-ace3v'",
+    "id: 'pixel-9'",
     '25060RK16C',
     'PKB110',
-    'V2309A',
-    'PFTM20',
+    'PLK110',
     '23113RKC6C'
   ],
   '20260905 popular production device smoke catalog'

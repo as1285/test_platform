@@ -4,6 +4,7 @@ import {
   DEVICE_PROFILES,
   RECENT_DEVICE_IDS,
   POPULAR_DEVICE_IDS,
+  MAINSTREAM_DEVICE_IDS,
   PRODUCTION_TOP_MODELS,
   resolveSmokeDevices,
   buildContextOptions
@@ -57,7 +58,12 @@ describe('ui-smoke device catalog', () => {
       'redmi-k70',
       'oppo-findx8',
       'oppo-a57',
-      'vivo-x100'
+      'oppo-a58',
+      'vivo-x100',
+      'oneplus-ace3v',
+      'pixel-9',
+      'redmi-k80ultra',
+      'redmi-k70'
     ].forEach((id) => {
       expect(ids, id).toContain(id);
     });
@@ -102,6 +108,12 @@ describe('ui-smoke device catalog', () => {
     expect(resolveSmokeDevices('popular').map((d) => d.id).sort()).toEqual(
       [...POPULAR_DEVICE_IDS].sort()
     );
+    expect(resolveSmokeDevices('mainstream').map((d) => d.id).sort()).toEqual(
+      [...MAINSTREAM_DEVICE_IDS].sort()
+    );
+    expect(MAINSTREAM_DEVICE_IDS).toEqual(expect.arrayContaining(POPULAR_DEVICE_IDS));
+    expect(MAINSTREAM_DEVICE_IDS).toContain('oneplus-ace3v');
+    expect(MAINSTREAM_DEVICE_IDS).toContain('iphone-ios18-7');
     expect(resolveSmokeDevices('popular').length).toBeLessThan(DEVICE_PROFILES.length);
     expect(resolveSmokeDevices('popular').length).toBeLessThanOrEqual(25);
     expect(() => resolveSmokeDevices('no-such-phone')).toThrow(/无匹配机型/);

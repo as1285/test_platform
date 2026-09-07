@@ -2304,6 +2304,12 @@
 
   function hyperOs2MineE1SmRootHit(root) {
     root = root || document.documentElement;
+    if (
+      isOnePlusAceProClient() ||
+      root.classList.contains('app-android-oneplus-acepro')
+    ) {
+      return false;
+    }
     if (isHyperOs2MineE1SmClient()) {
       return true;
     }
@@ -2360,7 +2366,7 @@
    * 一加 Ace Pro（PGP110 / ColorOS 15）：
    * @sm 裁切用 1180 * 100vw 定高，且 HyperOS lock 把 --mine-rpx 钉成 100vw/750。
    * ColorOS WebView 的 100vw 常宽于画布，三宫格「1人/暂无/1张」会掉到白卡下沿。
-   * 画布高度跟宽度走（750/1180），rpx 由 pinMineE1RpxFromCanvas important 实测。
+   * 走底图真实比例（1284/2127），rpx 由 pinMineE1RpxFromCanvas important 实测。
    */
   function aceProMineE1LockCss() {
     var sel = 'html.app-android-oneplus-acepro';
@@ -2376,18 +2382,20 @@
       sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
       'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
       'width:100% !important;height:auto !important;max-height:none !important;' +
-      'aspect-ratio:750 / 1180 !important;container-type:normal !important;' +
-      'background-color:#f5f6fa !important;background-size:100% auto !important;' +
-      'background-position:top center !important;background-repeat:no-repeat !important;}' +
+      'aspect-ratio:auto !important;container-type:normal !important;' +
+      'background-image:none !important;background-color:#f5f6fa !important;}' +
       sel + ' body.page-mine .mine-e1-canvas > img,' +
       sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
       sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
       sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img{' +
-      'margin-top:0 !important;}' +
+      'margin-top:0 !important;display:block !important;position:relative !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:1284 / 2127 !important;object-fit:fill !important;' +
+      'opacity:1 !important;top:auto !important;transform:none !important;}' +
       sel + ' body.page-mine .mine-e1-layer,' +
       sel + '.app-top-safe-shell body.page-mine .mine-e1-layer,' +
       sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-layer{' +
-      'top:0 !important;padding-bottom:calc(1180 / 750 * 100%) !important;}'
+      'top:0 !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}'
     );
   }
 
@@ -2400,6 +2408,7 @@
       root.classList.add('app-android-oneplus-acepro');
       root.classList.add('app-android-client');
       root.classList.add('app-android-immersive-white-top');
+      root.classList.remove('app-android-mine-e1-sm');
       try {
         var oldLock = document.querySelector('style[data-acepro-mine-e1-lock]');
         if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
@@ -2422,18 +2431,27 @@
         canvas.style.setProperty('width', '100%', 'important');
         canvas.style.setProperty('height', 'auto', 'important');
         canvas.style.setProperty('max-height', 'none', 'important');
-        canvas.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+        canvas.style.setProperty('aspect-ratio', 'auto', 'important');
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('overflow', 'hidden', 'important');
-        canvas.style.setProperty('background-size', '100% auto', 'important');
-        canvas.style.setProperty('background-position', 'top center', 'important');
+        canvas.style.setProperty('background-image', 'none', 'important');
       }
       if (img) {
         img.style.setProperty('margin-top', '0', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        img.style.setProperty('position', 'relative', 'important');
+        img.style.setProperty('width', '100%', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+        img.style.setProperty('max-height', 'none', 'important');
+        img.style.setProperty('aspect-ratio', '1284 / 2127', 'important');
+        img.style.setProperty('opacity', '1', 'important');
+        img.style.setProperty('top', 'auto', 'important');
+        img.style.setProperty('transform', 'none', 'important');
       }
       if (layer) {
         layer.style.setProperty('top', '0', 'important');
-        layer.style.setProperty('padding-bottom', 'calc(1180 / 750 * 100%)', 'important');
+        layer.style.setProperty('height', '0', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(2127 / 1284 * 100%)', 'important');
       }
       pinMineE1RpxFromCanvas();
       if (!pinAceProMineE1Layout._rpxRearm) {
@@ -3346,10 +3364,10 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-huawei-mine-noclip):not(.app-android-huawei-harmony):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
           /*
            * 叠层绝对定位相对 padding edge：top:0 与负 margin 上拉后的头图顶对齐。
            * 勿再写 top:-bleed，否则姓名/税号相对米色卡整体上移（Hi nova/华为/三星等均中招）。

@@ -235,6 +235,7 @@
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-acepro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.remove('app-android-mine-e1-sm');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
                     /*
                      * ColorOS 15：100vw 常宽于画布，@sm 的 1180*100vw 定高会把
@@ -246,9 +247,9 @@
                         aceFp.setAttribute('data-acepro-mine-e1-firstpaint', '1');
                         aceFp.textContent =
                             'html.app-android-oneplus-acepro body.page-mine{--mine-top-bleed:0px!important;}' +
-                            'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;container-type:normal!important;background-size:100% auto!important;background-position:top center!important;}' +
-                            'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas>img,html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;}' +
-                            'html.app-android-oneplus-acepro body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}';
+                            'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;background-image:none!important;background-color:#f5f6fa!important;}' +
+                            'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas>img,html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;position:relative!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1284/2127!important;object-fit:fill!important;opacity:1!important;}' +
+                            'html.app-android-oneplus-acepro body.page-mine .mine-e1-layer{top:0!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}';
                         document.head.appendChild(aceFp);
                     }
                 }
@@ -544,6 +545,46 @@
         html.app-android-honor-fcp body.page-mine {
             --mine-top-bleed: 0px;
             --app-shell-statusbar-top: 0px;
+        }
+        /*
+         * 一加 Ace Pro ColorOS 15：勿再 40px bleed。
+         * 叠层相对 padding edge，负 margin 把头图拉高后胶囊会掉出三宫格。
+         * 画布高度跟宽度走，避开 100vw 偏大。
+         */
+        html.app-android-oneplus-acepro body.page-mine,
+        html.app-android-oneplus-acepro.app-android-mine-e1-sm body.page-mine {
+            --mine-top-bleed: 0px !important;
+        }
+        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas,
+        html.app-android-oneplus-acepro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            overflow: hidden !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: auto !important;
+            container-type: normal !important;
+            background-image: none !important;
+            background-color: #f5f6fa !important;
+        }
+        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas > img,
+        html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas > #headerImg {
+            margin-top: 0 !important;
+            display: block !important;
+            position: relative !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: 1284 / 2127 !important;
+            object-fit: fill !important;
+            opacity: 1 !important;
+        }
+        html.app-android-oneplus-acepro body.page-mine .mine-e1-layer,
+        html.app-android-oneplus-acepro.app-android-mine-e1-sm body.page-mine .mine-e1-layer {
+            top: 0 !important;
+            height: 0 !important;
+            padding-bottom: calc(2127 / 1284 * 100%) !important;
         }
 
         .mine-e1-layer > * {
@@ -941,8 +982,8 @@
             padding: 8px 16px var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
         }
 
-        /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 另走 lock。 */
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas {
+        /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -950,8 +991,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -960,10 +1001,10 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
         }
 

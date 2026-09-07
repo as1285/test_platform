@@ -112,7 +112,7 @@ describe('vivo X90 mine e1 single-layer paint', () => {
   it('keeps the plain-img tier out of the @sm crop and the generic status-bar bleed', () => {
     expect(auth).toContain('html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg)');
     expect(auth).toContain(
-      ':not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas'
+      ':not(.app-android-mine-e1-sm):not(.app-android-mine-e1-plainimg):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas'
     );
     expect(mine).toContain('html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg)');
     expect(auth).toContain('function mineE1PlainImgLockCss()');
@@ -148,8 +148,8 @@ describe('vivo X90 mine e1 single-layer paint', () => {
       "(base.indexOf('@sm') >= 0 ? '?v=20260901-android-mine-sm' : '?v=20260827-e1r3')"
     );
     expect(mine).toContain("if (String(hi.getAttribute('src') || '') !== url) hi.src = url;");
-    expect(mine).toMatch(/auth-boot\.js\?v=20260907-pay-top/);
-    expect(mine).toMatch(/auth\.js\?v=20260907-email-sfx" defer/);
+    expect(mine).toMatch(/auth-boot\.js\?v=20260907-acepro-pill/);
+    expect(mine).toMatch(/auth\.js\?v=20260907-acepro-pill" defer/);
   });
 
   it('turns the translucent blurred nav capsule solid on the plain-img tier', () => {

@@ -365,6 +365,19 @@
       if (acepro) {
         document.documentElement.classList.add('app-android-oneplus-acepro');
         document.documentElement.classList.add('app-android-immersive-white-top');
+        document.documentElement.classList.remove('app-android-mine-e1-sm');
+        if (!document.getElementById('aceproMineFirstPaint')) {
+          var aceSt = document.createElement('style');
+          aceSt.id = 'aceproMineFirstPaint';
+          aceSt.setAttribute('data-acepro-mine-e1-firstpaint', '1');
+          aceSt.textContent =
+            'html.app-android-oneplus-acepro body.page-mine{--mine-top-bleed:0px!important;}' +
+            'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;background-image:none!important;background-color:#f5f6fa!important;}' +
+            'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas>img,html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;position:relative!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1284/2127!important;object-fit:fill!important;opacity:1!important;}' +
+            'html.app-android-oneplus-acepro body.page-mine .mine-e1-layer{top:0!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}';
+          document.head.appendChild(aceSt);
+        }
+        return;
       }
       window.__mineE1ForceSm = true;
       document.documentElement.classList.add('app-android-mine-e1-sm');
@@ -381,10 +394,7 @@
         'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img,html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:1px!important;height:1px!important;max-height:none!important;object-fit:fill!important;position:absolute!important;top:auto!important;transform:none!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;}' +
         'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
         'html.app-android-huawei-p40pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}' +
-        'html.app-android-oneplus-acepro body.page-mine{--mine-top-bleed:0px!important;}' +
-        'html.app-android-oneplus-acepro body.page-mine .mine-e1-canvas,html.app-android-oneplus-acepro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;container-type:normal!important;width:100%!important;}' +
-        'html.app-android-oneplus-acepro body.page-mine .mine-e1-layer,html.app-android-oneplus-acepro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}';
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
       document.head.appendChild(st);
     } catch (ePrime) {}
   }

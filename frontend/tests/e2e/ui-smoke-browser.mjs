@@ -4,7 +4,7 @@
  * 由 Docker 容器或本地 Chromium 执行；测试账号由 ui-smoke-host-setup.sh 准备。
  *
  * 机型：见 ui-smoke-devices.mjs
- *   UI_SMOKE_DEVICES=all|full|recent|popular|iphone-12,oneplus-12,...
+ *   UI_SMOKE_DEVICES=all|full|recent|popular|mainstream|iphone-12,oneplus-12,...
  *   UI_SMOKE_CHROME_ONLY=1  跳过 API 业务冒烟，只验壳 class / 白顶栏顶距（静态站可用）
  */
 import { mkdirSync } from 'fs';
@@ -544,9 +544,80 @@ async function assertMineE1SingleLayer(page, profile, tag) {
   log(`${tag} ok mine e1 single layer canvas=${m.canvasH.toFixed(1)} pill-menu gap=${gap.toFixed(1)}`);
 }
 
+const MINE_E1_TRUE_RATIO = 2127 / 1284;
+const MINE_E1_CARD_BOTTOM = 741;
+const MINE_E1_PILL_CSS_TOP = 688;
+const MINE_E1_PILL_CSS_BOTTOM = 724;
+
+async function assertAceProMineE1Pills(page, tag) {
+  await page.goto(`${SITE_URL}/mine.html`, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.waitForSelector('#mineE1Canvas', { timeout: 15000 });
+  } catch (eNoCanvas) {
+    log(`${tag} skip acepro mine pills (no canvas)`);
+    return;
+  }
+  await page.waitForTimeout(800);
+  const m = await page.evaluate(() => {
+    const canvas = document.getElementById('mineE1Canvas');
+    const pill = document.getElementById('familyCountWrap');
+    const cr = canvas ? canvas.getBoundingClientRect() : { width: 0, height: 0, top: 0 };
+    const pr = pill ? pill.getBoundingClientRect() : null;
+    const cs = canvas ? getComputedStyle(canvas) : null;
+    return {
+      classes: Array.from(document.documentElement.classList),
+      canvasW: cr.width,
+      canvasH: cr.height,
+      padTop: cs ? parseFloat(cs.paddingTop) || 0 : 0,
+      rpx: cs ? String(cs.getPropertyValue('--mine-rpx') || '').trim() : '',
+      pillTop: pr ? pr.top - cr.top : null,
+      pillBottom: pr ? pr.bottom - cr.top : null
+    };
+  });
+  if (!m.classes.includes('app-android-oneplus-acepro')) {
+    fail(`${tag} /mine.html missing app-android-oneplus-acepro: ${m.classes.join(' ')}`);
+  }
+  if (m.padTop > 1) {
+    fail(`${tag} /mine.html Ace Pro canvas still has bleed padding: ${m.padTop}`);
+  }
+  const ratio = m.canvasW > 0 ? m.canvasH / m.canvasW : 0;
+  if (Math.abs(ratio - MINE_E1_TRUE_RATIO) > 0.04) {
+    fail(
+      `${tag} /mine.html Ace Pro canvas is not true-scale: ${m.canvasW.toFixed(1)}x${m.canvasH.toFixed(1)} ratio=${ratio.toFixed(3)}`
+    );
+  }
+  const rpxPx = parseFloat(m.rpx);
+  if (!(rpxPx > 0) || Math.abs(rpxPx - m.canvasW / 750) > 0.05) {
+    fail(`${tag} /mine.html Ace Pro --mine-rpx is not canvas-pinned: rpx=${m.rpx} canvasW=${m.canvasW.toFixed(1)}`);
+  }
+  if (m.pillTop == null) {
+    log(`${tag} skip acepro mine pills (no pill)`);
+    return;
+  }
+  const scale = m.canvasW / 750;
+  const cardBottom = MINE_E1_CARD_BOTTOM * scale;
+  if (m.pillBottom > cardBottom + 2) {
+    fail(
+      `${tag} /mine.html Ace Pro pills escaped the shortcut card: pill=${m.pillTop.toFixed(1)}-${m.pillBottom.toFixed(1)} cardBottom=${cardBottom.toFixed(1)}`
+    );
+  }
+  const expectTop = MINE_E1_PILL_CSS_TOP * scale;
+  const expectBottom = MINE_E1_PILL_CSS_BOTTOM * scale;
+  if (Math.abs(m.pillTop - expectTop) > 4 || Math.abs(m.pillBottom - expectBottom) > 6) {
+    fail(
+      `${tag} /mine.html Ace Pro pill not on the 688rpx band: pill=${m.pillTop.toFixed(1)}-${m.pillBottom.toFixed(1)} ` +
+        `expect=${expectTop.toFixed(1)}-${expectBottom.toFixed(1)}`
+    );
+  }
+  log(`${tag} ok acepro mine pills rpx=${rpxPx.toFixed(3)} pill=${m.pillTop.toFixed(1)}-${m.pillBottom.toFixed(1)}`);
+}
+
 async function runAndroidWhiteTop(page, profile, tag) {
   if (profile.expect?.mineE1PlainImg) {
     await assertMineE1SingleLayer(page, profile, tag);
+  }
+  if (profile.id === 'oneplus-acepro' || profile.expect?.mineE1AceProPills) {
+    await assertAceProMineE1Pills(page, tag);
   }
   await assertWhiteTopOnPath(page, profile, tag, '/shuiming_result.html');
   const otherExpect = {};
@@ -627,7 +698,7 @@ async function main() {
 
   log(`site=${SITE_URL} api=${API_URL} user=${USER}`);
   log(
-    `devices=${profiles.map((p) => p.id).join(',')} (catalog=${DEVICE_PROFILES.length}; UI_SMOKE_DEVICES=${process.env.UI_SMOKE_DEVICES || 'all'})`
+    `devices=${profiles.map((p) => p.id).join(',')} (catalog=${DEVICE_PROFILES.length}; UI_SMOKE_DEVICES=${process.env.UI_SMOKE_DEVICES || 'mainstream'})`
   );
 
   const browser = await launchBrowser();

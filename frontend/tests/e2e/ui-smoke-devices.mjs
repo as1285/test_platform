@@ -12,11 +12,12 @@
  *   android-home      — 安卓首页壳 class / 顶栏存在
  *   android-white-top — 收入纳税明细/查询/详情顶距
  *
- * UI_SMOKE_DEVICES=all|full|recent|popular|id1,id2
- *   recent  = 近期频繁改兼容性的机型（见 RECENT_DEVICE_IDS；默认 CI 仍用这个，勿把 popular 并进去）
- *   popular = 线上 user_devices 高频型号（见 PRODUCTION_TOP_MODELS / POPULAR_DEVICE_IDS）
- *   all     = 目录全量（长，本地/夜间用）
- *   full    = 仅 iPhone 12 完整业务冒烟
+ * UI_SMOKE_DEVICES=all|full|recent|popular|mainstream|id1,id2
+ *   mainstream = 近一个月日活主力机 ∪ 近期兼容档（默认自测）
+ *   recent     = 近期频繁改兼容性的机型
+ *   popular    = 近一个月日活高频型号（见 PRODUCTION_TOP_MODELS）
+ *   all        = 目录全量（长，本地/夜间用）
+ *   full       = 仅 iPhone 12 完整业务冒烟
  */
 
 function androidUa(model, brandLabel) {
@@ -222,6 +223,17 @@ export const DEVICE_PROFILES = [
     playwrightDevice: 'Galaxy S24',
     userAgent: undefined /* 用内置 Galaxy UA + Cordova 后缀 */
   }),
+  {
+    id: 'pixel-9',
+    label: 'Pixel 9',
+    playwrightDevice: 'Pixel 7',
+    suite: 'android-home',
+    platform: 'android',
+    inApp: true,
+    cordovaUa: true,
+    deviceModel: 'Pixel 9',
+    userAgent: androidUa('Pixel 9', 'Pixel 9')
+  },
 
   /* —— 一加 / OPPO（近期 ColorOS 沉浸白顶栏高频） —— */
   immersive('PJD110', '一加 12', ['app-android-oneplus-12', 'app-android-immersive-white-top'], {
@@ -238,6 +250,10 @@ export const DEVICE_PROFILES = [
   }),
   immersive('PGP110', '一加 Ace Pro', ['app-android-oneplus-acepro', 'app-android-immersive-white-top'], {
     id: 'oneplus-acepro'
+  }),
+  /* 近一个月日活第 6：PLK110。未进一加特判，走 App 内安卓白顶默认沉浸 40px */
+  immersive('PLK110', '一加 Ace 3V', ['app-android-immersive-white-top'], {
+    id: 'oneplus-ace3v'
   }),
   immersive('PHW110', 'OPPO Reno10 5G', ['app-android-oppo-reno10', 'app-android-immersive-white-top'], {
     id: 'oppo-reno10'
@@ -387,32 +403,31 @@ export const DEVICE_PROFILES = [
 });
 
 /**
- * 线上 user_devices.device_detail_json 高频型号（约 3926 行抽样）。
+ * 近一个月日活手机（2026-08-09 ~ 09-07）：每人最新一台，排除游客/已隐藏/电脑。
  * model 为 Cordova / UA 型号码；id 对应当前冒烟档。
  */
 export const PRODUCTION_TOP_MODELS = [
-  { count: 829, model: 'iPhone iOS 18.7', id: 'iphone-ios18-7' },
-  { count: 57, model: '23127PN0CC', id: 'xiaomi-14' },
-  { count: 55, model: '24129PN74C', id: 'xiaomi-15' },
-  { count: 37, model: '2211133C', id: 'xiaomi-13' },
-  { count: 37, model: 'V2505A', id: 'iqoo-15' },
-  { count: 36, model: 'PGP110', id: 'oneplus-acepro' },
-  { count: 34, model: '25060RK16C', id: 'redmi-k80ultra' },
-  { count: 31, model: 'V2241A', id: 'vivo-x90' },
-  { count: 31, model: 'PHJ110', id: 'oppo-a58' },
-  { count: 29, model: '2410DPN6CC', id: 'xiaomi-15pro' },
-  { count: 27, model: '23116PN5BC', id: 'xiaomi-14pro' },
-  { count: 26, model: 'PKB110', id: 'oppo-findx8' },
-  { count: 25, model: 'V2301A', id: 'iqoo-neo8' },
-  { count: 24, model: 'V2309A', id: 'vivo-x100' },
-  { count: 23, model: 'ALN-AL00', id: 'mate60' },
-  { count: 23, model: 'PFTM20', id: 'oppo-a57' },
-  { count: 21, model: 'V2405A', id: 'vivo-x200pro' },
-  { count: 20, model: '23113RKC6C', id: 'redmi-k70' },
-  { count: 20, model: 'PJD110', id: 'oneplus-12' },
-  { count: 0, model: 'iPhone iOS 18.5', id: 'iphone-ios18-5' },
-  { count: 0, model: 'iPhone iOS 17.6.1', id: 'iphone-ios17-6' },
-  { count: 0, model: 'iPhone iOS 14.4', id: 'iphone-ios14-4' }
+  { count: 159, model: 'iPhone iOS 18.7', id: 'iphone-ios18-7' },
+  { count: 19, model: '23127PN0CC', id: 'xiaomi-14' },
+  { count: 15, model: '24129PN74C', id: 'xiaomi-15' },
+  { count: 14, model: 'ALN-AL00', id: 'mate60' },
+  { count: 13, model: '2211133C', id: 'xiaomi-13' },
+  { count: 11, model: 'PLK110', id: 'oneplus-ace3v' },
+  { count: 11, model: 'iPhone iOS 18.5', id: 'iphone-ios18-5' },
+  { count: 8, model: 'V2505A', id: 'iqoo-15' },
+  { count: 7, model: 'V2302A', id: 'iqoo-neo8pro' },
+  { count: 7, model: '25060RK16C', id: 'redmi-k80ultra' },
+  { count: 6, model: 'PJA110', id: 'oneplus-ace2pro' },
+  { count: 6, model: 'PHJ110', id: 'oppo-a58' },
+  { count: 6, model: '23116PN5BC', id: 'xiaomi-14pro' },
+  { count: 6, model: 'PHW110', id: 'oppo-reno10' },
+  { count: 6, model: '23113RKC6C', id: 'redmi-k70' },
+  { count: 6, model: 'TAS-AN00', id: 'mate30' },
+  { count: 5, model: 'PKB110', id: 'oppo-findx8' },
+  { count: 5, model: 'Pixel 9', id: 'pixel-9' },
+  { count: 5, model: '2210132C', id: 'xiaomi-13pro' },
+  { count: 5, model: 'V2241A', id: 'vivo-x90' },
+  { count: 5, model: 'V2301A', id: 'iqoo-neo8' }
 ];
 
 /** 线上高频机（含 iOS 版本队列）。勿并入 recent，以免默认 CI 过长 */
@@ -423,13 +438,17 @@ export const RECENT_DEVICE_IDS = [
   'iphone-16-promax',
   'iphone-17-promax',
   'iphone-air',
+  'iphone-ios18-7',
   'oneplus-12',
   'oneplus-ace6',
   'oneplus-ace2pro',
   'oneplus-ace2v',
   'oneplus-acepro',
+  'oneplus-ace3v',
   'oppo-reno10',
   'oppo-k9x',
+  'oppo-a58',
+  'oppo-findx8',
   'xiaomi-13',
   'xiaomi-13pro',
   'xiaomi-14',
@@ -437,7 +456,9 @@ export const RECENT_DEVICE_IDS = [
   'xiaomi-15',
   'xiaomi-15pro',
   'redmi-k80pro',
+  'redmi-k80ultra',
   'redmi-k70-ultra',
+  'redmi-k70',
   'redmi-note11-5g',
   'mate60',
   'mate70',
@@ -450,18 +471,23 @@ export const RECENT_DEVICE_IDS = [
   'vivo-x300pro',
   'vivo-s50promini',
   'vivo-x90',
+  'vivo-x100',
   'iqoo-neo8',
   'iqoo-neo8pro',
   'iqoo-13',
   'iqoo-15',
+  'pixel-9',
   'meizu-20pro'
 ];
 
-/** UI_SMOKE_DEVICES=all|full|recent|popular|id1,id2 */
+/** 默认自测：近一个月日活主力 ∪ 近期兼容档 */
+export const MAINSTREAM_DEVICE_IDS = [...new Set(RECENT_DEVICE_IDS.concat(POPULAR_DEVICE_IDS))];
+
+/** UI_SMOKE_DEVICES=all|full|recent|popular|mainstream|id1,id2 */
 export function resolveSmokeDevices(raw) {
   const all = DEVICE_PROFILES.slice();
-  const spec = String(raw || process.env.UI_SMOKE_DEVICES || 'all').trim().toLowerCase();
-  if (!spec || spec === 'all') return all;
+  const spec = String(raw || process.env.UI_SMOKE_DEVICES || 'mainstream').trim().toLowerCase();
+  if (spec === 'all') return all;
   if (spec === 'full') return all.filter((d) => d.suite === 'full');
   if (spec === 'recent') {
     const want = new Set(RECENT_DEVICE_IDS);
@@ -469,6 +495,10 @@ export function resolveSmokeDevices(raw) {
   }
   if (spec === 'popular') {
     const want = new Set(POPULAR_DEVICE_IDS);
+    return all.filter((d) => want.has(d.id));
+  }
+  if (spec === 'mainstream') {
+    const want = new Set(MAINSTREAM_DEVICE_IDS);
     return all.filter((d) => want.has(d.id));
   }
   const want = new Set(
@@ -480,7 +510,7 @@ export function resolveSmokeDevices(raw) {
   const picked = all.filter((d) => want.has(d.id));
   if (!picked.length) {
     throw new Error(
-      'UI_SMOKE_DEVICES 无匹配机型。可选: all | full | recent | popular | ' +
+      'UI_SMOKE_DEVICES 无匹配机型。可选: all | full | recent | popular | mainstream | ' +
         all.map((d) => d.id).join(', ')
     );
   }
