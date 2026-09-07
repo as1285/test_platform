@@ -160,6 +160,71 @@ async function handlePurchasePriceSurveySubmit(req, res) {
   }
 }
 
+function pctRate(part, total) {
+  var t = Number(total) || 0;
+  if (t < 1) return 0;
+  return Math.round(((Number(part) || 0) / t) * 1000) / 10;
+}
+
+function emptyPurchaseSurveySummary() {
+  return {
+    total: 0,
+    submitted: 0,
+    skipped: 0,
+    expensive: 0,
+    fair: 0,
+    cheap: 0,
+    expensive_pct: 0,
+    fair_pct: 0,
+    cheap_pct: 0
+  };
+}
+
+function parseDays(raw) {
+  var n = parseInt(raw, 10);
+  if (!isFinite(n) || n < 1) n = 7;
+  if (n > 366) n = 366;
+  return n;
+}
+
+/** 管理端：支付离开问卷态度汇总（不含出价金额） */
+async function summarizePurchasePriceSurvey(conn, days) {
+  var out = emptyPurchaseSurveySummary();
+  if (!conn) return out;
+  var nDays = parseDays(days);
+  var cnCreatedDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  var sinceSql = cnCreatedDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+  try {
+    const [rows] = await conn.execute(
+      `SELECT skipped, sentiment, COUNT(*) AS cnt
+       FROM purchase_price_survey
+       WHERE ${sinceSql}
+       GROUP BY skipped, sentiment`,
+      [nDays]
+    );
+    (rows || []).forEach(function (r) {
+      var c = Number(r.cnt) || 0;
+      out.total += c;
+      if (Number(r.skipped) === 1) {
+        out.skipped += c;
+        return;
+      }
+      out.submitted += c;
+      var s = String(r.sentiment || '').toLowerCase();
+      if (s === 'expensive') out.expensive += c;
+      else if (s === 'cheap') out.cheap += c;
+      else if (s === 'fair') out.fair += c;
+    });
+    out.expensive_pct = pctRate(out.expensive, out.submitted);
+    out.fair_pct = pctRate(out.fair, out.submitted);
+    out.cheap_pct = pctRate(out.cheap, out.submitted);
+  } catch (e) {
+    console.error('[price-survey] summarize', e && e.message);
+  }
+  return out;
+}
+
 function getHandlers() {
   return {
     handlePurchasePriceSurveyStatus: handlePurchasePriceSurveyStatus,
@@ -176,5 +241,8 @@ module.exports = {
   effectiveExpectedPrice: effectiveExpectedPrice,
   latestBidJoinSql: latestBidJoinSql,
   coalescedExpectedPriceSql: coalescedExpectedPriceSql,
-  attachExpectedPriceFromBid: attachExpectedPriceFromBid
+  attachExpectedPriceFromBid: attachExpectedPriceFromBid,
+  summarizePurchasePriceSurvey: summarizePurchasePriceSurvey,
+  emptyPurchaseSurveySummary: emptyPurchaseSurveySummary,
+  pctRate: pctRate
 };
