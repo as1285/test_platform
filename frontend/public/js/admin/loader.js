@@ -16,10 +16,13 @@
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260906-page-track',
     devices: '/js/admin/modules/devices.js?v=20260826-device-compat',
     'tax-fill-survey': '/js/admin/modules/tax-fill-survey.js?v=20260901-tax-fill',
+    'feature-survey': '/js/admin/modules/feature-survey.js?v=20260907-survey-ord',
+    'payment-orders': '/js/admin/modules/payment-orders.js?v=20260907-survey-ord',
     feedback: '/js/admin/modules/feedback.js?v=20260907-fb-user',
     'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260907-pay-user',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260907-no-refund-mail',
-    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-no-refund-mail'
+    'user-emails': '/js/admin/modules/user-emails.js?v=20260907-email-hub',
+    'abc-ops': '/js/admin/modules/abc-ops.js?v=20260907-abc-ops'
   };
 
   var PAGE_MODULE = {
@@ -54,9 +57,13 @@
     'analytics-purchase': 'analytics',
     'analytics-devices': 'devices',
     'tax-fill-survey': 'tax-fill-survey',
+    'feature-survey': 'feature-survey',
+    'payment-orders': 'payment-orders',
     feedback: 'feedback',
     'install-guide-stats': 'analytics',
-    'abc-install-stats': 'analytics',
+    'abc-ops': 'abc-ops',
+    'abc-users': 'abc-ops',
+    'abc-install-stats': 'abc-ops',
     'channel-analysis': 'analytics',
     'insights-product': 'analytics',
     'insights-growth': 'analytics'
@@ -149,7 +156,7 @@
   function ensureForPage(pageKey) {
     var mod = PAGE_MODULE[pageKey] || '';
     var chain = Promise.resolve();
-    if (mod === 'analytics' || mod === 'users' || mod === 'user-data') {
+    if (mod === 'analytics' || mod === 'users' || mod === 'user-data' || mod === 'abc-ops') {
       chain = chain.then(ensureChart).then(function () {
         return ensureModule('charts');
       });

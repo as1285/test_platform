@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260907-amt-enter">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260907-abc-ops">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -1264,7 +1264,13 @@
                 </div>
 
                 <div id="page-user-emails" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">查看用户留下的邮箱，勾选后发送邮件；也可查看历史发送记录。</p></div>
+                    <div class="page-lede"><p class="page-lede-text">查看已留邮箱用户、发送记录和当前自动邮件。退税测算邮件已停发；心理价通过仍会自动发。</p></div>
+                    <section>
+                        <h2>邮件总览</h2>
+                        <p class="stat" id="userEmailOverviewStat">进入本页后加载…</p>
+                        <div class="user-data-stats" id="userEmailOverviewCards"></div>
+                        <div class="user-email-auto-list" id="userEmailAutoList"></div>
+                    </section>
                     <section>
                         <h2>已留邮箱用户</h2>
                         <div class="user-filter-bar">
@@ -1275,6 +1281,14 @@
                                         <option value="">全部</option>
                                         <option value="0">未开通</option>
                                         <option value="1">已开通</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="userEmailHalf">半价邮件</label>
+                                    <select id="userEmailHalf" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="0">未发过</option>
+                                        <option value="1">已发过</option>
                                     </select>
                                 </div>
                                 <div>
@@ -1319,11 +1333,53 @@
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
                                 <div>
+                                    <label for="userEmailSendAudience">来源</label>
+                                    <select id="userEmailSendAudience" class="filter-select">
+                                        <option value="">全部来源</option>
+                                        <option value="auto_notify">自动通知（心理价/催付）</option>
+                                        <option value="selected">勾选发送</option>
+                                        <option value="refund_ad_amount">退税测算（已停发）</option>
+                                        <option value="refund_ad_auto">退税推广（已停发）</option>
+                                        <option value="has_email_inactive">未激活已留邮箱</option>
+                                        <option value="has_email_all">全部已留邮箱</option>
+                                        <option value="ad_reach_activate">触达·开通</option>
+                                        <option value="ad_reach_offer">触达·优惠</option>
+                                        <option value="ad_reach_soft_recall">触达·召回</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="userEmailSendStatus">状态</label>
+                                    <select id="userEmailSendStatus" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="sent">成功</option>
+                                        <option value="failed">失败</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="userEmailSendDays">时间</label>
+                                    <select id="userEmailSendDays" class="filter-select">
+                                        <option value="7" selected>近 7 天</option>
+                                        <option value="1">近 1 天</option>
+                                        <option value="30">近 30 天</option>
+                                        <option value="90">近 90 天</option>
+                                        <option value="">全部</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="userEmailSendClicked">点击</label>
+                                    <select id="userEmailSendClicked" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="1">已点击</option>
+                                        <option value="0">未点击</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label for="userEmailSendQ">账号 / 邮箱 / 标题</label>
                                     <input type="text" id="userEmailSendQ" class="filter-text-wide" placeholder="搜索记录" autocomplete="off">
                                 </div>
                                 <div class="flex-actions">
                                     <button type="button" class="btn-primary" id="btnUserEmailSendSearch">查询记录</button>
+                                    <button type="button" class="btn-page" id="btnUserEmailSendReset">重置</button>
                                 </div>
                             </div>
                         </div>
@@ -1903,9 +1959,141 @@
                     </section>
                 </div>
 
+                <div id="page-abc-ops" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">只看账号 <code>sales_promo_channel=abc</code> 的注册 / 开通 / 付费，以及 <a href="install_guide.html?ch=abc" target="_blank" rel="noopener">install_guide.html?ch=abc</a> 下载页。下载页 UV 与账号无法一一对应。截止后新注册 abc 仅 admin 可见。</p></div>
+                    <section>
+                        <div class="ops-board-head">
+                            <h2>ABC 转化</h2>
+                            <div class="form-row flex-align-center abc-ops-head-actions">
+                                <div>
+                                    <label for="abcOpsDays">统计区间</label>
+                                    <select id="abcOpsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180" data-default="7"></select>
+                                </div>
+                                <button type="button" class="btn-page btn-page-primary" id="btnAbcOpsRefresh">刷新</button>
+                            </div>
+                        </div>
+                        <div id="abcOpsVisHint"></div>
+                        <p class="hint mt-0" id="abcOpsPeriodHint"></p>
+                        <div class="ops-board-kpi" id="abcOpsTodayKpi" aria-live="polite">加载中…</div>
+                        <div class="ops-board-pay-detail" id="abcOpsPayDetail" hidden>
+                            <div class="ops-board-pay-detail-head">
+                                <div class="ops-board-pay-detail-title">
+                                    <strong>ABC 支付明细</strong>
+                                    <span class="hint" id="abcOpsPayDetailMeta"></span>
+                                </div>
+                                <div class="ops-board-pay-detail-actions">
+                                    <select id="abcOpsPayDays" class="filter-select" aria-label="支付明细天数">
+                                        <option value="1" selected>今日</option>
+                                        <option value="7">近 7 日</option>
+                                        <option value="30">近 30 日</option>
+                                    </select>
+                                    <button type="button" class="btn-page btn-sm" id="btnAbcOpsPayClose">收起</button>
+                                </div>
+                            </div>
+                            <div class="scroll-x">
+                                <table class="ops-board-pay-table">
+                                    <thead>
+                                        <tr>
+                                            <th>用户</th>
+                                            <th>SKU</th>
+                                            <th>金额</th>
+                                            <th>支付时间</th>
+                                            <th>商户单号</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="abcOpsPayTbody">
+                                        <tr><td colspan="5">加载中…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>区间漏斗</h2>
+                        <p class="hint mt-0">浏览 / 下载来自 abc 下载页埋点；注册及之后来自账号渠道 abc。两段不能按人对齐。</p>
+                        <div class="abc-ops-funnel" id="abcOpsFunnel" aria-live="polite">加载中…</div>
+                        <div class="abc-ops-rates" id="abcOpsRates"></div>
+                    </section>
+                    <section>
+                        <h2>每日趋势</h2>
+                        <div class="device-stats-charts-wrap">
+                            <div class="device-stats-chart-card chart-card-wide">
+                                <h4>浏览 / 下载 / 注册 / 开通 / 付费</h4>
+                                <p id="abcOpsChartEmpty" class="hint" hidden>区间内暂无趋势</p>
+                                <div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="abcOpsDailyChart" aria-label="ABC渠道每日转化"></canvas></div>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>未开通库存</h2>
+                        <div class="ops-board-kpi" id="abcOpsStock" aria-live="polite"></div>
+                    </section>
+                </div>
+
+                <div id="page-abc-users" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">账号渠道为 abc 的注册用户。点账号跳到注册用户页。</p></div>
+                    <section>
+                        <h2>ABC 用户</h2>
+                        <div id="abcOpsUserVisHint"></div>
+                        <div class="user-filter-bar">
+                            <div class="user-filter-fields">
+                                <div>
+                                    <label for="abcOpsUserDays">注册时间</label>
+                                    <select id="abcOpsUserDays" class="filter-select">
+                                        <option value="1">今日</option>
+                                        <option value="7" selected>近 7 日</option>
+                                        <option value="30">近 30 日</option>
+                                        <option value="90">近 90 日</option>
+                                        <option value="0">全部</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="abcOpsUserActive">开通状态</label>
+                                    <select id="abcOpsUserActive" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="0">未开通</option>
+                                        <option value="1">已开通</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="abcOpsUserQ">账号 / 姓名</label>
+                                    <input type="text" id="abcOpsUserQ" class="filter-text-wide" placeholder="搜索" autocomplete="off">
+                                </div>
+                                <div class="flex-actions">
+                                    <button type="button" class="btn-primary" id="btnAbcOpsUserSearch">查询</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="stat" id="abcOpsUserStat">进入本页后加载…</p>
+                        <div class="scroll-x">
+                            <table class="users-registry-table">
+                                <thead>
+                                    <tr>
+                                        <th>账号</th>
+                                        <th>姓名</th>
+                                        <th>自填来源</th>
+                                        <th>注册</th>
+                                        <th>开通</th>
+                                        <th>支付页</th>
+                                        <th>个税</th>
+                                        <th>已付</th>
+                                        <th>城市</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="abcOpsUserTbody"><tr><td colspan="9">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button type="button" class="btn-page" id="abcOpsUserPrev">上一页</button>
+                            <span id="abcOpsUserPageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="abcOpsUserNext">下一页</button>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-abc-install-stats" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>ABC 渠道下载页</h2>
+                        <h2>ABC 下载页</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">只统计打开 <a href="install_guide.html?ch=abc" target="_blank" rel="noopener">install_guide.html?ch=abc</a>（或 ABC 渠道包）的浏览和下载。UV 按同一 IP 去重（无 IP 用设备）。不看账号是否绑过 abc。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
@@ -2697,7 +2885,10 @@
                             <a class="ops-hub-card" href="#ops-ad-analytics/data"><strong>广告页</strong><span>配置微信号、看数据、给合格用户发信</span></a>
                             <a class="ops-hub-card" href="#codes"><strong>发激活码</strong><span>开码、查码</span></a>
                             <a class="ops-hub-card" href="#settings"><strong>内容配置</strong><span>套餐价、安装包、外观</span></a>
+                            <a class="ops-hub-card" href="#abc-ops"><strong>ABC渠道</strong><span>浏览→下载→注册→开通→付费</span></a>
                             <a class="ops-hub-card" href="#analytics-purchase"><strong>支付分析</strong><span>漏斗与 GMV 明细</span></a>
+                            <a class="ops-hub-card" href="#payment-orders"><strong>订单检索</strong><span>按账号或商户单号查待付/成功/退款</span></a>
+                            <a class="ops-hub-card" href="#insights-product/features"><strong>功能调研</strong><span>偏贵%、不满意%、优化 Top</span></a>
                             <a class="ops-hub-card" href="#insights-product/survey"><strong>填写问卷</strong><span>个税填写满意度</span></a>
                         </div>
                     </section>
@@ -3299,6 +3490,76 @@
                     </div>
                 </div>
 
+                <div id="page-payment-orders" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">按账号、商户单号或支付宝单号查待付 / 已支付 / 已关闭 / 已退款。用来核对「付了没开通」。</p></div>
+                    <section>
+                        <h2>订单检索</h2>
+                        <div class="user-filter-bar mt-16">
+                            <div class="user-filter-fields">
+                                <div>
+                                    <label for="payOrderQ">账号 / 单号</label>
+                                    <input class="col-w-160" type="search" id="payOrderQ" placeholder="账号、商户单号或支付宝单号" autocomplete="off">
+                                </div>
+                                <div>
+                                    <label for="payOrderStatus">状态</label>
+                                    <select id="payOrderStatus" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="pending">待付</option>
+                                        <option value="paid">已支付</option>
+                                        <option value="closed">已关闭</option>
+                                        <option value="refunded">已退款</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="payOrderIssue">问题</label>
+                                    <select id="payOrderIssue" class="filter-select">
+                                        <option value="">全部</option>
+                                        <option value="paid_not_active">付了没开通</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="payOrderDays">区间</label>
+                                    <select id="payOrderDays" class="filter-select">
+                                        <option value="7">最近 7 天</option>
+                                        <option value="30">最近 30 天</option>
+                                        <option value="90" selected>最近 90 天</option>
+                                        <option value="365">最近 1 年</option>
+                                        <option value="0">全部</option>
+                                    </select>
+                                </div>
+                                <div class="flex-actions-nowrap">
+                                    <button type="button" class="btn-primary" id="btnPayOrderSearch">查询</button>
+                                    <button type="button" class="btn-page" id="btnPayOrderReset">重置</button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="stat" id="payOrderStat">进入本页后加载…</p>
+                        <div class="scroll-x">
+                            <table class="ops-board-pay-table">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>账号</th>
+                                        <th>产品</th>
+                                        <th>金额</th>
+                                        <th>订单状态</th>
+                                        <th>开通</th>
+                                        <th>商户单号</th>
+                                        <th>支付宝单号</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payOrderTbody"><tr><td colspan="9">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="payOrderPagination">
+                            <button type="button" class="btn-page" id="payOrderPrev">上一页</button>
+                            <span id="payOrderPageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="payOrderNext">下一页</button>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">购买链路、支付宝漏斗与收入表现</p></div>
                     <section>
@@ -3442,6 +3703,27 @@
                 </div>
 
                 
+                <div id="page-feature-survey" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">一张表看各功能偏贵%、不满意%、优化 Top。支付 / 填写 / 证明已接线；社保、完税码、流水、公积金还没接 C 端问卷。</p></div>
+                    <section>
+                        <h2>功能调研总览</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">态度占比只算正式提交。疑虑芯片还没写入数据库，本表用「最想优化」作 Top。个税填写才有建议原文。点「详情」进原有分页。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="featureSurveyDays">统计区间</label>
+                                <select id="featureSurveyDays" class="filter-select">
+                                    <option value="1">今天</option>
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshFeatureSurvey">刷新</button>
+                        </div>
+                        <div id="featureSurveyMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
+                    </section>
+                </div>
+
                 <div id="page-tax-fill-survey" class="page-panel" role="tabpanel">
                     <section>
                         <h2>个税填写调研</h2>
@@ -3930,6 +4212,7 @@
             </select>
             <p class="hint mt-8" id="userEmailSendStatus" aria-live="polite"></p>
             <div class="form-actions modal-actions">
+                <button type="button" class="btn-page" id="userEmailSendPreview">预览人数</button>
                 <button type="button" class="btn-primary" id="userEmailSendConfirm">确认发送</button>
                 <button type="button" class="btn-page" id="userEmailSendCancel">取消</button>
             </div>
@@ -4045,9 +4328,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260907-no-refund-mail"></script>
+    <script src="/js/admin/loader.js?v=20260907-abc-ops"></script>
     <script src="/js/admin/nav.js?v=20260907-user-search"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20260907-amt-enter"></script>
+    <script src="/js/admin_panel.js?v=20260907-abc-ops"></script>
 </body>
 </html>

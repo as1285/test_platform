@@ -28,6 +28,7 @@
 | `ops-ad-analytics` | 广告页数据运营 | 退税合格名单 + 广告页停留时间与操作（也可凭转化概览进入） |
 | `analytics-conversion` | 转化概览 | 支付转化 + 日转化总览 |
 | `codes` | 激活码 | 发码 / 列表 |
+| `payment-orders` | 订单检索 | 按账号/商户单号查待付、已支付、关闭、退款 |
 | `settings` | 定价与引导 | `/api/admin/settings` |
 | `install-guide` | 安装分发 | settings 共用门闸之一 |
 | `appearance` | 外观 | settings 共用门闸之一 |
@@ -42,6 +43,7 @@
 | `ccb-flow` | 工资流水 | 工具 |
 | `najilu-qr` | 完税二维码 | 工具 |
 | `analytics-register` | 注册分析 | 注册漏斗 |
+| `feature-survey` | 功能调研 | 各功能偏贵% / 不满意% / 优化 Top（产品洞察 tab） |
 | `analytics-activity` | 用户活跃 | DAU 等 |
 | `analytics-devices` | 机型 | UI 兼容目录与 user_devices 对账 |
 | `analytics-purchase` | 支付分析 | 购买漏斗 |

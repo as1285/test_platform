@@ -225,9 +225,27 @@ app.get(
   h.handleAdminInstallGuideStats
 );
 app.get(
+  '/api/admin/ops/abc/overview',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['abc-ops', 'insights-growth', 'install-guide-stats', 'ops-board']),
+  h.handleAbcOpsOverview
+);
+app.get(
+  '/api/admin/ops/abc/users',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['abc-ops', 'insights-growth', 'install-guide-stats', 'ops-board']),
+  h.handleAbcOpsUsers
+);
+app.get(
+  '/api/admin/ops/abc/payments',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['abc-ops', 'insights-growth', 'install-guide-stats', 'ops-board']),
+  h.handleAbcOpsPayments
+);
+app.get(
   '/api/admin/analytics/abc-install-stats',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide-stats', 'insights-growth', 'channel-analysis']),
+  mw.requireAdminAnyMenu(['abc-ops', 'install-guide-stats', 'insights-growth', 'channel-analysis']),
   h.handleAdminAbcInstallStats
 );
 app.get(
@@ -289,6 +307,12 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
   h.handleAdminEmailsSends
+);
+app.get(
+  '/api/admin/emails/overview',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
+  h.handleAdminEmailsOverview
 );
 app.get(
   '/api/admin/emails/campaign-stats',
@@ -609,8 +633,26 @@ app.get(
 app.get(
   '/api/admin/tax-fill-survey/stats',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('tax-fill-survey'),
+  mw.requireAdminAnyMenu(['tax-fill-survey', 'insights-product', 'feature-survey', 'analytics']),
   h.handleAdminTaxFillSurveyStats
+);
+app.get(
+  '/api/admin/feature-survey/overview',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu([
+    'feature-survey',
+    'insights-product',
+    'tax-fill-survey',
+    'analytics-purchase',
+    'analytics'
+  ]),
+  h.handleAdminFeatureSurveyOverview
+);
+app.get(
+  '/api/admin/payment-orders',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['payment-orders', 'analytics-purchase', 'ops-board', 'codes']),
+  h.handleAdminPaymentOrders
 );
 app.post(
   '/api/admin/user-zaizhi-cert-unlock',

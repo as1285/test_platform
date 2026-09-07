@@ -876,8 +876,9 @@
                 'lizhi-cert': ['zaizhi-cert'],
                 'sbdy-demo': ['gjj-demo'],
                 'login-log': ['user-login-log'],
-                'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback'],
-                'insights-growth': ['ops-inactive', 'channel-analysis', 'install-guide-stats', 'abc-install-stats']
+                'insights-product': ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback', 'feature-survey'],
+                'insights-growth': ['ops-inactive', 'channel-analysis', 'install-guide-stats'],
+                'abc-ops': ['abc-users', 'abc-install-stats']
             };
             if (hubAlias[menuKey]) {
                 for (var hi = 0; hi < hubAlias[menuKey].length; hi++) {
@@ -893,14 +894,22 @@
                 'analytics-activity': 'insights-product',
                 'analytics-devices': 'insights-product',
                 'tax-fill-survey': 'insights-product',
+                'feature-survey': 'insights-product',
                 feedback: 'insights-product',
                 'ops-inactive': 'insights-growth',
                 'channel-analysis': 'insights-growth',
                 'install-guide-stats': 'insights-growth',
-                'abc-install-stats': 'insights-growth'
+                'abc-install-stats': 'abc-ops',
+                'abc-users': 'abc-ops'
             };
             if (contentHub[menuKey] && menus.indexOf(contentHub[menuKey]) >= 0) return true;
             if (menuKey === 'abc-install-stats' && menus.indexOf('install-guide-stats') >= 0) return true;
+            if (
+                (menuKey === 'abc-ops' || menuKey === 'abc-users' || menuKey === 'abc-install-stats') &&
+                (menus.indexOf('insights-growth') >= 0 || menus.indexOf('install-guide-stats') >= 0)
+            ) {
+                return true;
+            }
             /* 侧栏已渲染的页应可进入（避免 menus 缓存落后于 menu_tree） */
             try {
                 var tree = window.AdminNav && AdminNav.getMenuTree ? AdminNav.getMenuTree() : [];
@@ -932,6 +941,7 @@
             }
             var order = [
                 'ops-board',
+                'abc-ops',
                 'ops-inactive',
                 'ops-ad-analytics',
                 'codes',
@@ -939,6 +949,7 @@
                 'ops-lift',
                 'analytics-conversion',
                 'analytics-purchase',
+                'payment-orders',
                 'settings',
                 'channel-analysis',
                 'install-guide',
@@ -950,6 +961,7 @@
                 'user-data',
                 'tax-records-edit',
                 'analytics-activity',
+                'feature-survey',
                 'tax-fill-survey',
                 'feedback',
                 'analytics-devices',
@@ -1093,6 +1105,7 @@
                 tabs: [
                     { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
                     { id: 'devices', label: '机型', page: 'analytics-devices' },
+                    { id: 'features', label: '功能调研', page: 'feature-survey' },
                     { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
                     { id: 'feedback', label: '兼容反馈', page: 'feedback' }
                 ]
@@ -1103,8 +1116,16 @@
                 tabs: [
                     { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
                     { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
-                    { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
-                    { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
+                    { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' }
+                ]
+            },
+            'abc-ops': {
+                nav: 'abc-ops',
+                defaultTab: 'funnel',
+                tabs: [
+                    { id: 'funnel', label: '转化', page: 'abc-ops' },
+                    { id: 'users', label: '用户', page: 'abc-users' },
+                    { id: 'install', label: '下载页', page: 'abc-install-stats' }
                 ]
             },
             'ops-ad-analytics': {
@@ -1147,6 +1168,10 @@
             if (head === 'ops-research' || head === 'ops-lift') head = 'ops-board';
             if (head === 'analytics-register') head = 'install-guide-stats';
             if (head === 'analytics-tracking') head = 'analytics-purchase';
+            if (head === 'insights-growth' && tabPart === 'abc') {
+                head = 'abc-ops';
+                tabPart = 'install';
+            }
 
             if (ADMIN_HUB_DEFS[head]) {
                 var hubDef = ADMIN_HUB_DEFS[head];
@@ -1356,6 +1381,12 @@
             if (pageKey === 'tax-fill-survey') {
                 callAdminModuleLoadPage('tax-fill-survey');
             }
+            if (pageKey === 'feature-survey') {
+                callAdminModuleLoadPage('feature-survey');
+            }
+            if (pageKey === 'payment-orders') {
+                callAdminModuleLoadPage('payment-orders');
+            }
             if (pageKey === 'feedback') {
                 callAdminModuleLoadPage('feedback');
             }
@@ -1374,6 +1405,9 @@
             }
             if (pageKey === 'install-guide-stats') {
                 loadInstallGuideStats();
+            }
+            if (pageKey === 'abc-ops' || pageKey === 'abc-users') {
+                callAdminModuleLoadPage('abc-ops');
             }
             if (pageKey === 'abc-install-stats') {
                 loadAbcInstallStats();
@@ -7055,12 +7089,16 @@
             'ops-ad-analytics': '广告页',
             'analytics-conversion': '转化概览',
             'analytics-purchase': '支付分析',
+            'payment-orders': '订单检索',
             'analytics-activity': '用户活跃',
+            'feature-survey': '功能调研',
             'tax-fill-survey': '填写调研',
             feedback: '兼容反馈',
             'analytics-devices': '机型',
             'install-guide-stats': '安装统计',
-            'abc-install-stats': 'ABC渠道',
+            'abc-ops': 'ABC渠道',
+            'abc-users': 'ABC用户',
+            'abc-install-stats': 'ABC下载页',
             'channel-analysis': '渠道分析',
             'insights-product': '产品洞察',
             'insights-growth': '增长洞察',
@@ -10417,7 +10455,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v22-compat-feedback';
+                var MENU_TREE_VER = 'ops-ia-v23-abc-ops';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

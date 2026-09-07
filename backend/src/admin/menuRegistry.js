@@ -64,6 +64,26 @@ const ADMIN_PAGE_DEFS = [
     nav_hidden: true
   },
   {
+    page: 'abc-ops',
+    menu_key: 'abc-ops',
+    label: 'ABC渠道',
+    group: 'ops-desk',
+    module: 'abc-ops',
+    order: 12,
+    alias_menus: ['abc-users', 'abc-install-stats', 'insights-growth', 'install-guide-stats']
+  },
+  {
+    page: 'abc-users',
+    menu_key: 'abc-ops',
+    label: 'ABC用户',
+    group: 'ops-desk',
+    module: 'abc-ops',
+    order: 13,
+    assignable: false,
+    nav_hidden: true,
+    alias_menus: ['abc-ops', 'insights-growth']
+  },
+  {
     page: 'ops-ad-analytics',
     menu_key: 'ops-ad-analytics',
     label: '广告页',
@@ -91,6 +111,15 @@ const ADMIN_PAGE_DEFS = [
     order: 40
   },
   { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 50 },
+  {
+    page: 'payment-orders',
+    menu_key: 'payment-orders',
+    label: '订单检索',
+    group: 'ops-desk',
+    module: 'payment-orders',
+    order: 55,
+    alias_menus: ['analytics-purchase', 'ops-board', 'codes']
+  },
 
   /* —— 内容配置 hub —— */
   {
@@ -225,7 +254,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 18,
-    alias_menus: ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback']
+    alias_menus: ['analytics-activity', 'analytics-devices', 'tax-fill-survey', 'feedback', 'feature-survey']
   },
   {
     page: 'insights-growth',
@@ -234,7 +263,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 19,
-    alias_menus: ['ops-inactive', 'channel-analysis', 'install-guide-stats', 'abc-install-stats']
+    alias_menus: ['ops-inactive', 'channel-analysis', 'install-guide-stats']
   },
   {
     page: 'ops-inactive',
@@ -256,6 +285,17 @@ const ADMIN_PAGE_DEFS = [
     order: 20,
     assignable: false,
     nav_hidden: true
+  },
+  {
+    page: 'feature-survey',
+    menu_key: 'feature-survey',
+    label: '功能调研',
+    group: 'insights',
+    module: 'feature-survey',
+    order: 21,
+    assignable: false,
+    nav_hidden: true,
+    alias_menus: ['insights-product', 'tax-fill-survey', 'analytics-purchase', 'analytics']
   },
   {
     page: 'tax-fill-survey',
@@ -310,13 +350,14 @@ const ADMIN_PAGE_DEFS = [
   },
   {
     page: 'abc-install-stats',
-    menu_key: 'install-guide-stats',
-    label: 'ABC渠道',
-    group: 'insights',
-    module: 'analytics',
-    order: 61,
+    menu_key: 'abc-ops',
+    label: 'ABC下载页',
+    group: 'ops-desk',
+    module: 'abc-ops',
+    order: 14,
     assignable: false,
-    nav_hidden: true
+    nav_hidden: true,
+    alias_menus: ['install-guide-stats', 'insights-growth', 'abc-ops']
   },
 
   /* —— 系统 —— */
@@ -379,6 +420,7 @@ const ADMIN_PAGE_DEFS = [
 /** 登录后优先进入的运营页（有权限则取第一个） */
 const ADMIN_PREFERRED_FIRST_PAGES = [
   'ops-board',
+  'abc-ops',
   'ops-inactive',
   'ops-ad-analytics',
   'codes',
@@ -432,6 +474,7 @@ const ADMIN_HUB_DEFS = {
     tabs: [
       { id: 'activity', label: '用户活跃', page: 'analytics-activity' },
       { id: 'devices', label: '机型', page: 'analytics-devices' },
+      { id: 'features', label: '功能调研', page: 'feature-survey' },
       { id: 'survey', label: '填写调研', page: 'tax-fill-survey' },
       { id: 'feedback', label: '兼容反馈', page: 'feedback' }
     ]
@@ -442,8 +485,16 @@ const ADMIN_HUB_DEFS = {
     tabs: [
       { id: 'channel', label: '渠道分析', page: 'channel-analysis' },
       { id: 'inactive', label: '未激活用户', page: 'ops-inactive' },
-      { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' },
-      { id: 'abc', label: 'ABC渠道', page: 'abc-install-stats' }
+      { id: 'install-stats', label: '安装统计', page: 'install-guide-stats' }
+    ]
+  },
+  'abc-ops': {
+    nav: 'abc-ops',
+    defaultTab: 'funnel',
+    tabs: [
+      { id: 'funnel', label: '转化', page: 'abc-ops' },
+      { id: 'users', label: '用户', page: 'abc-users' },
+      { id: 'install', label: '下载页', page: 'abc-install-stats' }
     ]
   },
   'ops-ad-analytics': {
@@ -545,6 +596,10 @@ function parseAdminRoute(raw) {
   if (head === 'install' || head === 'guide') head = 'install-guide';
   if (head === 'analytics' || head === 'analytics-conversion') head = 'ops-board';
   if (head === 'ops-research' || head === 'ops-lift') head = 'ops-board';
+  if (head === 'insights-growth' && tabPart === 'abc') {
+    head = 'abc-ops';
+    tabPart = 'install';
+  }
   if (head === 'analytics-register') head = 'install-guide-stats';
   if (head === 'analytics-tracking') head = 'analytics-purchase';
   if (ADMIN_PAGE_ALIASES[head]) head = ADMIN_PAGE_ALIASES[head];

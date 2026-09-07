@@ -4018,6 +4018,13 @@ async function createTables() {
      WHERE menu_key IN ('channel-analysis', 'install-guide-stats')`
   );
 
+  /* 订单检索：已有支付分析 / 运营看板 / 发码权限的账号自动开通 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'payment-orders' FROM admin_account_menus
+     WHERE menu_key IN ('analytics-purchase', 'ops-board', 'codes')`
+  );
+
   conn.release();
 }
 
@@ -17393,6 +17400,7 @@ async function handleAdminEmailsUsers(req, res) {
       limit: q.limit,
       q: q.q,
       active: q.active,
+      half_price: q.half_price,
       admin: req.admin
     });
     return res.json({ code: 200, data: result });
@@ -17411,11 +17419,30 @@ async function handleAdminEmailsSends(req, res) {
       limit: q.limit,
       q: q.q,
       username: q.username,
+      audience: q.audience,
+      status: q.status,
+      days: q.days,
+      clicked: q.clicked,
       admin: req.admin
     });
     return res.json({ code: 200, data: result });
   } catch (e) {
     console.error('[admin emails sends]', e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 邮箱管理总览 */
+async function handleAdminEmailsOverview(req, res) {
+  try {
+    var q = req.query || {};
+    var result = await getUserEmailBulk().overviewStats({
+      days: q.days,
+      admin: req.admin
+    });
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    console.error('[admin emails overview]', e);
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
@@ -24727,6 +24754,7 @@ function getHandlers() {
     handleAdminEmailsBulk,
     handleAdminEmailsUsers,
     handleAdminEmailsSends,
+    handleAdminEmailsOverview,
     handleAdminEmailsCampaignStats,
     handleAdminEmailsSend,
     handleAdminEmailsClear,
@@ -24835,6 +24863,7 @@ module.exports = {
   getMiddleware,
   initDatabase,
   adminCanAccessTargetUser,
+  appendAdminUserScope,
   getPool: function () {
     return pool;
   }

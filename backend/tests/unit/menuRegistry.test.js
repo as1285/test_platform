@@ -57,16 +57,28 @@ describe('menuRegistry', () => {
       contentPage: 'user-login-log'
     });
     expect(parseAdminRoute('insights-growth/abc')).toEqual({
-      page: 'insights-growth',
-      hub: 'insights-growth',
-      tab: 'abc',
+      page: 'abc-ops',
+      hub: 'abc-ops',
+      tab: 'install',
       contentPage: 'abc-install-stats'
     });
     expect(parseAdminRoute('abc-install-stats')).toEqual({
-      page: 'insights-growth',
-      hub: 'insights-growth',
-      tab: 'abc',
+      page: 'abc-ops',
+      hub: 'abc-ops',
+      tab: 'install',
       contentPage: 'abc-install-stats'
+    });
+    expect(parseAdminRoute('abc-ops')).toEqual({
+      page: 'abc-ops',
+      hub: 'abc-ops',
+      tab: 'funnel',
+      contentPage: 'abc-ops'
+    });
+    expect(parseAdminRoute('abc-ops/users')).toEqual({
+      page: 'abc-ops',
+      hub: 'abc-ops',
+      tab: 'users',
+      contentPage: 'abc-users'
     });
   });
 
@@ -161,7 +173,7 @@ describe('menuRegistry', () => {
     expect(tree[0].label).toBe('转化运营');
     const deskPages = tree[0].items.map((i) => i.page);
     expect(deskPages).toEqual(
-      expect.arrayContaining(['ops-board', 'ops-ad-analytics', 'codes'])
+      expect.arrayContaining(['ops-board', 'abc-ops', 'ops-ad-analytics', 'codes', 'payment-orders'])
     );
     expect(deskPages).not.toContain('ops-inactive');
     expect(deskPages).not.toContain('ops-research');
@@ -212,14 +224,19 @@ describe('menuRegistry', () => {
     expect(insightPages).not.toContain('channel-analysis');
     expect(insightPages).not.toContain('analytics-activity');
     expect(insightPages).not.toContain('abc-install-stats');
+    expect(insightPages).not.toContain('abc-ops');
     expect(ADMIN_HUB_DEFS['insights-growth'].tabs.map((t) => t.page)).toEqual(
-      expect.arrayContaining([
-        'channel-analysis',
-        'ops-inactive',
-        'install-guide-stats',
-        'abc-install-stats'
-      ])
+      expect.arrayContaining(['channel-analysis', 'ops-inactive', 'install-guide-stats'])
     );
+    expect(ADMIN_HUB_DEFS['insights-growth'].tabs.map((t) => t.page)).not.toContain(
+      'abc-install-stats'
+    );
+    expect(ADMIN_HUB_DEFS['abc-ops'].tabs.map((t) => t.id)).toEqual(['funnel', 'users', 'install']);
+    expect(ADMIN_HUB_DEFS['abc-ops'].tabs.map((t) => t.page)).toEqual([
+      'abc-ops',
+      'abc-users',
+      'abc-install-stats'
+    ]);
     expect(parseAdminRoute('ops-inactive')).toEqual({
       page: 'insights-growth',
       hub: 'insights-growth',
@@ -241,8 +258,10 @@ describe('menuRegistry', () => {
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['ops-inactive'] }, 'insights-growth')
     ).toBe(true);
-    expect(getPageDef('abc-install-stats').label).toBe('ABC渠道');
-    expect(getPageDef('abc-install-stats').menu_key).toBe('install-guide-stats');
+    expect(getPageDef('abc-ops').label).toBe('ABC渠道');
+    expect(getPageDef('abc-ops').menu_key).toBe('abc-ops');
+    expect(getPageDef('abc-install-stats').label).toBe('ABC下载页');
+    expect(getPageDef('abc-install-stats').menu_key).toBe('abc-ops');
     expect(
       adminProfileCanAccessPage(
         { is_super: false, menus: ['install-guide-stats'] },
@@ -253,9 +272,34 @@ describe('menuRegistry', () => {
       adminProfileCanAccessPage({ is_super: false, menus: ['insights-growth'] }, 'abc-install-stats')
     ).toBe(true);
     expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['abc-ops'] }, 'abc-users')
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['insights-growth'] }, 'abc-ops')
+    ).toBe(true);
+    expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'abc-install-stats')
     ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'abc-ops')
+    ).toBe(false);
     expect(getPageDef('tax-fill-survey').label).toBe('填写调研');
+    expect(getPageDef('feature-survey').label).toBe('功能调研');
+    expect(getPageDef('feature-survey').nav_hidden).toBe(true);
+    expect(parseAdminRoute('insights-product/features')).toEqual({
+      page: 'insights-product',
+      hub: 'insights-product',
+      tab: 'features',
+      contentPage: 'feature-survey'
+    });
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['insights-product'] }, 'feature-survey')
+    ).toBe(true);
+    expect(getPageDef('payment-orders').label).toBe('订单检索');
+    expect(getPageDef('payment-orders').group).toBe('ops-desk');
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['analytics-purchase'] }, 'payment-orders')
+    ).toBe(true);
     expect(getPageDef('feedback').label).toBe('兼容反馈');
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['insights-product'] }, 'feedback')
@@ -331,6 +375,7 @@ describe('menuRegistry', () => {
         'login-log',
         'insights-product',
         'insights-growth',
+        'abc-ops',
         'rename-tax-daily',
         'users-deleted'
       ])
@@ -344,6 +389,8 @@ describe('menuRegistry', () => {
     expect(assignable).not.toContain('user-login-log');
     expect(assignable).not.toContain('analytics-activity');
     expect(assignable).not.toContain('analytics-tracking');
+    expect(assignable).not.toContain('abc-users');
+    expect(assignable).not.toContain('abc-install-stats');
     expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
     expect(getPageDef('peer-accounts')).toEqual(getPageDef('rename-tax-daily'));
     expect(

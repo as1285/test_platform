@@ -1,7 +1,7 @@
 /**
  * 应用装配：创建 Express app → 按域注册路由 → 启动。
  */
-const { createApp, startServer, getHandlers, getMiddleware } = require('./legacy/monolith');
+const { createApp, startServer, getHandlers, getMiddleware, appendAdminUserScope } = require('./legacy/monolith');
 const sbdyDemo = require('./admin/sbdyDemo');
 const gjjDemo = require('./admin/gjjDemo');
 const lizhiCert = require('./admin/lizhiCert');
@@ -18,7 +18,10 @@ const deviceStats = require('./admin/deviceStats');
 const purchasePriceSurvey = require('./growth/purchasePriceSurvey');
 const certPageSurvey = require('./growth/certPageSurvey');
 const taxFillSurvey = require('./growth/taxFillSurvey');
+const featureSurveyOverview = require('./admin/featureSurveyOverview');
+const paymentOrders = require('./admin/paymentOrders');
 const opsConversion = require('./admin/opsConversion');
+const abcOps = require('./admin/abcOps');
 const adPageAnalytics = require('./admin/adPageAnalytics');
 const adPages = require('./admin/adPages');
 const { registerAuthRoutes } = require('./auth/routes');
@@ -54,7 +57,10 @@ function buildApp() {
       purchasePriceSurvey.getHandlers(),
       certPageSurvey.getHandlers(),
       taxFillSurvey.getHandlers(),
+      featureSurveyOverview.getHandlers(),
+      paymentOrders.createHandlers({ appendAdminUserScope: appendAdminUserScope }),
       opsConversion.getHandlers(),
+      abcOps.getHandlers(),
       adPageAnalytics.getHandlers(),
       adPages.getHandlers(),
       bankSalaryFlow.getHandlers()

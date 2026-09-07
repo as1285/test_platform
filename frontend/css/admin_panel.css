@@ -2982,6 +2982,23 @@ tr.users-detail-row > td {
 .ops-board-pay-table td {
     font-size: 13px;
 }
+.feature-survey-table tr.is-muted td {
+    color: var(--admin-muted, #64748b);
+}
+.pay-order-flag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 11px;
+    line-height: 18px;
+    white-space: nowrap;
+}
+.ops-board-pay-table tr.is-warn td {
+    background: #fffbeb;
+}
 .ops-board-pay-table .btn-rename-user,
 .admin-user-jump {
     background: none;
@@ -3075,4 +3092,133 @@ tr.users-detail-row > td {
 .ops-summary-card:focus {
     border-color: var(--admin-primary-border);
     outline: none;
+}
+.user-email-auto-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+}
+.user-email-auto-item {
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--admin-surface);
+}
+.user-email-auto-item strong {
+    display: block;
+    font-size: 14px;
+}
+.user-email-auto-item span {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+.user-email-auto-item.is-on span {
+    color: #0a7a3f;
+}
+.user-email-auto-item.is-off span {
+    color: #a15c00;
+}
+.user-email-auto-item p {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--admin-text-muted);
+    line-height: 1.45;
+}
+.abc-ops-head-actions {
+    margin: 0;
+}
+.abc-ops-head-actions label {
+    margin-right: 8px;
+}
+.abc-ops-vis-hint {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(217, 119, 6, 0.08);
+}
+.abc-ops-funnel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    margin: 12px 0 16px;
+}
+.abc-ops-funnel-step {
+    flex: 1 1 110px;
+    min-width: 110px;
+    padding: 14px 12px;
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    background: var(--admin-surface);
+}
+.abc-ops-funnel-label {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+.abc-ops-funnel-value {
+    margin-top: 6px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    color: var(--admin-heading);
+}
+.abc-ops-funnel-rate {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 650;
+    color: #0d9488;
+}
+.abc-ops-funnel-rate-empty {
+    color: var(--admin-text-muted);
+    font-weight: 400;
+}
+.abc-ops-funnel-hint {
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--admin-text-muted);
+}
+.abc-ops-funnel-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--admin-text-muted);
+    font-size: 18px;
+    padding: 0 2px;
+}
+.abc-ops-rates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.abc-ops-rate-card {
+    padding: 12px 14px;
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    background: var(--admin-surface);
+}
+.abc-ops-rate-card .k {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+.abc-ops-rate-card .v {
+    margin-top: 6px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--admin-heading);
+}
+.abc-ops-rate-card .s {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+@media (max-width: 900px) {
+    .abc-ops-funnel-arrow {
+        display: none;
+    }
 }
