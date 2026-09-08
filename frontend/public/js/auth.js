@@ -3261,9 +3261,10 @@
         } catch (e1) {}
       }
       if (sb) {
-        if (opts.overlays !== false && typeof sb.overlaysWebView === 'function') {
+        var wantOverlay = opts.overlays !== false;
+        if (wantOverlay && typeof sb.overlaysWebView === 'function') {
           sb.overlaysWebView(true);
-        } else if (opts.overlays === false && typeof sb.overlaysWebView === 'function') {
+        } else if (!wantOverlay && typeof sb.overlaysWebView === 'function') {
           sb.overlaysWebView(false);
         }
         var darkIcons = opts.style === 'default' || opts.style === 'dark';
@@ -3275,6 +3276,25 @@
           sb.styleDefault();
         } else if (typeof sb.styleLightContent === 'function') {
           sb.styleLightContent();
+        }
+        /*
+         * iPhone 11 / 14 Pro Max：白顶页 styleDefault 后回到蓝顶，若不再钉 overlays，
+         * 系统栏会落成黑条且 WebView 下移（看起来「软件短了」）。style 后再 overlays+颜色一次。
+         */
+        if (wantOverlay && typeof sb.overlaysWebView === 'function') {
+          try {
+            sb.overlaysWebView(true);
+          } catch (eOv2) {}
+          if (opts.color && typeof sb.backgroundColorByHexString === 'function') {
+            try {
+              sb.backgroundColorByHexString(opts.color);
+            } catch (eCol2) {}
+          }
+          if (!darkIcons && typeof sb.styleLightContent === 'function') {
+            try {
+              sb.styleLightContent();
+            } catch (eSt2) {}
+          }
         }
         /* 即便能直接碰 StatusBar，也同步通知父壳改 html/body 底色，避免 iframe 外露白 */
       }
@@ -3632,13 +3652,21 @@
             ')) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}';
           document.head.appendChild(st);
         } catch (eCss) {}
+        /* 14 Pro Max（15promax）/ iPhone 11（414 宽）：theme 必须跟搜索蓝，避免白顶页返回后顶栏黑 */
+        try {
+          upsertMeta('theme-color', APP_SHOUYE_BAR_BLUE);
+          upsertMeta('msapplication-navbutton-color', APP_SHOUYE_BAR_BLUE);
+          setStatusBarStyleMeta('black-translucent');
+        } catch (eMetaSy) {}
         syncAppShellStatusbarTop();
       }
       applyImmersiveBlueStatusBar(APP_SHOUYE_BAR_BLUE);
-      /* 从白顶栏页返回时 Cordova 可能残留白/黑栏，延迟再刷蓝顶 */
+      /* 从白顶栏页返回时 Cordova 可能残留白/黑栏，延迟再刷蓝顶（11 / 14PM 必现） */
       var reapplyBlue = function () {
         try {
           if (!document.body || !document.body.classList.contains('page-shouye')) return;
+          upsertMeta('theme-color', APP_SHOUYE_BAR_BLUE);
+          setStatusBarStyleMeta('black-translucent');
           applyImmersiveBlueStatusBar(APP_SHOUYE_BAR_BLUE);
         } catch (eRe) {}
       };

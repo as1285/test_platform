@@ -39,10 +39,21 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260908-home-blue-bar');
+    expect(shuimingResult).toContain('auth.js?v=20260908-ios11-14pm-blue');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260908-home-blue-bar');
+    expect(shouye).toContain('auth.js?v=20260908-ios11-14pm-blue');
+  });
+
+  it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
+    const start = auth.indexOf('function requestShellStatusBar');
+    const end = auth.indexOf('function applyImmersiveBlueStatusBar');
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    const fn = auth.slice(start, end);
+    expect(fn).toContain('iPhone 11 / 14 Pro Max');
+    expect(fn).toContain('overlaysWebView(true)');
+    expect(fn).toContain('styleLightContent');
   });
 });

@@ -531,13 +531,14 @@
                     return;
                 }
                 try {
-                    if (d.overlays !== false) {
+                    var styleDefault =
+                        d.style === 'default' || d.style === 'dark';
+                    var wantOverlay = d.overlays !== false;
+                    if (wantOverlay) {
                         StatusBar.overlaysWebView(true);
                     } else {
                         StatusBar.overlaysWebView(false);
                     }
-                    var styleDefault =
-                        d.style === 'default' || d.style === 'dark';
                     var barColor = String(d.color || '').trim();
                     /* 白顶栏：透明色在刘海外系统栏会落成黑条，强制实底白 */
                     if (
@@ -555,6 +556,17 @@
                     if (styleDefault) {
                         StatusBar.styleDefault();
                     } else {
+                        StatusBar.styleLightContent();
+                    }
+                    /*
+                     * iPhone 11 / 14 Pro Max：从白顶 styleDefault 切回蓝顶 light 后，
+                     * 必须再钉 overlays + 颜色，否则顶栏黑、WebView 下移（软件变短）。
+                     */
+                    if (wantOverlay && !styleDefault) {
+                        StatusBar.overlaysWebView(true);
+                        if (barColor) {
+                            StatusBar.backgroundColorByHexString(barColor);
+                        }
                         StatusBar.styleLightContent();
                     }
                     if (d.paint_shell !== false) {
