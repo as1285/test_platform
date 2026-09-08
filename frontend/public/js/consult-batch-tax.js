@@ -1683,6 +1683,7 @@ function addBatchEmpRow() {
     bindBatchEmpRow(node);
     list.appendChild(node);
     scheduleBatchTaxDraftSave();
+    return node;
 }
 
 /** 确保至少一行并绑定已有行。 */
