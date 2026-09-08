@@ -876,9 +876,21 @@
         }
 
         /* 仅「收入合计」与「已申报税额合计」之间保留横线；税额下方不再画线（对齐正版） */
+        /* 正版分隔线左右缩进，不顶到白底左右边；勿用通栏 border-bottom */
         .summary > .summary-item:first-child {
-            border-bottom: 1px solid #e5e5e5;
+            border-bottom: none;
             margin-bottom: 0;
+        }
+        .summary > .summary-item:first-child::after {
+            content: '';
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 0;
+            height: 1px;
+            background: #e5e5e5;
+            pointer-events: none;
+            z-index: 1;
         }
 
         /* 末行无底线：去掉多余底距，避免汇总白底与列表之间空一大截 */
