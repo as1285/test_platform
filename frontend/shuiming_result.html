@@ -567,7 +567,7 @@
                                 'html.app-ios-iphone15promax body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;}' +
-                                'html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:10px 0 6px !important;}' +
+                                'html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:12px 0 10px !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .back-btn{left:12px !important;}' +
                                 'html.app-ios-iphone15promax body.page-shuiming-result .header-right{right:12px !important;}';
                             (document.head || document.documentElement).appendChild(p15St);
@@ -2507,15 +2507,26 @@
             margin-right: 0 !important;
             border-radius: 0 !important;
         }
+        /*
+         * 14 Pro Max（被标成 15promax）/ 同宽档：汇总灰底上下缝对齐原版。
+         * 勿用白底，否则 padding 缝与白卡片连成一片，看起来像「没有空隙」。
+         */
         html.app-ios-iphone15promax body.page-shuiming-result .top-fixed .summary,
         html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-ios-iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             background: #f5f6fa !important;
-            padding: 10px 0 6px !important;
+            padding: 12px 0 10px !important;
             overflow: hidden;
         }
         html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item:last-of-type {
-            padding-bottom: 2px !important;
+            padding-bottom: 4px !important;
+        }
+        /* iPhone 11 / XR 等 414 宽：保证汇总灰缝（顶栏下 + 列表前）可见 */
+        html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-promax-wide.app-top-safe-shell:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .summary {
+            background: #f5f6fa !important;
+            padding: 12px 0 10px !important;
+            box-sizing: border-box !important;
         }
 
         /*
@@ -2609,7 +2620,17 @@
             }
             body.page-shuiming-result .top-fixed .summary {
                 background: #f5f6fa !important;
-                padding: 10px 0 6px !important;
+                padding: 12px 0 10px !important;
+            }
+        }
+
+        /* iPhone 11 / XR（414×896）：无 class 时也锁灰缝 */
+        @media screen and (min-device-width: 410px) and (max-device-width: 416px) and (min-device-height: 890px) and (max-device-height: 900px),
+            screen and (min-width: 410px) and (max-width: 416px) and (min-height: 890px) and (max-height: 900px) {
+            body.page-shuiming-result .top-fixed .summary {
+                background: #f5f6fa !important;
+                padding: 12px 0 10px !important;
+                box-sizing: border-box !important;
             }
         }
 
@@ -3320,6 +3341,7 @@
                 var isAndroid = false;
                 var isIphone15Wide = false;
                 var isIphone16ProSeam = false;
+                var isIphone11Seam = false;
                 try {
                     isAndroid =
                         document.documentElement.classList.contains('platform-android') ||
@@ -3347,6 +3369,23 @@
                                 return false;
                             }
                         })();
+                    /* iPhone 11 / XR（414×896）：按汇总盒底起算，露出 padding 灰缝 */
+                    isIphone11Seam =
+                        document.documentElement.classList.contains('app-ios-promax-wide') &&
+                        !isIphone15Wide &&
+                        !isIphone16ProSeam &&
+                        !document.documentElement.classList.contains('app-ios-iphone16promax') &&
+                        !document.documentElement.classList.contains('app-ios-iphone17promax') &&
+                        !document.documentElement.classList.contains('app-ios-iphoneair') &&
+                        (function () {
+                            try {
+                                var sw11 = Math.min(screen.width || 0, screen.height || 0);
+                                var sh11 = Math.max(screen.width || 0, screen.height || 0);
+                                return sw11 >= 410 && sw11 <= 416 && sh11 >= 890 && sh11 <= 900;
+                            } catch (e11s) {
+                                return false;
+                            }
+                        })();
                 } catch (eA) {}
                 /*
                  * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
@@ -3356,11 +3395,17 @@
                 var summaryRect = summary.getBoundingClientRect();
                 if (!(summaryRect.height > 0)) return;
                 var contentBottom = summaryContentBottom(summary, summaryRect);
-                if (isIphone15Wide || isIphone16ProSeam) {
+                if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam) {
                     contentBottom = Math.max(contentBottom, summaryRect.bottom);
                 }
-                /* 16 Pro 灰缝已写在汇总 padding-bottom，勿再叠 JS gap */
-                var gap = isAndroid ? 8 : isIphone16ProSeam ? 0 : isIphone15Wide ? 10 : 8;
+                /* 16 Pro / 11：灰缝已写在汇总 padding-bottom，勿再叠 JS gap；15 宽档略留 10 */
+                var gap = isAndroid
+                    ? 8
+                    : isIphone16ProSeam || isIphone11Seam
+                      ? 0
+                      : isIphone15Wide
+                        ? 10
+                        : 8;
                 var listTop = Math.ceil(contentBottom + gap);
                 if (listTop < headerBottom + 24) listTop = headerBottom + 24;
                 if (root) {
@@ -3375,7 +3420,7 @@
                 if (firstItem) {
                     var sr = summary.getBoundingClientRect();
                     var cb = summaryContentBottom(summary, sr);
-                    if (isIphone15Wide || isIphone16ProSeam) {
+                    if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam) {
                         cb = Math.max(cb, sr.bottom);
                     }
                     var visualGap = firstItem.getBoundingClientRect().top - cb;

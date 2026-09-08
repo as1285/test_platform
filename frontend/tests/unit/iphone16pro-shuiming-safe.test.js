@@ -28,7 +28,7 @@ describe('iPhone 16 Pro 收入纳税明细顶距与灰缝边', () => {
       /html\.app-ios-iphone16pro body\.page-shuiming-result \.list[\s\S]{0,160}padding-left:\s*0\s*!important/
     );
     expect(shuimingResult).toContain('data-iphone16pro-vp-grey-seam');
-    expect(shuimingResult).toContain('isIphone16ProSeam ? 0');
+    expect(shuimingResult).toMatch(/isIphone16ProSeam\s*\|\|\s*isIphone11Seam/);
   });
 
   it('非 Cordova 通用顶距规则排除 16 Pro', () => {

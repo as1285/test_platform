@@ -3087,6 +3087,23 @@ mustInclude(
   '20260908 packaged channel forces ch on every url'
 );
 mustInclude(
+  'frontend/shuiming_result.html',
+  [
+    'padding: 12px 0 10px !important',
+    'isIphone11Seam',
+    '14 Pro Max（被标成 15promax）'
+  ],
+  '20260908 14pm/11 shuiming grey seam'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    ':not(.app-ios-iphone16pro):not(.app-ios-iphone15promax) body.page-shuiming-result .top-fixed .summary',
+    'iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{background:#f5f6fa'
+  ],
+  '20260908 14pm summary not white'
+);
+mustInclude(
   'frontend/public/js/tab-shell.js',
   ['appendSalesChannelToUrl', 'tab_embed=1'],
   '20260908 tab-shell keeps packaged ch on iframe tabs'
