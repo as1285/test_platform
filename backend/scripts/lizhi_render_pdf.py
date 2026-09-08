@@ -320,7 +320,8 @@ def render_page_image(payload):
     y += leading + int(10 * SCALE)
     painter.draw_run(MARGIN_L + indent, y, "特此证明！", body_f)
 
-    seal_pt = int(SEAL_PT * SCALE)
+    # 离职证明公章略小于默认 SEAL_PT，避免盖住正文过多
+    seal_pt = int(SEAL_PT * SCALE * 0.75)
     right_pad = int(42 * SCALE)
     seal_x = PAGE_W - right_pad - seal_pt
     seal_y = max(y + int(50 * SCALE), int(400 * SCALE))
