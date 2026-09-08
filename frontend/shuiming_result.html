@@ -2518,8 +2518,20 @@
             padding: 12px 0 10px !important;
             overflow: hidden;
         }
-        html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item:last-of-type {
-            padding-bottom: 4px !important;
+        /*
+         * 14 Pro Max（15promax）/ iPhone 11：收入合计、已申报税额合计两行白底行高略加高。
+         * 列表 margin 按汇总盒底动态测量，增高后会自动下推。
+         */
+        html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item,
+        html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item,
+        html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .summary > .summary-item {
+            padding-top: 10px !important;
+            padding-bottom: 12px !important;
+        }
+        html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item:last-of-type,
+        html.app-ios-iphone15promax.app-ios-promax-wide body.page-shuiming-result .summary > .summary-item:last-of-type,
+        html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .summary > .summary-item:last-of-type {
+            padding-bottom: 10px !important;
         }
         /* iPhone 11 / XR 等 414 宽：保证汇总灰缝（顶栏下 + 列表前）可见 */
         html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .summary,
