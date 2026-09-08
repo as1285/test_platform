@@ -687,8 +687,8 @@
             box-sizing: border-box;
         }
 
-        /* iOS：禁止原生整页橡皮筋（汇总是 fixed，原生回弹只会把列表拽走、撕开汇总下灰缝）。
-           顶部回弹改由脚本让「汇总+列表」一起下移，缝出现在顶栏下方，对齐正版。 */
+        /* iOS：禁止原生整页橡皮筋；顶部下拉回弹改由脚本只拉动列表卡片，
+           上面「收入合计 / 已申报税额合计」保持不动（对齐正版）。 */
         html.platform-ios,
         html.platform-ios body.page-shuiming-result,
         html.platform-ios body.page-shuiming-result .page-root {
@@ -735,12 +735,10 @@
             opacity: 1;
         }
 
-        /* 顶部手动回弹：汇总与列表同位移，松手回弹 */
-        .summary.sm-rubber-drag,
+        /* 顶部手动回弹：只动列表卡片，汇总两行标题不动 */
         .list.sm-rubber-drag {
             transition: none !important;
         }
-        .summary.sm-rubber-release,
         .list.sm-rubber-release {
             transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         }
@@ -4175,8 +4173,8 @@
         }
 
         /* 正版顶部回弹 + 短拉手：
-           - 汇总是 fixed，不能开原生整页橡皮筋（会撕开汇总下灰缝）
-           - 顶到头下拉时，脚本让「汇总+列表」一起下移，白缝出现在顶栏下（对齐正版视频）
+           - 上面「收入合计 / 已申报税额合计」固定不动
+           - 仅下面工资等列表卡片可下拉回弹（顶到头再往下拽）
            - 拉手仅滑动出现；活动区从汇总底到屏底 */
         (function initSmRubberAndScrollThumb() {
             var MIN_H = 72;
@@ -4194,15 +4192,12 @@
             var rubberY = 0;
             var touchLastY = 0;
             var touchActive = false;
-            var rubberEls = null;
+            var listEl = null;
 
-            function getRubberEls() {
-                if (rubberEls) return rubberEls;
-                rubberEls = {
-                    summary: document.querySelector('.top-fixed .summary') || document.querySelector('.summary'),
-                    list: document.getElementById('recordList') || document.querySelector('.list')
-                };
-                return rubberEls;
+            function getListEl() {
+                if (listEl) return listEl;
+                listEl = document.getElementById('recordList') || document.querySelector('.list');
+                return listEl;
             }
 
             function pageScrollTop() {
@@ -4215,22 +4210,20 @@
 
             function applyRubber(y, mode) {
                 rubberY = Math.max(0, Math.min(RUBBER_MAX, y || 0));
-                var els = getRubberEls();
-                /* 回弹归零时清空 inline，避免盖掉汇总原有的 translateZ(0) */
+                var el = getListEl();
+                if (!el) return;
+                /* 只平移列表；汇总两行标题保持 fixed 不动 */
                 var t = rubberY > 0.5 ? 'translate3d(0,' + rubberY + 'px,0)' : '';
-                [els.summary, els.list].forEach(function (el) {
-                    if (!el) return;
-                    el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
-                    if (mode === 'drag') el.classList.add('sm-rubber-drag');
-                    if (mode === 'release') el.classList.add('sm-rubber-release');
-                    if (t) {
-                        el.style.transform = t;
-                        el.style.webkitTransform = t;
-                    } else {
-                        el.style.removeProperty('transform');
-                        el.style.removeProperty('-webkit-transform');
-                    }
-                });
+                el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
+                if (mode === 'drag') el.classList.add('sm-rubber-drag');
+                if (mode === 'release') el.classList.add('sm-rubber-release');
+                if (t) {
+                    el.style.transform = t;
+                    el.style.webkitTransform = t;
+                } else {
+                    el.style.removeProperty('transform');
+                    el.style.removeProperty('-webkit-transform');
+                }
             }
 
             function releaseRubber() {
@@ -4240,16 +4233,14 @@
                 }
                 applyRubber(0, 'release');
                 setTimeout(function () {
-                    var els = getRubberEls();
-                    [els.summary, els.list].forEach(function (el) {
-                        if (!el) return;
-                        el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
-                    });
+                    var el = getListEl();
+                    if (!el) return;
+                    el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
                 }, 320);
             }
 
             function listTrackTop() {
-                /* 拉手最高只能到已申报税额合计（汇总区）下方；含回弹位移 */
+                /* 拉手最高只能到已申报税额合计（汇总区）下方；汇总固定所以不跟回弹 */
                 var summary = document.querySelector('.top-fixed .summary') || document.querySelector('.summary');
                 if (summary) {
                     var bottom = summary.getBoundingClientRect().bottom;
@@ -4281,8 +4272,8 @@
                 var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural, listViewH)));
                 var track = Math.max(0, listViewH - thumbH);
                 var ratio = maxScroll > 0 ? Math.max(0, Math.min(1, scrollTop / maxScroll)) : 0;
-                /* 回弹时汇总下移，轨道顶跟着走；拉手再略上移一点保持跟手 */
-                var y = trackTop + ratio * track - Math.min(14, rubberY * 0.25);
+                /* 列表下拉回弹时拉手在轨道顶略跟手，但不越过汇总底 */
+                var y = trackTop + ratio * track + Math.min(12, rubberY * 0.2);
                 if (y < trackTop) y = trackTop;
                 if (y > trackBottom - thumbH) y = trackBottom - thumbH;
                 thumb.style.height = thumbH + 'px';
@@ -4330,7 +4321,7 @@
                 var scrollY = pageScrollTop();
                 if (scrollY <= 0) {
                     if (dy > 0 || rubberY > 0) {
-                        /* 阻尼下拉：正版顶栏下留白，汇总+列表一起走 */
+                        /* 阻尼下拉：只拽列表卡片，汇总标题不动 */
                         var next = rubberY + dy * (dy > 0 ? 0.48 : 1);
                         if (next < 0) next = 0;
                         if (next > RUBBER_MAX) next = RUBBER_MAX;

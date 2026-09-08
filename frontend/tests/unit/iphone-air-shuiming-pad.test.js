@@ -42,7 +42,7 @@ describe('iPhone Air 收入纳税明细左右贴边', () => {
 });
 
 describe('收入纳税明细切年份二次进入顶空白', () => {
-  it('关掉路径级滚动恢复；列表接到汇总底下；禁用原生整页橡皮筋，改脚本联动回弹', () => {
+  it('关掉路径级滚动恢复；列表接到汇总底下；禁用原生整页橡皮筋', () => {
     expect(shuimingResult).toContain("history.scrollRestoration = 'manual'");
     expect(shuimingResult).toContain('function resetShuimingScrollTop');
     expect(shuimingResult).toContain('function shuimingPageScrolled');
@@ -58,14 +58,16 @@ describe('收入纳税明细切年份二次进入顶空白', () => {
 });
 
 describe('收入纳税明细滚动拉手与顶部回弹', () => {
-  it('拉手加粗到 4px；顶到头时汇总+列表一起下移，不撕开灰缝', () => {
+  it('拉手 4px；顶到头只拉动列表卡片，汇总两行标题不动', () => {
     expect(shuimingResult).toMatch(/\.sm-scroll-thumb\s*\{[^}]*width:\s*4px/);
-    expect(shuimingResult).toContain('function initSmRubberAndScrollThumb');
+    expect(shuimingResult).toContain('function getListEl');
     expect(shuimingResult).toContain('function applyRubber');
-    expect(shuimingResult).toContain('function getRubberEls');
+    expect(shuimingResult).toContain('只平移列表');
     expect(shuimingResult).toContain('sm-rubber-drag');
-    expect(shuimingResult).toContain('sm-rubber-release');
     expect(shuimingResult).toContain('RUBBER_MAX');
     expect(shuimingResult).toContain("getElementById('recordList')");
+    expect(shuimingResult).toMatch(/\.list\.sm-rubber-drag/);
+    expect(shuimingResult).not.toMatch(/\.summary\.sm-rubber-drag/);
+    expect(shuimingResult).not.toContain('[els.summary, els.list]');
   });
 });
