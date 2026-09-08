@@ -16,6 +16,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   setPageSearch('');
 });
 
@@ -49,12 +50,24 @@ describe('abc channel is URL-only', () => {
     setPageSearch('?ch=abc');
     expect(window.getPublicInstallPackagesUrl()).toContain('sales_ch=abc');
     window.localStorage.removeItem('token');
+    /* 清掉 URL-only 会话记忆，单独验证残留 localStorage abc 不生效 */
+    window.sessionStorage.clear();
     setPageSearch('');
     window.localStorage.setItem(
       'sales_channel_v1',
       JSON.stringify({ ch: 'abc', at: Date.now(), source: 'url', permanent: true })
     );
     expect(window.getPublicInstallPackagesUrl()).toBe('/api/public/install-packages');
+  });
+
+  it('keeps abc in the same tab via sessionStorage after URL loses ch', () => {
+    setPageSearch('?ch=abc');
+    expect(window.getSalesChannel()).toBe('abc');
+    setPageSearch('/mine.html');
+    expect(window.getSalesChannel()).toBe('abc');
+    expect(window.localStorage.getItem('sales_channel_v1')).toBe(null);
+    const sess = JSON.parse(window.sessionStorage.getItem('sales_channel_url_only_session_v1'));
+    expect(sess.ch).toBe('abc');
   });
 
   it('binds abc into register sales channel only when URL has ch=abc', () => {
