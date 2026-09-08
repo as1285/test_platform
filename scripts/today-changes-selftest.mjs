@@ -3077,6 +3077,26 @@ mustInclude(
   '20260908 abc sticky must not poison localStorage'
 );
 mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'installPackagedSalesChannelUrlGuard',
+    'getForcedPackagedSalesChannel',
+    'URL_ONLY_SESSION_KEY',
+    '同域跳转的每个 URL 都带上渠道 ch'
+  ],
+  '20260908 packaged channel forces ch on every url'
+);
+mustInclude(
+  'frontend/public/js/tab-shell.js',
+  ['appendSalesChannelToUrl', 'tab_embed=1'],
+  '20260908 tab-shell keeps packaged ch on iframe tabs'
+);
+mustInclude(
+  'cordova-app/www/index.html',
+  ['ensureChannelOnAppUrl', 'agentSalesChannel'],
+  '20260908 cordova shell preserves ch on iframe reload'
+);
+mustInclude(
   'backend/src/legacy/agentChannels.js',
   ['sanitizeStickySalesChannelId', '不参与 client_id / 设备指纹 / IP 的 sticky'],
   '20260908 sticky helper excludes URL-only'

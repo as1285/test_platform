@@ -280,7 +280,10 @@
     iframe.setAttribute('data-tab', key);
     iframe.setAttribute('title', FILE_BY_KEY[key] || key);
     iframe.setAttribute('loading', 'eager');
-    iframe.src = FILE_BY_KEY[key] + '?tab_embed=1';
+    iframe.src =
+      (typeof global.appendSalesChannelToUrl === 'function'
+        ? global.appendSalesChannelToUrl(FILE_BY_KEY[key] + '?tab_embed=1')
+        : FILE_BY_KEY[key] + '?tab_embed=1');
     iframe.style.display = 'none';
     stageEl.appendChild(iframe);
     bindIframeNavWatch(iframe, key);
@@ -329,7 +332,11 @@
     refreshNavIcons();
     if (!opts.fromHistory) {
       try {
-        global.history.pushState({ tabShell: key }, '', FILE_BY_KEY[key]);
+        var histUrl = FILE_BY_KEY[key];
+        if (typeof global.appendSalesChannelToUrl === 'function') {
+          histUrl = global.appendSalesChannelToUrl(histUrl);
+        }
+        global.history.pushState({ tabShell: key }, '', histUrl);
       } catch (e0) {}
     }
     try {

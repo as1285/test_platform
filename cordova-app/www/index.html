@@ -137,6 +137,25 @@
                 return base + q;
             }
 
+            /** 壳内恢复/重载 iframe 时保留渠道 ch，避免丢参后变成直客价 */
+            function ensureChannelOnAppUrl(href) {
+                var u = href != null ? String(href).trim() : '';
+                if (!u || !isOurAppUrl(u)) return u;
+                var cfg = window.__TAX_DISTRIBUTION__ || {};
+                var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim().toLowerCase() : '';
+                if (!ch || !/^[a-z0-9_-]{1,64}$/.test(ch)) return u;
+                try {
+                    var parsed = new URL(u, appOriginPrefix());
+                    if (!parsed.searchParams.get('ch') && !parsed.searchParams.get('channel')) {
+                        parsed.searchParams.set('ch', ch);
+                    }
+                    return parsed.href;
+                } catch (eEns) {
+                    if (u.indexOf('ch=') >= 0 || u.indexOf('channel=') >= 0) return u;
+                    return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'ch=' + encodeURIComponent(ch);
+                }
+            }
+
             var lastGoodAppUrl = buildAppStartUrl();
             var recoverTimer = null;
 
@@ -174,13 +193,13 @@
                 try {
                     f.allow = 'clipboard-read; clipboard-write';
                 } catch (eAllow) {}
-                f.src = startUrl || buildAppStartUrl();
+                f.src = ensureChannelOnAppUrl(startUrl || buildAppStartUrl());
                 f.addEventListener('load', function () {
                     try {
                         var href =
                             f.contentWindow && f.contentWindow.location && f.contentWindow.location.href;
                         if (isOurAppUrl(href)) {
-                            lastGoodAppUrl = href;
+                            lastGoodAppUrl = ensureChannelOnAppUrl(href);
                         }
                     } catch (eLoad) {}
                     try {
@@ -414,10 +433,11 @@
             /** 支付等外链若误把 iframe 跳走，从支付宝回到 App 时恢复，避免白屏 */
             function recoverAppFrameIfHijacked() {
                 var f = document.getElementById('app-frame');
-                var fallback =
+                var fallback = ensureChannelOnAppUrl(
                     lastGoodAppUrl && isOurAppUrl(lastGoodAppUrl)
                         ? lastGoodAppUrl
-                        : appOriginPrefix() + 'purchase.html';
+                        : appOriginPrefix() + 'purchase.html'
+                );
                 if (!f) {
                     mountApp(fallback);
                     return;
@@ -432,7 +452,7 @@
                     } else if (!isOurAppUrl(href)) {
                         hijacked = true;
                     } else {
-                        lastGoodAppUrl = href;
+                        lastGoodAppUrl = ensureChannelOnAppUrl(href);
                     }
                 } catch (crossOriginErr) {
                     hijacked = true;
@@ -464,7 +484,7 @@
                             f.contentWindow &&
                             f.contentWindow.location &&
                             f.contentWindow.location.href;
-                        if (isOurAppUrl(href)) lastGoodAppUrl = href;
+                        if (isOurAppUrl(href)) lastGoodAppUrl = ensureChannelOnAppUrl(href);
                     } catch (ePause) {}
                 },
                 false

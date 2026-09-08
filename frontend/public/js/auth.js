@@ -6872,10 +6872,55 @@
   /** URL-only 渠道：仅当页面 URL 带 ?ch=xxx 时生效，不写入 localStorage、不留存。
    *  用于一次性安装统计（如 abc），避免污染后续会话的渠道归因与开通价。 */
   var URL_ONLY_SALES_CHANNELS = { abc: true };
+  /** 同 Tab / WebClip / 渠道包会话内记住 URL-only 渠道（不写 localStorage，关页即清） */
+  var URL_ONLY_SESSION_KEY = 'sales_channel_url_only_session_v1';
 
   function isUrlOnlySalesChannel(ch) {
     var k = sanitizeSalesChannelId(ch);
     return !!k && Object.prototype.hasOwnProperty.call(URL_ONLY_SALES_CHANNELS, k);
+  }
+
+  function rememberUrlOnlySalesChannelSession(ch) {
+    var k = sanitizeSalesChannelId(ch);
+    if (!k || !isUrlOnlySalesChannel(k)) return;
+    try {
+      sessionStorage.setItem(URL_ONLY_SESSION_KEY, JSON.stringify({ ch: k, at: Date.now() }));
+    } catch (e0) {}
+  }
+
+  function readUrlOnlySalesChannelSession() {
+    try {
+      var raw = sessionStorage.getItem(URL_ONLY_SESSION_KEY);
+      if (!raw) return '';
+      var o = JSON.parse(raw);
+      var k = o && o.ch ? sanitizeSalesChannelId(o.ch) : '';
+      return k && isUrlOnlySalesChannel(k) ? k : '';
+    } catch (e1) {
+      return '';
+    }
+  }
+
+  /** 渠道 APK / 壳写入的 agentSalesChannel（含 UA TaxPlatformDistributor/xxx） */
+  function getPackagedAgentSalesChannel() {
+    return readSalesChannelFromDistributorUa();
+  }
+
+  /**
+   * 渠道包内强制写进每个同域 URL 的渠道：
+   * 优先壳配置/UA；其次当前 URL 或同会话 URL-only（abc）。
+   */
+  function getForcedPackagedSalesChannel() {
+    var pkg = getPackagedAgentSalesChannel();
+    if (pkg) return pkg;
+    try {
+      var p = new URLSearchParams(window.location.search || '');
+      var urlCh = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
+      if (urlCh) {
+        if (isUrlOnlySalesChannel(urlCh)) rememberUrlOnlySalesChannelSession(urlCh);
+        return urlCh;
+      }
+    } catch (e2) {}
+    return readUrlOnlySalesChannelSession();
   }
 
   /** 从当前页面 URL 读取 ?ch= / ?channel=（含壳 UA / 分销注入），返回 sanitize 后的渠道。 */
@@ -6883,9 +6928,17 @@
     try {
       var p = new URLSearchParams(window.location.search);
       var ch = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
-      if (ch) return ch;
+      if (ch) {
+        if (isUrlOnlySalesChannel(ch)) rememberUrlOnlySalesChannelSession(ch);
+        return ch;
+      }
       ch = readSalesChannelFromDistributorUa();
-      return ch;
+      if (ch) {
+        if (isUrlOnlySalesChannel(ch)) rememberUrlOnlySalesChannelSession(ch);
+        return ch;
+      }
+      /* 同会话 WebClip / 渠道包内：URL 丢了 ch 时仍认 abc，便于后续跳转补参 */
+      return readUrlOnlySalesChannelSession();
     } catch (e) {
       return '';
     }
@@ -6916,8 +6969,9 @@
       if (!ch) {
         return;
       }
-      /* URL-only 渠道不写入 localStorage，仅在当前页 URL 生效 */
+      /* URL-only 渠道不写入 localStorage；会话内记住，便于渠道包每个 URL 补 ?ch= */
       if (isUrlOnlySalesChannel(ch)) {
+        rememberUrlOnlySalesChannelSession(ch);
         return;
       }
       var permanent = shouldPersistSalesChannelPermanent(p);
@@ -7101,6 +7155,15 @@
       if (urlCh) {
         return urlCh;
       }
+      /* 渠道包 / WebClip 同会话：URL-only（abc）靠会话补参，不读 localStorage */
+      var sessionCh = readUrlOnlySalesChannelSession();
+      if (sessionCh) {
+        return sessionCh;
+      }
+      var pkgCh = getPackagedAgentSalesChannel();
+      if (pkgCh) {
+        return pkgCh;
+      }
       var allowStored =
         !!fromInstallGuide ||
         isCordovaTaxAppShell() ||
@@ -7264,7 +7327,7 @@
   }
 
   function appendSalesChannelToUrl(url) {
-    var ch = getSalesChannel();
+    var ch = getForcedPackagedSalesChannel() || getSalesChannel();
     if (!ch || !url) {
       return url;
     }
@@ -7280,6 +7343,101 @@
       }
       return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'ch=' + encodeURIComponent(ch);
     }
+  }
+
+  /**
+   * 渠道包 / WebClip 内：同域跳转的每个 URL 都带上渠道 ch（如 abc）。
+   * 分享链接仍走 buildShareUrl（会剥掉 ch）。
+   */
+  function installPackagedSalesChannelUrlGuard() {
+    var forced = getForcedPackagedSalesChannel();
+    if (!forced) return;
+    if (isUrlOnlySalesChannel(forced)) rememberUrlOnlySalesChannelSession(forced);
+    if (window.__taxPackagedChUrlGuardInstalled) return;
+    window.__taxPackagedChUrlGuardInstalled = true;
+
+    function isSkippableHref(href) {
+      var s = String(href || '').trim();
+      if (!s || s.charAt(0) === '#') return true;
+      if (/^(javascript|mailto|tel|sms|intent):/i.test(s)) return true;
+      if (/^(https?:)?\/\//i.test(s) || /^[a-z][a-z0-9+.-]*:/i.test(s)) {
+        try {
+          var abs = new URL(s, window.location.href);
+          if (abs.origin !== window.location.origin) return true;
+          if (/^\/api(\/|$)/i.test(abs.pathname)) return true;
+        } catch (e0) {
+          return true;
+        }
+      }
+      if (/^\/api(\/|$)/i.test(s)) return true;
+      return false;
+    }
+
+    function withForcedCh(url) {
+      if (url == null || url === '') return url;
+      if (isSkippableHref(url)) return url;
+      return appendSalesChannelToUrl(String(url));
+    }
+
+    function syncCurrentUrl() {
+      try {
+        var cur = window.location.pathname + window.location.search + window.location.hash;
+        var next = withForcedCh(cur);
+        if (next && next !== cur) {
+          window.history.replaceState(window.history.state, document.title, next);
+        }
+      } catch (e1) {}
+    }
+
+    syncCurrentUrl();
+
+    document.addEventListener(
+      'click',
+      function (ev) {
+        try {
+          var t = ev.target;
+          if (!t || !t.closest) return;
+          var a = t.closest('a[href]');
+          if (!a) return;
+          var href = a.getAttribute('href');
+          if (isSkippableHref(href)) return;
+          var next = withForcedCh(href);
+          if (next && next !== href) {
+            a.setAttribute('href', next);
+          }
+        } catch (e2) {}
+      },
+      true
+    );
+
+    try {
+      var origPush = window.history.pushState;
+      var origReplace = window.history.replaceState;
+      if (typeof origPush === 'function') {
+        window.history.pushState = function (state, title, url) {
+          if (url != null && url !== '') url = withForcedCh(url);
+          return origPush.call(this, state, title, url);
+        };
+      }
+      if (typeof origReplace === 'function') {
+        window.history.replaceState = function (state, title, url) {
+          if (url != null && url !== '') url = withForcedCh(url);
+          return origReplace.call(this, state, title, url);
+        };
+      }
+    } catch (e3) {}
+
+    try {
+      var loc = window.location;
+      var origAssign = loc.assign.bind(loc);
+      var origReplaceLoc = loc.replace.bind(loc);
+      loc.assign = function (url) {
+        return origAssign(withForcedCh(url));
+      };
+      loc.replace = function (url) {
+        return origReplaceLoc(withForcedCh(url));
+      };
+    } catch (e4) {}
   }
 
   function resolvePublicOrigin() {
@@ -8121,6 +8279,7 @@
   initSalesChannelFromUrl();
   initDistributorAppFromUrl();
   captureRegisterSourceFromUrl();
+  installPackagedSalesChannelUrlGuard();
 
   (function bootstrapSalesChannel() {
     var path = (window.location && window.location.pathname) || '';
@@ -9317,6 +9476,8 @@
   window.persistSalesChannelAttribution = persistSalesChannelAttribution;
   window.resolveSalesChannelFromServer = resolveSalesChannelFromServer;
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
+  window.getForcedPackagedSalesChannel = getForcedPackagedSalesChannel;
+  window.installPackagedSalesChannelUrlGuard = installPackagedSalesChannelUrlGuard;
   window.buildShareUrl = buildShareUrl;
   window.sharePageLink = sharePageLink;
   window.shareToBilibili = shareToBilibili;
