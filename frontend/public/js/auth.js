@@ -3298,18 +3298,18 @@
     } catch (eMsg) {}
   }
 
-  /** Cordova / iOS：沉浸状态栏 + 浅色图标，避免白条（对齐原版 immersed + light）
+  /** Cordova / iOS / 多数安卓：沉浸状态栏 + 浅色图标，顶色跟随页面蓝（对齐原版 immersed + light）
    * topColor：仅状态栏/theme-color；shellBg：壳层与 iframe 外底色（默认浅灰，勿用顶栏蓝铺满，否则 iOS 底栏下露蓝）
-   * 安卓 / 鸿蒙：系统栏为独立黑条，与 iOS「蓝顶 translucent + 头图顶入」区分，勿把顶栏蓝铺进 StatusBar。 */
+   * 仅 Ace 2V 等核实外置黑条机：overlays=false + 黑栏，避免蓝顶与系统栏叠成两截。 */
   function applyImmersiveBlueStatusBar(topColor, shellBg) {
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
-      /* 安卓 / 鸿蒙（含 Mate60）：黑条 + overlays=false；壳层勿再用顶栏蓝，避免像苹果蓝顶或黑蓝两截 */
-      if (isLikelyAndroidViewportClient()) {
-        if (pageBg === topColor || pageBg === '#1677ff' || pageBg === '#2b81f2' || pageBg === '#1e8fff') {
-          pageBg = '#f5f6fa';
-        }
+      if (pageBg === topColor || pageBg === '#1677ff' || pageBg === '#2b81f2' || pageBg === '#1e8fff') {
+        pageBg = '#f5f6fa';
+      }
+      /* Ace 2V：官方预览为外置黑条，勿把首页蓝铺进系统栏 */
+      if (isLikelyAndroidViewportClient() && isOnePlusAce2VClient()) {
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
         setStatusBarStyleMeta('black');
@@ -3635,6 +3635,17 @@
         syncAppShellStatusbarTop();
       }
       applyImmersiveBlueStatusBar(APP_SHOUYE_BAR_BLUE);
+      /* 从白顶栏页返回时 Cordova 可能残留白/黑栏，延迟再刷蓝顶 */
+      var reapplyBlue = function () {
+        try {
+          if (!document.body || !document.body.classList.contains('page-shouye')) return;
+          applyImmersiveBlueStatusBar(APP_SHOUYE_BAR_BLUE);
+        } catch (eRe) {}
+      };
+      setTimeout(reapplyBlue, 0);
+      setTimeout(reapplyBlue, 80);
+      setTimeout(reapplyBlue, 320);
+      setTimeout(reapplyBlue, 800);
       pinHonorMagic5ProHomeCards();
     } catch (e) {}
   }
@@ -5212,7 +5223,10 @@
           statusInsetCss +
           ';}' +
           'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:48px !important;--android-status-inset:48px !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+          /* 白顶栏页才铺页内黑条；蓝顶首页勿再叠黑，否则系统栏外再短一截 */
+          'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming)::before,' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming-result)::before,' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-xiaomi-13.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-13pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
@@ -5513,7 +5527,8 @@
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-android-xiaomi-14pro) body.page-shuiming-result .top-fixed .summary,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-android-xiaomi-14pro) body.page-shuiming-result .list,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,48px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye{--shouye-status-inset:48px !important;--app-shell-statusbar-top:48px !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye::before{background:#000 !important;background-image:none !important;height:var(--shouye-status-inset,48px) !important;z-index:9999 !important;}' +
+          /* 首页顶色跟随搜索蓝，勿再刷黑条把可视区压短 */
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye::before{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;height:var(--shouye-status-inset,48px) !important;z-index:9999 !important;}' +
           /* 华为 Pura 70：H5 横向铺满，录屏黑边改为页面灰底；个人中心主区贴边 */
           'html.app-huawei-pura70,html.app-huawei-pura70 body{width:100% !important;min-width:100% !important;max-width:none !important;margin:0 !important;background:#f5f6fa !important;overflow-x:hidden !important;}' +
           'html.app-huawei-pura70 body.page-mine .mine-stack,html.app-huawei-pura70 body.page-mine .header-bg,html.app-huawei-pura70 body.page-mine .content-wrapper{width:100vw !important;max-width:100vw !important;margin-left:calc(50% - 50vw) !important;margin-right:calc(50% - 50vw) !important;box-sizing:border-box !important;}' +

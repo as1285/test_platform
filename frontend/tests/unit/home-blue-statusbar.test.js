@@ -1,0 +1,48 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8');
+const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
+const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
+
+describe('首页蓝顶栏 / 纳税明细顶白底', () => {
+  it('蓝顶页默认沉浸铺顶色，不再把全体安卓锁成外置黑条', () => {
+    const start = auth.indexOf('function applyImmersiveBlueStatusBar');
+    const end = auth.indexOf('function applyMinePageChrome');
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    const fn = auth.slice(start, end);
+    expect(fn).toContain('isOnePlusAce2VClient()');
+    expect(fn).toContain("overlays: true");
+    expect(fn).toContain('color: topColor');
+    expect(fn).not.toContain('安卓 / 鸿蒙（含 Mate60）：黑条 + overlays=false');
+  });
+
+  it('小米 14 首页顶条跟搜索蓝，黑条仅白顶栏页', () => {
+    expect(auth).toContain('html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming)::before');
+    expect(auth).toContain(
+      'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye::before{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243))'
+    );
+    expect(auth).not.toContain(
+      'html.app-android-xiaomi-14.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}'
+    );
+  });
+
+  it('首页从白顶返回会延迟再刷蓝顶', () => {
+    expect(auth).toContain('从白顶栏页返回时 Cordova 可能残留白/黑栏');
+    expect(auth).toContain('setTimeout(reapplyBlue, 800)');
+  });
+
+  it('纳税明细 iOS 状态栏区铺实底白，列表仍可滚动', () => {
+    expect(shuimingResult).toContain('html.platform-ios body.page-shuiming-result::before');
+    expect(shuimingResult).toContain('background: #fff');
+    expect(shuimingResult).toContain('overscroll-behavior-y: none');
+    expect(shuimingResult).toContain('width: 4px');
+    expect(shuimingResult).toContain('auth.js?v=20260908-home-blue-bar');
+  });
+
+  it('首页脚本缓存戳已刷新', () => {
+    expect(shouye).toContain('auth.js?v=20260908-home-blue-bar');
+  });
+});
