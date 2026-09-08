@@ -559,15 +559,20 @@
                         StatusBar.styleLightContent();
                     }
                     /*
-                     * iPhone 11 / 14 Pro Max：从白顶 styleDefault 切回蓝顶 light 后，
-                     * 必须再钉 overlays + 颜色，否则顶栏黑、WebView 下移（软件变短）。
+                     * iPhone 11 / 14 Pro Max：overlaysWebView 会清掉图标样式。
+                     * 蓝顶再钉 light；白顶也再钉 styleDefault + 实底白，
+                     * 否则收入纳税明细等白顶页会落成黑底白字。
                      */
-                    if (wantOverlay && !styleDefault) {
+                    if (wantOverlay) {
                         StatusBar.overlaysWebView(true);
                         if (barColor) {
                             StatusBar.backgroundColorByHexString(barColor);
                         }
-                        StatusBar.styleLightContent();
+                        if (styleDefault) {
+                            StatusBar.styleDefault();
+                        } else {
+                            StatusBar.styleLightContent();
+                        }
                     }
                     if (d.paint_shell !== false) {
                         var PAGE_BG = '#f5f6fa';

@@ -3278,8 +3278,9 @@
           sb.styleLightContent();
         }
         /*
-         * iPhone 11 / 14 Pro Max：白顶页 styleDefault 后回到蓝顶，若不再钉 overlays，
-         * 系统栏会落成黑条且 WebView 下移（看起来「软件短了」）。style 后再 overlays+颜色一次。
+         * iPhone 11 / 14 Pro Max：overlaysWebView 会清掉图标样式。
+         * 蓝顶须再钉 light；白顶也须再钉 styleDefault + 实底白，
+         * 否则状态栏会落成黑底白字（收入纳税明细顶黑条）。
          */
         if (wantOverlay && typeof sb.overlaysWebView === 'function') {
           try {
@@ -3290,7 +3291,11 @@
               sb.backgroundColorByHexString(opts.color);
             } catch (eCol2) {}
           }
-          if (!darkIcons && typeof sb.styleLightContent === 'function') {
+          if (darkIcons && typeof sb.styleDefault === 'function') {
+            try {
+              sb.styleDefault();
+            } catch (eStDark) {}
+          } else if (!darkIcons && typeof sb.styleLightContent === 'function') {
             try {
               sb.styleLightContent();
             } catch (eSt2) {}
