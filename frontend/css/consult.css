@@ -1034,6 +1034,9 @@ html.app-ios-iphone15promax .consult-record-form-end-space {
 #panel-records .batch-emp-row { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--color-surface); box-shadow: var(--shadow-xs); }
 #panel-records .batch-emp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border-light); }
 #panel-records .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+#panel-records .batch-emp-head-actions { display: flex; align-items: center; gap: 2px; }
+#panel-records .batch-emp-copy-btn { background: transparent !important; color: var(--color-primary) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
+#panel-records .batch-emp-copy-btn:active { opacity: 0.7; }
 #panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
 #panel-records .batch-emp-remove-btn:active { opacity: 0.7; }
 #panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta, #panel-records .batch-emp-bonus-meta, #panel-records .batch-emp-severance-meta { margin-bottom: 6px; }
