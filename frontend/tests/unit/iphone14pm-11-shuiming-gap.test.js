@@ -75,5 +75,14 @@ describe('iPhone 14 Pro Max / 11 收入纳税明细灰缝', () => {
       /\.summary > \.summary-item:first-child \{[\s\S]{0,60}border-bottom:\s*1px solid #e5e5e5/
     );
   });
+
+  it('隐藏右侧滚动条长拉手，对齐正版', () => {
+    expect(shuimingResult).toContain('正版无长滚动条拉手');
+    expect(shuimingResult).toMatch(/html,\s*body \{[\s\S]{0,160}scrollbar-width:\s*none\s*!important/);
+    expect(shuimingResult).toContain('html::-webkit-scrollbar,');
+    expect(shuimingResult).toContain('body.page-shuiming-result .list::-webkit-scrollbar');
+    expect(shuimingResult).toMatch(/::-webkit-scrollbar \{[\s\S]{0,80}display:\s*none\s*!important/);
+    expect(shuimingResult).toContain('scrollbar-width:none !important;-ms-overflow-style:none !important');
+  });
 });
 

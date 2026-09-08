@@ -635,7 +635,8 @@
                         var flushSt = document.createElement('style');
                         flushSt.setAttribute('data-shuiming-flush-firstpaint', '1');
                         flushSt.textContent =
-                            'html,body{width:100% !important;max-width:none !important;}' +
+                            'html,body{width:100% !important;max-width:none !important;scrollbar-width:none !important;-ms-overflow-style:none !important;}' +
+                            'html::-webkit-scrollbar,body::-webkit-scrollbar,body.page-shuiming-result::-webkit-scrollbar,body.page-shuiming-result .page-root::-webkit-scrollbar,body.page-shuiming-result .list::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important;}' +
                             'body.page-shuiming-result .page-root{width:100% !important;max-width:none !important;}' +
                             'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;width:100vw !important;max-width:100vw !important;margin-left:0 !important;margin-right:0 !important;}' +
                             'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
@@ -697,6 +698,21 @@
         body {
             width: 100%;
             overflow-x: hidden;
+            /* 正版无长滚动条拉手；与其它 H5 页一致隐藏系统滚动条 */
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar,
+        body.page-shuiming-result::-webkit-scrollbar,
+        body.page-shuiming-result .page-root::-webkit-scrollbar,
+        body.page-shuiming-result .list::-webkit-scrollbar,
+        body.page-shuiming-result .top-fixed::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
         }
 
         body {
