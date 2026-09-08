@@ -4064,7 +4064,8 @@
                 apiUrl += '&types=' + encodeURIComponent(incomeTypes.join(','));
             }
 
-            var cached = readShuimingRecordsCache(cacheKey);
+            /* force：编辑返回后跳过 60s 客户端缓存，避免合计仍是旧值 */
+            var cached = opts.force ? null : readShuimingRecordsCache(cacheKey);
             if (cached) {
                 applyShuimingRecordsPayload(cached, year);
                 finishShuimingPageLoading();
@@ -4327,16 +4328,15 @@
                 }
             });
         } catch (e) {}
-        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI；并关掉残留转圈 */
+        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI；并关掉残留转圈。
+         * 首次与返回都走这里 loadData(force)，避免 60s 缓存导致手改后顶栏合计仍旧。 */
         window.addEventListener('pageshow', function (ev) {
             resetShuimingScrollTop();
             refreshActivateUiAfterReturn();
             finishShuimingPageLoading();
             syncTopFixedHeight();
             syncListDateToSummaryDecimal();
-            if (ev && ev.persisted && listStillShowingSpinner()) {
-                loadData({ quiet: true });
-            }
+            loadData({ quiet: !!(ev && ev.persisted), force: true });
         });
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'visible') {
@@ -4344,7 +4344,6 @@
                 finishShuimingPageLoading();
             }
         });
-        loadData();
         window.addEventListener('resize', flushShuimingListToViewport);
         window.addEventListener('orientationchange', function () {
             setTimeout(flushShuimingListToViewport, 80);

@@ -5367,10 +5367,14 @@ async function getTaxCalculationData(userId, recordId) {
   let totalSpecialAdditionalFromFee = 0;
   const anchorMonth = month != null && !Number.isNaN(month) ? month : null;
 
+  let totalIncomeAll = 0;
   rows.forEach(function (r) {
-    /* 年终奖 / 解除劳动合同补偿：单独计税，不并入工资累计（否则 1 月奖金会把正常工资抬到 10%） */
+    const periodIncome = rowPeriodIncome(r);
+    /* 累计收入展示：含年终奖/补偿，与明细各月相加一致 */
+    totalIncomeAll += periodIncome;
+    /* 年终奖 / 解除劳动合同补偿：单独计税，不并入工资累计预扣税基 */
     if (isSeparateTaxIncomeSubtype(r.income_subtype)) return;
-    totalIncome += rowPeriodIncome(r);
+    totalIncome += periodIncome;
     totalTaxFree += sumRowMoney(r, 'tax_free_income');
     const split = splitBasicAndSpecialAdditionalDeduction(r);
     totalDeductionFee += sumRowMoney(r, 'deduction_fee');
@@ -5404,18 +5408,20 @@ async function getTaxCalculationData(userId, recordId) {
   const totalTaxPayable = Math.max(0, (totalTaxableIncome * br.ratePct) / 100 - br.quick);
   const totalTaxRelief = 0;
   /*
-   * 本期申报税额必须用累计公式，不能直接读本条 tax_reported。
-   * 库里存的已申报税额可能过期/与累计重算不一致，页面展示的累计应纳税额−累计已缴会算不通。
-   * 公式：累计应纳税额 − 累计减免税额 − 累计已预缴税额（可为负表示应退）。
+   * 本期申报税额：优先用本条库内 tax_reported（手动编辑保存值）。
+   * 累计预扣公式仍可用于交叉校验，但不再覆盖用户手改，避免「保存后税额对不上」。
    */
-  const currentTaxReported = currentPeriodDeclaredTax(
+  const storedCurrentTax = sumRowMoney(anchor, 'tax_reported');
+  const formulaCurrentTax = currentPeriodDeclaredTax(
     totalTaxPayable,
     totalTaxPaidBefore,
     totalTaxRelief
   );
+  const currentTaxReported =
+    Number.isFinite(storedCurrentTax) ? storedCurrentTax : formulaCurrentTax;
 
   return {
-    total_income: totalIncome.toFixed(2),
+    total_income: totalIncomeAll.toFixed(2),
     total_tax_free_income: totalTaxFree.toFixed(2),
     total_deduction_fee: totalBasicDeductionFee.toFixed(2),
     total_special_deduction: totalSpecial.toFixed(2),
@@ -5429,7 +5435,8 @@ async function getTaxCalculationData(userId, recordId) {
     total_tax_payable: totalTaxPayable.toFixed(2),
     total_tax_paid: totalTaxPaidBefore.toFixed(2),
     total_tax_relief: totalTaxRelief.toFixed(2),
-    current_tax_reported: currentTaxReported.toFixed(2)
+    current_tax_reported: Number(currentTaxReported).toFixed(2),
+    current_tax_reported_formula: formulaCurrentTax.toFixed(2)
   };
 }
 

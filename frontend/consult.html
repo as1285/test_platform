@@ -338,7 +338,10 @@
                     <div class="batch-emp-row">
                         <div class="batch-emp-head">
                             <span class="batch-emp-title">工作经历</span>
-                            <button type="button" class="btn btn-sm batch-emp-remove-btn" aria-label="删除本段工作经历">删除</button>
+                            <div class="batch-emp-head-actions">
+                                <button type="button" class="btn btn-sm batch-emp-copy-btn" aria-label="复制本段工作经历">复制</button>
+                                <button type="button" class="btn btn-sm batch-emp-remove-btn" aria-label="删除本段工作经历">删除</button>
+                            </div>
                         </div>
                             <div class="form-group">
                                 <label>扣缴义务人（公司全称）</label>
@@ -818,6 +821,44 @@
                         <input type="text" name="tax_period" id="f_tax_period" value="2026-04">
                     </div>
 
+                    <div class="record-base-calc" id="recordBaseCalc">
+                        <p class="batch-deduct-calc-hint" style="margin:0 0 8px;">改缴费基数后自动重算下方三险一金（与录入时相同）；公积金基数留空则同社保基数。每年 7 月调上限时可勾选同步后续月份。</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="f_ss_base">社保缴费基数（元）</label>
+                                <input type="number" step="0.01" min="0" name="ss_base" id="f_ss_base" placeholder="改这里自动算扣除">
+                            </div>
+                            <div class="form-group">
+                                <label for="f_fund_base">公积金缴费基数（元）</label>
+                                <input type="number" step="0.01" min="0" name="fund_base" id="f_fund_base" placeholder="留空同社保基数">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="f_pension_ratio">养老比例（%）</label>
+                                <input type="number" step="0.01" min="0" max="100" name="pension_ratio" id="f_pension_ratio" value="8">
+                            </div>
+                            <div class="form-group">
+                                <label for="f_medical_ratio">医疗比例（%）</label>
+                                <input type="number" step="0.01" min="0" max="100" name="medical_ratio" id="f_medical_ratio" value="2">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="f_unemployment_ratio">失业比例（%）</label>
+                                <input type="number" step="0.01" min="0" max="100" name="unemployment_ratio" id="f_unemployment_ratio" value="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label for="f_fund_ratio">公积金比例（%）</label>
+                                <input type="number" step="0.01" min="0" max="100" name="fund_ratio" id="f_fund_ratio" value="12">
+                            </div>
+                        </div>
+                        <label class="record-base-sync-later" id="recordBaseSyncLaterWrap" hidden style="display:flex;align-items:flex-start;gap:8px;margin:4px 0 10px;font-size:13px;color:#475569;line-height:1.4;">
+                            <input type="checkbox" id="f_sync_base_later" style="margin-top:3px;">
+                            <span>保存时按此基数同步更新<strong>同公司后续月份</strong>的三险一金（保留各月已申报税额，不重算）</span>
+                        </label>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label>收入</label>
@@ -1022,9 +1063,9 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260907-no-fillbtn"></script>
+    <script defer src="/js/consult-core.js?v=20260908-manual-tax"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260907-tax-ux"></script>
-    <script defer src="/js/consult-records.js?v=20260907-no-ad-divert"></script>
+    <script defer src="/js/consult-records.js?v=20260908-manual-tax"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {

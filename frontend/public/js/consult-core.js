@@ -793,6 +793,8 @@ function applyToForm(r) {
     document.getElementById('f_unemployment_insurance').value = r.unemployment_insurance != null ? r.unemployment_insurance : '0.00';
     document.getElementById('f_housing_fund').value = r.housing_fund != null ? r.housing_fund : '0.00';
     document.getElementById('f_donation_deduction').value = r.donation_deduction != null ? r.donation_deduction : '0.00';
+    fillRecordFormBaseFromDeductions(r);
+    syncRecordBaseSyncLaterVisibility();
 }
 
 /** 清空单条表单并重置为添加模式。副作用：reset、initHeader。 */
@@ -802,7 +804,124 @@ function clearForm() {
     document.getElementById('editing_id').value = '';
     document.getElementById('recordSubmitBtn').textContent = '添加记录';
     document.getElementById('recordForm').reset();
+    var syncLater = document.getElementById('f_sync_base_later');
+    if (syncLater) syncLater.checked = false;
+    syncRecordBaseSyncLaterVisibility();
     initHeader();
+}
+
+/** 解析单条表单比例 %。 */
+function parseRecordRatioPct(id, fallback) {
+    var el = document.getElementById(id);
+    if (!el) return fallback;
+    var v = parseFloat(el.value);
+    if (Number.isNaN(v) || v < 0) return fallback;
+    return v;
+}
+
+/**
+ * 按社保/公积金基数与比例写入单条表单三险一金，并刷新专项扣除合计。
+ * 副作用：写四项扣除与 #f_special_deduction。
+ */
+function syncRecordFormDeductionsFromBase() {
+    var ssEl = document.getElementById('f_ss_base');
+    var ssTrim = ssEl ? String(ssEl.value).trim() : '';
+    if (!ssTrim) return;
+    var ssBase = parseFloat(ssTrim);
+    if (Number.isNaN(ssBase) || ssBase < 0) return;
+
+    var fundEl = document.getElementById('f_fund_base');
+    var fundTrim = fundEl ? String(fundEl.value).trim() : '';
+    var fundBase = fundTrim !== '' ? parseFloat(fundTrim) : ssBase;
+    if (Number.isNaN(fundBase) || fundBase < 0) fundBase = ssBase;
+
+    var pensionR = parseRecordRatioPct('f_pension_ratio', 8);
+    var medicalR = parseRecordRatioPct('f_medical_ratio', 2);
+    var unemploymentR = parseRecordRatioPct('f_unemployment_ratio', 0.5);
+    var fundR = parseRecordRatioPct('f_fund_ratio', 12);
+
+    var pEl = document.getElementById('f_pension_insurance');
+    var mEl = document.getElementById('f_medical_insurance');
+    var uEl = document.getElementById('f_unemployment_insurance');
+    var hEl = document.getElementById('f_housing_fund');
+    if (pEl) pEl.value = round2((ssBase * pensionR) / 100).toFixed(2);
+    if (mEl) mEl.value = round2((ssBase * medicalR) / 100).toFixed(2);
+    if (uEl) uEl.value = round2((ssBase * unemploymentR) / 100).toFixed(2);
+    if (hEl) hEl.value = round2((fundBase * fundR) / 100).toFixed(2);
+    var sdEl = document.getElementById('f_special_deduction');
+    if (sdEl) sdEl.value = sumSpecialDeductionFromForm().toFixed(2);
+}
+
+/** 从已有三险一金反推基数与比例，填入单条表单（不覆盖已有金额）。 */
+function fillRecordFormBaseFromDeductions(r) {
+    var infer =
+        typeof inferBatchSsBaseFromDeductions === 'function'
+            ? inferBatchSsBaseFromDeductions
+            : null;
+    var pension = r && r.pension_insurance != null ? r.pension_insurance : 0;
+    var medical = r && r.medical_insurance != null ? r.medical_insurance : 0;
+    var unemployment = r && r.unemployment_insurance != null ? r.unemployment_insurance : 0;
+    var fund = r && r.housing_fund != null ? r.housing_fund : 0;
+    var ded = infer
+        ? infer(pension, medical, unemployment, fund)
+        : { ss_base: '', fund_base: '', pension_ratio: 8, medical_ratio: 2, unemployment_ratio: 0.5, fund_ratio: 12 };
+    /* 公积金基数：按金额/比例反推，便于社保与公积金上限不同时改 */
+    var fundR = Number(ded.fund_ratio) || 12;
+    var fundAmt = Number(fund) || 0;
+    var fundBase =
+        fundAmt > 0 && fundR > 0 ? round2((fundAmt * 100) / fundR) : ded.fund_base || '';
+    var ssEl = document.getElementById('f_ss_base');
+    var fundEl = document.getElementById('f_fund_base');
+    var pr = document.getElementById('f_pension_ratio');
+    var mr = document.getElementById('f_medical_ratio');
+    var ur = document.getElementById('f_unemployment_ratio');
+    var fr = document.getElementById('f_fund_ratio');
+    if (ssEl) ssEl.value = ded.ss_base !== '' && ded.ss_base != null ? String(ded.ss_base) : '';
+    if (fundEl) {
+        fundEl.value =
+            fundBase !== '' && fundBase != null && Number(fundBase) > 0 ? String(fundBase) : '';
+    }
+    if (pr) pr.value = String(ded.pension_ratio != null ? ded.pension_ratio : 8);
+    if (mr) mr.value = String(ded.medical_ratio != null ? ded.medical_ratio : 2);
+    if (ur) ur.value = String(ded.unemployment_ratio != null ? ded.unemployment_ratio : 0.5);
+    if (fr) fr.value = String(ded.fund_ratio != null ? ded.fund_ratio : 12);
+}
+
+/** 仅编辑已有记录时显示「同步后续月份」。 */
+function syncRecordBaseSyncLaterVisibility() {
+    var wrap = document.getElementById('recordBaseSyncLaterWrap');
+    var editId = document.getElementById('editing_id');
+    if (!wrap) return;
+    var editing = !!(editId && String(editId.value || '').trim());
+    if (editing) {
+        wrap.hidden = false;
+        wrap.style.display = 'flex';
+    } else {
+        wrap.hidden = true;
+        wrap.style.display = 'none';
+        var cb = document.getElementById('f_sync_base_later');
+        if (cb) cb.checked = false;
+    }
+}
+
+/** 绑定单条表单基数/比例 → 三险一金自动重算（只初始化一次）。 */
+function initRecordFormBaseCalc() {
+    if (window.__recordFormBaseCalcInited) return;
+    window.__recordFormBaseCalcInited = true;
+    var ids = [
+        'f_ss_base',
+        'f_fund_base',
+        'f_pension_ratio',
+        'f_medical_ratio',
+        'f_unemployment_ratio',
+        'f_fund_ratio'
+    ];
+    ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', syncRecordFormDeductionsFromBase);
+        el.addEventListener('change', syncRecordFormDeductionsFromBase);
+    });
 }
 
 /**
@@ -2456,7 +2575,7 @@ function recordMatchesSingleTaxCohort(rec, record) {
     if (parseInt(rec.year, 10) !== year) {
         return false;
     }
-    if (String(rec.income_subtype || '').trim() === '全年一次性奖金收入') {
+    if (String(rec.income_subtype || '').trim().indexOf('全年一次性') >= 0) {
         return false;
     }
     if (isSeveranceCompensationSubtype(rec.income_subtype)) {
@@ -2475,7 +2594,8 @@ function recordMatchesSingleTaxCohort(rec, record) {
 
 /** 单条添加/更新：按同年同单位累计预扣重算当月已申报税额 */
 function computeSingleRecordTaxReported(record, allRecords) {
-    if (String(record.income_subtype || '').trim() === '全年一次性奖金收入') {
+    var sub = String(record.income_subtype || '').trim();
+    if (sub.indexOf('全年一次性') >= 0 || sub.indexOf('年终奖') >= 0) {
         return String(yearEndBonusTaxSeparate(parseFloat(record.income) || 0));
     }
     if (isSeveranceCompensationSubtype(record.income_subtype)) {
@@ -3071,6 +3191,7 @@ function boot() {
     bindConsultNajiluQrEntryTrack();
     initHeader();
     initIncomeTypeSelect();
+    initRecordFormBaseCalc();
     initBatchEmploymentRows();
     initBatchTaxDraftAutosave();
     restoreSingleTaxDraftIfAny();

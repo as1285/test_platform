@@ -67,6 +67,7 @@ describe('deductionSplit', () => {
 
   it('marks bonus and severance as separate-tax subtypes', () => {
     expect(isSeparateTaxIncomeSubtype('全年一次性奖金收入')).toBe(true);
+    expect(isSeparateTaxIncomeSubtype('全年一次性奖金')).toBe(true);
     expect(isSeparateTaxIncomeSubtype('解除劳动合同一次性补偿收入')).toBe(true);
     expect(isSeparateTaxIncomeSubtype('裁员补偿金')).toBe(true);
     expect(isSeparateTaxIncomeSubtype('正常工资薪金')).toBe(false);

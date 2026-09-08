@@ -14,7 +14,8 @@ function sumRowMoney(r, field) {
 function isSeparateTaxIncomeSubtype(sub) {
   const s = String(sub == null ? '' : sub).trim();
   if (!s) return false;
-  if (s === '全年一次性奖金收入') return true;
+  /* 兼容「全年一次性奖金收入」等文案变体 */
+  if (s.indexOf('全年一次性') >= 0 || s.indexOf('年终奖') >= 0) return true;
   if (s.indexOf('解除劳动合同') >= 0 || s.indexOf('裁员补偿') >= 0) return true;
   return false;
 }
@@ -26,7 +27,7 @@ function isSeparateTaxIncomeSubtype(sub) {
  */
 function splitBasicAndSpecialAdditionalDeduction(rec) {
   const sub = String((rec && rec.income_subtype) || '').trim();
-  if (sub === '全年一次性奖金收入') {
+  if (isSeparateTaxIncomeSubtype(sub)) {
     return { basic: sumRowMoney(rec, 'deduction_fee'), specialAdditional: 0 };
   }
   const df = sumRowMoney(rec, 'deduction_fee');
@@ -51,7 +52,7 @@ function splitBasicAndSpecialAdditionalDeduction(rec) {
 function otherDeductionForDisplay(rec, split) {
   const otherRaw = sumRowMoney(rec, 'other_deduction');
   const sub = String((rec && rec.income_subtype) || '').trim();
-  if (sub === '全年一次性奖金收入') {
+  if (isSeparateTaxIncomeSubtype(sub)) {
     return otherRaw;
   }
   const sp = split || splitBasicAndSpecialAdditionalDeduction(rec);

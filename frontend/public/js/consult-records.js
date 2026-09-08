@@ -212,7 +212,18 @@ function onSubmitRecord(e) {
     } else {
         o.id = editId;
     }
-    var usedManualTax = taxReportedWasManuallyChanged();
+    /*
+     * 税额策略（对齐「手动编辑以表单为准」）：
+     * - 编辑已有记录：始终保留表单「已申报税额」，避免只改收入时被累计预扣公式悄悄覆盖
+     * - 新建：税额>0 或已手改 → 保留表单；否则（默认 0）按公式补算
+     * 批量生成仍走公式；此处只影响咨询页单条保存。
+     */
+    var formTaxRaw = taxAmountKey(document.getElementById('f_tax_reported').value);
+    var formTaxNum = parseFloat(formTaxRaw) || 0;
+    var usedManualTax =
+        !!editId || taxReportedWasManuallyChanged() || formTaxNum > 0;
+    var syncLaterEl = document.getElementById('f_sync_base_later');
+    var syncLater = !!(editId && syncLaterEl && syncLaterEl.checked);
     window.__recordSaveInFlight = true;
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -222,7 +233,7 @@ function onSubmitRecord(e) {
     apiFetchRecords({ force: false })
         .then(function (list) {
             if (usedManualTax) {
-                o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
+                o.tax_reported = formTaxRaw;
                 document.getElementById('f_tax_reported').value = o.tax_reported;
             } else {
                 o.tax_reported = computeSingleRecordTaxReported(o, list);
@@ -232,25 +243,39 @@ function onSubmitRecord(e) {
                     action: 'save_record',
                     user_id: currentUserId(),
                     record: o
+                }).then(function (r) {
+                    return (window.authParseJson || function (resp) {
+                        return resp.json();
+                    })(r);
+                }).then(function (data) {
+                    if (data.code !== 200) {
+                        throw new Error(data.msg || '保存失败');
+                    }
+                    return { list: list, data: data };
                 });
         })
-        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
-        .then(function (data) {
-            if (data.code === 200) {
-                rememberBatchCompanyProfile({
-                    name: cn,
-                    company_tax_id: o.company_tax_id || '',
-                    tax_authority: o.tax_authority || ''
-                });
-                patchConsultRecordsCacheAfterSave(o);
-                clearSingleTaxDraft();
-                clearForm();
-                /* 用本地补丁刷新列表，默认不再强制拉 records */
-                return refreshRecordList({ force: false });
-            }
-            throw new Error(data.msg || '保存失败');
+        .then(function (ctx) {
+            if (!syncLater) return ctx;
+            return syncRecordBaseToLaterMonths(o, ctx.list).then(function (n) {
+                ctx.syncedLater = n;
+                return ctx;
+            });
         })
-        .then(function () {
+        .then(function (ctx) {
+            rememberBatchCompanyProfile({
+                name: cn,
+                company_tax_id: o.company_tax_id || '',
+                tax_authority: o.tax_authority || ''
+            });
+            patchConsultRecordsCacheAfterSave(o);
+            clearSingleTaxDraft();
+            clearForm();
+            /* 用本地补丁刷新列表，默认不再强制拉 records */
+            return refreshRecordList({ force: syncLater }).then(function () {
+                return ctx;
+            });
+        })
+        .then(function (ctx) {
             if (!editId) {
                 try {
                     var prevCnt = Number(localStorage.getItem('tax_record_count') || '0') || 0;
@@ -268,7 +293,9 @@ function onSubmitRecord(e) {
                 }
             }
             var taxMsg = usedManualTax ? '' : '（已重算税额）';
-            showMsg((editId ? '记录已更新' : '记录已添加') + taxMsg, true);
+            var laterN = ctx && ctx.syncedLater ? Number(ctx.syncedLater) || 0 : 0;
+            var laterMsg = laterN > 0 ? '，已同步后续 ' + laterN + ' 个月' : '';
+            showMsg((editId ? '记录已更新' : '记录已添加') + taxMsg + laterMsg, true);
         })
         .catch(function (err) {
             showMsg('保存失败：' + (err.message || '请检查网络或服务'), false);
@@ -280,6 +307,104 @@ function onSubmitRecord(e) {
                 submitBtn.removeAttribute('aria-busy');
             }
         });
+}
+
+/**
+ * 将当前记录的三险一金同步到同公司后续月份。
+ * 只改扣除项，保留各月原有已申报税额（避免手改税额被累计公式冲掉）。
+ * @returns {Promise<number>} 更新的后续月份数
+ */
+function syncRecordBaseToLaterMonths(baseRec, allRecords) {
+    var company = String((baseRec && baseRec.company_name) || '')
+        .trim()
+        .toLowerCase();
+    if (!company) return Promise.resolve(0);
+    var by = parseInt(baseRec.year, 10) || 0;
+    var bm = parseInt(baseRec.month, 10) || 0;
+    if (!by || !bm) return Promise.resolve(0);
+    var baseKey = by * 100 + bm;
+    var pension = round2(parseFloat(baseRec.pension_insurance) || 0);
+    var medical = round2(parseFloat(baseRec.medical_insurance) || 0);
+    var unemployment = round2(parseFloat(baseRec.unemployment_insurance) || 0);
+    var housing = round2(parseFloat(baseRec.housing_fund) || 0);
+    var special = round2(pension + medical + unemployment + housing);
+
+    var working = (Array.isArray(allRecords) ? allRecords : []).map(function (r) {
+        return Object.assign({}, r);
+    });
+    /* 先把当前月也补进 working，保证后续月累计税基正确 */
+    var foundCur = false;
+    working.forEach(function (r, idx) {
+        if (String(r.id) === String(baseRec.id)) {
+            working[idx] = Object.assign({}, r, baseRec);
+            foundCur = true;
+        }
+    });
+    if (!foundCur) working.push(Object.assign({}, baseRec));
+
+    var later = working
+        .filter(function (r) {
+            if (!r || r.id == null) return false;
+            if (String(r.id) === String(baseRec.id)) return false;
+            var cn = String(r.company_name || '')
+                .trim()
+                .toLowerCase();
+            if (cn !== company) return false;
+            var y = parseInt(r.year, 10) || 0;
+            var m = parseInt(r.month, 10) || 0;
+            return y * 100 + m > baseKey;
+        })
+        .sort(function (a, b) {
+            var ay = parseInt(a.year, 10) || 0;
+            var by2 = parseInt(b.year, 10) || 0;
+            if (ay !== by2) return ay - by2;
+            return (parseInt(a.month, 10) || 0) - (parseInt(b.month, 10) || 0);
+        });
+
+    if (!later.length) return Promise.resolve(0);
+
+    var chain = Promise.resolve();
+    var updated = 0;
+    later.forEach(function (rec) {
+        chain = chain.then(function () {
+            var next = Object.assign({}, rec, {
+                pension_insurance: pension.toFixed(2),
+                medical_insurance: medical.toFixed(2),
+                unemployment_insurance: unemployment.toFixed(2),
+                housing_fund: housing.toFixed(2),
+                special_deduction: special.toFixed(2)
+            });
+            /* 保留原税额：同步基数不应覆盖用户手改/已核定的已申报税额 */
+            next.tax_reported = taxAmountKey(rec.tax_reported);
+            return consultTaxWrite({
+                action: 'save_record',
+                user_id: currentUserId(),
+                record: next
+            })
+                .then(function (r) {
+                    return (window.authParseJson || function (resp) {
+                        return resp.json();
+                    })(r);
+                })
+                .then(function (data) {
+                    if (data.code !== 200) {
+                        throw new Error(data.msg || '同步后续月份失败');
+                    }
+                    updated += 1;
+                    patchConsultRecordsCacheAfterSave(next);
+                    var wi;
+                    for (wi = 0; wi < working.length; wi++) {
+                        if (String(working[wi].id) === String(next.id)) {
+                            working[wi] = next;
+                            break;
+                        }
+                    }
+                });
+        });
+    });
+    return chain.then(function () {
+        return updated;
+    });
 }
 
 // === 列表刷新与支付引导横幅 ===
