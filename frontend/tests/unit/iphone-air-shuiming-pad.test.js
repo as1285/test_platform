@@ -42,7 +42,7 @@ describe('iPhone Air 收入纳税明细左右贴边', () => {
 });
 
 describe('收入纳税明细切年份二次进入顶空白', () => {
-  it('关掉路径级滚动恢复；列表接到汇总底下，padding-top 置 0，避免使劲回弹拽出灰垫', () => {
+  it('关掉路径级滚动恢复；列表接到汇总底下；顶部脚本回弹用页灰填缝', () => {
     expect(shuimingResult).toContain("history.scrollRestoration = 'manual'");
     expect(shuimingResult).toContain('function resetShuimingScrollTop');
     expect(shuimingResult).toContain('function shuimingPageScrolled');
@@ -51,6 +51,8 @@ describe('收入纳税明细切年份二次进入顶空白', () => {
     expect(shuimingResult).toContain("setProperty('padding-top', '0px', 'important')");
     expect(shuimingResult).toContain("setProperty('margin-top', listTop + 'px', 'important')");
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
+    expect(shuimingResult).toContain('initSmRubberAndScrollThumb');
+    expect(shuimingResult).toContain('sm-rubber-active');
     expect(shuimingResult).toContain('resetShuimingScrollTop();');
     expect(shuimingResult).toContain('auth.js?v=20260908-ios11-14pm-blue');
   });

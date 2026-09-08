@@ -687,7 +687,10 @@
             box-sizing: border-box;
         }
 
-        /* iOS：禁止顶部下拉露出汇总下方空白条；汇总固定，列表只做正常滚动。 */
+        /*
+         * iOS：关掉原生整页橡皮筋（fixed 汇总会被撕开）。
+         * 顶部「可拉动」改由脚本只平移列表；汇总两行标题保持不动。
+         */
         html.platform-ios,
         html.platform-ios body.page-shuiming-result,
         html.platform-ios body.page-shuiming-result .page-root {
@@ -695,8 +698,8 @@
         }
 
         /*
-         * iOS 全机：状态栏区铺实底白。下拉/回弹时只差这条白底，避免透出灰垫或黑条；
-         * 不拦截触摸，列表仍可正常拉动。
+         * iOS 全机：状态栏区铺实底白，避免沉浸未铺满时顶上露黑；
+         * 不拦截触摸。列表顶部回弹见下方脚本。
          */
         html.platform-ios body.page-shuiming-result::before {
             content: "";
@@ -717,6 +720,10 @@
             /* 隐藏系统过长滚动条；改用下方按内容比例的自然短拉手 */
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
+            /* 铺满可视区，避免 WebView 未顶满时上下露系统黑边 */
+            min-height: 100%;
+            min-height: 100vh;
+            background: #f5f6fa;
         }
 
         html::-webkit-scrollbar,
@@ -750,6 +757,16 @@
             opacity: 1;
         }
 
+        /* 顶部手动回弹：只动列表；向上投射页灰，汇总下不露白条 */
+        .list.sm-rubber-drag {
+            transition: none !important;
+        }
+        .list.sm-rubber-release {
+            transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        }
+        .list.sm-rubber-active {
+            box-shadow: 0 -120px 0 0 #f5f6fa;
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
@@ -4180,13 +4197,16 @@
             window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
 
-        /* 正版短拉手：仅滑动出现；活动区从汇总底到屏底。
-           汇总两行固定；不做顶部下拉位移，避免汇总下露出白/灰空条。 */
-        (function initSmShortScrollThumb() {
+        /* 正版顶部回弹 + 短拉手：
+           - 汇总两行固定；顶到头下拉只平移列表（可拉动）
+           - 列表上移空隙用页灰 box-shadow 填住，去掉汇总下白条
+           - 仍禁用原生整页 overscroll，避免顶上黑/白系统边 */
+        (function initSmRubberAndScrollThumb() {
             var MIN_H = 72;
             var MAX_H = 110;
             var EDGE = 4;
             var HIDE_MS = 700;
+            var RUBBER_MAX = 96;
             var thumb = document.createElement('div');
             thumb.className = 'sm-scroll-thumb';
             thumb.setAttribute('aria-hidden', 'true');
@@ -4194,6 +4214,16 @@
             var hideTimer = null;
             var ticking = false;
             var wantShow = false;
+            var rubberY = 0;
+            var touchLastY = 0;
+            var touchActive = false;
+            var listEl = null;
+
+            function getListEl() {
+                if (listEl) return listEl;
+                listEl = document.getElementById('recordList') || document.querySelector('.list');
+                return listEl;
+            }
 
             function pageScrollTop() {
                 var doc = document.documentElement;
@@ -4203,8 +4233,39 @@
                 return y;
             }
 
+            function applyRubber(y, mode) {
+                rubberY = Math.max(0, Math.min(RUBBER_MAX, y || 0));
+                var el = getListEl();
+                if (!el) return;
+                var t = rubberY > 0.5 ? 'translate3d(0,' + rubberY + 'px,0)' : '';
+                el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
+                if (mode === 'drag') el.classList.add('sm-rubber-drag');
+                if (mode === 'release') el.classList.add('sm-rubber-release');
+                if (rubberY > 0.5) el.classList.add('sm-rubber-active');
+                else el.classList.remove('sm-rubber-active');
+                if (t) {
+                    el.style.transform = t;
+                    el.style.webkitTransform = t;
+                } else {
+                    el.style.removeProperty('transform');
+                    el.style.removeProperty('-webkit-transform');
+                }
+            }
+
+            function releaseRubber() {
+                if (rubberY <= 0) {
+                    applyRubber(0, '');
+                    return;
+                }
+                applyRubber(0, 'release');
+                setTimeout(function () {
+                    var el = getListEl();
+                    if (!el) return;
+                    el.classList.remove('sm-rubber-drag', 'sm-rubber-release', 'sm-rubber-active');
+                }, 320);
+            }
+
             function listTrackTop() {
-                /* 拉手最高只能到已申报税额合计（汇总区）下方 */
                 var summary = document.querySelector('.top-fixed .summary') || document.querySelector('.summary');
                 if (summary) {
                     var bottom = summary.getBoundingClientRect().bottom;
@@ -4236,15 +4297,16 @@
                 var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural, listViewH)));
                 var track = Math.max(0, listViewH - thumbH);
                 var ratio = maxScroll > 0 ? Math.max(0, Math.min(1, scrollTop / maxScroll)) : 0;
-                var y = trackTop + ratio * track;
+                var y = trackTop + ratio * track + Math.min(12, rubberY * 0.2);
                 if (y < trackTop) y = trackTop;
                 if (y > trackBottom - thumbH) y = trackBottom - thumbH;
                 thumb.style.height = thumbH + 'px';
                 thumb.style.transform = 'translate3d(0,' + Math.round(y) + 'px,0)';
-                if (wantShow) {
+                if (wantShow || rubberY > 0) {
                     thumb.classList.add('is-visible');
                     if (hideTimer) clearTimeout(hideTimer);
                     hideTimer = setTimeout(function () {
+                        if (rubberY > 0) return;
                         thumb.classList.remove('is-visible');
                         wantShow = false;
                     }, HIDE_MS);
@@ -4253,6 +4315,7 @@
 
             function onScroll() {
                 wantShow = true;
+                if (pageScrollTop() > 0 && rubberY > 0) applyRubber(0, '');
                 if (!ticking) {
                     ticking = true;
                     requestAnimationFrame(place);
@@ -4266,8 +4329,47 @@
                 }
             }
 
+            function onTouchStart(ev) {
+                if (!ev.touches || !ev.touches.length) return;
+                touchActive = true;
+                touchLastY = ev.touches[0].clientY;
+                if (pageScrollTop() > 0) applyRubber(0, '');
+            }
+
+            function onTouchMove(ev) {
+                if (!touchActive || !ev.touches || !ev.touches.length) return;
+                wantShow = true;
+                var yNow = ev.touches[0].clientY;
+                var dy = yNow - touchLastY;
+                touchLastY = yNow;
+                var scrollY = pageScrollTop();
+                if (scrollY <= 0) {
+                    if (dy > 0 || rubberY > 0) {
+                        var next = rubberY + dy * (dy > 0 ? 0.48 : 1);
+                        if (next < 0) next = 0;
+                        if (next > RUBBER_MAX) next = RUBBER_MAX;
+                        applyRubber(next, 'drag');
+                    }
+                } else if (rubberY > 0) {
+                    applyRubber(0, '');
+                }
+                if (!ticking) {
+                    ticking = true;
+                    requestAnimationFrame(place);
+                }
+            }
+
+            function onTouchEnd() {
+                touchActive = false;
+                releaseRubber();
+                onScroll();
+            }
+
             window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('touchmove', onScroll, { passive: true });
+            window.addEventListener('touchstart', onTouchStart, { passive: true });
+            window.addEventListener('touchmove', onTouchMove, { passive: true });
+            window.addEventListener('touchend', onTouchEnd, { passive: true });
+            window.addEventListener('touchcancel', onTouchEnd, { passive: true });
             window.addEventListener('resize', onResize, { passive: true });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', onResize, { passive: true });

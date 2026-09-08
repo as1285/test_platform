@@ -34,10 +34,13 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(auth).toContain('setTimeout(reapplyBlue, 800)');
   });
 
-  it('纳税明细 iOS 状态栏区铺实底白，列表仍可滚动', () => {
+  it('纳税明细 iOS 状态栏区铺实底白，顶部可回弹且无白条', () => {
     expect(shuimingResult).toContain('html.platform-ios body.page-shuiming-result::before');
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
+    expect(shuimingResult).toContain('initSmRubberAndScrollThumb');
+    expect(shuimingResult).toContain('sm-rubber-active');
+    expect(shuimingResult).toContain('box-shadow: 0 -120px 0 0 #f5f6fa');
     expect(shuimingResult).toContain('width: 4px');
     expect(shuimingResult).toContain('auth.js?v=20260908-ios11-14pm-blue');
   });
