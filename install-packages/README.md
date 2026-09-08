@@ -42,3 +42,16 @@ cp install-packages/ios/personal.mobileconfig frontend/个人.mobileconfig
 
 当前站点：`https://lkj.qiyun888.top`
 APK 壳内 APP_ORIGIN：`https://lkj.qiyun888.top/`
+
+
+## ABC 渠道包（2026-09-08 重打）
+
+已含壳内 `ensureChannelOnAppUrl`（同域跳转自动带 `?ch=abc`）。
+
+当前线上 uploads：
+- Android：`uploads/7cdf611197896e5873f02ce3d1612e1f.apk`
+- iOS：`uploads/555e106c5e607422ddebf24e4faab81d.mobileconfig`
+
+仓库存档：
+- `install-packages/android/app-agent-abc-debug.apk`
+- `install-packages/ios/app-agent-abc.mobileconfig`

@@ -110,6 +110,10 @@ fi
 
 npx cordova telemetry off
 
+# Cordova prepare 会把 platforms/*/platform_www 叠到 www 之上；
+# 若残留旧的 platform_www/index.html，会覆盖项目 www（缺 ensureChannel 等逻辑）。
+rm -f platforms/android/platform_www/index.html 2>/dev/null || true
+
 if [[ ! -d platforms/android ]]; then
   python3 -m pip install --user --quiet Pillow 2>/dev/null || true
   npm run generate-assets
