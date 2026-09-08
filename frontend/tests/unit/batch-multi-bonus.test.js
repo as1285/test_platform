@@ -9,7 +9,9 @@ function loadMultiBonusHelpers() {
   const full = readFileSync(BATCH_JS, 'utf8');
   const start = full.indexOf('function nextBatchBonusMonthSuggestion');
   const end = full.indexOf('function collectBatchBonusSnapshot');
-  if (start < 0 || end < 0) {
+  const parseStart = full.indexOf('function parseBatchEmpIdxFromRecordId');
+  const parseEnd = full.indexOf('\nfunction ', parseStart + 1);
+  if (start < 0 || end < 0 || parseStart < 0 || parseEnd < 0) {
     throw new Error('multi-bonus helpers not found');
   }
   window.round2 = function (n) {
@@ -25,6 +27,8 @@ function loadMultiBonusHelpers() {
   window.scheduleBatchTaxDraftSave = function () {};
   window.syncBatchEmpBonusMetaExpanded = function () {};
   window.setBatchEmpBonusMetaExpanded = function () {};
+  // assignBonusRecordsToPayloads 依赖 empIdx 解析；切片外函数声明需一并注入
+  indirectEval(full.slice(parseStart, parseEnd));
   indirectEval(full.slice(start, end));
 }
 
