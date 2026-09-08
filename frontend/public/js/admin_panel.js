@@ -916,9 +916,7 @@
                 'najilu-qr': 'sbdy-demo',
                 'user-login-log': 'login-log',
                 'admin-accounts': 'login-log',
-                'downline-admins': 'login-log',
-                'server-monitor': 'login-log',
-                'blocked-ips': 'login-log',
+                /* blocked-ips / server-monitor / downline-admins 不走 hub 继承（见下方 early return） */
                 'analytics-activity': 'insights-product',
                 'analytics-devices': 'insights-product',
                 'tax-fill-survey': 'insights-product',
@@ -1411,9 +1409,13 @@
             }
             var visible = listVisibleHubTabs(hubKey);
             if (!visible.length) {
-                bar.innerHTML = '';
+                if (bar) {
+                    bar.innerHTML = '';
+                    bar.hidden = true;
+                }
                 return;
             }
+            if (bar) bar.hidden = false;
             var active = activeTab;
             var activeOk = false;
             for (var ai = 0; ai < visible.length; ai++) {
@@ -1441,6 +1443,7 @@
                     );
                 })
                 .join('');
+            /* 仅 1 个可见 TAB 时仍显示，避免误以为页面空白无入口 */
         }
 
         function applyAdminRouteChrome(pageKey, routeState) {

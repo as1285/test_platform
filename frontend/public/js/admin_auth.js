@@ -7,7 +7,7 @@
   var LOGIN_PAGE = '/admin_login.html';
   var PANEL_PAGE = '/admin_panel.html';
   /* 登录跳转带 ?v=，迫使部分 WebView/代理忽略 no-store 时仍拉取新壳页 */
-  var PANEL_URL = '/admin_panel.html?v=20260907-rm-ylbx';
+  var PANEL_URL = '/admin_panel.html?v=20260908-hub-tab-v3';
 
   function currentPath() {
     return String(window.location.pathname || '');

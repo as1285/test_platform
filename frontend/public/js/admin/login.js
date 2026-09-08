@@ -32,7 +32,7 @@
         localStorage.setItem('admin_menu_tree', JSON.stringify(data.menu_tree));
       } catch (e0) {}
     }
-    window.location.href = '/admin_panel.html?v=20260907-rm-ylbx';
+    window.location.href = '/admin_panel.html?v=20260908-hub-tab-v3';
   }
 
   var btn = document.getElementById('btn');
