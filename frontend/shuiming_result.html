@@ -687,12 +687,12 @@
             box-sizing: border-box;
         }
 
-        /* iOS：用 contain 保留顶部回弹手感，同时避免滚动链把外层拖走；
-           列表已接到汇总底，不再用 none（none 在部分机型滑到顶后会卡死不动） */
+        /* iOS：禁止原生整页橡皮筋（汇总是 fixed，原生回弹只会把列表拽走、撕开汇总下灰缝）。
+           顶部回弹改由脚本让「汇总+列表」一起下移，缝出现在顶栏下方，对齐正版。 */
         html.platform-ios,
         html.platform-ios body.page-shuiming-result,
         html.platform-ios body.page-shuiming-result .page-root {
-            overscroll-behavior-y: contain;
+            overscroll-behavior-y: none;
         }
 
         html,
@@ -721,10 +721,10 @@
             position: fixed;
             right: 1.5px;
             top: 0;
-            width: 3.5px;
+            width: 4px;
             height: 88px;
             border-radius: 2px;
-            background: rgba(0, 0, 0, 0.34);
+            background: rgba(0, 0, 0, 0.36);
             opacity: 0;
             pointer-events: none;
             z-index: 300;
@@ -733,6 +733,16 @@
         }
         .sm-scroll-thumb.is-visible {
             opacity: 1;
+        }
+
+        /* 顶部手动回弹：汇总与列表同位移，松手回弹 */
+        .summary.sm-rubber-drag,
+        .list.sm-rubber-drag {
+            transition: none !important;
+        }
+        .summary.sm-rubber-release,
+        .list.sm-rubber-release {
+            transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         }
 
         body {
@@ -4164,12 +4174,16 @@
             window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
 
-        /* 正版滚动拉手：仅滑动时出现、停下消失；活动区间从「已申报税额合计」下方到屏底，不可顶到最上 */
-        (function initSmShortScrollThumb() {
+        /* 正版顶部回弹 + 短拉手：
+           - 汇总是 fixed，不能开原生整页橡皮筋（会撕开汇总下灰缝）
+           - 顶到头下拉时，脚本让「汇总+列表」一起下移，白缝出现在顶栏下（对齐正版视频）
+           - 拉手仅滑动出现；活动区从汇总底到屏底 */
+        (function initSmRubberAndScrollThumb() {
             var MIN_H = 72;
             var MAX_H = 110;
             var EDGE = 4;
             var HIDE_MS = 700;
+            var RUBBER_MAX = 96;
             var thumb = document.createElement('div');
             thumb.className = 'sm-scroll-thumb';
             thumb.setAttribute('aria-hidden', 'true');
@@ -4177,12 +4191,65 @@
             var hideTimer = null;
             var ticking = false;
             var wantShow = false;
-            var touchOverpull = 0;
+            var rubberY = 0;
             var touchLastY = 0;
             var touchActive = false;
+            var rubberEls = null;
+
+            function getRubberEls() {
+                if (rubberEls) return rubberEls;
+                rubberEls = {
+                    summary: document.querySelector('.top-fixed .summary') || document.querySelector('.summary'),
+                    list: document.getElementById('recordList') || document.querySelector('.list')
+                };
+                return rubberEls;
+            }
+
+            function pageScrollTop() {
+                var doc = document.documentElement;
+                var y = window.pageYOffset || doc.scrollTop || 0;
+                var rootEl = document.querySelector('.page-root');
+                if (rootEl && rootEl.scrollTop > y) y = rootEl.scrollTop;
+                return y;
+            }
+
+            function applyRubber(y, mode) {
+                rubberY = Math.max(0, Math.min(RUBBER_MAX, y || 0));
+                var els = getRubberEls();
+                /* 回弹归零时清空 inline，避免盖掉汇总原有的 translateZ(0) */
+                var t = rubberY > 0.5 ? 'translate3d(0,' + rubberY + 'px,0)' : '';
+                [els.summary, els.list].forEach(function (el) {
+                    if (!el) return;
+                    el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
+                    if (mode === 'drag') el.classList.add('sm-rubber-drag');
+                    if (mode === 'release') el.classList.add('sm-rubber-release');
+                    if (t) {
+                        el.style.transform = t;
+                        el.style.webkitTransform = t;
+                    } else {
+                        el.style.removeProperty('transform');
+                        el.style.removeProperty('-webkit-transform');
+                    }
+                });
+            }
+
+            function releaseRubber() {
+                if (rubberY <= 0) {
+                    applyRubber(0, '');
+                    return;
+                }
+                applyRubber(0, 'release');
+                setTimeout(function () {
+                    var els = getRubberEls();
+                    [els.summary, els.list].forEach(function (el) {
+                        if (!el) return;
+                        el.classList.remove('sm-rubber-drag', 'sm-rubber-release');
+                    });
+                }, 320);
+            }
 
             function listTrackTop() {
-                /* 拉手最高只能到已申报税额合计（汇总区）下方 */
+                /* 拉手最高只能到已申报税额合计（汇总区）下方；含回弹位移 */
                 var summary = document.querySelector('.top-fixed .summary') || document.querySelector('.summary');
                 if (summary) {
                     var bottom = summary.getBoundingClientRect().bottom;
@@ -4196,27 +4263,10 @@
                 return EDGE;
             }
 
-            function readScrollTop() {
-                var doc = document.documentElement;
-                var y = window.pageYOffset || doc.scrollTop || 0;
-                var rootEl = document.querySelector('.page-root');
-                if (rootEl && rootEl.scrollTop > y) y = rootEl.scrollTop;
-                /* 顶部橡皮筋：scrollTop 仍为 0，用 visualViewport.offsetTop 表现回弹位移 */
-                try {
-                    if (window.visualViewport && y <= 0) {
-                        var vt = Number(window.visualViewport.offsetTop || 0);
-                        if (vt) y = -Math.abs(vt);
-                    }
-                } catch (eVt) {}
-                /* Android 等：顶到头后 scrollTop 不再变，用手指下拉位移模拟回弹，避免拉手顶死 */
-                if (y <= 0 && touchOverpull > 0) y = -touchOverpull;
-                return y;
-            }
-
             function place() {
                 ticking = false;
                 var doc = document.documentElement;
-                var scrollTop = readScrollTop();
+                var scrollTop = pageScrollTop();
                 var viewH = window.innerHeight || doc.clientHeight || 1;
                 var scrollH = Math.max(doc.scrollHeight || 0, (document.body && document.body.scrollHeight) || 0);
                 var maxScroll = Math.max(0, scrollH - viewH);
@@ -4231,19 +4281,17 @@
                 var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural, listViewH)));
                 var track = Math.max(0, listViewH - thumbH);
                 var ratio = maxScroll > 0 ? Math.max(0, Math.min(1, scrollTop / maxScroll)) : 0;
-                /* 顶部回弹：scrollTop 为负时拉手在轨道顶再轻微上移一点，避免「顶死不动」 */
-                var overpull = scrollTop < 0 ? Math.min(18, -scrollTop * 0.35) : 0;
-                var y = trackTop + ratio * track - overpull;
-                /* 硬限制：回弹最多探入汇总底上方 12px，仍不得顶到屏幕最上；底边不超出屏底 */
-                var minY = Math.max(EDGE, trackTop - 12);
-                if (y < minY) y = minY;
+                /* 回弹时汇总下移，轨道顶跟着走；拉手再略上移一点保持跟手 */
+                var y = trackTop + ratio * track - Math.min(14, rubberY * 0.25);
+                if (y < trackTop) y = trackTop;
                 if (y > trackBottom - thumbH) y = trackBottom - thumbH;
                 thumb.style.height = thumbH + 'px';
                 thumb.style.transform = 'translate3d(0,' + Math.round(y) + 'px,0)';
-                if (wantShow) {
+                if (wantShow || rubberY > 0) {
                     thumb.classList.add('is-visible');
                     if (hideTimer) clearTimeout(hideTimer);
                     hideTimer = setTimeout(function () {
+                        if (rubberY > 0) return;
                         thumb.classList.remove('is-visible');
                         wantShow = false;
                     }, HIDE_MS);
@@ -4252,6 +4300,7 @@
 
             function onScroll() {
                 wantShow = true;
+                if (pageScrollTop() > 0 && rubberY > 0) applyRubber(0, '');
                 if (!ticking) {
                     ticking = true;
                     requestAnimationFrame(place);
@@ -4259,7 +4308,6 @@
             }
 
             function onResize() {
-                /* 尺寸变化只重算位置，不主动把拉手亮出来 */
                 if (!ticking) {
                     ticking = true;
                     requestAnimationFrame(place);
@@ -4270,23 +4318,26 @@
                 if (!ev.touches || !ev.touches.length) return;
                 touchActive = true;
                 touchLastY = ev.touches[0].clientY;
-                touchOverpull = 0;
+                if (pageScrollTop() > 0) applyRubber(0, '');
             }
 
             function onTouchMove(ev) {
+                if (!touchActive || !ev.touches || !ev.touches.length) return;
                 wantShow = true;
-                if (touchActive && ev.touches && ev.touches.length) {
-                    var yNow = ev.touches[0].clientY;
-                    var dy = yNow - touchLastY;
-                    touchLastY = yNow;
-                    var doc = document.documentElement;
-                    var scrollY = window.pageYOffset || doc.scrollTop || 0;
-                    if (scrollY <= 0 && dy > 0) {
-                        touchOverpull = Math.min(48, touchOverpull + dy * 0.55);
-                    } else if (dy < 0) {
-                        touchOverpull = Math.max(0, touchOverpull + dy);
+                var yNow = ev.touches[0].clientY;
+                var dy = yNow - touchLastY;
+                touchLastY = yNow;
+                var scrollY = pageScrollTop();
+                if (scrollY <= 0) {
+                    if (dy > 0 || rubberY > 0) {
+                        /* 阻尼下拉：正版顶栏下留白，汇总+列表一起走 */
+                        var next = rubberY + dy * (dy > 0 ? 0.48 : 1);
+                        if (next < 0) next = 0;
+                        if (next > RUBBER_MAX) next = RUBBER_MAX;
+                        applyRubber(next, 'drag');
                     }
-                    if (scrollY > 0) touchOverpull = 0;
+                } else if (rubberY > 0) {
+                    applyRubber(0, '');
                 }
                 if (!ticking) {
                     ticking = true;
@@ -4296,7 +4347,7 @@
 
             function onTouchEnd() {
                 touchActive = false;
-                touchOverpull = 0;
+                releaseRubber();
                 onScroll();
             }
 
@@ -4308,7 +4359,6 @@
             window.addEventListener('resize', onResize, { passive: true });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', onResize, { passive: true });
-                window.visualViewport.addEventListener('scroll', onScroll, { passive: true });
             }
         })();
 

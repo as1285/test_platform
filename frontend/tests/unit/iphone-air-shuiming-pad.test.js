@@ -42,7 +42,7 @@ describe('iPhone Air 收入纳税明细左右贴边', () => {
 });
 
 describe('收入纳税明细切年份二次进入顶空白', () => {
-  it('关掉路径级滚动恢复；列表接到汇总底下，padding-top 置 0；顶部用 contain 保留回弹避免卡死', () => {
+  it('关掉路径级滚动恢复；列表接到汇总底下；禁用原生整页橡皮筋，改脚本联动回弹', () => {
     expect(shuimingResult).toContain("history.scrollRestoration = 'manual'");
     expect(shuimingResult).toContain('function resetShuimingScrollTop');
     expect(shuimingResult).toContain('function shuimingPageScrolled');
@@ -50,20 +50,22 @@ describe('收入纳税明细切年份二次进入顶空白', () => {
     expect(shuimingResult).toContain("setProperty('--list-summary-pad', '0px', 'important')");
     expect(shuimingResult).toContain("setProperty('padding-top', '0px', 'important')");
     expect(shuimingResult).toContain("setProperty('margin-top', listTop + 'px', 'important')");
-    expect(shuimingResult).toContain('overscroll-behavior-y: contain');
-    expect(shuimingResult).not.toContain('overscroll-behavior-y: none');
+    expect(shuimingResult).toContain('overscroll-behavior-y: none');
+    expect(shuimingResult).not.toContain('overscroll-behavior-y: contain');
     expect(shuimingResult).toContain('resetShuimingScrollTop();');
     expect(shuimingResult).toContain('auth.js?v=20260907-ios-white-bar');
   });
 });
 
-describe('收入纳税明细滚动拉手', () => {
-  it('拉手略加粗，顶部回弹时仍可跟手，不顶死在汇总底', () => {
-    expect(shuimingResult).toMatch(/\.sm-scroll-thumb\s*\{[^}]*width:\s*3\.5px/);
-    expect(shuimingResult).toContain('function readScrollTop');
-    expect(shuimingResult).toContain('overpull');
-    expect(shuimingResult).toContain('touchOverpull');
-    expect(shuimingResult).toContain("visualViewport.addEventListener('scroll'");
-    expect(shuimingResult).toContain('trackTop - 12');
+describe('收入纳税明细滚动拉手与顶部回弹', () => {
+  it('拉手加粗到 4px；顶到头时汇总+列表一起下移，不撕开灰缝', () => {
+    expect(shuimingResult).toMatch(/\.sm-scroll-thumb\s*\{[^}]*width:\s*4px/);
+    expect(shuimingResult).toContain('function initSmRubberAndScrollThumb');
+    expect(shuimingResult).toContain('function applyRubber');
+    expect(shuimingResult).toContain('function getRubberEls');
+    expect(shuimingResult).toContain('sm-rubber-drag');
+    expect(shuimingResult).toContain('sm-rubber-release');
+    expect(shuimingResult).toContain('RUBBER_MAX');
+    expect(shuimingResult).toContain("getElementById('recordList')");
   });
 });
