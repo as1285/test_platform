@@ -687,11 +687,12 @@
             box-sizing: border-box;
         }
 
-        /* iOS：禁止整页使劲橡皮筋把汇总与列表之间的空档拽大（轻拖仍由系统处理） */
+        /* iOS：用 contain 保留顶部回弹手感，同时避免滚动链把外层拖走；
+           列表已接到汇总底，不再用 none（none 在部分机型滑到顶后会卡死不动） */
         html.platform-ios,
         html.platform-ios body.page-shuiming-result,
         html.platform-ios body.page-shuiming-result .page-root {
-            overscroll-behavior-y: none;
+            overscroll-behavior-y: contain;
         }
 
         html,
@@ -718,12 +719,12 @@
         /* 正版风格滚动拉手：细灰条；仅滑动出现；高度约 72–110px；活动区在汇总下方 */
         .sm-scroll-thumb {
             position: fixed;
-            right: 2px;
+            right: 1.5px;
             top: 0;
-            width: 2.5px;
+            width: 3.5px;
             height: 88px;
             border-radius: 2px;
-            background: rgba(0, 0, 0, 0.32);
+            background: rgba(0, 0, 0, 0.34);
             opacity: 0;
             pointer-events: none;
             z-index: 300;
@@ -4176,6 +4177,9 @@
             var hideTimer = null;
             var ticking = false;
             var wantShow = false;
+            var touchOverpull = 0;
+            var touchLastY = 0;
+            var touchActive = false;
 
             function listTrackTop() {
                 /* 拉手最高只能到已申报税额合计（汇总区）下方 */
@@ -4192,10 +4196,27 @@
                 return EDGE;
             }
 
+            function readScrollTop() {
+                var doc = document.documentElement;
+                var y = window.pageYOffset || doc.scrollTop || 0;
+                var rootEl = document.querySelector('.page-root');
+                if (rootEl && rootEl.scrollTop > y) y = rootEl.scrollTop;
+                /* 顶部橡皮筋：scrollTop 仍为 0，用 visualViewport.offsetTop 表现回弹位移 */
+                try {
+                    if (window.visualViewport && y <= 0) {
+                        var vt = Number(window.visualViewport.offsetTop || 0);
+                        if (vt) y = -Math.abs(vt);
+                    }
+                } catch (eVt) {}
+                /* Android 等：顶到头后 scrollTop 不再变，用手指下拉位移模拟回弹，避免拉手顶死 */
+                if (y <= 0 && touchOverpull > 0) y = -touchOverpull;
+                return y;
+            }
+
             function place() {
                 ticking = false;
                 var doc = document.documentElement;
-                var scrollTop = window.pageYOffset || doc.scrollTop || 0;
+                var scrollTop = readScrollTop();
                 var viewH = window.innerHeight || doc.clientHeight || 1;
                 var scrollH = Math.max(doc.scrollHeight || 0, (document.body && document.body.scrollHeight) || 0);
                 var maxScroll = Math.max(0, scrollH - viewH);
@@ -4209,9 +4230,13 @@
                 var natural = listViewH * (viewH / Math.max(scrollH, 1));
                 var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural, listViewH)));
                 var track = Math.max(0, listViewH - thumbH);
-                var y = trackTop + (scrollTop / maxScroll) * track;
-                /* 硬限制：不得越过汇总底、不得超出屏底 */
-                if (y < trackTop) y = trackTop;
+                var ratio = maxScroll > 0 ? Math.max(0, Math.min(1, scrollTop / maxScroll)) : 0;
+                /* 顶部回弹：scrollTop 为负时拉手在轨道顶再轻微上移一点，避免「顶死不动」 */
+                var overpull = scrollTop < 0 ? Math.min(18, -scrollTop * 0.35) : 0;
+                var y = trackTop + ratio * track - overpull;
+                /* 硬限制：回弹最多探入汇总底上方 12px，仍不得顶到屏幕最上；底边不超出屏底 */
+                var minY = Math.max(EDGE, trackTop - 12);
+                if (y < minY) y = minY;
                 if (y > trackBottom - thumbH) y = trackBottom - thumbH;
                 thumb.style.height = thumbH + 'px';
                 thumb.style.transform = 'translate3d(0,' + Math.round(y) + 'px,0)';
@@ -4241,11 +4266,49 @@
                 }
             }
 
+            function onTouchStart(ev) {
+                if (!ev.touches || !ev.touches.length) return;
+                touchActive = true;
+                touchLastY = ev.touches[0].clientY;
+                touchOverpull = 0;
+            }
+
+            function onTouchMove(ev) {
+                wantShow = true;
+                if (touchActive && ev.touches && ev.touches.length) {
+                    var yNow = ev.touches[0].clientY;
+                    var dy = yNow - touchLastY;
+                    touchLastY = yNow;
+                    var doc = document.documentElement;
+                    var scrollY = window.pageYOffset || doc.scrollTop || 0;
+                    if (scrollY <= 0 && dy > 0) {
+                        touchOverpull = Math.min(48, touchOverpull + dy * 0.55);
+                    } else if (dy < 0) {
+                        touchOverpull = Math.max(0, touchOverpull + dy);
+                    }
+                    if (scrollY > 0) touchOverpull = 0;
+                }
+                if (!ticking) {
+                    ticking = true;
+                    requestAnimationFrame(place);
+                }
+            }
+
+            function onTouchEnd() {
+                touchActive = false;
+                touchOverpull = 0;
+                onScroll();
+            }
+
             window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('touchmove', onScroll, { passive: true });
+            window.addEventListener('touchstart', onTouchStart, { passive: true });
+            window.addEventListener('touchmove', onTouchMove, { passive: true });
+            window.addEventListener('touchend', onTouchEnd, { passive: true });
+            window.addEventListener('touchcancel', onTouchEnd, { passive: true });
             window.addEventListener('resize', onResize, { passive: true });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', onResize, { passive: true });
+                window.visualViewport.addEventListener('scroll', onScroll, { passive: true });
             }
         })();
 
