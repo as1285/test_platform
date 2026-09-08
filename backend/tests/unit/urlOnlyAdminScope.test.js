@@ -53,8 +53,10 @@ describe('URL-only channel admin visibility', () => {
       /function appendAdminRegisteredUsersScope[\s\S]*isAbcChannelViewerAdmin[\s\S]*appendExcludeUrlOnlySalesChannelUsers/
     );
     expect(monolith).toContain("adminUsernameKey(admin) === 'admin'");
-    expect(monolith).toContain('仍写入 sales_promo_channel 做归因与开通价');
+    expect(monolith).toContain('仅显式 ch 或安装下载埋点写入 sales_promo_channel');
+    expect(monolith).toContain('sanitizeStickySalesChannelId');
     expect(monolith).toContain('resolveUrlOnlyChannelFromInstallDownload');
     expect(monolith).toContain('maybeBindUrlOnlySalesChannel');
+    expect(monolith).toContain('禁止靠 client_id / 指纹 sticky 归因补绑');
   });
 });

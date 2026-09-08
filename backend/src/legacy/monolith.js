@@ -69,6 +69,16 @@ function isUrlOnlySalesChannel(ch) {
   return k === 'abc';
 }
 
+/** sticky 归因排除 URL-only（abc）：无显式 URL / 安装下载时不得回放 */
+function sanitizeStickySalesChannelId(ch) {
+  if (typeof agentChannelsLib.sanitizeStickySalesChannelId === 'function') {
+    return agentChannelsLib.sanitizeStickySalesChannelId(ch);
+  }
+  var k = sanitizeSalesChannelId(ch);
+  if (!k || isUrlOnlySalesChannel(k)) return '';
+  return k;
+}
+
 /**
  * 新注册 abc（及其它 URL-only）仅 admin 可见的起始时间（UTC）。
  * 历史 abc 账号不按此规则收紧；可用 ABC_CHANNEL_ADMIN_ONLY_SINCE 覆盖。
@@ -1496,7 +1506,8 @@ async function attachUserFromRequestChannel(username, req, body) {
       ch = ch || '';
     }
   }
-  /* 设备指纹/client_id 归因（不含裸 IP）——代理清缓存后同机仍可恢复 */
+  /* 设备指纹/client_id 归因（不含裸 IP）——代理清缓存后同机仍可恢复。
+   * URL-only（abc）已在 resolve 内过滤，须靠显式 ch 或安装下载补绑。 */
   if (!ch) {
     try {
       ch = await resolveSalesChannelForRequestStrict(req);
@@ -2088,11 +2099,26 @@ async function resolveSalesChannelForRequest(req, opts) {
   var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
   var ip = sanitizeAuditText(getClientIp(req), 128);
   var modelKey = deviceModelKeyFromRequest(req);
+  var urlOnlyIds =
+    typeof agentChannelsLib.listUrlOnlySalesChannelIds === 'function'
+      ? agentChannelsLib.listUrlOnlySalesChannelIds()
+      : ['abc'];
+  var urlOnlyPh = urlOnlyIds.length
+    ? urlOnlyIds
+        .map(function () {
+          return '?';
+        })
+        .join(',')
+    : null;
+  /* sticky SQL 直接排除 URL-only，避免最近一条是 abc 时挡住更早的普通渠道 */
+  var notUrlOnlySql = urlOnlyPh
+    ? ' AND LOWER(TRIM(IFNULL(sales_ch, \'\'))) NOT IN (' + urlOnlyPh + ')'
+    : '';
 
   async function pickFirst(sql, params) {
     const [rows] = await pool.execute(sql, params);
     if (rows.length && rows[0].sales_ch) {
-      return sanitizeSalesChannelId(rows[0].sales_ch);
+      return sanitizeStickySalesChannelId(rows[0].sales_ch);
     }
     return '';
   }
@@ -2102,9 +2128,11 @@ async function resolveSalesChannelForRequest(req, opts) {
     tasks.push(
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
-         WHERE client_id = ? AND expires_at > UTC_TIMESTAMP(3)
+         WHERE client_id = ? AND expires_at > UTC_TIMESTAMP(3)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [cid]
+        [cid].concat(urlOnlyIds)
       )
     );
   }
@@ -2112,9 +2140,11 @@ async function resolveSalesChannelForRequest(req, opts) {
     tasks.push(
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
-         WHERE device_fp = ? AND expires_at > UTC_TIMESTAMP(3)
+         WHERE device_fp = ? AND expires_at > UTC_TIMESTAMP(3)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [fp]
+        [fp].concat(urlOnlyIds)
       )
     );
   }
@@ -2123,9 +2153,11 @@ async function resolveSalesChannelForRequest(req, opts) {
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE ip = ? AND device_model = ? AND expires_at > UTC_TIMESTAMP(3)
-           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)
+           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [ip, modelKey]
+        [ip, modelKey].concat(urlOnlyIds)
       )
     );
   }
@@ -2134,9 +2166,11 @@ async function resolveSalesChannelForRequest(req, opts) {
       pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE ip = ? AND expires_at > UTC_TIMESTAMP(3)
-           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 48 HOUR)
+           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 48 HOUR)` +
+          notUrlOnlySql +
+          `
          ORDER BY created_at DESC LIMIT 1`,
-        [ip]
+        [ip].concat(urlOnlyIds)
       )
     );
   }
@@ -2254,6 +2288,7 @@ async function resolveUrlOnlyChannelFromInstallDownload(req, opts) {
 
 /**
  * 账号未绑渠道时，把 abc 安装下载 / 本次显式 abc 写进 sales_promo_channel。
+ * 禁止靠 client_id / 指纹 sticky 归因补绑（与 URL-only 语义一致）。
  */
 async function maybeBindUrlOnlySalesChannel(username, req) {
   var u = String(username || '').trim();
@@ -2270,14 +2305,6 @@ async function maybeBindUrlOnlySalesChannel(username, req) {
     ch = readSalesChannelFromRequest(req);
   } catch (e1) {
     ch = '';
-  }
-  if (!isUrlOnlySalesChannel(ch)) {
-    ch = '';
-    try {
-      ch = await resolveSalesChannelForRequestStrict(req);
-    } catch (e2) {
-      ch = '';
-    }
   }
   if (!isUrlOnlySalesChannel(ch)) {
     ch = '';
@@ -8760,8 +8787,8 @@ async function registerUser(
       ? String(registerSourceChannel).trim()
       : null;
   salesPromoChannel = sanitizeSalesChannelId(salesPromoChannel);
-  /* abc 等 URL-only：仍写入 sales_promo_channel 做归因与开通价；
-   * 不挂 owner_agent_admin。开通价认账号留存。 */
+  /* abc 等 URL-only：仅显式 ch 或安装下载埋点写入 sales_promo_channel；
+   * 不挂 owner_agent_admin。绑定后开通价认账号留存。 */
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
@@ -13840,6 +13867,7 @@ async function handleAuthPost(req, res) {
         var regSalesCh = readSalesChannelFromRequest(req, body);
         if (!regSalesCh) {
           try {
+            /* sticky 不含 URL-only；普通代理渠道仍可按 client_id/指纹恢复 */
             regSalesCh = await resolveSalesChannelForRequestStrict(req);
           } catch (eRegCh) {
             regSalesCh = '';

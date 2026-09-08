@@ -6870,7 +6870,7 @@
   // === 渠道归因（sales_channel、share、landing AB、purchase ABC）===
   // sticky key：sales_channel_v1、share_attr_v1、landing_bc_assignment_v1、purchase_abc_assignment_v1 等
   /** URL-only 渠道：仅当页面 URL 带 ?ch=xxx 时生效，不写入 localStorage、不留存。
-   *  用于一次性安装统计（如 abc），避免污染后续会话的渠道归因。 */
+   *  用于一次性安装统计（如 abc），避免污染后续会话的渠道归因与开通价。 */
   var URL_ONLY_SALES_CHANNELS = { abc: true };
 
   function isUrlOnlySalesChannel(ch) {
@@ -7234,7 +7234,8 @@
           applyChannelForcedPricingAbc(body.data);
           if (body.data.sales_ch) {
             var ch = sanitizeSalesChannelId(body.data.sales_ch);
-            if (ch) {
+            /* URL-only 不得由服务端 sticky 回写 localStorage */
+            if (ch && !isUrlOnlySalesChannel(ch)) {
               if (!getToken()) {
                 try {
                   localStorage.setItem(
@@ -7249,6 +7250,9 @@
                 } catch (e) {}
               }
               return ch;
+            }
+            if (ch && isUrlOnlySalesChannel(ch)) {
+              return '';
             }
           }
         }
@@ -8081,15 +8085,19 @@
         var data = body && body.code === 200 && body.data ? body.data : null;
         if (data && data.sales_channel && !getToken() && !getSalesChannel()) {
           try {
-            localStorage.setItem(
-              SALES_CHANNEL_KEY,
-              JSON.stringify({
-                ch: sanitizeSalesChannelId(data.sales_channel),
-                at: Date.now(),
-                source: 'install_packages',
-                permanent: true
-              })
-            );
+            var pkgCh = sanitizeSalesChannelId(data.sales_channel);
+            /* URL-only 渠道包响应不得写进 localStorage 污染后续注册/定价 */
+            if (pkgCh && !isUrlOnlySalesChannel(pkgCh)) {
+              localStorage.setItem(
+                SALES_CHANNEL_KEY,
+                JSON.stringify({
+                  ch: pkgCh,
+                  at: Date.now(),
+                  source: 'install_packages',
+                  permanent: true
+                })
+              );
+            }
           } catch (e) {}
         }
         if (data) {

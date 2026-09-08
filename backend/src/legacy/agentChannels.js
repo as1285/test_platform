@@ -6,9 +6,11 @@
 const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
 
 /**
- * URL-only 渠道：不写入浏览器 localStorage、不挂 owner_agent_admin。
- * 装过渠道包 / 描述文件后会把 abc 写进账号 sales_promo_channel，开通价认账号留存。
- * 未绑定账号时，专属价仍只认本次请求显式 ch。与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
+ * URL-only 渠道：不写入浏览器 localStorage、不挂 owner_agent_admin、
+ * 不参与 client_id / 设备指纹 / IP 的 sticky 归因回放。
+ * 仅当本次请求显式带 ?ch=abc，或安装下载埋点证明装过渠道包 / 描述文件时，
+ * 才写入账号 sales_promo_channel；绑定后开通价认账号留存。
+ * 与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
  */
 var URL_ONLY_SALES_CHANNELS = { abc: true };
 var INSTALL_DOWNLOAD_LOOKBACK_MS = 2 * 60 * 60 * 1000;
@@ -23,6 +25,16 @@ function sanitizeChannelIdLoose(raw) {
 function isUrlOnlySalesChannel(ch) {
   var k = sanitizeChannelIdLoose(ch);
   return !!k && Object.prototype.hasOwnProperty.call(URL_ONLY_SALES_CHANNELS, k);
+}
+
+/**
+ * sticky 归因可用的渠道：排除 URL-only（abc 等）。
+ * 避免「曾经打开过带 ch=abc 的页」把后续无 URL 的注册/开通价永久打成 abc。
+ */
+function sanitizeStickySalesChannelId(ch) {
+  var k = sanitizeChannelIdLoose(ch);
+  if (!k || isUrlOnlySalesChannel(k)) return '';
+  return k;
 }
 
 /** URL-only 渠道 id 列表（小写），供后台过滤 / 单测 */
@@ -760,6 +772,7 @@ module.exports = {
   createAgentChannels: createAgentChannels,
   URL_ONLY_SALES_CHANNELS: URL_ONLY_SALES_CHANNELS,
   isUrlOnlySalesChannel: isUrlOnlySalesChannel,
+  sanitizeStickySalesChannelId: sanitizeStickySalesChannelId,
   listUrlOnlySalesChannelIds: listUrlOnlySalesChannelIds,
   excludeUrlOnlySalesChannelSql: excludeUrlOnlySalesChannelSql,
   matchUrlOnlySalesChannelSql: matchUrlOnlySalesChannelSql,

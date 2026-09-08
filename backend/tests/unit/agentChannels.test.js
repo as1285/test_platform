@@ -161,6 +161,14 @@ describe('abc is URL-only for channel prices', () => {
     expect(resolveSalesChannelForChannelPrices('', 'abc')).toBe('abc');
   });
 
+  it('excludes URL-only channels from sticky attribution replay', () => {
+    const { sanitizeStickySalesChannelId } = require('../../src/legacy/agentChannels');
+    expect(sanitizeStickySalesChannelId('abc')).toBe('');
+    expect(sanitizeStickySalesChannelId('ABC')).toBe('');
+    expect(sanitizeStickySalesChannelId('quan_c')).toBe('quan_c');
+    expect(sanitizeStickySalesChannelId('')).toBe('');
+  });
+
   it('still prefers the current request channel over the account', () => {
     expect(resolveSalesChannelForChannelPrices('quan_c', '')).toBe('quan_c');
     expect(resolveSalesChannelForChannelPrices('quan_c', 'abc')).toBe('abc');

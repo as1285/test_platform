@@ -3070,6 +3070,28 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
+  [
+    'URL-only 不得由服务端 sticky 回写 localStorage',
+    'URL-only 渠道包响应不得写进 localStorage'
+  ],
+  '20260908 abc sticky must not poison localStorage'
+);
+mustInclude(
+  'backend/src/legacy/agentChannels.js',
+  ['sanitizeStickySalesChannelId', '不参与 client_id / 设备指纹 / IP 的 sticky'],
+  '20260908 sticky helper excludes URL-only'
+);
+mustInclude(
+  'backend/src/legacy/monolith.js',
+  [
+    'sanitizeStickySalesChannelId',
+    'NOT IN (',
+    '禁止靠 client_id / 指纹 sticky 归因补绑'
+  ],
+  '20260908 register/bind ignore sticky abc'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
   ['window.isUrlOnlySalesChannel = isUrlOnlySalesChannel'],
   '20260905 export isUrlOnlySalesChannel early'
 );
