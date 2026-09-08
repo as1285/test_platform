@@ -42,7 +42,7 @@ describe('iPhone Air 收入纳税明细左右贴边', () => {
 });
 
 describe('收入纳税明细切年份二次进入顶空白', () => {
-  it('关掉路径级滚动恢复；列表接到汇总底下；禁用原生整页橡皮筋', () => {
+  it('关掉路径级滚动恢复；列表接到汇总底下；禁止顶部下拉露出空白条', () => {
     expect(shuimingResult).toContain("history.scrollRestoration = 'manual'");
     expect(shuimingResult).toContain('function resetShuimingScrollTop');
     expect(shuimingResult).toContain('function shuimingPageScrolled');
@@ -57,17 +57,14 @@ describe('收入纳税明细切年份二次进入顶空白', () => {
   });
 });
 
-describe('收入纳税明细滚动拉手与顶部回弹', () => {
-  it('拉手 4px；顶到头只拉动列表卡片，汇总两行标题不动', () => {
+describe('收入纳税明细滚动拉手', () => {
+  it('拉手 4px；汇总固定；不做顶部下拉位移，避免白条', () => {
     expect(shuimingResult).toMatch(/\.sm-scroll-thumb\s*\{[^}]*width:\s*4px/);
-    expect(shuimingResult).toContain('function getListEl');
-    expect(shuimingResult).toContain('function applyRubber');
-    expect(shuimingResult).toContain('只平移列表');
-    expect(shuimingResult).toContain('sm-rubber-drag');
-    expect(shuimingResult).toContain('RUBBER_MAX');
-    expect(shuimingResult).toContain("getElementById('recordList')");
-    expect(shuimingResult).toMatch(/\.list\.sm-rubber-drag/);
-    expect(shuimingResult).not.toMatch(/\.summary\.sm-rubber-drag/);
-    expect(shuimingResult).not.toContain('[els.summary, els.list]');
+    expect(shuimingResult).toContain('function initSmShortScrollThumb');
+    expect(shuimingResult).toContain('function listTrackTop');
+    expect(shuimingResult).not.toContain('applyRubber');
+    expect(shuimingResult).not.toContain('sm-rubber-drag');
+    expect(shuimingResult).not.toContain('RUBBER_MAX');
+    expect(shuimingResult).toContain('避免汇总下露出');
   });
 });
