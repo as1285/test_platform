@@ -9,6 +9,17 @@ function sumRowMoney(r, field) {
 }
 
 /**
+ * 全年一次性奖金 / 解除劳动合同补偿等：单独计税，不得并入工资累计预扣。
+ */
+function isSeparateTaxIncomeSubtype(sub) {
+  const s = String(sub == null ? '' : sub).trim();
+  if (!s) return false;
+  if (s === '全年一次性奖金收入') return true;
+  if (s.indexOf('解除劳动合同') >= 0 || s.indexOf('裁员补偿') >= 0) return true;
+  return false;
+}
+
+/**
  * 拆分基本减除费用与专项附加扣除。
  * 本系统把 other_deduction 当作专项附加扣除存储（批量开具写入 specialAdd）；
  * 旧数据可能把专项附加塞进 deduction_fee（>5000 的超出部分）。
@@ -59,9 +70,33 @@ function periodOtherDeductionForDetail(rec) {
   return otherDeductionForDisplay(rec, sp);
 }
 
+/**
+ * 累计预扣用的收入：排除奖金/补偿等单独计税记录。
+ * periodIncomeFn 可选，默认用 income_this_period 或 income。
+ */
+function sumCumulativeWageIncome(rows, periodIncomeFn) {
+  const incomeOf =
+    typeof periodIncomeFn === 'function'
+      ? periodIncomeFn
+      : function (r) {
+          if (r.income_this_period != null && String(r.income_this_period).trim() !== '') {
+            return sumRowMoney(r, 'income_this_period');
+          }
+          return sumRowMoney(r, 'income');
+        };
+  let total = 0;
+  (rows || []).forEach(function (r) {
+    if (isSeparateTaxIncomeSubtype(r && r.income_subtype)) return;
+    total += incomeOf(r);
+  });
+  return total;
+}
+
 module.exports = {
   sumRowMoney,
+  isSeparateTaxIncomeSubtype,
   splitBasicAndSpecialAdditionalDeduction,
   otherDeductionForDisplay,
-  periodOtherDeductionForDetail
+  periodOtherDeductionForDetail,
+  sumCumulativeWageIncome
 };

@@ -3,7 +3,9 @@
 const {
   splitBasicAndSpecialAdditionalDeduction,
   otherDeductionForDisplay,
-  periodOtherDeductionForDetail
+  periodOtherDeductionForDetail,
+  isSeparateTaxIncomeSubtype,
+  sumCumulativeWageIncome
 } = require('../../src/tax/deductionSplit');
 
 describe('deductionSplit', () => {
@@ -61,5 +63,30 @@ describe('deductionSplit', () => {
     const sp = splitBasicAndSpecialAdditionalDeduction(rec);
     expect(sp.specialAdditional).toBe(0);
     expect(otherDeductionForDisplay(rec, sp)).toBe(100);
+  });
+
+  it('marks bonus and severance as separate-tax subtypes', () => {
+    expect(isSeparateTaxIncomeSubtype('全年一次性奖金收入')).toBe(true);
+    expect(isSeparateTaxIncomeSubtype('解除劳动合同一次性补偿收入')).toBe(true);
+    expect(isSeparateTaxIncomeSubtype('裁员补偿金')).toBe(true);
+    expect(isSeparateTaxIncomeSubtype('正常工资薪金')).toBe(false);
+  });
+
+  it('excludes January year-end bonus from cumulative wage income (keeps 3% path)', () => {
+    const rows = [
+      {
+        income_subtype: '正常工资薪金',
+        month: 1,
+        income: '15000',
+        income_this_period: '15000'
+      },
+      {
+        income_subtype: '全年一次性奖金收入',
+        month: 1,
+        income: '100000',
+        income_this_period: '100000'
+      }
+    ];
+    expect(sumCumulativeWageIncome(rows)).toBe(15000);
   });
 });

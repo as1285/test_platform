@@ -160,7 +160,8 @@ const {
   sumRowMoney,
   splitBasicAndSpecialAdditionalDeduction,
   otherDeductionForDisplay,
-  periodOtherDeductionForDetail
+  periodOtherDeductionForDetail,
+  isSeparateTaxIncomeSubtype
 } = require('../tax/deductionSplit');
 const { currentPeriodDeclaredTax } = require('../tax/withholdingCalc');
 const renameFeePolicy = require('../user/renameFeePolicy');
@@ -5367,6 +5368,8 @@ async function getTaxCalculationData(userId, recordId) {
   const anchorMonth = month != null && !Number.isNaN(month) ? month : null;
 
   rows.forEach(function (r) {
+    /* 年终奖 / 解除劳动合同补偿：单独计税，不并入工资累计（否则 1 月奖金会把正常工资抬到 10%） */
+    if (isSeparateTaxIncomeSubtype(r.income_subtype)) return;
     totalIncome += rowPeriodIncome(r);
     totalTaxFree += sumRowMoney(r, 'tax_free_income');
     const split = splitBasicAndSpecialAdditionalDeduction(r);
@@ -5376,11 +5379,8 @@ async function getTaxCalculationData(userId, recordId) {
     totalOther += otherRaw;
     totalOtherDisplay += otherDeductionForDisplay(r, split);
     totalDonation += sumRowMoney(r, 'donation_deduction');
-    const sub = String(r.income_subtype || '').trim();
-    if (sub !== '全年一次性奖金收入') {
-      totalSpecialAdditionalFromFee += split.specialAdditional;
-      totalBasicDeductionFee += split.basic;
-    }
+    totalSpecialAdditionalFromFee += split.specialAdditional;
+    totalBasicDeductionFee += split.basic;
     const m = r.month != null ? parseInt(r.month, 10) : null;
     if (anchorMonth != null && m != null && !Number.isNaN(m) && m < anchorMonth) {
       totalTaxPaidBefore += sumRowMoney(r, 'tax_reported');

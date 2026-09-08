@@ -715,7 +715,7 @@
             background: transparent !important;
         }
 
-        /* 正版风格滚动拉手：细灰条，高度随内容比例变化（约 72–110px） */
+        /* 正版风格滚动拉手：细灰条；仅滑动出现；高度约 72–110px；活动区在汇总下方 */
         .sm-scroll-thumb {
             position: fixed;
             right: 2px;
@@ -4163,17 +4163,35 @@
             window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
 
-        /* 正版自然滚动拉手：按可视区/内容比算高度，夹在 72–110，避免过短或通栏过长 */
+        /* 正版滚动拉手：仅滑动时出现、停下消失；活动区间从「已申报税额合计」下方到屏底，不可顶到最上 */
         (function initSmShortScrollThumb() {
             var MIN_H = 72;
             var MAX_H = 110;
-            var EDGE = 3;
+            var EDGE = 4;
+            var HIDE_MS = 700;
             var thumb = document.createElement('div');
             thumb.className = 'sm-scroll-thumb';
             thumb.setAttribute('aria-hidden', 'true');
             (document.body || document.documentElement).appendChild(thumb);
             var hideTimer = null;
             var ticking = false;
+            var wantShow = false;
+
+            function listTrackTop() {
+                /* 拉手最高只能到已申报税额合计（汇总区）下方 */
+                var summary = document.querySelector('.top-fixed .summary') || document.querySelector('.summary');
+                if (summary) {
+                    var bottom = summary.getBoundingClientRect().bottom;
+                    if (bottom > 0) return Math.ceil(bottom) + 2;
+                }
+                var fixed = document.querySelector('.top-fixed');
+                if (fixed) {
+                    var fb = fixed.getBoundingClientRect().bottom;
+                    if (fb > 0) return Math.ceil(fb) + 2;
+                }
+                return EDGE;
+            }
+
             function place() {
                 ticking = false;
                 var doc = document.documentElement;
@@ -4181,32 +4199,53 @@
                 var viewH = window.innerHeight || doc.clientHeight || 1;
                 var scrollH = Math.max(doc.scrollHeight || 0, (document.body && document.body.scrollHeight) || 0);
                 var maxScroll = Math.max(0, scrollH - viewH);
-                if (maxScroll <= 8) {
+                var trackTop = listTrackTop();
+                var trackBottom = viewH - EDGE;
+                var listViewH = Math.max(1, trackBottom - trackTop);
+                if (maxScroll <= 8 || listViewH < MIN_H + 8) {
                     thumb.classList.remove('is-visible');
                     return;
                 }
-                var natural = viewH * (viewH / Math.max(scrollH, 1));
-                var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural)));
-                var track = Math.max(0, viewH - thumbH - EDGE * 2);
-                var y = EDGE + (scrollTop / maxScroll) * track;
+                var natural = listViewH * (viewH / Math.max(scrollH, 1));
+                var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural, listViewH)));
+                var track = Math.max(0, listViewH - thumbH);
+                var y = trackTop + (scrollTop / maxScroll) * track;
+                /* 硬限制：不得越过汇总底、不得超出屏底 */
+                if (y < trackTop) y = trackTop;
+                if (y > trackBottom - thumbH) y = trackBottom - thumbH;
                 thumb.style.height = thumbH + 'px';
-                thumb.style.transform = 'translate3d(0,' + y + 'px,0)';
-                thumb.classList.add('is-visible');
-                if (hideTimer) clearTimeout(hideTimer);
-                hideTimer = setTimeout(function () {
-                    thumb.classList.remove('is-visible');
-                }, 1100);
+                thumb.style.transform = 'translate3d(0,' + Math.round(y) + 'px,0)';
+                if (wantShow) {
+                    thumb.classList.add('is-visible');
+                    if (hideTimer) clearTimeout(hideTimer);
+                    hideTimer = setTimeout(function () {
+                        thumb.classList.remove('is-visible');
+                        wantShow = false;
+                    }, HIDE_MS);
+                }
             }
+
             function onScroll() {
+                wantShow = true;
                 if (!ticking) {
                     ticking = true;
                     requestAnimationFrame(place);
                 }
             }
+
+            function onResize() {
+                /* 尺寸变化只重算位置，不主动把拉手亮出来 */
+                if (!ticking) {
+                    ticking = true;
+                    requestAnimationFrame(place);
+                }
+            }
+
             window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('resize', onScroll, { passive: true });
+            window.addEventListener('touchmove', onScroll, { passive: true });
+            window.addEventListener('resize', onResize, { passive: true });
             if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', onScroll, { passive: true });
+                window.visualViewport.addEventListener('resize', onResize, { passive: true });
             }
         })();
 
