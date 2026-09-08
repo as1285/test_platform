@@ -698,7 +698,7 @@
         body {
             width: 100%;
             overflow-x: hidden;
-            /* 正版无长滚动条拉手；与其它 H5 页一致隐藏系统滚动条 */
+            /* 系统长滚动条隐藏；改用下方短拉手（对齐正版） */
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
         }
@@ -713,6 +713,25 @@
             width: 0 !important;
             height: 0 !important;
             background: transparent !important;
+        }
+
+        /* 正版右侧短滚动拉手：细短灰条，滑动时出现 */
+        .sm-scroll-thumb {
+            position: fixed;
+            right: 1px;
+            top: 0;
+            width: 3px;
+            height: 36px;
+            border-radius: 3px;
+            background: rgba(0, 0, 0, 0.28);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 300;
+            will-change: transform, opacity;
+            transition: opacity 0.18s ease;
+        }
+        .sm-scroll-thumb.is-visible {
+            opacity: 1;
         }
 
         body {
@@ -4143,6 +4162,51 @@
             window.visualViewport.addEventListener('resize', syncTopFixedHeight);
             window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
+
+        /* 正版短滚动拉手：隐藏系统长条后，用固定短条跟随滚动 */
+        (function initSmShortScrollThumb() {
+            var THUMB_H = 36;
+            var EDGE = 4;
+            var thumb = document.createElement('div');
+            thumb.className = 'sm-scroll-thumb';
+            thumb.setAttribute('aria-hidden', 'true');
+            (document.body || document.documentElement).appendChild(thumb);
+            var hideTimer = null;
+            var ticking = false;
+            function place() {
+                ticking = false;
+                var doc = document.documentElement;
+                var scrollTop = window.pageYOffset || doc.scrollTop || 0;
+                var viewH = window.innerHeight || doc.clientHeight || 1;
+                var scrollH = Math.max(doc.scrollHeight || 0, (document.body && document.body.scrollHeight) || 0);
+                var maxScroll = Math.max(0, scrollH - viewH);
+                if (maxScroll <= 8) {
+                    thumb.classList.remove('is-visible');
+                    return;
+                }
+                var track = Math.max(0, viewH - THUMB_H - EDGE * 2);
+                var y = EDGE + (scrollTop / maxScroll) * track;
+                thumb.style.height = THUMB_H + 'px';
+                thumb.style.transform = 'translate3d(0,' + y + 'px,0)';
+                thumb.classList.add('is-visible');
+                if (hideTimer) clearTimeout(hideTimer);
+                hideTimer = setTimeout(function () {
+                    thumb.classList.remove('is-visible');
+                }, 900);
+            }
+            function onScroll() {
+                if (!ticking) {
+                    ticking = true;
+                    requestAnimationFrame(place);
+                }
+            }
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll, { passive: true });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', onScroll, { passive: true });
+            }
+        })();
+
         (function bindListDateAlignObserver() {
             var tax = document.getElementById('taxTotal');
             if (!tax || typeof ResizeObserver === 'undefined') return;
