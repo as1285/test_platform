@@ -14,7 +14,7 @@ function loadNajiluHelpers() {
   return window.TaxIssueCertificate;
 }
 
-describe('未激活 / 首次生成引导替换完税二维码', () => {
+describe('纳税记录生成不再弹替换完税二维码', () => {
   beforeEach(() => {
     localStorage.clear();
     document.body.innerHTML = '';
@@ -22,7 +22,7 @@ describe('未激活 / 首次生成引导替换完税二维码', () => {
     delete window.TaxIssueCertificate;
   });
 
-  it('沿用 account_active，未激活拦截、已激活放行', () => {
+  it('仍可读取激活态；未激活也不再拦截生成', () => {
     const helpers = loadNajiluHelpers();
     localStorage.setItem('account_active', '0');
     expect(helpers.isClientAccountActive()).toBe(false);
@@ -33,7 +33,7 @@ describe('未激活 / 首次生成引导替换完税二维码', () => {
     expect(helpers.shouldGuideInactiveGenerate()).toBe(false);
   });
 
-  it('主操作跳到现有完税二维码替换页', () => {
+  it('替换页链接仍可用（咨询等入口）', () => {
     const helpers = loadNajiluHelpers();
     expect(helpers.najiluQrReplaceHref('najilu_generate')).toBe(
       'najilu_qr.html?from=najilu_generate'
@@ -41,21 +41,15 @@ describe('未激活 / 首次生成引导替换完税二维码', () => {
     expect(helpers.najiluQrReplaceHref()).toBe('najilu_qr.html?from=najilu');
   });
 
-  it('未激活弹层可取消回到表单，主按钮去替换', () => {
+  it('未激活引导函数为空实现，不插入弹层', () => {
     const helpers = loadNajiluHelpers();
     localStorage.setItem('account_active', '0');
     helpers.showInactiveGenerateGuide();
-    const root = document.getElementById('najilu-qr-guide-root');
-    expect(root).toBeTruthy();
-    expect(root.textContent).toContain('请先替换完税二维码');
-    expect(root.textContent).toContain('去替换');
-    expect(root.textContent).toContain('取消');
-
-    root.querySelector('[data-act="close"]').click();
     expect(document.getElementById('najilu-qr-guide-root')).toBe(null);
+    expect(document.body.textContent).not.toContain('请先替换完税二维码');
   });
 
-  it('首次生成（已激活）弹层可继续生成或去替换', () => {
+  it('首次生成引导为空实现，onContinue 仍会执行', () => {
     const helpers = loadNajiluHelpers();
     localStorage.setItem('account_active', '1');
     expect(helpers.shouldGuideFirstGenerateQr()).toBe(true);
@@ -66,16 +60,11 @@ describe('未激活 / 首次生成引导替换完税二维码', () => {
         continued = true;
       }
     });
-    const root = document.getElementById('najilu-qr-guide-root');
-    expect(root).toBeTruthy();
-    expect(root.textContent).toContain('建议先替换完税二维码');
-    expect(root.textContent).toContain('继续生成');
-    root.querySelector('[data-act="continue"]').click();
     expect(continued).toBe(true);
     expect(document.getElementById('najilu-qr-guide-root')).toBe(null);
   });
 
-  it('开具页 init 后点击生成会弹出引导且不开始生成', () => {
+  it('开具页点击生成不弹引导层', () => {
     document.body.innerHTML =
       '<input type="month" id="rangeStartInput" value="2026-01">' +
       '<input type="month" id="rangeEndInput" value="2026-03">' +
@@ -92,28 +81,25 @@ describe('未激活 / 首次生成引导替换完税二维码', () => {
       replace: function () {}
     };
     Object.defineProperty(window, 'location', { configurable: true, writable: true, value: loc });
+    window.alert = function () {};
     localStorage.setItem('account_active', '0');
     loadNajiluHelpers();
     const btn = document.getElementById('generateBtn');
     btn.disabled = false;
     btn.click();
-    expect(document.getElementById('najilu-qr-guide-root')).toBeTruthy();
-    expect(document.getElementById('najilu-qr-guide-root').textContent).toContain('去替换');
-    expect(btn.textContent).toBe('生成纳税记录');
-    expect(btn.getAttribute('data-generating')).not.toBe('1');
+    expect(document.getElementById('najilu-qr-guide-root')).toBe(null);
+    expect(document.body.textContent).not.toContain('去替换');
   });
 
-  it('开具页去掉顶栏替换入口，首次生成弹框引导', () => {
+  it('源码去掉拦截弹框文案与生成按钮 capture 拦截', () => {
     expect(najiluHtml).toContain('id="generateBtn"');
     expect(najiluHtml).not.toContain('id="najiluQrReplaceLink"');
-    expect(najiluHtml).not.toContain('>替换二维码</a>');
-    expect(najiluJs).toContain('请先替换完税二维码');
-    expect(najiluJs).toContain('建议先替换完税二维码');
+    expect(najiluJs).not.toContain('请先替换完税二维码');
+    expect(najiluJs).not.toContain('建议先替换完税二维码');
+    expect(najiluJs).not.toContain('najilu-qr-guide-root');
     expect(najiluJs).toContain('showFirstGenerateQrGuide');
-    expect(najiluJs).toContain('shouldGuideFirstGenerateQr');
     expect(guideJs).toContain('openInactiveNajiluGenerateGuide');
-    expect(guideJs).toContain("goNajiluQrReplace('najilu_generate')");
-    expect(guideJs).not.toContain('生成纳税记录需开通');
-    expect(guideJs).not.toContain('先生成演示版');
+    expect(guideJs).not.toContain('请先替换完税二维码');
+    expect(guideJs).not.toContain("goNajiluQrReplace('najilu_generate')");
   });
 });

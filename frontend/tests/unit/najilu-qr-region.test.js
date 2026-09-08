@@ -112,12 +112,13 @@ describe('C 端完税二维码入口位置', () => {
     expect(najiluQrHtml).toContain('consult.html?tab=products');
   });
 
-  it('纳税记录开具页顶栏不再常驻替换二维码入口，首次生成走引导', () => {
+  it('纳税记录开具页顶栏不再常驻替换二维码入口', () => {
     expect(najiluHtml).not.toContain('id="najiluQrReplaceLink"');
     expect(najiluHtml).not.toContain('>替换二维码</a>');
     const najiluJs = readFileSync(resolve(__dirname, '../../public/js/najilu.js'), 'utf8');
     expect(najiluJs).toContain('najilu_qr.html?from=');
     expect(najiluJs).toContain('showFirstGenerateQrGuide');
+    expect(najiluJs).not.toContain('najilu-qr-guide-root');
   });
 });
 

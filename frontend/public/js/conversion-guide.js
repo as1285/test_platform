@@ -1880,19 +1880,9 @@
     window.location.href = 'najilu_qr.html?from=' + encodeURIComponent(from || 'najilu');
   }
 
-  /** 未激活用户点「生成纳税记录」：引导去替换完税二维码，不静默出图。 */
+  /** 未激活用户点「生成纳税记录」：已取消拦截弹框，保留空实现。 */
   function openInactiveNajiluGenerateGuide() {
-    openPayGateModal({
-      feature: '纳税记录',
-      from: 'gate_najilu_generate',
-      title: '请先替换完税二维码',
-      message: '当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。',
-      primaryLabel: '去替换',
-      allowContinue: false,
-      onPrimary: function () {
-        goNajiluQrReplace('najilu_generate');
-      }
-    });
+    /* no-op */
   }
 
   function showValueConfirmDialog(year) {
@@ -3028,20 +3018,7 @@
     var page = currentPage();
 
     if (page === 'najilu.html') {
-      var genBtn = document.getElementById('generateBtn');
-      if (genBtn && !genBtn.__cgPayGateBound) {
-        genBtn.__cgPayGateBound = true;
-        genBtn.addEventListener(
-          'click',
-          function (ev) {
-            if (isAccountActive()) return;
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
-            openInactiveNajiluGenerateGuide();
-          },
-          true
-        );
-      }
+      /* 生成纳税记录不再弹「替换完税二维码」拦截层 */
 
       if (!document.body.__cgNajiluSaveGateBound) {
         document.body.__cgNajiluSaveGateBound = true;

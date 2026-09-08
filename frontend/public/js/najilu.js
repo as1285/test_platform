@@ -1342,117 +1342,20 @@
     return !!(o && (o.qr_image_url || o.qr_block_image_url));
   }
 
-  /** 尚无开具记录且未锁定自定义码 → 首次生成时引导去替换页 */
+  /** 尚无开具记录且未锁定自定义码（保留判定，生成流程不再弹引导） */
   function shouldGuideFirstGenerateQr() {
     if (hasLockedQrOverride()) return false;
     return loadApplications().length === 0;
   }
 
-  function ensureInactiveGenerateGuideStyles() {
-    if (document.getElementById('najilu-inactive-generate-guide-styles')) return;
-    var st = document.createElement('style');
-    st.id = 'najilu-inactive-generate-guide-styles';
-    st.textContent =
-      '.najilu-qr-guide-root{position:fixed;inset:0;z-index:1000030;display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box}' +
-      '.najilu-qr-guide-mask{position:absolute;inset:0;background:rgba(15,23,42,.45)}' +
-      '.najilu-qr-guide-panel{position:relative;z-index:1;width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(15,23,42,.12);box-sizing:border-box}' +
-      '.najilu-qr-guide-title{margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a}' +
-      '.najilu-qr-guide-body{margin:0 0 16px;font-size:14px;line-height:1.55;color:#475569}' +
-      '.najilu-qr-guide-actions{display:flex;flex-direction:column;gap:8px}' +
-      '.najilu-qr-guide-btn{display:block;width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}' +
-      '.najilu-qr-guide-btn.primary{background:#1e6fff;color:#fff}' +
-      '.najilu-qr-guide-btn.ghost{background:#f1f5f9;color:#64748b;font-weight:500}';
-    document.head.appendChild(st);
-  }
-
-  /**
-   * 首次生成引导：弹框去替换完税二维码。
-   * opts.allowContinue=true 时显示「继续生成」；未激活则只能去替换或取消。
-   */
+  /** 已去掉「替换完税二维码」拦截弹框；保留空实现以免旧引用报错 */
   function showFirstGenerateQrGuide(opts) {
     opts = opts || {};
-    var allowContinue = !!opts.allowContinue;
-    var onContinue = typeof opts.onContinue === 'function' ? opts.onContinue : null;
-    if (
-      !allowContinue &&
-      window.ConversionGuide &&
-      typeof window.ConversionGuide.openInactiveNajiluGenerateGuide === 'function'
-    ) {
-      window.ConversionGuide.openInactiveNajiluGenerateGuide();
-      return;
-    }
-    if (
-      !allowContinue &&
-      window.ConversionGuide &&
-      typeof window.ConversionGuide.openPayGateModal === 'function'
-    ) {
-      window.ConversionGuide.openPayGateModal({
-        feature: '纳税记录',
-        from: 'gate_najilu_generate',
-        title: '请先替换完税二维码',
-        message: '当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。',
-        primaryLabel: '去替换',
-        allowContinue: false,
-        onPrimary: function () {
-          goNajiluQrReplace('najilu_generate');
-        }
-      });
-      return;
-    }
-    ensureInactiveGenerateGuideStyles();
-    var existing = document.getElementById('najilu-qr-guide-root');
-    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-    var title = allowContinue ? '建议先替换完税二维码' : '请先替换完税二维码';
-    var body = allowContinue
-      ? '首次开具前，建议先把你手里完税证明上的二维码锁定到本账号，之后生成纳税记录都能用官方 APP 扫码查验。未付款也可试用（含水印）。'
-      : '当前账号未激活。请先替换完税二维码，再用官方 APP 扫码查验。未付款也可试用（含水印）。';
-    var root = document.createElement('div');
-    root.id = 'najilu-qr-guide-root';
-    root.className = 'najilu-qr-guide-root';
-    root.innerHTML =
-      '<div class="najilu-qr-guide-mask" data-act="close"></div>' +
-      '<div class="najilu-qr-guide-panel" role="dialog" aria-modal="true" aria-labelledby="najiluQrGuideTitle">' +
-      '<h3 id="najiluQrGuideTitle" class="najilu-qr-guide-title">' +
-      title +
-      '</h3>' +
-      '<p class="najilu-qr-guide-body">' +
-      body +
-      '</p>' +
-      '<div class="najilu-qr-guide-actions">' +
-      '<button type="button" class="najilu-qr-guide-btn primary" data-act="primary">去替换</button>' +
-      (allowContinue
-        ? '<button type="button" class="najilu-qr-guide-btn ghost" data-act="continue">继续生成</button>'
-        : '<button type="button" class="najilu-qr-guide-btn ghost" data-act="close">取消</button>') +
-      '</div></div>';
-    root.addEventListener('click', function (ev) {
-      var t = ev.target.closest('[data-act]');
-      if (!t) return;
-      var act = t.getAttribute('data-act');
-      if (act === 'close') {
-        if (root.parentNode) root.parentNode.removeChild(root);
-        return;
-      }
-      if (act === 'continue') {
-        if (root.parentNode) root.parentNode.removeChild(root);
-        if (onContinue) onContinue();
-        return;
-      }
-      if (act === 'primary') {
-        goNajiluQrReplace('najilu_generate');
-      }
-    });
-    document.body.appendChild(root);
-    if (typeof window.trackUserAction === 'function') {
-      window.trackUserAction('track_najilu_qr_entry_click', {
-        page: 'najilu',
-        from: 'najilu_generate_guide',
-        allow_continue: allowContinue ? 1 : 0
-      });
-    }
+    if (typeof opts.onContinue === 'function') opts.onContinue();
   }
 
   function showInactiveGenerateGuide() {
-    showFirstGenerateQrGuide({ allowContinue: false });
+    /* no-op：未激活也可直接生成（含水印） */
   }
 
   function initForm() {
@@ -1538,19 +1441,6 @@
     });
     resetGenerateBtn();
 
-    btn.addEventListener(
-      'click',
-      function (ev) {
-        if (isClientAccountActive()) return;
-        if (ev) {
-          ev.preventDefault();
-          ev.stopImmediatePropagation();
-        }
-        showInactiveGenerateGuide();
-      },
-      true
-    );
-
     function runGenerate() {
       if (btn.disabled) return;
       if (btn.getAttribute('data-generating') === '1') return;
@@ -1597,19 +1487,6 @@
     }
 
     btn.addEventListener('click', function () {
-      if (btn.disabled) return;
-      if (btn.getAttribute('data-generating') === '1') return;
-      if (!isClientAccountActive()) {
-        showInactiveGenerateGuide();
-        return;
-      }
-      if (shouldGuideFirstGenerateQr()) {
-        showFirstGenerateQrGuide({
-          allowContinue: true,
-          onContinue: runGenerate
-        });
-        return;
-      }
       runGenerate();
     });
 

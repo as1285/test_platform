@@ -9572,7 +9572,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260907-no-sm-fill';
+      s.src = '/js/conversion-guide.js?v=20260908-no-qr-guide';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;

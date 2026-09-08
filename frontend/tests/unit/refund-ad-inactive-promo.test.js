@@ -36,7 +36,7 @@ describe('product no longer diverts inactive users to refund ads', () => {
     expect(guideSrc).toContain('收入纳税明细不再插入「示例填写个税」空态 CTA');
     expect(guideSrc).toContain('function hideShuimingTaxFillCard');
     expect(guideSrc).toContain('去添加记录');
-    expect(authSrc).toContain('conversion-guide.js?v=20260907-no-sm-fill');
+    expect(authSrc).toContain('conversion-guide.js?v=20260908-no-qr-guide');
     expect(guideSrc).toMatch(
       /function maybeShowActivationNudge\(\) \{[\s\S]{0,280}if \(!isAccountActive\(\)\) return;/
     );
