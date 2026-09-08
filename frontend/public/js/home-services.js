@@ -5,8 +5,11 @@
 (function (global) {
     var STORAGE_KEY = 'tax_home_key_services_v1';
     var MAX_SELECTED = 7;
-    var HOME_ASSET_Q = '?v=20260905-zdfw';
+    /* 图标来自官方 APK icon-all.747718b.png 切片，避免自制 SVG 与「更多」不一致 */
+    var HOME_ASSET_Q = '?v=20260908-apk-icons';
+    var ICON_ASSET_Q = '?v=20260908-apk-icons';
     var MANAGE_HREF = 'zhongdian_fuwu.html';
+    var ICON_DIR = '/img/home/service-icons/';
 
     var CATALOG = [
         {
@@ -20,7 +23,7 @@
             btnBg: '#dce8ff',
             btnColor: '#1e5fe0',
             slice: '/img/home/a6_01.jpg',
-            icon: 'calc'
+            iconFile: 'zonghe.png'
         },
         {
             id: 'shuiming',
@@ -33,7 +36,7 @@
             btnBg: '#efe8ff',
             btnColor: '#6b46c1',
             slice: '/img/home/a6_02.jpg',
-            icon: 'wallet'
+            iconFile: 'shuiming.png'
         },
         {
             id: 'najilu',
@@ -46,7 +49,7 @@
             btnBg: '#d4f3f1',
             btnColor: '#0f7f7a',
             slice: '/img/home/a6_03.jpg',
-            icon: 'stamp'
+            iconFile: 'najilu.png'
         },
         {
             id: 'yanglao',
@@ -58,7 +61,7 @@
             color: '#3ba6e0',
             btnBg: '#d7effb',
             btnColor: '#1b7cb8',
-            icon: 'pension'
+            iconFile: 'yanglao.png'
         },
         {
             id: 'zxk',
@@ -70,7 +73,7 @@
             color: '#f5a023',
             btnBg: '#ffe8c4',
             btnColor: '#c67a00',
-            icon: 'deduct'
+            iconFile: 'zxk.png'
         },
         {
             id: 'weituo',
@@ -82,7 +85,7 @@
             color: '#f0a05a',
             btnBg: '#ffe8d2',
             btnColor: '#c46a20',
-            icon: 'proxy'
+            iconFile: 'weituo.png'
         },
         {
             id: 'gongyi',
@@ -94,7 +97,7 @@
             color: '#9b7fe8',
             btnBg: '#eee6ff',
             btnColor: '#6d4fc4',
-            icon: 'gift'
+            iconFile: 'gongyi.png'
         },
         {
             id: 'jingying_a',
@@ -106,7 +109,7 @@
             color: '#7dcea0',
             btnBg: '#ddf6e8',
             btnColor: '#2e8b57',
-            icon: 'formA'
+            iconFile: 'jingying_a.png'
         },
         {
             id: 'jingying_b',
@@ -118,7 +121,7 @@
             color: '#6ec8b8',
             btnBg: '#d9f4ee',
             btnColor: '#1f8a78',
-            icon: 'formB'
+            iconFile: 'jingying_b.png'
         },
         {
             id: 'jingying',
@@ -130,7 +133,7 @@
             color: '#2f9e5f',
             btnBg: '#d7f3e3',
             btnColor: '#1b7040',
-            icon: 'biz'
+            iconFile: 'jingying.png'
         },
         {
             id: 'jingying_c',
@@ -142,25 +145,11 @@
             color: '#2e5aac',
             btnBg: '#d8e4f8',
             btnColor: '#1d3f80',
-            icon: 'formC'
+            iconFile: 'jingying_c.png'
         }
     ];
 
     var DEFAULT_IDS = ['zonghe', 'shuiming', 'najilu'];
-
-    var ICON_PATH = {
-        calc: '<path fill="#fff" d="M10 7h12a2 2 0 012 2v14a2 2 0 01-2 2H10a2 2 0 01-2-2V9a2 2 0 012-2zm1 3v3h10v-3H11zm0 5v3h4v-3h-4zm6 0v3h4v-3h-4zm-6 5v4h10v-4H11z"/>',
-        wallet: '<path fill="#fff" d="M8 12.5A2.5 2.5 0 0110.5 10H24v3h-3.5a2.5 2.5 0 000 5H24v3.5A2.5 2.5 0 0121.5 24h-11A2.5 2.5 0 018 21.5v-9z"/><circle cx="21.5" cy="15.5" r="1.6" fill="#7c5cbf"/>',
-        stamp: '<path fill="#fff" d="M10 8h12l2 4v12a2 2 0 01-2 2H10a2 2 0 01-2-2V10a2 2 0 012-2zm2 8h8v2h-8v-2zm0 4h6v2h-6v-2z"/>',
-        pension: '<path fill="#fff" d="M16 7l8 4v6c0 5.2-3.4 8.6-8 10-4.6-1.4-8-4.8-8-10V11l8-4zm0 6a3 3 0 100 6 3 3 0 000-6z"/>',
-        deduct: '<path fill="#fff" d="M16 8l8 6v10h-5v-6h-6v6H8V14l8-6z"/>',
-        proxy: '<path fill="#fff" d="M12 10a3 3 0 110 6 3 3 0 010-6zm8 1a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM7 24c0-3 2.6-5 5-5s5 2 5 5H7zm9 0c.2-2.2 1.6-3.6 3.6-4.4 1.4.6 2.4 1.8 2.4 4.4H16z"/>',
-        gift: '<path fill="#fff" d="M9 14h14v10H9V14zm1-5h5l-1.6-2.2A2 2 0 0115 5.5 2.2 2.2 0 0117.2 8H16l1 1h6v3H9V9h2l1-1H10.8A2.2 2.2 0 019 6.5 2 2 0 0110.6 6.8L9 9z"/>',
-        formA: '<path fill="#fff" d="M10 7h12a2 2 0 012 2v14a2 2 0 01-2 2H10a2 2 0 01-2-2V9a2 2 0 012-2zm3 5h6v2h-6v-2zm0 4h6v2h-6v-2z"/><text x="16" y="25" text-anchor="middle" fill="#fff" font-size="7" font-weight="700" font-family="system-ui,sans-serif">A</text>',
-        formB: '<path fill="#fff" d="M10 7h12a2 2 0 012 2v14a2 2 0 01-2 2H10a2 2 0 01-2-2V9a2 2 0 012-2zm3 5h6v2h-6v-2zm0 4h6v2h-6v-2z"/><text x="16" y="25" text-anchor="middle" fill="#fff" font-size="7" font-weight="700" font-family="system-ui,sans-serif">B</text>',
-        biz: '<path fill="#fff" d="M8 14h16v10H8V14zm3-6h10v6H11V8zm1 10h4v6h-4v-6z"/>',
-        formC: '<path fill="#fff" d="M10 7h12a2 2 0 012 2v14a2 2 0 01-2 2H10a2 2 0 01-2-2V9a2 2 0 012-2zm3 5h6v2h-6v-2zm0 4h6v2h-6v-2z"/><text x="16" y="25" text-anchor="middle" fill="#fff" font-size="7" font-weight="700" font-family="system-ui,sans-serif">C</text>'
-    };
 
     function esc(s) {
         return String(s == null ? '' : s)
@@ -277,20 +266,21 @@
         return groups;
     }
 
+    function iconSrc(item) {
+        var file = (item && item.iconFile) || 'zonghe.png';
+        return ICON_DIR + file + ICON_ASSET_Q;
+    }
+
     function iconMarkup(item, size) {
         var s = size || 32;
-        var path = ICON_PATH[item.icon] || ICON_PATH.calc;
         return (
-            '<svg class="hs-icon" viewBox="0 0 32 32" width="' +
+            '<img class="hs-icon" src="' +
+            esc(iconSrc(item)) +
+            '" width="' +
             s +
             '" height="' +
             s +
-            '" aria-hidden="true">' +
-            '<rect width="32" height="32" rx="8" fill="' +
-            esc(item.color) +
-            '"/>' +
-            path +
-            '</svg>'
+            '" alt="" decoding="async">'
         );
     }
 

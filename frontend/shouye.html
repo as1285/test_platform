@@ -902,6 +902,7 @@
             flex-shrink: 0;
             display: block;
         }
+        .sy-hcard-icon img.hs-icon,
         .sy-hcard-icon svg { display: block; width: 28px; height: 28px; }
         .sy-hcard-title {
             margin-top: 8px;
@@ -1075,7 +1076,7 @@
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260905-jingshi-zdfw">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
-    <script src="/js/home-services.js?v=20260905-zdfw"></script>
+    <script src="/js/home-services.js?v=20260908-apk-icons"></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
     <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
@@ -1275,7 +1276,7 @@
                 var hs = window.TaxHomeServices;
                 var row = document.getElementById('syHScroll');
                 if (!hs || !row) return;
-                hs.syncHomeRow(row, hs.HOME_ASSET_Q || '?v=20260905-zdfw');
+                hs.syncHomeRow(row, hs.HOME_ASSET_Q || '?v=20260908-apk-icons');
             }
             syncHomeKeyServices();
 

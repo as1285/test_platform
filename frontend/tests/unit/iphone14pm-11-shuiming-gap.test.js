@@ -36,4 +36,19 @@ describe('iPhone 14 Pro Max / 11 收入纳税明细灰缝', () => {
       'html.app-ios-promax-wide.app-top-safe-shell:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .top-fixed .summary{background:#f5f6fa !important;padding:12px 0 10px !important;}'
     );
   });
+
+  it('14 Pro Max / 11 汇总两行白底行高加高', () => {
+    expect(shuimingResult).toContain(
+      'html.app-ios-iphone15promax body.page-shuiming-result .summary > .summary-item,'
+    );
+    expect(shuimingResult).toContain(
+      'html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .summary > .summary-item'
+    );
+    expect(shuimingResult).toMatch(
+      /\.summary > \.summary-item \{[\s\S]{0,120}padding-top:\s*10px\s*!important;[\s\S]{0,40}padding-bottom:\s*12px\s*!important/
+    );
+    expect(shuimingResult).toMatch(
+      /\.summary > \.summary-item:last-of-type[\s\S]{0,200}padding-bottom:\s*10px\s*!important/
+    );
+  });
 });

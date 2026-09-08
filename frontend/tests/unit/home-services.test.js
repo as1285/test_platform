@@ -21,7 +21,7 @@ describe('homepage 更多功能 opens 首页重点服务管理', () => {
     expect(shouye).toMatch(/href="zhongdian_fuwu\.html"[^>]*aria-label="更多功能"/);
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="更多功能"/);
     expect(shouye).not.toMatch(/href="help_center\.html"[^>]*aria-label="更多服务"/);
-    expect(shouye).toContain('/js/home-services.js?v=20260905-zdfw');
+    expect(shouye).toContain('/js/home-services.js?v=20260908-apk-icons');
   });
 
   it('scan opens scanner page', () => {
@@ -44,7 +44,7 @@ describe('homepage 更多功能 opens 首页重点服务管理', () => {
     expect(page).toContain('zdfw-handle');
     expect(page).toContain('data-mode');
     expect(page).toContain('href="shouye.html"');
-    expect(page).toContain('/js/home-services.js?v=20260905-zdfw2');
+    expect(page).toContain('/js/home-services.js?v=20260908-apk-icons');
   });
 
   it('is reachable without login', () => {
@@ -109,5 +109,33 @@ describe('TaxHomeServices catalog and store', () => {
     expect(names).toContain('经营所得申报');
     expect(names).not.toContain('综合所得年度汇算');
     expect(names).not.toContain('个人养老金扣除管理');
+  });
+
+  it('uses official APK service icons instead of handmade SVG paths', () => {
+    const hs = loadStore();
+    const zxk = hs.getById('zxk');
+    expect(zxk.iconFile).toBe('zxk.png');
+    expect(hs.iconMarkup(zxk, 32)).toContain('/img/home/service-icons/zxk.png');
+    expect(hs.iconMarkup(zxk, 32)).not.toContain('<svg');
+    const required = [
+      'zonghe',
+      'shuiming',
+      'najilu',
+      'yanglao',
+      'zxk',
+      'weituo',
+      'gongyi',
+      'jingying',
+      'jingying_a',
+      'jingying_b',
+      'jingying_c'
+    ];
+    required.forEach(function (id) {
+      const item = hs.getById(id);
+      expect(item.iconFile).toBe(id + '.png');
+      expect(
+        existsSync(resolve(frontend, 'public/img/home/service-icons/' + item.iconFile))
+      ).toBe(true);
+    });
   });
 });
