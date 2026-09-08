@@ -51,4 +51,16 @@ describe('iPhone 14 Pro Max / 11 收入纳税明细灰缝', () => {
       /\.summary > \.summary-item:last-of-type[\s\S]{0,200}padding-bottom:\s*10px\s*!important/
     );
   });
+
+  it('14 Pro Max / 11 右侧箭头竖线改短为 7px', () => {
+    const shortArrow =
+      'html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .list-row-company .list-arrow{width:7px !important;height:7px !important;}';
+    expect(shuimingResult).toContain('右侧「>」竖线对齐正版，改短');
+    expect(shuimingResult).toMatch(
+      /html\.app-ios-iphone15promax body\.page-shuiming-result \.list-row-company \.list-arrow,[\s\S]{0,400}width:\s*7px\s*!important;[\s\n]*height:\s*7px\s*!important;/
+    );
+    expect(shuimingResult).toContain(shortArrow);
+    expect(auth).toContain(shortArrow);
+  });
 });
+

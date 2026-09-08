@@ -1331,7 +1331,9 @@
       'html.app-ios-iphone17promax body.page-shuiming-result .list-company-name,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-company-name{flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}' +
       'html.app-ios-iphone17promax body.page-shuiming-result .list-date{margin-right:0 !important;}' +
       'html.app-ios-iphone15 body.page-shuiming-result .list-row-company,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company{align-items:flex-end !important;}' +
-      'html.app-ios-iphone15 body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{margin:0 2px 0 auto !important;align-self:flex-end !important;transform:translateY(var(--device-arrow-ty,-6px)) rotate(45deg) !important;}'
+      'html.app-ios-iphone15 body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow{margin:0 2px 0 auto !important;align-self:flex-end !important;transform:translateY(var(--device-arrow-ty,-6px)) rotate(45deg) !important;}' +
+      /* 14 Pro Max / iPhone 11：右侧「>」改短，对齐正版 */
+      'html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .list-row-company .list-arrow{width:7px !important;height:7px !important;}'
     );
   }
 
@@ -1389,6 +1391,8 @@
       'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
       'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
       'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
+      /* 14 Pro Max / iPhone 11：压过上方通用 10px */
+      'html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .list-row-company .list-arrow{width:7px !important;height:7px !important;}' +
       cssDeviceShuiming17ProMax();
     (document.head || document.documentElement).appendChild(st);
   }
@@ -5632,6 +5636,7 @@
           'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;}' +
           'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;}' +
           'body.page-shuiming-result .list-row-company .list-arrow{display:block !important;width:10px !important;height:10px !important;margin:2px 2px 0 auto !important;padding:0 !important;border:0 !important;border-top:1.5px solid #c7c7cc !important;border-right:1.5px solid #c7c7cc !important;background:none !important;transform:translateY(var(--device-arrow-ty,2px)) rotate(45deg);flex-shrink:0 !important;align-self:center !important;box-sizing:content-box !important;}' +
+          'html.app-ios-iphone15promax body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-iphone15promax.platform-ios body.page-shuiming-result .list-row-company .list-arrow,html.app-ios-promax-wide:not(.app-ios-iphone15promax):not(.app-ios-iphone16promax):not(.app-ios-iphone17promax):not(.app-ios-iphone16pro):not(.app-ios-iphoneair) body.page-shuiming-result .list-row-company .list-arrow{width:7px !important;height:7px !important;}' +
           cssDeviceShuiming17ProMax() +
           /*
            * 浏览器/非 Cordova：结果页顶栏仅用真实 safe-area（去掉 24/48 占位）。
