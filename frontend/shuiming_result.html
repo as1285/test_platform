@@ -635,7 +635,8 @@
                         var flushSt = document.createElement('style');
                         flushSt.setAttribute('data-shuiming-flush-firstpaint', '1');
                         flushSt.textContent =
-                            'html,body{width:100% !important;max-width:none !important;}' +
+                            'html,body{width:100% !important;max-width:none !important;scrollbar-width:none !important;-ms-overflow-style:none !important;}' +
+                            'html::-webkit-scrollbar,body::-webkit-scrollbar,body.page-shuiming-result::-webkit-scrollbar,body.page-shuiming-result .page-root::-webkit-scrollbar,body.page-shuiming-result .list::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important;}' +
                             'body.page-shuiming-result .page-root{width:100% !important;max-width:none !important;}' +
                             'body.page-shuiming-result .list{padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;width:100vw !important;max-width:100vw !important;margin-left:0 !important;margin-right:0 !important;}' +
                             'body.page-shuiming-result .list-item{--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
@@ -697,6 +698,40 @@
         body {
             width: 100%;
             overflow-x: hidden;
+            /* 隐藏系统过长滚动条；改用下方按内容比例的自然短拉手 */
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar,
+        body.page-shuiming-result::-webkit-scrollbar,
+        body.page-shuiming-result .page-root::-webkit-scrollbar,
+        body.page-shuiming-result .list::-webkit-scrollbar,
+        body.page-shuiming-result .top-fixed::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
+        }
+
+        /* 正版风格滚动拉手：细灰条，高度随内容比例变化（约 72–110px） */
+        .sm-scroll-thumb {
+            position: fixed;
+            right: 2px;
+            top: 0;
+            width: 2.5px;
+            height: 88px;
+            border-radius: 2px;
+            background: rgba(0, 0, 0, 0.32);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 300;
+            will-change: transform, opacity, height;
+            transition: opacity 0.25s ease;
+        }
+        .sm-scroll-thumb.is-visible {
+            opacity: 1;
         }
 
         body {
@@ -4127,6 +4162,54 @@
             window.visualViewport.addEventListener('resize', syncTopFixedHeight);
             window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
+
+        /* 正版自然滚动拉手：按可视区/内容比算高度，夹在 72–110，避免过短或通栏过长 */
+        (function initSmShortScrollThumb() {
+            var MIN_H = 72;
+            var MAX_H = 110;
+            var EDGE = 3;
+            var thumb = document.createElement('div');
+            thumb.className = 'sm-scroll-thumb';
+            thumb.setAttribute('aria-hidden', 'true');
+            (document.body || document.documentElement).appendChild(thumb);
+            var hideTimer = null;
+            var ticking = false;
+            function place() {
+                ticking = false;
+                var doc = document.documentElement;
+                var scrollTop = window.pageYOffset || doc.scrollTop || 0;
+                var viewH = window.innerHeight || doc.clientHeight || 1;
+                var scrollH = Math.max(doc.scrollHeight || 0, (document.body && document.body.scrollHeight) || 0);
+                var maxScroll = Math.max(0, scrollH - viewH);
+                if (maxScroll <= 8) {
+                    thumb.classList.remove('is-visible');
+                    return;
+                }
+                var natural = viewH * (viewH / Math.max(scrollH, 1));
+                var thumbH = Math.round(Math.max(MIN_H, Math.min(MAX_H, natural)));
+                var track = Math.max(0, viewH - thumbH - EDGE * 2);
+                var y = EDGE + (scrollTop / maxScroll) * track;
+                thumb.style.height = thumbH + 'px';
+                thumb.style.transform = 'translate3d(0,' + y + 'px,0)';
+                thumb.classList.add('is-visible');
+                if (hideTimer) clearTimeout(hideTimer);
+                hideTimer = setTimeout(function () {
+                    thumb.classList.remove('is-visible');
+                }, 1100);
+            }
+            function onScroll() {
+                if (!ticking) {
+                    ticking = true;
+                    requestAnimationFrame(place);
+                }
+            }
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll, { passive: true });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', onScroll, { passive: true });
+            }
+        })();
+
         (function bindListDateAlignObserver() {
             var tax = document.getElementById('taxTotal');
             if (!tax || typeof ResizeObserver === 'undefined') return;

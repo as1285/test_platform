@@ -9,7 +9,8 @@ const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
  * URL-only 渠道：不写入浏览器 localStorage、不挂 owner_agent_admin、
  * 不参与 client_id / 设备指纹 / IP 的 sticky 归因回放。
  * 仅当本次请求显式带 ?ch=abc，或安装下载埋点证明装过渠道包 / 描述文件时，
- * 才写入账号 sales_promo_channel；绑定后开通价认账号留存。
+ * 才写入账号 sales_promo_channel（统计用）。
+ * 开通专属价：仅认本次请求 ch=abc，不因账号已绑 abc 而改价。
  * 与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
  */
 var URL_ONLY_SALES_CHANNELS = { abc: true };
@@ -96,12 +97,14 @@ function excludeUrlOnlySalesChannelSinceSql(channelCol, createdCol, sinceUtc, pa
 
 /**
  * 解析用于渠道专属价的渠道 ID。
- * 本次请求显式 ch 优先；否则认账号渠道（含已绑定的 abc）。
+ * 本次请求显式 ch 优先；普通渠道可回落到账号 sales_promo_channel。
+ * URL-only（abc）：只认本次请求 ch，不认账号绑定（支付页须 URL 带 ?ch=abc）。
  */
 function resolveSalesChannelForChannelPrices(userCh, requestCh) {
   var reqCh = sanitizeChannelIdLoose(requestCh);
   var acctCh = sanitizeChannelIdLoose(userCh);
   if (reqCh) return reqCh;
+  if (acctCh && isUrlOnlySalesChannel(acctCh)) return '';
   if (acctCh) return acctCh;
   return '';
 }

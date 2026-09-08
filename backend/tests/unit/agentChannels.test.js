@@ -154,9 +154,9 @@ describe('abc is URL-only for channel prices', () => {
     expect(typeof mod.createAgentChannels).toBe('function');
   });
 
-  it('uses bound account abc when the request has no channel', () => {
-    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('abc');
-    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('abc');
+  it('uses request abc only; bound account abc alone does not set channel prices', () => {
+    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('');
+    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('');
     expect(resolveSalesChannelForChannelPrices('abc', 'abc')).toBe('abc');
     expect(resolveSalesChannelForChannelPrices('', 'abc')).toBe('abc');
   });
