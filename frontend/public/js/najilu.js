@@ -2110,7 +2110,14 @@
       });
       if (showStamp) {
         /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
-        drawStamp(ctx, width - 238, explainY + 122, resolveStampAuthority(allRows, app), stampImg);
+        drawStamp(
+          ctx,
+          width - 238,
+          explainY + 122,
+          resolveStampAuthority(allRows, app),
+          stampImg,
+          cleanText((app && app.record_no) || '') + cleanText((app && app.id) || '') + issueDateFromApp(app)
+        );
       }
       if (demoWatermark) {
         drawDemoSampleWatermark(ctx, width, height);
@@ -2250,7 +2257,8 @@
     function paintAtAngle(angle, ch) {
       ctx.save();
       ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-      ctx.rotate(angle + Math.PI / 2);
+      /* 上弧字顶朝外；下弧数字顶朝圆心（正版底弧防伪码） */
+      ctx.rotate(opt.bottomArc ? angle - Math.PI / 2 : angle + Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(ch, 0, 0);
@@ -2328,8 +2336,28 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制（圆圈+弧字+五角星+业务专用章） */
-  function drawStamp(ctx, cx, cy, authority, stampImg) {
+  /** 正版电子章底弧 13 位防伪码（由记录号/申请 id 稳定派生） */
+  function stampSerialCode(seed) {
+    var s = cleanText(seed) || 'najilu';
+    var h = 2166136261;
+    var i;
+    for (i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    var out = '';
+    for (i = 0; i < 13; i++) {
+      h ^= h << 13;
+      h ^= h >>> 17;
+      h ^= h << 5;
+      h >>>= 0;
+      out += String(h % 10);
+    }
+    return out;
+  }
+
+  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制（双圈+上弧+五角星+业务专用章+底弧编号） */
+  function drawStamp(ctx, cx, cy, authority, stampImg, serialSeed) {
     if (stampImg && stampImg.complete && stampImg.naturalWidth) {
       var size = 188;
       ctx.save();
@@ -2347,56 +2375,69 @@
       authorityToCityStampText(authority) ||
       cleanText(authority) ||
       '国家税务总局深圳市税务局';
-    /* 正版电子章偏朱红，略深于纯亮红 */
+    /* 正版电子章朱红（对照官方纳税记录红章） */
     var stampRed = '#c62828';
-    var radius = 90;
+    var radius = 92;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
+    var serial = stampSerialCode(serialSeed || name);
     ctx.save();
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 0.88;
     if (ctx.globalCompositeOperation) {
       try {
         ctx.globalCompositeOperation = 'multiply';
       } catch (e) {}
     }
 
+    /* 外粗圈 + 内细圈，间距贴近正版 */
     ctx.strokeStyle = stampRed;
-    ctx.lineWidth = 2.8;
+    ctx.lineWidth = 3.4;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
-    /* 正版常见内细圈 */
-    ctx.lineWidth = 1.15;
+    ctx.lineWidth = 0.95;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius - 5.5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius - 6.2, 0, Math.PI * 2);
     ctx.stroke();
 
-    var arcR = radius - 16;
-    var arcSize = name.length > 14 ? 15.5 : name.length >= 13 ? 16.5 : 17.5;
-    var arcGap = name.length > 14 ? 2.4 : name.length >= 13 ? 2.0 : 2.4;
+    var arcR = radius - 17;
+    var arcSize = name.length > 14 ? 15 : name.length >= 13 ? 16 : 17;
+    var arcGap = name.length > 14 ? 2.2 : name.length >= 13 ? 1.9 : 2.2;
     drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.12, Math.PI * 1.88, {
       size: arcSize,
       weight: 'bold',
       color: stampRed,
-      strokeWidth: 0.5,
+      strokeWidth: 0.45,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 0.92
+      maxSpanRad: Math.PI * 0.94
     });
 
-    /* 正版章心是五角星，「业务专用章」横排在星下方 */
-    drawFivePointStar(ctx, cx, cy - 4, 22, {
+    /* 章心五角星居中；「业务专用章」在星与底弧编号之间 */
+    drawFivePointStar(ctx, cx, cy - 2, 24, {
       color: stampRed,
-      strokeWidth: 0.35
+      strokeWidth: 0.3,
+      innerR: 24 * 0.38
     });
 
-    drawSpacedText(ctx, '业务专用章', cx, cy + 34, {
-      size: 16.5,
+    drawSpacedText(ctx, '业务专用章', cx, cy + 32, {
+      size: 15.5,
       weight: 'bold',
       color: stampRed,
-      letterGap: 4.5,
-      strokeWidth: 0.4,
+      letterGap: 5,
+      strokeWidth: 0.35,
       font: font,
       baseline: 'middle'
+    });
+
+    drawArcText(ctx, serial, cx, cy, radius - 15, Math.PI * 0.22, Math.PI * 0.78, {
+      size: 11.5,
+      weight: 'bold',
+      color: stampRed,
+      strokeWidth: 0.25,
+      font: font,
+      arcLetterGap: 1.6,
+      maxSpanRad: Math.PI * 0.52,
+      bottomArc: true
     });
     ctx.restore();
   }
