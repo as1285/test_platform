@@ -76,12 +76,14 @@ describe('iPhone 14 Pro Max / 11 收入纳税明细灰缝', () => {
     );
   });
 
-  it('右侧用正版短滚动拉手，隐藏系统长条', () => {
-    expect(shuimingResult).toContain('系统长滚动条隐藏；改用下方短拉手');
-    expect(shuimingResult).toContain('正版右侧短滚动拉手');
+  it('右侧用正版自然比例滚动拉手，隐藏系统长条', () => {
+    expect(shuimingResult).toContain('隐藏系统过长滚动条；改用下方按内容比例的自然短拉手');
+    expect(shuimingResult).toContain('正版风格滚动拉手');
     expect(shuimingResult).toContain('sm-scroll-thumb');
     expect(shuimingResult).toContain('initSmShortScrollThumb');
-    expect(shuimingResult).toMatch(/\.sm-scroll-thumb \{[\s\S]{0,120}height:\s*36px;/);
+    expect(shuimingResult).toContain('MIN_H = 72');
+    expect(shuimingResult).toContain('MAX_H = 110');
+    expect(shuimingResult).toMatch(/\.sm-scroll-thumb \{[\s\S]{0,120}height:\s*88px;/);
     expect(shuimingResult).toMatch(/html,\s*body \{[\s\S]{0,160}scrollbar-width:\s*none\s*!important/);
     expect(shuimingResult).toContain('html::-webkit-scrollbar,');
   });
