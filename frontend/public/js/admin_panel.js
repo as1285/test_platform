@@ -1339,26 +1339,27 @@
         /** 精确菜单（不含 hub 别名继承），超管除外 */
         function adminHasExactMenu(menuKey) {
             menuKey = String(menuKey || '');
+            if (menuKey === 'peer-accounts') menuKey = 'rename-tax-daily';
             if (!menuKey) return false;
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
-            return menus.indexOf(menuKey) >= 0;
+            if (menus.indexOf(menuKey) >= 0) return true;
+            if (menuKey === 'rename-tax-daily' && menus.indexOf('peer-accounts') >= 0) return true;
+            return false;
         }
 
         /**
-         * 系统与安全 hub 的 TAB 独立授权：
-         * - 账号权限：仅超管
-         * - 下线管理员：需精确 downline-admins（超管不显示）
-         * - 管理登录：需精确 login-log
-         * - 用户登录：随 login-log（不可单独勾选）
-         * - 监控 / IP 黑名单：需各自精确菜单
+         * 任意 hub 内 TAB：无权限则不显示（全分区通用）。
+         * - 账号权限：仅超管；下线管理员：精确授权且超管不显示
+         * - hub 主 TAB（page===hubKey）：须精确勾选该 hub，避免「仅有子权限」却露出主 TAB
+         * - strict 独立 TAB（IP 黑名单 / 监控）：须精确勾选，不继承 hub
+         * - 其它子 TAB：精确有该页、或精确有整分区 hub、或 adminHasMenu（含捆绑/别名）
          */
         function adminCanSeeHubTab(hubKey, tabPage) {
             tabPage = String(tabPage || '');
+            hubKey = String(hubKey || '');
             if (!tabPage) return false;
-            if (hubKey !== 'login-log') {
-                return adminHasMenu(tabPage);
-            }
+
             if (tabPage === 'admin-accounts') {
                 return !!(currentAdminProfile && currentAdminProfile.is_super);
             }
@@ -1366,18 +1367,19 @@
                 if (currentAdminProfile && currentAdminProfile.is_super) return false;
                 return adminHasExactMenu('downline-admins');
             }
-            if (tabPage === 'login-log') {
-                return adminHasExactMenu('login-log');
+
+            /* hub 主入口 TAB：不因「有某一子权限」而显示（adminHasMenu 的 hubAlias 会误放行） */
+            if (hubKey && tabPage === hubKey) {
+                return adminHasExactMenu(hubKey);
             }
-            if (tabPage === 'user-login-log') {
-                return adminHasExactMenu('user-login-log') || adminHasExactMenu('login-log');
+
+            /* 系统与安全独立 TAB：持有 login-log 也不能露出 */
+            if (tabPage === 'blocked-ips' || tabPage === 'server-monitor') {
+                return adminHasExactMenu(tabPage);
             }
-            if (tabPage === 'server-monitor') {
-                return adminHasExactMenu('server-monitor');
-            }
-            if (tabPage === 'blocked-ips') {
-                return adminHasExactMenu('blocked-ips');
-            }
+
+            if (adminHasExactMenu(tabPage)) return true;
+            if (hubKey && adminHasExactMenu(hubKey)) return true;
             return adminHasMenu(tabPage);
         }
 
