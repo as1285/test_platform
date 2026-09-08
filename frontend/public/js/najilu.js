@@ -2299,7 +2299,36 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制 */
+  /** 正版税局电子章中心五角星（对齐官方纳税记录红章） */
+  function drawFivePointStar(ctx, cx, cy, outerR, opt) {
+    opt = opt || {};
+    var innerR = opt.innerR != null ? opt.innerR : outerR * 0.382;
+    var color = opt.color || '#c62828';
+    var i;
+    var aOut;
+    var aIn;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = opt.strokeWidth != null ? opt.strokeWidth : 0.45;
+    ctx.beginPath();
+    for (i = 0; i < 5; i++) {
+      aOut = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      aIn = aOut + Math.PI / 5;
+      if (i === 0) {
+        ctx.moveTo(cx + Math.cos(aOut) * outerR, cy + Math.sin(aOut) * outerR);
+      } else {
+        ctx.lineTo(cx + Math.cos(aOut) * outerR, cy + Math.sin(aOut) * outerR);
+      }
+      ctx.lineTo(cx + Math.cos(aIn) * innerR, cy + Math.sin(aIn) * innerR);
+    }
+    ctx.closePath();
+    ctx.fill();
+    if (ctx.lineWidth > 0) ctx.stroke();
+    ctx.restore();
+  }
+
+  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制（圆圈+弧字+五角星+业务专用章） */
   function drawStamp(ctx, cx, cy, authority, stampImg) {
     if (stampImg && stampImg.complete && stampImg.naturalWidth) {
       var size = 188;
@@ -2318,11 +2347,12 @@
       authorityToCityStampText(authority) ||
       cleanText(authority) ||
       '国家税务总局深圳市税务局';
-    var stampRed = '#e53935';
+    /* 正版电子章偏朱红，略深于纯亮红 */
+    var stampRed = '#c62828';
     var radius = 90;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
     ctx.save();
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.9;
     if (ctx.globalCompositeOperation) {
       try {
         ctx.globalCompositeOperation = 'multiply';
@@ -2334,8 +2364,13 @@
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
+    /* 正版常见内细圈 */
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 5.5, 0, Math.PI * 2);
+    ctx.stroke();
 
-    var arcR = radius - 15;
+    var arcR = radius - 16;
     var arcSize = name.length > 14 ? 15.5 : name.length >= 13 ? 16.5 : 17.5;
     var arcGap = name.length > 14 ? 2.4 : name.length >= 13 ? 2.0 : 2.4;
     drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.12, Math.PI * 1.88, {
@@ -2348,11 +2383,17 @@
       maxSpanRad: Math.PI * 0.92
     });
 
-    drawSpacedText(ctx, '业务专用章', cx, cy + 8, {
-      size: 18,
+    /* 正版章心是五角星，「业务专用章」横排在星下方 */
+    drawFivePointStar(ctx, cx, cy - 4, 22, {
+      color: stampRed,
+      strokeWidth: 0.35
+    });
+
+    drawSpacedText(ctx, '业务专用章', cx, cy + 34, {
+      size: 16.5,
       weight: 'bold',
       color: stampRed,
-      letterGap: 5,
+      letterGap: 4.5,
       strokeWidth: 0.4,
       font: font,
       baseline: 'middle'
