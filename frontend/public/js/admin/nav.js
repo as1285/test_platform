@@ -159,6 +159,12 @@
         if (!def || !Array.isArray(def.tabs)) return;
         def.tabs.forEach(function (tab) {
           if (!tab || !tab.id) return;
+          if (
+            typeof global.adminCanSeeHubTab === 'function' &&
+            !global.adminCanSeeHubTab(hubKey, tab.page)
+          ) {
+            return;
+          }
           var hash = tab.id === def.defaultTab ? hubKey : hubKey + '/' + tab.id;
           if (seen[hash]) return;
           seen[hash] = 1;

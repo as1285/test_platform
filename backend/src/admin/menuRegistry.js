@@ -426,7 +426,8 @@ const ADMIN_PAGE_DEFS = [
     module: 'accounts',
     order: 18,
     hide_for_super: true,
-    alias_menus: ['login-log'],
+    /* 独立授权：持有 login-log 不能自动看到下线管理员 */
+    strict_hub_tab: true,
     nav_hidden: true
   },
   {
@@ -438,7 +439,7 @@ const ADMIN_PAGE_DEFS = [
     order: 20,
     super_only: true,
     assignable: false,
-    alias_menus: ['login-log'],
+    strict_hub_tab: true,
     nav_hidden: true
   },
   {
@@ -448,6 +449,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'system',
     module: 'logs',
     order: 30,
+    /* 有任一子页权限仍可进侧栏 hub；子 TAB 各自独立，不因 hub 全开 */
     alias_menus: ['user-login-log', 'admin-accounts', 'downline-admins', 'server-monitor', 'blocked-ips']
   },
   {
@@ -458,6 +460,8 @@ const ADMIN_PAGE_DEFS = [
     module: 'logs',
     order: 40,
     assignable: false,
+    /* 与「管理登录」捆绑：有 login-log 即可 */
+    alias_menus: ['login-log'],
     nav_hidden: true
   },
   {
@@ -467,7 +471,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'system',
     module: 'monitor',
     order: 50,
-    alias_menus: ['login-log'],
+    strict_hub_tab: true,
     nav_hidden: true
   },
   {
@@ -477,7 +481,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'system',
     module: 'users',
     order: 60,
-    alias_menus: ['login-log'],
+    strict_hub_tab: true,
     nav_hidden: true
   }
 ];
@@ -788,6 +792,8 @@ function adminProfileCanAccessPage(admin, page) {
       if (adminProfileCanAccessPageRaw(admin, contentOnlyDef)) return true;
       if (contentOnlyDef.super_only && !(admin && admin.is_super)) return false;
       if (contentOnlyDef.hide_for_super && admin && admin.is_super) return false;
+      /* 独立 TAB：不得因持有 hub 菜单而放开 */
+      if (contentOnlyDef.strict_hub_tab) return false;
     }
   }
   /* hub 入口：有 hub menu 或任一 tab 内容页权限即可 */
@@ -818,6 +824,8 @@ function adminProfileCanAccessPage(admin, page) {
   var contentKey = parsed.contentPage || parsed.page;
   var mapped = ADMIN_CONTENT_TO_HUB[contentKey];
   if (mapped && mapped.hub !== contentKey) {
+    var mappedDef = getPageDef(contentKey);
+    if (mappedDef && mappedDef.strict_hub_tab) return false;
     return adminProfileCanAccessPage(admin, mapped.hub);
   }
   return false;

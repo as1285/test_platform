@@ -934,6 +934,15 @@
                 'abc-users': 'abc-ops',
                 'abc-ops': 'ops-board' 
             };
+            /* 系统与安全独立 TAB：不因持有 hub 而判定有子页权限 */
+            if (
+                menuKey === 'blocked-ips' ||
+                menuKey === 'server-monitor' ||
+                menuKey === 'downline-admins' ||
+                menuKey === 'admin-accounts'
+            ) {
+                return false;
+            }
             if (contentHub[menuKey] && menus.indexOf(contentHub[menuKey]) >= 0) return true;
             if (menuKey === 'abc-install-stats' && menus.indexOf('install-guide-stats') >= 0) return true;
             if (
@@ -1257,6 +1266,11 @@
                     }
                 }
                 if (!tab) tab = hubDef.tabs[0];
+                /* 无权限 TAB：落到该 hub 第一个可见 TAB */
+                if (!adminCanSeeHubTab(head, tab.page)) {
+                    var visibleTabs = listVisibleHubTabs(head);
+                    tab = visibleTabs.length ? visibleTabs[0] : tab;
+                }
                 return {
                     page: head,
                     hub: head,
@@ -1268,6 +1282,20 @@
             var mapped = ADMIN_CONTENT_TO_HUB[head];
             if (mapped) {
                 var hDef = ADMIN_HUB_DEFS[mapped.hub];
+                /* 深链到无权限子页时，改到该 hub 可见 TAB */
+                if (!adminCanSeeHubTab(mapped.hub, head)) {
+                    var altTabs = listVisibleHubTabs(mapped.hub);
+                    if (altTabs.length) {
+                        var alt = altTabs[0];
+                        return {
+                            page: mapped.hub,
+                            hub: mapped.hub,
+                            tab: alt.id,
+                            contentPage: alt.page,
+                            hash: alt.id === hDef.defaultTab ? mapped.hub : mapped.hub + '/' + alt.id
+                        };
+                    }
+                }
                 var hHash =
                     mapped.tab === hDef.defaultTab ? mapped.hub : mapped.hub + '/' + mapped.tab;
                 return {
@@ -1310,6 +1338,61 @@
             return adminHasMenu('admin-accounts') || adminHasMenu('downline-admins');
         }
 
+        /** 精确菜单（不含 hub 别名继承），超管除外 */
+        function adminHasExactMenu(menuKey) {
+            menuKey = String(menuKey || '');
+            if (!menuKey) return false;
+            if (currentAdminProfile && currentAdminProfile.is_super) return true;
+            var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
+            return menus.indexOf(menuKey) >= 0;
+        }
+
+        /**
+         * 系统与安全 hub 的 TAB 独立授权：
+         * - 账号权限：仅超管
+         * - 下线管理员：需精确 downline-admins（超管不显示）
+         * - 管理登录：需精确 login-log
+         * - 用户登录：随 login-log（不可单独勾选）
+         * - 监控 / IP 黑名单：需各自精确菜单
+         */
+        function adminCanSeeHubTab(hubKey, tabPage) {
+            tabPage = String(tabPage || '');
+            if (!tabPage) return false;
+            if (hubKey !== 'login-log') {
+                return adminHasMenu(tabPage);
+            }
+            if (tabPage === 'admin-accounts') {
+                return !!(currentAdminProfile && currentAdminProfile.is_super);
+            }
+            if (tabPage === 'downline-admins') {
+                if (currentAdminProfile && currentAdminProfile.is_super) return false;
+                return adminHasExactMenu('downline-admins');
+            }
+            if (tabPage === 'login-log') {
+                return adminHasExactMenu('login-log');
+            }
+            if (tabPage === 'user-login-log') {
+                return adminHasExactMenu('user-login-log') || adminHasExactMenu('login-log');
+            }
+            if (tabPage === 'server-monitor') {
+                return adminHasExactMenu('server-monitor');
+            }
+            if (tabPage === 'blocked-ips') {
+                return adminHasExactMenu('blocked-ips');
+            }
+            return adminHasMenu(tabPage);
+        }
+
+        function listVisibleHubTabs(hubKey) {
+            var hubDef = ADMIN_HUB_DEFS[hubKey];
+            if (!hubDef || !Array.isArray(hubDef.tabs)) return [];
+            return hubDef.tabs.filter(function (t) {
+                return t && t.page && adminCanSeeHubTab(hubKey, t.page);
+            });
+        }
+        window.adminCanSeeHubTab = adminCanSeeHubTab;
+        window.adminHasExactMenu = adminHasExactMenu;
+
         function ensureAdminHubTabs(panelEl, hubKey, activeTab) {
             if (!panelEl || !hubKey || !ADMIN_HUB_DEFS[hubKey]) return;
             var hubDef = ADMIN_HUB_DEFS[hubKey];
@@ -1326,32 +1409,32 @@
                 bar.setAttribute('role', 'tablist');
                 panelEl.insertBefore(bar, panelEl.firstChild);
             }
-            bar.innerHTML = hubDef.tabs
-                .filter(function (t) {
-                    if (!t || !t.page) return false;
-                    if (t.page === 'downline-admins') {
-                        if (currentAdminProfile && currentAdminProfile.is_super) return false;
-                        var extra = currentAdminProfile && Array.isArray(currentAdminProfile.menus)
-                            ? currentAdminProfile.menus
-                            : [];
-                        return extra.indexOf('downline-admins') >= 0;
-                    }
-                    if (t.page === 'admin-accounts' && !(currentAdminProfile && currentAdminProfile.is_super)) {
-                        return false;
-                    }
-                    return adminHasMenu(t.page);
-                })
+            var visible = listVisibleHubTabs(hubKey);
+            if (!visible.length) {
+                bar.innerHTML = '';
+                return;
+            }
+            var active = activeTab;
+            var activeOk = false;
+            for (var ai = 0; ai < visible.length; ai++) {
+                if (visible[ai].id === active) {
+                    activeOk = true;
+                    break;
+                }
+            }
+            if (!activeOk) active = visible[0].id;
+            bar.innerHTML = visible
                 .map(function (t) {
-                    var active = t.id === activeTab ? ' is-active' : '';
+                    var isOn = t.id === active ? ' is-active' : '';
                     return (
                         '<button type="button" class="admin-hub-tab' +
-                        active +
+                        isOn +
                         '" role="tab" data-hub="' +
                         hubKey +
                         '" data-tab="' +
                         t.id +
                         '" aria-selected="' +
-                        (t.id === activeTab ? 'true' : 'false') +
+                        (t.id === active ? 'true' : 'false') +
                         '">' +
                         t.label +
                         '</button>'

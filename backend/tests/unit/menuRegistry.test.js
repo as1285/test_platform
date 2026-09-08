@@ -338,6 +338,26 @@ describe('menuRegistry', () => {
     ).toBe(true);
   });
 
+  it('系统与安全独立 TAB：持有 login-log 不能自动开 IP/监控/下线', () => {
+    const onlyHub = { is_super: false, menus: ['login-log'] };
+    expect(adminProfileCanAccessPage(onlyHub, 'login-log')).toBe(true);
+    expect(adminProfileCanAccessPage(onlyHub, 'user-login-log')).toBe(true);
+    expect(adminProfileCanAccessPage(onlyHub, 'blocked-ips')).toBe(false);
+    expect(adminProfileCanAccessPage(onlyHub, 'server-monitor')).toBe(false);
+    expect(adminProfileCanAccessPage(onlyHub, 'downline-admins')).toBe(false);
+    expect(adminProfileCanAccessPage(onlyHub, 'admin-accounts')).toBe(false);
+
+    const onlyDownline = { is_super: false, menus: ['downline-admins'] };
+    expect(adminProfileCanAccessPage(onlyDownline, 'login-log')).toBe(true);
+    expect(adminProfileCanAccessPage(onlyDownline, 'downline-admins')).toBe(true);
+    expect(adminProfileCanAccessPage(onlyDownline, 'blocked-ips')).toBe(false);
+    expect(adminProfileCanAccessPage(onlyDownline, 'server-monitor')).toBe(false);
+
+    const withIp = { is_super: false, menus: ['login-log', 'blocked-ips'] };
+    expect(adminProfileCanAccessPage(withIp, 'blocked-ips')).toBe(true);
+    expect(adminProfileCanAccessPage(withIp, 'server-monitor')).toBe(false);
+  });
+
   it('ADMIN_PAGE_DEFS pages are unique', () => {
     const pages = ADMIN_PAGE_DEFS.map((d) => d.page);
     expect(new Set(pages).size).toBe(pages.length);
