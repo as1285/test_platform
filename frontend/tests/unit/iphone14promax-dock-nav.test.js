@@ -35,8 +35,10 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
     expect(navCss).toContain('left: 16px !important');
   });
 
-  it('首页锁滑动并垫 59px 蓝顶', () => {
-    expect(shouye).toContain('pinShouyePageScroll');
+  it('首页可下滑停住，只挡贴顶回弹，并垫 59px 蓝顶', () => {
+    expect(shouye).toContain('allowShouyePageScroll14pm');
+    expect(shouye).toContain('y <= 0 && dy > 0');
+    expect(shouye).not.toContain('function pinShouyePageScroll');
     expect(shouye).toContain('overscroll-behavior-y: none');
     expect(shouye).toContain('height: 59px !important');
     expect(shouye).toContain("setProperty('--app-shell-statusbar-top', '59px')");
@@ -47,8 +49,9 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html, name).toContain('app-ios-iphone14promax');
       expect(html, name).toContain('iPhone15,3');
-      expect(html, name).toMatch(/auth\.js\?v=20260909-ios-14pm-fix3/);
+      expect(html, name).toMatch(/auth\.js\?v=20260909-ios-14pm-fix[34]/);
     });
+    expect(pages.shouye).toContain('auth.js?v=20260909-ios-14pm-fix4');
     expect(pages.shouye).toContain('nav.css?v=20260909-ios-14pm-fix3');
   });
 });
