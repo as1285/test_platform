@@ -5071,11 +5071,13 @@
             var usernameEl = document.getElementById('udFilterUsername');
             var realNameEl = document.getElementById('udFilterRealName');
             var companyEl = document.getElementById('udFilterCompany');
+            var idCardEl = document.getElementById('udFilterIdCard');
             var familyEl = document.getElementById('udFilterFamily');
             var bankEl = document.getElementById('udFilterBank');
             var username = usernameEl ? usernameEl.value.trim() : '';
             var realName = realNameEl ? realNameEl.value.trim() : '';
             var company = companyEl ? companyEl.value.trim() : '';
+            var idCard = idCardEl ? idCardEl.value.trim() : '';
             var hasFamily = familyEl ? familyEl.value : '';
             var hasBank = bankEl ? bankEl.value : '';
             if (stat) stat.textContent = '列表加载中…';
@@ -5088,6 +5090,7 @@
             if (username) url += '&username=' + encodeURIComponent(username);
             if (realName) url += '&real_name=' + encodeURIComponent(realName);
             if (company) url += '&company=' + encodeURIComponent(company);
+            if (idCard) url += '&id_card=' + encodeURIComponent(idCard);
             if (hasFamily !== '') url += '&has_family=' + encodeURIComponent(hasFamily);
             if (hasBank !== '') url += '&has_bank=' + encodeURIComponent(hasBank);
             adminFetch(url)
@@ -7797,6 +7800,7 @@
                 document.getElementById('udFilterUsername').value = '';
                 document.getElementById('udFilterRealName').value = '';
                 document.getElementById('udFilterCompany').value = '';
+                document.getElementById('udFilterIdCard').value = '';
                 document.getElementById('udFilterFamily').value = '';
                 document.getElementById('udFilterBank').value = '';
                 loadUserDataList(1);
@@ -9056,6 +9060,17 @@
                     }
                     return '<span class="badge badge-no">未付费</span>';
                 }
+                function accountJumpButton(username) {
+                    var name = String(username || '').trim();
+                    if (!name) return '—';
+                    return (
+                        '<button type="button" class="admin-user-jump js-bid-follow-open-user" data-u="' +
+                        esc(name) +
+                        '" title="跳转到注册用户">' +
+                        esc(name) +
+                        '</button>'
+                    );
+                }
                 function paidCell(row) {
                     if (row.pay_status !== 'paid') return '—';
                     var parts = [];
@@ -9084,7 +9099,7 @@
                                 '"><td>' +
                                 fmtTime(row.reviewed_at || row.created_at) +
                                 '</td><td>' +
-                                esc(row.username) +
+                                accountJumpButton(row.username) +
                                 '</td><td>' +
                                 esc(row.sku_label || row.sku_id) +
                                 '</td><td><strong>¥' +
@@ -9179,6 +9194,11 @@
                     return lines.join('');
                 }
                 followTbody.addEventListener('click', function (ev) {
+                    var userBtn = ev.target.closest('.js-bid-follow-open-user');
+                    if (userBtn) {
+                        jumpToRegisteredUser(userBtn.getAttribute('data-u'));
+                        return;
+                    }
                     var remindBtn = ev.target.closest('.bid-follow-remind');
                     if (remindBtn && !remindBtn.disabled) {
                         var rid = remindBtn.getAttribute('data-id');

@@ -30,6 +30,6 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20260908-hub-tab-perm');
+    expect(html).toContain('admin_panel.js?v=20260909-bid-follow-user-jump');
   });
 });
