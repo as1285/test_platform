@@ -291,8 +291,39 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260909-hinova-blackpad-light-v4"></script>
-    <script src="/js/auth.js?v=20260909-hinova-blackpad-light-v4" defer></script>
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                if (!/FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(u)) return;
+                var root = document.documentElement;
+                root.classList.add('app-android-client');
+                root.classList.add('app-top-safe-shell');
+                root.classList.add('app-android-hinova');
+                root.classList.add('app-android-hinova9se');
+                root.classList.add('app-android-immersive-white-top');
+                root.classList.remove('app-huawei-mine-noclip');
+                root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+                root.style.setProperty('--android-status-inset', '40px', 'important');
+                root.style.setProperty('--mine-top-bleed', '40px', 'important');
+                if (!document.querySelector('style[data-hinova9se-mine-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-hinova9se-mine-firstpaint', '1');
+                    st.textContent =
+                        'html.app-android-hinova9se::before{content:""!important;display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;min-height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                        'html.app-android-hinova9se body.page-mine{--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;background-image:linear-gradient(#000 0,#000 40px,#f5f6fa 40px)!important;}' +
+                        'html.app-android-hinova9se body.page-mine .mine-e1-canvas,html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas{padding-top:40px!important;box-sizing:border-box!important;background-color:#000!important;}' +
+                        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>img{margin-top:0!important;}' +
+                        'html.app-android-hinova9se body.page-mine .mine-e1-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;}';
+                    (document.head || root).appendChild(st);
+                }
+            } catch (eHn) {}
+        })();
+    </script>
+    <script src="/js/auth-boot.js?v=20260909-hinova9se-mine-pad-v5"></script>
+    <script src="/js/auth.js?v=20260909-hinova9se-mine-pad-v5" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -563,6 +594,38 @@
             padding-top: 40px !important;
             box-sizing: border-box !important;
             background-color: #000000 !important;
+        }
+        /* Hi nova 9 SE：沉浸黑条，勿被 noclip 的 padding-top:0 盖掉；胶囊跟画布实测宽度 */
+        html.app-android-hinova9se body.page-mine,
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine {
+            --mine-top-bleed: 40px !important;
+            --app-shell-statusbar-top: 40px !important;
+            --android-status-inset: 40px !important;
+            background-image: linear-gradient(#000000 0px, #000000 40px, #f5f6fa 40px) !important;
+        }
+        html.app-android-hinova9se body.page-mine .mine-e1-canvas,
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas {
+            padding-top: 40px !important;
+            box-sizing: border-box !important;
+            background-color: #000000 !important;
+            container-type: normal !important;
+            width: 100% !important;
+        }
+        html.app-android-hinova9se body.page-mine .mine-e1-canvas > img,
+        html.app-android-hinova9se body.page-mine .mine-e1-canvas > #headerImg,
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas > img {
+            margin-top: 0 !important;
+            position: relative !important;
+            top: auto !important;
+            transform: none !important;
+        }
+        html.app-android-hinova9se body.page-mine .mine-e1-pill,
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-pill {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1 !important;
+            box-sizing: border-box !important;
         }
         html.app-android-vivo-family body.page-mine .mine-e1-canvas > img,
         html.app-android-redmi-k70 body.page-mine .mine-e1-canvas > img,

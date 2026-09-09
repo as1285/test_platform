@@ -9,6 +9,7 @@ const pages = {
   shuimingResult: readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8'),
   xiangqing: readFileSync(resolve(__dirname, '../../xiangqing.html'), 'utf8')
 };
+const mine = readFileSync(resolve(__dirname, '../../mine.html'), 'utf8');
 
 describe('Hi nova 9 SE status-bar inset', () => {
   it('matches both retail and firmware model identifiers', () => {
@@ -49,8 +50,26 @@ describe('Hi nova 9 SE status-bar inset', () => {
     expect(fn).toContain("color: '#000000'");
     expect(fn).not.toContain("style: 'dark'");
     const padStart = auth.indexOf('function ensureAndroidFixedBlackStatusPad');
-    const padFn = auth.slice(padStart, padStart + 2500);
+    const padFn = auth.slice(padStart, padStart + 4500);
     expect(padFn).toContain('body.page-shuiming > .header');
     expect(padFn).toContain('calc(12px + var(--app-shell-statusbar-top,40px))');
+  });
+
+  it('mine page keeps 40px black pad and pins e1 rpx (not huawei noclip)', () => {
+    const noclipStart = auth.indexOf('function isHuaweiMineNoClipClient');
+    const noclipFn = auth.slice(noclipStart, auth.indexOf('function resetMate60MineE1RpxToViewport'));
+    expect(noclipFn).toContain('/* Hi nova 9 SE');
+    expect(noclipFn).toMatch(/if \(isHiNova9SeClient\(\)\) \{\s*return false;/);
+    expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \? 'important'/);
+    expect(mine).toContain('data-hinova9se-mine-firstpaint');
+    expect(mine).toContain('html.app-android-hinova9se::before');
+    expect(mine).toContain(
+      'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas'
+    );
+    expect(mine).toMatch(/padding-top:\s*40px\s*!important/);
+    const padStart = auth.indexOf('function ensureAndroidFixedBlackStatusPad');
+    const padFn = auth.slice(padStart, padStart + 4500);
+    expect(padFn).toContain('html.app-android-hinova9se body.page-mine');
+    expect(padFn).toContain('html.app-android-hinova9se body.page-mine .mine-e1-pill');
   });
 });
