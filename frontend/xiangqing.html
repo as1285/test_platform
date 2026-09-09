@@ -345,6 +345,15 @@
             word-break: break-all;
         }
 
+        /* 正版「基础情况」字色更淡：标签浅灰、取值中灰 */
+        .xq-section[aria-labelledby="secBasic"] .info-label {
+            color: #999;
+        }
+
+        .xq-section[aria-labelledby="secBasic"] .info-value {
+            color: #666;
+        }
+
         /*
          * 扣缴义务人纳税人识别号：正版仅此处换行，且断在「识别号」前
          * （第一行「扣缴义务人纳税人」，第二行「识别号：」）。
@@ -358,21 +367,24 @@
             max-width: none;
         }
 
-        /* 主管税务机关：右对齐，每行 12 字 */
+        /* 主管税务机关：正版整段单行（含「税务局」），不按 12 字拆行 */
         .info-row--tax-authority {
-            align-items: flex-start;
+            align-items: center;
+            gap: 6px;
         }
 
         .info-row--tax-authority .info-label {
-            padding-top: 2px;
+            padding-top: 0;
         }
 
         .info-value--tax-authority {
-            flex: 1 1 58%;
-            max-width: 58%;
-            line-height: 1.5;
-            word-break: normal;
-            white-space: normal;
+            flex: 1 1 auto;
+            max-width: none;
+            line-height: 1.45;
+            font-size: 14px;
+            letter-spacing: -0.2px;
+            word-break: keep-all;
+            white-space: nowrap;
         }
 
         .info-value.amount-value,
@@ -774,34 +786,10 @@
             return String(v);
         }
 
-        function escapeHtml(s) {
-            return String(s == null ? '' : s)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        /** 主管税务机关：每行固定 12 个汉字后换行 */
-        var TAX_AUTHORITY_CHARS_PER_LINE = 12;
-
-        function formatTaxAuthorityLines(raw) {
-            var s = String(raw == null ? '' : raw).trim();
-            if (!s) {
-                return '--';
-            }
-            var n = TAX_AUTHORITY_CHARS_PER_LINE;
-            var lines = [];
-            for (var i = 0; i < s.length; i += n) {
-                lines.push(s.slice(i, i + n));
-            }
-            return lines.map(escapeHtml).join('<br>');
-        }
-
-        function setTaxAuthorityHtml(raw) {
+        function setTaxAuthorityText(raw) {
             var el = document.getElementById('taxAuthority');
             if (el) {
-                el.innerHTML = formatTaxAuthorityLines(raw);
+                el.textContent = formatText(raw);
             }
         }
 
@@ -893,7 +881,7 @@
                         document.getElementById('incomeSubtype').textContent = formatText(record.income_subtype, '正常工资薪金');
                         document.getElementById('companyName').textContent = formatText(record.company_name);
                         document.getElementById('companyTaxId').textContent = formatText(record.company_tax_id);
-                        setTaxAuthorityHtml(record.tax_authority);
+                        setTaxAuthorityText(record.tax_authority);
                         document.getElementById('reportChannel').textContent = formatText(record.report_channel, '其他');
                         document.getElementById('reportDate').textContent = formatText(record.report_date);
                         document.getElementById('taxPeriod').textContent = formatText(record.tax_period);
