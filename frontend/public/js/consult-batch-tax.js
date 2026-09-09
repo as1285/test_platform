@@ -360,14 +360,31 @@ function assignBonusRecordsToPayloads(payloads, bonusRecs) {
         var month = parseInt(br.month, 10);
         var amount = typeof round2 === 'function' ? round2(parseFloat(br.income) || 0) : parseFloat(br.income) || 0;
         if (!(amount > 0)) return;
+        var bonusEmpIdx = parseBatchEmpIdxFromRecordId(br && br.id);
         var chosen = -1;
         var i;
         for (i = 0; i < payloads.length; i++) {
             var rowCompany = String((payloads[i].rowData && payloads[i].rowData.company) || '').trim();
             if (rowCompany !== cn) continue;
+            if (
+                bonusEmpIdx != null &&
+                payloads[i].empIdx != null &&
+                payloads[i].empIdx !== bonusEmpIdx
+            ) {
+                continue;
+            }
             if (bonusFitsBatchRowData(payloads[i].rowData, year, month)) {
                 chosen = i;
                 break;
+            }
+        }
+        if (chosen < 0 && bonusEmpIdx != null) {
+            for (i = 0; i < payloads.length; i++) {
+                var sameCompany = String((payloads[i].rowData && payloads[i].rowData.company) || '').trim() === cn;
+                if (sameCompany && payloads[i].empIdx === bonusEmpIdx) {
+                    chosen = i;
+                    break;
+                }
             }
         }
         if (chosen < 0 && lastIdxByCompany[cn] != null) {
@@ -1552,6 +1569,12 @@ function bindBatchEmpDeductionCalc(row) {
 
 /** 绑定单行：年月、扣除、奖金、公司历史等控件。 */
 function bindBatchEmpRow(node) {
+    var copyBtn = node.querySelector('.batch-emp-copy-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+            copyBatchEmpRow(node);
+        });
+    }
     var rm = node.querySelector('.batch-emp-remove-btn');
     if (rm) {
         rm.addEventListener('click', function () {
@@ -1602,6 +1625,30 @@ function removeBatchEmpRow(row) {
     scheduleBatchTaxDraftSave();
 }
 
+/**
+ * 复制一段工作经历（含区间、扣除、按月工资、奖金/补偿等），追加为新行。
+ * 副作用：DOM + 草稿调度。
+ */
+function copyBatchEmpRow(sourceOrBtn) {
+    var source =
+        sourceOrBtn && sourceOrBtn.classList && sourceOrBtn.classList.contains('batch-emp-row')
+            ? sourceOrBtn
+            : sourceOrBtn && sourceOrBtn.closest
+              ? sourceOrBtn.closest('.batch-emp-row')
+              : null;
+    if (!source) {
+        return null;
+    }
+    var values = serializeBatchEmpRow(source);
+    var row = addBatchEmpRow();
+    if (!row || !values) {
+        return row || null;
+    }
+    setBatchEmpRowValues(row, values);
+    scheduleBatchTaxDraftSave();
+    return row;
+}
+
 /** 追加空白工作经历行并绑定。副作用：DOM。 */
 function addBatchEmpRow() {
     var tpl = document.getElementById('batchEmpRowTpl');
@@ -1636,6 +1683,7 @@ function addBatchEmpRow() {
     bindBatchEmpRow(node);
     list.appendChild(node);
     scheduleBatchTaxDraftSave();
+    return node;
 }
 
 /** 确保至少一行并绑定已有行。 */
@@ -2271,8 +2319,27 @@ function recordYmKey(r) {
     return ymToKey(parseInt(r.year, 10), parseInt(r.month, 10));
 }
 
-function splitCompanyRecordsIntoSegments(recs) {
-    var sorted = recs.slice().sort(function (a, b) {
+/**
+ * 从批量生成的记录 id 解析工作经历段序号。
+ * 月薪：…_e{N}；年终奖/裁员补偿：…_bonus_{N}_{seq} / …_severance_{N}_{seq}。
+ * 无段标记的旧数据返回 null。
+ */
+function parseBatchEmpIdxFromRecordId(id) {
+    var s = String(id || '');
+    var m = s.match(/_e(\d+)$/);
+    if (m) {
+        return parseInt(m[1], 10);
+    }
+    m = s.match(/_(?:bonus|severance)_(\d+)_\d+$/);
+    if (m) {
+        return parseInt(m[1], 10);
+    }
+    return null;
+}
+
+/** 按归属年月连续区间切段（月份缺口 > 1 则新开一段）。 */
+function splitContiguousYmSegments(recs) {
+    var sorted = (recs || []).slice().sort(function (a, b) {
         return recordYmKey(a) - recordYmKey(b);
     });
     var segments = [];
@@ -2294,6 +2361,52 @@ function splitCompanyRecordsIntoSegments(recs) {
     }
     if (current.length) {
         segments.push(current);
+    }
+    return segments;
+}
+
+/**
+ * 同一公司下拆成多段工作经历。
+ * 优先按记录 id 中的 empIdx（_eN）保留用户填的多段，避免连续月份被合并成一整年；
+ * 无 empIdx 的旧记录仍按月份缺口切分。
+ */
+function splitCompanyRecordsIntoSegments(recs) {
+    var byEmp = {};
+    var legacy = [];
+    var hasEmpIdx = false;
+    (recs || []).forEach(function (r) {
+        var idx = parseBatchEmpIdxFromRecordId(r && r.id);
+        if (idx == null || Number.isNaN(idx)) {
+            legacy.push(r);
+            return;
+        }
+        hasEmpIdx = true;
+        var key = String(idx);
+        if (!byEmp[key]) {
+            byEmp[key] = [];
+        }
+        byEmp[key].push(r);
+    });
+    if (!hasEmpIdx) {
+        return splitContiguousYmSegments(recs);
+    }
+    var segments = [];
+    Object.keys(byEmp)
+        .map(function (k) {
+            return parseInt(k, 10);
+        })
+        .sort(function (a, b) {
+            return a - b;
+        })
+        .forEach(function (idx) {
+            splitContiguousYmSegments(byEmp[String(idx)]).forEach(function (seg) {
+                segments.push(seg);
+            });
+        });
+    if (legacy.length) {
+        splitContiguousYmSegments(legacy).forEach(function (seg) {
+            segments.push(seg);
+        });
     }
     return segments;
 }
@@ -2369,7 +2482,9 @@ function segmentToBatchRowPayload(seg) {
     var company = String(first.company_name || '').trim();
     var companyTaxId = first.company_tax_id != null ? String(first.company_tax_id).trim() : '';
     var taxAuthority = first.tax_authority != null ? String(first.tax_authority).trim() : '';
+    var empIdx = parseBatchEmpIdxFromRecordId(first && first.id);
     return {
+        empIdx: empIdx,
         rowData: {
             company: company,
             company_tax_id: companyTaxId,
@@ -2892,6 +3007,17 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
                 });
             });
             payloads.sort(function (a, b) {
+                var ae = a.empIdx;
+                var be = b.empIdx;
+                if (ae != null && be != null && ae !== be) {
+                    return ae - be;
+                }
+                if (ae != null && be == null) {
+                    return -1;
+                }
+                if (ae == null && be != null) {
+                    return 1;
+                }
                 var ak = ymToKey(a.rowData.sy, a.rowData.sm);
                 var bk = ymToKey(b.rowData.sy, b.rowData.sm);
                 return ak - bk;
@@ -5638,6 +5764,11 @@ window.openTaxScreenshotOcrPicker = openTaxScreenshotOcrPicker;
 window.uploadTaxScreenshotForOcr = uploadTaxScreenshotForOcr;
 window.applyTaxScreenshotOcrText = applyTaxScreenshotOcrText;
 window.addBatchEmpRow = addBatchEmpRow;
+window.copyBatchEmpRow = copyBatchEmpRow;
+window.removeBatchEmpRow = removeBatchEmpRow;
+window.parseBatchEmpIdxFromRecordId = parseBatchEmpIdxFromRecordId;
+window.splitCompanyRecordsIntoSegments = splitCompanyRecordsIntoSegments;
+window.splitContiguousYmSegments = splitContiguousYmSegments;
 window.setBatchEmpRowValues = setBatchEmpRowValues;
 window.setBatchEmpBonusesOnRow = setBatchEmpBonusesOnRow;
 window.collectBatchEmpBonusesFromRow = collectBatchEmpBonusesFromRow;
