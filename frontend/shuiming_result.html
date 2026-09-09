@@ -3620,6 +3620,28 @@
             return out;
         }
 
+        /*
+         * 公司名按「汉字宽」截断：全角括号（、）各算半个汉字宽（两个括号合一个汉字宽），
+         * 其余每字计 1；累计宽度超过 maxChars 则加省略号。
+         * 例：「视锐达科技（宁波）有限公司」= 5 + 0.5 + 2 + 0.5 + 3 = 11 宽，12 内可完整显示，
+         * 不再被截成「视锐达科技（宁波）有限公...」。
+         */
+        function truncateCompanyName(s, maxChars) {
+            if (s == null || s === '') return '';
+            var str = String(s);
+            var w = 0;
+            var out = '';
+            for (var ch of str) {
+                var cw = ch === '（' || ch === '）' ? 0.5 : 1;
+                if (w + cw > maxChars) {
+                    return out + '...';
+                }
+                out += ch;
+                w += cw;
+            }
+            return out;
+        }
+
         /** 无记录时的空状态：shuiming_empty.png 为高清截切（仅插画+「页面空空如也」） */
         window.getNoRecordsHtml = function getNoRecordsHtml() {
             return (
@@ -3751,7 +3773,7 @@
                  * 17 Pro Max 箭头靠右由 CSS flex 处理，勿再截成 11 字。
                  */
                 var companyMaxChars = iosCompanyEllipsis ? 13 : 12;
-                var companyShow = truncateChars(company, companyMaxChars);
+                var companyShow = truncateCompanyName(company, companyMaxChars);
                 var companyTitleAttr =
                     company && companyShow !== company
                         ? ' title="' + escapeHtml(company) + '"'
@@ -4064,7 +4086,8 @@
                 apiUrl += '&types=' + encodeURIComponent(incomeTypes.join(','));
             }
 
-            var cached = readShuimingRecordsCache(cacheKey);
+            /* force：编辑返回后跳过 60s 客户端缓存，避免合计仍是旧值 */
+            var cached = opts.force ? null : readShuimingRecordsCache(cacheKey);
             if (cached) {
                 applyShuimingRecordsPayload(cached, year);
                 finishShuimingPageLoading();
@@ -4327,16 +4350,15 @@
                 }
             });
         } catch (e) {}
-        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI；并关掉残留转圈 */
+        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI；并关掉残留转圈。
+         * 首次与返回都走这里 loadData(force)，避免 60s 缓存导致手改后顶栏合计仍旧。 */
         window.addEventListener('pageshow', function (ev) {
             resetShuimingScrollTop();
             refreshActivateUiAfterReturn();
             finishShuimingPageLoading();
             syncTopFixedHeight();
             syncListDateToSummaryDecimal();
-            if (ev && ev.persisted && listStillShowingSpinner()) {
-                loadData({ quiet: true });
-            }
+            loadData({ quiet: !!(ev && ev.persisted), force: true });
         });
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'visible') {
@@ -4344,7 +4366,6 @@
                 finishShuimingPageLoading();
             }
         });
-        loadData();
         window.addEventListener('resize', flushShuimingListToViewport);
         window.addEventListener('orientationchange', function () {
             setTimeout(flushShuimingListToViewport, 80);
