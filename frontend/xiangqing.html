@@ -180,7 +180,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260909-android-statusbar-sep1" defer></script>
+    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
@@ -257,7 +257,6 @@
             left: 0;
             right: 0;
             z-index: 100;
-            border-bottom: 1px solid #eee;
             min-height: var(--xq-header-core);
         }
 
@@ -291,10 +290,6 @@
         .xq-section {
             margin-top: 10px;
             background: #fff;
-        }
-
-        .xq-section:first-of-type {
-            margin-top: 0;
         }
 
         .section-title {
@@ -333,9 +328,11 @@
         .info-label {
             font-size: 15px;
             color: #666;
-            flex: 0 1 auto;
-            max-width: 46%;
+            flex: 0 0 auto;
+            max-width: none;
             line-height: 1.45;
+            /* 正版：基础情况里除识别号外标签均单行 */
+            white-space: nowrap;
         }
 
         .info-value {
@@ -346,6 +343,19 @@
             min-width: 0;
             line-height: 1.45;
             word-break: break-all;
+        }
+
+        /*
+         * 扣缴义务人纳税人识别号：正版仅此处换行，且断在「识别号」前
+         * （第一行「扣缴义务人纳税人」，第二行「识别号：」）。
+         */
+        .info-row--tax-id {
+            align-items: flex-start;
+        }
+
+        .info-label--tax-id {
+            white-space: normal;
+            max-width: none;
         }
 
         /* 主管税务机关：右对齐，每行 12 字 */
@@ -438,21 +448,31 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /*
+         * 正版：各行「元」同一竖线右对齐；箭头叠在右侧 16px 内边距里，
+         * 不进文档流，避免把「本期专项扣除」的元挤偏。
+         */
         .detail-value-with-chev {
-            display: inline-flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 4px;
+            position: relative;
+            display: block;
             flex: 1;
             min-width: 0;
         }
 
         .detail-value-with-chev .detail-value {
-            flex: 0 1 auto;
+            display: block;
+            width: 100%;
+            flex: none;
         }
 
         .detail-chevron {
-            flex-shrink: 0;
+            position: absolute;
+            top: 50%;
+            right: -14px;
+            width: 12px;
+            height: 12px;
+            margin-top: -6px;
+            pointer-events: none;
             transition: transform 0.2s ease;
         }
 
@@ -564,8 +584,8 @@
                 <span class="info-label">扣缴义务人名称：</span>
                 <span class="info-value" id="companyName">--</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">扣缴义务人纳税人识别号：</span>
+            <div class="info-row info-row--tax-id">
+                <span class="info-label info-label--tax-id">扣缴义务人纳税人<br>识别号：</span>
                 <span class="info-value" id="companyTaxId">--</span>
             </div>
             <div class="info-row info-row--tax-authority">

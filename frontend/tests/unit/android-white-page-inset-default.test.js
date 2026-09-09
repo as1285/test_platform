@@ -58,7 +58,7 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain("'--app-shell-statusbar-top', '40px'");
     Object.entries(pages).forEach(([name, html]) => {
       expect(html).toContain('auth-boot.js?v=20260909-android-statusbar-sep1');
-      expect(html).toContain('auth.js?v=20260909-android-statusbar-sep1');
+      expect(html).toContain('auth.js?v=20260909-android-aug1-blue');
     });
   });
 });

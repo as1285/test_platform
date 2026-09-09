@@ -27,7 +27,7 @@
                 if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
                     document.documentElement.classList.add('app-ios-client');
                     document.documentElement.classList.add('app-top-safe-shell');
-                    var ip15pm = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
+                    var ip15pm = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b|iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
                     if (!ip15pm) {
                         try {
                             var sw15 = Math.min(screen.width || 0, screen.height || 0);
@@ -42,6 +42,7 @@
                     }
                     if (ip15pm) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
+                        document.documentElement.classList.add('app-ios-iphone14promax');
                     }
                     var ip13pm = /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
                     if (!ip13pm && !ip15pm && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u)) {
@@ -320,7 +321,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260909-android-statusbar-sep1" defer></script>
+    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -348,7 +349,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260901-ios16pro-nav">
+    <link rel="stylesheet" href="css/nav.css?v=20260909-iphone14pm-dock">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
     <style>
         * {
@@ -365,10 +366,23 @@
             max-width: 100vw;
             /* 勿在 body 上 overflow-x:hidden，iOS 会导致底栏 position:fixed 相对文档错位、看起来偏高 */
             -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: none;
         }
         html {
             min-height: 100vh;
             height: auto;
+            overscroll-behavior-y: none;
+        }
+
+        /*
+         * 正版「我的」整页钉死，下拉不回弹、不露顶白缝。
+         * 不用 body overflow:hidden，避免 iOS 底栏 position:fixed 错位。
+         */
+        html,
+        html body.page-mine,
+        body.page-mine .mine-stack {
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
         }
 
         /* 底栏避让改到 .content-wrapper，避免与 app-shell 的 body padding 叠高 */
@@ -1247,6 +1261,8 @@
         html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
             bottom: 8px !important;
         }
+        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,
         html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
         html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device,
         html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav,
@@ -1264,6 +1280,14 @@
             padding-bottom: max(8px, env(safe-area-inset-bottom, 34px)) !important;
             background: #fff !important;
             box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06) !important;
+        }
+        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,
+        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav.ios-device {
+            background: rgba(255, 255, 255, 0.52) !important;
+            box-shadow: 0 -0.33px 0 rgba(60, 60, 67, 0.16) !important;
+            border: none !important;
         }
 
         /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
@@ -1514,6 +1538,7 @@
             box-sizing: border-box;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         .activate-modal-root.is-open {
@@ -2754,6 +2779,38 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script>
         (function () {
+            /** 正版个人中心整页钉死：拦截文档级下拉回弹，弹层内部滚动除外。 */
+            function mineInInnerScroller(target) {
+                var el = target;
+                if (el && el.nodeType === 3) el = el.parentElement;
+                while (el && el !== document.body && el !== document.documentElement) {
+                    var oy = '';
+                    try {
+                        oy = window.getComputedStyle(el).overflowY;
+                    } catch (eOy) {}
+                    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+                        return true;
+                    }
+                    el = el.parentElement;
+                }
+                return false;
+            }
+            document.addEventListener(
+                'touchmove',
+                function (ev) {
+                    if (ev.defaultPrevented) return;
+                    if (mineInInnerScroller(ev.target)) return;
+                    ev.preventDefault();
+                },
+                { passive: false, capture: true }
+            );
+            function pinMinePageScroll() {
+                if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) {
+                    window.scrollTo(0, 0);
+                }
+            }
+            window.addEventListener('scroll', pinMinePageScroll, { passive: true });
+
             /** 原版 updateEImage：gender × company_name_tow(0/1/2) × FamilyMember → e1_*.png */
             var mineE1State = { family: 0, employer: 0 };
 

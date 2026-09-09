@@ -190,6 +190,7 @@ html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
  * iPhone 15 Pro Max / 15 Plus / 13 Pro Max：悬浮胶囊与 Home Indicator 之间会透出页面，
  * 或 13 PM 被按 screen.height 下拉裁掉。铺满底边成原生 Tab 条；勿套到 16 等其它 iPhone。
  */
+html.app-ios-client.app-ios-iphone14promax,
 html.app-ios-client.app-ios-iphone15promax,
 html.app-ios-client.app-ios-iphone13promax {
     --bottom-nav-side: 0px;
@@ -199,6 +200,12 @@ html.app-ios-client.app-ios-iphone13promax {
     --bottom-nav-clearance: calc(62px + env(safe-area-inset-bottom, 34px));
 }
 
+html.app-ios-client.app-ios-iphone14promax body.page-shouye,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha,
+html.app-ios-client.app-ios-iphone14promax body.page-refund-ad,
+html.app-ios-client.app-ios-iphone14promax body.page-message,
+html.app-ios-client.app-ios-iphone14promax body.page-mine,
 html.app-ios-client.app-ios-iphone15promax body.page-shouye,
 html.app-ios-client.app-ios-iphone15promax body.page-daiban,
 html.app-ios-client.app-ios-iphone15promax body.page-bancha,
@@ -217,6 +224,20 @@ html.app-ios-client.app-ios-iphone13promax body.page-mine {
     --bottom-nav-gap: 0px !important;
 }
 
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-refund-ad > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-refund-ad > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone15promax body > .bottom-nav,
 html.app-ios-client.app-ios-iphone15promax body > .bottom-nav.ios-device,
 html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav,
@@ -265,6 +286,106 @@ html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav.ios-devi
     overflow: visible !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+}
+
+/*
+ * iPhone 14 Pro Max（及同屏 15 PM）：正版是贴底全宽毛玻璃，不是实心白条。
+ * 模糊放在 ::before，底栏本身不设 backdrop-filter，避免 WebKit 把 fixed 条抬高。
+ */
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav {
+    background: rgba(255, 255, 255, 0.52) !important;
+    box-shadow: 0 -0.33px 0 rgba(60, 60, 67, 0.16) !important;
+    border: none !important;
+    isolation: isolate;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-shouye > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-daiban > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-bancha > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-message > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.38);
+    -webkit-backdrop-filter: saturate(180%) blur(26px);
+    backdrop-filter: saturate(180%) blur(26px);
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav .nav-item,
+html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav .nav-item {
+    z-index: 1;
+}
+
+/*
+ * iPhone 14 Pro Max：用户要悬浮胶囊，不要贴底长条。
+ * 须写在 15 PM 贴底规则之后，避免同屏 430×932 被带成 dock。
+ */
+html.app-ios-client.app-ios-iphone14promax {
+    --bottom-nav-side: 16px !important;
+    --bottom-nav-bottom: 8px !important;
+    --bottom-nav-gap: 8px !important;
+    --bottom-nav-radius: 32px !important;
+    --bottom-nav-clearance: calc(54px + 8px + 12px) !important;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device {
+    left: 16px !important;
+    right: 16px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    border-radius: 32px !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    max-height: 54px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid rgba(0, 0, 0, 0.04) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+    isolation: auto;
+}
+
+html.app-ios-client.app-ios-iphone14promax body > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav::before,
+html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav::before {
+    content: none !important;
+    display: none !important;
 }
 
 /* Tab 壳 iframe：只保留宿主底栏，子页底栏一律隐藏（含 iPhone 16 Pro 等 iOS 机型选择器） */

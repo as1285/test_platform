@@ -1631,16 +1631,63 @@
   }
 
   /**
-   * iPhone 15 Pro Max / 15 Plus：悬浮胶囊底下会透出页面，须铺满底边盖住 Home Indicator。
-   * 其它 iPhone 仍保持 8px 胶囊，勿套用此档。
+   * iPhone 14 Pro Max（iPhone15,3，430×932 灵动岛）。
+   * Safari 常无型号；同逻辑屏且无 15 系列 UA 时走此档，底栏保持悬浮胶囊。
    */
+  function isIPhone14ProMaxClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = clientUaBlob();
+    if (/iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua)) {
+      return true;
+    }
+    if (
+      /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(
+        ua
+      )
+    ) {
+      return false;
+    }
+    if (isIPhone16ProMaxClient() || isIPhone17ProMaxClient()) {
+      return false;
+    }
+    var sides = getIOSLogicalScreenSides();
+    if (!sides) {
+      return false;
+    }
+    return (
+      sides.shortSide >= 428 &&
+      sides.shortSide <= 432 &&
+      sides.longSide >= 928 &&
+      sides.longSide <= 936
+    );
+  }
+
+  function isIPhone14ProMaxCapsuleNavClient() {
+    try {
+      if (document.documentElement.classList.contains('app-ios-iphone14promax')) {
+        return true;
+      }
+    } catch (eCls) {}
+    return isIPhone14ProMaxClient();
+  }
+
   function isIPhone15ProMaxDockNavClient() {
+    try {
+      if (isIPhone14ProMaxCapsuleNavClient()) {
+        return false;
+      }
+    } catch (e14) {}
     try {
       if (document.documentElement.classList.contains('app-ios-iphone15promax')) {
         return true;
       }
     } catch (eCls) {}
-    return isIPhone15PlusProMaxLikeClient();
+    var ua = clientUaBlob();
+    return /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(
+      ua
+    );
   }
 
   /**
@@ -1701,6 +1748,9 @@
       return false;
     }
     var ua = navigator.userAgent || '';
+    if (/iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua)) {
+      return false;
+    }
     if (/iPhone\s*14\s*Pro\b|iPhone15,2\b/i.test(ua)) {
       return true;
     }
@@ -3282,6 +3332,31 @@
        * 否则「返回/标题」贴顶（16 Pro 对比正确 UI 的典型差）。
        */
       if (measured < 20 && isIosStandaloneApp() && !isCordovaTaxAppShell()) {
+        var islandBlueTopPage = false;
+        try {
+          islandBlueTopPage = !!(
+            document.body &&
+            (document.body.classList.contains('page-shouye') ||
+              document.body.classList.contains('page-mine') ||
+              document.body.classList.contains('page-daiban') ||
+              document.body.classList.contains('page-bancha') ||
+              document.body.classList.contains('page-message')) &&
+            (isIPhone14ProMaxClient() ||
+              document.documentElement.classList.contains('app-ios-iphone14promax') ||
+              isIPhone15PlusProMaxLikeClient() ||
+              isIPhone16ProLikeClient() ||
+              isIPhone16ProMaxClient() ||
+              isIPhone17ProLikeClient() ||
+              isIPhone17ProMaxClient())
+          );
+        } catch (eBlueTop) {}
+        if (islandBlueTopPage) {
+          document.documentElement.style.setProperty(
+            '--app-shell-statusbar-top',
+            IOS_DYNAMIC_ISLAND_INSET_PX + 'px'
+          );
+          return;
+        }
         var islandWhitePage =
           isIosWhiteStatusPage() &&
           (isIPhone16ProLikeClient() ||
@@ -3307,6 +3382,7 @@
           isIPhone16ProLikeClient() ||
           isIPhone16ProMaxClient() ||
           isIPhone15PlusProMaxLikeClient() ||
+          isIPhone14ProMaxClient() ||
           isIPhone17ProLikeClient() ||
           isIPhone17ProMaxClient()
         ) {
@@ -3394,12 +3470,10 @@
     } catch (eMsg) {}
   }
 
-  /** Cordova / iOS / 多数安卓：沉浸状态栏 + 浅色图标，顶色跟随页面蓝（对齐原版 immersed + light）
+  /** Cordova / iOS / 多数安卓：沉浸状态栏 + 浅色图标，顶色跟随页面蓝（对齐 8 月初 immersed + light）
    * topColor：仅状态栏/theme-color；shellBg：壳层与 iframe 外底色（默认浅灰，勿用顶栏蓝铺满，否则 iOS 底栏下露蓝）
-   * 安卓 / 鸿蒙（含 Mate60 / K70 / HyperOS / ColorOS / OriginOS / OneUI / Harmony）：统一外置黑条
-   *   overlays=false + #000000 + style light（白图标），对齐官方个税 App；顶距清零避免双空。
+   * Android：蓝顶页默认 overlays=true + 顶色沉浸（8/1 观感）；仅 Ace2V / 小米 14 外置黑条例外。
    * iOS：保持蓝顶沉浸（overlays=true + topColor + light）。 */
-
   function applyImmersiveBlueStatusBar(topColor, shellBg) {
     if (!topColor) return;
     try {
@@ -3712,6 +3786,17 @@
       } catch (eMate60Sy) {}
       if (isLikelyIOSViewportClient()) {
         try {
+          if (
+            isIPhone14ProMaxClient() ||
+            document.documentElement.classList.contains('app-ios-iphone14promax')
+          ) {
+            document.documentElement.style.setProperty(
+              '--app-shell-statusbar-top',
+              IOS_DYNAMIC_ISLAND_INSET_PX + 'px'
+            );
+          }
+        } catch (e14Inset) {}
+        try {
           var old = document.querySelector('style[data-shouye-chrome]');
           if (old && old.parentNode) old.parentNode.removeChild(old);
           var st = document.createElement('style');
@@ -3721,11 +3806,19 @@
             APP_SHOUYE_BAR_RGB +
             '),rgb(' +
             APP_SHOUYE_BAR_RGB +
-            ')) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100vh !important;height:auto !important;}' +
+            ')) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100vh !important;height:auto !important;}' +
             'html.app-ios-client body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;height:auto !important;}' +
-            'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,' +
+            'html.app-ios-client.app-ios-iphone14promax,html.app-ios-client.app-ios-iphone14promax body.page-shouye{background-color:#f6f7fb !important;background-image:linear-gradient(rgb(' +
+            APP_SHOUYE_BAR_RGB +
+            '),rgb(' +
+            APP_SHOUYE_BAR_RGB +
+            ')) !important;background-size:100% 59px !important;background-repeat:no-repeat !important;}' +
+            'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,' +
             APP_SHOUYE_BAR_RGB +
             ')) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
+            'html.app-ios-client.app-ios-iphone14promax.app-top-safe-shell body.page-shouye::before{height:59px !important;background-color:#' +
+            APP_SHOUYE_BAR_BLUE.replace('#', '') +
+            ' !important;}' +
             'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,' +
             APP_SHOUYE_BAR_RGB +
             ')) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}';
@@ -4209,9 +4302,14 @@
       'padding-bottom:8px!important;' +
       'margin-bottom:0!important;' +
       '}' +
-      'html.app-ios-client.app-ios-iphone15promax,html.app-ios-client.app-ios-iphone13promax{--bottom-nav-side:0px!important;--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;--bottom-nav-radius:0px!important;--bottom-nav-clearance:calc(62px + env(safe-area-inset-bottom, 34px))!important;}' +
+      'html.app-ios-client.app-ios-iphone14promax,html.app-ios-client.app-ios-iphone15promax,html.app-ios-client.app-ios-iphone13promax{--bottom-nav-side:0px!important;--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;--bottom-nav-radius:0px!important;--bottom-nav-clearance:calc(62px + env(safe-area-inset-bottom, 34px))!important;}' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-shouye,html.app-ios-client.app-ios-iphone14promax body.page-daiban,html.app-ios-client.app-ios-iphone14promax body.page-bancha,html.app-ios-client.app-ios-iphone14promax body.page-message,html.app-ios-client.app-ios-iphone14promax body.page-mine,' +
       'html.app-ios-client.app-ios-iphone15promax body.page-shouye,html.app-ios-client.app-ios-iphone15promax body.page-daiban,html.app-ios-client.app-ios-iphone15promax body.page-bancha,html.app-ios-client.app-ios-iphone15promax body.page-message,html.app-ios-client.app-ios-iphone15promax body.page-mine,' +
       'html.app-ios-client.app-ios-iphone13promax body.page-shouye,html.app-ios-client.app-ios-iphone13promax body.page-daiban,html.app-ios-client.app-ios-iphone13promax body.page-bancha,html.app-ios-client.app-ios-iphone13promax body.page-message,html.app-ios-client.app-ios-iphone13promax body.page-mine{--bottom-nav-bottom:0px!important;--bottom-nav-gap:0px!important;}' +
+      'html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,' +
       'html.app-ios-client.app-ios-iphone15promax body > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body > .bottom-nav.ios-device,' +
       'html.app-ios-client.app-ios-iphone15promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-daiban > .bottom-nav,' +
       'html.app-ios-client.app-ios-iphone15promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone15promax body.page-message > .bottom-nav,' +
@@ -4225,7 +4323,30 @@
       'padding-top:8px!important;padding-bottom:max(8px,env(safe-area-inset-bottom,34px))!important;' +
       'background:#fff!important;box-shadow:0 -1px 0 rgba(0,0,0,0.06)!important;' +
       '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;' +
-      '}';
+      '}' +
+      'html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav,html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-message > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax):not(.app-ios-iphone14promax) body.page-mine > .bottom-nav{' +
+      'background:rgba(255,255,255,0.52)!important;box-shadow:0 -0.33px 0 rgba(60,60,67,0.16)!important;border:none!important;' +
+      '}' +
+      'html.app-ios-client.app-ios-iphone14promax{--bottom-nav-side:16px!important;--bottom-nav-bottom:8px!important;--bottom-nav-gap:8px!important;--bottom-nav-radius:32px!important;--bottom-nav-clearance:calc(54px + 8px + 12px)!important;}' +
+      'html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device{' +
+      'left:16px!important;right:16px!important;bottom:8px!important;width:auto!important;max-width:none!important;' +
+      'border-radius:32px!important;height:54px!important;min-height:54px!important;max-height:54px!important;' +
+      'padding-top:8px!important;padding-bottom:8px!important;' +
+      'background:rgba(255,255,255,0.96)!important;box-shadow:0 2px 12px rgba(0,0,0,0.08)!important;' +
+      '-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important;' +
+      '}' +
+      'html.app-ios-client.app-ios-iphone14promax body > .bottom-nav::before,html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav::before,' +
+      'html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav::before{content:none!important;display:none!important;}';
     var embedHide =
       'html.tab-embed-mode .bottom-nav,html.tab-embed-mode body > .bottom-nav,' +
       'html.tab-embed-mode body.page-shouye > .bottom-nav,html.tab-embed-mode body.page-daiban > .bottom-nav,' +
@@ -4332,15 +4453,51 @@
     } catch (eIos) {}
 
     var dockNav = false;
+    var capsule14pm = false;
     try {
-      dockNav = isIPhoneDockBottomNavClient();
+      capsule14pm = isIPhone14ProMaxCapsuleNavClient();
+    } catch (e14c) {}
+    try {
+      dockNav = !capsule14pm && isIPhoneDockBottomNavClient();
     } catch (eDock) {}
+    if (capsule14pm) {
+      try {
+        document.documentElement.classList.add('app-ios-iphone14promax');
+        nav.style.setProperty('position', 'fixed', 'important');
+        nav.style.setProperty('left', '16px', 'important');
+        nav.style.setProperty('right', '16px', 'important');
+        nav.style.setProperty('top', 'auto', 'important');
+        nav.style.setProperty('bottom', '8px', 'important');
+        nav.style.setProperty('width', 'auto', 'important');
+        nav.style.setProperty('max-width', 'none', 'important');
+        nav.style.setProperty('height', '54px', 'important');
+        nav.style.setProperty('min-height', '54px', 'important');
+        nav.style.setProperty('max-height', '54px', 'important');
+        nav.style.setProperty('padding-top', '8px', 'important');
+        nav.style.setProperty('padding-bottom', '8px', 'important');
+        nav.style.setProperty('border-radius', '32px', 'important');
+        nav.style.setProperty('background', 'rgba(255,255,255,0.96)', 'important');
+        nav.style.setProperty('box-shadow', '0 2px 12px rgba(0,0,0,0.08)', 'important');
+        nav.style.setProperty('backdrop-filter', 'blur(8px)', 'important');
+        nav.style.setProperty('-webkit-backdrop-filter', 'blur(8px)', 'important');
+        nav.style.setProperty('transform', 'none', 'important');
+        nav.style.setProperty('-webkit-transform', 'none', 'important');
+        document.documentElement.style.setProperty('--bottom-nav-side', '16px');
+        document.documentElement.style.setProperty('--bottom-nav-bottom', '8px');
+        document.documentElement.style.setProperty('--bottom-nav-gap', '8px');
+        document.documentElement.style.setProperty('--bottom-nav-radius', '32px');
+        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(54px + 8px + 12px)');
+      } catch (eCap) {}
+    }
     if (dockNav) {
       try {
         if (isIPhone13ProMaxDockNavClient()) {
           document.documentElement.classList.add('app-ios-iphone13promax');
         } else {
           document.documentElement.classList.add('app-ios-iphone15promax');
+          if (isIPhone14ProMaxClient()) {
+            document.documentElement.classList.add('app-ios-iphone14promax');
+          }
         }
         nav.style.setProperty('position', 'fixed', 'important');
         nav.style.setProperty('left', '0', 'important');
@@ -4359,8 +4516,14 @@
         nav.style.setProperty('padding-left', '0', 'important');
         nav.style.setProperty('padding-right', '0', 'important');
         nav.style.setProperty('border-radius', '0', 'important');
-        nav.style.setProperty('box-shadow', '0 -1px 0 rgba(0,0,0,0.06)', 'important');
-        nav.style.setProperty('background', '#fff', 'important');
+        if (document.documentElement.classList.contains('app-ios-iphone13promax')) {
+          nav.style.setProperty('box-shadow', '0 -1px 0 rgba(0,0,0,0.06)', 'important');
+          nav.style.setProperty('background', '#fff', 'important');
+        } else {
+          /* 14 / 15 Pro Max 正版：半透明贴底，模糊交给 CSS ::before，避免抬高 */
+          nav.style.setProperty('box-shadow', '0 -0.33px 0 rgba(60,60,67,0.16)', 'important');
+          nav.style.setProperty('background', 'rgba(255,255,255,0.52)', 'important');
+        }
         nav.style.setProperty('backdrop-filter', 'none', 'important');
         nav.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
         nav.style.setProperty('backface-visibility', 'visible', 'important');
@@ -4718,6 +4881,7 @@
       var iosIPhone16ProMax = iosClient && isIPhone16ProMaxClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var iosIPhone14Pro = iosClient && isIPhone14ProLikeClient();
+      var iosIPhone14ProMax = iosClient && isIPhone14ProMaxClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhone13 = iosClient && isIPhone13Client();
       var iosIPhone13ProMax = iosClient && isIPhone13ProMaxClient();
@@ -4759,11 +4923,12 @@
       var lightRootChrome = cordovaShell || iosClient || androidClient;
       var immersiveBlueTop = getImmersiveBlueTopColor();
       /*
-       * 安卓 / 鸿蒙蓝顶页：系统栏用黑条（theme-color=#000），与 iOS black-translucent 蓝顶区分。
-       * 小米 14 / 23127 等同黑条。
+       * 安卓蓝顶页：对齐 8 月初 UI——theme-color 跟顶栏蓝 + black-translucent（沉浸蓝顶）。
+       * 仅小米 14 / 23127 外置黑条用 #000；勿再把全部安卓蓝顶页刷成黑条（9/3 回归）。
+       * iOS 仍用顶色 + translucent，本分支不改 iOS。
        */
       var rootChromeBg =
-        androidClient && (immersiveBlueTop || cordovaXiaomi23127 || xiaomi14Client)
+        cordovaXiaomi23127 || xiaomi14Client
           ? '#000000'
           : immersiveBlueTop
             ? immersiveBlueTop
@@ -4777,11 +4942,7 @@
       upsertMeta('apple-mobile-web-app-capable', 'yes');
       upsertMeta('mobile-web-app-capable', 'yes');
       setStatusBarStyleMeta(
-        androidClient && immersiveBlueTop
-          ? 'black'
-          : immersiveBlueTop || !lightRootChrome
-            ? 'black-translucent'
-            : 'default'
+        immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'
       );
       (function ensureAppIconLinks() {
         function upsertLink(rel, href, attrs) {
@@ -5120,6 +5281,9 @@
       if (iosIPhone14Pro) {
         document.documentElement.classList.add('app-ios-iphone14pro');
       }
+      if (iosIPhone14ProMax) {
+        document.documentElement.classList.add('app-ios-iphone14promax');
+      }
       if (iosIPhone16ProMax) {
         document.documentElement.classList.add('app-ios-iphone16promax');
         if (!immersiveBlueTop) {
@@ -5159,7 +5323,7 @@
       if (iosIPhone15) {
         document.documentElement.classList.add('app-ios-iphone15');
       }
-      if (iosIPhone15ProMax) {
+      if (iosIPhone15ProMax && !iosIPhone14ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
         /* 15 Pro Max 首页：状态栏须与搜索顶栏同蓝，避免白条接缝 */
         upsertMeta('theme-color', '#2c80f4');

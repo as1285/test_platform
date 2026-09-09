@@ -5,9 +5,10 @@ import { resolve } from 'path';
 const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8');
 const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
+const cordova = readFileSync(resolve(__dirname, '../../../cordova-app/www/index.html'), 'utf8');
 
 describe('首页蓝顶栏 / 纳税明细顶白底', () => {
-  it('安卓恢复 9/1：仅 Ace2V/小米14 外置黑条，其余蓝顶沉浸；iOS 不变', () => {
+  it('安卓对齐 8 月初：蓝顶沉浸；仅 Ace2V/小米14 外置黑条；iOS 不变', () => {
     const start = auth.indexOf('function applyImmersiveBlueStatusBar');
     const end = auth.indexOf('function applyMinePageChrome');
     expect(start).toBeGreaterThan(0);
@@ -21,6 +22,24 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(fn).toContain('overlays: false');
     expect(fn).toContain('color: topColor');
     expect(fn).toContain('overlays: !androidOuterSolid');
+  });
+
+  it('setupMobileStatusBar 不再把全部安卓蓝顶页刷成黑条', () => {
+    expect(auth).toContain('安卓蓝顶页：对齐 8 月初 UI');
+    expect(auth).toContain('cordovaXiaomi23127 || xiaomi14Client');
+    expect(auth).not.toContain(
+      'androidClient && (immersiveBlueTop || cordovaXiaomi23127 || xiaomi14Client)'
+    );
+    expect(auth).not.toContain('androidClient && immersiveBlueTop\n          ? \'black\'');
+    expect(auth).toContain(
+      "immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'"
+    );
+  });
+
+  it('Cordova 默认状态栏恢复 8/1 透明沉浸', () => {
+    expect(cordova).toContain("backgroundColorByHexString('#00000000')");
+    expect(cordova).toContain('StatusBar.styleDefault()');
+    expect(cordova).toContain('对齐 8/1：默认透明沉浸');
   });
 
   it('小米 14 首页顶条跟搜索蓝，黑条仅白顶栏页', () => {
@@ -43,11 +62,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260909-android-statusbar-sep1');
+    expect(shuimingResult).toContain('auth.js?v=20260909-android-aug1-blue');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260909-android-statusbar-sep1');
+    expect(shouye).toContain('auth.js?v=20260909-android-aug1-blue');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
