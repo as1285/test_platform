@@ -127,10 +127,10 @@
                 var cfg = window.__TAX_DISTRIBUTION__ || {};
                 var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
                 /* 主线「我的」页；Mate60 由 mine.html 内再跳冻结页 mine_mate60_aug12.html */
-                var q = 'mine.html?in_app=1&_v=20260903-mine1';
+                var q = 'mine.html?in_app=1&_v=20260909-statusbar-rollback';
                 if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
                     q =
-                        'mine.html?in_app=1&_v=20260903-mine1&ch=' +
+                        'mine.html?in_app=1&_v=20260909-statusbar-rollback&ch=' +
                         encodeURIComponent(ch.toLowerCase());
                     /* 不再打 distributor_app=1：代理/渠道包允许 App 内自助注册 */
                 }

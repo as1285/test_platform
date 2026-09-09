@@ -39,11 +39,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260908-ios11-14pm-blue');
+    expect(shuimingResult).toContain('auth.js?v=20260909-android-statusbar-rollback');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260908-ios11-14pm-blue');
+    expect(shouye).toContain('auth.js?v=20260909-android-statusbar-rollback');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
