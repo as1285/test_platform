@@ -27,8 +27,9 @@
                 if (/iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
                     document.documentElement.classList.add('app-ios-client');
                     document.documentElement.classList.add('app-top-safe-shell');
-                    var ip15pm = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b|iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
-                    if (!ip15pm) {
+                    var ip14pm = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(u);
+                    var ip15pm = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(u);
+                    if (!ip14pm && !ip15pm) {
                         try {
                             var sw15 = Math.min(screen.width || 0, screen.height || 0);
                             var sh15 = Math.max(screen.width || 0, screen.height || 0);
@@ -37,12 +38,17 @@
                                 sw15 = Math.round(sw15 / dpr15);
                                 sh15 = Math.round(sh15 / dpr15);
                             }
-                            ip15pm = sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936;
+                            if (sw15 >= 428 && sw15 <= 432 && sh15 >= 928 && sh15 <= 936) {
+                                ip14pm = true;
+                            }
                         } catch (e15) {}
+                    }
+                    if (ip14pm) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
                     }
                     if (ip15pm) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
-                        document.documentElement.classList.add('app-ios-iphone14promax');
                     }
                     var ip13pm = /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
                     if (!ip13pm && !ip15pm && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u)) {
@@ -1261,10 +1267,8 @@
         html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device {
             bottom: 8px !important;
         }
-        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
-        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,
-        html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav,
-        html.app-ios-client.app-ios-iphone15promax body.page-mine > .bottom-nav.ios-device,
+        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone14promax) body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone14promax) body.page-mine > .bottom-nav.ios-device,
         html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav,
         html.app-ios-client.app-ios-iphone13promax body.page-mine > .bottom-nav.ios-device {
             left: 0 !important;
@@ -1281,13 +1285,26 @@
             background: #fff !important;
             box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06) !important;
         }
-        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
-        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device,
-        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav,
-        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body.page-mine > .bottom-nav.ios-device {
+        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone14promax):not(.app-ios-iphone13promax) body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone14promax):not(.app-ios-iphone13promax) body.page-mine > .bottom-nav.ios-device {
             background: rgba(255, 255, 255, 0.52) !important;
             box-shadow: 0 -0.33px 0 rgba(60, 60, 67, 0.16) !important;
             border: none !important;
+        }
+        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
+        html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device {
+            left: 16px !important;
+            right: 16px !important;
+            bottom: 8px !important;
+            width: auto !important;
+            border-radius: 32px !important;
+            height: 54px !important;
+            min-height: 54px !important;
+            max-height: 54px !important;
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
         }
 
         /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
