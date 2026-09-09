@@ -3120,10 +3120,16 @@
         /*
          * 安卓 / 鸿蒙统一外置黑条（overlays=false + #000 + 白图标）：WebView 已在系统栏下方，
          * 顶距一律 0，避免双空。仅 Mate60 保留 52px 页内黑条（Harmony env 常 0，需固定顶条）。
-         * 白顶栏页已在 applyImmersiveNotchWhitePageChrome 内联写 0px，此处不再覆盖。
+         * Hi nova 9 SE：overlays=false 常失效，须保持 40px 沉浸顶距。
+         * 白顶栏页已在 applyImmersiveNotchWhitePageChrome 内联写 0px，此处不再覆盖（9SE 除外）。
          */
         if (isHuaweiMate60Client()) {
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '52px');
+          return;
+        }
+        if (isHiNova9SeClient()) {
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+          document.documentElement.style.setProperty('--android-status-inset', '40px');
           return;
         }
         document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
@@ -3266,6 +3272,25 @@
         pageBg = '#f5f6fa';
       }
       /* 安卓 / 鸿蒙：统一外置黑条（overlays=false + #000 + 白图标），WebView 缩到系统栏下方 */
+      /* Hi nova 9 SE：overlays=false 常失效，蓝顶页仍走沉浸 + 页内 40px 顶距 */
+      if (isLikelyAndroidViewportClient() && isHiNova9SeClient()) {
+        try {
+          document.documentElement.classList.add('app-android-hinova9se');
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+          document.documentElement.style.setProperty('--android-status-inset', '40px');
+        } catch (eHnBlue) {}
+        upsertMeta('theme-color', topColor);
+        upsertMeta('msapplication-navbutton-color', topColor);
+        setStatusBarStyleMeta('black-translucent');
+        requestShellStatusBar({
+          style: 'light',
+          overlays: true,
+          color: topColor,
+          paint_shell: true,
+          shell_bg: pageBg
+        });
+        return;
+      }
       if (isLikelyAndroidViewportClient()) {
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
@@ -3742,9 +3767,38 @@
         return;
       }
       /*
+       * Hi nova 9 SE：系统栏仍覆盖 WebView（overlays=false 常失效）。
+       * 不能走全安卓外置黑条 0 顶距，否则「收入纳税明细」标题与时间栏重合。
+       */
+      if (isHiNova9SeClient()) {
+        try {
+          root.classList.add('app-android-hinova9se');
+          root.classList.add('app-android-immersive-white-top');
+          root.classList.remove('app-android-white-page-outer');
+          root.style.setProperty('--app-shell-statusbar-top', '40px');
+          root.style.setProperty('--android-status-inset', '40px');
+          if (body) {
+            body.style.setProperty('--app-shell-statusbar-top', '40px');
+            body.style.setProperty('--android-status-inset', '40px');
+          }
+        } catch (eHn9) {}
+        upsertMeta('theme-color', '#ffffff');
+        upsertMeta('msapplication-navbutton-color', '#ffffff');
+        setStatusBarStyleMeta('default');
+        requestShellStatusBar({
+          style: 'dark',
+          overlays: true,
+          color: '#ffffff',
+          paint_shell: true,
+          shell_bg: '#f5f6fa'
+        });
+        return;
+      }
+      /*
        * 安卓 / 鸿蒙白顶栏页：统一外置黑条（overlays=false + #000000 + 白图标），对齐官方个税 App。
        * WebView 缩到系统栏下方，顶距清零避免双空；不再按机型分沉浸 40px / 外置 0px 两套。
        * 小米 14 原页内 48px 黑条也并入此外置黑条路径。iOS 白顶栏走 applyIPhone16ProPageChrome。
+       * 例外：Hi nova 9 SE 见上方沉浸分支。
        */
       try {
         root.classList.remove('app-android-immersive-white-top');
