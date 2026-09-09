@@ -53,8 +53,8 @@ describe('homepage 查看更多 opens 警示案例专题', () => {
   it('bumps cache stamps on the new page and homepage assets', () => {
     expect(jingshi).toContain('auth-boot.js?v=20260905-no-home-refund');
     expect(jingshi).toContain('auth.js?v=20260905-no-home-refund');
-    expect(shouye).toContain('auth-boot.js?v=20260909-android-statusbar-rollback');
-    expect(shouye).toContain('auth.js?v=20260909-android-statusbar-rollback');
+    expect(shouye).toContain('auth-boot.js?v=20260909-android-black-bar-v2');
+    expect(shouye).toContain('auth.js?v=20260909-android-black-bar-v2');
     expect(shouye).toContain('nav.css?v=20260905-jingshi-zdfw');
   });
 

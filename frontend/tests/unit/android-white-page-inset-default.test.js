@@ -14,20 +14,21 @@ const OPPO_FAMILY_RESULT_ZERO =
   ':not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result';
 
 describe('Android white-page default immersive inset', () => {
-  it('inverts App-shell white pages to 40px unless the device is a verified outer bar', () => {
+  it('安卓白顶栏页统一外置黑条：applyImmersiveNotchWhitePageChrome 全安卓 0px + overlays=false + #000', () => {
     expect(auth).toContain('function isAndroidWhiteStatusPage()');
     expect(auth).toContain('function isAndroidVerifiedOuterWhitePageClient()');
     expect(auth).toContain('function isAndroidWhitePageImmersiveDefaultClient()');
-    expect(auth).toContain('isAndroidWhitePageImmersiveDefaultClient()');
-    expect(auth).toMatch(
-      /var immersiveTopInsetClient =\s*isAndroidWhitePageImmersiveDefaultClient\(\)/
-    );
-    expect(auth).toContain('isOppoA58Client()');
-    expect(auth).toContain('isOppoFindX9Client()');
-    expect(auth).toContain('isHonorFoldableOuterBarClient()');
-    expect(auth).toContain('isSamsungOneUiFamilyClient()');
-    expect(auth).toContain('isHuaweiPura70LikeClient()');
-    expect(auth).toContain('isXiaomi14LikeClient()');
+    const start = auth.indexOf('function applyImmersiveNotchWhitePageChrome');
+    const end = auth.indexOf('function isInsideTabShellEmbed');
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    const fn = auth.slice(start, end);
+    /* 全安卓白顶栏页统一外置黑条，不再按机型分沉浸 40px / 外置 0px */
+    expect(fn).toContain("overlays: false");
+    expect(fn).toContain("color: '#000000'");
+    expect(fn).toContain("style: 'light'");
+    expect(fn).toContain("'--app-shell-statusbar-top', '0px'");
+    expect(fn).not.toContain('var immersiveTopInsetClient');
   });
 
   it('does not let OPPO-family layout-zero rules win over immersive-white-top', () => {
@@ -53,16 +54,16 @@ describe('Android white-page default immersive inset', () => {
     );
   });
 
-  it('keeps syncAppShellStatusbarTop from forcing 0px on immersive white pages', () => {
+  it('syncAppShellStatusbarTop 对全安卓一律写 0px（仅 Mate60 保留 52px 页内黑条）', () => {
     const syncIdx = auth.indexOf('function syncAppShellStatusbarTop()');
-    const keepIdx = auth.indexOf('var keepWhiteImmersive =');
-    const outerZeroIdx = auth.indexOf(
-      'isAndroidOuterStatusBarClient()',
-      syncIdx
-    );
     expect(syncIdx).toBeGreaterThan(0);
-    expect(keepIdx).toBeGreaterThan(syncIdx);
-    expect(keepIdx).toBeLessThan(outerZeroIdx);
+    const syncFn = auth.slice(syncIdx, auth.indexOf('function requestShellStatusBar'));
+    /* 安卓分支：Mate60 52px，其余一律 0px，不再保留沉浸 40px 分支 */
+    expect(syncFn).toContain("isHuaweiMate60Client()");
+    expect(syncFn).toContain("'--app-shell-statusbar-top', '52px'");
+    expect(syncFn).toContain("'--app-shell-statusbar-top', '0px'");
+    expect(syncFn).not.toContain('var keepWhiteImmersive');
+    expect(syncFn).not.toContain('isAndroidWhitePageImmersiveDefaultClient()');
   });
 
   it('first-paints white pages in auth-boot before auth.js', () => {
@@ -72,8 +73,8 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('PHJ110');
     expect(boot).toContain('23127PN');
     Object.entries(pages).forEach(([name, html]) => {
-      expect(html).toContain('auth-boot.js?v=20260909-android-statusbar-rollback');
-      expect(html).toContain('auth.js?v=20260909-android-statusbar-rollback');
+      expect(html).toContain('auth-boot.js?v=20260909-android-black-bar-v2');
+      expect(html).toContain('auth.js?v=20260909-android-black-bar-v2');
     });
   });
 });
