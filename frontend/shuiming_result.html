@@ -66,7 +66,10 @@
                         (document.head || document.documentElement).appendChild(mi15St);
                     }
                 }
-                if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
+                if (/2304FPN6|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13ultra');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-13pro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 } else if (
@@ -1172,6 +1175,26 @@
             margin-bottom: 0;
         }
 
+        /*
+         * 小米 13 Ultra（2304FPN6 / 6.73" 3200×1440）：
+         * 安卓默认真汇总两行偏矮，首屏会比正版多露出一行列表。
+         * 略加高白底行高与灰缝，列表顶距由 syncTopFixedHeight 实测下推。
+         */
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .page-root {
+            --list-summary-pad: 92px;
+        }
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            padding: 12px 0 10px !important;
+        }
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .summary > .summary-item {
+            padding-top: 8px !important;
+            padding-bottom: 10px !important;
+        }
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .summary > .summary-item:last-of-type {
+            padding-bottom: 8px !important;
+        }
+
         html.platform-android body.page-shuiming-result .sm-activate-card:not([hidden]) {
             margin: 6px 16px 2px;
         }
@@ -2227,6 +2250,8 @@
         /* 小米 13 / 13 Pro / 14 Pro / 15 / 15 Pro / 小米 10 / K70 至尊 / 红米 12C / Mate 60：沉浸状态栏，顶栏须留 40px */
         html.app-android-xiaomi-13 body.page-shuiming-result .page-root,
         html.app-android-xiaomi-13.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .page-root,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-xiaomi-13pro body.page-shuiming-result .page-root,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .page-root,
         html.app-android-xiaomi-14pro body.page-shuiming-result .page-root,
@@ -2277,6 +2302,8 @@
 
         html.app-android-xiaomi-13 body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-13.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .top-fixed .header,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .header,
@@ -2331,6 +2358,10 @@
         html.app-android-xiaomi-13 body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-13.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-xiaomi-13.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .header .header-right,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
@@ -2419,6 +2450,8 @@
 
         html.app-android-xiaomi-13 body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-13.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .top-fixed .summary,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-13pro body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-android-xiaomi-14pro body.page-shuiming-result .top-fixed .summary,
@@ -2452,6 +2485,8 @@
 
         html.app-android-xiaomi-13 body.page-shuiming-result .list,
         html.app-android-xiaomi-13.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .list,
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-xiaomi-13pro body.page-shuiming-result .list,
         html.app-android-xiaomi-13pro.app-top-safe-shell body.page-shuiming-result .list,
         html.app-android-xiaomi-14pro body.page-shuiming-result .list,

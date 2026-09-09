@@ -27,6 +27,7 @@ describe('ui-smoke device catalog', () => {
       'oppo-k9x',
       'xiaomi-13',
       'xiaomi-13pro',
+      'xiaomi-13ultra',
       'xiaomi-14',
       'xiaomi-14pro',
       'xiaomi-15',

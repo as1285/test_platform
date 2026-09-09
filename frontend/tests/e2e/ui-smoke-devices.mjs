@@ -281,6 +281,9 @@ export const DEVICE_PROFILES = [
   immersive('2210132C', '小米 13 Pro', ['app-android-xiaomi-13pro', 'app-android-immersive-white-top'], {
     id: 'xiaomi-13pro'
   }),
+  immersive('2304FPN6DC', '小米 13 Ultra', ['app-android-xiaomi-13ultra', 'app-android-immersive-white-top'], {
+    id: 'xiaomi-13ultra'
+  }),
   immersive('23116PN5BC', '小米 14 Pro', ['app-android-xiaomi-14pro', 'app-android-immersive-white-top'], {
     id: 'xiaomi-14pro'
   }),
@@ -451,6 +454,7 @@ export const RECENT_DEVICE_IDS = [
   'oppo-findx8',
   'xiaomi-13',
   'xiaomi-13pro',
+  'xiaomi-13ultra',
   'xiaomi-14',
   'xiaomi-14pro',
   'xiaomi-15',
