@@ -7,15 +7,16 @@ alwaysApply: true
 
 在本仓库中完成**会影响运行结果**的修改后（例如 `backend/`、`frontend/`、`docker-compose.yml`、任一 `Dockerfile`、nginx 配置等），**必须在当前任务内、回复用户之前**自动完成部署，**不要**把部署留给用户手动执行，也**不要**因需权限而停顿等待用户点 RUN。
 
-用户已确认：**以后每次这类修改都自动部署**。
+用户已确认：**以后每次这类修改都自动部署**；且须先**合进 `lkj`**（见 `merge-to-lkj-and-deploy.mdc`），不要只留草稿 PR。
 
-## 标准流程（与提交配合）
+## 标准流程（与提交 / 合入配合）
 
-若同时适用 `git-commit-after-changes.mdc`：
+若同时适用 `git-commit-after-changes.mdc` / `merge-to-lkj-and-deploy.mdc`：
 
-1. **先** `git commit` + `git push -u origin HEAD`（开发分支 **`lkj`**）
-2. **再**部署（见下方）
-3. 部署失败时一般保留已提交内容，除非用户要求回滚
+1. **先** `git commit` + `git push -u origin HEAD`
+2. **再合进 `lkj`**（merge PR 或推进 `origin/lkj`）
+3. **再**部署（见下方）
+4. 部署失败时一般保留已合入内容，除非用户要求回滚
 
 ## 部署方式（按环境）
 

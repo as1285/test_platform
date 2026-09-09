@@ -34,4 +34,4 @@ alwaysApply: true
 # ✅ 每个点各自 commit 后再 push
 ```
 
-与 `auto-deploy.mdc` / `deploy-commit-push.mdc` 配合：先提交本点，再按那些规则部署。
+与 `merge-to-lkj-and-deploy.mdc` / `auto-deploy.mdc` / `deploy-commit-push.mdc` 配合：先提交本点并推送 → **合进 `lkj`** → 再部署。不要只开草稿 PR 就结束。
