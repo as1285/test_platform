@@ -94,7 +94,7 @@ describe('mine tax-edit avatar tap (iOS/Android)', () => {
     expect(mineHtml).toContain('width: calc(220 * var(--mine-rpx))');
     expect(mineHtml).toContain('pointer-events: auto');
     expect(mineHtml).toContain('app-cordova-shell:not(.app-android-xiaomi-14pro)');
-    expect(mineHtml).toMatch(/auth\.js\?v=20260909-hinova9se-mine-pad-v5/);
+    expect(mineHtml).toMatch(/auth\.js\?v=20260909-hinova9se-mine-pad-v6/);
   });
 
   it('auth injects conversion-guide on mine even inside tab_embed', () => {

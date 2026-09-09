@@ -314,16 +314,17 @@
                     st.textContent =
                         'html.app-android-hinova9se::before{content:""!important;display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;min-height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
                         'html.app-android-hinova9se body.page-mine{--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;background-image:linear-gradient(#000 0,#000 40px,#f5f6fa 40px)!important;}' +
-                        'html.app-android-hinova9se body.page-mine .mine-e1-canvas,html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas{padding-top:40px!important;box-sizing:border-box!important;background-color:#000!important;}' +
-                        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>img{margin-top:0!important;}' +
+                        'html.app-android-hinova9se body.page-mine .mine-e1-canvas,html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:40px!important;margin-top:0!important;box-sizing:border-box!important;background-color:#000!important;background-image:none!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;width:100%!important;overflow:hidden!important;}' +
+                        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>img,html.app-android-hinova9se body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;position:relative!important;width:100%!important;height:auto!important;aspect-ratio:1284/2127!important;object-fit:fill!important;opacity:1!important;}' +
+                        'html.app-android-hinova9se body.page-mine .mine-e1-layer,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:40px!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}' +
                         'html.app-android-hinova9se body.page-mine .mine-e1-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;}';
                     (document.head || root).appendChild(st);
                 }
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260909-hinova9se-mine-pad-v5"></script>
-    <script src="/js/auth.js?v=20260909-hinova9se-mine-pad-v5" defer></script>
+    <script src="/js/auth-boot.js?v=20260909-hinova9se-mine-pad-v6"></script>
+    <script src="/js/auth.js?v=20260909-hinova9se-mine-pad-v6" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -595,29 +596,53 @@
             box-sizing: border-box !important;
             background-color: #000000 !important;
         }
-        /* Hi nova 9 SE：沉浸黑条，勿被 noclip 的 padding-top:0 盖掉；胶囊跟画布实测宽度 */
+        /* Hi nova 9 SE：脱离 @sm 裁切；40px 黑条 + 叠层 top:40 对齐头图；胶囊跟画布实测宽度 */
         html.app-android-hinova9se body.page-mine,
-        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine {
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine,
+        html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine {
             --mine-top-bleed: 40px !important;
             --app-shell-statusbar-top: 40px !important;
             --android-status-inset: 40px !important;
             background-image: linear-gradient(#000000 0px, #000000 40px, #f5f6fa 40px) !important;
         }
         html.app-android-hinova9se body.page-mine .mine-e1-canvas,
-        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas {
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas,
+        html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-canvas {
             padding-top: 40px !important;
+            margin-top: 0 !important;
             box-sizing: border-box !important;
             background-color: #000000 !important;
+            background-image: none !important;
             container-type: normal !important;
             width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: auto !important;
+            overflow: hidden !important;
         }
         html.app-android-hinova9se body.page-mine .mine-e1-canvas > img,
         html.app-android-hinova9se body.page-mine .mine-e1-canvas > #headerImg,
-        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas > img {
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas > img,
+        html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img {
             margin-top: 0 !important;
+            display: block !important;
             position: relative !important;
             top: auto !important;
             transform: none !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: 1284 / 2127 !important;
+            object-fit: fill !important;
+            opacity: 1 !important;
+        }
+        html.app-android-hinova9se body.page-mine .mine-e1-layer,
+        html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-layer,
+        html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-layer,
+        html.app-android-hinova9se.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer {
+            top: 40px !important;
+            height: 0 !important;
+            padding-bottom: calc(2127 / 1284 * 100%) !important;
         }
         html.app-android-hinova9se body.page-mine .mine-e1-pill,
         html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-pill {
@@ -1069,7 +1094,7 @@
         }
 
         /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -1077,8 +1102,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -1087,10 +1112,10 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
         }
 

@@ -61,11 +61,15 @@ describe('Hi nova 9 SE status-bar inset', () => {
     expect(noclipFn).toContain('/* Hi nova 9 SE');
     expect(noclipFn).toMatch(/if \(isHiNova9SeClient\(\)\) \{\s*return false;/);
     expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \? 'important'/);
+    expect(auth).toContain('function hinova9SeMineE1LockCss');
+    expect(auth).toContain('function pinHinova9SeMineE1Layout');
+    expect(auth).toContain('top:40px !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%)');
     expect(mine).toContain('data-hinova9se-mine-firstpaint');
     expect(mine).toContain('html.app-android-hinova9se::before');
     expect(mine).toContain(
       'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas'
     );
+    expect(mine).toMatch(/top:\s*40px\s*!important/);
     expect(mine).toMatch(/padding-top:\s*40px\s*!important/);
     const padStart = auth.indexOf('function ensureAndroidFixedBlackStatusPad');
     const padFn = auth.slice(padStart, padStart + 4500);
