@@ -1107,12 +1107,12 @@
             opacity: 0.75;
         }
 
-        /* 问号与冒号紧贴；与「收入合计」仅留极小间距，贴近官方 */
+        /* 问号与冒号紧贴；与「收入合计」留约一个空格，对齐正版 */
         .summary-help-with-colon {
             display: inline-flex;
             align-items: center;
             gap: 0;
-            margin-left: 2px;
+            margin-left: 6px;
             line-height: 20px;
             position: relative;
             z-index: 2;
@@ -1384,9 +1384,9 @@
             flex-shrink: 0;
         }
 
-        /* iOS PingFang 全角冒号：保持与安卓一致的问号间距，勿再负 margin 收紧 */
+        /* iOS PingFang 全角冒号：与安卓一样留空格间隙，勿再负 margin 收紧 */
         html.platform-ios body.page-shuiming-result .summary-help-with-colon {
-            margin-left: 2px;
+            margin-left: 6px;
         }
 
         html.platform-ios body.page-shuiming-result .summary-help-with-colon .summary-colon {
