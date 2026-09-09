@@ -38,4 +38,41 @@ describe('compatFeedback helpers', () => {
     expect(feedback.parseImageUrls([' x ', ''])).toEqual(['x']);
     expect(feedback.parseImageUrls(null)).toEqual([]);
   });
+
+  it('rejects empty reply', () => {
+    expect(feedback.normalizeReply('').error).toMatch(/回复内容/);
+    expect(feedback.normalizeReply('  ').error).toMatch(/回复内容/);
+  });
+
+  it('accepts and clamps reply', () => {
+    expect(feedback.normalizeReply('已修').value).toBe('已修');
+    const long = feedback.normalizeReply('修' + 'x'.repeat(3000));
+    expect(long.error).toBeUndefined();
+    expect(long.value.length).toBe(feedback.REPLY_MAX);
+  });
+
+  it('maps reply fields for admin list', () => {
+    const item = feedback.toPublicItem({
+      id: 32,
+      user_id: 'wpj123456789',
+      real_name_snapshot: 'aaa',
+      content: '顶部应该是黑框',
+      admin_reply: '下个版本会修',
+      replied_at: '2026-09-09T12:00:00Z',
+      replied_by: 'admin'
+    });
+    expect(item.has_reply).toBe(true);
+    expect(item.admin_reply).toBe('下个版本会修');
+    expect(item.replied_by).toBe('admin');
+    expect(item.replied_at).toContain('2026-09-09');
+  });
+
+  it('builds inbox copy with feedback link', () => {
+    const msg = feedback.buildReplyInbox('下个版本会修', '顶部应该是黑框，家庭成员按钮错位');
+    expect(msg.title).toBe('兼容反馈已回复');
+    expect(msg.content).toContain('【回复】');
+    expect(msg.content).toContain('下个版本会修');
+    expect(msg.content).toContain('@@link:compat_bug.html');
+    expect(msg.company_name).toBe('系统通知');
+  });
 });

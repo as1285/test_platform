@@ -60,6 +60,7 @@ function registerUserRoutes(app, deps) {
 
   /* 兼容 BUG 反馈：仅需登录，不要求已激活 */
   ['/api/feedback', '/api/feedback.php', '/feedback.php'].forEach(function (p) {
+    app.get(p, mw.requireAuth, h.handleUserFeedbackMine);
     app.post(
       p,
       mw.requireAuth,

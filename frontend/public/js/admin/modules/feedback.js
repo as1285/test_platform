@@ -73,7 +73,18 @@
     return s.slice(0, n) + '…';
   }
 
-  var state = { page: 1, limit: 30, total: 0, q: '', items: [] };
+  var state = { page: 1, limit: 30, total: 0, q: '', status: '', items: [], openId: 0 };
+
+  function hasReply(row) {
+    return !!(row && row.admin_reply && String(row.admin_reply).trim());
+  }
+
+  function replyBadge(row) {
+    if (hasReply(row)) {
+      return '<span class="badge badge-yes">已回复</span>';
+    }
+    return '<span class="badge badge-no">未回复</span>';
+  }
 
   function renderList(data) {
     var el = document.getElementById('feedbackMount');
@@ -94,7 +105,7 @@
     }
     var html =
       '<div class="scroll-x"><table class="user-detail-table"><thead><tr>' +
-      '<th>时间</th><th>账号</th><th>姓名</th><th>设备</th><th>描述</th><th>截图</th><th></th>' +
+      '<th>时间</th><th>账号</th><th>姓名</th><th>设备</th><th>描述</th><th>截图</th><th>回复</th><th></th>' +
       '</tr></thead><tbody>';
     items.forEach(function (row) {
       var id = Number(row.id) || 0;
@@ -105,10 +116,13 @@
       html += '<td class="cell-break">' + esc(row.device_info || '—') + '</td>';
       html += '<td class="cell-break">' + esc(snippet(row.content, 48)) + '</td>';
       html += '<td>' + esc(String(row.image_count || 0)) + '</td>';
+      html += '<td>' + replyBadge(row) + '</td>';
       html +=
         '<td><button type="button" class="btn-page btn-page-primary js-feedback-view" data-id="' +
         esc(String(id)) +
-        '">查看</button></td>';
+        '">' +
+        (hasReply(row) ? '查看' : '回复') +
+        '</button></td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -217,15 +231,94 @@
     } else {
       html += '<p class="hint">未上传截图</p>';
     }
-    html += '</div>';
+    html +=
+      '<div class="feedback-reply-box" style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;">' +
+      '<p class="stat" style="margin:0 0 8px;">回复用户</p>';
+    if (hasReply(row)) {
+      html +=
+        '<p class="hint mt-0">已回复 · ' +
+        esc(formatDt(row.replied_at)) +
+        (row.replied_by ? ' · ' + esc(row.replied_by) : '') +
+        '</p>' +
+        '<p style="white-space:pre-wrap;line-height:1.55;margin:0 0 10px;padding:10px 12px;background:#f0fdfa;border-radius:8px;border:1px solid #ccfbf1;">' +
+        esc(row.admin_reply) +
+        '</p>';
+    }
+    html +=
+      '<label class="hint" for="feedbackReplyInput">回复会发站内信，用户可在消息中心和反馈页看到</label>' +
+      '<textarea id="feedbackReplyInput" maxlength="2000" rows="4" style="width:100%;min-height:88px;margin:6px 0 10px;display:block;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;" placeholder="例如：已定位到该机型状态栏和按钮错位，下个版本会修。">' +
+      esc(row.admin_reply || '') +
+      '</textarea>' +
+      '<div class="form-row flex-align-center">' +
+      '<button type="button" class="btn-page btn-page-primary" id="btnFeedbackReply">' +
+      (hasReply(row) ? '更新并通知' : '发送回复') +
+      '</button>' +
+      '<span class="hint" id="feedbackReplyStatus"></span>' +
+      '</div></div></div>';
     revokeDetailUrls(box);
     box.innerHTML = html;
     box.hidden = false;
+    state.openId = id;
     bindAccountJumps(box);
+    bindReplyForm(id);
     mountDetailImages(box, imgs);
     try {
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (e0) {}
+  }
+
+  function submitReply(id, text) {
+    var reply = String(text == null ? '' : text).trim();
+    if (!reply) return Promise.reject(new Error('请填写回复内容'));
+    return fetchAdmin('/api/admin/feedback/' + encodeURIComponent(String(id)) + '/reply', {
+      method: 'POST',
+      body: JSON.stringify({ reply: reply })
+    })
+      .then(function (r) {
+        return (window.adminParseJson || function (res) {
+          return res.json();
+        })(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200) {
+          throw new Error((j && j.msg) || '回复失败');
+        }
+        return j;
+      });
+  }
+
+  function bindReplyForm(id) {
+    var btn = document.getElementById('btnFeedbackReply');
+    var input = document.getElementById('feedbackReplyInput');
+    var status = document.getElementById('feedbackReplyStatus');
+    if (!btn || !input) return;
+    function send() {
+      var text = String(input.value || '').trim();
+      if (!text) {
+        if (status) status.textContent = '请填写回复内容';
+        return;
+      }
+      btn.disabled = true;
+      if (status) status.textContent = '发送中…';
+      submitReply(id, text)
+        .then(function (j) {
+          if (status) status.textContent = (j && j.msg) || '已发送';
+          loadList({ openId: id });
+        })
+        .catch(function (e) {
+          if (status) status.textContent = (e && e.message) || '发送失败';
+        })
+        .then(function () {
+          btn.disabled = false;
+        });
+    }
+    btn.addEventListener('click', send);
+    input.addEventListener('keydown', function (ev) {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') {
+        ev.preventDefault();
+        send();
+      }
+    });
   }
 
   function bindAccountJumps(root) {
@@ -258,11 +351,15 @@
     }
   }
 
-  function loadList() {
+  function loadList(opts) {
     var el = document.getElementById('feedbackMount');
     if (!el) return;
+    opts = opts || {};
     var qEl = document.getElementById('feedbackSearch');
+    var stEl = document.getElementById('feedbackReplyFilter');
     state.q = qEl ? String(qEl.value || '').trim() : state.q;
+    state.status = stEl ? String(stEl.value || '').trim() : state.status;
+    var keepId = opts.openId != null ? Number(opts.openId) : state.openId;
     el.textContent = '加载中…';
     var url =
       '/api/admin/feedback?page=' +
@@ -270,6 +367,7 @@
       '&limit=' +
       encodeURIComponent(String(state.limit));
     if (state.q) url += '&q=' + encodeURIComponent(state.q);
+    if (state.status) url += '&status=' + encodeURIComponent(state.status);
     fetchAdmin(url)
       .then(function (r) {
         return (window.adminParseJson || function (res) {
@@ -282,6 +380,7 @@
           return;
         }
         renderList(j.data);
+        if (keepId) showDetail(keepId);
       })
       .catch(function () {
         el.textContent = '网络错误';
@@ -306,6 +405,13 @@
         }
       });
     }
+    var filter = document.getElementById('feedbackReplyFilter');
+    if (filter) {
+      filter.addEventListener('change', function () {
+        state.page = 1;
+        loadList();
+      });
+    }
   }
 
   function loadPage() {
@@ -320,6 +426,7 @@
     loadList: loadList,
     renderList: renderList,
     showDetail: showDetail,
+    submitReply: submitReply,
     snippet: snippet,
     formatDt: formatDt
   };

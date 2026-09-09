@@ -91,6 +91,12 @@ app.get(
   mw.requireAdminAnyMenu(['feedback', 'insights-product', 'analytics-devices', 'analytics']),
   h.handleAdminFeedbackImage
 );
+app.post(
+  '/api/admin/feedback/:id/reply',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['feedback', 'insights-product', 'analytics-devices', 'analytics']),
+  h.handleAdminFeedbackReply
+);
 /* 工具页预填：独立路径，避免部分浏览器扩展把 /user-data/ 当成追踪接口拦截（表现为 Failed to fetch） */
 app.get(
   '/api/admin/lizhi-cert/prefill',

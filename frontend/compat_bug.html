@@ -153,6 +153,21 @@
         }
         .ok-box[hidden], .status[hidden] { display: none !important; }
         .ok-box a { color: var(--accent); font-weight: 600; text-decoration: none; }
+        .mine-item + .mine-item { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+        .mine-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .mine-content { font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+        .mine-reply {
+            margin-top: 8px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--ok-soft);
+            color: var(--ok);
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+        .mine-reply-label { font-weight: 600; margin-bottom: 4px; color: var(--ok); }
+        .mine-wait { font-size: 12px; color: var(--muted); margin-top: 6px; }
     </style>
 </head>
 <body>
@@ -163,7 +178,11 @@
     <div class="page">
         <div class="hero">
             <h1>反馈兼容 BUG</h1>
-            <p>页面错位、按钮点不到、机型显示异常时，拍几张图并说明出现在哪一页、什么设备、怎么操作的。团队会在后台看到。</p>
+            <p>页面错位、按钮点不到、机型显示异常时，拍几张图并说明出现在哪一页、什么设备、怎么操作的。团队回复后会发站内信，也可在本页查看。</p>
+        </div>
+        <div class="card" id="compatBugMine" hidden>
+            <div class="card-title">我的反馈</div>
+            <div id="compatBugMineList"></div>
         </div>
         <form class="card" id="compatBugForm">
             <div class="card-title">上传截图</div>
@@ -189,6 +208,6 @@
             <div class="ok-box" id="compatBugOk" hidden>已收到。可继续补充提交，或返回 <a href="consult.html?tab=products">我要咨询</a>。</div>
         </form>
     </div>
-    <script src="/js/compat-bug.js?v=20260905-compat-bug"></script>
+    <script src="/js/compat-bug.js?v=20260909-fb-reply"></script>
 </body>
 </html>

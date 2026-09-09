@@ -3754,9 +3754,14 @@
                 <div id="page-feedback" class="page-panel" role="tabpanel">
                     <section>
                         <h2>兼容 BUG 反馈</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">用户从 C 端「我要咨询 → 兼容问题反馈」提交：问题描述、截图、设备信息。按时间倒序，点行可展开详情与图片。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">用户从 C 端「我要咨询 → 兼容问题反馈」提交：问题描述、截图、设备信息。点「查看」展开详情后可回复，回复会发站内信，用户可在消息中心和反馈页看到。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <input type="search" id="feedbackSearch" class="filter-select" placeholder="搜索账号、描述或机型" style="min-width:220px;">
+                            <select id="feedbackReplyFilter" class="filter-select" title="按回复状态筛选">
+                                <option value="">全部</option>
+                                <option value="pending">未回复</option>
+                                <option value="replied">已回复</option>
+                            </select>
                             <button type="button" class="btn-page btn-page-primary" id="btnRefreshFeedback">刷新</button>
                         </div>
                         <p id="feedbackSummary" class="stat">进入本页后加载…</p>
@@ -4335,7 +4340,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260907-hub6"></script>
+    <script src="/js/admin/loader.js?v=20260909-fb-reply"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
     <script src="/js/admin_panel.js?v=20260909-bid-follow-user-jump"></script>

@@ -50,17 +50,21 @@ describe('C 端兼容反馈入口与页面', () => {
     expect(pageHtml).toContain('id="compatBugInput"');
     expect(pageHtml).toContain('id="compatBugSubmit"');
     expect(pageHtml).toContain('consult.html?tab=products');
-    expect(pageHtml).toContain('/js/compat-bug.js?v=20260905-compat-bug');
+    expect(pageHtml).toContain('/js/compat-bug.js?v=20260909-fb-reply');
+    expect(pageHtml).toContain('id="compatBugMine"');
+    expect(pageHtml).toContain('id="compatBugMineList"');
   });
 
   it('管理台有兼容反馈页', () => {
     expect(adminHtml).toContain('id="page-feedback"');
     expect(adminHtml).toContain('兼容 BUG 反馈');
     expect(adminHtml).toContain('id="feedbackMount"');
+    expect(adminHtml).toContain('id="feedbackReplyFilter"');
+    expect(adminHtml).toContain('未回复');
   });
 
   it('兼容反馈账号可跳到注册用户', () => {
-    expect(loaderCode).toContain('feedback.js?v=20260907-fb-user');
+    expect(loaderCode).toContain('feedback.js?v=20260909-fb-reply');
     expect(adminFeedbackCode).toContain('jumpToRegisteredUser');
     expect(adminFeedbackCode).toContain('js-feedback-open-user');
     expect(adminFeedbackCode).toContain('admin-user-jump');
@@ -93,5 +97,101 @@ describe('C 端兼容反馈入口与页面', () => {
     expect(btn.textContent).toBe('2216955147');
     btn.click();
     expect(window.jumpToRegisteredUser).toHaveBeenCalledWith('2216955147');
+  });
+
+  it('详情可回复，未回复行显示回复按钮', () => {
+    document.body.innerHTML =
+      '<div id="feedbackMount"></div><p id="feedbackSummary"></p>';
+    window.AdminModules = {};
+    window.jumpToRegisteredUser = vi.fn();
+    // eslint-disable-next-line no-eval
+    eval(adminFeedbackCode);
+    window.AdminModules.feedback.renderList({
+      total: 1,
+      page: 1,
+      limit: 30,
+      items: [
+        {
+          id: 32,
+          user_id: 'wpj123456789',
+          real_name: 'aaa',
+          device_info: '23113RKC6C',
+          content: '顶部应该是黑框，家庭成员按钮错位',
+          image_count: 1,
+          created_at: '2026-09-09T18:33:00+08:00'
+        }
+      ]
+    });
+    expect(document.body.textContent).toContain('未回复');
+    const viewBtn = document.querySelector('.js-feedback-view');
+    expect(viewBtn.textContent).toBe('回复');
+    viewBtn.click();
+    expect(document.getElementById('feedbackReplyInput')).toBeTruthy();
+    expect(document.getElementById('btnFeedbackReply').textContent).toContain('发送回复');
+    expect(document.getElementById('feedbackDetail').hidden).toBe(false);
+  });
+
+  it('已回复行显示状态，提交走回复接口', async () => {
+    document.body.innerHTML =
+      '<div id="feedbackMount"></div><p id="feedbackSummary"></p>';
+    window.AdminModules = {};
+    window.adminFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: 200,
+        msg: '已回复并通知用户',
+        data: { inbox_sent: true }
+      })
+    });
+    window.adminParseJson = (r) => r.json();
+    // eslint-disable-next-line no-eval
+    eval(adminFeedbackCode);
+    window.AdminModules.feedback.renderList({
+      total: 1,
+      page: 1,
+      limit: 30,
+      items: [
+        {
+          id: 32,
+          user_id: 'wpj123456789',
+          real_name: 'aaa',
+          content: '顶部应该是黑框',
+          admin_reply: '下个版本会修',
+          replied_at: '2026-09-09T19:00:00+08:00',
+          replied_by: 'admin',
+          created_at: '2026-09-09T18:33:00+08:00'
+        }
+      ]
+    });
+    expect(document.body.textContent).toContain('已回复');
+    document.querySelector('.js-feedback-view').click();
+    expect(document.getElementById('btnFeedbackReply').textContent).toContain('更新并通知');
+    const out = await window.AdminModules.feedback.submitReply(32, '已定位，下个版本修');
+    expect(out.msg).toBe('已回复并通知用户');
+    expect(window.adminFetch).toHaveBeenCalled();
+    const [url, opts] = window.adminFetch.mock.calls[0];
+    expect(url).toBe('/api/admin/feedback/32/reply');
+    expect(opts.method).toBe('POST');
+    expect(JSON.parse(opts.body).reply).toBe('已定位，下个版本修');
+  });
+
+  it('C 端可渲染官方回复', () => {
+    delete window.CompatBugFeedback;
+    // eslint-disable-next-line no-eval
+    eval(userModuleCode);
+    document.body.innerHTML =
+      '<div id="compatBugMine" hidden><div id="compatBugMineList"></div></div>';
+    window.CompatBugFeedback.renderMine([
+      {
+        id: 32,
+        content: '顶部应该是黑框',
+        admin_reply: '下个版本会修',
+        created_at: '2026-09-09T18:33:00+08:00'
+      }
+    ]);
+    const box = document.getElementById('compatBugMine');
+    expect(box.hidden).toBe(false);
+    expect(box.textContent).toContain('官方回复');
+    expect(box.textContent).toContain('下个版本会修');
   });
 });

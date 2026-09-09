@@ -14,6 +14,9 @@ var MAX_BYTES = 5 * 1024 * 1024;
 var MAX_IMAGES = 6;
 var CONTENT_MIN = 4;
 var CONTENT_MAX = 2000;
+var REPLY_MIN = 2;
+var REPLY_MAX = 2000;
+var MSG_COMPANY_SYSTEM_NOTICE = '系统通知';
 var PRIVATE_DIR = path.join(config.UPLOAD_DIR, 'private', 'compat-feedback');
 var FILE_RE = /^compat_[a-f0-9]{32}\.(?:jpe?g|png|gif|webp)$/i;
 var TYPE_COMPAT = 'compat_bug';
@@ -76,6 +79,50 @@ function normalizeUserAgent(v) {
   if (!s) return null;
   if (s.length > 512) s = s.slice(0, 512);
   return s;
+}
+
+function normalizeReply(v) {
+  var s = clean(v).replace(/\r\n/g, '\n');
+  if (!s) return { error: '请填写回复内容' };
+  if (s.length < REPLY_MIN) {
+    return { error: '回复至少 ' + REPLY_MIN + ' 个字' };
+  }
+  if (s.length > REPLY_MAX) s = s.slice(0, REPLY_MAX);
+  return { value: s };
+}
+
+function snippetText(v, n) {
+  var s = clean(v).replace(/\s+/g, ' ');
+  if (!s) return '';
+  if (s.length <= n) return s;
+  return s.slice(0, n) + '…';
+}
+
+function buildReplyInbox(replyText, originalContent) {
+  var reply = clean(replyText);
+  var orig = snippetText(originalContent, 80);
+  var body = '您提交的兼容问题我们已回复。';
+  if (orig) body += '\n\n【您的反馈】\n' + orig;
+  body += '\n\n【回复】\n' + reply;
+  body += '\n\n可在「兼容问题反馈」页查看完整内容。';
+  return {
+    title: '兼容反馈已回复',
+    content: body + '\n@@link:compat_bug.html',
+    company_name: MSG_COMPANY_SYSTEM_NOTICE,
+    link_url: 'compat_bug.html'
+  };
+}
+
+async function sendReplyInbox(pool, username, replyText, originalContent) {
+  var uid = clean(username);
+  if (!uid || !pool) return { sent: false };
+  var msg = buildReplyInbox(replyText, originalContent);
+  var mid = 'msg_fb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  await pool.execute(
+    'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)',
+    [mid, uid, msg.title, msg.content, msg.company_name, new Date().toISOString().slice(0, 10)]
+  );
+  return { sent: true, message_id: mid };
 }
 
 function parseImageUrls(raw) {
@@ -171,6 +218,10 @@ function toPublicItem(row, opts) {
     user_agent: row.user_agent != null ? String(row.user_agent) : '',
     image_count: images.length,
     images: images,
+    admin_reply: row.admin_reply != null ? String(row.admin_reply) : '',
+    replied_at: row.replied_at ? new Date(row.replied_at).toISOString() : '',
+    replied_by: row.replied_by != null ? String(row.replied_by) : '',
+    has_reply: !!(row.admin_reply && String(row.admin_reply).trim()),
     created_at: row.created_at ? new Date(row.created_at).toISOString() : ''
   };
 }
@@ -246,6 +297,7 @@ async function handleAdminFeedbackList(req, res) {
     if (limit > 100) limit = 100;
     var offset = (page - 1) * limit;
     var keyword = clean(q.q);
+    var status = clean(q.status).toLowerCase();
     var pool = getPool();
     var where = "feedback_type = 'compat_bug'";
     var binds = [];
@@ -254,6 +306,11 @@ async function handleAdminFeedbackList(req, res) {
       var like = '%' + keyword + '%';
       binds.push(like, like, like, like);
     }
+    if (status === 'pending') {
+      where += " AND (admin_reply IS NULL OR TRIM(admin_reply) = '')";
+    } else if (status === 'replied') {
+      where += " AND admin_reply IS NOT NULL AND TRIM(admin_reply) <> ''";
+    }
     const [cntRows] = await pool.execute(
       'SELECT COUNT(*) AS c FROM user_feedback WHERE ' + where,
       binds
@@ -261,7 +318,7 @@ async function handleAdminFeedbackList(req, res) {
     var total = cntRows && cntRows[0] ? Number(cntRows[0].c) || 0 : 0;
     const [rows] = await pool.query(
       `SELECT id, user_id, real_name_snapshot, feedback_type, content, image_urls,
-              user_agent, device_info, contact, created_at
+              user_agent, device_info, contact, admin_reply, replied_at, replied_by, created_at
        FROM user_feedback
        WHERE ${where}
        ORDER BY id DESC
@@ -282,6 +339,88 @@ async function handleAdminFeedbackList(req, res) {
   } catch (e) {
     console.error('[compat-feedback] admin list', e);
     return res.status(500).json({ code: 500, msg: '读取失败' });
+  }
+}
+
+async function handleUserFeedbackMine(req, res) {
+  try {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    var pool = getPool();
+    const [rows] = await pool.query(
+      `SELECT id, user_id, real_name_snapshot, feedback_type, content, image_urls,
+              user_agent, device_info, contact, admin_reply, replied_at, replied_by, created_at
+       FROM user_feedback
+       WHERE feedback_type = ? AND user_id = ?
+       ORDER BY id DESC
+       LIMIT 30`,
+      [TYPE_COMPAT, String(req.authUserId)]
+    );
+    return res.json({
+      code: 200,
+      data: {
+        items: (rows || []).map(function (r) {
+          return toPublicItem(r, { admin: false });
+        })
+      }
+    });
+  } catch (e) {
+    console.error('[compat-feedback] mine', e);
+    return res.status(500).json({ code: 500, msg: '读取失败' });
+  }
+}
+
+async function handleAdminFeedbackReply(req, res) {
+  try {
+    var id = Number(req.params && req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ code: 400, msg: '参数错误' });
+    }
+    var body = req.body && typeof req.body === 'object' ? req.body : {};
+    var reply = normalizeReply(body.reply != null ? body.reply : body.admin_reply);
+    if (reply.error) {
+      return res.status(400).json({ code: 400, msg: reply.error });
+    }
+    var adminName = '';
+    if (req.admin && req.admin.username) {
+      adminName = clean(req.admin.username).slice(0, 255);
+    }
+    var pool = getPool();
+    const [rows] = await pool.execute(
+      'SELECT id, user_id, content FROM user_feedback WHERE id = ? AND feedback_type = ? LIMIT 1',
+      [id, TYPE_COMPAT]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ code: 404, msg: '记录不存在' });
+    }
+    await pool.execute(
+      'UPDATE user_feedback SET admin_reply = ?, replied_at = NOW(), replied_by = ? WHERE id = ? AND feedback_type = ?',
+      [reply.value, adminName || null, id, TYPE_COMPAT]
+    );
+    var inbox = { sent: false };
+    try {
+      inbox = await sendReplyInbox(pool, rows[0].user_id, reply.value, rows[0].content);
+    } catch (eInbox) {
+      console.error('[compat-feedback] inbox', eInbox);
+    }
+    const [fresh] = await pool.execute(
+      `SELECT id, user_id, real_name_snapshot, feedback_type, content, image_urls,
+              user_agent, device_info, contact, admin_reply, replied_at, replied_by, created_at
+       FROM user_feedback WHERE id = ? LIMIT 1`,
+      [id]
+    );
+    return res.json({
+      code: 200,
+      msg: inbox.sent ? '已回复并通知用户' : '已保存回复',
+      data: {
+        item: fresh[0] ? toPublicItem(fresh[0], { admin: true }) : null,
+        inbox_sent: !!inbox.sent
+      }
+    });
+  } catch (e) {
+    console.error('[compat-feedback] admin reply', e);
+    return res.status(500).json({ code: 500, msg: '回复失败，请稍后重试' });
   }
 }
 
@@ -325,7 +464,9 @@ async function handleAdminFeedbackImage(req, res) {
 function getHandlers() {
   return {
     handleFeedbackSubmit: handleFeedbackSubmit,
+    handleUserFeedbackMine: handleUserFeedbackMine,
     handleAdminFeedbackList: handleAdminFeedbackList,
+    handleAdminFeedbackReply: handleAdminFeedbackReply,
     handleAdminFeedbackImage: handleAdminFeedbackImage
   };
 }
@@ -335,10 +476,15 @@ module.exports = {
   userCompatFeedbackUpload: userCompatFeedbackUpload,
   normalizeSubmitBody: normalizeSubmitBody,
   normalizeContent: normalizeContent,
+  normalizeReply: normalizeReply,
+  buildReplyInbox: buildReplyInbox,
+  toPublicItem: toPublicItem,
   parseImageUrls: parseImageUrls,
   TYPE_COMPAT: TYPE_COMPAT,
   MAX_BYTES: MAX_BYTES,
   MAX_IMAGES: MAX_IMAGES,
   CONTENT_MIN: CONTENT_MIN,
-  CONTENT_MAX: CONTENT_MAX
+  CONTENT_MAX: CONTENT_MAX,
+  REPLY_MIN: REPLY_MIN,
+  REPLY_MAX: REPLY_MAX
 };

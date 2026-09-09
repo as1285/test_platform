@@ -146,6 +146,93 @@
     else showStatus('', true);
   }
 
+  function formatDt(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      var pad = function (n) {
+        return n < 10 ? '0' + n : String(n);
+      };
+      return (
+        d.getFullYear() +
+        '-' +
+        pad(d.getMonth() + 1) +
+        '-' +
+        pad(d.getDate()) +
+        ' ' +
+        pad(d.getHours()) +
+        ':' +
+        pad(d.getMinutes())
+      );
+    } catch (e0) {
+      return String(iso);
+    }
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderMine(items) {
+    var box = $('compatBugMine');
+    var list = $('compatBugMineList');
+    if (!box || !list) return;
+    items = Array.isArray(items) ? items : [];
+    if (!items.length) {
+      box.hidden = true;
+      list.innerHTML = '';
+      return;
+    }
+    list.innerHTML = items
+      .map(function (row) {
+        var replied = !!(row.admin_reply && String(row.admin_reply).trim());
+        var html =
+          '<div class="mine-item">' +
+          '<div class="mine-meta">' +
+          esc(formatDt(row.created_at) || '已提交') +
+          (replied ? ' · 已回复' : ' · 待回复') +
+          '</div>' +
+          '<div class="mine-content">' +
+          esc(row.content || '') +
+          '</div>';
+        if (replied) {
+          html +=
+            '<div class="mine-reply"><div class="mine-reply-label">官方回复</div>' +
+            esc(row.admin_reply) +
+            '</div>';
+        } else {
+          html += '<p class="mine-wait">收到后会在这里和站内信同步回复</p>';
+        }
+        html += '</div>';
+        return html;
+      })
+      .join('');
+    box.hidden = false;
+  }
+
+  function loadMine() {
+    if (!token()) return;
+    fetch('/api/feedback', {
+      headers: { Authorization: 'Bearer ' + token() },
+      credentials: 'same-origin'
+    })
+      .then(function (r) {
+        return (window.authParseJson || function (res) {
+          return res.json();
+        })(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) return;
+        renderMine(j.data.items);
+      })
+      .catch(function () {});
+  }
+
   function validateContent(raw) {
     var s = String(raw || '').trim();
     if (!s) return '请填写问题描述';
@@ -226,6 +313,7 @@
           if ($('compatBugContent')) $('compatBugContent').value = '';
           var ok = $('compatBugOk');
           if (ok) ok.hidden = false;
+          loadMine();
           return;
         }
         showStatus((x.body && x.body.msg) || '提交失败', false);
@@ -282,6 +370,7 @@
     if (back && !back.getAttribute('href')) {
       back.setAttribute('href', 'consult.html?tab=products');
     }
+    loadMine();
   }
 
   if (document.readyState === 'loading') {
@@ -294,6 +383,7 @@
     validateContent: validateContent,
     collectDeviceInfo: collectDeviceInfo,
     addFiles: addFiles,
+    renderMine: renderMine,
     MAX_IMAGES: MAX_IMAGES,
     MAX_BYTES: MAX_BYTES,
     CONTENT_MIN: CONTENT_MIN
