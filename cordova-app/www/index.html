@@ -127,10 +127,10 @@
                 var cfg = window.__TAX_DISTRIBUTION__ || {};
                 var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
                 /* 主线「我的」页；Mate60 由 mine.html 内再跳冻结页 mine_mate60_aug12.html */
-                var q = 'mine.html?in_app=1&_v=20260909-black-bar-v2';
+                var q = 'mine.html?in_app=1&_v=20260909-black-pad-v3';
                 if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
                     q =
-                        'mine.html?in_app=1&_v=20260909-black-bar-v2&ch=' +
+                        'mine.html?in_app=1&_v=20260909-black-pad-v3&ch=' +
                         encodeURIComponent(ch.toLowerCase());
                     /* 不再打 distributor_app=1：代理/渠道包允许 App 内自助注册 */
                 }
@@ -515,8 +515,8 @@
                     return;
                 }
                 StatusBar.overlaysWebView(true);
-                StatusBar.backgroundColorByHexString('#00000000');
-                StatusBar.styleDefault();
+                StatusBar.backgroundColorByHexString('#000000');
+                StatusBar.styleLightContent();
             });
 
             /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default。

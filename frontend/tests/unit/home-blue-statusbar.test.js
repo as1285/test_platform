@@ -7,19 +7,19 @@ const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
 
 describe('首页蓝顶栏 / 纳税明细顶白底', () => {
-  it('安卓 / 鸿蒙统一外置黑条（overlays=false + #000 + 白图标），iOS 仍蓝顶沉浸', () => {
+  it('安卓用页内固定黑条（overlays=true + 40px 黑垫），Ace2V 仍外置；iOS 蓝顶沉浸', () => {
     const start = auth.indexOf('function applyImmersiveBlueStatusBar');
     const end = auth.indexOf('function applyMinePageChrome');
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const fn = auth.slice(start, end);
-    /* 安卓分支：外置黑条 */
     expect(fn).toContain('isLikelyAndroidViewportClient()');
-    expect(fn).toContain("overlays: false");
+    expect(fn).toContain('ensureAndroidFixedBlackStatusPad');
     expect(fn).toContain("color: '#000000'");
     expect(fn).toContain("style: 'light'");
+    expect(fn).toContain('overlays: !ace2v');
+    expect(fn).toContain("setProperty('--app-shell-statusbar-top', '40px', 'important')");
     /* iOS 分支保留：沉浸蓝顶 + 浅色图标 */
-    expect(fn).toContain("overlays: true");
     expect(fn).toContain('color: topColor');
   });
 
@@ -43,16 +43,16 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260909-hinova9se-inset-v1');
+    expect(shuimingResult).toContain('auth.js?v=20260909-android-black-pad-v3');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260909-hinova9se-inset-v1');
+    expect(shouye).toContain('auth.js?v=20260909-android-black-pad-v3');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
     const start = auth.indexOf('function requestShellStatusBar');
-    const end = auth.indexOf('function applyImmersiveBlueStatusBar');
+    const end = auth.indexOf('function ensureAndroidFixedBlackStatusPad');
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const fn = auth.slice(start, end);

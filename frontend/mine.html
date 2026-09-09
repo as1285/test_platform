@@ -291,8 +291,8 @@
             } catch (e3) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260909-hinova9se-inset-v1"></script>
-    <script src="/js/auth.js?v=20260909-hinova9se-inset-v1" defer></script>
+    <script src="/js/auth-boot.js?v=20260909-android-black-pad-v3"></script>
+    <script src="/js/auth.js?v=20260909-android-black-pad-v3" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -543,8 +543,31 @@
         html.app-android-hinova body.page-mine,
         html.app-android-honor-flc body.page-mine,
         html.app-android-honor-fcp body.page-mine {
-            --mine-top-bleed: 0px;
-            --app-shell-statusbar-top: 0px;
+            /* HyperOS 等忽略 overlays=false：须 40px 黑垫，勿再钉 0 */
+            --mine-top-bleed: 40px;
+            --app-shell-statusbar-top: 40px;
+            --android-status-inset: 40px;
+            background-image: linear-gradient(#000000 0px, #000000 40px, #f5f6fa 40px) !important;
+            background-color: #f5f6fa !important;
+        }
+        html.app-android-vivo-family body.page-mine .mine-e1-canvas,
+        html.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas,
+        html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas,
+        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas,
+        html.app-android-samsung body.page-mine .mine-e1-canvas,
+        html.app-android-samsung-s24u body.page-mine .mine-e1-canvas,
+        html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas,
+        html.app-android-hinova body.page-mine .mine-e1-canvas,
+        html.app-android-honor-flc body.page-mine .mine-e1-canvas,
+        html.app-android-honor-fcp body.page-mine .mine-e1-canvas {
+            padding-top: 40px !important;
+            box-sizing: border-box !important;
+            background-color: #000000 !important;
+        }
+        html.app-android-vivo-family body.page-mine .mine-e1-canvas > img,
+        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas > img,
+        html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas > img {
+            margin-top: 0 !important;
         }
         /*
          * 一加 Ace Pro ColorOS 15：勿再 40px bleed。
