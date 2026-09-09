@@ -115,7 +115,8 @@ describe('ui-smoke device catalog', () => {
     expect(MAINSTREAM_DEVICE_IDS).toContain('oneplus-ace3v');
     expect(MAINSTREAM_DEVICE_IDS).toContain('iphone-ios18-7');
     expect(resolveSmokeDevices('popular').length).toBeLessThan(DEVICE_PROFILES.length);
-    expect(resolveSmokeDevices('popular').length).toBeLessThanOrEqual(25);
+    expect(resolveSmokeDevices('popular').length).toBeLessThanOrEqual(30);
+    expect(resolveSmokeDevices('popular').length).toBe(30);
     expect(() => resolveSmokeDevices('no-such-phone')).toThrow(/无匹配机型/);
   });
 });

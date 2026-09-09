@@ -200,6 +200,33 @@ export const DEVICE_PROFILES = [
     userAgent: iosUa('17.6.1')
   },
   {
+    id: 'iphone-ios17-5',
+    label: 'iPhone iOS 17.5.1',
+    playwrightDevice: 'iPhone 14 Pro Max',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('17.5.1')
+  },
+  {
+    id: 'iphone-ios17-0',
+    label: 'iPhone iOS 17.0',
+    playwrightDevice: 'iPhone 14',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('17.0')
+  },
+  {
+    id: 'iphone-ios16-7',
+    label: 'iPhone iOS 16.7.16',
+    playwrightDevice: 'iPhone 13 Pro Max',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone',
+    userAgent: iosUa('16.7.16')
+  },
+  {
     id: 'iphone-ios14-4',
     label: 'iPhone iOS 14.4',
     playwrightDevice: 'iPhone 12',
@@ -395,6 +422,15 @@ export const DEVICE_PROFILES = [
   immersive('M391Q', '魅族 20 Pro', ['app-android-meizu-20pro', 'app-android-immersive-white-top'], {
     id: 'meizu-20pro',
     userAgent: androidUa('M391Q', 'MZ-MEIZU 20 Pro')
+  }),
+  immersive('V2425A', 'vivo Y300 Pro+', ['app-android-vivo-family', 'app-android-immersive-white-top'], {
+    id: 'vivo-y300proplus'
+  }),
+  immersive('24069RA21C', 'Redmi Turbo 3', ['app-android-immersive-white-top'], {
+    id: 'redmi-turbo3'
+  }),
+  immersive('22041211AC', 'Redmi Note 11T Pro', ['app-android-immersive-white-top'], {
+    id: 'redmi-note11t-pro'
   })
 ].map((p) => {
   /* immersive()/outer() 可能漏写 id：用 label slug 兜底不应发生 */
@@ -403,31 +439,40 @@ export const DEVICE_PROFILES = [
 });
 
 /**
- * 近一个月日活手机（2026-08-09 ~ 09-07）：每人最新一台，排除游客/已隐藏/电脑。
- * model 为 Cordova / UA 型号码；id 对应当前冒烟档。
+ * 近一个月日活手机（2026-08-10 ~ 09-09 线上抽样）：每人最新一台，排除游客/已隐藏/电脑/脏 UA。
+ * model 为 Cordova / UA 型号码；id 对应当前冒烟档。前 30 主流机。
  */
 export const PRODUCTION_TOP_MODELS = [
-  { count: 159, model: 'iPhone iOS 18.7', id: 'iphone-ios18-7' },
-  { count: 19, model: '23127PN0CC', id: 'xiaomi-14' },
+  { count: 170, model: 'iPhone iOS 18.7', id: 'iphone-ios18-7' },
+  { count: 17, model: '23127PN0CC', id: 'xiaomi-14' },
   { count: 15, model: '24129PN74C', id: 'xiaomi-15' },
-  { count: 14, model: 'ALN-AL00', id: 'mate60' },
   { count: 13, model: '2211133C', id: 'xiaomi-13' },
   { count: 11, model: 'PLK110', id: 'oneplus-ace3v' },
-  { count: 11, model: 'iPhone iOS 18.5', id: 'iphone-ios18-5' },
+  { count: 11, model: 'ALN-AL00', id: 'mate60' },
+  { count: 10, model: 'iPhone iOS 18.5', id: 'iphone-ios18-5' },
+  { count: 9, model: 'iPhone iOS 14.4', id: 'iphone-ios14-4' },
   { count: 8, model: 'V2505A', id: 'iqoo-15' },
-  { count: 7, model: 'V2302A', id: 'iqoo-neo8pro' },
-  { count: 7, model: '25060RK16C', id: 'redmi-k80ultra' },
-  { count: 6, model: 'PJA110', id: 'oneplus-ace2pro' },
-  { count: 6, model: 'PHJ110', id: 'oppo-a58' },
+  { count: 7, model: '23113RKC6C', id: 'redmi-k70' },
+  { count: 6, model: 'iPhone iOS 17.0', id: 'iphone-ios17-0' },
+  { count: 6, model: 'iPhone iOS 16.7.16', id: 'iphone-ios16-7' },
+  { count: 6, model: 'iPhone iOS 17.5.1', id: 'iphone-ios17-5' },
   { count: 6, model: '23116PN5BC', id: 'xiaomi-14pro' },
-  { count: 6, model: 'PHW110', id: 'oppo-reno10' },
-  { count: 6, model: '23113RKC6C', id: 'redmi-k70' },
-  { count: 6, model: 'TAS-AN00', id: 'mate30' },
+  { count: 6, model: 'PHJ110', id: 'oppo-a58' },
+  { count: 5, model: 'PGP110', id: 'oneplus-acepro' },
   { count: 5, model: 'PKB110', id: 'oppo-findx8' },
-  { count: 5, model: 'Pixel 9', id: 'pixel-9' },
+  { count: 5, model: 'PJA110', id: 'oneplus-ace2pro' },
   { count: 5, model: '2210132C', id: 'xiaomi-13pro' },
+  { count: 5, model: 'PJD110', id: 'oneplus-12' },
+  { count: 5, model: 'PHW110', id: 'oppo-reno10' },
+  { count: 5, model: 'M391Q', id: 'meizu-20pro' },
+  { count: 5, model: 'V2425A', id: 'vivo-y300proplus' },
   { count: 5, model: 'V2241A', id: 'vivo-x90' },
-  { count: 5, model: 'V2301A', id: 'iqoo-neo8' }
+  { count: 5, model: '25060RK16C', id: 'redmi-k80ultra' },
+  { count: 4, model: 'V2302A', id: 'iqoo-neo8pro' },
+  { count: 4, model: '24069RA21C', id: 'redmi-turbo3' },
+  { count: 4, model: '22041211AC', id: 'redmi-note11t-pro' },
+  { count: 4, model: 'V2405A', id: 'vivo-x200pro' },
+  { count: 4, model: 'V2309A', id: 'vivo-x100' }
 ];
 
 /** 线上高频机（含 iOS 版本队列）。勿并入 recent，以免默认 CI 过长 */

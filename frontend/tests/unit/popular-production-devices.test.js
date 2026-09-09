@@ -32,7 +32,9 @@ describe('production popular models in smoke catalog', () => {
     expect(POPULAR_DEVICE_IDS).toContain('iphone-ios18-7');
     expect(POPULAR_DEVICE_IDS).toContain('redmi-k80ultra');
     expect(POPULAR_DEVICE_IDS).toContain('oneplus-ace3v');
-    expect(POPULAR_DEVICE_IDS).toContain('pixel-9');
+    expect(POPULAR_DEVICE_IDS).toContain('oneplus-12');
+    expect(POPULAR_DEVICE_IDS).toContain('vivo-y300proplus');
+    expect(POPULAR_DEVICE_IDS).toHaveLength(30);
     expect(POPULAR_DEVICE_IDS).not.toContain('iphone-17-promax');
   });
 
