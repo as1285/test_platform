@@ -2958,16 +2958,14 @@ mustInclude(
 mustInclude(
   'frontend/public/js/auth.js',
   [
-    'body.page-message-detail #arkWhiteTopShield',
-    'ARK_SELF_MANAGED_WHITE_TOP_PAGES',
-    "'page-shuiming'",
-    'skipArkSelfManagedWhiteTop',
+    'body.page-message-detail #arkWhiteTopShield{display:none',
+    "b.classList.contains('page-message-detail')",
     '安卓 / 鸿蒙：系统栏为独立黑条',
     "upsertMeta('theme-color', '#000000')",
     'overlays: false',
     "color: '#000000'"
   ],
-  '20260903 mate60 msg skip ark white-top + android black status bar (+20260909 shuiming)'
+  '20260903 mate60 msg skip ark white-top + android black status bar'
 );
 mustInclude(
   'frontend/mine.html',

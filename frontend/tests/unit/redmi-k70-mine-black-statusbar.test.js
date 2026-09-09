@@ -40,16 +40,3 @@ describe('红米 K70「我的」页状态栏对齐官方个税 App（纯黑底+�
     expect(fn).toContain("setStatusBarStyleMeta('black')");
   });
 });
-
-describe('mine.html 不再把 K70 顶距清零', () => {
-  const mine = readFileSync(resolve(__dirname, '../../mine.html'), 'utf8');
-  it('K70 首屏钉 40px 黑条，静态 CSS 为 40px 而非 0', () => {
-    expect(mine).toContain('redmiK70MineFirstPaint');
-    expect(mine).toContain('linear-gradient(#000000 0px,#000000 40px,#f5f6fa 40px)');
-    expect(mine).toContain('html.app-android-redmi-k70 body.page-mine');
-    // 旧清零写法不得再出现在同一规则块
-    expect(mine).not.toMatch(
-      /html\.app-android-redmi-k70 body\.page-mine[^{]*\{[\s\S]*?--app-shell-statusbar-top:\s*0px/
-    );
-  });
-});
