@@ -398,8 +398,7 @@
         return;
       }
       /*
-       * Hi nova 9 SE：勿走 @sm 1180 裁切。叠加 40px 黑条后裁切坐标会把「添加/暂无」
-       * 压到白卡下沿；改真实比例底图，叠层 top=40 与头图对齐。
+       * Hi nova 9 SE：勿走 @sm 1180 裁切；顶栏跟随 9/1 安卓逻辑（不再页内黑条）。
        */
       var hinova9se = /FIO-BD00|PHB-AN00|Hi\s*nova[\s_-]*9[\s_-]*SE|hinova[\s_-]*9[\s_-]*se/i.test(ua);
       if (hinova9se) {
@@ -407,22 +406,18 @@
         cl.add('app-top-safe-shell');
         cl.add('app-android-hinova');
         cl.add('app-android-hinova9se');
-        cl.add('app-android-immersive-white-top');
         cl.remove('app-android-mine-e1-sm');
         cl.remove('app-huawei-mine-noclip');
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-        document.documentElement.style.setProperty('--android-status-inset', '40px', 'important');
-        document.documentElement.style.setProperty('--mine-top-bleed', '40px', 'important');
+        document.documentElement.style.setProperty('--mine-top-bleed', '0px', 'important');
         if (!document.getElementById('hinova9seMineFirstPaint')) {
           var hnSt = document.createElement('style');
           hnSt.id = 'hinova9seMineFirstPaint';
           hnSt.setAttribute('data-hinova9se-mine-e1-firstpaint', '1');
           hnSt.textContent =
-            'html.app-android-hinova9se::before{content:""!important;display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;min-height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
-            'html.app-android-hinova9se body.page-mine{--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;background-image:linear-gradient(#000 0,#000 40px,#f5f6fa 40px)!important;}' +
-            'html.app-android-hinova9se body.page-mine .mine-e1-canvas,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:40px!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;background-image:none!important;background-color:#000!important;}' +
+            'html.app-android-hinova9se body.page-mine{--mine-top-bleed:0px!important;}' +
+            'html.app-android-hinova9se body.page-mine .mine-e1-canvas,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;background-image:none!important;background-color:#f5f6fa!important;}' +
             'html.app-android-hinova9se body.page-mine .mine-e1-canvas>img,html.app-android-hinova9se body.page-mine .mine-e1-canvas>#headerImg,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img{margin-top:0!important;display:block!important;position:relative!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1284/2127!important;object-fit:fill!important;opacity:1!important;top:auto!important;transform:none!important;}' +
-            'html.app-android-hinova9se body.page-mine .mine-e1-layer,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:40px!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}' +
+            'html.app-android-hinova9se body.page-mine .mine-e1-layer,html.app-android-hinova9se.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}' +
             'html.app-android-hinova9se body.page-mine .mine-e1-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;}';
           document.head.appendChild(hnSt);
         }

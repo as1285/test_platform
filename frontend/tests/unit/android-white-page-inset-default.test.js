@@ -14,20 +14,18 @@ const OPPO_FAMILY_RESULT_ZERO =
   ':not(.app-android-oppo-k9x):not(.app-android-immersive-white-top) body.page-shuiming-result';
 
 describe('Android white-page default immersive inset', () => {
-  it('安卓白顶栏页用页内 40px 黑条（勿 overlays=false 清零顶距）', () => {
+  it('安卓白顶栏恢复 9/1：机型沉浸白底深色字 / 外置黑条分流，无统一页内黑垫', () => {
     expect(auth).toContain('function isAndroidWhiteStatusPage()');
-    expect(auth).toContain('function isAndroidVerifiedOuterWhitePageClient()');
-    expect(auth).toContain('function isAndroidWhitePageImmersiveDefaultClient()');
     const start = auth.indexOf('function applyImmersiveNotchWhitePageChrome');
     const end = auth.indexOf('function isInsideTabShellEmbed');
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const fn = auth.slice(start, end);
-    expect(fn).toContain('ensureAndroidFixedBlackStatusPad');
-    expect(fn).toContain("color: '#000000'");
-    expect(fn).toContain("style: 'light'");
-    expect(fn).toContain("setProperty('--app-shell-statusbar-top', '40px', 'important')");
-    expect(fn).toContain('overlays: !isOnePlusAce2VClient()');
+    expect(fn).not.toContain('ensureAndroidFixedBlackStatusPad');
+    expect(fn).toContain("style: 'dark'");
+    expect(fn).toContain('overlays: true');
+    expect(fn).toContain('outerStatusBar');
+    expect(fn).toContain('immersiveTopInsetClient');
   });
 
   it('does not let OPPO-family layout-zero rules win over immersive-white-top', () => {
@@ -59,8 +57,8 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('app-android-immersive-white-top');
     expect(boot).toContain("'--app-shell-statusbar-top', '40px'");
     Object.entries(pages).forEach(([name, html]) => {
-      expect(html).toContain('auth-boot.js?v=20260909-hinova9se-mine-pad-v6');
-      expect(html).toContain('auth.js?v=20260909-hinova9se-mine-pad-v6');
+      expect(html).toContain('auth-boot.js?v=20260909-android-statusbar-sep1');
+      expect(html).toContain('auth.js?v=20260909-android-statusbar-sep1');
     });
   });
 });

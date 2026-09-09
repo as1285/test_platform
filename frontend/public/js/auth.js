@@ -2177,10 +2177,6 @@
     if (isHuaweiP40ProClient()) {
       return false;
     }
-    /* Hi nova 9 SE：状态栏仍压 WebView，须页内 40px 黑条；noclip 清 0 会让蓝头盖住时间 */
-    if (isHiNova9SeClient()) {
-      return false;
-    }
     if (isHuaweiHarmonyOsFamilyClient() || isHiNovaFamilyClient()) {
       return true;
     }
@@ -2423,18 +2419,18 @@
       sel + '.app-android-client.app-top-safe-shell body.page-mine,' +
       sel + '.app-android-mine-e1-sm body.page-mine,' +
       sel + '.app-huawei-mine-noclip body.page-mine{' +
-      '--mine-top-bleed:40px !important;--app-shell-statusbar-top:40px !important;' +
-      '--android-status-inset:40px !important;' +
-      'background-image:linear-gradient(#000000 0,#000000 40px,#f5f6fa 40px) !important;}' +
+      '--mine-top-bleed:0px !important;' +
+      '' +
+      '}' +
       sel + ' body.page-mine .mine-e1-canvas,' +
       sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
       sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
       sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-canvas,' +
       sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
-      'padding-top:40px !important;margin-top:0 !important;overflow:hidden !important;' +
+      'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
       'width:100% !important;height:auto !important;max-height:none !important;' +
       'aspect-ratio:auto !important;container-type:normal !important;' +
-      'background-image:none !important;background-color:#000000 !important;}' +
+      'background-image:none !important;background-color:#f5f6fa !important;}' +
       sel + ' body.page-mine .mine-e1-canvas > img,' +
       sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
       sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
@@ -2449,7 +2445,7 @@
       sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-layer,' +
       sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-layer,' +
       sel + '.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer{' +
-      'top:40px !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}' +
+      'top:0 !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}' +
       sel + ' body.page-mine .mine-e1-pill,' +
       sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-pill{' +
       'display:inline-flex !important;align-items:center !important;justify-content:center !important;' +
@@ -2470,9 +2466,7 @@
       root.classList.add('app-android-immersive-white-top');
       root.classList.remove('app-android-mine-e1-sm');
       root.classList.remove('app-huawei-mine-noclip');
-      root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-      root.style.setProperty('--android-status-inset', '40px', 'important');
-      root.style.setProperty('--mine-top-bleed', '40px', 'important');
+      root.style.setProperty('--mine-top-bleed', '0px', 'important');
       try {
         dropStaleMineE1SmStyles();
       } catch (eDrop) {}
@@ -2484,13 +2478,10 @@
         lock.textContent = hinova9SeMineE1LockCss();
         (document.head || document.documentElement).appendChild(lock);
       } catch (eLock) {}
-      try {
-        ensureAndroidFixedBlackStatusPad();
-      } catch (ePad) {}
       if (!document.body || !document.body.classList.contains('page-mine')) {
         return;
       }
-      document.body.style.setProperty('--mine-top-bleed', '40px', 'important');
+      document.body.style.setProperty('--mine-top-bleed', '0px', 'important');
       var canvas = document.getElementById('mineE1Canvas');
       var layer = document.getElementById('mineE1Layer');
       var img = document.getElementById('headerImg');
@@ -2502,7 +2493,7 @@
             } catch (eRm) {}
           }
         );
-        canvas.style.setProperty('padding-top', '40px', 'important');
+        canvas.style.setProperty('padding-top', '0', 'important');
         canvas.style.setProperty('margin-top', '0', 'important');
         canvas.style.setProperty('width', '100%', 'important');
         canvas.style.setProperty('height', 'auto', 'important');
@@ -2511,7 +2502,7 @@
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('overflow', 'hidden', 'important');
         canvas.style.setProperty('background-image', 'none', 'important');
-        canvas.style.setProperty('background-color', '#000000', 'important');
+        canvas.style.setProperty('background-color', '#f5f6fa', 'important');
       }
       if (img) {
         img.style.setProperty('margin-top', '0', 'important');
@@ -2527,7 +2518,7 @@
         img.style.setProperty('transform', 'none', 'important');
       }
       if (layer) {
-        layer.style.setProperty('top', '40px', 'important');
+        layer.style.setProperty('top', '0', 'important');
         layer.style.setProperty('height', '0', 'important');
         layer.style.setProperty('padding-bottom', 'calc(2127 / 1284 * 100%)', 'important');
       }
@@ -3408,113 +3399,25 @@
    * 安卓 / 鸿蒙（含 Mate60 / K70 / HyperOS / ColorOS / OriginOS / OneUI / Harmony）：统一外置黑条
    *   overlays=false + #000000 + style light（白图标），对齐官方个税 App；顶距清零避免双空。
    * iOS：保持蓝顶沉浸（overlays=true + topColor + light）。 */
-  /**
-   * 安卓页内固定黑状态条：HyperOS/模拟器常忽略 overlaysWebView(false)，
-   * 必须用 fixed 黑条盖住系统栏区域，否则蓝/白头图会透到时间电量后面。
-   */
-  function ensureAndroidFixedBlackStatusPad() {
-    try {
-      if (!isLikelyAndroidViewportClient()) return;
-      if (isOnePlusAce2VClient()) return;
-      var id = 'android-fixed-black-status-pad';
-      var st = document.getElementById(id);
-      if (!st) {
-        st = document.createElement('style');
-        st.id = id;
-        document.head.appendChild(st);
-      }
-      st.textContent =
-        'html.app-android-client::before{' +
-        'content:""!important;display:block!important;position:fixed!important;' +
-        'left:0!important;right:0!important;top:0!important;' +
-        'height:var(--app-shell-statusbar-top,40px)!important;' +
-        'min-height:40px!important;' +
-        'background:#000000!important;z-index:2147483000!important;' +
-        'pointer-events:none!important;}' +
-        /* Hi nova 9 SE「我的」：压过 noclip 的 padding-top:0，保住黑条与白图标时间 */
-        'html.app-android-hinova9se body.page-mine{' +
-        '--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;' +
-        '--android-status-inset:40px!important;' +
-        'background-image:linear-gradient(#000000 0,#000000 40px,#f5f6fa 40px)!important;}' +
-        'html.app-android-hinova9se body.page-mine .mine-e1-canvas,' +
-        'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas{' +
-        'padding-top:40px!important;box-sizing:border-box!important;background-color:#000000!important;' +
-        'container-type:normal!important;width:100%!important;}' +
-        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>img,' +
-        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>#headerImg,' +
-        'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas>img{' +
-        'margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
-        'html.app-android-hinova9se body.page-mine .mine-e1-layer{top:40px!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}' +
-        'html.app-android-hinova9se body.page-mine .mine-e1-pill{' +
-        'display:inline-flex!important;align-items:center!important;justify-content:center!important;' +
-        'line-height:1!important;box-sizing:border-box!important;}' +
-        /* 「我的」头图下推，避免蓝头从图顶画出盖住黑条下方内容区 */
-        'html.app-android-client body.page-mine .mine-e1-canvas{' +
-        'padding-top:var(--app-shell-statusbar-top,40px)!important;' +
-        'box-sizing:border-box!important;background-color:#000000!important;}' +
-        'html.app-android-client body.page-mine .mine-e1-canvas>img,' +
-        'html.app-android-client body.page-mine .mine-e1-canvas>#headerImg{' +
-        'margin-top:0!important;}' +
-        'html.app-android-client body.page-mine{' +
-        '--mine-top-bleed:40px!important;' +
-        'background-image:linear-gradient(#000000 0, #000000 40px, #f5f6fa 40px)!important;}' +
-        /* 首页/待办/办查/消息蓝顶：顶距留给黑条 */
-        'html.app-android-client body.page-shouye .home-header,' +
-        'html.app-android-client body.page-daiban .daiban-header,' +
-        'html.app-android-client body.page-bancha .bancha-header,' +
-        'html.app-android-client body.page-message .msg-header{' +
-        'padding-top:var(--app-shell-statusbar-top,40px)!important;' +
-        'box-sizing:border-box!important;}' +
-        /* 白顶栏页标题区下推（列表页是 body>.header；详情才是 .top-fixed .header） */
-        'html.app-android-client body.page-shuiming > .header,' +
-        'html.app-android-client body.page-shuiming .top-fixed .header,' +
-        'html.app-android-client body.page-shuiming-result .top-fixed .header,' +
-        'html.app-android-client body.page-xiangqing > .header,' +
-        'html.app-android-client body.page-xiangqing .top-fixed .header{' +
-        'padding-top:calc(12px + var(--app-shell-statusbar-top,40px))!important;' +
-        'box-sizing:border-box!important;background:#ffffff!important;}' +
-        'html.app-android-client body.page-shuiming > .content,' +
-        'html.app-android-client body.page-xiangqing > .content{' +
-        'padding-top:calc(44px + var(--app-shell-statusbar-top,40px))!important;}' +
-        'html.app-android-client body.page-shuiming-result .top-fixed .summary{' +
-        'top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px))!important;}' +
-        'html.app-android-client body.page-shuiming-result .list{' +
-        'margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px))!important;}';
-    } catch (ePad) {}
-  }
 
   function applyImmersiveBlueStatusBar(topColor, shellBg) {
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
-      if (pageBg === topColor || pageBg === '#1677ff' || pageBg === '#2b81f2' || pageBg === '#1e8fff') {
-        pageBg = '#f5f6fa';
-      }
-      /*
-       * 安卓统一黑状态栏（不依赖 overlays=false）：
-       * HyperOS / 多数模拟器会忽略 overlaysWebView(false)，WebView 仍全屏，
-       * 若顶距再清 0，蓝头图从 y=0 画出 → 系统栏后仍是蓝底（用户截图现状）。
-       * 可靠做法：overlays=true + 页内 40px 固定黑条盖住状态栏区域 + 白图标；
-       * Ace2V 外置黑条仍 overlays=false + 顶距 0。
-       */
-      if (isLikelyAndroidViewportClient()) {
-        var ace2v = isOnePlusAce2VClient();
-        try {
-          if (!ace2v) {
-            document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-            document.documentElement.style.setProperty('--android-status-inset', '40px', 'important');
-            ensureAndroidFixedBlackStatusPad();
-          } else {
-            document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
-            document.documentElement.style.setProperty('--android-status-inset', '0px', 'important');
-          }
-        } catch (eAndPad) {}
+      /* 一加 Ace 2V / 小米 14：外置黑条，系统栏保持黑色，勿把蓝顶栏色铺进状态栏（避免时间栏与标题重叠） */
+      if (
+        isLikelyAndroidViewportClient() &&
+        (isOnePlusAce2VClient() ||
+          isXiaomi14LikeClient() ||
+          document.documentElement.classList.contains('app-android-xiaomi-14') ||
+          document.documentElement.classList.contains('app-cordova-xiaomi-23127'))
+      ) {
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
         setStatusBarStyleMeta('black');
         requestShellStatusBar({
           style: 'light',
-          overlays: !ace2v,
+          overlays: false,
           color: '#000000',
           paint_shell: true,
           shell_bg: pageBg
@@ -3524,9 +3427,13 @@
       upsertMeta('theme-color', topColor);
       upsertMeta('msapplication-navbutton-color', topColor);
       setStatusBarStyleMeta('black-translucent');
+      var androidOuterSolid =
+        isLikelyAndroidViewportClient() &&
+        isAndroidOuterStatusBarClient() &&
+        !isHuaweiPura70LikeClient();
       requestShellStatusBar({
         style: 'light',
-        overlays: true,
+        overlays: !androidOuterSolid,
         color: topColor,
         paint_shell: true,
         shell_bg: pageBg
@@ -3544,9 +3451,7 @@
       var mineBlue = '#1677ff';
       var mineGrad =
         'linear-gradient(90deg,#2d4cf2 0%,#094ee9 12%,#0b56ed 25%,#0972e8 38%,#0c8ef0 50%,#0e9fee 63%,#30b1f2 75%,#64c3f3 88%,#97caf5 100%)';
-      /* 安卓/鸿蒙：顶条用纯黑（独立系统栏观感）；iOS 仍用蓝顶渐变沉浸 */
-      var androidMineBar = isLikelyAndroidViewportClient();
-      var htmlTopStrip = androidMineBar ? 'linear-gradient(#000000,#000000)' : mineGrad;
+      var htmlTopStrip = mineGrad;
       /* 覆盖 setupMobileStatusBar 注入的 html 白底 */
       try {
         var old = document.querySelector('style[data-mine-chrome]');
@@ -3560,8 +3465,7 @@
           ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;' +
           /* 用 100vh（大视口）。100dvh 在 16 Pro 会少一截刘海，fixed 底栏会整条抬高 */
           'min-height:100vh !important;height:auto !important;}' +
-          'html.app-android-client{background-image:linear-gradient(#000000,#000000) !important;}' +
-          'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;' +
+                    'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;' +
           'min-height:100vh !important;}' +
           'html.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
@@ -3577,19 +3481,13 @@
            */
           'html.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
           /*
-           * Android「我的」页：页内 40px 黑状态条（HyperOS 常忽略 overlays=false）。
-           * 勿再 padding-top:0，否则蓝头从图顶画出，系统栏后仍是蓝。
+           * Android「我的」页 e1：默认禁止 bleed（含未识别 OEM）。
+           * 一加 13 / MIX Fold / Mate 60 真沉浸另案；外置黑条机勿再垫 40px。
            */
-          'html.app-android-client.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-client.app-top-safe-shell body.page-mine{--mine-top-bleed:40px !important;}' +
-          'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas{' +
-          'padding-top:var(--app-shell-statusbar-top,40px) !important;' +
-          'box-sizing:border-box !important;background-color:#000000 !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-canvas > img{margin-top:0 !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-mine .mine-e1-layer{top:0 !important;}' +
-          'html.app-android-oneplus-ace2v.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--android-status-inset:0px !important;}' +
-          'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine .mine-e1-canvas{padding-top:0 !important;}' +
-          'html.app-android-oneplus-acepro.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;}' +
           'html.app-android-oneplus-13.app-top-safe-shell body.page-mine,' +
           'html.app-android-oneplus-ace2pro.app-top-safe-shell body.page-mine,' +
           'html.app-android-oneplus-ace2v.app-top-safe-shell body.page-mine,' +
@@ -3598,12 +3496,7 @@
           /*
            * Mate60「我的」：WebView 在系统栏下时勿再 bleed 裁头图；壳层蓝底消除白缝。
            */
-          /* Mate60：顶条黑（与 iOS 蓝顶沉浸区分），页底浅灰 */
-          'html.app-android-huawei-mate60.app-top-safe-shell{' +
-          'background-color:#f5f6fa !important;' +
-          'background-image:linear-gradient(#000000,#000000) !important;' +
-          'background-size:100% var(--app-shell-statusbar-top,52px) !important;' +
-          'background-repeat:no-repeat !important;background-position:top center !important;}' +
+          'html.app-android-huawei-mate60.app-top-safe-shell{background-color:#1677ff !important;background-image:none !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine{--mine-top-bleed:0px !important;background-color:#f5f6fa !important;}' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-mine .mine-stack{transform:none !important;-webkit-transform:none !important;margin-top:0 !important;padding-top:0 !important;}' +
           'html.app-huawei-mine-noclip.app-top-safe-shell:not(.app-android-huawei-mate60) body.page-mine{--mine-top-bleed:0px !important;}' +
@@ -3990,37 +3883,242 @@
       if (!isWhitePage) {
         return;
       }
-      /*
-       * 安卓白顶栏页：页内 40px 黑条 + 白图标（含 Hi nova 9 SE）。
-       * 勿再对 9SE 走白底深色图标：若页内已有黑条，时间电量会「看不见」。
-       * HyperOS/Hinova 常忽略 overlays=false，顶距清 0 时白头会顶进系统栏。
-       */
+      /* 小米 13 / 13 Pro / 14 Pro / 15 / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 30 / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / iQOO 15 / X300 Pro / S50 Pro mini / 魅族 20 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
+      var immersiveTopInsetClient =
+        isXiaomiImmersiveTopClient() ||
+        isOnePlusAce2ImmersiveTopClient() ||
+        isVivoImmersiveTopClient() ||
+        isMeizu20ProClient() ||
+        isHuaweiMate30Client() ||
+        isHuaweiMate70Client() ||
+        isHuaweiNova13Client() ||
+        isHuaweiWhitePageImmersiveClient() ||
+        root.classList.contains('app-android-immersive-white-top') ||
+        root.classList.contains('app-android-xiaomi-13') ||
+        root.classList.contains('app-android-xiaomi-13pro') ||
+        root.classList.contains('app-android-xiaomi-14pro') ||
+        root.classList.contains('app-android-xiaomi-15pro') ||
+        root.classList.contains('app-android-xiaomi-15') ||
+        root.classList.contains('app-android-xiaomi-10') ||
+        root.classList.contains('app-android-oneplus-ace2pro') ||
+        root.classList.contains('app-android-oneplus-acepro') ||
+        root.classList.contains('app-android-oneplus-ace2v') ||
+        root.classList.contains('app-android-oppo-reno10') ||
+        root.classList.contains('app-android-oppo-k9x') ||
+        root.classList.contains('app-android-iqoo-neo8') ||
+        root.classList.contains('app-android-iqoo-neo8pro') ||
+        root.classList.contains('app-android-iqoo-15') ||
+        root.classList.contains('app-android-meizu-20pro') ||
+        root.classList.contains('app-android-vivo-x300pro') ||
+        root.classList.contains('app-android-vivo-s50promini') ||
+        root.classList.contains('app-android-vivo-x90') ||
+        root.classList.contains('app-android-huawei-mate70') ||
+        root.classList.contains('app-android-huawei-mate30') ||
+        root.classList.contains('app-android-huawei-nova13') ||
+        isHuaweiMate60Client() ||
+        root.classList.contains('app-android-huawei-mate60');
+      if (immersiveTopInsetClient) {
+        try {
+          root.classList.remove('app-android-white-page-outer');
+          root.classList.add('app-android-immersive-white-top');
+          if (isXiaomi13Client() || root.classList.contains('app-android-xiaomi-13')) {
+            root.classList.add('app-android-xiaomi-13');
+            root.classList.remove('app-android-mi-family');
+          }
+          if (isXiaomi13ProClient() || root.classList.contains('app-android-xiaomi-13pro')) {
+            root.classList.add('app-android-xiaomi-13pro');
+          }
+          if (isXiaomi14ProClient() || root.classList.contains('app-android-xiaomi-14pro')) {
+            root.classList.add('app-android-xiaomi-14pro');
+            root.classList.add('app-android-immersive-white-top');
+            root.classList.remove('app-android-white-page-outer');
+            try {
+              root.style.setProperty('--app-shell-statusbar-top', '40px');
+              root.style.setProperty('--android-status-inset', '40px');
+            } catch (e14) {}
+          }
+          if (isXiaomi15ProClient() || root.classList.contains('app-android-xiaomi-15pro')) {
+            root.classList.add('app-android-xiaomi-15pro');
+          }
+          if (isXiaomi15Client() || root.classList.contains('app-android-xiaomi-15')) {
+            root.classList.add('app-android-xiaomi-15');
+            root.classList.add('app-android-immersive-white-top');
+            root.classList.remove('app-android-white-page-outer');
+            try {
+              root.style.setProperty('--app-shell-statusbar-top', '40px');
+              root.style.setProperty('--android-status-inset', '40px');
+            } catch (e15std) {}
+          }
+          if (isXiaomi10NotchClient() || root.classList.contains('app-android-xiaomi-10')) {
+            root.classList.add('app-android-xiaomi-10');
+          }
+          if (isRedmiK70UltraClient() || root.classList.contains('app-android-redmi-k70-ultra')) {
+            root.classList.add('app-android-redmi-k70-ultra');
+          }
+          if (isRedmiK80ProClient() || root.classList.contains('app-android-redmi-k80pro')) {
+            root.classList.add('app-android-redmi-k80pro');
+          }
+          if (isRedmi12CClient() || root.classList.contains('app-android-redmi-12c')) {
+            root.classList.add('app-android-redmi-12c');
+          }
+          if (isRedmiNote115GClient() || root.classList.contains('app-android-redmi-note11-5g')) {
+            root.classList.add('app-android-redmi-note11-5g');
+            root.classList.add('app-android-immersive-white-top');
+            root.classList.remove('app-android-white-page-outer');
+            try {
+              /* 明细页顶栏再下移约一行；其它页仍用 40px 状态栏占位 */
+              var rn11Inset =
+                document.body && document.body.classList.contains('page-shuiming-result')
+                  ? '70px'
+                  : '40px';
+              root.style.setProperty('--app-shell-statusbar-top', rn11Inset);
+              root.style.setProperty('--android-status-inset', rn11Inset);
+              root.style.setProperty('--safe-top', rn11Inset);
+            } catch (eRn11) {}
+          }
+          if (isHuaweiMate70Client() || root.classList.contains('app-android-huawei-mate70')) {
+            root.classList.add('app-android-huawei-mate70');
+            root.classList.add('app-android-client');
+          }
+          if (isHuaweiMate30Client() || root.classList.contains('app-android-huawei-mate30')) {
+            root.classList.add('app-android-huawei-mate30');
+            root.classList.add('app-android-client');
+          }
+          if (isHuaweiMate60Client() || root.classList.contains('app-android-huawei-mate60')) {
+            root.classList.add('app-android-huawei-mate60');
+          }
+          if (isHuaweiNova13Client() || root.classList.contains('app-android-huawei-nova13')) {
+            root.classList.add('app-android-huawei-nova13');
+            root.classList.add('app-android-client');
+          }
+          ensureNova13WhitePageCss();
+          pinWhitePageImmersiveHeader();
+          if (isOnePlusAce2ProClient() || root.classList.contains('app-android-oneplus-ace2pro')) {
+            root.classList.add('app-android-oneplus-ace2pro');
+          }
+          if (isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro')) {
+            root.classList.add('app-android-oneplus-acepro');
+          }
+          if (isOnePlusAce2VClient() || root.classList.contains('app-android-oneplus-ace2v')) {
+            root.classList.add('app-android-oneplus-ace2v');
+          }
+          if (isOppoReno10Client() || root.classList.contains('app-android-oppo-reno10')) {
+            root.classList.add('app-android-oppo-reno10');
+          }
+          if (isOppoK9xClient() || root.classList.contains('app-android-oppo-k9x')) {
+            root.classList.add('app-android-oppo-k9x');
+          }
+          if (isIqooNeo8Client() || root.classList.contains('app-android-iqoo-neo8')) {
+            root.classList.add('app-android-iqoo-neo8');
+          }
+          if (isIqooNeo8ProClient() || root.classList.contains('app-android-iqoo-neo8pro')) {
+            root.classList.add('app-android-iqoo-neo8pro');
+          }
+          if (isVivoX300ProLikeClient() || root.classList.contains('app-android-vivo-x300pro')) {
+            root.classList.add('app-android-vivo-x300pro');
+            root.classList.remove('app-android-vivo-family');
+          }
+          if (isVivoS50ProMiniClient() || root.classList.contains('app-android-vivo-s50promini')) {
+            root.classList.add('app-android-vivo-s50promini');
+            root.classList.remove('app-android-vivo-family');
+          }
+          if (isVivoX90Client() || root.classList.contains('app-android-vivo-x90')) {
+            root.classList.add('app-android-vivo-x90');
+            root.classList.remove('app-android-vivo-family');
+          }
+          if (isIqoo15Client() || root.classList.contains('app-android-iqoo-15')) {
+            root.classList.add('app-android-iqoo-15');
+            root.classList.remove('app-android-vivo-family');
+          }
+          if (isMeizu20ProClient() || root.classList.contains('app-android-meizu-20pro')) {
+            root.classList.add('app-android-meizu-20pro');
+          }
+          root.style.setProperty('--app-shell-statusbar-top', '40px');
+          root.style.setProperty('--android-status-inset', '40px');
+          if (body) {
+            body.style.setProperty('--app-shell-statusbar-top', '40px');
+            body.style.setProperty('--android-status-inset', '40px');
+          }
+        } catch (e15) {}
+        upsertMeta('theme-color', '#ffffff');
+        upsertMeta('msapplication-navbutton-color', '#ffffff');
+        upsertMeta('color-scheme', 'light');
+        setStatusBarStyleMeta('default');
+        try {
+          root.style.colorScheme = 'light';
+          if (body) body.style.colorScheme = 'light';
+        } catch (eCs) {}
+        /* 白顶栏必须实底白 + 深色系统字。#00000000 在 OriginOS/iQOO 会变成黑条白字，压在标题上 */
+        var whiteBarOpts = {
+          style: 'dark',
+          overlays: true,
+          color: '#ffffff',
+          paint_shell: true,
+          shell_bg: '#ffffff'
+        };
+        requestShellStatusBar(whiteBarOpts);
+        /* OriginOS 改底色后会把电量/信号刷回白图标，须在颜色落地后再多次 styleDefault */
+        var reapplyDark = function () {
+          requestShellStatusBar(whiteBarOpts);
+        };
+        setTimeout(reapplyDark, 0);
+        setTimeout(reapplyDark, 80);
+        setTimeout(reapplyDark, 320);
+        setTimeout(reapplyDark, 800);
+        return;
+      }
+      /* 小米 14：勿走外置清零；页内黑条 + 48px 顶距（灵动岛下 overlays 常失败） */
+      var xiaomi14PaintedBar =
+        isXiaomi14LikeClient() ||
+        root.classList.contains('app-android-xiaomi-14') ||
+        root.classList.contains('app-cordova-xiaomi-23127');
+      if (xiaomi14PaintedBar) {
+        try {
+          root.classList.add('app-android-xiaomi-14');
+          root.classList.remove('app-android-white-page-outer');
+          root.style.setProperty('--app-shell-statusbar-top', '48px');
+          root.style.setProperty('--android-status-inset', '48px');
+          if (body) {
+            body.style.setProperty('--app-shell-statusbar-top', '48px');
+            body.style.setProperty('--android-status-inset', '48px');
+          }
+        } catch (eMi14Inset) {}
+        upsertMeta('theme-color', '#000000');
+        upsertMeta('msapplication-navbutton-color', '#000000');
+        setStatusBarStyleMeta('black');
+        requestShellStatusBar({
+          style: 'light',
+          overlays: false,
+          color: '#000000',
+          paint_shell: true,
+          shell_bg: '#f5f6fa'
+        });
+        return;
+      }
+      var cordovaShell = root.classList.contains('app-cordova-shell');
+      var outerStatusBar = isAndroidOuterStatusBarClient();
+      var needsOuterBar =
+        cordovaShell ||
+        outerStatusBar ||
+        root.classList.contains('app-android-huawei-lio-an00') ||
+        root.classList.contains('app-android-oneplus-13') ||
+        isCordovaTaxAppShell();
       try {
-        root.classList.remove('app-android-white-page-outer');
-        root.classList.add('app-android-immersive-white-top');
-        if (!isOnePlusAce2VClient()) {
-          root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-          root.style.setProperty('--android-status-inset', '40px', 'important');
-          if (body) {
-            body.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-            body.style.setProperty('--android-status-inset', '40px', 'important');
-          }
-          ensureAndroidFixedBlackStatusPad();
-        } else {
-          root.style.setProperty('--app-shell-statusbar-top', '0px');
-          root.style.setProperty('--android-status-inset', '0px');
-          if (body) {
-            body.style.setProperty('--app-shell-statusbar-top', '0px');
-            body.style.setProperty('--android-status-inset', '0px');
-          }
-        }
+        root.classList.add('app-android-white-page-outer');
+        root.style.setProperty('--app-shell-statusbar-top', '0px');
+        root.style.setProperty('--android-status-inset', '0px');
+        body.style.setProperty('--app-shell-statusbar-top', '0px');
+        body.style.setProperty('--android-status-inset', '0px');
       } catch (eInset) {}
+      if (!needsOuterBar) {
+        return;
+      }
       upsertMeta('theme-color', '#000000');
       upsertMeta('msapplication-navbutton-color', '#000000');
       setStatusBarStyleMeta('black');
       requestShellStatusBar({
         style: 'light',
-        overlays: !isOnePlusAce2VClient(),
+        overlays: false,
         color: '#000000',
         paint_shell: true,
         shell_bg: '#f5f6fa'
@@ -5125,14 +5223,7 @@
       if (hiNova9SeClient) {
         document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-hinova9se');
-        document.documentElement.classList.add('app-android-immersive-white-top');
         document.documentElement.classList.remove('app-huawei-mine-noclip');
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-        document.documentElement.style.setProperty('--android-status-inset', '40px', 'important');
-        document.documentElement.style.setProperty('--mine-top-bleed', '40px', 'important');
-        try {
-          ensureAndroidFixedBlackStatusPad();
-        } catch (eHnPad) {}
       }
       if (onePlus13Client) {
         document.documentElement.classList.add('app-android-oneplus-13');
