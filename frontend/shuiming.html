@@ -123,10 +123,11 @@
                     if (!document.querySelector('style[data-hinova9se-shuiming-firstpaint]')) {
                         var hn9Sm = document.createElement('style');
                         hn9Sm.setAttribute('data-hinova9se-shuiming-firstpaint', '1');
+                        /* 与页内黑条一致：顶距 40 + 标题区内边距 12，勿再写死 54 造成错位 */
                         hn9Sm.textContent =
                             'html.app-android-hinova9se{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-                            'html.app-android-hinova9se body.page-shuiming > .header{padding-top:54px !important;box-sizing:border-box !important;}' +
-                            'html.app-android-hinova9se body.page-shuiming > .content{padding-top:86px !important;}';
+                            'html.app-android-hinova9se body.page-shuiming > .header{padding-top:calc(12px + 40px) !important;box-sizing:border-box !important;}' +
+                            'html.app-android-hinova9se body.page-shuiming > .content{padding-top:calc(44px + 40px) !important;}';
                         (document.head || document.documentElement).appendChild(hn9Sm);
                     }
                 }
@@ -207,9 +208,9 @@
                     smInset.setAttribute('data-nova13-sm-firstpaint', '1');
                     smInset.textContent =
                         'html.app-android-immersive-white-top body.page-shuiming > .header,' +
-                        'html.app-android-huawei-nova13 body.page-shuiming > .header{padding-top:54px !important;box-sizing:border-box !important;}' +
+                        'html.app-android-huawei-nova13 body.page-shuiming > .header{padding-top:calc(12px + 40px) !important;box-sizing:border-box !important;}' +
                         'html.app-android-immersive-white-top body.page-shuiming > .content,' +
-                        'html.app-android-huawei-nova13 body.page-shuiming > .content{padding-top:86px !important;}';
+                        'html.app-android-huawei-nova13 body.page-shuiming > .content{padding-top:calc(44px + 40px) !important;}';
                     (document.head || document.documentElement).appendChild(smInset);
                 }
                 if (
@@ -272,8 +273,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260909-android-black-pad-v3"></script>
-    <script src="/js/auth.js?v=20260909-android-black-pad-v3" defer></script>
+    <script src="/js/auth-boot.js?v=20260909-hinova-blackpad-light-v4"></script>
+    <script src="/js/auth.js?v=20260909-hinova-blackpad-light-v4" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

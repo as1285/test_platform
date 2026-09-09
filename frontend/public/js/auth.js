@@ -2157,12 +2157,12 @@
         'html.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-shuiming > .header,' +
         'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-shuiming > .header,' +
         'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-shuiming > .header{' +
-        'padding-top:54px !important;box-sizing:border-box !important;}' +
+        'padding-top:calc(12px + 40px) !important;box-sizing:border-box !important;}' +
         'html.app-android-huawei-nova13 body.page-shuiming > .content,' +
         'html.app-android-immersive-white-top body.page-shuiming > .content,' +
         'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-huawei-nova13 body.page-shuiming > .content,' +
         'html.app-android-client.app-top-safe-shell.app-android-white-page-outer.app-android-immersive-white-top body.page-shuiming > .content{' +
-        'padding-top:86px !important;}';
+        'padding-top:calc(44px + 40px) !important;}';
       (document.head || document.documentElement).appendChild(st);
     } catch (eCss) {}
   }
@@ -3301,12 +3301,21 @@
         'html.app-android-client body.page-message .msg-header{' +
         'padding-top:var(--app-shell-statusbar-top,40px)!important;' +
         'box-sizing:border-box!important;}' +
-        /* 白顶栏页标题区下推 */
+        /* 白顶栏页标题区下推（列表页是 body>.header；详情才是 .top-fixed .header） */
+        'html.app-android-client body.page-shuiming > .header,' +
         'html.app-android-client body.page-shuiming .top-fixed .header,' +
         'html.app-android-client body.page-shuiming-result .top-fixed .header,' +
+        'html.app-android-client body.page-xiangqing > .header,' +
         'html.app-android-client body.page-xiangqing .top-fixed .header{' +
-        'padding-top:var(--app-shell-statusbar-top,40px)!important;' +
-        'box-sizing:border-box!important;background:#ffffff!important;}';
+        'padding-top:calc(12px + var(--app-shell-statusbar-top,40px))!important;' +
+        'box-sizing:border-box!important;background:#ffffff!important;}' +
+        'html.app-android-client body.page-shuiming > .content,' +
+        'html.app-android-client body.page-xiangqing > .content{' +
+        'padding-top:calc(44px + var(--app-shell-statusbar-top,40px))!important;}' +
+        'html.app-android-client body.page-shuiming-result .top-fixed .summary{' +
+        'top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px))!important;}' +
+        'html.app-android-client body.page-shuiming-result .list{' +
+        'margin-top:calc(var(--header-height,48px) + var(--app-shell-statusbar-top,40px))!important;}';
     } catch (ePad) {}
   }
 
@@ -3816,36 +3825,9 @@
         return;
       }
       /*
-       * Hi nova 9 SE：系统栏仍覆盖 WebView（overlays=false 常失效）。
-       * 不能走全安卓外置黑条 0 顶距，否则「收入纳税明细」标题与时间栏重合。
-       */
-      if (isHiNova9SeClient()) {
-        try {
-          root.classList.add('app-android-hinova9se');
-          root.classList.add('app-android-immersive-white-top');
-          root.classList.remove('app-android-white-page-outer');
-          root.style.setProperty('--app-shell-statusbar-top', '40px');
-          root.style.setProperty('--android-status-inset', '40px');
-          if (body) {
-            body.style.setProperty('--app-shell-statusbar-top', '40px');
-            body.style.setProperty('--android-status-inset', '40px');
-          }
-        } catch (eHn9) {}
-        upsertMeta('theme-color', '#ffffff');
-        upsertMeta('msapplication-navbutton-color', '#ffffff');
-        setStatusBarStyleMeta('default');
-        requestShellStatusBar({
-          style: 'dark',
-          overlays: true,
-          color: '#ffffff',
-          paint_shell: true,
-          shell_bg: '#f5f6fa'
-        });
-        return;
-      }
-      /*
-       * 安卓白顶栏页：同样用页内 40px 黑条（勿 overlays=false 清零顶距）。
-       * HyperOS 忽略 overlays=false 时若顶距为 0，白头也会顶进系统栏。
+       * 安卓白顶栏页：页内 40px 黑条 + 白图标（含 Hi nova 9 SE）。
+       * 勿再对 9SE 走白底深色图标：若页内已有黑条，时间电量会「看不见」。
+       * HyperOS/Hinova 常忽略 overlays=false，顶距清 0 时白头会顶进系统栏。
        */
       try {
         root.classList.remove('app-android-white-page-outer');

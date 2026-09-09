@@ -18,14 +18,14 @@ describe('Hi nova 9 SE status-bar inset', () => {
     expect(MODEL_RE.test('Hi nova 11')).toBe(false);
   });
 
-  it('overrides the generic Hi nova outer-bar rule with a 40px immersive inset', () => {
+  it('still recognizes the model and keeps 40px inset vars', () => {
     expect(auth).toContain('function isHiNova9SeClient()');
     expect(auth).toContain('app-android-hinova9se');
     expect(auth).toMatch(/isHiNova9SeClient\(\)[\s\S]*app-android-immersive-white-top/);
     expect(auth).toContain("'--app-shell-statusbar-top', '40px'");
   });
 
-  it('first-paints all income detail pages below the system status bar', () => {
+  it('first-paints income pages with black-pad-aligned header inset', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(MODEL_RE.test(html), name).toBe(true);
       expect(html, name).toContain('app-android-hinova9se');
@@ -33,29 +33,24 @@ describe('Hi nova 9 SE status-bar inset', () => {
       expect(html, name).toContain("'--app-shell-statusbar-top', '40px'");
     });
     expect(pages.shuiming).toContain('data-hinova9se-shuiming-firstpaint');
-    expect(pages.shuiming).toContain(
-      'html.app-android-hinova9se body.page-shuiming > .header'
-    );
+    expect(pages.shuiming).toContain('padding-top:calc(12px + 40px)');
     expect(pages.shuimingResult).toContain('data-hinova9se-result-firstpaint');
     expect(pages.shuimingResult).toContain(
       'html.app-android-hinova9se body.page-shuiming-result .top-fixed .header'
     );
-    expect(pages.shuimingResult).toContain(
-      'margin-top:calc(var(--header-height,48px) + 40px)'
-    );
   });
 
-  it('keeps immersive 40px on white pages instead of the global outer black-bar zero', () => {
+  it('white pages use black pad + light icons (no dark-icon exception)', () => {
     const start = auth.indexOf('function applyImmersiveNotchWhitePageChrome');
     const end = auth.indexOf('function isInsideTabShellEmbed');
     const fn = auth.slice(start, end);
-    expect(fn).toContain('isHiNova9SeClient()');
-    expect(fn).toContain('app-android-immersive-white-top');
-    expect(fn).toContain("overlays: true");
-    expect(fn).toContain("'--app-shell-statusbar-top', '40px'");
-    const syncIdx = auth.indexOf('function syncAppShellStatusbarTop()');
-    const syncFn = auth.slice(syncIdx, auth.indexOf('function requestShellStatusBar'));
-    expect(syncFn).toContain('isHiNova9SeClient()');
-    expect(syncFn).toContain("'--app-shell-statusbar-top', '40px'");
+    expect(fn).toContain('ensureAndroidFixedBlackStatusPad');
+    expect(fn).toContain("style: 'light'");
+    expect(fn).toContain("color: '#000000'");
+    expect(fn).not.toContain("style: 'dark'");
+    const padStart = auth.indexOf('function ensureAndroidFixedBlackStatusPad');
+    const padFn = auth.slice(padStart, padStart + 2500);
+    expect(padFn).toContain('body.page-shuiming > .header');
+    expect(padFn).toContain('calc(12px + var(--app-shell-statusbar-top,40px))');
   });
 });
