@@ -472,6 +472,13 @@ var MODELS = [
           'page-message-detail 被 pinArkWhiteTopInset 改成 relative+66px 并叠 body 顶距，状态栏下大块空白；改为自管 fixed+40px，跳过 ark 钉头。',
         since: '2026-09-03'
       },
+      {
+        page: 'shuiming',
+        title: '筛选页避开 ark 白顶 52/66',
+        summary:
+          'Mate60 Pro 收入纳税明细筛选页被 pinArkPlainHeader 改成 relative+66px，content 仍按 fixed 留顶距，标题下大块空白；与消息详情同套路跳过 ark，保持 fixed+40px。',
+        since: '2026-09-09'
+      },
       { page: 'shouye', title: 'ArkWeb 布局漂移自修复', summary: '全站顶距与「我的」头图多次回退（8/13、8/18、8/19）。', since: '2026-08-24' }
     ]
   },

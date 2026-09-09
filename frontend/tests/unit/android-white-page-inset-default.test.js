@@ -72,8 +72,8 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('PHJ110');
     expect(boot).toContain('23127PN');
     Object.entries(pages).forEach(([name, html]) => {
-      expect(html).toContain('auth-boot.js?v=20260909-mine-black-pad');
-      expect(html).toContain('auth.js?v=20260909-mine-black-pad');
+      expect(html).toContain('auth-boot.js?v=20260909-mate60-sm-gap');
+      expect(html).toContain('auth.js?v=20260909-mate60-sm-gap');
     });
   });
 });

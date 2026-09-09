@@ -5854,7 +5854,19 @@
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-message-detail .detail-wrap{' +
           'max-width:none !important;width:100% !important;margin:0 !important;' +
           'padding-left:16px !important;padding-right:16px !important;box-sizing:border-box !important;}' +
-          'html.app-android-huawei-mate60 body.page-message-detail #arkWhiteTopShield{display:none !important;height:0 !important;}' +
+          'html.app-android-huawei-mate60 body.page-message-detail #arkWhiteTopShield,' +
+          'html.app-android-huawei-mate60 body.page-shuiming #arkWhiteTopShield,' +
+          'html.app-android-huawei-mate60 body.page-shuiming-result #arkWhiteTopShield,' +
+          'html.app-android-huawei-mate60 body.page-xiangqing #arkWhiteTopShield{display:none !important;height:0 !important;}' +
+          /* Mate60 收入纳税明细筛选：保持 fixed+40px，勿让 ark 改 relative 叠出标题下空白 */
+          'html.app-android-huawei-mate60 body.page-shuiming > .header,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming > .header{' +
+          'position:fixed !important;top:0 !important;left:0 !important;right:0 !important;' +
+          'padding-top:calc(14px + var(--app-shell-statusbar-top,40px)) !important;padding-bottom:15px !important;' +
+          'box-sizing:border-box !important;height:auto !important;min-height:0 !important;background:#fff !important;z-index:120 !important;}' +
+          'html.app-android-huawei-mate60 body.page-shuiming > .content,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming > .content{' +
+          'padding-top:calc(46px + var(--app-shell-statusbar-top,40px)) !important;}' +
           'html.app-android-huawei-mate60 body.page-bancha .bancha-page,' +
           'html.app-android-huawei-mate60 body.page-daiban .daiban-content,' +
           'html.app-android-huawei-mate60 body.page-message{' +
@@ -10142,6 +10154,17 @@
 
     /* 蓝顶沉浸页有专属头图处理，白顶自动顶距不适用 */
     var ARK_BLUE_TOP_PAGES = ['page-shouye', 'page-daiban', 'page-bancha', 'page-message', 'page-mine'];
+    /*
+     * 已自管 fixed+40px 白顶栏的页：勿再钉 52/66 相对头。
+     * 否则 header 改 relative 占文档流，content 仍按 fixed 顶距留白 → 标题下大块空白
+     *（Mate60 Pro 收入纳税明细筛选页实测）。
+     */
+    var ARK_SELF_MANAGED_WHITE_TOP_PAGES = [
+      'page-message-detail',
+      'page-shuiming',
+      'page-shuiming-result',
+      'page-xiangqing'
+    ];
     var ARK_TOP_INSET = 52;
     function isArkBlueTopPage() {
       var b = document.body;
@@ -10151,6 +10174,56 @@
       }
       return false;
     }
+    function isArkSelfManagedWhiteTopPage() {
+      var b = document.body;
+      if (!b) return false;
+      for (var i = 0; i < ARK_SELF_MANAGED_WHITE_TOP_PAGES.length; i++) {
+        if (b.classList.contains(ARK_SELF_MANAGED_WHITE_TOP_PAGES[i])) return true;
+      }
+      return false;
+    }
+    function clearArkPinnedHeader(hdr) {
+      if (!hdr) return;
+      try {
+        hdr.style.removeProperty('position');
+        hdr.style.removeProperty('top');
+        hdr.style.removeProperty('padding-top');
+        hdr.style.removeProperty('padding-bottom');
+        hdr.style.removeProperty('height');
+        hdr.style.removeProperty('min-height');
+        hdr.removeAttribute('data-ark-sticky-pad');
+        hdr.removeAttribute('data-ark-sticky-top');
+        hdr.removeAttribute('data-ark-top-pad');
+        var back = hdr.querySelector('.back-btn');
+        if (back) {
+          back.style.removeProperty('top');
+          back.style.removeProperty('height');
+          back.style.removeProperty('display');
+          back.style.removeProperty('align-items');
+        }
+      } catch (eHdr) {}
+    }
+    function skipArkSelfManagedWhiteTop() {
+      var b = document.body;
+      if (!b || !isArkSelfManagedWhiteTopPage()) return false;
+      var staleShield = document.getElementById('arkWhiteTopShield');
+      if (staleShield) {
+        try {
+          staleShield.parentNode && staleShield.parentNode.removeChild(staleShield);
+        } catch (eRm) {}
+      }
+      clearArkPinnedHeader(document.querySelector('body > .header'));
+      try {
+        b.style.removeProperty('padding-top');
+        b.removeAttribute('data-ark-body-pad');
+        var rootSkip = document.documentElement;
+        rootSkip.style.setProperty('--app-shell-statusbar-top', '40px');
+        rootSkip.style.setProperty('--android-status-inset', '40px');
+        rootSkip.style.setProperty('--safe-top', '40px');
+        rootSkip.style.setProperty('--safe-t', '40px');
+      } catch (eVar) {}
+      return true;
+    }
 
     /*
      * 白顶页统一顶距：Mate60 沉浸压栏且 env(safe-area-inset-top) 常为 0，
@@ -10158,6 +10231,7 @@
      * 1) 钉 --safe-t / --app-shell-statusbar-top = 52px（吃变量的页面自动修复）
      * 2) body>.header：相对定位 + padding-top 66，勿写 sticky+top:52（ArkWeb 当 fixed）
      * 3) 头部实际贴到视口顶且自身没留顶距时，body 垫 52
+     * 收入纳税明细/详情/消息详情等页已自管 fixed+40px，见 skipArkSelfManagedWhiteTop。
      */
     function pinArkPlainHeader() {
       var hdr = document.querySelector('body > .header');
@@ -10187,44 +10261,8 @@
         if (isArkBlueTopPage()) return;
         var b = document.body;
         if (!b) return;
-        /* 消息详情：页内已用 fixed+40px 沉浸顶栏；再钉 52/66 相对头会叠出大块空白 */
-        if (b.classList.contains('page-message-detail')) {
-          var staleShield = document.getElementById('arkWhiteTopShield');
-          if (staleShield) {
-            try { staleShield.parentNode && staleShield.parentNode.removeChild(staleShield); } catch (eRm) {}
-          }
-          var hdrSkip = document.querySelector('body.page-message-detail > .header');
-          if (hdrSkip) {
-            try {
-              hdrSkip.style.removeProperty('position');
-              hdrSkip.style.removeProperty('top');
-              hdrSkip.style.removeProperty('padding-top');
-              hdrSkip.style.removeProperty('padding-bottom');
-              hdrSkip.style.removeProperty('height');
-              hdrSkip.style.removeProperty('min-height');
-              hdrSkip.removeAttribute('data-ark-sticky-pad');
-              hdrSkip.removeAttribute('data-ark-sticky-top');
-              hdrSkip.removeAttribute('data-ark-top-pad');
-              var backSkip = hdrSkip.querySelector('.back-btn');
-              if (backSkip) {
-                backSkip.style.removeProperty('top');
-                backSkip.style.removeProperty('height');
-                backSkip.style.removeProperty('display');
-                backSkip.style.removeProperty('align-items');
-              }
-            } catch (eHdr) {}
-          }
-          try {
-            b.style.removeProperty('padding-top');
-            b.removeAttribute('data-ark-body-pad');
-            var rootSkip = document.documentElement;
-            rootSkip.style.setProperty('--app-shell-statusbar-top', '40px');
-            rootSkip.style.setProperty('--android-status-inset', '40px');
-            rootSkip.style.setProperty('--safe-top', '40px');
-            rootSkip.style.setProperty('--safe-t', '40px');
-          } catch (eVar) {}
-          return;
-        }
+        /* 自管 fixed+40px 白顶栏：再钉 52/66 相对头会叠出大块空白 */
+        if (skipArkSelfManagedWhiteTop()) return;
         var root = document.documentElement;
         var insetPx = ARK_TOP_INSET + 'px';
         root.style.setProperty('--app-shell-statusbar-top', insetPx, 'important');

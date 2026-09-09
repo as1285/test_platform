@@ -230,6 +230,17 @@
 
     /* 蓝顶沉浸页有专属头图处理，白顶自动顶距不适用 */
     var ARK_BLUE_TOP_PAGES = ['page-shouye', 'page-daiban', 'page-bancha', 'page-message', 'page-mine'];
+    /*
+     * 已自管 fixed+40px 白顶栏的页：勿再钉 52/66 相对头。
+     * 否则 header 改 relative 占文档流，content 仍按 fixed 顶距留白 → 标题下大块空白
+     *（Mate60 Pro 收入纳税明细筛选页实测）。
+     */
+    var ARK_SELF_MANAGED_WHITE_TOP_PAGES = [
+      'page-message-detail',
+      'page-shuiming',
+      'page-shuiming-result',
+      'page-xiangqing'
+    ];
     var ARK_TOP_INSET = 52;
     function isArkBlueTopPage() {
       var b = document.body;
@@ -238,6 +249,56 @@
         if (b.classList.contains(ARK_BLUE_TOP_PAGES[i])) return true;
       }
       return false;
+    }
+    function isArkSelfManagedWhiteTopPage() {
+      var b = document.body;
+      if (!b) return false;
+      for (var i = 0; i < ARK_SELF_MANAGED_WHITE_TOP_PAGES.length; i++) {
+        if (b.classList.contains(ARK_SELF_MANAGED_WHITE_TOP_PAGES[i])) return true;
+      }
+      return false;
+    }
+    function clearArkPinnedHeader(hdr) {
+      if (!hdr) return;
+      try {
+        hdr.style.removeProperty('position');
+        hdr.style.removeProperty('top');
+        hdr.style.removeProperty('padding-top');
+        hdr.style.removeProperty('padding-bottom');
+        hdr.style.removeProperty('height');
+        hdr.style.removeProperty('min-height');
+        hdr.removeAttribute('data-ark-sticky-pad');
+        hdr.removeAttribute('data-ark-sticky-top');
+        hdr.removeAttribute('data-ark-top-pad');
+        var back = hdr.querySelector('.back-btn');
+        if (back) {
+          back.style.removeProperty('top');
+          back.style.removeProperty('height');
+          back.style.removeProperty('display');
+          back.style.removeProperty('align-items');
+        }
+      } catch (eHdr) {}
+    }
+    function skipArkSelfManagedWhiteTop() {
+      var b = document.body;
+      if (!b || !isArkSelfManagedWhiteTopPage()) return false;
+      var staleShield = document.getElementById('arkWhiteTopShield');
+      if (staleShield) {
+        try {
+          staleShield.parentNode && staleShield.parentNode.removeChild(staleShield);
+        } catch (eRm) {}
+      }
+      clearArkPinnedHeader(document.querySelector('body > .header'));
+      try {
+        b.style.removeProperty('padding-top');
+        b.removeAttribute('data-ark-body-pad');
+        var rootSkip = document.documentElement;
+        rootSkip.style.setProperty('--app-shell-statusbar-top', '40px');
+        rootSkip.style.setProperty('--android-status-inset', '40px');
+        rootSkip.style.setProperty('--safe-top', '40px');
+        rootSkip.style.setProperty('--safe-t', '40px');
+      } catch (eVar) {}
+      return true;
     }
 
     function pinArkPlainHeader() {
@@ -268,6 +329,8 @@
         if (isArkBlueTopPage()) return;
         var b = document.body;
         if (!b) return;
+        /* 自管 fixed+40px 白顶栏：再钉 52/66 相对头会叠出大块空白 */
+        if (skipArkSelfManagedWhiteTop()) return;
         var root = document.documentElement;
         var insetPx = ARK_TOP_INSET + 'px';
         root.style.setProperty('--app-shell-statusbar-top', insetPx, 'important');
