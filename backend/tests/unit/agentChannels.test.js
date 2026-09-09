@@ -133,7 +133,7 @@ describe('agentChannels normalize', () => {
   });
 });
 
-describe('abc is URL-only for channel prices', () => {
+describe('abc URL-only attribution; account bind applies channel prices', () => {
   const {
     isUrlOnlySalesChannel,
     resolveSalesChannelForChannelPrices,
@@ -154,11 +154,12 @@ describe('abc is URL-only for channel prices', () => {
     expect(typeof mod.createAgentChannels).toBe('function');
   });
 
-  it('uses request abc only; bound account abc alone does not set channel prices', () => {
-    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('');
-    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('');
+  it('applies abc channel prices from request ch or bound account', () => {
+    expect(resolveSalesChannelForChannelPrices('abc', '')).toBe('abc');
+    expect(resolveSalesChannelForChannelPrices('abc', null)).toBe('abc');
     expect(resolveSalesChannelForChannelPrices('abc', 'abc')).toBe('abc');
     expect(resolveSalesChannelForChannelPrices('', 'abc')).toBe('abc');
+    expect(resolveSalesChannelForChannelPrices('', '')).toBe('');
   });
 
   it('excludes URL-only channels from sticky attribution replay', () => {

@@ -1341,8 +1341,8 @@ async function resolveForcedAbcForSalesChannel(salesCh) {
 /**
  * 按渠道专属价覆盖 offer.skus。
  * 普通渠道：账号 sales_promo_channel 或请求 ch / header / UA。
- * URL-only（abc）：仅当本次请求带 ch=abc（支付页 URL / 显式参数）才套专属价，
- * 不因账号已绑 sales_promo_channel=abc 而改价。
+ * URL-only（abc）：请求 ch 优先；否则认账号已绑的 sales_promo_channel=abc，
+ * 避免渠道包装完后站内进支付页丢 ?ch= 而落到普通价。
  * 用户专属报价应在本函数之后再套用。
  */
 async function applyAgentChannelPricesToOffer(offer, username, req) {

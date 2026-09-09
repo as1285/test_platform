@@ -6960,6 +6960,20 @@
    * 渠道包内强制写进每个同域 URL 的渠道：
    * 优先壳配置/UA；其次当前 URL 或同会话 URL-only（abc）。
    */
+  /**
+   * 已登录账号绑定的 URL-only 渠道（如 abc）：conversion-guide 写入 localStorage.sales_promo_channel。
+   * 不写 sales_channel_v1 sticky；仅用于跳转支付页补 ?ch=，与后端专属价认账号对齐。
+   */
+  function getAccountBoundUrlOnlySalesChannel() {
+    try {
+      if (!getToken()) return '';
+      var k = sanitizeSalesChannelId(localStorage.getItem('sales_promo_channel') || '');
+      return k && isUrlOnlySalesChannel(k) ? k : '';
+    } catch (eAcc) {
+      return '';
+    }
+  }
+
   function getForcedPackagedSalesChannel() {
     var pkg = getPackagedAgentSalesChannel();
     if (pkg) return pkg;
@@ -6971,7 +6985,9 @@
         return urlCh;
       }
     } catch (e2) {}
-    return readUrlOnlySalesChannelSession();
+    var sess = readUrlOnlySalesChannelSession();
+    if (sess) return sess;
+    return getAccountBoundUrlOnlySalesChannel();
   }
 
   /** 从当前页面 URL 读取 ?ch= / ?channel=（含壳 UA / 分销注入），返回 sanitize 后的渠道。 */
@@ -7378,7 +7394,8 @@
   }
 
   function appendSalesChannelToUrl(url) {
-    var ch = getForcedPackagedSalesChannel() || getSalesChannel();
+    var ch =
+      getForcedPackagedSalesChannel() || getSalesChannel() || getAccountBoundUrlOnlySalesChannel();
     if (!ch || !url) {
       return url;
     }
