@@ -3328,14 +3328,31 @@
       if (pageBg === topColor || pageBg === '#1677ff' || pageBg === '#2b81f2' || pageBg === '#1e8fff') {
         pageBg = '#f5f6fa';
       }
-      /* Ace 2V：官方预览为外置黑条，勿把首页蓝铺进系统栏 */
-      if (isLikelyAndroidViewportClient() && isOnePlusAce2VClient()) {
+      /*
+       * 安卓统一：状态栏纯黑底 + 白图标（对齐官方个税 App），不收缩 WebView；
+       * Ace 2V 仍走外置黑条 overlays=false。同时把被钉成 0px 的顶距兜底到 40px，
+       * 让头部从黑栏下方开始（仅当当前顶距为 0/空，避免覆盖 48/52/70 等已设值）。
+       */
+      if (isLikelyAndroidViewportClient()) {
+        var ace2v = isOnePlusAce2VClient();
+        try {
+          var curInset = '';
+          try {
+            curInset = (window.getComputedStyle(document.documentElement) || {}).getPropertyValue(
+              '--app-shell-statusbar-top'
+            ) || '';
+          } catch (eGcs) {}
+          if (!curInset || parseFloat(curInset) <= 0) {
+            document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+            document.documentElement.style.setProperty('--android-status-inset', '40px', 'important');
+          }
+        } catch (eInset) {}
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
         setStatusBarStyleMeta('black');
         requestShellStatusBar({
           style: 'light',
-          overlays: false,
+          overlays: !ace2v,
           color: '#000000',
           paint_shell: true,
           shell_bg: pageBg
@@ -4026,24 +4043,24 @@
             body.style.setProperty('--android-status-inset', '40px');
           }
         } catch (e15) {}
-        upsertMeta('theme-color', '#ffffff');
-        upsertMeta('msapplication-navbutton-color', '#ffffff');
-        upsertMeta('color-scheme', 'light');
-        setStatusBarStyleMeta('default');
+        upsertMeta('theme-color', '#000000');
+        upsertMeta('msapplication-navbutton-color', '#000000');
+        upsertMeta('color-scheme', 'dark');
+        setStatusBarStyleMeta('black');
         try {
-          root.style.colorScheme = 'light';
-          if (body) body.style.colorScheme = 'light';
+          root.style.colorScheme = 'dark';
+          if (body) body.style.colorScheme = 'dark';
         } catch (eCs) {}
-        /* 白顶栏必须实底白 + 深色系统字。#00000000 在 OriginOS/iQOO 会变成黑条白字，压在标题上 */
+        /* 安卓统一黑状态栏：纯黑底 + 白图标（对齐官方个税 App），头部白底从黑栏下方开始 */
         var whiteBarOpts = {
-          style: 'dark',
+          style: 'light',
           overlays: true,
-          color: '#ffffff',
+          color: '#000000',
           paint_shell: true,
-          shell_bg: '#ffffff'
+          shell_bg: '#f5f6fa'
         };
         requestShellStatusBar(whiteBarOpts);
-        /* OriginOS 改底色后会把电量/信号刷回白图标，须在颜色落地后再多次 styleDefault */
+        /* OriginOS 改底色后会把电量/信号刷回白图标，须在颜色落地后再多次 styleLightContent */
         var reapplyDark = function () {
           requestShellStatusBar(whiteBarOpts);
         };
@@ -4090,14 +4107,34 @@
         isCordovaTaxAppShell();
       try {
         root.classList.add('app-android-white-page-outer');
+      } catch (eClsOuter) {}
+      if (!needsOuterBar) {
+        /* 沉浸压栏机型：统一黑底白图标 + 40px 顶距，头部从黑栏下方开始 */
+        try {
+          root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+          root.style.setProperty('--android-status-inset', '40px', 'important');
+          body.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+          body.style.setProperty('--android-status-inset', '40px', 'important');
+        } catch (eImmersiveInset) {}
+        upsertMeta('theme-color', '#000000');
+        upsertMeta('msapplication-navbutton-color', '#000000');
+        setStatusBarStyleMeta('black');
+        requestShellStatusBar({
+          style: 'light',
+          overlays: true,
+          color: '#000000',
+          paint_shell: true,
+          shell_bg: '#f5f6fa'
+        });
+        return;
+      }
+      /* 外置状态栏机型：系统栏在 WebView 外，顶距清零 + 外置黑条 */
+      try {
         root.style.setProperty('--app-shell-statusbar-top', '0px');
         root.style.setProperty('--android-status-inset', '0px');
         body.style.setProperty('--app-shell-statusbar-top', '0px');
         body.style.setProperty('--android-status-inset', '0px');
       } catch (eInset) {}
-      if (!needsOuterBar) {
-        return;
-      }
       upsertMeta('theme-color', '#000000');
       upsertMeta('msapplication-navbutton-color', '#000000');
       setStatusBarStyleMeta('black');
