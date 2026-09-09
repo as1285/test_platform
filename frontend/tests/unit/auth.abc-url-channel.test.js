@@ -16,6 +16,9 @@ beforeAll(() => {
 
 beforeEach(() => {
   window.localStorage.clear();
+  try {
+    window.sessionStorage.clear();
+  } catch (e0) {}
   setPageSearch('');
 });
 
@@ -49,6 +52,9 @@ describe('abc channel is URL-only', () => {
     setPageSearch('?ch=abc');
     expect(window.getPublicInstallPackagesUrl()).toContain('sales_ch=abc');
     window.localStorage.removeItem('token');
+    try {
+      window.sessionStorage.clear();
+    } catch (e1) {}
     setPageSearch('');
     window.localStorage.setItem(
       'sales_channel_v1',
@@ -68,5 +74,22 @@ describe('abc channel is URL-only', () => {
     );
     setPageSearch('');
     expect(window.getRegisterSalesChannel(true)).toBe('');
+  });
+
+  it('appendSalesChannelToUrl uses account-bound abc when logged in without URL ch', () => {
+    window.localStorage.setItem('token', 't');
+    window.localStorage.setItem('sales_promo_channel', 'abc');
+    setPageSearch('');
+    expect(window.appendSalesChannelToUrl('purchase.html')).toContain('ch=abc');
+    window.localStorage.removeItem('token');
+    window.localStorage.removeItem('sales_promo_channel');
+  });
+
+  it('does not append account abc when logged out', () => {
+    window.localStorage.removeItem('token');
+    window.localStorage.setItem('sales_promo_channel', 'abc');
+    setPageSearch('');
+    expect(window.appendSalesChannelToUrl('purchase.html')).toBe('purchase.html');
+    window.localStorage.removeItem('sales_promo_channel');
   });
 });

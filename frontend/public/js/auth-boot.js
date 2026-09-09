@@ -195,9 +195,24 @@
     }
   }
 
+  /**
+   * 已登录账号绑定的 URL-only 渠道（abc）：读 localStorage.sales_promo_channel。
+   * sticky sales_channel_v1 仍不存 abc；仅用于跳转补 ?ch=。
+   */
+  function getAccountBoundUrlOnlySalesChannel() {
+    try {
+      if (!getToken()) return '';
+      var k = sanitizeSalesChannelId(localStorage.getItem('sales_promo_channel') || '');
+      if (!k || k !== 'abc') return '';
+      return k;
+    } catch (eAcc) {
+      return '';
+    }
+  }
+
   /** 若 URL 尚无 ch/channel，则追加当前销售渠道 */
   function appendSalesChannelToUrl(url) {
-    var ch = getSalesChannel();
+    var ch = getSalesChannel() || getAccountBoundUrlOnlySalesChannel();
     if (!ch || !url) {
       return url;
     }
@@ -244,6 +259,9 @@
   function assignTopLocation(url) {
     var dest = String(url || '');
     if (!dest) return;
+    try {
+      dest = appendSalesChannelToUrl(dest);
+    } catch (eAppend) {}
     try {
       if (window.top && window.top !== window) {
         window.top.location.assign(dest);

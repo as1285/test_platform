@@ -10,7 +10,8 @@ const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
  * 不参与 client_id / 设备指纹 / IP 的 sticky 归因回放。
  * 仅当本次请求显式带 ?ch=abc，或安装下载埋点证明装过渠道包 / 描述文件时，
  * 才写入账号 sales_promo_channel（统计用）。
- * 开通专属价：仅认本次请求 ch=abc，不因账号已绑 abc 而改价。
+ * 开通专属价：请求 ch 优先；否则认账号已绑的 sales_promo_channel（含 abc），
+ * 避免装完描述文件后站内进支付页丢 ?ch= 而落到普通价。
  * 与前端 auth.js URL_ONLY_SALES_CHANNELS 对齐。
  */
 var URL_ONLY_SALES_CHANNELS = { abc: true };
@@ -97,14 +98,14 @@ function excludeUrlOnlySalesChannelSinceSql(channelCol, createdCol, sinceUtc, pa
 
 /**
  * 解析用于渠道专属价的渠道 ID。
- * 本次请求显式 ch 优先；普通渠道可回落到账号 sales_promo_channel。
- * URL-only（abc）：只认本次请求 ch，不认账号绑定（支付页须 URL 带 ?ch=abc）。
+ * 本次请求显式 ch 优先；否则回落到账号 sales_promo_channel（含 URL-only abc）。
+ * sticky / 未登录归因仍不把 abc 写入 localStorage；专属价以账号绑定为准，
+ * 修复「装了 abc 描述文件、账号已是 abc，支付页却无 ch 走普通价」。
  */
 function resolveSalesChannelForChannelPrices(userCh, requestCh) {
   var reqCh = sanitizeChannelIdLoose(requestCh);
   var acctCh = sanitizeChannelIdLoose(userCh);
   if (reqCh) return reqCh;
-  if (acctCh && isUrlOnlySalesChannel(acctCh)) return '';
   if (acctCh) return acctCh;
   return '';
 }

@@ -78,6 +78,11 @@
     var dest = String(url || '');
     if (!dest) return;
     try {
+      if (typeof global.appendSalesChannelToUrl === 'function') {
+        dest = global.appendSalesChannelToUrl(dest);
+      }
+    } catch (eAppend) {}
+    try {
       if (global.top && global.top !== global) {
         global.top.location.assign(dest);
         return;
