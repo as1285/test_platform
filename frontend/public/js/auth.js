@@ -3495,8 +3495,33 @@
       pinAceProMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
-      /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
-      applyImmersiveBlueStatusBar(mineBlue, '#f5f6fa');
+      /*
+       * 红米 K70：对齐官方个税 App，状态栏纯黑底 + 白图标（非苹果式蓝顶）。
+       * 仍 overlays=true（不收缩 WebView），靠 html 顶 40px 黑条 + 头图下推 40px 实现：
+       * 系统栏黑底透盖在蓝头之上，蓝头从状态栏下方开始，与官方一致。
+       */
+      var isRedmiK70Mine = document.documentElement.classList.contains('app-android-redmi-k70');
+      if (isRedmiK70Mine) {
+        try {
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+          document.documentElement.style.setProperty('--android-status-inset', '40px', 'important');
+        } catch (eK70Var) {}
+        try {
+          upsertMeta('theme-color', '#000000');
+          upsertMeta('msapplication-navbutton-color', '#000000');
+          setStatusBarStyleMeta('black');
+          requestShellStatusBar({
+            style: 'light',
+            overlays: true,
+            color: '#000000',
+            paint_shell: true,
+            shell_bg: '#f5f6fa'
+          });
+        } catch (eK70Sb) {}
+      } else {
+        /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
+        applyImmersiveBlueStatusBar(mineBlue, '#f5f6fa');
+      }
       try {
         schedulePinTabBottomNav();
       } catch (ePin) {}

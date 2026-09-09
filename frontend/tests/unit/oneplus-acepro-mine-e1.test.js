@@ -51,8 +51,8 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
     expect(boot).toContain("classList.remove('app-android-mine-e1-sm')");
     expect(boot).toContain('aspect-ratio:1284/2127');
     expect(boot).toMatch(/if \(acepro\) \{[\s\S]*?return;/);
-    expect(mine).toMatch(/auth-boot\.js\?v=20260907-acepro-pill/);
-    expect(mine).toMatch(/auth\.js\?v=20260907-acepro-pill" defer/);
+    expect(mine).toMatch(/auth-boot\.js\?v=20260909-k70-mine-black-bar/);
+    expect(mine).toMatch(/auth\.js\?v=20260909-k70-mine-black-bar" defer/);
   });
 
   it('does not keep Ace Pro on the 40px mine bleed group', () => {
