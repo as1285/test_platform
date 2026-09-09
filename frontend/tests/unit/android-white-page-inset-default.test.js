@@ -54,13 +54,15 @@ describe('Android white-page default immersive inset', () => {
     );
   });
 
-  it('syncAppShellStatusbarTop 对全安卓一律写 0px（仅 Mate60 保留 52px 页内黑条）', () => {
+  it('syncAppShellStatusbarTop 对全安卓写 0px（Mate60=52px；Hi nova 9 SE 例外保留 40px）', () => {
     const syncIdx = auth.indexOf('function syncAppShellStatusbarTop()');
     expect(syncIdx).toBeGreaterThan(0);
     const syncFn = auth.slice(syncIdx, auth.indexOf('function requestShellStatusBar'));
-    /* 安卓分支：Mate60 52px，其余一律 0px，不再保留沉浸 40px 分支 */
+    /* 安卓分支：Mate60 52px；Hi nova 9 SE 40px；其余一律 0px */
     expect(syncFn).toContain("isHuaweiMate60Client()");
     expect(syncFn).toContain("'--app-shell-statusbar-top', '52px'");
+    expect(syncFn).toContain('isHiNova9SeClient()');
+    expect(syncFn).toContain("'--app-shell-statusbar-top', '40px'");
     expect(syncFn).toContain("'--app-shell-statusbar-top', '0px'");
     expect(syncFn).not.toContain('var keepWhiteImmersive');
     expect(syncFn).not.toContain('isAndroidWhitePageImmersiveDefaultClient()');
@@ -73,8 +75,8 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('PHJ110');
     expect(boot).toContain('23127PN');
     Object.entries(pages).forEach(([name, html]) => {
-      expect(html).toContain('auth-boot.js?v=20260909-android-black-bar-v2');
-      expect(html).toContain('auth.js?v=20260909-android-black-bar-v2');
+      expect(html).toContain('auth-boot.js?v=20260909-hinova9se-inset-v1');
+      expect(html).toContain('auth.js?v=20260909-hinova9se-inset-v1');
     });
   });
 });

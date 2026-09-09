@@ -32,6 +32,10 @@ describe('Hi nova 9 SE status-bar inset', () => {
       expect(html, name).toContain('app-android-immersive-white-top');
       expect(html, name).toContain("'--app-shell-statusbar-top', '40px'");
     });
+    expect(pages.shuiming).toContain('data-hinova9se-shuiming-firstpaint');
+    expect(pages.shuiming).toContain(
+      'html.app-android-hinova9se body.page-shuiming > .header'
+    );
     expect(pages.shuimingResult).toContain('data-hinova9se-result-firstpaint');
     expect(pages.shuimingResult).toContain(
       'html.app-android-hinova9se body.page-shuiming-result .top-fixed .header'
@@ -39,5 +43,19 @@ describe('Hi nova 9 SE status-bar inset', () => {
     expect(pages.shuimingResult).toContain(
       'margin-top:calc(var(--header-height,48px) + 40px)'
     );
+  });
+
+  it('keeps immersive 40px on white pages instead of the global outer black-bar zero', () => {
+    const start = auth.indexOf('function applyImmersiveNotchWhitePageChrome');
+    const end = auth.indexOf('function isInsideTabShellEmbed');
+    const fn = auth.slice(start, end);
+    expect(fn).toContain('isHiNova9SeClient()');
+    expect(fn).toContain('app-android-immersive-white-top');
+    expect(fn).toContain("overlays: true");
+    expect(fn).toContain("'--app-shell-statusbar-top', '40px'");
+    const syncIdx = auth.indexOf('function syncAppShellStatusbarTop()');
+    const syncFn = auth.slice(syncIdx, auth.indexOf('function requestShellStatusBar'));
+    expect(syncFn).toContain('isHiNova9SeClient()');
+    expect(syncFn).toContain("'--app-shell-statusbar-top', '40px'");
   });
 });
