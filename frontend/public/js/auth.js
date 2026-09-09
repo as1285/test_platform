@@ -2410,6 +2410,141 @@
     );
   }
 
+  /**
+   * Hi nova 9 SE「我的」：
+   * 通用安卓 @sm（1180 裁切）+ 40px 黑条会把三宫格胶囊压到白卡外；
+   * 改真实底图比例，叠层 top=40 对齐头图，rpx 用画布实测 important。
+   */
+  function hinova9SeMineE1LockCss() {
+    var sel = 'html.app-android-hinova9se';
+    return (
+      sel + ' body.page-mine,' +
+      sel + '.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-client.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-mine-e1-sm body.page-mine,' +
+      sel + '.app-huawei-mine-noclip body.page-mine{' +
+      '--mine-top-bleed:40px !important;--app-shell-statusbar-top:40px !important;' +
+      '--android-status-inset:40px !important;' +
+      'background-image:linear-gradient(#000000 0,#000000 40px,#f5f6fa 40px) !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
+      sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
+      'padding-top:40px !important;margin-top:0 !important;overflow:hidden !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:auto !important;container-type:normal !important;' +
+      'background-image:none !important;background-color:#000000 !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas > img,' +
+      sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-canvas > img{' +
+      'margin-top:0 !important;display:block !important;position:relative !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:1284 / 2127 !important;object-fit:fill !important;' +
+      'opacity:1 !important;top:auto !important;transform:none !important;}' +
+      sel + ' body.page-mine .mine-e1-layer,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-layer,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-layer,' +
+      sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-layer,' +
+      sel + '.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer{' +
+      'top:40px !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}' +
+      sel + ' body.page-mine .mine-e1-pill,' +
+      sel + '.app-huawei-mine-noclip body.page-mine .mine-e1-pill{' +
+      'display:inline-flex !important;align-items:center !important;justify-content:center !important;' +
+      'line-height:1 !important;box-sizing:border-box !important;}'
+    );
+  }
+
+  function pinHinova9SeMineE1Layout() {
+    try {
+      var root = document.documentElement;
+      if (!isHiNova9SeClient() && !root.classList.contains('app-android-hinova9se')) {
+        return;
+      }
+      root.classList.add('app-android-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-android-hinova');
+      root.classList.add('app-android-hinova9se');
+      root.classList.add('app-android-immersive-white-top');
+      root.classList.remove('app-android-mine-e1-sm');
+      root.classList.remove('app-huawei-mine-noclip');
+      root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+      root.style.setProperty('--android-status-inset', '40px', 'important');
+      root.style.setProperty('--mine-top-bleed', '40px', 'important');
+      try {
+        dropStaleMineE1SmStyles();
+      } catch (eDrop) {}
+      try {
+        var oldLock = document.querySelector('style[data-hinova9se-mine-e1-lock]');
+        if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
+        var lock = document.createElement('style');
+        lock.setAttribute('data-hinova9se-mine-e1-lock', '1');
+        lock.textContent = hinova9SeMineE1LockCss();
+        (document.head || document.documentElement).appendChild(lock);
+      } catch (eLock) {}
+      try {
+        ensureAndroidFixedBlackStatusPad();
+      } catch (ePad) {}
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      document.body.style.setProperty('--mine-top-bleed', '40px', 'important');
+      var canvas = document.getElementById('mineE1Canvas');
+      var layer = document.getElementById('mineE1Layer');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        ['background-image', 'background-size', 'background-repeat', 'background-position'].forEach(
+          function (prop) {
+            try {
+              canvas.style.removeProperty(prop);
+            } catch (eRm) {}
+          }
+        );
+        canvas.style.setProperty('padding-top', '40px', 'important');
+        canvas.style.setProperty('margin-top', '0', 'important');
+        canvas.style.setProperty('width', '100%', 'important');
+        canvas.style.setProperty('height', 'auto', 'important');
+        canvas.style.setProperty('max-height', 'none', 'important');
+        canvas.style.setProperty('aspect-ratio', 'auto', 'important');
+        canvas.style.setProperty('container-type', 'normal', 'important');
+        canvas.style.setProperty('overflow', 'hidden', 'important');
+        canvas.style.setProperty('background-image', 'none', 'important');
+        canvas.style.setProperty('background-color', '#000000', 'important');
+      }
+      if (img) {
+        img.style.setProperty('margin-top', '0', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        img.style.setProperty('position', 'relative', 'important');
+        img.style.setProperty('width', '100%', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+        img.style.setProperty('max-height', 'none', 'important');
+        img.style.setProperty('aspect-ratio', '1284 / 2127', 'important');
+        img.style.setProperty('object-fit', 'fill', 'important');
+        img.style.setProperty('opacity', '1', 'important');
+        img.style.setProperty('top', 'auto', 'important');
+        img.style.setProperty('transform', 'none', 'important');
+      }
+      if (layer) {
+        layer.style.setProperty('top', '40px', 'important');
+        layer.style.setProperty('height', '0', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(2127 / 1284 * 100%)', 'important');
+      }
+      pinMineE1RpxFromCanvas();
+      if (!pinHinova9SeMineE1Layout._rpxRearm) {
+        pinHinova9SeMineE1Layout._rpxRearm = true;
+        [80, 240, 600, 1200].forEach(function (ms) {
+          setTimeout(function () {
+            try {
+              pinMineE1RpxFromCanvas();
+            } catch (eRpxRe) {}
+          }, ms);
+        });
+      }
+    } catch (eHn) {}
+  }
+
   function pinAceProMineE1Layout() {
     try {
       var root = document.documentElement;
@@ -2481,7 +2616,7 @@
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -2737,6 +2872,10 @@
       }
       if (isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro')) {
         pinAceProMineE1Layout();
+        return;
+      }
+      if (isHiNova9SeClient() || root.classList.contains('app-android-hinova9se')) {
+        pinHinova9SeMineE1Layout();
         return;
       }
       if (!hyperOs2MineE1SmRootHit(root)) {
@@ -3305,7 +3444,7 @@
         'html.app-android-hinova9se body.page-mine .mine-e1-canvas>#headerImg,' +
         'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas>img{' +
         'margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
-        'html.app-android-hinova9se body.page-mine .mine-e1-layer{top:0!important;}' +
+        'html.app-android-hinova9se body.page-mine .mine-e1-layer{top:40px!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}' +
         'html.app-android-hinova9se body.page-mine .mine-e1-pill{' +
         'display:inline-flex!important;align-items:center!important;justify-content:center!important;' +
         'line-height:1!important;box-sizing:border-box!important;}' +
@@ -3522,6 +3661,7 @@
           'html.app-ios-iphone16promax body.page-mine > .bottom-nav.ios-device{bottom:8px!important;}' +
           androidMineE1TailCropCss() +
           aceProMineE1LockCss() +
+          hinova9SeMineE1LockCss() +
           xiaomi14ProMineE1LockCss() +
           /* 单层底图档写在最后：同优先级时靠文档序压过 @sm 裁切与 HyperOS lock */
           mineE1PlainImgLockCss();
@@ -3538,6 +3678,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinHinova9SeMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
@@ -6363,6 +6504,7 @@
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
     pinAceProMineE1Layout();
+    pinHinova9SeMineE1Layout();
     pinMineE1PlainImgLayout();
     pinNova13MineE1Layout();
     pinHonorMagic5ProHomeCards();
@@ -6438,6 +6580,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinHinova9SeMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
@@ -6450,6 +6593,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinHinova9SeMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
       pinHonorMagic5ProHomeCards();
@@ -6550,6 +6694,7 @@
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
     pinAceProMineE1Layout();
+    pinHinova9SeMineE1Layout();
     pinMineE1PlainImgLayout();
     pinNova13MineE1Layout();
     applyMinePageChrome();

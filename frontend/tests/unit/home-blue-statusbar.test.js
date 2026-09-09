@@ -43,11 +43,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260909-hinova9se-mine-pad-v5');
+    expect(shuimingResult).toContain('auth.js?v=20260909-hinova9se-mine-pad-v6');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260909-hinova9se-mine-pad-v5');
+    expect(shouye).toContain('auth.js?v=20260909-hinova9se-mine-pad-v6');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
