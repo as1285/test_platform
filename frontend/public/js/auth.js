@@ -2177,6 +2177,10 @@
     if (isHuaweiP40ProClient()) {
       return false;
     }
+    /* Hi nova 9 SE：状态栏仍压 WebView，须页内 40px 黑条；noclip 清 0 会让蓝头盖住时间 */
+    if (isHiNova9SeClient()) {
+      return false;
+    }
     if (isHuaweiHarmonyOsFamilyClient() || isHiNovaFamilyClient()) {
       return true;
     }
@@ -2233,11 +2237,14 @@
       /* ColorOS 15 Ace Pro：100vw 常宽于画布，须 important 压过 @sm / HyperOS lock 的 100vw */
       var acepro =
         isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro');
-      var imp = mate60 || mi14pro || p40pro || plainImg || acepro ? 'important' : '';
+      var hinova9se =
+        isHiNova9SeClient() || root.classList.contains('app-android-hinova9se');
+      var imp =
+        mate60 || mi14pro || p40pro || plainImg || acepro || hinova9se ? 'important' : '';
       root.style.setProperty('--mine-rpx', rpx, imp);
       document.body.style.setProperty('--mine-rpx', rpx, imp);
       canvas.style.setProperty('--mine-rpx', rpx, imp);
-      if (mate60 || mi14pro || p40pro || acepro) {
+      if (mate60 || mi14pro || p40pro || acepro || hinova9se) {
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('width', '100%', 'important');
       }
@@ -3282,8 +3289,26 @@
         'content:""!important;display:block!important;position:fixed!important;' +
         'left:0!important;right:0!important;top:0!important;' +
         'height:var(--app-shell-statusbar-top,40px)!important;' +
+        'min-height:40px!important;' +
         'background:#000000!important;z-index:2147483000!important;' +
         'pointer-events:none!important;}' +
+        /* Hi nova 9 SE「我的」：压过 noclip 的 padding-top:0，保住黑条与白图标时间 */
+        'html.app-android-hinova9se body.page-mine{' +
+        '--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;' +
+        '--android-status-inset:40px!important;' +
+        'background-image:linear-gradient(#000000 0,#000000 40px,#f5f6fa 40px)!important;}' +
+        'html.app-android-hinova9se body.page-mine .mine-e1-canvas,' +
+        'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas{' +
+        'padding-top:40px!important;box-sizing:border-box!important;background-color:#000000!important;' +
+        'container-type:normal!important;width:100%!important;}' +
+        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>img,' +
+        'html.app-android-hinova9se body.page-mine .mine-e1-canvas>#headerImg,' +
+        'html.app-android-hinova9se.app-huawei-mine-noclip body.page-mine .mine-e1-canvas>img{' +
+        'margin-top:0!important;position:relative!important;top:auto!important;transform:none!important;}' +
+        'html.app-android-hinova9se body.page-mine .mine-e1-layer{top:0!important;}' +
+        'html.app-android-hinova9se body.page-mine .mine-e1-pill{' +
+        'display:inline-flex!important;align-items:center!important;justify-content:center!important;' +
+        'line-height:1!important;box-sizing:border-box!important;}' +
         /* 「我的」头图下推，避免蓝头从图顶画出盖住黑条下方内容区 */
         'html.app-android-client body.page-mine .mine-e1-canvas{' +
         'padding-top:var(--app-shell-statusbar-top,40px)!important;' +
@@ -4957,10 +4982,16 @@
         document.documentElement.classList.add('app-android-hinova');
       }
       if (hiNova9SeClient) {
+        document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-hinova9se');
         document.documentElement.classList.add('app-android-immersive-white-top');
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-        document.documentElement.style.setProperty('--android-status-inset', '40px');
+        document.documentElement.classList.remove('app-huawei-mine-noclip');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
+        document.documentElement.style.setProperty('--android-status-inset', '40px', 'important');
+        document.documentElement.style.setProperty('--mine-top-bleed', '40px', 'important');
+        try {
+          ensureAndroidFixedBlackStatusPad();
+        } catch (eHnPad) {}
       }
       if (onePlus13Client) {
         document.documentElement.classList.add('app-android-oneplus-13');

@@ -59,8 +59,8 @@ describe('Android white-page default immersive inset', () => {
     expect(boot).toContain('app-android-immersive-white-top');
     expect(boot).toContain("'--app-shell-statusbar-top', '40px'");
     Object.entries(pages).forEach(([name, html]) => {
-      expect(html).toContain('auth-boot.js?v=20260909-hinova-blackpad-light-v4');
-      expect(html).toContain('auth.js?v=20260909-hinova-blackpad-light-v4');
+      expect(html).toContain('auth-boot.js?v=20260909-hinova9se-mine-pad-v5');
+      expect(html).toContain('auth.js?v=20260909-hinova9se-mine-pad-v5');
     });
   });
 });
