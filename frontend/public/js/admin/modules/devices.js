@@ -60,11 +60,11 @@
     if (!el) return;
     var s = summary || {};
     el.innerHTML =
-      '<div class="user-data-stat-card"><div class="ud-label">苹果用户</div><div class="ud-val">' +
-      esc(String(s.users_ios || 0)) +
+      '<div class="user-data-stat-card"><div class="ud-label">当前注册 · 苹果</div><div class="ud-val">' +
+      esc(String(s.registered_ios || 0)) +
       '</div></div>' +
-      '<div class="user-data-stat-card"><div class="ud-label">安卓用户</div><div class="ud-val">' +
-      esc(String(s.users_android || 0)) +
+      '<div class="user-data-stat-card"><div class="ud-label">当前注册 · 安卓</div><div class="ud-val">' +
+      esc(String(s.registered_android || 0)) +
       '</div></div>' +
       '<div class="user-data-stat-card"><div class="ud-label">已建档机型</div><div class="ud-val">' +
       esc(String(s.catalog_models || 0)) +
@@ -222,8 +222,14 @@
     var summaryEl = document.getElementById('deviceCompatSummary');
     if (summaryEl) {
       summaryEl.textContent =
+        '当前注册苹果 ' +
+        (s.registered_ios || 0) +
+        '、安卓 ' +
+        (s.registered_android || 0) +
+        (s.registered_other ? '、其他 ' + s.registered_other : '') +
+        '。' +
         (data.range_label || '') +
-        ' 目录已对齐。线上用户 ' +
+        ' 目录已对齐。设备对账用户 ' +
         (s.users_total || 0) +
         '，设备 ' +
         (s.devices_total || 0) +

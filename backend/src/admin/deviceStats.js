@@ -84,6 +84,43 @@ function addUser(set, username) {
   set[u] = 1;
 }
 
+function deviceEarlier(a, b) {
+  var fa = +new Date((a && a.first_seen) || 0);
+  var fb = +new Date((b && b.first_seen) || 0);
+  if (fa !== fb) return fa < fb;
+  var la = +new Date((a && a.last_seen) || 0);
+  var lb = +new Date((b && b.last_seen) || 0);
+  return la < lb;
+}
+
+/** 当前注册用户按首台设备 UA 分安卓/苹果（无设备记其他） */
+function countRegisteredByPlatform(userRows, deviceRows) {
+  var firstByUser = Object.create(null);
+  (deviceRows || []).forEach(function (row) {
+    var u = String((row && row.username) || '').trim();
+    if (!u) return;
+    var prev = firstByUser[u];
+    if (!prev || deviceEarlier(row, prev)) firstByUser[u] = row;
+  });
+  var ios = 0;
+  var android = 0;
+  var other = 0;
+  (userRows || []).forEach(function (urow) {
+    var u = String((urow && urow.username) || '').trim();
+    var row = u ? firstByUser[u] : null;
+    var os = row ? classifyOs(deviceBlob(row)) : 'other';
+    if (os === 'ios') ios += 1;
+    else if (os === 'android') android += 1;
+    else other += 1;
+  });
+  return {
+    registered_total: (userRows || []).length,
+    registered_ios: ios,
+    registered_android: android,
+    registered_other: other
+  };
+}
+
 function countUsers(set) {
   return Object.keys(set).length;
 }
@@ -279,9 +316,17 @@ async function handleAdminAnalyticsDevices(req, res) {
   try {
     var pool = getPool();
     const [rows] = await pool.query(
-      'SELECT username, user_agent_short, device_detail_json FROM user_devices'
+      'SELECT username, user_agent_short, device_detail_json, first_seen, last_seen FROM user_devices'
     );
-    return res.json({ code: 200, data: buildDeviceCompatReport(rows || []) });
+    const [userRows] = await pool.query(
+      "SELECT username FROM users WHERE list_hidden_at IS NULL" +
+        " AND LEFT(username, 8) <> '__guest_'" +
+        ' AND COALESCE(user_type, 0) <> 2'
+    );
+    var data = buildDeviceCompatReport(rows || []);
+    var registered = countRegisteredByPlatform(userRows || [], rows || []);
+    data.summary = Object.assign({}, data.summary, registered);
+    return res.json({ code: 200, data: data });
   } catch (e) {
     console.error('[analytics/devices]', e);
     return res.status(500).json({ code: 500, msg: String(e.message || e) });
@@ -295,6 +340,7 @@ function getHandlers() {
 module.exports = {
   getHandlers: getHandlers,
   buildDeviceCompatReport: buildDeviceCompatReport,
+  countRegisteredByPlatform: countRegisteredByPlatform,
   classifyOs: classifyOs,
   deviceBlob: deviceBlob
 };
