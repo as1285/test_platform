@@ -86,6 +86,28 @@
     return '<span class="badge badge-no">未回复</span>';
   }
 
+  function activationBadge(row) {
+    var st = row && row.activation_status;
+    if (st === 'active') {
+      return '<span class="badge badge-yes">已激活</span>';
+    }
+    if (st === 'expired') {
+      return '<span class="badge badge-expired">已过期</span>';
+    }
+    if (st === 'inactive') {
+      return '<span class="badge badge-no">未激活</span>';
+    }
+    return '<span class="hint">—</span>';
+  }
+
+  function activationLabel(row) {
+    var st = row && row.activation_status;
+    if (st === 'active') return '已激活';
+    if (st === 'expired') return '已过期';
+    if (st === 'inactive') return '未激活';
+    return '—';
+  }
+
   function renderList(data) {
     var el = document.getElementById('feedbackMount');
     var sum = document.getElementById('feedbackSummary');
@@ -105,7 +127,7 @@
     }
     var html =
       '<div class="scroll-x"><table class="user-detail-table"><thead><tr>' +
-      '<th>时间</th><th>账号</th><th>姓名</th><th>设备</th><th>描述</th><th>截图</th><th>回复</th><th></th>' +
+      '<th>时间</th><th>账号</th><th>姓名</th><th>激活状态</th><th>设备</th><th>描述</th><th>截图</th><th>回复</th><th></th>' +
       '</tr></thead><tbody>';
     items.forEach(function (row) {
       var id = Number(row.id) || 0;
@@ -113,6 +135,7 @@
       html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
       html += '<td class="cell-break">' + accountButton(row.user_id) + '</td>';
       html += '<td>' + esc(row.real_name || '—') + '</td>';
+      html += '<td>' + activationBadge(row) + '</td>';
       html += '<td class="cell-break">' + esc(row.device_info || '—') + '</td>';
       html += '<td class="cell-break">' + esc(snippet(row.content, 48)) + '</td>';
       html += '<td>' + esc(String(row.image_count || 0)) + '</td>';
@@ -215,6 +238,8 @@
       accountButton(row.user_id) +
       '　姓名 ' +
       esc(row.real_name || '—') +
+      '　激活 ' +
+      activationBadge(row) +
       (row.contact ? '　联系 ' + esc(row.contact) : '') +
       '</p>' +
       '<p class="hint">设备 ' +
@@ -428,6 +453,8 @@
     showDetail: showDetail,
     submitReply: submitReply,
     snippet: snippet,
-    formatDt: formatDt
+    formatDt: formatDt,
+    activationBadge: activationBadge,
+    activationLabel: activationLabel
   };
 })(window);

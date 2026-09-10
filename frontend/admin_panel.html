@@ -2847,7 +2847,10 @@
                         <div class="ops-board-head">
                             <h2>运营看板</h2>
                             <div class="ops-board-head-actions" style="display:flex;align-items:center;gap:8px">
-                                <input type="date" id="opsBoardDate" class="filter-select ops-board-date" aria-label="统计日期">
+                                <span class="hint">所选区间</span>
+                                <input type="date" id="opsBoardDateFrom" class="filter-select ops-board-date" aria-label="开始日期">
+                                <span class="hint">至</span>
+                                <input type="date" id="opsBoardDateTo" class="filter-select ops-board-date" aria-label="结束日期">
                                 <button type="button" class="btn-page btn-page-primary" id="btnOpsBoardRefresh">刷新</button>
                             </div>
                         </div>
@@ -3758,7 +3761,7 @@
                 <div id="page-feedback" class="page-panel" role="tabpanel">
                     <section>
                         <h2>兼容 BUG 反馈</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">用户从 C 端「我要咨询 → 兼容问题反馈」提交：问题描述、截图、设备信息。点「查看」展开详情后可回复，回复会发站内信；用户已留邮箱时，会把回复同步发到邮箱。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">用户从 C 端「我要咨询 → 兼容问题反馈」提交：问题描述、截图、设备信息。列表「激活状态」为当前账号开通情况（已激活 / 未激活 / 已过期）。点「查看」展开详情后可回复，回复会发站内信；用户已留邮箱时，会把回复同步发到邮箱。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <input type="search" id="feedbackSearch" class="filter-select" placeholder="搜索账号、描述或机型" style="min-width:220px;">
                             <select id="feedbackReplyFilter" class="filter-select" title="按回复状态筛选">
@@ -4364,7 +4367,7 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260910-ch-simple"></script>
+    <script src="/js/admin/loader.js?v=20260910-ops-range"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
     <script src="/js/admin_panel.js?v=20260910-bid-toast"></script>

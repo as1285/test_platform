@@ -2150,6 +2150,7 @@ mustInclude(
     'bid-accept',
     'bid-reject',
     'api/admin/price-bids/config',
+    'adminToast(data.msg || \'出价配置已保存\')',
     'renderBidPsychPriceBar',
     'api/admin/price-bids/followup',
     'api/admin/price-bids/remind',

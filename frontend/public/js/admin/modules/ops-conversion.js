@@ -65,14 +65,27 @@
     return nd.getFullYear() + '-' + pad2(nd.getMonth() + 1) + '-' + pad2(nd.getDate());
   }
 
-  function ensureBoardDate() {
-    var el = document.getElementById('opsBoardDate');
+  function clampBoardYmd(el, today) {
     if (!el) return '';
-    var today = beijingTodayYmd();
     el.max = today;
     if (!el.value) el.value = today;
     if (el.value > today) el.value = today;
     return el.value;
+  }
+
+  function ensureBoardRange() {
+    var today = beijingTodayYmd();
+    var fromEl = document.getElementById('opsBoardDateFrom');
+    var toEl = document.getElementById('opsBoardDateTo');
+    var from = clampBoardYmd(fromEl, today);
+    var to = clampBoardYmd(toEl, today);
+    if (from && to && from > to) {
+      if (fromEl) fromEl.value = to;
+      if (toEl) toEl.value = from;
+      from = clampBoardYmd(fromEl, today);
+      to = clampBoardYmd(toEl, today);
+    }
+    return { from: from || today, to: to || today };
   }
 
   function formatIncome(n) {
@@ -424,10 +437,12 @@
     }
     var boardRefresh = document.getElementById('btnOpsBoardRefresh');
     if (boardRefresh) boardRefresh.addEventListener('click', loadBoard);
-    var boardDate = document.getElementById('opsBoardDate');
-    if (boardDate) {
-      ensureBoardDate();
-      boardDate.addEventListener('change', loadBoard);
+    var boardDateFrom = document.getElementById('opsBoardDateFrom');
+    var boardDateTo = document.getElementById('opsBoardDateTo');
+    if (boardDateFrom || boardDateTo) {
+      ensureBoardRange();
+      if (boardDateFrom) boardDateFrom.addEventListener('change', loadBoard);
+      if (boardDateTo) boardDateTo.addEventListener('change', loadBoard);
     }
     var boardTodo = document.getElementById('opsBoardTodo');
     if (boardTodo) {
@@ -485,12 +500,16 @@
     var meta = document.getElementById('opsBoardPayDetailMeta');
     var daysEl = document.getElementById('opsBoardPayDays');
     var days = daysEl && daysEl.value ? daysEl.value : '1';
-    var date = ensureBoardDate();
+    var range = ensureBoardRange();
     if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
     if (meta) meta.textContent = '';
     var payUrl = 'api/admin/ops/board/payments?days=' + encodeURIComponent(days);
-    if (date && String(days) === '1') {
-      payUrl += '&date=' + encodeURIComponent(date);
+    if (String(days) === '1') {
+      payUrl +=
+        '&date_from=' +
+        encodeURIComponent(range.from) +
+        '&date_to=' +
+        encodeURIComponent(range.to);
     }
     fetchAdmin(payUrl)
       .then(function (r) {
@@ -666,7 +685,12 @@
                 ((Number(today.pay_gmv) || 0) - (Number(today.tax_edit_gmv) || 0)) * 100
               ) / 100
             );
-      var isToday = today.is_today !== false && (!today.date || today.date === beijingTodayYmd());
+      var isToday =
+        today.is_today === true ||
+        (today.is_today !== false &&
+          today.is_single !== false &&
+          (!today.date_from || today.date_from === today.date_to) &&
+          (!today.date || today.date === beijingTodayYmd()));
       var pfx = isToday ? '今日' : '';
       kpi.innerHTML =
         kpiCard(pfx + '注册', today.register, '按注册IP去重') +
@@ -709,9 +733,12 @@
     if (kpi) kpi.textContent = '加载中…';
     if (todo) todo.innerHTML = '';
     if (research) research.textContent = '加载中…';
-    var date = ensureBoardDate();
+    var range = ensureBoardRange();
     fetchAdmin(
-      'api/admin/ops/board?days=7&date=' + encodeURIComponent(date || beijingTodayYmd())
+      'api/admin/ops/board?days=7&date_from=' +
+        encodeURIComponent(range.from) +
+        '&date_to=' +
+        encodeURIComponent(range.to)
     )
       .then(function (r) {
         return (window.adminParseJson||function(r){return r.json();})(r);

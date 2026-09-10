@@ -248,6 +248,50 @@ function toAdminImageUrl(feedbackId, index) {
   return '/api/admin/feedback/' + Number(feedbackId) + '/image/' + Number(index);
 }
 
+function emptyActivation() {
+  return {
+    account_active: false,
+    currently_active: false,
+    activation_status: '',
+    activation_kind: '',
+    active_until: ''
+  };
+}
+
+function resolveActivation(row) {
+  row = row || {};
+  var hasJoinFlag = Object.prototype.hasOwnProperty.call(row, 'joined_username');
+  if (hasJoinFlag && !clean(row.joined_username)) {
+    return emptyActivation();
+  }
+  if (
+    !hasJoinFlag &&
+    row.account_active == null &&
+    row.activation_kind == null &&
+    !row.active_until
+  ) {
+    return emptyActivation();
+  }
+  var accountActive =
+    row.account_active === true ||
+    row.account_active === 1 ||
+    Number(row.account_active) === 1;
+  var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+  var until = row.active_until ? new Date(row.active_until) : null;
+  var untilIso = until && !isNaN(until.getTime()) ? until.toISOString() : '';
+  var expired = false;
+  if (accountActive && untilIso && kind !== 'permanent') {
+    expired = until.getTime() <= Date.now();
+  }
+  return {
+    account_active: accountActive,
+    currently_active: accountActive && !expired,
+    activation_status: !accountActive ? 'inactive' : expired ? 'expired' : 'active',
+    activation_kind: kind,
+    active_until: untilIso
+  };
+}
+
 function toPublicItem(row, opts) {
   opts = opts || {};
   var id = row.id != null ? Number(row.id) : 0;
@@ -259,7 +303,8 @@ function toPublicItem(row, opts) {
       path: opts.includePath ? rel : undefined
     };
   });
-  return {
+  var act = opts.admin ? resolveActivation(row) : emptyActivation();
+  var item = {
     id: id,
     user_id: row.user_id != null ? String(row.user_id) : '',
     real_name: row.real_name_snapshot != null ? String(row.real_name_snapshot) : '',
@@ -276,6 +321,14 @@ function toPublicItem(row, opts) {
     has_reply: !!(row.admin_reply && String(row.admin_reply).trim()),
     created_at: row.created_at ? new Date(row.created_at).toISOString() : ''
   };
+  if (opts.admin) {
+    item.account_active = act.account_active;
+    item.currently_active = act.currently_active;
+    item.activation_status = act.activation_status;
+    item.activation_kind = act.activation_kind;
+    item.active_until = act.active_until;
+  }
+  return item;
 }
 
 async function lookupRealName(pool, username) {
@@ -351,29 +404,32 @@ async function handleAdminFeedbackList(req, res) {
     var keyword = clean(q.q);
     var status = clean(q.status).toLowerCase();
     var pool = getPool();
-    var where = "feedback_type = 'compat_bug'";
+    var where = "f.feedback_type = 'compat_bug'";
     var binds = [];
     if (keyword) {
-      where += ' AND (user_id LIKE ? OR real_name_snapshot LIKE ? OR content LIKE ? OR device_info LIKE ?)';
+      where += ' AND (f.user_id LIKE ? OR f.real_name_snapshot LIKE ? OR f.content LIKE ? OR f.device_info LIKE ?)';
       var like = '%' + keyword + '%';
       binds.push(like, like, like, like);
     }
     if (status === 'pending') {
-      where += " AND (admin_reply IS NULL OR TRIM(admin_reply) = '')";
+      where += " AND (f.admin_reply IS NULL OR TRIM(f.admin_reply) = '')";
     } else if (status === 'replied') {
-      where += " AND admin_reply IS NOT NULL AND TRIM(admin_reply) <> ''";
+      where += " AND f.admin_reply IS NOT NULL AND TRIM(f.admin_reply) <> ''";
     }
     const [cntRows] = await pool.execute(
-      'SELECT COUNT(*) AS c FROM user_feedback WHERE ' + where,
+      'SELECT COUNT(*) AS c FROM user_feedback f WHERE ' + where,
       binds
     );
     var total = cntRows && cntRows[0] ? Number(cntRows[0].c) || 0 : 0;
     const [rows] = await pool.query(
-      `SELECT id, user_id, real_name_snapshot, feedback_type, content, image_urls,
-              user_agent, device_info, contact, admin_reply, replied_at, replied_by, created_at
-       FROM user_feedback
+      `SELECT f.id, f.user_id, f.real_name_snapshot, f.feedback_type, f.content, f.image_urls,
+              f.user_agent, f.device_info, f.contact, f.admin_reply, f.replied_at, f.replied_by, f.created_at,
+              u.username AS joined_username, u.account_active, u.activation_kind, u.active_until
+       FROM user_feedback f
+       LEFT JOIN users u
+         ON u.username COLLATE utf8mb4_unicode_ci = f.user_id COLLATE utf8mb4_unicode_ci
        WHERE ${where}
-       ORDER BY id DESC
+       ORDER BY f.id DESC
        LIMIT ? OFFSET ?`,
       binds.concat([limit, offset])
     );
@@ -463,9 +519,13 @@ async function handleAdminFeedbackReply(req, res) {
       console.error('[compat-feedback] email', eMail);
     }
     const [fresh] = await pool.execute(
-      `SELECT id, user_id, real_name_snapshot, feedback_type, content, image_urls,
-              user_agent, device_info, contact, admin_reply, replied_at, replied_by, created_at
-       FROM user_feedback WHERE id = ? LIMIT 1`,
+      `SELECT f.id, f.user_id, f.real_name_snapshot, f.feedback_type, f.content, f.image_urls,
+              f.user_agent, f.device_info, f.contact, f.admin_reply, f.replied_at, f.replied_by, f.created_at,
+              u.username AS joined_username, u.account_active, u.activation_kind, u.active_until
+       FROM user_feedback f
+       LEFT JOIN users u
+         ON u.username COLLATE utf8mb4_unicode_ci = f.user_id COLLATE utf8mb4_unicode_ci
+       WHERE f.id = ? LIMIT 1`,
       [id]
     );
     var msg = '已保存回复';
@@ -548,6 +608,7 @@ module.exports = {
   buildReplyEmail: buildReplyEmail,
   sendReplyEmail: sendReplyEmail,
   toPublicItem: toPublicItem,
+  resolveActivation: resolveActivation,
   parseImageUrls: parseImageUrls,
   TYPE_COMPAT: TYPE_COMPAT,
   MAX_BYTES: MAX_BYTES,

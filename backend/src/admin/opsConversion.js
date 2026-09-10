@@ -38,6 +38,16 @@ var OPS_SKU_LABELS = {
 OPS_SKU_LABELS[taxEditFeePolicy.TAX_EDIT_DAILY_SKU_ID] = '同行费用（每天无限）';
 OPS_SKU_LABELS[taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID] = '个税修改费';
 
+function skuLabelFromSubject(subject) {
+  var s = String(subject || '').trim();
+  if (!s) return '';
+  return s.replace(/^激活码[·•．.\s]*/, '').trim();
+}
+
+function isGenericTierLabel(name) {
+  return /^档位\d+$/.test(String(name || '').trim());
+}
+
 function opsSkuGmvLabel(row) {
   var id = String((row && row.sku_id) || '').trim();
   var kind = String((row && row.grant_kind) || '').trim();
@@ -47,11 +57,13 @@ function opsSkuGmvLabel(row) {
   if (kind === 'tax_edit_single' || id === taxEditFeePolicy.TAX_EDIT_SINGLE_SKU_ID) {
     return '个税修改费';
   }
-  if (id && OPS_SKU_LABELS[id]) return OPS_SKU_LABELS[id];
-  var subject = String((row && row.subject) || '').trim();
-  if (subject) {
-    return subject.replace(/^激活码[·•．.\s]*/, '') || subject;
+  var fromSubject = skuLabelFromSubject(row && row.subject);
+  /* 渠道第 4/5 档在支付页用自定义「名称」；订单 subject 会记下当时的名字 */
+  if (fromSubject && !isGenericTierLabel(fromSubject)) {
+    return fromSubject;
   }
+  if (id && OPS_SKU_LABELS[id]) return OPS_SKU_LABELS[id];
+  if (fromSubject) return fromSubject;
   return id || '其他';
 }
 
@@ -284,6 +296,58 @@ function resolveKpiDay(raw) {
   return parseBjDate(raw) || beijingTodayYmd();
 }
 
+function ymdToUtc(s) {
+  var parts = String(s || '').split('-');
+  return Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
+
+function addDaysYmd(s, delta) {
+  var t = ymdToUtc(s) + delta * 86400000;
+  var d = new Date(t);
+  return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+}
+
+/**
+ * 看板 KPI 区间：date_from / date_to，缺一则用另一端或 date / 今天。
+ * 起止对调、截断到今天，跨度最多 366 天。
+ */
+function resolveKpiRange(query) {
+  query = query || {};
+  var today = beijingTodayYmd();
+  var from = parseBjDate(query.date_from || query.from);
+  var to = parseBjDate(query.date_to || query.to);
+  var single = parseBjDate(query.date);
+  if (!from && !to && single) {
+    from = single;
+    to = single;
+  }
+  if (!from && !to) {
+    from = today;
+    to = today;
+  } else if (from && !to) {
+    to = today;
+  } else if (to && !from) {
+    from = to;
+  }
+  if (from > to) {
+    var tmp = from;
+    from = to;
+    to = tmp;
+  }
+  if (from > today) from = today;
+  if (to > today) to = today;
+  var span = Math.round((ymdToUtc(to) - ymdToUtc(from)) / 86400000);
+  if (span > 366) {
+    from = addDaysYmd(to, -366);
+  }
+  return {
+    from: from,
+    to: to,
+    is_single: from === to,
+    is_today: from === to && from === today
+  };
+}
+
 function parseSegment(raw) {
   var s = String(raw || '').trim().toLowerCase();
   var ok = {
@@ -405,13 +469,15 @@ async function handleOpsInactiveSummary(req, res) {
 }
 
 /**
- * 运营看板：指定北京日 KPI（默认今日）+ 未激活库存 + 近 7 日转化卡点（一次返回）
+ * 运营看板：指定北京日或日期区间 KPI（默认今日）+ 未激活库存 + 近 7 日转化卡点（一次返回）
  */
 async function handleOpsBoard(req, res) {
   try {
     var researchDays = parseDays(req.query && req.query.days, 7);
-    var kpiDay = resolveKpiDay(req.query && req.query.date);
-    var kpiIsToday = kpiDay === beijingTodayYmd();
+    var kpiRange = resolveKpiRange(req.query);
+    var kpiFrom = kpiRange.from;
+    var kpiTo = kpiRange.to;
+    var kpiIsToday = kpiRange.is_today;
     var pool = getPool();
     const conn = await pool.getConnection();
     try {
@@ -441,8 +507,8 @@ async function handleOpsBoard(req, res) {
            CONCAT('__nouip:', users.username)
          )) AS register_today
          FROM users ${userWhereSql}
-           AND ${cnDay} = ?`,
-        userParams.concat([kpiDay])
+           AND ${cnDay} >= ? AND ${cnDay} <= ?`,
+        userParams.concat([kpiFrom, kpiTo])
       );
 
       var actWhere = [
@@ -461,8 +527,8 @@ async function handleOpsBoard(req, res) {
           actParams.push(uname);
         }
       }
-      actWhere.push(cnActDay + ' = ?');
-      actParams.push(kpiDay);
+      actWhere.push(cnActDay + ' >= ? AND ' + cnActDay + ' <= ?');
+      actParams.push(kpiFrom, kpiTo);
       actWhere.push('(u.activation_cancelled_at IS NULL)');
       const [actRows] = await conn.query(
         'SELECT COUNT(DISTINCT ac.used_by_username) AS activate_today FROM activation_codes ac' +
@@ -471,8 +537,8 @@ async function handleOpsBoard(req, res) {
         actParams
       );
 
-      var payWhere = ["status = 'paid'", cnPaidDay + ' = ?'];
-      var payParams = [kpiDay];
+      var payWhere = ["status = 'paid'", cnPaidDay + ' >= ? AND ' + cnPaidDay + ' <= ?'];
+      var payParams = [kpiFrom, kpiTo];
       /* 与支付分析一致：个税修改费单独拆出，其余已付计入「付费了单」 */
       var taxEditSkuSql =
         "(sku_id IN ('" +
@@ -490,7 +556,14 @@ async function handleOpsBoard(req, res) {
       );
       const [paySkuRows] = await conn.query(
         `SELECT COALESCE(NULLIF(TRIM(sku_id), ''), '(unknown)') AS sku_id,
-                MAX(subject) AS subject,
+                COALESCE(
+                  MAX(CASE
+                    WHEN subject IS NULL OR TRIM(subject) = '' THEN NULL
+                    WHEN subject REGEXP '档位[0-9]+$' THEN NULL
+                    ELSE subject
+                  END),
+                  MAX(subject)
+                ) AS subject,
                 MAX(grant_kind) AS grant_kind,
                 COUNT(*) AS orders,
                 COALESCE(SUM(amount), 0) AS gmv
@@ -572,7 +645,10 @@ async function handleOpsBoard(req, res) {
         code: 200,
         data: {
           today: {
-            date: kpiDay,
+            date: kpiTo,
+            date_from: kpiFrom,
+            date_to: kpiTo,
+            is_single: kpiRange.is_single,
             is_today: kpiIsToday,
             register: n(t, 'register_today'),
             activate: n(a, 'activate_today'),
@@ -1208,7 +1284,12 @@ async function handleOpsBoardPayments(req, res) {
     var days = parseInt(req.query.days, 10);
     if (!isFinite(days) || days < 1) days = 1;
     if (days > 90) days = 90;
-    var kpiDay = parseBjDate(req.query && req.query.date);
+    var hasRange =
+      parseBjDate(req.query && (req.query.date_from || req.query.from)) ||
+      parseBjDate(req.query && (req.query.date_to || req.query.to)) ||
+      parseBjDate(req.query && req.query.date);
+    var kpiRange = hasRange ? resolveKpiRange(req.query) : null;
+    var kpiDay = kpiRange && kpiRange.is_single ? kpiRange.from : parseBjDate(req.query && req.query.date);
     var pool = getPool();
     var conn = await pool.getConnection();
     try {
@@ -1216,10 +1297,10 @@ async function handleOpsBoardPayments(req, res) {
       var todayBjSql = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
       var payWhere = ["status = 'paid'"];
       var payParams = [];
-      if (kpiDay) {
-        payWhere.push(cnPaidDay + ' = ?');
-        payParams.push(kpiDay);
-        days = 1;
+      if (kpiRange) {
+        payWhere.push(cnPaidDay + ' >= ? AND ' + cnPaidDay + ' <= ?');
+        payParams.push(kpiRange.from, kpiRange.to);
+        days = kpiRange.is_single ? 1 : Math.round((ymdToUtc(kpiRange.to) - ymdToUtc(kpiRange.from)) / 86400000) + 1;
       } else if (days === 1) {
         payWhere.push(cnPaidDay + ' = ' + todayBjSql);
       } else {
@@ -1259,6 +1340,8 @@ async function handleOpsBoardPayments(req, res) {
         data: {
           days: days,
           date: kpiDay || '',
+          date_from: kpiRange ? kpiRange.from : '',
+          date_to: kpiRange ? kpiRange.to : '',
           truncated: list.length >= 500,
           orders: list.length,
           gmv: Math.round(gmv * 100) / 100,
@@ -1301,5 +1384,7 @@ module.exports = {
   parseBjDate: parseBjDate,
   beijingTodayYmd: beijingTodayYmd,
   resolveKpiDay: resolveKpiDay,
-  opsSkuGmvLabel: opsSkuGmvLabel
+  resolveKpiRange: resolveKpiRange,
+  opsSkuGmvLabel: opsSkuGmvLabel,
+  skuLabelFromSubject: skuLabelFromSubject
 };

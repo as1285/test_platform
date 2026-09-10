@@ -6,6 +6,8 @@ const {
   parseBjDate,
   beijingTodayYmd,
   resolveKpiDay,
+  resolveKpiRange,
+  opsSkuGmvLabel,
   HIGH_INCOME,
   REFUND_AD_MIN_INCOME,
   REFUND_AD_MIN_TAX,
@@ -37,16 +39,44 @@ describe('opsConversion helpers', () => {
     expect(parseBjDate('2019-12-31')).toBe('');
     expect(resolveKpiDay('')).toBe(today);
     expect(resolveKpiDay('2026-09-01')).toBe('2026-09-01');
+    expect(resolveKpiRange({ date: '2026-09-01' })).toEqual({
+      from: '2026-09-01',
+      to: '2026-09-01',
+      is_single: true,
+      is_today: false
+    });
+    expect(resolveKpiRange({ date_from: '2026-09-10', date_to: '2026-09-01' })).toEqual({
+      from: '2026-09-01',
+      to: '2026-09-10',
+      is_single: false,
+      is_today: false
+    });
+    expect(resolveKpiRange({})).toEqual({
+      from: today,
+      to: today,
+      is_single: true,
+      is_today: true
+    });
     var src = require('fs').readFileSync(
       require('path').resolve(__dirname, '../../src/admin/opsConversion.js'),
       'utf8'
     );
-    expect(src).toContain('resolveKpiDay(req.query && req.query.date)');
-    expect(src).toContain("cnDay} = ?");
+    expect(src).toContain('resolveKpiRange(req.query)');
+    expect(src).toContain('cnDay} >= ? AND ${cnDay} <= ?');
   });
 
   it('keeps high-income threshold at 15000', () => {
     expect(HIGH_INCOME).toBe(15000);
+  });
+
+  it('ops sku label prefers channel custom name over 档位5', () => {
+    expect(opsSkuGmvLabel({ sku_id: 'sku_ch_t5' })).toBe('档位5');
+    expect(opsSkuGmvLabel({ sku_id: 'sku_ch_t5', subject: '激活码·档位5' })).toBe('档位5');
+    expect(opsSkuGmvLabel({ sku_id: 'sku_ch_t5', subject: '激活码·年卡' })).toBe('年卡');
+    expect(opsSkuGmvLabel({ sku_id: 'sku_ch_t5', subject: '激活码·永久' })).toBe('永久');
+    expect(opsSkuGmvLabel({ sku_id: 'sku_ch_t4', subject: '激活码·季卡' })).toBe('季卡');
+    expect(opsSkuGmvLabel({ sku_id: 'sku_398_30d', subject: '激活码·月卡' })).toBe('月卡');
+    expect(opsSkuGmvLabel({ grant_kind: 'tax_edit_daily' })).toBe('同行费用（每天无限）');
   });
 
   it('refund eligible sql uses 2023-2025 tax or 150000 income', () => {

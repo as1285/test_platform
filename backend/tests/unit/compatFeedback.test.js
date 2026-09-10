@@ -67,6 +67,53 @@ describe('compatFeedback helpers', () => {
     expect(item.replied_at).toContain('2026-09-09');
   });
 
+  it('maps activation status for admin list', () => {
+    const active = feedback.toPublicItem(
+      {
+        id: 1,
+        user_id: 'u1',
+        joined_username: 'u1',
+        account_active: 1,
+        activation_kind: 'permanent'
+      },
+      { admin: true }
+    );
+    expect(active.activation_status).toBe('active');
+    expect(active.currently_active).toBe(true);
+
+    const inactive = feedback.toPublicItem(
+      {
+        id: 2,
+        user_id: 'u2',
+        joined_username: 'u2',
+        account_active: 0
+      },
+      { admin: true }
+    );
+    expect(inactive.activation_status).toBe('inactive');
+    expect(inactive.currently_active).toBe(false);
+
+    const expired = feedback.toPublicItem(
+      {
+        id: 3,
+        user_id: 'u3',
+        joined_username: 'u3',
+        account_active: 1,
+        activation_kind: 'trial',
+        active_until: '2020-01-01T00:00:00Z'
+      },
+      { admin: true }
+    );
+    expect(expired.activation_status).toBe('expired');
+    expect(expired.currently_active).toBe(false);
+
+    const missing = feedback.toPublicItem(
+      { id: 4, user_id: 'gone', joined_username: null },
+      { admin: true }
+    );
+    expect(missing.activation_status).toBe('');
+  });
+
   it('builds inbox copy with feedback link', () => {
     const msg = feedback.buildReplyInbox('下个版本会修', '顶部应该是黑框，家庭成员按钮错位');
     expect(msg.title).toBe('兼容反馈已回复');

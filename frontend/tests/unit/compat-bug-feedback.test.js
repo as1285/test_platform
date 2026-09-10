@@ -62,10 +62,11 @@ describe('C 端兼容反馈入口与页面', () => {
     expect(adminHtml).toContain('id="feedbackReplyFilter"');
     expect(adminHtml).toContain('未回复');
     expect(adminHtml).toContain('会把回复同步发到邮箱');
+    expect(adminHtml).toContain('激活状态');
   });
 
   it('兼容反馈账号可跳到注册用户', () => {
-    expect(loaderCode).toContain('feedback.js?v=20260910-fb-mail');
+    expect(loaderCode).toContain('feedback.js?v=20260910-fb-act');
     expect(adminFeedbackCode).toContain('jumpToRegisteredUser');
     expect(adminFeedbackCode).toContain('会把回复同步发到邮箱');
     expect(adminFeedbackCode).toContain('js-feedback-open-user');
@@ -132,6 +133,52 @@ describe('C 端兼容反馈入口与页面', () => {
     expect(document.getElementById('btnFeedbackReply').textContent).toContain('发送回复');
     expect(document.getElementById('feedbackDetail').textContent).toContain('会把回复同步发到邮箱');
     expect(document.getElementById('feedbackDetail').hidden).toBe(false);
+  });
+
+  it('列表展示账号当前激活状态', () => {
+    document.body.innerHTML =
+      '<div id="feedbackMount"></div><p id="feedbackSummary"></p>';
+    window.AdminModules = {};
+    window.jumpToRegisteredUser = vi.fn();
+    // eslint-disable-next-line no-eval
+    eval(adminFeedbackCode);
+    window.AdminModules.feedback.renderList({
+      total: 3,
+      page: 1,
+      limit: 30,
+      items: [
+        {
+          id: 1,
+          user_id: 'a1',
+          real_name: '甲',
+          activation_status: 'active',
+          content: '顶部黑框',
+          created_at: '2026-09-10T16:17:00+08:00'
+        },
+        {
+          id: 2,
+          user_id: 'a2',
+          real_name: '乙',
+          activation_status: 'inactive',
+          content: '按钮错位',
+          created_at: '2026-09-10T16:16:00+08:00'
+        },
+        {
+          id: 3,
+          user_id: 'a3',
+          real_name: '丙',
+          activation_status: 'expired',
+          content: '状态栏看不见',
+          created_at: '2026-09-10T16:15:00+08:00'
+        }
+      ]
+    });
+    expect(document.body.textContent).toContain('激活状态');
+    expect(document.body.textContent).toContain('已激活');
+    expect(document.body.textContent).toContain('未激活');
+    expect(document.body.textContent).toContain('已过期');
+    document.querySelector('.js-feedback-view').click();
+    expect(document.getElementById('feedbackDetail').textContent).toContain('已激活');
   });
 
   it('已回复行显示状态，提交走回复接口', async () => {
