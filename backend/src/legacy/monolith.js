@@ -16547,7 +16547,7 @@ async function handleAdminInstallGuideStats(req, res) {
             actions: actions,
             landing_ab: {
               definition:
-                '页面浏览/UV/下载/注册人数按同一 IP 去重（无 IP 再退回 client_id），避免清缓存换访客 ID 刷高。注册/下载方案优先用事件自带值，否则按同访客或同 IP 近 48h 的 B/C 访问回填。注册用户=安装页引流注册成功，不等于全站总注册（见上方「当日总注册」）。回访用户=区间内至少 2 个自然日访问同一方案。',
+                '页面浏览/UV/下载/注册人数按同一 IP 去重（无 IP 再退回 client_id），避免清缓存换访客 ID 刷高。注册/下载方案优先用事件自带值，否则按同访客或同 IP 近 48h 的 B/C 访问回填。注册用户=安装页引流注册成功，不等于全站注册（见上方「全站注册」，含未打开安装页）。回访用户=区间内至少 2 个自然日访问同一方案。',
               variants: [
                 finishLandingVariantStats('b', landingAbRaw.b),
                 finishLandingVariantStats('c', landingAbRaw.c)
