@@ -62,11 +62,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260909-android-aug1-blue');
+    expect(shuimingResult).toContain('auth.js?v=20260910-mi13u-listtitle');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260910-ios-14pm-home6');
+    expect(shouye).toContain('auth.js?v=20260910-zxk-btns1');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {

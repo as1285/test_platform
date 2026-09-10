@@ -2528,10 +2528,16 @@
   ];
 
   function isHyperOs2MineE1SmClient() {
-    /* Ace Pro 也打 sm class，但不能走 HyperOS 2 的 100vw lock，否则胶囊掉出三宫格 */
+    /* Ace Pro / 13 Ultra 也打 sm class，但不能走 HyperOS 2 的 100% 100% lock，否则底图被压扁、胶囊掉出三宫格 */
     if (
       isOnePlusAceProClient() ||
       document.documentElement.classList.contains('app-android-oneplus-acepro')
+    ) {
+      return false;
+    }
+    if (
+      isXiaomi13UltraClient() ||
+      document.documentElement.classList.contains('app-android-xiaomi-13ultra')
     ) {
       return false;
     }
@@ -2552,6 +2558,12 @@
     if (
       isOnePlusAceProClient() ||
       root.classList.contains('app-android-oneplus-acepro')
+    ) {
+      return false;
+    }
+    if (
+      isXiaomi13UltraClient() ||
+      root.classList.contains('app-android-xiaomi-13ultra')
     ) {
       return false;
     }
@@ -2581,7 +2593,7 @@
       var rootSel = 'html.' + cls;
       if (cls === 'app-android-mine-e1-sm') {
         rootSel +=
-          ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro):not(.app-mine-black-status):not(.app-android-redmi-k70)';
+          ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra)';
       }
       css +=
         rootSel + ' body.page-mine,' +
@@ -2846,10 +2858,39 @@
   }
 
   /**
-   * 小米 13 Ultra「我的」三宫格胶囊：HyperOS @sm 用 100vw 算 rpx / 画布高，
-   * WebView 里 100vw 常宽于画布，胶囊会掉到菜单上沿。按画布宽度钉 rpx，
-   * 画布改走 750/1180 宽高比，叠层 top 锁 0（勿再叠 Cordova 40px bleed）。
+   * 小米 13 Ultra「我的」：勿走 HyperOS 2 的 background-size:100% 100%。
+   * 那条 lock 会把 1242rpx @sm 底图竖向压进 1180rpx 画布（约缩 5%），
+   * 图内「家庭成员」上移、HTML 胶囊仍按 688rpx，看起来贴在「切换关怀版」上。
+   * 画布按宽度走 750/1180，底图 100% auto 顶对齐裁切，叠层 top 锁 0。
    */
+  function xiaomi13UltraMineE1LockCss() {
+    var canvasSel =
+      'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,' +
+      'html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
+      'html.app-android-xiaomi-13ultra.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas,' +
+      'html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell.app-android-mine-e1-sm body.page-mine .mine-e1-canvas';
+    return (
+      'html.app-android-xiaomi-13ultra body.page-mine{--mine-top-bleed:0px !important;}' +
+      canvasSel + '{' +
+      'padding-top:0 !important;margin-top:0 !important;width:100% !important;' +
+      'height:auto !important;max-height:none !important;aspect-ratio:750 / 1180 !important;' +
+      'overflow:hidden !important;background-color:#f5f6fa !important;' +
+      'background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm) !important;' +
+      'background-size:100% auto !important;background-position:top center !important;' +
+      'background-repeat:no-repeat !important;container-type:normal !important;}' +
+      'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas > img,' +
+      'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas > #headerImg,' +
+      'html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img,' +
+      'html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > #headerImg{' +
+      'position:absolute !important;width:1px !important;height:1px !important;' +
+      'margin:0 !important;opacity:0 !important;pointer-events:none !important;overflow:hidden !important;}' +
+      'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,' +
+      'html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer,' +
+      'html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-layer{' +
+      'top:0 !important;padding-bottom:calc(1180 / 750 * 100%) !important;}'
+    );
+  }
+
   function pinXiaomi13UltraMineE1Layout() {
     try {
       var root = document.documentElement;
@@ -2867,27 +2908,44 @@
         if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
         var lock = document.createElement('style');
         lock.setAttribute('data-xiaomi13ultra-mine-e1-lock', '1');
-        lock.textContent =
-          'html.app-android-xiaomi-13ultra body.page-mine{--mine-top-bleed:0px !important;}' +
-          'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,' +
-          'html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
-          'html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-canvas{' +
-          'padding-top:0 !important;margin-top:0 !important;width:100% !important;' +
-          'height:auto !important;max-height:none !important;aspect-ratio:750 / 1180 !important;' +
-          'background-size:100% auto !important;background-position:top center !important;' +
-          'container-type:normal !important;}' +
-          'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,' +
-          'html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer{' +
-          'top:0 !important;padding-bottom:calc(1180 / 750 * 100%) !important;}';
-        document.head.appendChild(lock);
+        lock.textContent = xiaomi13UltraMineE1LockCss();
+        (document.head || document.documentElement).appendChild(lock);
       } catch (eCss) {}
+      var canvas = document.getElementById('mineE1Canvas');
+      var layer = document.getElementById('mineE1Layer');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        canvas.style.setProperty('padding-top', '0', 'important');
+        canvas.style.setProperty('margin-top', '0', 'important');
+        canvas.style.setProperty('width', '100%', 'important');
+        canvas.style.setProperty('height', 'auto', 'important');
+        canvas.style.setProperty('max-height', 'none', 'important');
+        canvas.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+        canvas.style.setProperty('overflow', 'hidden', 'important');
+        canvas.style.setProperty('background-size', '100% auto', 'important');
+        canvas.style.setProperty('background-position', 'top center', 'important');
+        canvas.style.setProperty('background-repeat', 'no-repeat', 'important');
+        canvas.style.setProperty('container-type', 'normal', 'important');
+      }
+      if (img) {
+        img.style.setProperty('position', 'absolute', 'important');
+        img.style.setProperty('width', '1px', 'important');
+        img.style.setProperty('height', '1px', 'important');
+        img.style.setProperty('margin', '0', 'important');
+        img.style.setProperty('opacity', '0', 'important');
+        img.style.setProperty('pointer-events', 'none', 'important');
+      }
+      if (layer) {
+        layer.style.setProperty('top', '0', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(1180 / 750 * 100%)', 'important');
+      }
       pinMineE1RpxFromCanvas();
       if (!pinXiaomi13UltraMineE1Layout._rpxRearm) {
         pinXiaomi13UltraMineE1Layout._rpxRearm = true;
         [80, 240, 600, 1200].forEach(function (ms) {
           setTimeout(function () {
             try {
-              pinMineE1RpxFromCanvas();
+              pinXiaomi13UltraMineE1Layout();
             } catch (eRpxRe) {}
           }, ms);
         });
@@ -2898,7 +2956,7 @@
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -3135,6 +3193,35 @@
       if (isIqooMineTailPhone() || isMineE1PlainImgClient()) {
         return;
       }
+      if (
+        isXiaomi13UltraClient() ||
+        document.documentElement.classList.contains('app-android-xiaomi-13ultra')
+      ) {
+        window.__mineE1ForceSm = true;
+        var canvas13 = document.getElementById('mineE1Canvas');
+        var img13 = document.getElementById('headerImg');
+        var url13 = mineE1ToSmUrl(src || (img13 && (img13.getAttribute('src') || img13.src)) || '');
+        if (img13) {
+          if (String(img13.getAttribute('src') || '') !== url13) {
+            img13.src = url13;
+          }
+          img13.style.setProperty('opacity', '0', 'important');
+          img13.style.setProperty('width', '1px', 'important');
+          img13.style.setProperty('height', '1px', 'important');
+        }
+        if (canvas13) {
+          canvas13.style.setProperty('background-image', 'url("' + url13 + '")', 'important');
+          canvas13.style.setProperty('background-size', '100% auto', 'important');
+          canvas13.style.setProperty('background-position', 'top center', 'important');
+          canvas13.style.setProperty('background-repeat', 'no-repeat', 'important');
+          canvas13.style.setProperty('background-color', '#f5f6fa', 'important');
+          canvas13.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+          canvas13.style.setProperty('height', 'auto', 'important');
+          canvas13.style.setProperty('max-height', 'none', 'important');
+          canvas13.style.setProperty('overflow', 'hidden', 'important');
+        }
+        return;
+      }
       window.__mineE1ForceSm = true;
       var canvas = document.getElementById('mineE1Canvas');
       var img = document.getElementById('headerImg');
@@ -3172,6 +3259,10 @@
       }
       if (isHiNova9SeClient() || root.classList.contains('app-android-hinova9se')) {
         pinHinova9SeMineE1Layout();
+        return;
+      }
+      if (isXiaomi13UltraClient() || root.classList.contains('app-android-xiaomi-13ultra')) {
+        pinXiaomi13UltraMineE1Layout();
         return;
       }
       if (!hyperOs2MineE1SmRootHit(root)) {
@@ -3926,6 +4017,7 @@
           aceProMineE1LockCss() +
           hinova9SeMineE1LockCss() +
           xiaomi14ProMineE1LockCss() +
+          xiaomi13UltraMineE1LockCss() +
           /* 单层底图档写在最后：同优先级时靠文档序压过 @sm 裁切与 HyperOS lock */
           mineE1PlainImgLockCss();
         document.head.appendChild(st);
@@ -4205,10 +4297,10 @@
       }
       var btns = document.querySelector('.sy-zxk-btns');
       if (btns) {
-        btns.style.setProperty('left', '3.5%', 'important');
-        btns.style.setProperty('right', '3.5%', 'important');
-        btns.style.setProperty('height', '34px', 'important');
-        btns.style.setProperty('max-height', '34px', 'important');
+        btns.style.removeProperty('left');
+        btns.style.removeProperty('right');
+        btns.style.removeProperty('height');
+        btns.style.removeProperty('max-height');
       }
       var imgs = document.querySelectorAll('.sy-zxk-btn img');
       for (var i = 0; i < imgs.length; i++) {
@@ -4217,14 +4309,14 @@
       }
       var fill = document.querySelector('.sy-zxk-btn-fill');
       if (fill) {
-        fill.style.setProperty('flex', '0 0 42%', 'important');
+        fill.style.removeProperty('flex');
         fill.style.setProperty('background', 'none', 'important');
         fill.style.setProperty('border-radius', '0', 'important');
       }
       var query = document.querySelector('.sy-zxk-btn-query');
       if (query) {
-        query.style.setProperty('flex', '1 1 auto', 'important');
-        query.style.setProperty('margin-left', '-6%', 'important');
+        query.style.removeProperty('flex');
+        query.style.removeProperty('margin-left');
         query.style.setProperty('background', 'none', 'important');
         query.style.setProperty('border-radius', '0', 'important');
       }

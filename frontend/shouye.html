@@ -126,7 +126,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260910-ios-14pm-home6" defer></script>
+    <script src="/js/auth.js?v=20260910-zxk-btns1" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -685,17 +685,26 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* 有数据：双按钮，对齐官方扁宽胶囊 */
+        /*
+         * 有数据：填报 / 我要查询。
+         * 斜切 PNG 原图 390×150 + 513×150，斜切重叠约 70px，合成比 833/150。
+         * 按这个比缩放并居中，盒子贴原图，圆头不会被拉成椭圆。
+         * 旧写法 left/right 4.5% + height 16%/36px + object-fit:fill 会把两瓣拉成长条。
+         */
         .sy-zxk-btns {
+            --sy-zxk-btn-h: clamp(42px, calc(100vw * 150 / 1157), 52px);
             position: absolute;
             z-index: 3;
-            left: 4.5%;
-            right: 4.5%;
-            bottom: 20%;
+            left: 50%;
+            right: auto;
+            bottom: 17%;
             display: flex;
             align-items: stretch;
-            height: 16%;
-            max-height: 36px;
+            justify-content: center;
+            width: calc(var(--sy-zxk-btn-h) * 833 / 150);
+            height: var(--sy-zxk-btn-h);
+            max-height: 52px;
+            transform: translateX(-50%);
         }
 
         .sy-zxk-card.is-empty .sy-zxk-btns {
@@ -704,13 +713,14 @@
 
         .sy-zxk-btn {
             position: relative;
-            flex: 1 1 0;
+            flex: 0 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
             text-decoration: none;
             -webkit-tap-highlight-color: transparent;
             min-width: 0;
+            height: 100%;
         }
 
         .sy-zxk-btn img {
@@ -729,18 +739,20 @@
             z-index: 1;
             color: #fff;
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 600;
             letter-spacing: 0.5px;
             text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
         }
 
         .sy-zxk-btn-fill {
-            flex: 0 0 42%;
+            flex: 0 0 auto;
+            width: calc(390 / 833 * 100%);
         }
 
         .sy-zxk-btn-query {
-            flex: 1 1 auto;
-            margin-left: -5%;
+            flex: 0 0 auto;
+            width: calc(513 / 833 * 100%);
+            margin-left: calc(-70 / 833 * 100%);
         }
 
         /* 无数据：底部「超1亿人参与 | 我要填报」 */
@@ -907,14 +919,6 @@
         html.app-android-honor-magic6pro .sy-zxk-empty-cta {
             font-size: 13px !important;
         }
-        html.app-android-honor-pgt-an20 .sy-zxk-btns,
-        html.app-android-honor-magic6pro .sy-zxk-btns {
-            left: 4.5% !important;
-            right: 4.5% !important;
-            bottom: 20% !important;
-            height: 14% !important;
-            max-height: 32px !important;
-        }
         html.app-android-honor-pgt-an20 .sy-zxk-btn span,
         html.app-android-honor-magic6pro .sy-zxk-btn span {
             font-size: 13px !important;
@@ -968,14 +972,11 @@
             font-size: 34px !important;
             font-family: "PingFangSC-Semibold", "PingFang SC", -apple-system, sans-serif !important;
         }
-        /* 官方斜切蓝/橙 PNG，加宽压扁，勿改成平直色条 */
+        /* 14 Pro Max：走通用原比例，勿再加宽压扁 */
         html.app-ios-iphone14promax .sy-zxk-btns {
-            left: 3.5% !important;
-            right: 3.5% !important;
-            bottom: 18% !important;
-            height: 34px !important;
-            max-height: 34px !important;
-            gap: 0 !important;
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
         }
         html.app-ios-iphone14promax .sy-zxk-btn {
             background: none !important;
@@ -984,14 +985,8 @@
             display: block !important;
             object-fit: fill !important;
         }
-        html.app-ios-iphone14promax .sy-zxk-btn-fill {
-            flex: 0 0 42% !important;
-            background: none !important;
-            border-radius: 0 !important;
-        }
+        html.app-ios-iphone14promax .sy-zxk-btn-fill,
         html.app-ios-iphone14promax .sy-zxk-btn-query {
-            flex: 1 1 auto !important;
-            margin-left: -6% !important;
             background: none !important;
             border-radius: 0 !important;
         }

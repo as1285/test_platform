@@ -665,7 +665,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer></script>
+    <script src="/js/auth.js?v=20260910-mi13u-listtitle" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1193,6 +1193,11 @@
         }
         html.app-android-xiaomi-13ultra body.page-shuiming-result .summary > .summary-item:last-of-type {
             padding-bottom: 8px !important;
+        }
+        /* 13 Ultra：工资薪金 / 日期默认 15/16 比正版小一档 */
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .list-title,
+        html.app-android-xiaomi-13ultra body.page-shuiming-result .list-date {
+            font-size: 17px !important;
         }
 
         html.platform-android body.page-shuiming-result .sm-activate-card:not([hidden]) {

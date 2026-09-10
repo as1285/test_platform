@@ -34,6 +34,15 @@ describe('小米 13 Ultra 收入纳税明细汇总加高', () => {
     expect(shuimingResult).toMatch(
       /html\.app-android-xiaomi-13ultra body\.page-shuiming-result \.summary > \.summary-item:last-of-type \{\s*padding-bottom:\s*8px\s*!important;/
     );
+    expect(shuimingResult).toContain(
+      'html.app-android-xiaomi-13ultra body.page-shuiming-result .list-title'
+    );
+    expect(shuimingResult).toContain(
+      'html.app-android-xiaomi-13ultra body.page-shuiming-result .list-date'
+    );
+    expect(shuimingResult).toMatch(
+      /html\.app-android-xiaomi-13ultra body\.page-shuiming-result \.list-title[\s\S]{0,120}font-size:\s*17px\s*!important/
+    );
   });
 
   it('沉浸白顶栏打上 13ultra class，不走 mi-family 外置黑条', () => {

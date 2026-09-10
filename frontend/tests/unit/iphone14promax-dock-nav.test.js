@@ -59,7 +59,7 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
       expect(html, name).toContain('iPhone15,3');
       expect(html, name).toMatch(/auth\.js\?v=/);
     });
-    expect(pages.shouye).toContain('auth.js?v=20260910-ios-14pm-home6');
+    expect(pages.shouye).toContain('auth.js?v=20260910-zxk-btns1');
     expect(pages.shouye).toContain('nav.css?v=20260910-ios-14pm-home6');
   });
 
@@ -84,7 +84,7 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
     expect(shouye).toContain('PingFangSC-Semibold');
     expect(shouye).toContain('-webkit-text-fill-color: #ffffff !important');
     expect(shouye).toContain('font-weight: 700 !important');
-    expect(shouye).toContain('left: 3.5% !important');
+    expect(shouye).toContain('left: 50% !important');
     expect(shouye).toContain('object-fit: fill !important');
     expect(shouye).toContain('html.app-ios-iphone14promax .sy-zxk-btn img');
     expect(shouye).toContain('display: block !important');

@@ -238,7 +238,8 @@
                         mi13uFp.setAttribute('data-xiaomi13ultra-mine-e1-firstpaint', '1');
                         mi13uFp.textContent =
                             'html.app-android-xiaomi-13ultra body.page-mine{--mine-top-bleed:0px!important;}' +
-                            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;background-size:100% auto!important;background-position:top center!important;container-type:normal!important;}' +
+                            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,html.app-android-xiaomi-13ultra.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;background-repeat:no-repeat!important;container-type:normal!important;}' +
+                            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas>img,html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas>#headerImg{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;}' +
                             'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}';
                         document.head.appendChild(mi13uFp);
                     }
@@ -447,8 +448,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260910-13u-pill"></script>
-    <script src="/js/auth.js?v=20260910-ios-14pm-home6" defer></script>
+    <script src="/js/auth-boot.js?v=20260910-13u-noscale"></script>
+    <script src="/js/auth.js?v=20260910-13u-noscale" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -1135,14 +1136,16 @@
             left: calc(579 * var(--mine-rpx));
         }
         /*
-         * 小米 13 Ultra：@sm 用 100vw 定高/rpx 时胶囊会掉到菜单上沿。
-         * 画布按宽度走 750/1180，叠层 top 锁 0；rpx 由 pinMineE1RpxFromCanvas 实测。
+         * 小米 13 Ultra：勿套 HyperOS 2 的 background-size:100% 100%，
+         * 否则 1242rpx 底图被压进 1180 画布，胶囊相对「家庭成员」偏下。
+         * 画布按宽度走 750/1180 + 100% auto 顶对齐裁切，叠层 top 锁 0。
          */
         html.app-android-xiaomi-13ultra body.page-mine {
             --mine-top-bleed: 0px !important;
         }
         html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,
         html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,
+        html.app-android-xiaomi-13ultra.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas,
         html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-canvas {
             padding-top: 0 !important;
             margin-top: 0 !important;
@@ -1150,9 +1153,23 @@
             height: auto !important;
             max-height: none !important;
             aspect-ratio: 750 / 1180 !important;
+            overflow: hidden !important;
+            background-color: #f5f6fa !important;
+            background-image: url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm) !important;
             background-size: 100% auto !important;
             background-position: top center !important;
+            background-repeat: no-repeat !important;
             container-type: normal !important;
+        }
+        html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas > img,
+        html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas > #headerImg {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            overflow: hidden !important;
         }
         html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,
         html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer {
@@ -1311,7 +1328,7 @@
         }
 
         /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -1319,8 +1336,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -1329,10 +1346,10 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
         }
 
@@ -3098,6 +3115,7 @@
                     !window.__mineE1PlainImg &&
                     typeof window.paintXiaomi14ProMineE1 === 'function'
                 ) {
+                    /* 13 Ultra 走 paint 内的 100% auto 分支，勿再被 100% 100% 压扁 */
                     window.paintXiaomi14ProMineE1(hi.src);
                 }
             }
