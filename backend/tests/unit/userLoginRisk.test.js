@@ -5,7 +5,10 @@ const {
   computeUserLoginRisk,
   userRegisterIpRiskMatchSql,
   userLoginRiskMatchSql,
-  userSameRegisterIpOfSql
+  userSameRegisterIpOfSql,
+  userRegisterIpJoinSql,
+  userRegisterPersonKeySql,
+  userRegisterDistinctIpInnerSql
 } = require('../../src/domain/userLoginRisk');
 
 describe('userLoginRisk', () => {
@@ -51,5 +54,16 @@ describe('userLoginRisk', () => {
     expect(sql).toContain('reg_seed.username = ?');
     expect(sql).toContain('TRIM(reg_peer.ip) = TRIM(reg_seed.ip)');
     expect((sql.match(/\?/g) || []).length).toBe(1);
+  });
+
+  it('builds register-person key from first register_ok IP', () => {
+    const join = userRegisterIpJoinSql('u');
+    expect(join).toContain("reason = 'register_ok'");
+    expect(join).toContain('u_reg_first.username = u.username');
+    expect(userRegisterPersonKeySql('u')).toContain("CONCAT('user:', u.username)");
+    const inner = userRegisterDistinctIpInnerSql('u', 'u.created_at >= ?');
+    expect(inner).toContain('GROUP BY');
+    expect(inner).toContain('MIN(u.created_at)');
+    expect(inner).toContain('u.created_at >= ?');
   });
 });

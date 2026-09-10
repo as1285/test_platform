@@ -3395,7 +3395,7 @@
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">安装页→注册率</div><div class="ud-val">' +
                 esc(s.register_rate_pct || '—') +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">归因注册 ' +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">归因注册(同IP去重) ' +
                 esc(String(s.registered_from_install != null ? s.registered_from_install : 0)) +
                 ' / UV ' +
                 esc(String(s.unique_visitors != null ? s.unique_visitors : 0)) +
@@ -3406,7 +3406,7 @@
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">当日总注册</div><div class="ud-val">' +
                 esc(String(s.registered != null ? s.registered : 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">占 UV ' +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">按同一 IP 去重 · 占 UV ' +
                 esc(s.register_rate_all_pct || '—') +
                 '</div></div>';
             html +=

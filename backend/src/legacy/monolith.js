@@ -171,7 +171,10 @@ const najiluQrMod = require('../admin/najiluQr');
 const {
   computeUserLoginRisk,
   userLoginRiskMatchSql,
-  userSameRegisterIpOfSql
+  userSameRegisterIpOfSql,
+  userRegisterDistinctIpInnerSql,
+  userRegisterIpJoinSql,
+  userRegisterPersonKeySql
 } = require('../domain/userLoginRisk');
 
 const JWT_SECRET = config.JWT_SECRET;
@@ -15746,60 +15749,71 @@ async function handleAdminInstallGuideStats(req, res) {
          ORDER BY h ASC`,
         sinceParams
       );
+      var registerUserWhere =
+        cnUserSince +
+        ' AND u.activation_refunded_at IS NULL' +
+        ' AND COALESCE(u.user_type, 0) <> ' +
+        USER_TYPE_GUEST;
+      var registerFromInstallWhere =
+        registerUserWhere +
+        ' AND (' +
+        'u.registered_from_install_guide = 1' +
+        ' OR EXISTS (' +
+        'SELECT 1 FROM user_devices ud' +
+        " INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'" +
+        ' AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))' +
+        ' AND (' +
+        "(ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)" +
+        ' OR (' +
+        "ig.client_id IS NOT NULL AND ig.client_id <> ''" +
+        " AND ud.client_id IS NOT NULL AND ud.client_id <> ''" +
+        ' AND ig.client_id = ud.client_id' +
+        '))' +
+        ' WHERE ud.username = u.username' +
+        '))';
+      var registerReportedWhere = registerUserWhere + ' AND u.registered_from_install_guide = 1';
+      var registerIpInner = userRegisterDistinctIpInnerSql('u', registerUserWhere);
+      var registerFromInstallInner = userRegisterDistinctIpInnerSql('u', registerFromInstallWhere);
+      var registerReportedInner = userRegisterDistinctIpInnerSql('u', registerReportedWhere);
       const [hourlyRegRows] = await conn.query(
-        `SELECT HOUR(DATE_ADD(u.created_at, INTERVAL 8 HOUR)) AS h,
+        `SELECT HOUR(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS h,
                 COUNT(*) AS registered
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
+         FROM ${registerIpInner} t
          GROUP BY h
          ORDER BY h ASC`,
         userSinceParams
       );
       const [regDailyRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d, COUNT(*) AS registered
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
-         GROUP BY ${cnUserDay}
+        `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered
+         FROM ${registerIpInner} t
+         GROUP BY d
          ORDER BY d ASC`,
+        userSinceParams
+      );
+      const [regPeriodRows] = await conn.query(
+        `SELECT COUNT(*) AS registered FROM ${registerIpInner} t`,
         userSinceParams
       );
       const [regFromInstallRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d, COUNT(DISTINCT u.username) AS registered_from_install
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
-           AND (
-             u.registered_from_install_guide = 1
-             OR EXISTS (
-               SELECT 1
-               FROM user_devices ud
-               INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'
-                 AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = ${cnUserDay}
-                 AND (
-                   (ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)
-                   OR (
-                     ig.client_id IS NOT NULL AND ig.client_id <> ''
-                     AND ud.client_id IS NOT NULL AND ud.client_id <> ''
-                     AND ig.client_id = ud.client_id
-                   )
-                 )
-               WHERE ud.username = u.username
-             )
-           )
-         GROUP BY ${cnUserDay}
+        `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered_from_install
+         FROM ${registerFromInstallInner} t
+         GROUP BY d
          ORDER BY d ASC`,
         userSinceParams
       );
+      const [regFromInstallPeriodRows] = await conn.query(
+        `SELECT COUNT(*) AS registered_from_install FROM ${registerFromInstallInner} t`,
+        userSinceParams
+      );
       const [regFromInstallReportedRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d, COUNT(*) AS registered_from_install_reported
-         FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
-           AND u.registered_from_install_guide = 1
-         GROUP BY ${cnUserDay}
+        `SELECT DATE(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS d, COUNT(*) AS registered_from_install_reported
+         FROM ${registerReportedInner} t
+         GROUP BY d
          ORDER BY d ASC`,
+        userSinceParams
+      );
+      const [regFromInstallReportedPeriodRows] = await conn.query(
+        `SELECT COUNT(*) AS registered_from_install_reported FROM ${registerReportedInner} t`,
         userSinceParams
       );
       const [guestDailyRows] = await conn.query(
@@ -16308,16 +16322,11 @@ async function handleAdminInstallGuideStats(req, res) {
         }
       });
 
-      var totalRegistered = 0;
-      var totalRegisteredFromInstall = 0;
-      var totalRegisteredFromInstallReported = 0;
-      daily.forEach(function (row) {
-        totalRegistered += row.registered || 0;
-        totalRegisteredFromInstall += row.registered_from_install || 0;
-      });
-      Object.keys(regInstallReportedMap).forEach(function (k) {
-        totalRegisteredFromInstallReported += regInstallReportedMap[k] || 0;
-      });
+      var totalRegistered = Number((regPeriodRows[0] || {}).registered) || 0;
+      var totalRegisteredFromInstall =
+        Number((regFromInstallPeriodRows[0] || {}).registered_from_install) || 0;
+      var totalRegisteredFromInstallReported =
+        Number((regFromInstallReportedPeriodRows[0] || {}).registered_from_install_reported) || 0;
 
       var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 3);
 
@@ -17711,12 +17720,15 @@ async function handleAdminRegisterTimeDistribution(req, res) {
 
     const conn = await pool.getConnection();
     try {
+      var registerTimeInner = userRegisterDistinctIpInnerSql('users', where);
       const [hourRows] = await conn.query(
-        'SELECT HOUR(' +
-          cnCreated +
-          ') AS h, COUNT(*) AS cnt FROM users WHERE ' +
-          where +
-          ' GROUP BY h ORDER BY h',
+        'SELECT HOUR(DATE_ADD(first_at, INTERVAL 8 HOUR)) AS h, COUNT(*) AS cnt FROM ' +
+          registerTimeInner +
+          ' t GROUP BY h ORDER BY h',
+        params
+      );
+      const [registerTimeTotalRows] = await conn.query(
+        'SELECT COUNT(*) AS cnt FROM ' + registerTimeInner + ' t',
         params
       );
 
@@ -17725,14 +17737,13 @@ async function handleAdminRegisterTimeDistribution(req, res) {
       for (i = 0; i < 24; i++) {
         hourCounts.push(0);
       }
-      var total = 0;
+      var total = Number((registerTimeTotalRows[0] || {}).cnt) || 0;
       hourRows.forEach(function (r) {
         var h = Number(r.h);
         var c = Number(r.cnt) || 0;
         if (h >= 0 && h < 24) {
           hourCounts[h] = c;
         }
-        total += c;
       });
 
       function sumHours(from, to) {
@@ -17792,22 +17803,30 @@ async function handleAdminRegisterTimeDistribution(req, res) {
       const [platformRows] = await conn.query(
         'SELECT DATE(' +
           cnCreated +
-          ') AS d, users.username,' +
+          ') AS d, users.username, users.created_at,' +
+          userRegisterPersonKeySql('users') +
+          ' AS register_person,' +
           ' (SELECT ud.user_agent_short FROM user_devices ud' +
           '  WHERE ud.username = users.username' +
           '  ORDER BY ud.first_seen ASC, ud.last_seen ASC LIMIT 1) AS ua,' +
           ' (SELECT ud.device_detail_json FROM user_devices ud' +
           '  WHERE ud.username = users.username' +
           '  ORDER BY ud.first_seen ASC, ud.last_seen ASC LIMIT 1) AS detail_json' +
-          ' FROM users WHERE ' +
+          ' FROM users ' +
+          userRegisterIpJoinSql('users') +
+          ' WHERE ' +
           where +
-          ' ORDER BY d ASC',
+          ' ORDER BY users.created_at ASC',
         params
       );
 
       var platformDailyMap = {};
       var platformTotals = { android: 0, ios: 0, other: 0, unknown: 0, total: 0 };
+      var seenRegisterPerson = {};
       (platformRows || []).forEach(function (row) {
+        var person = String(row.register_person || '').trim() || 'user:' + String(row.username || '');
+        if (!person || seenRegisterPerson[person]) return;
+        seenRegisterPerson[person] = true;
         var dk = formatDateKey(row.d);
         if (!dk) return;
         if (!platformDailyMap[dk]) {
@@ -17866,7 +17885,7 @@ async function handleAdminRegisterTimeDistribution(req, res) {
           pt
         ),
         definition:
-          '按注册日（北京时间）统计；手机系统取该用户最早一条 user_devices 的 UA。安卓率=Android÷当日注册，苹果率=iOS÷当日注册；其他含 PC/未知设备。'
+          '按注册日（北京时间）统计，同注册 IP 只计 1 人（无 IP 按账号）。手机系统取该 IP 下最早账号的 UA。安卓率=Android÷当日注册，苹果率=iOS÷当日注册；其他含 PC/未知设备。'
       };
 
       res.json({

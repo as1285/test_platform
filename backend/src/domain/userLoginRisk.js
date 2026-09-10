@@ -91,6 +91,56 @@ function userSameRegisterIpOfSql(usernameExpr) {
   );
 }
 
+/** 该账号首次 register_ok 的 IP，用于安装统计 / 注册分析按 IP 去重 */
+function userRegisterIpJoinSql(userAlias) {
+  const u = userAlias || 'u';
+  return (
+    'LEFT JOIN (SELECT username, MIN(id) AS first_id FROM user_login_events ' +
+    "WHERE reason = 'register_ok' AND ip IS NOT NULL AND TRIM(ip) <> '' GROUP BY username) " +
+    u +
+    '_reg_first ON ' +
+    u +
+    '_reg_first.username = ' +
+    u +
+    '.username LEFT JOIN user_login_events ' +
+    u +
+    '_reg_ip ON ' +
+    u +
+    '_reg_ip.id = ' +
+    u +
+    '_reg_first.first_id'
+  );
+}
+
+function userRegisterPersonKeySql(userAlias) {
+  const u = userAlias || 'u';
+  return 'COALESCE(NULLIF(TRIM(' + u + "_reg_ip.ip), ''), CONCAT('user:', " + u + '.username))';
+}
+
+/**
+ * 区间内按注册 IP 去重（无 IP 退回账号），每人只保留最早 created_at。
+ * 外层可按 DATE/HOUR(first_at) 分组，避免同 IP 多账号把注册刷高。
+ */
+function userRegisterDistinctIpInnerSql(userAlias, whereSql) {
+  const u = userAlias || 'u';
+  const person = userRegisterPersonKeySql(u);
+  return (
+    '(SELECT ' +
+    person +
+    ' AS person, MIN(' +
+    u +
+    '.created_at) AS first_at FROM users ' +
+    u +
+    ' ' +
+    userRegisterIpJoinSql(u) +
+    ' WHERE ' +
+    whereSql +
+    ' GROUP BY ' +
+    person +
+    ')'
+  );
+}
+
 module.exports = {
   USER_LOGIN_RISK_IP_THRESHOLD,
   USER_LOGIN_RISK_DEVICE_THRESHOLD,
@@ -99,5 +149,8 @@ module.exports = {
   computeUserLoginRisk,
   userRegisterIpRiskMatchSql,
   userLoginRiskMatchSql,
-  userSameRegisterIpOfSql
+  userSameRegisterIpOfSql,
+  userRegisterIpJoinSql,
+  userRegisterPersonKeySql,
+  userRegisterDistinctIpInnerSql
 };
