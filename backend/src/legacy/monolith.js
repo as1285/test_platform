@@ -18457,6 +18457,7 @@ async function handleAdminUsers(req, res) {
       SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
              lizhi_cert_unlocked,
              zaizhi_cert_unlocked,
+             najilu_qr_unlocked,
              is_agent,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, activation_kind, active_until, activation_credit_amount,
@@ -18697,6 +18698,10 @@ async function handleAdminUsers(req, res) {
           r.zaizhi_cert_unlocked === 1 ||
           r.zaizhi_cert_unlocked === true ||
           Number(r.zaizhi_cert_unlocked) === 1,
+        najilu_qr_unlocked:
+          r.najilu_qr_unlocked === 1 ||
+          r.najilu_qr_unlocked === true ||
+          Number(r.najilu_qr_unlocked) === 1,
         is_agent:
           r.is_agent === 1 || r.is_agent === true || Number(r.is_agent) === 1,
         user_type: ut,
@@ -20791,6 +20796,52 @@ async function handleAdminUserZaizhiCertUnlock(req, res) {
   } catch (e) {
     console.error('admin user zaizhi cert unlock', e);
     return res.status(500).json({ code: 500, msg: '修改在职证明开通状态失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 管理端：为指定账号开通或关闭完税二维码去水印权益 */
+async function handleAdminUserNajiluQrUnlock(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var unlocked =
+    body.unlocked === true ||
+    body.unlocked === 1 ||
+    String(body.unlocked || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    try {
+      await najiluQrMod.ensureNajiluQrUnlockedColumn(conn);
+    } catch (eCol) {}
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET najilu_qr_unlocked = ? WHERE username = ?',
+      [unlocked ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: unlocked ? '已开通该账号的完税二维码功能' : '已关闭该账号的完税二维码功能',
+      data: { username: canonicalUsername, najilu_qr_unlocked: unlocked }
+    });
+  } catch (e) {
+    console.error('admin user najilu qr unlock', e);
+    return res.status(500).json({ code: 500, msg: '修改完税二维码开通状态失败' });
   } finally {
     conn.release();
   }
@@ -24840,6 +24891,7 @@ function getHandlers() {
     handleAdminUserAgentFlag,
     handleAdminUserLizhiCertUnlock,
     handleAdminUserZaizhiCertUnlock,
+    handleAdminUserNajiluQrUnlock,
     handleAdminUserPassword,
     handleAdminBan,
     handleAdminBlockIp,

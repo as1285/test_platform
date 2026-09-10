@@ -1219,9 +1219,11 @@ mustInclude(
     'col-cert-perm',
     '开通离职',
     '开通在职',
+    '开通完税码',
     '两项都开',
     'api/admin/user-lizhi-cert-unlock',
-    'api/admin/user-zaizhi-cert-unlock'
+    'api/admin/user-zaizhi-cert-unlock',
+    'api/admin/user-najilu-qr-unlock'
   ],
   'admin users cert unlock buttons'
 );

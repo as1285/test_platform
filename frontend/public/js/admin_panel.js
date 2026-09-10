@@ -6191,6 +6191,19 @@
                                 : '为该账号开通在职证明生成权益（免付费）') +
                             '">' +
                             (u.zaizhi_cert_unlocked ? '关闭在职' : '开通在职') +
+                            '</button>' +
+                            '<button type="button" class="btn-sm ' +
+                            (u.najilu_qr_unlocked ? 'btn-ban' : 'btn-cert-grant') +
+                            ' btn-user-najilu-unlock" data-u="' +
+                            esc(u.username) +
+                            '" data-unlocked="' +
+                            (u.najilu_qr_unlocked ? '1' : '0') +
+                            '" title="' +
+                            (u.najilu_qr_unlocked
+                                ? '该账号已开通完税二维码去水印，点击关闭'
+                                : '为该账号开通完税二维码去水印权益（免付费）') +
+                            '">' +
+                            (u.najilu_qr_unlocked ? '关闭完税码' : '开通完税码') +
                             '</button>';
                         if (!u.lizhi_cert_unlocked || !u.zaizhi_cert_unlocked) {
                             certPermHtml +=
@@ -6244,6 +6257,11 @@
                             nameChangeBadge +=
                                 '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
                                 'background:#ecfdf5;color:#047857;font-size:11px;white-space:nowrap;" title="已开通在职证明生成权益">在职证明</span>';
+                        }
+                        if (u.najilu_qr_unlocked) {
+                            nameChangeBadge +=
+                                '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                                'background:#f5f3ff;color:#6d28d9;font-size:11px;white-space:nowrap;" title="已开通完税二维码去水印权益">完税二维码</span>';
                         }
                         html += '<td class="cell-break">' + esc(u.username) +
                             (u.is_agent
@@ -6537,6 +6555,42 @@
                                             (nextUnlocked
                                                 ? '已开通离职证明'
                                                 : '已关闭离职证明')
+                                    );
+                                    loadUsers();
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-najilu-unlock').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            var isUnlocked = btn.getAttribute('data-unlocked') === '1';
+                            var nextUnlocked = !isUnlocked;
+                            var actionText = nextUnlocked
+                                ? '开通完税二维码去水印功能（可免付费生成）'
+                                : '关闭完税二维码去水印功能';
+                            if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-najilu-qr-unlock', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, unlocked: nextUnlocked ? 1 : 0 })
+                            })
+                                .then(function (r) { return (window.adminParseJson||function(r){return r.json();})(r); })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '操作失败');
+                                        return;
+                                    }
+                                    alert(
+                                        d.msg ||
+                                            (nextUnlocked
+                                                ? '已开通完税二维码'
+                                                : '已关闭完税二维码')
                                     );
                                     loadUsers();
                                 })

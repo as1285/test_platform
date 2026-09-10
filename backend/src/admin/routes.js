@@ -667,6 +667,12 @@ app.post(
   h.handleAdminUserZaizhiCertUnlock
 );
 app.post(
+  '/api/admin/user-najilu-qr-unlock',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserNajiluQrUnlock
+);
+app.post(
   '/api/admin/ccb-flow/edit',
   mw.requireAdminAuth,
   mw.requireAdminMenu('ccb-flow'),
