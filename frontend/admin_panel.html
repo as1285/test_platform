@@ -2845,7 +2845,10 @@
                     <section>
                         <div class="ops-board-head">
                             <h2>运营看板</h2>
-                            <button type="button" class="btn-page btn-page-primary" id="btnOpsBoardRefresh">刷新</button>
+                            <div class="ops-board-head-actions" style="display:flex;align-items:center;gap:8px">
+                                <input type="date" id="opsBoardDate" class="filter-select ops-board-date" aria-label="统计日期">
+                                <button type="button" class="btn-page btn-page-primary" id="btnOpsBoardRefresh">刷新</button>
+                            </div>
                         </div>
                         <div class="ops-board-kpi" id="opsBoardKpi" aria-live="polite">加载中…</div>
                         <div class="ops-board-pay-detail" id="opsBoardPayDetail" hidden>

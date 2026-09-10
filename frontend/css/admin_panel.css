@@ -2834,6 +2834,15 @@ tr.users-detail-row > td {
 .ops-board-head h2 {
     margin: 0;
 }
+.ops-board-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.ops-board-head .ops-board-date {
+    min-width: 150px;
+}
 .ops-board-kpi {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

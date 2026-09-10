@@ -251,6 +251,39 @@ function parseDays(raw, fallback) {
   return n;
 }
 
+function pad2(n) {
+  return n < 10 ? '0' + n : String(n);
+}
+
+/** 北京日历日 YYYY-MM-DD */
+function beijingTodayYmd() {
+  var now = new Date();
+  var bj = new Date(now.getTime() + (now.getTimezoneOffset() + 480) * 60000);
+  return bj.getFullYear() + '-' + pad2(bj.getMonth() + 1) + '-' + pad2(bj.getDate());
+}
+
+/**
+ * 看板 KPI 日期：只认 YYYY-MM-DD，且不超过今天（北京）。非法则空串。
+ */
+function parseBjDate(raw) {
+  var s = String(raw || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  var parts = s.split('-');
+  var y = Number(parts[0]);
+  var m = Number(parts[1]);
+  var d = Number(parts[2]);
+  var dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) {
+    return '';
+  }
+  if (y < 2020 || s > beijingTodayYmd()) return '';
+  return s;
+}
+
+function resolveKpiDay(raw) {
+  return parseBjDate(raw) || beijingTodayYmd();
+}
+
 function parseSegment(raw) {
   var s = String(raw || '').trim().toLowerCase();
   var ok = {
@@ -372,18 +405,19 @@ async function handleOpsInactiveSummary(req, res) {
 }
 
 /**
- * 运营看板：今日 KPI + 未激活库存 + 近 7 日转化卡点（一次返回）
+ * 运营看板：指定北京日 KPI（默认今日）+ 未激活库存 + 近 7 日转化卡点（一次返回）
  */
 async function handleOpsBoard(req, res) {
   try {
     var researchDays = parseDays(req.query && req.query.days, 7);
+    var kpiDay = resolveKpiDay(req.query && req.query.date);
+    var kpiIsToday = kpiDay === beijingTodayYmd();
     var pool = getPool();
     const conn = await pool.getConnection();
     try {
       var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
       var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
       var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
-      var todayBjSql = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
 
       var userWhere = [
         'users.list_hidden_at IS NULL',
@@ -407,8 +441,8 @@ async function handleOpsBoard(req, res) {
            CONCAT('__nouip:', users.username)
          )) AS register_today
          FROM users ${userWhereSql}
-           AND ${cnDay} = ${todayBjSql}`,
-        userParams
+           AND ${cnDay} = ?`,
+        userParams.concat([kpiDay])
       );
 
       var actWhere = [
@@ -427,7 +461,8 @@ async function handleOpsBoard(req, res) {
           actParams.push(uname);
         }
       }
-      actWhere.push(cnActDay + ' = ' + todayBjSql);
+      actWhere.push(cnActDay + ' = ?');
+      actParams.push(kpiDay);
       actWhere.push('(u.activation_cancelled_at IS NULL)');
       const [actRows] = await conn.query(
         'SELECT COUNT(DISTINCT ac.used_by_username) AS activate_today FROM activation_codes ac' +
@@ -436,8 +471,8 @@ async function handleOpsBoard(req, res) {
         actParams
       );
 
-      var payWhere = ["status = 'paid'", cnPaidDay + ' = ' + todayBjSql];
-      var payParams = [];
+      var payWhere = ["status = 'paid'", cnPaidDay + ' = ?'];
+      var payParams = [kpiDay];
       /* 与支付分析一致：个税修改费单独拆出，其余已付计入「付费了单」 */
       var taxEditSkuSql =
         "(sku_id IN ('" +
@@ -537,6 +572,8 @@ async function handleOpsBoard(req, res) {
         code: 200,
         data: {
           today: {
+            date: kpiDay,
+            is_today: kpiIsToday,
             register: n(t, 'register_today'),
             activate: n(a, 'activate_today'),
             pay_orders: n(p, 'pay_orders'),
@@ -1171,6 +1208,7 @@ async function handleOpsBoardPayments(req, res) {
     var days = parseInt(req.query.days, 10);
     if (!isFinite(days) || days < 1) days = 1;
     if (days > 90) days = 90;
+    var kpiDay = parseBjDate(req.query && req.query.date);
     var pool = getPool();
     var conn = await pool.getConnection();
     try {
@@ -1178,7 +1216,11 @@ async function handleOpsBoardPayments(req, res) {
       var todayBjSql = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
       var payWhere = ["status = 'paid'"];
       var payParams = [];
-      if (days === 1) {
+      if (kpiDay) {
+        payWhere.push(cnPaidDay + ' = ?');
+        payParams.push(kpiDay);
+        days = 1;
+      } else if (days === 1) {
         payWhere.push(cnPaidDay + ' = ' + todayBjSql);
       } else {
         payWhere.push(
@@ -1216,6 +1258,7 @@ async function handleOpsBoardPayments(req, res) {
         code: 200,
         data: {
           days: days,
+          date: kpiDay || '',
           truncated: list.length >= 500,
           orders: list.length,
           gmv: Math.round(gmv * 100) / 100,
@@ -1255,5 +1298,8 @@ module.exports = {
   appendRefundBulkAudienceFilters: appendRefundBulkAudienceFilters,
   parseSegment: parseSegment,
   parseDays: parseDays,
+  parseBjDate: parseBjDate,
+  beijingTodayYmd: beijingTodayYmd,
+  resolveKpiDay: resolveKpiDay,
   opsSkuGmvLabel: opsSkuGmvLabel
 };

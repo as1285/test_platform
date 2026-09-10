@@ -19,7 +19,7 @@
     'feature-survey': '/js/admin/modules/feature-survey.js?v=20260907-hub6',
     'payment-orders': '/js/admin/modules/payment-orders.js?v=20260907-hub6',
     feedback: '/js/admin/modules/feedback.js?v=20260910-fb-mail',
-    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260907-hub6',
+    'ops-conversion': '/js/admin/modules/ops-conversion.js?v=20260910-ops-date',
     'ad-analytics': '/js/admin/modules/ad-analytics.js?v=20260907-hub6',
     'user-emails': '/js/admin/modules/user-emails.js?v=20260910-week-fill',
     'abc-ops': '/js/admin/modules/abc-ops.js?v=20260907-hub6'

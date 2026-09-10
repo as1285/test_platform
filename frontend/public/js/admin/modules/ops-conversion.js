@@ -55,6 +55,26 @@
     }
   }
 
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function beijingTodayYmd() {
+    var utc = Date.now() + new Date().getTimezoneOffset() * 60000;
+    var nd = new Date(utc + 3600000 * 8);
+    return nd.getFullYear() + '-' + pad2(nd.getMonth() + 1) + '-' + pad2(nd.getDate());
+  }
+
+  function ensureBoardDate() {
+    var el = document.getElementById('opsBoardDate');
+    if (!el) return '';
+    var today = beijingTodayYmd();
+    el.max = today;
+    if (!el.value) el.value = today;
+    if (el.value > today) el.value = today;
+    return el.value;
+  }
+
   function formatIncome(n) {
     var v = Number(n);
     if (!isFinite(v) || v <= 0) return '—';
@@ -404,6 +424,11 @@
     }
     var boardRefresh = document.getElementById('btnOpsBoardRefresh');
     if (boardRefresh) boardRefresh.addEventListener('click', loadBoard);
+    var boardDate = document.getElementById('opsBoardDate');
+    if (boardDate) {
+      ensureBoardDate();
+      boardDate.addEventListener('change', loadBoard);
+    }
     var boardTodo = document.getElementById('opsBoardTodo');
     if (boardTodo) {
       boardTodo.addEventListener('click', function (ev) {
@@ -448,6 +473,8 @@
   }
 
   function openPayDetail() {
+    var daysEl = document.getElementById('opsBoardPayDays');
+    if (daysEl) daysEl.value = '1';
     var panel = document.getElementById('opsBoardPayDetail');
     if (panel) panel.hidden = false;
     loadPayDetail();
@@ -458,9 +485,14 @@
     var meta = document.getElementById('opsBoardPayDetailMeta');
     var daysEl = document.getElementById('opsBoardPayDays');
     var days = daysEl && daysEl.value ? daysEl.value : '1';
+    var date = ensureBoardDate();
     if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
     if (meta) meta.textContent = '';
-    fetchAdmin('api/admin/ops/board/payments?days=' + encodeURIComponent(days))
+    var payUrl = 'api/admin/ops/board/payments?days=' + encodeURIComponent(days);
+    if (date && String(days) === '1') {
+      payUrl += '&date=' + encodeURIComponent(date);
+    }
+    fetchAdmin(payUrl)
       .then(function (r) {
         return (window.adminParseJson||function(r){return r.json();})(r);
       })
@@ -530,7 +562,7 @@
     );
   }
 
-  function kpiGmvCard(skuRows, payOrdersGmv, taxEditGmv, totalGmv) {
+  function kpiGmvCard(skuRows, payOrdersGmv, taxEditGmv, totalGmv, gmvLabel) {
     function yen(v) {
       return '¥' + (v != null ? v : 0);
     }
@@ -570,10 +602,12 @@
       .join('');
     return (
       '<div class="ops-board-kpi-card ops-board-kpi-gmv">' +
-      '<div class="label ops-board-kpi-gmv-head"><span>今日 GMV</span>' +
+      '<div class="label ops-board-kpi-gmv-head"><span>' +
+      esc(gmvLabel || '今日 GMV') +
+      '</span>' +
       '<button type="button" class="btn-page btn-sm js-ops-gmv-detail">详情</button>' +
       '</div>' +
-      '<div class="value ops-board-kpi-gmv-total" title="今日付费总额">' +
+      '<div class="value ops-board-kpi-gmv-total" title="付费总额">' +
       esc(yen(total)) +
       '</div>' +
       '<div class="ops-board-kpi-split">' +
@@ -632,11 +666,19 @@
                 ((Number(today.pay_gmv) || 0) - (Number(today.tax_edit_gmv) || 0)) * 100
               ) / 100
             );
+      var isToday = today.is_today !== false && (!today.date || today.date === beijingTodayYmd());
+      var pfx = isToday ? '今日' : '';
       kpi.innerHTML =
-        kpiCard('今日注册', today.register, '按注册IP去重') +
-        kpiCard('今日激活', today.activate) +
-        kpiCard('今日付费单', today.pay_orders) +
-        kpiGmvCard(today.gmv_by_sku, payOrdersGmv, today.tax_edit_gmv, today.pay_gmv);
+        kpiCard(pfx + '注册', today.register, '按注册IP去重') +
+        kpiCard(pfx + '激活', today.activate) +
+        kpiCard(pfx + '付费单', today.pay_orders) +
+        kpiGmvCard(
+          today.gmv_by_sku,
+          payOrdersGmv,
+          today.tax_edit_gmv,
+          today.pay_gmv,
+          pfx ? '今日 GMV' : 'GMV'
+        );
     }
     var todo = document.getElementById('opsBoardTodo');
     if (todo) {
@@ -667,7 +709,10 @@
     if (kpi) kpi.textContent = '加载中…';
     if (todo) todo.innerHTML = '';
     if (research) research.textContent = '加载中…';
-    fetchAdmin('api/admin/ops/board?days=7')
+    var date = ensureBoardDate();
+    fetchAdmin(
+      'api/admin/ops/board?days=7&date=' + encodeURIComponent(date || beijingTodayYmd())
+    )
       .then(function (r) {
         return (window.adminParseJson||function(r){return r.json();})(r);
       })

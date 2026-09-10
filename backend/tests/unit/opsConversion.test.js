@@ -3,6 +3,9 @@
 const {
   parseSegment,
   parseDays,
+  parseBjDate,
+  beijingTodayYmd,
+  resolveKpiDay,
   HIGH_INCOME,
   REFUND_AD_MIN_INCOME,
   REFUND_AD_MIN_TAX,
@@ -23,6 +26,23 @@ describe('opsConversion helpers', () => {
     expect(parseDays('7', 7)).toBe(7);
     expect(parseDays('0', 7)).toBe(7);
     expect(parseDays('9999', 7)).toBe(366);
+  });
+
+  it('parses Beijing KPI dates and rejects future / invalid', () => {
+    var today = beijingTodayYmd();
+    expect(parseBjDate(today)).toBe(today);
+    expect(parseBjDate('2026-09-01')).toBe('2026-09-01');
+    expect(parseBjDate('2026-13-01')).toBe('');
+    expect(parseBjDate('not-a-date')).toBe('');
+    expect(parseBjDate('2019-12-31')).toBe('');
+    expect(resolveKpiDay('')).toBe(today);
+    expect(resolveKpiDay('2026-09-01')).toBe('2026-09-01');
+    var src = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../../src/admin/opsConversion.js'),
+      'utf8'
+    );
+    expect(src).toContain('resolveKpiDay(req.query && req.query.date)');
+    expect(src).toContain("cnDay} = ?");
   });
 
   it('keeps high-income threshold at 15000', () => {
