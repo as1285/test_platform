@@ -39,22 +39,22 @@
                     if (ip14pm) {
                         document.documentElement.classList.add('app-ios-iphone14promax');
                         document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
-                        document.documentElement.style.setProperty('--bottom-nav-side', '4px');
+                        document.documentElement.style.setProperty('--bottom-nav-side', '0px');
                         document.documentElement.style.setProperty('--bottom-nav-bottom', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
                         document.documentElement.style.setProperty('--bottom-nav-gap', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
-                        document.documentElement.style.setProperty('--bottom-nav-height', '40px');
-                        document.documentElement.style.setProperty('--bottom-nav-radius', '20px');
-                        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(40px + env(safe-area-inset-bottom, 34px) + 20px)');
+                        document.documentElement.style.setProperty('--bottom-nav-height', '44px');
+                        document.documentElement.style.setProperty('--bottom-nav-radius', '22px');
+                        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(44px + env(safe-area-inset-bottom, 34px) + 20px)');
                         document.documentElement.style.backgroundColor = '#4f90f3';
                         if (!document.getElementById('sy14pmHomeLock')) {
                             var lock = document.createElement('style');
                             lock.id = 'sy14pmHomeLock';
                             lock.textContent =
                                 'html.app-ios-iphone14promax body > .bottom-nav,html.app-ios-iphone14promax body > .bottom-nav.ios-device{' +
-                                'left:4px!important;right:4px!important;width:auto!important;' +
+                                'left:0!important;right:0!important;width:auto!important;' +
                                 'bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;' +
-                                'height:40px!important;min-height:40px!important;max-height:40px!important;' +
-                                'border-radius:20px!important;padding-top:4px!important;padding-bottom:4px!important;}';
+                                'height:44px!important;min-height:44px!important;max-height:44px!important;' +
+                                'border-radius:22px!important;padding-top:4px!important;padding-bottom:4px!important;}';
                             document.head.appendChild(lock);
                         }
                     }
@@ -126,7 +126,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260910-ios-14pm-home3" defer></script>
+    <script src="/js/auth.js?v=20260910-ios-14pm-home6" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -927,8 +927,8 @@
         html.app-ios-iphone14promax .sy-zxk-card-head {
             top: 0 !important;
             left: 8% !important;
-            right: 6% !important;
-            height: 18% !important;
+            right: 0 !important;
+            height: 17% !important;
             align-items: center !important;
         }
         html.app-ios-iphone14promax .sy-zxk-name {
@@ -936,20 +936,21 @@
             font-weight: 600 !important;
             line-height: 1 !important;
         }
-        /* 灰常规字，与「专项附加扣除」同一行垂直居中；勿拉成蓝条上的白粗体徽章 */
+        /* 右上角蓝标签：白色加粗，垂直居中 */
         html.app-ios-iphone14promax .sy-zxk-policy {
             display: inline-flex !important;
             align-items: center !important;
-            justify-content: flex-end !important;
-            align-self: center !important;
+            justify-content: center !important;
+            align-self: stretch !important;
             margin-left: auto !important;
+            width: 27% !important;
             min-width: 0 !important;
             height: auto !important;
             padding: 0 !important;
-            color: #6b7380 !important;
-            -webkit-text-fill-color: #6b7380 !important;
-            font-size: 13px !important;
-            font-weight: 400 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
             line-height: 1 !important;
             letter-spacing: 0 !important;
             -webkit-text-size-adjust: 100% !important;
@@ -967,31 +968,32 @@
             font-size: 34px !important;
             font-family: "PingFangSC-Semibold", "PingFang SC", -apple-system, sans-serif !important;
         }
-        /* 官方扁宽双胶囊：丢掉拉伸 PNG，CSS 画蓝/橙条，视觉宽度约一倍 */
+        /* 官方斜切蓝/橙 PNG，加宽压扁，勿改成平直色条 */
         html.app-ios-iphone14promax .sy-zxk-btns {
-            left: 3% !important;
-            right: 3% !important;
-            bottom: 17% !important;
-            height: 32px !important;
-            max-height: 32px !important;
+            left: 3.5% !important;
+            right: 3.5% !important;
+            bottom: 18% !important;
+            height: 34px !important;
+            max-height: 34px !important;
             gap: 0 !important;
         }
         html.app-ios-iphone14promax .sy-zxk-btn {
-            flex: 1 1 50% !important;
+            background: none !important;
         }
         html.app-ios-iphone14promax .sy-zxk-btn img {
-            display: none !important;
+            display: block !important;
+            object-fit: fill !important;
         }
         html.app-ios-iphone14promax .sy-zxk-btn-fill {
-            flex: 1 1 48% !important;
-            background: #3d8af5 !important;
-            border-radius: 16px 0 0 16px !important;
+            flex: 0 0 42% !important;
+            background: none !important;
+            border-radius: 0 !important;
         }
         html.app-ios-iphone14promax .sy-zxk-btn-query {
-            flex: 1 1 52% !important;
-            margin-left: -8px !important;
-            background: #f5a623 !important;
-            border-radius: 0 16px 16px 0 !important;
+            flex: 1 1 auto !important;
+            margin-left: -6% !important;
+            background: none !important;
+            border-radius: 0 !important;
         }
         html.app-ios-iphone14promax .sy-zxk-btn span {
             font-size: 15px !important;
@@ -1235,7 +1237,7 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home3">
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home6">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
     <script src="/js/home-services.js?v=20260908-apk-icons"></script>
 </head>

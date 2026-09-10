@@ -562,6 +562,20 @@
         'html.app-android-huawei-p40pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
         'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
       document.head.appendChild(st);
+      if (/2304FPN6|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Ultra/i.test(ua)) {
+        cl.add('app-android-xiaomi-13ultra');
+        cl.add('app-android-immersive-white-top');
+        if (!document.getElementById('xiaomi13ultraMineFirstPaint')) {
+          var u13 = document.createElement('style');
+          u13.id = 'xiaomi13ultraMineFirstPaint';
+          u13.setAttribute('data-xiaomi13ultra-mine-e1-firstpaint', '1');
+          u13.textContent =
+            'html.app-android-xiaomi-13ultra body.page-mine{--mine-top-bleed:0px!important;}' +
+            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;background-size:100% auto!important;background-position:top center!important;container-type:normal!important;}' +
+            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}';
+          document.head.appendChild(u13);
+        }
+      }
     } catch (ePrime) {}
   }
 

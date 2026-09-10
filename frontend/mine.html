@@ -46,6 +46,15 @@
                     if (ip14pm) {
                         document.documentElement.classList.add('app-ios-iphone14promax');
                         document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.backgroundColor = '#1677ff';
+                        if (!document.getElementById('mine14pmTopLock')) {
+                            var lock14 = document.createElement('style');
+                            lock14.id = 'mine14pmTopLock';
+                            lock14.textContent =
+                                'html.app-ios-iphone14promax{background-color:#1677ff!important;background-image:none!important;}' +
+                                'html.app-ios-iphone14promax body.page-mine{background-color:#f5f6fa!important;background-image:linear-gradient(#1677ff,#1677ff)!important;background-size:100% 59px!important;background-repeat:no-repeat!important;background-position:top center!important;}';
+                            document.head.appendChild(lock14);
+                        }
                     }
                     if (ip15pm) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
@@ -215,6 +224,23 @@
                             'html.app-android-xiaomi-15 body.page-mine .mine-e1-canvas>img,html.app-android-xiaomi-15 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:fill!important;position:relative!important;top:auto!important;transform:none!important;opacity:0!important;}' +
                             'html.app-android-xiaomi-15 body.page-mine .mine-e1-layer{top:0!important;}';
                         document.head.appendChild(mi15Fp);
+                    }
+                }
+                if (/2304FPN6|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-xiaomi-13ultra');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.remove('app-android-mi-family');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                    if (!document.getElementById('xiaomi13ultraMineFirstPaint')) {
+                        var mi13uFp = document.createElement('style');
+                        mi13uFp.id = 'xiaomi13ultraMineFirstPaint';
+                        mi13uFp.setAttribute('data-xiaomi13ultra-mine-e1-firstpaint', '1');
+                        mi13uFp.textContent =
+                            'html.app-android-xiaomi-13ultra body.page-mine{--mine-top-bleed:0px!important;}' +
+                            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;background-size:100% auto!important;background-position:top center!important;container-type:normal!important;}' +
+                            'html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}';
+                        document.head.appendChild(mi13uFp);
                     }
                 }
                 var isMate70Mine = /Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(u);
@@ -421,8 +447,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260910-k70-desk"></script>
-    <script src="/js/auth.js?v=20260910-ios-14pm-home3" defer></script>
+    <script src="/js/auth-boot.js?v=20260910-13u-pill"></script>
+    <script src="/js/auth.js?v=20260910-ios-14pm-home6" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -433,6 +459,16 @@
     <script src="/js/browser-install-prompt.js?v=20260827-cend-sync" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
+    <script>
+        (function () {
+            try {
+                if (document.documentElement.classList.contains('app-ios-iphone14promax')) {
+                    var tm = document.querySelector('meta[name="theme-color"]');
+                    if (tm) tm.setAttribute('content', '#1677ff');
+                }
+            } catch (e14tm) {}
+        })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -450,7 +486,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home3">
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home6">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
     <style>
         * {
@@ -623,17 +659,17 @@
          * --app-shell-statusbar-top 为 0 的外置栏机型不产生空隙。
          * 排除小米 14/15 Pro 等已锁定零 bleed 的底图方案。
          */
-        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine {
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-xiaomi-13ultra):not(.app-android-mine-e1-plainimg) body.page-mine {
             --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 40px));
         }
-        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas {
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-xiaomi-13ultra):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed, 40px) !important;
         }
-        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > img,
-        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-xiaomi-13ultra):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > img,
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-xiaomi-13ultra):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-canvas > #headerImg {
             margin-top: 0 !important;
         }
-        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-layer {
+        html.app-android-client.app-cordova-shell:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-xiaomi-13ultra):not(.app-android-mine-e1-plainimg) body.page-mine .mine-e1-layer {
             top: var(--mine-top-bleed, 40px) !important;
         }
         html.app-android-oneplus-13 body.page-mine,
@@ -1098,6 +1134,31 @@
         .mine-e1-pill-bank {
             left: calc(579 * var(--mine-rpx));
         }
+        /*
+         * 小米 13 Ultra：@sm 用 100vw 定高/rpx 时胶囊会掉到菜单上沿。
+         * 画布按宽度走 750/1180，叠层 top 锁 0；rpx 由 pinMineE1RpxFromCanvas 实测。
+         */
+        html.app-android-xiaomi-13ultra body.page-mine {
+            --mine-top-bleed: 0px !important;
+        }
+        html.app-android-xiaomi-13ultra body.page-mine .mine-e1-canvas,
+        html.app-android-xiaomi-13ultra.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,
+        html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-canvas {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: 750 / 1180 !important;
+            background-size: 100% auto !important;
+            background-position: top center !important;
+            container-type: normal !important;
+        }
+        html.app-android-xiaomi-13ultra body.page-mine .mine-e1-layer,
+        html.app-android-xiaomi-13ultra.app-android-client.app-cordova-shell body.page-mine .mine-e1-layer {
+            top: 0 !important;
+            padding-bottom: calc(1180 / 750 * 100%) !important;
+        }
 
         /*
          * 华为 nova 13 / 鸿蒙 ArkWeb：勿用 --mine-rpx: calc(100% / 750)。
@@ -1242,7 +1303,11 @@
             position: relative;
             z-index: 5;
             background: #f4f6f9;
-            padding: 8px 16px var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
+            /*
+             * 与 e1 菜单白卡同宽：底图 750 设计左右各 24rpx。
+             * 勿再写 16px —— 退出登录若再叠 16px margin，会比上头图短一截。
+             */
+            padding: 8px calc(24 * var(--mine-rpx, 100vw / 750)) var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
         }
 
         /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
@@ -1434,16 +1499,29 @@
             box-shadow: 0 -0.33px 0 rgba(60, 60, 67, 0.16) !important;
             border: none !important;
         }
+        /* 14 Pro Max：系统栏跟头图顶蓝，勿让 html #f5f6fa 从刘海透出白顶 */
+        html.app-ios-iphone14promax,
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell:has(body.page-mine) {
+            background-color: #1677ff !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-mine {
+            background-color: #f5f6fa !important;
+            background-image: linear-gradient(#1677ff, #1677ff) !important;
+            background-size: 100% 59px !important;
+            background-repeat: no-repeat !important;
+            background-position: top center !important;
+        }
         html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
         html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device {
-            left: 4px !important;
-            right: 4px !important;
+            left: 0 !important;
+            right: 0 !important;
             bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
             width: auto !important;
-            border-radius: 20px !important;
-            height: 40px !important;
-            min-height: 40px !important;
-            max-height: 40px !important;
+            border-radius: 22px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
             padding-top: 4px !important;
             padding-bottom: 4px !important;
             background: rgba(255, 255, 255, 0.96) !important;
@@ -2449,11 +2527,11 @@
             stroke-width: 2;
         }
 
-        /* 退出登录：官方为菜单下方独立白底圆角条 */
+        /* 退出登录：官方为菜单下方独立白底圆角条，宽度跟 e1 菜单卡（24rpx）对齐 */
 
         .logout-section {
             background: #fff;
-            margin: 12px 16px 0;
+            margin: 12px 0 0;
             border-radius: 12px;
             padding: 14px 20px;
             text-align: center;

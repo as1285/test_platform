@@ -161,6 +161,9 @@
       'html[data-tab-shell="1"] #tab-shell-stage{display:none}' +
       'html[data-tab-shell="1"] #tab-shell-stage.tab-shell-stage-active{' +
       'display:block;position:fixed;top:0;left:0;right:0;bottom:var(--bottom-nav-clearance,70px);z-index:9000;background:#fff}' +
+      /* 14 Pro Max：切 Tab 时舞台/iframe 勿铺白，系统栏跟各页头图蓝 */
+      'html.app-ios-iphone14promax[data-tab-shell="1"] #tab-shell-stage.tab-shell-stage-active{background:#1677ff}' +
+      'html.app-ios-iphone14promax[data-tab-shell="1"] .tab-shell-iframe{background:transparent}' +
       'html[data-tab-shell-subpage="1"] .bottom-nav{display:none!important}' +
       'html[data-tab-shell-subpage="1"] #tab-shell-stage.tab-shell-stage-active{bottom:0!important}' +
       'html[data-tab-shell="1"] .tab-shell-iframe{width:100%;height:100%;border:0;display:block;background:#fff}' +
@@ -208,6 +211,21 @@
   var nativeEl = null;
   var iframes = Object.create(null);
   var switching = false;
+  var TAB_TOP_BLUE = {
+    shouye: '#4f90f3',
+    daiban: '#2b81f2',
+    bancha: '#2b81f2',
+    message: '#1e8fff',
+    mine: '#1677ff'
+  };
+
+  function paint14pmStage(key) {
+    try {
+      if (!document.documentElement.classList.contains('app-ios-iphone14promax')) return;
+      if (!stageEl) return;
+      stageEl.style.background = TAB_TOP_BLUE[key] || '#1677ff';
+    } catch (e14stg) {}
+  }
 
   function iframePageFile(iframe) {
     if (!iframe) return '';
@@ -313,6 +331,7 @@
     if (stageEl) {
       stageEl.classList.add('tab-shell-stage-active');
       stageEl.hidden = false;
+      paint14pmStage(key);
     }
     Object.keys(iframes).forEach(function (k) {
       if (!iframes[k]) return;

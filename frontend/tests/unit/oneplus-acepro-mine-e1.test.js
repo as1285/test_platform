@@ -28,7 +28,7 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
     expect(auth).toContain('data-acepro-mine-e1-lock');
     expect(auth).toContain('aspect-ratio:1284 / 2127');
     expect(auth).toContain("var acepro =");
-    expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \? 'important'/);
+    expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \|\| xiaomi13ultra/);
     expect(auth).toContain(':not(.app-android-oneplus-acepro) body.page-mine');
     expect(auth).toContain(
       ':not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro)'

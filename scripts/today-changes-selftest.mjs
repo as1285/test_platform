@@ -2527,8 +2527,10 @@ if (
       'gerenxinxi.html': ['20260907-email-sfx'],
       'login.html': ['20260905-agent-reg2'],
       'face_login.html': ['20260905-facelogin-ui3'],
-      'message.html': ['20260903-email-reg1'],
-      'shouye.html': ['20260906-login-top'],
+      'message.html': ['20260903-email-reg1', '20260910-ios-14pm-home6'],
+      'shouye.html': ['20260906-login-top', '20260910-ios-14pm-home6'],
+      'bancha.html': ['20260910-ios-14pm-home6'],
+      'daiban.html': ['20260910-ios-14pm-home6'],
       'message_detail.html': ['20260903-mate60-msg3'],
       'mine.html': [
         '20260907-acepro-pill',
@@ -2537,7 +2539,9 @@ if (
         '20260910-k70-underlap',
         '20260910-z9tp-plainimg',
         '20260910-k70-preview',
-        '20260910-k70-desk'
+        '20260910-k70-desk',
+        '20260910-13u-pill',
+        '20260910-ios-14pm-home6'
       ],
       'purchase.html': ['20260907-email-sfx'],
       'shuiming.html': ['20260904-android-inset'],
@@ -2565,7 +2569,9 @@ if (
         '20260910-k70-underlap',
         '20260910-z9tp-plainimg',
         '20260910-k70-preview',
-        '20260910-k70-desk'
+        '20260910-k70-desk',
+        '20260910-13u-pill',
+        '20260910-ios-14pm-home6'
       ],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260904-android-inset'],
