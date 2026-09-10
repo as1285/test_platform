@@ -323,9 +323,10 @@ export const DEVICE_PROFILES = [
   immersive('2407FPN8EG', '红米 K70 至尊', ['app-android-redmi-k70-ultra', 'app-android-immersive-white-top'], {
     id: 'redmi-k70-ultra'
   }),
-  /* 线上 23113RKC6C：K70 标准版。未进核实外置名单，白顶栏走默认沉浸 */
+  /* 线上 23113RKC6C：K70 标准版。白顶栏仍沉浸；「我的」外置 40px 黑条 */
   immersive('23113RKC6C', '红米 K70', ['app-android-redmi-k70', 'app-android-immersive-white-top'], {
-    id: 'redmi-k70'
+    id: 'redmi-k70',
+    expect: { mineBlackStatus: true }
   }),
   immersive('22120RN86C', '红米 12C', ['app-android-redmi-12c', 'app-android-immersive-white-top'], {
     id: 'redmi-12c'

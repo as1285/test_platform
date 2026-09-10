@@ -69,6 +69,117 @@
     return name;
   }
 
+  function isRedmiK70StandardModelBlob(ua) {
+    ua = String(ua || '');
+    if (
+      /2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi|REDMI)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(
+        ua
+      )
+    ) {
+      return false;
+    }
+    if (/24117RK2C|24122RKC7|24127RK2CC|25060RK16C|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80/i.test(ua)) {
+      return false;
+    }
+    if (/23113RKC6[CG]|2311DRK48[CGI]/i.test(ua)) {
+      return true;
+    }
+    return /(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(ua);
+  }
+
+  function readMineStatusUaBlob() {
+    var blob = '';
+    try {
+      blob += String(navigator.userAgent || '');
+    } catch (eUa) {}
+    try {
+      blob += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+    } catch (eModel) {}
+    try {
+      blob += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+    } catch (eStored) {}
+    return blob;
+  }
+
+  function isMineUnderlapPreviewBlob(ua) {
+    ua = String(ua || '');
+    var liveUa = '';
+    try {
+      liveUa = String(navigator.userAgent || '');
+    } catch (eLive) {}
+    if (/iPhone|iPad|iPod/.test(ua + liveUa)) {
+      return false;
+    }
+    if (
+      /2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi|REDMI)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(
+        ua
+      )
+    ) {
+      return false;
+    }
+    try {
+      var q = new URLSearchParams(String(location.search || ''));
+      if (/^(1|true|yes|k70)$/i.test(String(q.get('k70') || q.get('k70_mine') || ''))) {
+        return true;
+      }
+      var forced = String(q.get('device') || q.get('model') || '');
+      if (/23113RKC6[CG]|2311DRK48[CGI]/i.test(forced)) {
+        return true;
+      }
+    } catch (eQ) {}
+    if (/Xiaomi|Redmi|Huawei|HONOR|OPPO|vivo|OnePlus|iQOO|Samsung|HarmonyOS|Miui|HyperOS/i.test(liveUa)) {
+      return false;
+    }
+    if (/sdk_gphone|Android SDK|goldfish|ranchu|\bEmulator\b/i.test(ua + ' ' + liveUa)) {
+      return true;
+    }
+    var narrow = false;
+    try {
+      narrow = Math.min(window.innerWidth || 0, screen.width || 0) <= 500;
+    } catch (eW) {
+      narrow = false;
+    }
+    if (!narrow) {
+      return false;
+    }
+    if (/Windows|Macintosh|X11/i.test(liveUa)) {
+      return true;
+    }
+    try {
+      if (navigator.webdriver) {
+        return false;
+      }
+    } catch (eWd) {}
+    try {
+      var plat = String(navigator.platform || '');
+      var hint = '';
+      try {
+        hint = String((navigator.userAgentData && navigator.userAgentData.platform) || '');
+      } catch (eHint) {}
+      if (/Win32|Win64|Windows|MacIntel|Macintosh/i.test(plat + ' ' + hint)) {
+        return true;
+      }
+    } catch (ePlat) {}
+    return false;
+  }
+
+  /** 「我的」顶栏档。K70 标准版，或桌面窄屏 / AVD 预览。 */
+  function resolveMineStatusMode() {
+    if (currentPageName() !== 'mine.html') {
+      return '';
+    }
+    try {
+      if (document.body && !document.body.classList.contains('page-mine')) {
+        return '';
+      }
+    } catch (eBody) {}
+    var ua = readMineStatusUaBlob();
+    if (isRedmiK70StandardModelBlob(ua) || isMineUnderlapPreviewBlob(ua)) {
+      return 'underlap-black';
+    }
+    return '';
+  }
+
   function getToken() {
     try {
       return localStorage.getItem('token') || '';
@@ -359,14 +470,15 @@
         return;
       }
       /*
-       * 单层底图档（vivo X90）：@sm 档两层同图会留半透明白卡残影，须在注入裁切首屏样式
+       * 单层底图档（vivo X90 / iQOO Z9 Turbo+）：@sm 档两层同图会留半透明白卡残影，须在注入裁切首屏样式
        * 「之前」判掉，否则该 style 节点留在 DOM 里抢。样式见 mine.html plainimg 档。
        */
       var cl = document.documentElement.classList;
       if (
         window.__mineE1PlainImg ||
         cl.contains('app-android-mine-e1-plainimg') ||
-        /V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(ua)
+        /V2241A|V2241EA|PD2241\b|(?:vivo[\s_-]*)?X90\b(?![\s_-]*(?:Pro|[sS]|Plus|\+))/i.test(ua) ||
+        /V2417A|V2417DA|PD2417\b|(?:iQOO|iqoo)?[\s_-]*Z9[\s_-]*Turbo[\s_-]*(?:\+|Plus)/i.test(ua)
       ) {
         cl.add('app-android-mine-e1-plainimg');
         cl.remove('app-android-mine-e1-sm');
@@ -423,6 +535,16 @@
         }
         return;
       }
+      /*
+       * 红米 K70 标准版「我的」：underlap 黑垫，勿进 @sm 裁切。
+       * HyperOS lock 会把画布 padding 清零、把头图蓝铺进系统栏。
+       */
+      if (cl.contains('app-mine-black-status') || resolveMineStatusMode() === 'underlap-black') {
+        if (isRedmiK70StandardModelBlob(ua)) cl.add('app-android-redmi-k70');
+        cl.add('app-mine-black-status');
+        cl.remove('app-android-mine-e1-sm');
+        return;
+      }
       window.__mineE1ForceSm = true;
       document.documentElement.classList.add('app-android-mine-e1-sm');
       if (document.getElementById('androidMineSmFirstPaint')) {
@@ -433,12 +555,12 @@
       st.setAttribute('data-android-mine-e1-sm-firstpaint', '1');
       st.textContent =
         'html.app-android-mine-e1-sm body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;background-color:#f5f6fa!important;background-image:none!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:unset!important;container-type:normal!important;width:100%!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:unset!important;container-type:normal!important;width:100%!important;}' +
         'html.app-android-huawei-p40pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% 100%!important;background-position:top center!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;container-type:normal!important;width:100%!important;}' +
         'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img,html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:1px!important;height:1px!important;max-height:none!important;object-fit:fill!important;position:absolute!important;top:auto!important;transform:none!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
         'html.app-android-huawei-p40pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
       document.head.appendChild(st);
     } catch (ePrime) {}
   }
@@ -462,6 +584,7 @@
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
   window.buildLoginPageUrl = buildLoginPageUrl;
   window.markViewportChromeClasses = markViewportChromeClasses;
+  window.resolveMineStatusMode = resolveMineStatusMode;
 
   /** page-loading.js 未到之前：先入队，避免业务页调用报错 */
   window.__pageLoadingQueue = window.__pageLoadingQueue || [];

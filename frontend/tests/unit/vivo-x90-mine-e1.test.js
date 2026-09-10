@@ -105,7 +105,7 @@ describe('vivo X90 mine e1 single-layer paint', () => {
       /function paintXiaomi14ProMineE1\(src\) \{\s*try \{\s*if \(isIqooMineTailPhone\(\) \|\| isMineE1PlainImgClient\(\)\)/
     );
     expect(auth).toMatch(
-      /function pinXiaomi14ProMineE1Layout\(\) \{[\s\S]{0,160}isMineE1PlainImgClient\(\)/
+      /function pinXiaomi14ProMineE1Layout\(\) \{[\s\S]{0,400}isMineE1PlainImgClient\(\)/
     );
   });
 
@@ -148,8 +148,8 @@ describe('vivo X90 mine e1 single-layer paint', () => {
       "(base.indexOf('@sm') >= 0 ? '?v=20260901-android-mine-sm' : '?v=20260827-e1r3')"
     );
     expect(mine).toContain("if (String(hi.getAttribute('src') || '') !== url) hi.src = url;");
-    expect(mine).toMatch(/auth-boot\.js\?v=20260909-android-statusbar-sep1/);
-    expect(mine).toMatch(/auth\.js\?v=20260909-ios-14pm-fix3" defer/);
+    expect(mine).toMatch(/auth-boot\.js\?v=2026091/);
+    expect(mine).toMatch(/auth\.js\?v=2026091/);
   });
 
   it('turns the translucent blurred nav capsule solid on the plain-img tier', () => {

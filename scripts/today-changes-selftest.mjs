@@ -2530,7 +2530,15 @@ if (
       'message.html': ['20260903-email-reg1'],
       'shouye.html': ['20260906-login-top'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260907-acepro-pill'],
+      'mine.html': [
+        '20260907-acepro-pill',
+        '20260910-k70-mine-emu-black',
+        '20260910-k70-mine-black',
+        '20260910-k70-underlap',
+        '20260910-z9tp-plainimg',
+        '20260910-k70-preview',
+        '20260910-k70-desk'
+      ],
       'purchase.html': ['20260907-email-sfx'],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260907-no-sm-fill'],
@@ -2550,7 +2558,15 @@ if (
       'login.html': ['20260902-ip16pm-login'],
       'face_login.html': ['20260905-facelogin-ui3'],
       'message_detail.html': ['20260903-mate60-msg3'],
-      'mine.html': ['20260907-acepro-pill'],
+      'mine.html': [
+        '20260907-acepro-pill',
+        '20260910-k70-mine-emu-black',
+        '20260910-k70-mine-black',
+        '20260910-k70-underlap',
+        '20260910-z9tp-plainimg',
+        '20260910-k70-preview',
+        '20260910-k70-desk'
+      ],
       'shuiming.html': ['20260904-android-inset'],
       'shuiming_result.html': ['20260904-android-inset'],
       'xiangqing.html': ['20260904-android-inset'],
@@ -3307,6 +3323,41 @@ mustInclude(
     '按填写金额'
   ],
   '20260907 users list save activation amount + analytics label'
+);
+
+/* —— 2026-09-10：红米 K70「我的」外置黑条进入自动测试机型 —— */
+mustInclude(
+  'frontend/tests/e2e/ui-smoke-devices.mjs',
+  ["id: 'redmi-k70'", 'mineBlackStatus: true', '23113RKC6C'],
+  '20260910 K70 standard is an auto-test device with mine black bar'
+);
+mustInclude(
+  'frontend/tests/e2e/ui-smoke-browser.mjs',
+  ['async function assertMineBlackStatus', 'profile.expect?.mineBlackStatus', 'app-mine-black-status'],
+  '20260910 K70 mine page e2e asserts outer black status bar'
+);
+mustInclude(
+  'backend/src/admin/uiCompatCatalog.js',
+  ["id: 'redmi-k70'", "page: 'mine'", 'underlap 黑垫', '23113RKC6C'],
+  '20260910 catalog records K70 mine underlap pad'
+);
+mustInclude(
+  'frontend/public/js/auth-boot.js',
+  [
+    'function resolveMineStatusMode()',
+    "resolveMineStatusMode() === 'underlap-black'",
+    "cl.remove('app-android-mine-e1-sm')"
+  ],
+  '20260910 auth-boot skips @sm crop for K70 mine underlap pad'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
+  [
+    'function resolveMineStatusMode()',
+    "return 'underlap-black'",
+    'isMineStatusPage() && isRedmiK70StandardClient()'
+  ],
+  '20260910 K70 mine uses underlap-black mode, not outer-zero'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

@@ -26,13 +26,19 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
     expect(SCREEN_RE.test(auth)).toBe(true);
   });
 
-  it('14 Pro Max 不走贴底 dock，改回 8px 胶囊', () => {
+  it('14 Pro Max 不走贴底 dock，胶囊上移加宽压矮', () => {
     expect(auth).toContain('isIPhone14ProMaxCapsuleNavClient()');
-    expect(auth).toContain("setProperty('border-radius', '32px', 'important')");
-    expect(auth).toContain("setProperty('bottom', '8px', 'important')");
+    expect(auth).toContain("setProperty('border-radius', '20px', 'important')");
+    expect(auth).toContain("setProperty('bottom', 'calc(env(safe-area-inset-bottom, 34px) + 8px)', 'important')");
+    expect(auth).toContain("setProperty('left', '4px', 'important')");
+    expect(auth).toContain("setProperty('height', '40px', 'important')");
+    expect(auth).toMatch(/--bottom-nav-clearance',\s*'calc\(40px \+ env\(safe-area-inset-bottom, 34px\) \+ 20px\)'[\s\S]{0,80}return;/);
+    expect(auth).toContain('function pinIPhone14ProMaxZxkCard()');
     expect(navCss).toContain('html.app-ios-client.app-ios-iphone14promax');
-    expect(navCss).toContain('border-radius: 32px !important');
-    expect(navCss).toContain('left: 16px !important');
+    expect(navCss).toContain('border-radius: 20px !important');
+    expect(navCss).toContain('left: 4px !important');
+    expect(navCss).toContain('bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important');
+    expect(navCss).toContain('height: 40px !important');
   });
 
   it('首页可下滑停住，只挡贴顶回弹，并垫 59px 蓝顶', () => {
@@ -42,16 +48,33 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
     expect(shouye).toContain('overscroll-behavior-y: none');
     expect(shouye).toContain('height: 59px !important');
     expect(shouye).toContain("setProperty('--app-shell-statusbar-top', '59px')");
+    expect(shouye).toContain('backgroundColor = \'#4f90f3\'');
     expect(auth).toContain('islandBlueTopPage');
+    expect(auth).toContain('不认 430×932 屏幕兜底');
   });
 
   it('各 Tab 首绘 14 Pro Max，并刷新缓存', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html, name).toContain('app-ios-iphone14promax');
       expect(html, name).toContain('iPhone15,3');
-      expect(html, name).toMatch(/auth\.js\?v=20260909-ios-14pm-fix[34]/);
+      expect(html, name).toMatch(/auth\.js\?v=/);
     });
-    expect(pages.shouye).toContain('auth.js?v=20260909-ios-14pm-fix4');
-    expect(pages.shouye).toContain('nav.css?v=20260909-ios-14pm-fix3');
+    expect(pages.shouye).toContain('auth.js?v=20260910-ios-14pm-home3');
+    expect(pages.shouye).toContain('nav.css?v=20260910-ios-14pm-home3');
+  });
+
+  it('首页专项附加扣除白卡有 14 Pro Max 专属字号与居中', () => {
+    expect(shouye).toContain('html.app-ios-iphone14promax .sy-zxk-policy');
+    expect(shouye).toContain('html.app-ios-iphone14promax .sy-zxk-msg');
+    expect(shouye).toContain('html.app-ios-iphone14promax .sy-zxk-btns');
+    expect(shouye).toContain('PingFangSC-Semibold');
+    expect(shouye).toContain('-webkit-text-fill-color: #6b7380 !important');
+    expect(shouye).toContain('font-weight: 400 !important');
+    expect(shouye).toContain('left: 3% !important');
+    expect(shouye).toContain('background: #3d8af5 !important');
+    expect(shouye).toContain('html.app-ios-iphone14promax .sy-zxk-btn img');
+    expect(shouye).toContain('display: none !important');
+    expect(shouye).toMatch(/html\.app-ios-iphone14promax \.sy-zxk-policy[\s\S]*align-self: center !important/);
+    expect(shouye).toContain('sy14pmHomeLock');
   });
 });

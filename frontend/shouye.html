@@ -39,6 +39,24 @@
                     if (ip14pm) {
                         document.documentElement.classList.add('app-ios-iphone14promax');
                         document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.setProperty('--bottom-nav-side', '4px');
+                        document.documentElement.style.setProperty('--bottom-nav-bottom', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
+                        document.documentElement.style.setProperty('--bottom-nav-gap', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
+                        document.documentElement.style.setProperty('--bottom-nav-height', '40px');
+                        document.documentElement.style.setProperty('--bottom-nav-radius', '20px');
+                        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(40px + env(safe-area-inset-bottom, 34px) + 20px)');
+                        document.documentElement.style.backgroundColor = '#4f90f3';
+                        if (!document.getElementById('sy14pmHomeLock')) {
+                            var lock = document.createElement('style');
+                            lock.id = 'sy14pmHomeLock';
+                            lock.textContent =
+                                'html.app-ios-iphone14promax body > .bottom-nav,html.app-ios-iphone14promax body > .bottom-nav.ios-device{' +
+                                'left:4px!important;right:4px!important;width:auto!important;' +
+                                'bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;' +
+                                'height:40px!important;min-height:40px!important;max-height:40px!important;' +
+                                'border-radius:20px!important;padding-top:4px!important;padding-bottom:4px!important;}';
+                            document.head.appendChild(lock);
+                        }
                     }
                     if (ip15pm) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
@@ -108,7 +126,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260909-ios-14pm-fix4" defer></script>
+    <script src="/js/auth.js?v=20260910-ios-14pm-home3" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -325,7 +343,11 @@
             overscroll-behavior: none;
             overscroll-behavior-y: none;
         }
-        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell:has(body.page-shouye),
+        /* html 必须是搜索蓝，不能用 #f6f7fb，否则刘海/状态栏会透出白顶 */
+        html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell:has(body.page-shouye) {
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
         html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye {
             background-color: #f6f7fb !important;
             background-image: linear-gradient(
@@ -338,10 +360,12 @@
         }
         html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye::before {
             height: 59px !important;
-            background-color: rgb(var(--shouye-top-bar-rgb, 79, 144, 243)) !important;
+            background-color: #4f90f3 !important;
+            background-image: none !important;
         }
         html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 59px !important;
+            background-color: #4f90f3 !important;
         }
 
         .sy-ahead-hit {
@@ -567,9 +591,10 @@
         .sy-zxk-card-head {
             position: absolute;
             z-index: 2;
-            top: 12.5%;
-            left: 8.5%;
-            right: 32%;
+            top: 0;
+            left: 8%;
+            right: 5.5%;
+            height: 19.5%;
             display: flex;
             align-items: center;
             gap: 5px;
@@ -577,8 +602,10 @@
         }
 
         .sy-zxk-card.is-empty .sy-zxk-card-head {
-            top: 14%;
+            top: 0;
             left: 9%;
+            right: 7%;
+            height: 20%;
         }
 
         .sy-zxk-flame {
@@ -590,7 +617,7 @@
         }
 
         .sy-zxk-name {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 600;
             color: #191e26;
             line-height: 1.2;
@@ -601,29 +628,29 @@
             font-weight: 700;
         }
 
-        /* 叠在卡片右上角蓝色政策位上 */
+        /* 叠在右上角蓝条正中，字号对齐官方浅色政策条 */
         .sy-zxk-policy {
-            position: absolute;
+            position: static;
             z-index: 3;
-            top: 11%;
-            right: 7.5%;
+            margin-left: auto;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 70px;
-            height: 24px;
-            padding: 0 8px;
-            color: #fff;
-            font-size: 12px;
+            align-self: stretch;
+            min-width: 78px;
+            height: auto;
+            padding: 0 12px;
+            color: #5a6573;
+            font-size: 14px;
             font-weight: 500;
             text-decoration: none;
             line-height: 1;
+            pointer-events: auto;
             -webkit-tap-highlight-color: transparent;
         }
 
         .sy-zxk-card.is-empty .sy-zxk-policy {
-            top: 12.5%;
-            right: 8%;
+            margin-left: auto;
         }
 
         .sy-zxk-msg {
@@ -631,19 +658,19 @@
             z-index: 2;
             left: 7%;
             right: 7%;
-            top: 38%;
+            top: 36%;
             text-align: center;
-            color: #191e26;
-            font-size: 15px;
+            color: #191919;
+            font-size: 17px;
             line-height: 1.3;
-            font-weight: 500;
+            font-weight: 700;
             pointer-events: none;
         }
 
         .sy-zxk-card.is-empty .sy-zxk-msg {
             color: #fff;
-            font-weight: 500;
-            font-size: 15px;
+            font-weight: 700;
+            font-size: 17px;
             top: 40%;
         }
 
@@ -651,24 +678,24 @@
             display: inline-block;
             margin: 0 3px;
             color: #ffb300;
-            font-size: 30px;
+            font-size: 32px;
             font-weight: 700;
             line-height: 1;
             vertical-align: -4px;
             font-variant-numeric: tabular-nums;
         }
 
-        /* 有数据：双按钮 */
+        /* 有数据：双按钮，对齐官方扁宽胶囊 */
         .sy-zxk-btns {
             position: absolute;
             z-index: 3;
-            left: 7.5%;
-            right: 7.5%;
-            bottom: 14%;
+            left: 4.5%;
+            right: 4.5%;
+            bottom: 20%;
             display: flex;
             align-items: stretch;
-            height: 23%;
-            max-height: 48px;
+            height: 16%;
+            max-height: 36px;
         }
 
         .sy-zxk-card.is-empty .sy-zxk-btns {
@@ -882,12 +909,93 @@
         }
         html.app-android-honor-pgt-an20 .sy-zxk-btns,
         html.app-android-honor-magic6pro .sy-zxk-btns {
-            height: 18% !important;
-            max-height: 36px !important;
+            left: 4.5% !important;
+            right: 4.5% !important;
+            bottom: 20% !important;
+            height: 14% !important;
+            max-height: 32px !important;
         }
         html.app-android-honor-pgt-an20 .sy-zxk-btn span,
         html.app-android-honor-magic6pro .sy-zxk-btn span {
             font-size: 13px !important;
+        }
+
+        /*
+         * iPhone 14 Pro Max（430×932）：PingFang 字重偏轻、中文视觉中线偏上。
+         * 专项附加扣除白卡单独钉死，避免通用样式在这台机上看起来没改。
+         */
+        html.app-ios-iphone14promax .sy-zxk-card-head {
+            top: 0 !important;
+            left: 8% !important;
+            right: 6% !important;
+            height: 18% !important;
+            align-items: center !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-name {
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+        }
+        /* 灰常规字，与「专项附加扣除」同一行垂直居中；勿拉成蓝条上的白粗体徽章 */
+        html.app-ios-iphone14promax .sy-zxk-policy {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            align-self: center !important;
+            margin-left: auto !important;
+            min-width: 0 !important;
+            height: auto !important;
+            padding: 0 !important;
+            color: #6b7380 !important;
+            -webkit-text-fill-color: #6b7380 !important;
+            font-size: 13px !important;
+            font-weight: 400 !important;
+            line-height: 1 !important;
+            letter-spacing: 0 !important;
+            -webkit-text-size-adjust: 100% !important;
+            transform: none !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-msg {
+            top: 35% !important;
+            color: #111111 !important;
+            font-size: 17px !important;
+            font-weight: 600 !important;
+            font-family: "PingFangSC-Semibold", "PingFang SC", -apple-system, sans-serif !important;
+            -webkit-text-size-adjust: 100% !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-num {
+            font-size: 34px !important;
+            font-family: "PingFangSC-Semibold", "PingFang SC", -apple-system, sans-serif !important;
+        }
+        /* 官方扁宽双胶囊：丢掉拉伸 PNG，CSS 画蓝/橙条，视觉宽度约一倍 */
+        html.app-ios-iphone14promax .sy-zxk-btns {
+            left: 3% !important;
+            right: 3% !important;
+            bottom: 17% !important;
+            height: 32px !important;
+            max-height: 32px !important;
+            gap: 0 !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn {
+            flex: 1 1 50% !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn img {
+            display: none !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn-fill {
+            flex: 1 1 48% !important;
+            background: #3d8af5 !important;
+            border-radius: 16px 0 0 16px !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn-query {
+            flex: 1 1 52% !important;
+            margin-left: -8px !important;
+            background: #f5a623 !important;
+            border-radius: 0 16px 16px 0 !important;
+        }
+        html.app-ios-iphone14promax .sy-zxk-btn span {
+            font-size: 15px !important;
+            font-weight: 600 !important;
         }
 
         @media (min-width: 520px) {
@@ -1127,7 +1235,7 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260909-ios-14pm-fix3">
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home3">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
     <script src="/js/home-services.js?v=20260908-apk-icons"></script>
 </head>
@@ -1197,8 +1305,8 @@
                     <div class="sy-zxk-card-head">
                         <img class="sy-zxk-flame" src="/img/home/apk-zxk-flame.png?v=20260812-zxk3" alt="" width="96" height="96">
                         <span class="sy-zxk-name">专项附加扣除</span>
+                        <a href="zxk_zhengce.html" class="sy-zxk-policy" aria-label="相关政策">相关政策 &gt;</a>
                     </div>
-                    <a href="zxk_zhengce.html" class="sy-zxk-policy" aria-label="相关政策">相关政策 &gt;</a>
                     <div class="sy-zxk-msg" id="syZxkMsg">您已填报 <span class="sy-zxk-num">0</span> 项专项附加扣除</div>
                     <div class="sy-zxk-btns" id="syZxkBtns">
                         <a href="zxkouchu.html" class="sy-zxk-btn sy-zxk-btn-fill" aria-label="填报">
@@ -1425,6 +1533,11 @@
                             '您已填报 <span class="sy-zxk-num">' +
                             n +
                             '</span> 项专项附加扣除';
+                        try {
+                            if (typeof window.pinIPhone14ProMaxZxkCard === 'function') {
+                                window.pinIPhone14ProMaxZxkCard();
+                            }
+                        } catch (ePin) {}
                     } else {
                         emptyWrap.hidden = false;
                         filledWrap.hidden = true;

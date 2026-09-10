@@ -54,8 +54,8 @@ describe('homepage 查看更多 opens 警示案例专题', () => {
     expect(jingshi).toContain('auth-boot.js?v=20260905-no-home-refund');
     expect(jingshi).toContain('auth.js?v=20260905-no-home-refund');
     expect(shouye).toContain('auth-boot.js?v=20260909-android-statusbar-sep1');
-    expect(shouye).toContain('auth.js?v=20260909-ios-14pm-fix4');
-    expect(shouye).toContain('nav.css?v=20260909-ios-14pm-fix3');
+    expect(shouye).toContain('auth.js?v=20260910-ios-14pm-home3');
+    expect(shouye).toContain('nav.css?v=20260910-ios-14pm-home3');
   });
 
   it('is reachable without login and titled in admin analytics', () => {

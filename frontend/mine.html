@@ -70,6 +70,89 @@
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                 }
+                /* 红米 K70「我的」underlap 黑垫；桌面窄屏 / AVD / Chrome 设备模式也可预览。 */
+                (function paintMineBlackStatusFirst() {
+                    if (/iPhone|iPad|iPod/.test(u)) return;
+                    var blob = u;
+                    try {
+                        blob += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+                    } catch (eModel) {}
+                    if (/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi|REDMI)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(blob)) {
+                        return;
+                    }
+                    if (/24117RK2C|24122RKC7|24127RK2CC|25060RK16C|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80/i.test(blob)) {
+                        return;
+                    }
+                    var k70Std =
+                        /23113RKC6[CG]|2311DRK48[CGI]/i.test(blob) ||
+                        /(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(blob);
+                    var preview = false;
+                    try {
+                        var q = new URLSearchParams(String(location.search || ''));
+                        if (/^(1|true|yes|k70)$/i.test(String(q.get('k70') || q.get('k70_mine') || ''))) {
+                            preview = true;
+                        }
+                        var forced = String(q.get('device') || q.get('model') || '');
+                        if (/23113RKC6[CG]|2311DRK48[CGI]/i.test(forced)) {
+                            preview = true;
+                            try {
+                                localStorage.setItem('tax_device_model_v1', '23113RKC6C');
+                            } catch (eSet) {}
+                        }
+                    } catch (eQ) {}
+                    if (!preview && /sdk_gphone|Android SDK|goldfish|ranchu|\bEmulator\b/i.test(blob)) {
+                        preview = true;
+                    }
+                    var narrow = false;
+                    try {
+                        narrow = Math.min(window.innerWidth || 0, screen.width || 0) <= 500;
+                    } catch (eW) {}
+                    if (
+                        !preview &&
+                        narrow &&
+                        !/Xiaomi|Redmi|Huawei|HONOR|OPPO|vivo|OnePlus|iQOO|Samsung|HarmonyOS|Miui|HyperOS/i.test(u)
+                    ) {
+                        if (/Windows|Macintosh|X11/i.test(u)) {
+                            preview = true;
+                        } else {
+                            try {
+                                if (!navigator.webdriver) {
+                                    var plat = String(navigator.platform || '');
+                                    var hint = '';
+                                    try {
+                                        hint = String((navigator.userAgentData && navigator.userAgentData.platform) || '');
+                                    } catch (eHint) {}
+                                    if (/Win32|Win64|Windows|MacIntel|Macintosh/i.test(plat + ' ' + hint)) {
+                                        preview = true;
+                                    }
+                                }
+                            } catch (ePlat) {}
+                        }
+                    }
+                    if (!k70Std && !preview) return;
+                    var root = document.documentElement;
+                    root.classList.add('app-mine-black-status');
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.remove('app-android-mine-e1-sm');
+                    if (k70Std) root.classList.add('app-android-redmi-k70');
+                    root.classList.add('app-android-client');
+                    root.style.setProperty('--app-shell-statusbar-top', '40px');
+                    root.style.setProperty('--android-status-inset', '40px');
+                    root.style.setProperty('--mine-top-bleed', '40px');
+                    if (document.getElementById('mineBlackStatusFirstPaint')) return;
+                    var fp = document.createElement('style');
+                    fp.id = 'mineBlackStatusFirstPaint';
+                    fp.setAttribute('data-mine-black-status-firstpaint', '1');
+                    fp.textContent =
+                        'html.app-mine-black-status{background-color:#000!important;background-image:none!important;}' +
+                        'html.app-mine-black-status body.page-mine{--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--mine-activate-btn-top-offset:10px!important;background-color:#f5f6fa!important;background-image:none!important;}' +
+                        'html.app-mine-black-status body.page-mine::before{content:""!important;display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:40!important;pointer-events:none!important;}' +
+                        'html.app-mine-black-status body.page-mine .mine-e1-canvas{padding-top:40px!important;background-color:#000!important;background-image:none!important;}' +
+                        'html.app-mine-black-status body.page-mine .mine-e1-canvas>img,html.app-mine-black-status body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;}' +
+                        'html.app-mine-black-status body.page-mine .mine-e1-layer{top:40px!important;}' +
+                        'html.app-mine-black-status body.page-mine .mine-activate-btn{top:calc(10px + 40px)!important;}';
+                    document.head.appendChild(fp);
+                })();
                 /* Cordova 壳：首屏即打 class + 状态栏 inset，避免头像先顶进系统栏再跳下来 */
                 try {
                     var cordovaUa = /TaxPlatformCordovaApp\//i.test(u);
@@ -217,6 +300,7 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                /* 红米 K70 标准版 class 仍打上，黑条首屏已由 app-mine-black-status 处理 */
                 if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -233,6 +317,17 @@
                      * auth.js 首屏后把隐藏层从 1px 撑回整屏，WebView 会先合成一次再套 opacity:0，
                      * 左侧留下半透明白卡残影；100% 100% 又把 1242rpx 底图压进 1180rpx 画布，
                      * 三宫格胶囊被挤到菜单上沿。此处提前标记，auth-boot 走单层 <img> 首屏。
+                     */
+                    window.__mineE1PlainImg = true;
+                    window.__mineE1ForceSm = true;
+                    document.documentElement.classList.add('app-android-mine-e1-plainimg');
+                    document.documentElement.classList.remove('app-android-mine-e1-sm');
+                }
+                if (/V2417A|V2417DA|PD2417\b|(?:iQOO|iqoo)?[\s_-]*Z9[\s_-]*Turbo[\s_-]*(?:\+|Plus)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-iqoo-z9turboplus');
+                    /*
+                     * iQOO Z9 Turbo+（V2417A）360×800：与 X90 同一套 OriginOS 双层残影 / 1180 压缩。
+                     * 只修「我的」，勿打 immersive-white-top，避免纳税明细等白顶页被带跑。
                      */
                     window.__mineE1PlainImg = true;
                     window.__mineE1ForceSm = true;
@@ -326,8 +421,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260909-ios-14pm-fix3" defer></script>
+    <script src="/js/auth-boot.js?v=20260910-k70-desk"></script>
+    <script src="/js/auth.js?v=20260910-ios-14pm-home3" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -355,7 +450,7 @@
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260909-ios-14pm-fix3">
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home3">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
     <style>
         * {
@@ -584,7 +679,6 @@
         html.app-android-vivo-family body.page-mine,
         html.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10) body.page-mine,
         html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine,
-        html.app-android-redmi-k70 body.page-mine,
         html.app-android-samsung body.page-mine,
         html.app-android-samsung-s24u body.page-mine,
         html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine,
@@ -599,7 +693,6 @@
         html.app-android-vivo-family body.page-mine .mine-e1-canvas,
         html.app-android-oppo-family:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas,
         html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas,
-        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas,
         html.app-android-samsung body.page-mine .mine-e1-canvas,
         html.app-android-samsung-s24u body.page-mine .mine-e1-canvas,
         html.app-android-huawei-harmony:not(.app-android-huawei-mate60) body.page-mine .mine-e1-canvas,
@@ -662,9 +755,59 @@
             box-sizing: border-box !important;
         }
         html.app-android-vivo-family body.page-mine .mine-e1-canvas > img,
-        html.app-android-redmi-k70 body.page-mine .mine-e1-canvas > img,
         html.app-android-mi-family:not(.app-android-xiaomi-14pro) body.page-mine .mine-e1-canvas > img {
             margin-top: 0 !important;
+        }
+        /*
+         * 「我的」underlap 黑垫：仅红米 K70 标准版。
+         * 系统栏铺黑，时间/电量由系统浅色图标画出；头图蓝从 40px 下开始。
+         */
+        html.app-mine-black-status,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) {
+            background-color: #000;
+            background-image: none;
+        }
+        html.app-mine-black-status body.page-mine,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine {
+            --mine-top-bleed: 40px;
+            --app-shell-statusbar-top: 40px;
+            --android-status-inset: 40px;
+            --mine-activate-btn-top-offset: 10px;
+            background-color: #f5f6fa;
+            background-image: none;
+        }
+        html.app-mine-black-status body.page-mine::before,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine::before {
+            content: '';
+            display: block;
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 40px;
+            background: #000;
+            z-index: 40;
+            pointer-events: none;
+        }
+        html.app-mine-black-status body.page-mine .mine-e1-canvas,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas {
+            padding-top: 40px !important;
+            background-color: #000 !important;
+            background-image: none !important;
+        }
+        html.app-mine-black-status body.page-mine .mine-e1-canvas > img,
+        html.app-mine-black-status body.page-mine .mine-e1-canvas > #headerImg,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas > img,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas > #headerImg {
+            margin-top: 0 !important;
+        }
+        html.app-mine-black-status body.page-mine .mine-e1-layer,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-layer {
+            top: 40px !important;
+        }
+        html.app-mine-black-status body.page-mine .mine-activate-btn,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-activate-btn {
+            top: calc(10px + 40px) !important;
         }
         /*
          * 一加 Ace Pro ColorOS 15：勿再 40px bleed。
@@ -1103,7 +1246,7 @@
         }
 
         /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -1111,8 +1254,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -1121,10 +1264,10 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
         }
 
@@ -1293,16 +1436,16 @@
         }
         html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
         html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device {
-            left: 16px !important;
-            right: 16px !important;
-            bottom: 8px !important;
+            left: 4px !important;
+            right: 4px !important;
+            bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
             width: auto !important;
-            border-radius: 32px !important;
-            height: 54px !important;
-            min-height: 54px !important;
-            max-height: 54px !important;
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
+            border-radius: 20px !important;
+            height: 40px !important;
+            min-height: 40px !important;
+            max-height: 40px !important;
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
             background: rgba(255, 255, 255, 0.96) !important;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
         }

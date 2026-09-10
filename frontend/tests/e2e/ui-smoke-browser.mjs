@@ -612,7 +612,103 @@ async function assertAceProMineE1Pills(page, tag) {
   log(`${tag} ok acepro mine pills rpx=${rpxPx.toFixed(3)} pill=${m.pillTop.toFixed(1)}-${m.pillBottom.toFixed(1)}`);
 }
 
+async function assertMineBlackStatus(page, profile, tag) {
+  await page.goto(`${SITE_URL}/mine.html`, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.waitForFunction(
+      () =>
+        document.documentElement.classList.contains('app-mine-black-status') ||
+        document.documentElement.classList.contains('app-android-client'),
+      null,
+      { timeout: 15000 }
+    );
+  } catch (eWait) {
+    fail(`${tag} /mine.html did not apply android / black-status chrome`);
+  }
+  await page.waitForTimeout(800);
+  const m = await page.evaluate(() => {
+    const root = document.documentElement;
+    const canvas = document.getElementById('mineE1Canvas');
+    const img = document.getElementById('headerImg');
+    const btn = document.querySelector('.mine-activate-btn');
+    const cs = canvas ? getComputedStyle(canvas) : null;
+    const before = getComputedStyle(document.body, '::before');
+    const ir = img ? img.getBoundingClientRect() : null;
+    const br = btn ? btn.getBoundingClientRect() : null;
+    return {
+      classes: Array.from(root.classList),
+      padTop: cs ? parseFloat(cs.paddingTop) || 0 : 0,
+      canvasBg: cs ? cs.backgroundColor : '',
+      beforeH: parseFloat(before.height) || 0,
+      beforeDisplay: before.display || '',
+      beforeBg: before.backgroundColor || '',
+      imgTop: ir ? ir.top : null,
+      btnTop: br ? br.top : null
+    };
+  });
+  if (!m.classes.includes('app-mine-black-status')) {
+    fail(`${tag} /mine.html missing app-mine-black-status: ${m.classes.join(' ')}`);
+  }
+  if (profile.id === 'redmi-k70' && !m.classes.includes('app-android-redmi-k70')) {
+    fail(`${tag} /mine.html missing app-android-redmi-k70: ${m.classes.join(' ')}`);
+  }
+  if (m.classes.includes('app-android-redmi-k70-ultra')) {
+    fail(`${tag} /mine.html must not use K70 Ultra chrome: ${m.classes.join(' ')}`);
+  }
+  if (m.classes.includes('app-android-mine-e1-sm')) {
+    fail(`${tag} /mine.html still on @sm crop (would paint blue into the status bar)`);
+  }
+  if (m.padTop < 38 || m.padTop > 44) {
+    fail(`${tag} /mine.html canvas padTop=${m.padTop} (need ~40)`);
+  }
+  if (m.beforeDisplay === 'none' || m.beforeH < 38 || m.beforeH > 44) {
+    fail(`${tag} /mine.html black bar missing: display=${m.beforeDisplay} h=${m.beforeH}`);
+  }
+  if (m.btnTop != null && m.btnTop < 48) {
+    fail(`${tag} /mine.html activate sits in the status bar: top=${m.btnTop}`);
+  }
+  if (m.imgTop != null && m.imgTop < 35) {
+    fail(`${tag} /mine.html header under status bar: top=${m.imgTop}`);
+  }
+  try {
+    mkdirSync('/tmp/ui-smoke-shots', { recursive: true });
+    const shotPath = `/tmp/ui-smoke-shots/${profile.id}-mine-black-status.png`;
+    await page.screenshot({ path: shotPath });
+    log(`${tag} screenshot ${shotPath}`);
+  } catch (eShot) {
+    log(`${tag} skip mine screenshot: ${eShot && eShot.message ? eShot.message : eShot}`);
+  }
+  log(
+    `${tag} ok mine black-status pad=${m.padTop} bar=${m.beforeH} imgTop=${m.imgTop == null ? '-' : m.imgTop.toFixed(1)} btnTop=${m.btnTop == null ? '-' : m.btnTop.toFixed(1)}`
+  );
+}
+
+async function assertMineNotUnderlapBlack(page, profile, tag) {
+  await page.goto(`${SITE_URL}/mine.html`, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('app-android-client'),
+      null,
+      { timeout: 15000 }
+    );
+  } catch (eWait) {
+    log(`${tag} skip mine contrast (no android chrome)`);
+    return;
+  }
+  await page.waitForTimeout(600);
+  const classes = await page.evaluate(() => Array.from(document.documentElement.classList));
+  if (classes.includes('app-mine-black-status')) {
+    fail(`${tag} /mine.html must not use K70 underlap black pad: ${classes.join(' ')}`);
+  }
+  log(`${tag} ok mine is not underlap-black`);
+}
+
 async function runAndroidWhiteTop(page, profile, tag) {
+  if (profile.expect?.mineBlackStatus) {
+    await assertMineBlackStatus(page, profile, tag);
+  } else if (profile.id === 'xiaomi-15' || profile.id === 'redmi-k70-ultra') {
+    await assertMineNotUnderlapBlack(page, profile, tag);
+  }
   if (profile.expect?.mineE1PlainImg) {
     await assertMineE1SingleLayer(page, profile, tag);
   }

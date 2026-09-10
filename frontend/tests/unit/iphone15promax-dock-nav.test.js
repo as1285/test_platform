@@ -3,8 +3,6 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const UA_RE = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/;
-const SCREEN_RE =
-  /sides\.shortSide >= 428 && sides\.shortSide <= 432 && sides\.longSide >= 928 && sides\.longSide <= 936/;
 const DOCK_BOTTOM = 'bottom: 0 !important';
 const DOCK_SAFE = 'env(safe-area-inset-bottom';
 
@@ -20,12 +18,12 @@ const pages = {
 };
 
 describe('iPhone 15 Pro Max docked bottom nav', () => {
-  it('recognizes 15 Pro Max / 15 Plus by model and 430×932', () => {
+  it('recognizes 15 Pro Max / 15 Plus by model only, not 430×932', () => {
     expect(auth).toContain('function isIPhone15PlusProMaxLikeClient()');
     expect(auth).toContain('function isIPhone15ProMaxDockNavClient()');
     expect(auth).toMatch(/clientUaBlob\(\)/);
     expect(UA_RE.test(auth)).toBe(true);
-    expect(SCREEN_RE.test(auth)).toBe(true);
+    expect(auth).toContain('不认 430×932 屏幕兜底');
     expect(auth).toContain('isIPhone16ProMaxClient()');
   });
 
@@ -42,7 +40,7 @@ describe('iPhone 15 Pro Max docked bottom nav', () => {
   it('first-paints the docked tab pages so the capsule does not flash', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html, name).toContain('app-ios-iphone15promax');
-      expect(html, name).toMatch(/auth\.js\?v=2026090/);
+      expect(html, name).toMatch(/auth\.js\?v=2026091/);
       expect(UA_RE.test(html), name).toBe(true);
     });
   });

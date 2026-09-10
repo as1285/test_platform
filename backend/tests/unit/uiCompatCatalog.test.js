@@ -1,7 +1,7 @@
 'use strict';
 
 const catalog = require('../../src/admin/uiCompatCatalog');
-const { buildDeviceCompatReport, classifyOs } = require('../../src/admin/deviceStats');
+const { buildDeviceCompatReport, classifyOs, countRegisteredByPlatform } = require('../../src/admin/deviceStats');
 
 describe('uiCompatCatalog + deviceStats', () => {
   it('treats HarmonyOS as android', () => {
@@ -43,6 +43,7 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(catalog.modelMatchesBlob(a57, 'PHJ110 OPPO A58')).toBe(false);
     const k70 = catalog.listCatalogModels().find((m) => m.id === 'redmi-k70');
     expect(catalog.modelMatchesBlob(k70, '23113RKC6C')).toBe(true);
+    expect(k70.issues.some((i) => i.page === 'mine' && /underlap 黑垫/.test(i.title))).toBe(true);
   });
 
   it('matches Mate 30 without taking Mate 30 Pro or Mate 60', () => {
@@ -51,6 +52,14 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(catalog.modelMatchesBlob(m, 'Android 10; TAS-AN00 Build/HUAWEITAS-AN00')).toBe(true);
     expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 30 Pro LIO-AN00')).toBe(false);
     expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 60 ALN-AL00')).toBe(false);
+  });
+
+  it('matches iQOO Z9 Turbo+ without taking Z9 Turbo', () => {
+    const m = catalog.listCatalogModels().find((x) => x.id === 'iqoo-z9turboplus');
+    expect(catalog.modelMatchesBlob(m, 'Android 15; V2417A Build/AP3A.240905.015.A2')).toBe(true);
+    expect(catalog.modelMatchesBlob(m, 'iQOO Z9 Turbo+ PD2417')).toBe(true);
+    expect(catalog.modelMatchesBlob(m, 'V2352A iQOO Z9 Turbo')).toBe(false);
+    expect(catalog.modelMatchesBlob(m, 'V2361A iQOO Z9')).toBe(false);
   });
 
   it('matches S50 Pro mini without vivo prefix', () => {
@@ -84,6 +93,21 @@ describe('uiCompatCatalog + deviceStats', () => {
     const shuiming = report.page_compare.find((p) => p.page === 'shuiming');
     expect(shuiming.ios_users).toBe(2);
     expect(report.unmatched.some((u) => /Pixel/.test(u.label))).toBe(true);
+  });
+
+  it('counts current registered users by first device platform', () => {
+    const registered = countRegisteredByPlatform(
+      [{ username: 'a' }, { username: 'b' }, { username: 'c' }],
+      [
+        { username: 'a', user_agent_short: 'Mozilla iPhone OS 18_0', first_seen: '2026-01-01' },
+        { username: 'a', user_agent_short: 'Android 15', first_seen: '2026-06-01' },
+        { username: 'b', user_agent_short: 'Mozilla HarmonyOS ArkWeb HUAWEI', first_seen: '2026-02-01' }
+      ]
+    );
+    expect(registered.registered_total).toBe(3);
+    expect(registered.registered_ios).toBe(1);
+    expect(registered.registered_android).toBe(1);
+    expect(registered.registered_other).toBe(1);
   });
 
   it('does not treat locale tags as Android model names', () => {

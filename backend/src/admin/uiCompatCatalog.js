@@ -378,7 +378,13 @@ var MODELS = [
     match: ['K70', 'Redmi\\s*K70', 'K70\\s*(?:至尊|Ultra)', '23113RKC6C', '23113RKC6G'],
     issues: [
       { page: 'shouye', title: '勿套小米 14 的 72px 留白', summary: '状态栏多为独立黑条，收紧首页顶距。', since: '2026-07-27' },
-      { page: 'shuiming', title: 'K70 至尊白顶栏避让', summary: 'WebView 压在状态栏下的机型须留顶距。', since: '2026-08-13' }
+      { page: 'shuiming', title: 'K70 至尊白顶栏避让', summary: 'WebView 压在状态栏下的机型须留顶距。', since: '2026-08-13' },
+      {
+        page: 'mine',
+        title: '「我的」underlap 黑垫',
+        summary: 'K70 标准版（23113RKC6C）「我的」页顶 40px 黑垫；时间/电量由系统浅色图标画出，激活钮下移，勿把头图蓝铺进系统栏。至尊档仍走白顶沉浸。',
+        since: '2026-09-10'
+      }
     ]
   },
   {
@@ -577,6 +583,21 @@ var MODELS = [
     label: 'iQOO 15',
     match: ['iQOO\\s*15', 'V2505A', 'I2501'],
     issues: [{ page: 'shuiming', title: '纳税明细顶栏避开系统状态栏', summary: '强制 40px，UA 常无 vivo/iqoo 字样。', since: '2026-08-25' }]
+  },
+  {
+    id: 'iqoo-z9turboplus',
+    platform: 'android',
+    family: 'vivo',
+    label: 'iQOO Z9 Turbo+',
+    match: ['V2417A', 'V2417DA', 'PD2417', 'Z9[\\s_-]*Turbo[\\s_-]*(?:\\+|Plus)'],
+    issues: [
+      {
+        page: 'mine',
+        title: '单层底图，避开 @sm 叠字',
+        summary: '360×800 OriginOS 与 X90 同坑：双层底图残影 + 1180 压缩。只改「我的」。',
+        since: '2026-09-10'
+      }
+    ]
   },
   {
     id: 'vivo-s50promini',

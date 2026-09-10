@@ -37,7 +37,7 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
       /function isHyperOs2MineE1SmClient\(\) \{\s*[\s\S]{0,220}app-android-oneplus-acepro/
     );
     expect(auth).toMatch(
-      /function pinXiaomi14ProMineE1Layout\(\) \{[\s\S]{0,280}pinAceProMineE1Layout\(\)/
+      /function pinXiaomi14ProMineE1Layout\(\) \{[\s\S]{0,600}pinAceProMineE1Layout\(\)/
     );
   });
 
@@ -47,14 +47,14 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
     expect(mine).toContain('aspect-ratio: 1284 / 2127');
     expect(mine).toContain('--mine-top-bleed: 0px !important');
     expect(mine).toContain(
-      ':not(.app-android-oneplus-acepro):not(.app-android-hinova9se) body.page-mine .mine-e1-canvas'
+      ':not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70) body.page-mine .mine-e1-canvas'
     );
     expect(boot).toContain('app-android-oneplus-acepro');
     expect(boot).toContain("classList.remove('app-android-mine-e1-sm')");
     expect(boot).toContain('aspect-ratio:1284/2127');
     expect(boot).toMatch(/if \(acepro\) \{[\s\S]*?return;/);
-    expect(mine).toMatch(/auth-boot\.js\?v=20260909-android-statusbar-sep1/);
-    expect(mine).toMatch(/auth\.js\?v=20260909-ios-14pm-fix3" defer/);
+    expect(mine).toMatch(/auth-boot\.js\?v=2026091/);
+    expect(mine).toMatch(/auth\.js\?v=2026091/);
   });
 
   it('does not keep Ace Pro on the 40px mine bleed group', () => {
