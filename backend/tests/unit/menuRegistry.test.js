@@ -110,6 +110,18 @@ describe('menuRegistry', () => {
       tab: 'monitor',
       contentPage: 'server-monitor'
     });
+    expect(parseAdminRoute('admin-operation-log')).toEqual({
+      page: 'login-log',
+      hub: 'login-log',
+      tab: 'op-log',
+      contentPage: 'admin-operation-log'
+    });
+    expect(parseAdminRoute('login-log/op-log')).toEqual({
+      page: 'login-log',
+      hub: 'login-log',
+      tab: 'op-log',
+      contentPage: 'admin-operation-log'
+    });
   });
 
   it('getPageDef finds appearance under ops-config', () => {
@@ -156,6 +168,34 @@ describe('menuRegistry', () => {
     const def = getPageDef('admin-accounts');
     expect(def.super_only).toBe(true);
     expect(def.assignable).toBe(false);
+  });
+
+  it('admin-operation-log is super_only and not granted by login-log', () => {
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['login-log'] }, 'admin-operation-log')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ['admin-operation-log'] },
+        'admin-operation-log'
+      )
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: true, menus: [] }, 'admin-operation-log')
+    ).toBe(true);
+    const def = getPageDef('admin-operation-log');
+    expect(def.super_only).toBe(true);
+    expect(def.assignable).toBe(false);
+    expect(def.strict_hub_tab).toBe(true);
+    expect(ADMIN_HUB_DEFS['login-log'].tabs.map((t) => t.id)).toEqual([
+      'accounts',
+      'downline',
+      'admin',
+      'op-log',
+      'user',
+      'monitor',
+      'ip'
+    ]);
   });
 
   it('downline-admins is assignable to sub-admins and hidden from super sidebar', () => {
@@ -346,6 +386,7 @@ describe('menuRegistry', () => {
     expect(adminProfileCanAccessPage(onlyHub, 'server-monitor')).toBe(false);
     expect(adminProfileCanAccessPage(onlyHub, 'downline-admins')).toBe(false);
     expect(adminProfileCanAccessPage(onlyHub, 'admin-accounts')).toBe(false);
+    expect(adminProfileCanAccessPage(onlyHub, 'admin-operation-log')).toBe(false);
 
     const onlyDownline = { is_super: false, menus: ['downline-admins'] };
     expect(adminProfileCanAccessPage(onlyDownline, 'login-log')).toBe(true);
@@ -385,6 +426,7 @@ describe('menuRegistry', () => {
     expect(assignable).not.toContain('zaizhi-cert');
     expect(assignable).not.toContain('gjj-demo');
     expect(assignable).not.toContain('user-login-log');
+    expect(assignable).not.toContain('admin-operation-log');
     expect(assignable).not.toContain('analytics-activity');
     expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
     expect(getPageDef('peer-accounts')).toEqual(getPageDef('rename-tax-daily'));

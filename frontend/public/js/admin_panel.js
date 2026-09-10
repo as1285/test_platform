@@ -801,9 +801,10 @@
         var codeLimit = 8;
         var xianyuCodePage = 1;
         var xianyuCodeLimit = 8;
-        var loginLogMode = 'admin-login';
         var loginRecentPage = 1;
         var loginRecentLimit = 20;
+        var adminOpLogPage = 1;
+        var adminOpLogLimit = 20;
         var userLoginPage = 1;
         var userLoginLimit = 20;
         var currentAdminProfile = { username: '', full_name: '', is_super: false, is_root_admin: false, menus: [] };
@@ -877,7 +878,7 @@
                 users: ['rename-tax-daily', 'user-emails', 'users-deleted', 'user-data', 'tax-records-edit', 'peer-accounts'],
                 'lizhi-cert': ['zaizhi-cert'],
                 'sbdy-demo': ['gjj-demo', 'lizhi-cert', 'zaizhi-cert', 'ccb-flow', 'najilu-qr'],
-                'login-log': ['user-login-log', 'admin-accounts', 'downline-admins', 'server-monitor', 'blocked-ips'],
+                'login-log': ['user-login-log', 'admin-accounts', 'downline-admins', 'admin-operation-log', 'server-monitor', 'blocked-ips'],
                 'insights-product': [
                     'analytics-activity',
                     'analytics-devices',
@@ -917,6 +918,7 @@
                 'user-login-log': 'login-log',
                 'admin-accounts': 'login-log',
                 'downline-admins': 'login-log',
+                'admin-operation-log': 'login-log',
                 'server-monitor': 'login-log',
                 'blocked-ips': 'login-log',
                 'analytics-activity': 'insights-product',
@@ -939,7 +941,8 @@
                 menuKey === 'blocked-ips' ||
                 menuKey === 'server-monitor' ||
                 menuKey === 'downline-admins' ||
-                menuKey === 'admin-accounts'
+                menuKey === 'admin-accounts' ||
+                menuKey === 'admin-operation-log'
             ) {
                 return false;
             }
@@ -1010,6 +1013,7 @@
                 'admin-accounts',
                 'downline-admins',
                 'login-log',
+                'admin-operation-log',
                 'user-login-log',
                 'server-monitor'
             ];
@@ -1211,6 +1215,7 @@
                     { id: 'accounts', label: '账号权限', page: 'admin-accounts' },
                     { id: 'downline', label: '下线管理员', page: 'downline-admins' },
                     { id: 'admin', label: '管理登录', page: 'login-log' },
+                    { id: 'op-log', label: '操作日志', page: 'admin-operation-log' },
                     { id: 'user', label: '用户登录', page: 'user-login-log' },
                     { id: 'monitor', label: '监控', page: 'server-monitor' },
                     { id: 'ip', label: 'IP 黑名单', page: 'blocked-ips' }
@@ -1349,7 +1354,7 @@
 
         /**
          * 系统与安全 hub 的 TAB 独立授权：
-         * - 账号权限：仅超管
+         * - 账号权限 / 操作日志：仅超管（admin）
          * - 下线管理员：需精确 downline-admins（超管不显示）
          * - 管理登录：需精确 login-log
          * - 用户登录：随 login-log（不可单独勾选）
@@ -1361,7 +1366,7 @@
             if (hubKey !== 'login-log') {
                 return adminHasMenu(tabPage);
             }
-            if (tabPage === 'admin-accounts') {
+            if (tabPage === 'admin-accounts' || tabPage === 'admin-operation-log') {
                 return !!(currentAdminProfile && currentAdminProfile.is_super);
             }
             if (tabPage === 'downline-admins') {
@@ -1641,6 +1646,14 @@
                     loginRecentLimit = parseInt(sz.value, 10) || 20;
                 }
                 loadLoginRecentPage(1);
+            }
+            if (pageKey === 'admin-operation-log') {
+                adminOpLogPage = 1;
+                var opSz = document.getElementById('adminOpLogPageSize');
+                if (opSz) {
+                    adminOpLogLimit = parseInt(opSz.value, 10) || 20;
+                }
+                loadAdminOperationLogPage(1);
             }
             if (pageKey === 'user-login-log') {
                 userLoginPage = 1;
@@ -2946,47 +2959,23 @@
                 loginRecentPage = Math.max(1, parseInt(page, 10) || 1);
             }
             var lim = loginRecentLimit;
-            var modeEl = document.getElementById('loginLogMode');
-            if (modeEl) {
-                loginLogMode = modeEl.value === 'admin-operation' ? 'admin-operation' : 'admin-login';
-            }
-            var hintEl = document.getElementById('loginLogHint');
-            var theadEl = document.getElementById('loginLogThead');
-            if (loginLogMode === 'admin-operation') {
-                if (hintEl) hintEl.textContent = '后台账号操作日志（含请求路径、目标账号、执行结果、IP、设备）。';
-                if (theadEl) {
-                    theadEl.innerHTML =
-                        '<tr><th>时间</th><th>账号</th><th>姓名</th><th>方法</th><th>路径</th><th>动作</th><th>目标账号</th><th>结果</th><th>状态码</th><th>IP/城市</th><th>设备</th></tr>';
-                }
-            } else {
-                if (hintEl) hintEl.textContent = '后台账号登录记录（成功/失败），含 IP、设备信息。';
-                if (theadEl) {
-                    theadEl.innerHTML = '<tr><th>时间</th><th>账号</th><th>结果</th><th>IP</th><th>城市</th><th>设备</th><th>原因</th></tr>';
-                }
-            }
-            var loadingColspan = loginLogMode === 'admin-operation' ? 11 : 7;
-            document.getElementById('loginLogTbody').innerHTML =
-                '<tr><td colspan="' + loadingColspan + '">加载中…</td></tr>';
+            var tbody = document.getElementById('loginLogTbody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
 
-            var query = '';
-            var uname = document.getElementById('loginLogAdminUsername').value.trim();
-            var okFilter = document.getElementById('loginLogOkFilter').value;
-            var base = loginLogMode === 'admin-operation' ? 'api/admin/admin-operation-logs' : 'api/admin/admin-login-logs';
-            query +=
-                base +
-                '?page=' +
+            var unameEl = document.getElementById('loginLogAdminUsername');
+            var okEl = document.getElementById('loginLogOkFilter');
+            var uname = unameEl ? unameEl.value.trim() : '';
+            var okFilter = okEl ? okEl.value : '';
+            var query =
+                'api/admin/admin-login-logs?page=' +
                 encodeURIComponent(loginRecentPage) +
                 '&limit=' +
                 encodeURIComponent(lim);
-            if (uname) {
-                query += '&username=' + encodeURIComponent(uname);
-            }
-            if (okFilter === '1' || okFilter === '0') {
-                query += '&ok=' + encodeURIComponent(okFilter);
-            }
+            if (uname) query += '&username=' + encodeURIComponent(uname);
+            if (okFilter === '1' || okFilter === '0') query += '&ok=' + encodeURIComponent(okFilter);
             adminFetch(query)
                 .then(function (r) {
-                    return (window.adminParseJson||function(r){return r.json();})(r);
+                    return (window.adminParseJson || function (r) { return r.json(); })(r);
                 })
                 .then(function (recent) {
                     var info = document.getElementById('loginLogPageInfo');
@@ -3002,34 +2991,6 @@
                             var okBadge = row.ok
                                 ? '<span class="badge badge-yes">成功</span>'
                                 : '<span class="badge badge-no">失败</span>';
-                            if (loginLogMode === 'admin-operation') {
-                                var codeText = String(row.status_code != null ? row.status_code : '—');
-                                rr +=
-                                    '<tr><td>' +
-                                    formatDt(row.created_at) +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.admin_username || '') +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.admin_full_name || '—') +
-                                    '</td><td>' +
-                                    esc(row.method || '—') +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.path || '—') +
-                                    '</td><td>' +
-                                    esc(row.action || '—') +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.target_username || '—') +
-                                    '</td><td>' +
-                                    okBadge +
-                                    '</td><td>' +
-                                    esc(codeText) +
-                                    '</td><td class="cell-break">' +
-                                    esc((row.ip || '—') + ' / ' + (row.city || '—')) +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.device_desc || '—') +
-                                    '</td></tr>';
-                                return;
-                            }
                             rr +=
                                 '<tr><td>' +
                                 formatDt(row.created_at) +
@@ -3047,49 +3008,120 @@
                                 esc(row.reason || '—') +
                                 '</td></tr>';
                         });
-                        document.getElementById('loginLogTbody').innerHTML =
-                            rr || '<tr><td colspan="' + loadingColspan + '">暂无记录</td></tr>';
+                        if (tbody) tbody.innerHTML = rr || '<tr><td colspan="7">暂无记录</td></tr>';
                         if (info) {
                             info.textContent =
-                                '第 ' +
-                                cur +
-                                ' / ' +
-                                (tp > 0 ? tp : 1) +
-                                ' 页 · 共 ' +
-                                total +
-                                ' 条';
+                                '第 ' + cur + ' / ' + (tp > 0 ? tp : 1) + ' 页 · 共 ' + total + ' 条';
                         }
-                        if (prevBtn) {
-                            prevBtn.disabled = cur <= 1;
-                        }
-                        if (nextBtn) {
-                            nextBtn.disabled = tp <= 0 || cur >= tp;
-                        }
+                        if (prevBtn) prevBtn.disabled = cur <= 1;
+                        if (nextBtn) nextBtn.disabled = tp <= 0 || cur >= tp;
                     } else {
-                        document.getElementById('loginLogTbody').innerHTML =
-                            '<tr><td colspan="' + loadingColspan + '">' + esc(recent.msg || '加载失败') + '</td></tr>';
-                        if (info) {
-                            info.textContent = '—';
+                        if (tbody) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="7">' + esc(recent.msg || '加载失败') + '</td></tr>';
                         }
-                        if (prevBtn) {
-                            prevBtn.disabled = true;
-                        }
-                        if (nextBtn) {
-                            nextBtn.disabled = true;
-                        }
+                        if (info) info.textContent = '—';
+                        if (prevBtn) prevBtn.disabled = true;
+                        if (nextBtn) nextBtn.disabled = true;
                     }
                 })
                 .catch(function () {
-                    document.getElementById('loginLogTbody').innerHTML =
-                        '<tr><td colspan="' + loadingColspan + '">网络错误</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
                     var prevBtn = document.getElementById('loginLogPrev');
                     var nextBtn = document.getElementById('loginLogNext');
-                    if (prevBtn) {
-                        prevBtn.disabled = true;
+                    if (prevBtn) prevBtn.disabled = true;
+                    if (nextBtn) nextBtn.disabled = true;
+                });
+        }
+
+        function loadAdminOperationLogPage(page) {
+            if (page != null && isFinite(page)) {
+                adminOpLogPage = Math.max(1, parseInt(page, 10) || 1);
+            }
+            var tbody = document.getElementById('adminOpLogTbody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="12">加载中…</td></tr>';
+            var unameEl = document.getElementById('adminOpLogUsername');
+            var pathEl = document.getElementById('adminOpLogPath');
+            var okEl = document.getElementById('adminOpLogOkFilter');
+            var uname = unameEl ? unameEl.value.trim() : '';
+            var pathQ = pathEl ? pathEl.value.trim() : '';
+            var okFilter = okEl ? okEl.value : '';
+            var query =
+                'api/admin/admin-operation-logs?page=' +
+                encodeURIComponent(adminOpLogPage) +
+                '&limit=' +
+                encodeURIComponent(adminOpLogLimit);
+            if (uname) query += '&username=' + encodeURIComponent(uname);
+            if (pathQ) query += '&path=' + encodeURIComponent(pathQ);
+            if (okFilter === '1' || okFilter === '0') query += '&ok=' + encodeURIComponent(okFilter);
+            adminFetch(query)
+                .then(function (r) {
+                    return (window.adminParseJson || function (r) { return r.json(); })(r);
+                })
+                .then(function (recent) {
+                    var info = document.getElementById('adminOpLogPageInfo');
+                    var prevBtn = document.getElementById('adminOpLogPrev');
+                    var nextBtn = document.getElementById('adminOpLogNext');
+                    if (recent.code === 200 && recent.data && recent.data.items) {
+                        var total = recent.data.total != null ? Number(recent.data.total) : 0;
+                        var tp = recent.data.total_pages != null ? Number(recent.data.total_pages) : 0;
+                        var cur = recent.data.page != null ? Number(recent.data.page) : adminOpLogPage;
+                        adminOpLogPage = cur;
+                        var rr = '';
+                        recent.data.items.forEach(function (row) {
+                            var okBadge = row.ok
+                                ? '<span class="badge badge-yes">成功</span>'
+                                : '<span class="badge badge-no">失败</span>';
+                            rr +=
+                                '<tr><td>' +
+                                formatDt(row.created_at) +
+                                '</td><td class="cell-break">' +
+                                esc(row.admin_username || '') +
+                                '</td><td class="cell-break">' +
+                                esc(row.admin_full_name || '—') +
+                                '</td><td>' +
+                                esc(row.method || '—') +
+                                '</td><td class="cell-break">' +
+                                esc(row.path || '—') +
+                                '</td><td>' +
+                                esc(row.action || '—') +
+                                '</td><td class="cell-break">' +
+                                esc(row.target_username || '—') +
+                                '</td><td>' +
+                                okBadge +
+                                '</td><td>' +
+                                esc(String(row.status_code != null ? row.status_code : '—')) +
+                                '</td><td class="cell-break">' +
+                                esc((row.ip || '—') + ' / ' + (row.city || '—')) +
+                                '</td><td class="cell-break">' +
+                                esc(row.device_desc || '—') +
+                                '</td><td class="cell-break">' +
+                                esc(row.request_brief || '—') +
+                                '</td></tr>';
+                        });
+                        if (tbody) tbody.innerHTML = rr || '<tr><td colspan="12">暂无记录</td></tr>';
+                        if (info) {
+                            info.textContent =
+                                '第 ' + cur + ' / ' + (tp > 0 ? tp : 1) + ' 页 · 共 ' + total + ' 条';
+                        }
+                        if (prevBtn) prevBtn.disabled = cur <= 1;
+                        if (nextBtn) nextBtn.disabled = tp <= 0 || cur >= tp;
+                    } else {
+                        if (tbody) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="12">' + esc(recent.msg || '加载失败') + '</td></tr>';
+                        }
+                        if (info) info.textContent = '—';
+                        if (prevBtn) prevBtn.disabled = true;
+                        if (nextBtn) nextBtn.disabled = true;
                     }
-                    if (nextBtn) {
-                        nextBtn.disabled = true;
-                    }
+                })
+                .catch(function () {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="12">网络错误</td></tr>';
+                    var prevBtn = document.getElementById('adminOpLogPrev');
+                    var nextBtn = document.getElementById('adminOpLogNext');
+                    if (prevBtn) prevBtn.disabled = true;
+                    if (nextBtn) nextBtn.disabled = true;
                 });
         }
 
@@ -7294,6 +7326,7 @@
             'insights-product': '数据分析',
             'insights-growth': '增长洞察',
             'admin-accounts': '账号权限',
+            'admin-operation-log': '操作日志',
             'downline-admins': '下线管理员',
             'server-monitor': '监控',
             'sbdy-demo': '业务工具',
@@ -8860,6 +8893,17 @@
                 }
                 return '<span class="hint">—</span>';
             }
+            function accountJumpButton(username) {
+                var name = String(username || '').trim();
+                if (!name) return '—';
+                return (
+                    '<button type="button" class="admin-user-jump js-bid-list-open-user" data-u="' +
+                    esc(name) +
+                    '" title="跳转到注册用户">' +
+                    esc(name) +
+                    '</button>'
+                );
+            }
             function render(items) {
                 if (!items.length) {
                     tbody.innerHTML = '<tr><td colspan="8" class="hint">暂无记录</td></tr>';
@@ -8871,7 +8915,7 @@
                             '<tr><td>' +
                             fmtTime(b.created_at) +
                             '</td><td>' +
-                            esc(b.username) +
+                            accountJumpButton(b.username) +
                             '</td><td>' +
                             esc(b.sku_label || b.sku_id) +
                             '</td><td>' +
@@ -8938,6 +8982,11 @@
                     });
             }
             tbody.addEventListener('click', function (ev) {
+                var userBtn = ev.target.closest('.js-bid-list-open-user');
+                if (userBtn) {
+                    jumpToRegisteredUser(userBtn.getAttribute('data-u'));
+                    return;
+                }
                 var btn = ev.target.closest('.bid-accept, .bid-reject');
                 if (!btn) return;
                 var id = btn.getAttribute('data-id');
@@ -10522,14 +10571,37 @@
             loginRecentLimit = parseInt(document.getElementById('loginLogPageSize').value, 10) || 20;
             loadLoginRecentPage(1);
         });
-        document.getElementById('loginLogMode').addEventListener('change', function () {
-            loginLogMode = document.getElementById('loginLogMode').value === 'admin-operation' ? 'admin-operation' : 'admin-login';
-            loadLoginRecentPage(1);
-        });
         document.getElementById('btnRefreshLoginLog').addEventListener('click', function () {
             loginRecentLimit = parseInt(document.getElementById('loginLogPageSize').value, 10) || 20;
             loadLoginRecentPage(1);
         });
+        var adminOpLogPrev = document.getElementById('adminOpLogPrev');
+        if (adminOpLogPrev) {
+            adminOpLogPrev.addEventListener('click', function () {
+                if (adminOpLogPage > 1) loadAdminOperationLogPage(adminOpLogPage - 1);
+            });
+        }
+        var adminOpLogNext = document.getElementById('adminOpLogNext');
+        if (adminOpLogNext) {
+            adminOpLogNext.addEventListener('click', function () {
+                loadAdminOperationLogPage(adminOpLogPage + 1);
+            });
+        }
+        var adminOpLogPageSize = document.getElementById('adminOpLogPageSize');
+        if (adminOpLogPageSize) {
+            adminOpLogPageSize.addEventListener('change', function () {
+                adminOpLogLimit = parseInt(adminOpLogPageSize.value, 10) || 20;
+                loadAdminOperationLogPage(1);
+            });
+        }
+        var btnRefreshAdminOpLog = document.getElementById('btnRefreshAdminOpLog');
+        if (btnRefreshAdminOpLog) {
+            btnRefreshAdminOpLog.addEventListener('click', function () {
+                var sz = document.getElementById('adminOpLogPageSize');
+                adminOpLogLimit = sz ? parseInt(sz.value, 10) || 20 : 20;
+                loadAdminOperationLogPage(1);
+            });
+        }
         document.getElementById('userLoginLogPrev').addEventListener('click', function () {
             if (userLoginPage > 1) {
                 loadUserLoginRecentPage(userLoginPage - 1);
@@ -10666,7 +10738,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v24-hub6';
+                var MENU_TREE_VER = 'ops-ia-v25-op-log';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

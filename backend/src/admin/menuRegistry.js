@@ -450,7 +450,19 @@ const ADMIN_PAGE_DEFS = [
     module: 'logs',
     order: 30,
     /* 有任一子页权限仍可进侧栏 hub；子 TAB 各自独立，不因 hub 全开 */
-    alias_menus: ['user-login-log', 'admin-accounts', 'downline-admins', 'server-monitor', 'blocked-ips']
+    alias_menus: ['user-login-log', 'admin-accounts', 'downline-admins', 'admin-operation-log', 'server-monitor', 'blocked-ips']
+  },
+  {
+    page: 'admin-operation-log',
+    menu_key: 'admin-operation-log',
+    label: '操作日志',
+    group: 'system',
+    module: 'logs',
+    order: 35,
+    super_only: true,
+    assignable: false,
+    strict_hub_tab: true,
+    nav_hidden: true
   },
   {
     page: 'user-login-log',
@@ -608,6 +620,7 @@ const ADMIN_HUB_DEFS = {
       { id: 'accounts', label: '账号权限', page: 'admin-accounts' },
       { id: 'downline', label: '下线管理员', page: 'downline-admins' },
       { id: 'admin', label: '管理登录', page: 'login-log' },
+      { id: 'op-log', label: '操作日志', page: 'admin-operation-log' },
       { id: 'user', label: '用户登录', page: 'user-login-log' },
       { id: 'monitor', label: '监控', page: 'server-monitor' },
       { id: 'ip', label: 'IP 黑名单', page: 'blocked-ips' }

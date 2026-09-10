@@ -34,6 +34,10 @@ const {
   adminHasFullUserScope,
   fullUserScopeUsernameSqlIn
 } = require('../admin/fullUserScope');
+const {
+  rootAdminUsername,
+  shouldRecordAdminOperation
+} = require('../admin/operationLog');
 const settingsPolicy = require('../shared/settingsPolicy');
 const { addDaysToYmd, analyticsPeriodDateKeys } = require('../shared/ymd');
 const {
@@ -12476,13 +12480,12 @@ async function recordAdminLoginAttempt(adminUsername, ok, reason, req) {
   }
 }
 
-/** 记录：admin operation log */
+/** 记录：子管理员写操作（超管 / admin 不记） */
 async function recordAdminOperationLog(req, res) {
   if (!pool || !req || !req.admin || !res) return;
+  if (!shouldRecordAdminOperation(req.admin, req, ADMIN_PANEL_USER)) return;
   var p = sanitizeAuditText(req.path || '', 255);
-  if (!p || p === '/api/admin/login' || p === '/api/admin/admin-login-logs' || p === '/api/admin/admin-operation-logs') {
-    return;
-  }
+  if (!p) return;
   var method = sanitizeAuditText(String(req.method || '').toUpperCase(), 16) || 'GET';
   var adminUsername = sanitizeAuditText(req.admin.username, 255);
   var adminFullName = sanitizeAuditText(req.admin.full_name || '', 255);
@@ -24501,9 +24504,12 @@ async function handleAdminLoginLogs(req, res) {
   }
 }
 
-/** 操作日志 */
+/** 操作日志（仅超管；不含 admin 自己） */
 async function handleAdminOperationLogs(req, res) {
   try {
+    if (!req.admin || !req.admin.is_super) {
+      return res.status(403).json({ code: 403, msg: '仅系统管理员可查看操作日志' });
+    }
     var page = parseInt(req.query.page, 10);
     if (!isFinite(page) || page < 1) page = 1;
     var limit = parseInt(req.query.limit, 10);
@@ -24513,12 +24519,12 @@ async function handleAdminOperationLogs(req, res) {
     var qOk = req.query.ok != null ? String(req.query.ok).trim() : '';
     var qPath = sanitizeAuditText(req.query.path || '', 255);
 
-    var where = [];
-    var params = [];
-    if (!req.admin || !req.admin.is_super) {
-      where.push('admin_username = ?');
-      params.push(req.admin.username);
-    } else if (qUsername) {
+    var where = [
+      'LOWER(admin_username) <> ?',
+      'admin_username NOT IN (SELECT username FROM admin_accounts WHERE is_super = 1)'
+    ];
+    var params = [rootAdminUsername(ADMIN_PANEL_USER)];
+    if (qUsername) {
       where.push('admin_username LIKE ?');
       params.push('%' + qUsername + '%');
     }

@@ -17,6 +17,7 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
     expect(adminPanel).toContain("tabPage === 'blocked-ips'");
     expect(adminPanel).toContain("tabPage === 'server-monitor'");
     expect(adminPanel).toContain("adminHasExactMenu('login-log')");
+    expect(adminPanel).toContain("tabPage === 'admin-accounts' || tabPage === 'admin-operation-log'");
     expect(adminPanel).toContain('listVisibleHubTabs(hubKey)');
     expect(adminPanel).toMatch(/无权限 TAB：落到该 hub 第一个可见 TAB/);
   });
@@ -30,6 +31,8 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20260909-bid-follow-user-jump');
+    expect(html).toContain('admin_panel.js?v=20260910-admin-op-log');
+    expect(html).toContain('id="page-admin-operation-log"');
+    expect(html).not.toContain('id="loginLogMode"');
   });
 });

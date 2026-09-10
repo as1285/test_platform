@@ -44,6 +44,7 @@
     'user-data': 'user-data',
     'tax-records-edit': 'user-data',
     'login-log': 'logs',
+    'admin-operation-log': 'logs',
     'user-login-log': 'logs',
     'server-monitor': 'monitor',
     'ops-board': 'ops-conversion',

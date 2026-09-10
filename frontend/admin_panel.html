@@ -113,6 +113,7 @@
                             <button type="button" class="btn-sm btn-page" id="btnReloadBids">刷新</button>
                             <span class="hint" id="bidCounts"></span>
                             <button type="button" class="btn-sm btn-page" id="btnJumpBidFollowup" title="查看已通过用户是否付费">已通过跟进</button>
+                            <span class="hint">点击账号可跳到「注册用户」定位。</span>
                         </div>
                         <div class="scroll-x">
                             <table>
@@ -3996,15 +3997,8 @@
                 <div id="page-login-log" class="page-panel" role="tabpanel">
                     <section>
                         <h2>管理账号登录流水</h2>
-                        <p class="hint" id="loginLogHint">管理后台账号的登录记录与操作日志，按时间倒序展示（含 IP、设备）。</p>
+                        <p class="hint" id="loginLogHint">管理后台账号的登录记录，按时间倒序展示（含 IP、设备）。</p>
                         <div class="form-row flex-align-end">
-                            <div>
-                                <label for="loginLogMode">日志类型</label>
-                                <select class="filter-select" id="loginLogMode">
-                                    <option value="admin-login" selected>后台账号登录记录</option>
-                                    <option value="admin-operation">后台账号操作日志</option>
-                                </select>
-                            </div>
                             <div>
                                 <label for="loginLogAdminUsername">管理账号</label>
                                 <input class="input-w-260" type="text" id="loginLogAdminUsername" placeholder="支持模糊查询（子账号仅可看自己）">
@@ -4038,6 +4032,67 @@
                             <button type="button" class="btn-page" id="loginLogPrev">上一页</button>
                             <span id="loginLogPageInfo">第 1 页 · 共 0 条</span>
                             <button type="button" class="btn-page" id="loginLogNext">下一页</button>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-admin-operation-log" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>子管理员操作流水</h2>
+                        <p class="hint">仅记录子管理员的写操作（发码、改用户、改权限等）。系统管理员（admin）的操作不记；本页仅 admin 可见。</p>
+                        <div class="form-row flex-align-end">
+                            <div>
+                                <label for="adminOpLogUsername">子管理账号</label>
+                                <input class="input-w-260" type="text" id="adminOpLogUsername" placeholder="支持模糊查询">
+                            </div>
+                            <div>
+                                <label for="adminOpLogPath">路径</label>
+                                <input class="input-w-260" type="text" id="adminOpLogPath" placeholder="如 user-delete">
+                            </div>
+                            <div>
+                                <label for="adminOpLogOkFilter">结果</label>
+                                <select class="filter-select" id="adminOpLogOkFilter">
+                                    <option value="">全部</option>
+                                    <option value="1">成功</option>
+                                    <option value="0">失败</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-primary" id="btnRefreshAdminOpLog">刷新列表</button>
+                            <div>
+                                <label for="adminOpLogPageSize">每页条数</label>
+                                <select class="filter-select" id="adminOpLogPageSize">
+                                    <option value="10">10</option>
+                                    <option value="20" selected>20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="scroll-x mt-12">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>账号</th>
+                                        <th>姓名</th>
+                                        <th>方法</th>
+                                        <th>路径</th>
+                                        <th>动作</th>
+                                        <th>目标账号</th>
+                                        <th>结果</th>
+                                        <th>状态码</th>
+                                        <th>IP/城市</th>
+                                        <th>设备</th>
+                                        <th>详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminOpLogTbody"><tr><td colspan="12">进入本页后加载…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="adminOpLogPagination">
+                            <button type="button" class="btn-page" id="adminOpLogPrev">上一页</button>
+                            <span id="adminOpLogPageInfo">第 1 页 · 共 0 条</span>
+                            <button type="button" class="btn-page" id="adminOpLogNext">下一页</button>
                         </div>
                     </section>
                 </div>
@@ -4343,9 +4398,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260910-reg-os"></script>
+    <script src="/js/admin/loader.js?v=20260910-admin-op-log"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20260909-bid-follow-user-jump"></script>
+    <script src="/js/admin_panel.js?v=20260910-admin-op-log"></script>
 </body>
 </html>
