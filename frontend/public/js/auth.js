@@ -3897,13 +3897,11 @@
         st.setAttribute('data-mine-chrome', '1');
         st.textContent =
           /* 顶条底灰：iOS 蓝渐变沉浸；安卓/鸿蒙黑条，与苹果区分 */
-          'html:not(.app-ios-iphone14promax){background-color:#f5f6fa !important;background-image:' +
+          'html{background-color:#f5f6fa !important;background-image:' +
           htmlTopStrip +
           ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;' +
           /* 用 100vh（大视口）。100dvh 在 16 Pro 会少一截刘海，fixed 底栏会整条抬高 */
           'min-height:100vh !important;height:auto !important;}' +
-          /* 14 Pro Max：刘海跟头图顶蓝，勿让 #f5f6fa 从系统栏透出白顶 */
-          'html.app-ios-iphone14promax{background-color:#1677ff !important;background-image:none !important;min-height:100vh !important;height:auto !important;}' +
                     'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;' +
           'min-height:100vh !important;}' +
           'html.app-top-safe-shell body.page-mine::before,' +
@@ -4037,25 +4035,6 @@
       pinXiaomi13UltraMineE1Layout();
       pinMineE1PlainImgLayout();
       pinNova13MineE1Layout();
-      try {
-        if (
-          isIPhone14ProMaxClient() ||
-          document.documentElement.classList.contains('app-ios-iphone14promax')
-        ) {
-          document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
-          document.documentElement.style.backgroundColor = '#1677ff';
-          upsertMeta('theme-color', mineBlue);
-          upsertMeta('msapplication-navbutton-color', mineBlue);
-          var old14 = document.querySelector('style[data-14pm-mine-chrome]');
-          if (old14 && old14.parentNode) old14.parentNode.removeChild(old14);
-          var st14 = document.createElement('style');
-          st14.setAttribute('data-14pm-mine-chrome', '1');
-          st14.textContent =
-            'html.app-ios-client.app-ios-iphone14promax{background-color:#1677ff!important;background-image:none!important;}' +
-            'html.app-ios-client.app-ios-iphone14promax body.page-mine{background-color:#f5f6fa!important;background-image:linear-gradient(#1677ff,#1677ff)!important;background-size:100% 59px!important;background-repeat:no-repeat!important;background-position:top center!important;}';
-          document.head.appendChild(st14);
-        }
-      } catch (e14Mine) {}
       /* 安卓/鸿蒙「我的」壳层浅灰；勿再传 #1677ff，避免把系统栏染成苹果式蓝顶 */
       applyImmersiveBlueStatusBar(mineBlue, '#f5f6fa');
       try {
@@ -4079,14 +4058,12 @@
         st.setAttribute('data-daiban-bancha-chrome', '1');
         /* html 底浅灰，仅顶部画状态栏高度蓝带，避免底栏下露蓝；头图 bleed 进刘海 */
         st.textContent =
-          'html:not(.app-ios-iphone14promax){background-color:#f5f6fa !important;background-image:linear-gradient(' +
+          'html{background-color:#f5f6fa !important;background-image:linear-gradient(' +
           topBlue +
           ',' +
           topBlue +
           ') !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100% !important;}' +
-          'html.app-ios-iphone14promax{background-color:#2b81f2 !important;background-image:none !important;min-height:100% !important;}' +
-          'html.app-ios-iphone14promax body.page-daiban,html.app-ios-iphone14promax body.page-bancha{background-color:#f5f6fa !important;background-image:linear-gradient(#2b81f2,#2b81f2) !important;background-size:100% 59px !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100vh !important;min-height:100dvh !important;}' +
-          'html:not(.app-ios-iphone14promax) body.page-daiban,html:not(.app-ios-iphone14promax) body.page-bancha{background-color:#f5f6fa !important;background-image:none !important;min-height:100vh !important;min-height:100dvh !important;}' +
+          'html body.page-daiban,html body.page-bancha{background-color:#f5f6fa !important;background-image:none !important;min-height:100vh !important;min-height:100dvh !important;}' +
           'html.app-top-safe-shell .daiban-header:not([data-header-mode="builtin"]),html.app-top-safe-shell .bancha-header:not([data-header-mode="builtin"]){padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
           topBlue +
           ' !important;overflow:hidden !important;}' +
@@ -4137,7 +4114,6 @@
           'html{background:' +
           msgBlue +
           ' !important;}' +
-          'html.app-ios-iphone14promax{background-color:#1e8fff !important;background-image:none !important;}' +
           'html body.page-message{background-color:#f5f6fa !important;background-image:linear-gradient(' +
           msgBlue +
           ',' +
@@ -4817,13 +4793,13 @@
       'html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax):not(.app-ios-iphone14promax) body.page-mine > .bottom-nav{' +
       'background:rgba(255,255,255,0.52)!important;box-shadow:0 -0.33px 0 rgba(60,60,67,0.16)!important;border:none!important;' +
       '}' +
-      'html.app-ios-client.app-ios-iphone14promax{--bottom-nav-side:0px!important;--bottom-nav-bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;--bottom-nav-gap:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;--bottom-nav-height:44px!important;--bottom-nav-radius:22px!important;--bottom-nav-clearance:calc(44px + env(safe-area-inset-bottom, 34px) + 20px)!important;}' +
+      'html.app-ios-client.app-ios-iphone14promax{--bottom-nav-side:4px!important;--bottom-nav-bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;--bottom-nav-gap:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;--bottom-nav-height:40px!important;--bottom-nav-radius:20px!important;--bottom-nav-clearance:calc(40px + env(safe-area-inset-bottom, 34px) + 20px)!important;}' +
       'html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body > .bottom-nav.ios-device,' +
       'html.app-ios-client.app-ios-iphone14promax body.page-shouye > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-daiban > .bottom-nav,' +
       'html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,' +
       'html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device{' +
-      'left:0!important;right:0!important;bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;width:auto!important;max-width:none!important;' +
-      'border-radius:22px!important;height:44px!important;min-height:44px!important;max-height:44px!important;' +
+      'left:4px!important;right:4px!important;bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;width:auto!important;max-width:none!important;' +
+      'border-radius:20px!important;height:40px!important;min-height:40px!important;max-height:40px!important;' +
       'padding-top:4px!important;padding-bottom:4px!important;' +
       'background:rgba(255,255,255,0.96)!important;box-shadow:0 2px 12px rgba(0,0,0,0.08)!important;' +
       '-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important;' +
@@ -4947,25 +4923,25 @@
       try {
         document.documentElement.classList.add('app-ios-iphone14promax');
         nav.style.setProperty('position', 'fixed', 'important');
-        nav.style.setProperty('left', '0', 'important');
-        nav.style.setProperty('right', '0', 'important');
+        nav.style.setProperty('left', '4px', 'important');
+        nav.style.setProperty('right', '4px', 'important');
         nav.style.setProperty('top', 'auto', 'important');
         nav.style.setProperty('bottom', 'calc(env(safe-area-inset-bottom, 34px) + 8px)', 'important');
         nav.style.setProperty('width', 'auto', 'important');
         nav.style.setProperty('max-width', 'none', 'important');
-        nav.style.setProperty('height', '44px', 'important');
-        nav.style.setProperty('min-height', '44px', 'important');
-        nav.style.setProperty('max-height', '44px', 'important');
+        nav.style.setProperty('height', '40px', 'important');
+        nav.style.setProperty('min-height', '40px', 'important');
+        nav.style.setProperty('max-height', '40px', 'important');
         nav.style.setProperty('padding-top', '4px', 'important');
         nav.style.setProperty('padding-bottom', '4px', 'important');
-        nav.style.setProperty('border-radius', '22px', 'important');
+        nav.style.setProperty('border-radius', '20px', 'important');
         nav.style.setProperty('background', 'rgba(255,255,255,0.96)', 'important');
         nav.style.setProperty('box-shadow', '0 2px 12px rgba(0,0,0,0.08)', 'important');
         nav.style.setProperty('backdrop-filter', 'blur(8px)', 'important');
         nav.style.setProperty('-webkit-backdrop-filter', 'blur(8px)', 'important');
         nav.style.setProperty('transform', 'none', 'important');
         nav.style.setProperty('-webkit-transform', 'none', 'important');
-        document.documentElement.style.setProperty('--bottom-nav-side', '0px');
+        document.documentElement.style.setProperty('--bottom-nav-side', '4px');
         document.documentElement.style.setProperty(
           '--bottom-nav-bottom',
           'calc(env(safe-area-inset-bottom, 34px) + 8px)'
@@ -4974,11 +4950,11 @@
           '--bottom-nav-gap',
           'calc(env(safe-area-inset-bottom, 34px) + 8px)'
         );
-        document.documentElement.style.setProperty('--bottom-nav-height', '44px');
-        document.documentElement.style.setProperty('--bottom-nav-radius', '22px');
+        document.documentElement.style.setProperty('--bottom-nav-height', '40px');
+        document.documentElement.style.setProperty('--bottom-nav-radius', '20px');
         document.documentElement.style.setProperty(
           '--bottom-nav-clearance',
-          'calc(44px + env(safe-area-inset-bottom, 34px) + 20px)'
+          'calc(40px + env(safe-area-inset-bottom, 34px) + 20px)'
         );
       } catch (eCap) {}
       return;
@@ -10505,7 +10481,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260910-ios-14pm-home6';
+    s.src = '/js/tab-shell.js?v=20260910-ios-14pm-r4';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);

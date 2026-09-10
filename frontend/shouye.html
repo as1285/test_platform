@@ -39,22 +39,22 @@
                     if (ip14pm) {
                         document.documentElement.classList.add('app-ios-iphone14promax');
                         document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
-                        document.documentElement.style.setProperty('--bottom-nav-side', '0px');
+                        document.documentElement.style.setProperty('--bottom-nav-side', '4px');
                         document.documentElement.style.setProperty('--bottom-nav-bottom', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
                         document.documentElement.style.setProperty('--bottom-nav-gap', 'calc(env(safe-area-inset-bottom, 34px) + 8px)');
-                        document.documentElement.style.setProperty('--bottom-nav-height', '44px');
-                        document.documentElement.style.setProperty('--bottom-nav-radius', '22px');
-                        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(44px + env(safe-area-inset-bottom, 34px) + 20px)');
+                        document.documentElement.style.setProperty('--bottom-nav-height', '40px');
+                        document.documentElement.style.setProperty('--bottom-nav-radius', '20px');
+                        document.documentElement.style.setProperty('--bottom-nav-clearance', 'calc(40px + env(safe-area-inset-bottom, 34px) + 20px)');
                         document.documentElement.style.backgroundColor = '#4f90f3';
                         if (!document.getElementById('sy14pmHomeLock')) {
                             var lock = document.createElement('style');
                             lock.id = 'sy14pmHomeLock';
                             lock.textContent =
                                 'html.app-ios-iphone14promax body > .bottom-nav,html.app-ios-iphone14promax body > .bottom-nav.ios-device{' +
-                                'left:0!important;right:0!important;width:auto!important;' +
+                                'left:4px!important;right:4px!important;width:auto!important;' +
                                 'bottom:calc(env(safe-area-inset-bottom, 34px) + 8px)!important;' +
-                                'height:44px!important;min-height:44px!important;max-height:44px!important;' +
-                                'border-radius:22px!important;padding-top:4px!important;padding-bottom:4px!important;}';
+                                'height:40px!important;min-height:40px!important;max-height:40px!important;' +
+                                'border-radius:20px!important;padding-top:4px!important;padding-bottom:4px!important;}';
                             document.head.appendChild(lock);
                         }
                     }
@@ -126,7 +126,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260910-zxk-btns1" defer></script>
+    <script src="/js/auth.js?v=20260910-ios-14pm-r4" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -1232,7 +1232,7 @@
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-home6">
+    <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-r4">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
     <script src="/js/home-services.js?v=20260908-apk-icons"></script>
 </head>

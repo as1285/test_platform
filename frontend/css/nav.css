@@ -344,12 +344,12 @@ html.app-ios-client.app-ios-iphone15promax:not(.app-ios-iphone13promax) body > .
  * 须写在 15 PM 贴底规则之后，避免同屏 430×932 被带成 dock。
  */
 html.app-ios-client.app-ios-iphone14promax {
-    --bottom-nav-side: 0px !important;
+    --bottom-nav-side: 4px !important;
     --bottom-nav-bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
     --bottom-nav-gap: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
-    --bottom-nav-height: 44px !important;
-    --bottom-nav-radius: 22px !important;
-    --bottom-nav-clearance: calc(44px + env(safe-area-inset-bottom, 34px) + 20px) !important;
+    --bottom-nav-height: 40px !important;
+    --bottom-nav-radius: 20px !important;
+    --bottom-nav-clearance: calc(40px + env(safe-area-inset-bottom, 34px) + 20px) !important;
 }
 
 html.app-ios-client.app-ios-iphone14promax body > .bottom-nav,
@@ -360,15 +360,15 @@ html.app-ios-client.app-ios-iphone14promax body.page-bancha > .bottom-nav,
 html.app-ios-client.app-ios-iphone14promax body.page-message > .bottom-nav,
 html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav,
 html.app-ios-client.app-ios-iphone14promax body.page-mine > .bottom-nav.ios-device {
-    left: 0 !important;
-    right: 0 !important;
+    left: 4px !important;
+    right: 4px !important;
     bottom: calc(env(safe-area-inset-bottom, 34px) + 8px) !important;
     width: auto !important;
     max-width: none !important;
-    border-radius: 22px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
+    border-radius: 20px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
     padding-top: 4px !important;
     padding-bottom: 4px !important;
     background: rgba(255, 255, 255, 0.96) !important;
