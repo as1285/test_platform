@@ -75,4 +75,56 @@ describe('compatFeedback helpers', () => {
     expect(msg.content).toContain('@@link:compat_bug.html');
     expect(msg.company_name).toBe('系统通知');
   });
+
+  it('builds email body from admin reply', () => {
+    const mail = feedback.buildReplyEmail('下个版本会修\n请先更新 App');
+    expect(mail.subject).toBe('兼容反馈已回复');
+    expect(mail.text).toBe('下个版本会修\n请先更新 App');
+    expect(mail.html).toContain('下个版本会修');
+    expect(mail.html).toContain('请先更新 App');
+  });
+
+  it('skips email when SMTP is not configured', async () => {
+    const out = await feedback.sendReplyEmail(
+      { execute: async () => [[{ email: 'name@qq.com' }]] },
+      'u1',
+      '已修',
+      { isMailConfigured: () => false, sendMail: async () => { throw new Error('should not send'); } }
+    );
+    expect(out.sent).toBe(false);
+    expect(out.reason).toBe('no_smtp');
+  });
+
+  it('skips email when user has no mailbox', async () => {
+    const out = await feedback.sendReplyEmail(
+      { execute: async () => [[{ email: null }]] },
+      'u1',
+      '已修',
+      { isMailConfigured: () => true, sendMail: async () => { throw new Error('should not send'); } }
+    );
+    expect(out.sent).toBe(false);
+    expect(out.reason).toBe('no_email');
+  });
+
+  it('sends email with admin reply when user saved mailbox', async () => {
+    const sent = [];
+    const out = await feedback.sendReplyEmail(
+      { execute: async () => [[{ email: 'name@qq.com' }]] },
+      'u1',
+      '下个版本会修',
+      {
+        isMailConfigured: () => true,
+        sendMail: async (payload) => {
+          sent.push(payload);
+        }
+      }
+    );
+    expect(out.sent).toBe(true);
+    expect(out.email).toBe('name@qq.com');
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe('name@qq.com');
+    expect(sent[0].subject).toBe('兼容反馈已回复');
+    expect(sent[0].text).toBe('下个版本会修');
+    expect(sent[0].html).toContain('下个版本会修');
+  });
 });

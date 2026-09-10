@@ -61,11 +61,13 @@ describe('C 端兼容反馈入口与页面', () => {
     expect(adminHtml).toContain('id="feedbackMount"');
     expect(adminHtml).toContain('id="feedbackReplyFilter"');
     expect(adminHtml).toContain('未回复');
+    expect(adminHtml).toContain('会把回复同步发到邮箱');
   });
 
   it('兼容反馈账号可跳到注册用户', () => {
-    expect(loaderCode).toContain('feedback.js?v=20260909-fb-reply');
+    expect(loaderCode).toContain('feedback.js?v=20260910-fb-mail');
     expect(adminFeedbackCode).toContain('jumpToRegisteredUser');
+    expect(adminFeedbackCode).toContain('会把回复同步发到邮箱');
     expect(adminFeedbackCode).toContain('js-feedback-open-user');
     expect(adminFeedbackCode).toContain('admin-user-jump');
 
@@ -128,6 +130,7 @@ describe('C 端兼容反馈入口与页面', () => {
     viewBtn.click();
     expect(document.getElementById('feedbackReplyInput')).toBeTruthy();
     expect(document.getElementById('btnFeedbackReply').textContent).toContain('发送回复');
+    expect(document.getElementById('feedbackDetail').textContent).toContain('会把回复同步发到邮箱');
     expect(document.getElementById('feedbackDetail').hidden).toBe(false);
   });
 

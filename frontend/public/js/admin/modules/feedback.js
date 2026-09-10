@@ -245,7 +245,7 @@
         '</p>';
     }
     html +=
-      '<label class="hint" for="feedbackReplyInput">回复会发站内信，用户可在消息中心和反馈页看到</label>' +
+      '<label class="hint" for="feedbackReplyInput">回复会发站内信；用户已留邮箱时，会把回复同步发到邮箱</label>' +
       '<textarea id="feedbackReplyInput" maxlength="2000" rows="4" style="width:100%;min-height:88px;margin:6px 0 10px;display:block;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;" placeholder="例如：已定位到该机型状态栏和按钮错位，下个版本会修。">' +
       esc(row.admin_reply || '') +
       '</textarea>' +

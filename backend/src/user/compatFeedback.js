@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const multer = require('multer');
 const { getPool } = require('../shared/db');
 const config = require('../shared/config');
+const mail = require('../../mail');
+const { isValidUserEmail } = require('../admin/userEmailBulk');
 
 var IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 var MAX_BYTES = 5 * 1024 * 1024;
@@ -123,6 +125,56 @@ async function sendReplyInbox(pool, username, replyText, originalContent) {
     [mid, uid, msg.title, msg.content, msg.company_name, new Date().toISOString().slice(0, 10)]
   );
   return { sent: true, message_id: mid };
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildReplyEmail(replyText) {
+  var reply = clean(replyText);
+  return {
+    subject: '兼容反馈已回复',
+    text: reply,
+    html:
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>' +
+      '<body style="margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.7;color:#334155;">' +
+      '<div style="white-space:pre-wrap;">' +
+      escapeHtml(reply).replace(/\n/g, '<br>') +
+      '</div></body></html>'
+  };
+}
+
+async function lookupUserEmail(pool, username) {
+  var uid = clean(username);
+  if (!uid || !pool) return '';
+  try {
+    const [rows] = await pool.execute('SELECT email FROM users WHERE username = ? LIMIT 1', [uid]);
+    return rows && rows[0] && rows[0].email != null ? clean(rows[0].email) : '';
+  } catch (e0) {
+    return '';
+  }
+}
+
+async function sendReplyEmail(pool, username, replyText, mailer) {
+  mailer = mailer || mail;
+  if (!mailer || !mailer.isMailConfigured || !mailer.isMailConfigured()) {
+    return { sent: false, reason: 'no_smtp' };
+  }
+  var email = await lookupUserEmail(pool, username);
+  if (!isValidUserEmail(email)) return { sent: false, reason: 'no_email' };
+  var bodies = buildReplyEmail(replyText);
+  await mailer.sendMail({
+    to: email,
+    subject: bodies.subject,
+    text: bodies.text,
+    html: bodies.html
+  });
+  return { sent: true, email: email };
 }
 
 function parseImageUrls(raw) {
@@ -399,10 +451,16 @@ async function handleAdminFeedbackReply(req, res) {
       [reply.value, adminName || null, id, TYPE_COMPAT]
     );
     var inbox = { sent: false };
+    var emailOut = { sent: false };
     try {
       inbox = await sendReplyInbox(pool, rows[0].user_id, reply.value, rows[0].content);
     } catch (eInbox) {
       console.error('[compat-feedback] inbox', eInbox);
+    }
+    try {
+      emailOut = await sendReplyEmail(pool, rows[0].user_id, reply.value);
+    } catch (eMail) {
+      console.error('[compat-feedback] email', eMail);
     }
     const [fresh] = await pool.execute(
       `SELECT id, user_id, real_name_snapshot, feedback_type, content, image_urls,
@@ -410,12 +468,21 @@ async function handleAdminFeedbackReply(req, res) {
        FROM user_feedback WHERE id = ? LIMIT 1`,
       [id]
     );
+    var msg = '已保存回复';
+    if (inbox.sent && emailOut.sent) {
+      msg = '已回复，并已站内信和邮件通知用户';
+    } else if (inbox.sent) {
+      msg = '已回复并通知用户';
+    } else if (emailOut.sent) {
+      msg = '已回复并已邮件通知用户';
+    }
     return res.json({
       code: 200,
-      msg: inbox.sent ? '已回复并通知用户' : '已保存回复',
+      msg: msg,
       data: {
         item: fresh[0] ? toPublicItem(fresh[0], { admin: true }) : null,
-        inbox_sent: !!inbox.sent
+        inbox_sent: !!inbox.sent,
+        email_sent: !!emailOut.sent
       }
     });
   } catch (e) {
@@ -478,6 +545,8 @@ module.exports = {
   normalizeContent: normalizeContent,
   normalizeReply: normalizeReply,
   buildReplyInbox: buildReplyInbox,
+  buildReplyEmail: buildReplyEmail,
+  sendReplyEmail: sendReplyEmail,
   toPublicItem: toPublicItem,
   parseImageUrls: parseImageUrls,
   TYPE_COMPAT: TYPE_COMPAT,
