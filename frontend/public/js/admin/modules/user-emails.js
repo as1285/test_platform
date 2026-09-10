@@ -125,17 +125,61 @@
         }
         var d = j.data;
         var smtp = d.smtp_ready ? 'SMTP 已就绪' : 'SMTP 未配置';
+        var wf = d.week_fill || {};
+        var weekPct = wf.fill_rate_pct != null ? wf.fill_rate_pct : 0;
         if (stat) {
           stat.textContent =
             smtp +
             ' · 已留邮箱 ' +
             (d.users_with_email != null ? d.users_with_email : 0) +
-            ' 人 · 近 ' +
+            ' 人 · 本周填写率 ' +
+            weekPct +
+            '%（' +
+            (wf.registered != null ? wf.registered : 0) +
+            ' 注册 / ' +
+            (wf.with_email != null ? wf.with_email : 0) +
+            ' 已填）· 近 ' +
             (d.days || 7) +
             ' 天';
         }
         if (cards) {
+          var weekStart = wf.start ? String(wf.start).slice(5) : '';
+          var weekSub =
+            (weekStart ? '周一 ' + weekStart + ' 起' : '本周一至今') +
+            ' · 新注册 ' +
+            (wf.registered != null ? wf.registered : 0) +
+            ' · 已填 ' +
+            (wf.with_email != null ? wf.with_email : 0);
+          var dayLine = '';
+          if (wf.by_day && wf.by_day.length) {
+            dayLine =
+              '<p class="stat" style="grid-column:1/-1;margin:0">按日：' +
+              esc(
+                wf.by_day
+                  .map(function (x) {
+                    var dk = x && x.d ? String(x.d).slice(5) : '';
+                    return (
+                      dk +
+                      ' ' +
+                      (x.fill_rate_pct != null ? x.fill_rate_pct : 0) +
+                      '%（' +
+                      (x.with_email || 0) +
+                      '/' +
+                      (x.registered || 0) +
+                      '）'
+                    );
+                  })
+                  .join(' · ')
+              ) +
+              '</p>';
+          }
           cards.innerHTML =
+            '<div class="user-data-stat-card">' +
+            '<div class="ud-label">本周填写率</div><div class="ud-val">' +
+            esc(String(weekPct)) +
+            '%</div><div class="ud-label">' +
+            esc(weekSub) +
+            '</div></div>' +
             '<button type="button" class="user-data-stat-card ops-summary-card js-email-ov" data-audience="" data-status="sent">' +
             '<div class="ud-label">近7天成功</div><div class="ud-val">' +
             esc(String(d.sent || 0)) +
@@ -147,7 +191,8 @@
             '<button type="button" class="user-data-stat-card ops-summary-card js-email-ov" data-audience="" data-clicked="1">' +
             '<div class="ud-label">近7天已点击</div><div class="ud-val">' +
             esc(String(d.clicked || 0)) +
-            '</div></button>';
+            '</div></button>' +
+            dayLine;
         }
         if (autoList) {
           var html = '';
