@@ -122,6 +122,68 @@ describe('C 端完税二维码入口位置', () => {
   });
 });
 
+describe('完税二维码使用统计：明细默认折叠', () => {
+  beforeEach(() => {
+    delete window.AdminModules;
+    document.body.innerHTML = '<div id="najiluQrStatsMount"></div>';
+    // eslint-disable-next-line no-eval
+    eval(moduleCode);
+  });
+
+  it('最近浏览和使用用户默认折叠，按日明细仍展开', () => {
+    const mod = window.AdminModules['najilu-qr'];
+    mod.renderStats({
+      period: { label: '最近 7 天' },
+      summary: {
+        page_views: 1,
+        page_view_users: 1,
+        entry_clicks: 0,
+        entry_click_users: 0,
+        unlocked_users: 0,
+        locked_qr_users: 0,
+        paid_orders: 0,
+        paid_users: 0,
+        pending_orders: 0,
+        gmv: '0.00',
+        saves: 0,
+        save_users: 0,
+        saves_demo: 0,
+        saves_unlocked: 0
+      },
+      usage_users: [
+        {
+          last_used_at: '2026-09-09T10:00:00.000Z',
+          username: 'u2',
+          real_name: '李四',
+          page_views: 2,
+          entry_clicks: 1
+        }
+      ],
+      recent_views: [
+        {
+          created_at: '2026-09-09T10:00:00.000Z',
+          username: 'u1',
+          real_name: '张三',
+          event_label: '页面浏览'
+        }
+      ],
+      daily: [{ day: '2026-09-09', page_views: 1 }]
+    });
+    const mount = document.getElementById('najiluQrStatsMount');
+    const views = mount.querySelector('.najilu-qr-recent-views-details');
+    const usage = mount.querySelector('.najilu-qr-usage-users-details');
+    expect(views).toBeTruthy();
+    expect(views.open).toBe(false);
+    expect(views.querySelector('summary').textContent).toBe('最近浏览（最多 50）');
+    expect(views.textContent).toContain('u1');
+    expect(usage).toBeTruthy();
+    expect(usage.open).toBe(false);
+    expect(usage.querySelector('summary').textContent).toBe('使用用户（1，最多 200）');
+    expect(usage.textContent).toContain('u2');
+    expect(mount.innerHTML).toContain('share-kpi-section-label">按日明细');
+  });
+});
+
 describe('C 端完税二维码返回路径', () => {
   beforeEach(() => {
     delete window.NajiluQrUser;

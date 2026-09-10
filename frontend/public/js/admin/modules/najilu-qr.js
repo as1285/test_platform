@@ -914,9 +914,10 @@
 
     var users = data.usage_users || [];
     html +=
-      '<div class="share-kpi-section-label">使用用户（' +
+      '<details class="analytics-section-details najilu-qr-usage-users-details">' +
+      '<summary>使用用户（' +
       esc(String(users.length)) +
-      '，最多 200）</div>';
+      '，最多 200）</summary>';
     if (!users.length) {
       html += '<div class="share-stats-empty">该区间暂无使用用户（无浏览、保存或付费）</div>';
     } else {
@@ -947,6 +948,7 @@
       });
       html += '</tbody></table></div>';
     }
+    html += '</details>';
 
     var daily = data.daily || [];
     html += '<div class="share-kpi-section-label">按日明细</div>';
@@ -975,7 +977,9 @@
     }
 
     var views = data.recent_views || [];
-    html += '<div class="share-kpi-section-label">最近浏览（最多 50）</div>';
+    html +=
+      '<details class="analytics-section-details najilu-qr-recent-views-details">' +
+      '<summary>最近浏览（最多 50）</summary>';
     if (!views.length) {
       html += '<div class="share-stats-empty">该区间暂无浏览记录</div>';
     } else {
@@ -991,6 +995,7 @@
       });
       html += '</tbody></table></div>';
     }
+    html += '</details>';
 
     var paid = data.recent_paid || [];
     html += '<div class="share-kpi-section-label">最近付费（最多 50）</div>';
@@ -1104,6 +1109,7 @@
     loadIssues: loadIssues,
     previewCert: previewCert,
     loadStats: loadStats,
+    renderStats: renderStats,
     _regionFromQrBox: regionFromQrBox,
     _regionForMode: regionForMode
   };
