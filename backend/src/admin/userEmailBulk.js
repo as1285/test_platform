@@ -87,6 +87,51 @@ function assertRefundEmailAllowed(opts) {
   throw err;
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatYmdUtcParts(y, m, d) {
+  return y + '-' + pad2(m) + '-' + pad2(d);
+}
+
+/**
+ * 北京时间本周一至今天（含）。周一为一周起点。
+ * now 仅供单测传入。
+ */
+function chinaWeekMondayToToday(now) {
+  now = now || new Date();
+  var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  var cn = new Date(utcMs + 8 * 3600000);
+  var y = cn.getFullYear();
+  var mo = cn.getMonth() + 1;
+  var day = cn.getDate();
+  var cnUtc = Date.UTC(y, mo - 1, day);
+  var dow = new Date(cnUtc).getUTCDay();
+  var daysFromMonday = dow === 0 ? 6 : dow - 1;
+  var mon = new Date(cnUtc - daysFromMonday * 86400000);
+  return {
+    start: formatYmdUtcParts(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate()),
+    end: formatYmdUtcParts(y, mo, day)
+  };
+}
+
+function fillRatePct(withEmail, registered) {
+  var d = Number(registered) || 0;
+  var n = Number(withEmail) || 0;
+  if (d <= 0) return 0;
+  return Math.round((n / d) * 1000) / 10;
+}
+
+function formatDateKeyLoose(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+  var s = String(v == null ? '' : v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s;
+}
+
 function newClickToken() {
   return crypto.randomBytes(16).toString('hex');
 }
@@ -1260,6 +1305,44 @@ function createUserEmailBulk(deps) {
       'SELECT COUNT(*) AS total FROM users u WHERE ' + userWhere.join(' AND '),
       userParams
     );
+    var week = chinaWeekMondayToToday();
+    var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+    var weekWhere = [cnUserDay + ' >= ?', cnUserDay + ' <= ?', 'u.activation_refunded_at IS NULL'];
+    var weekParams = [week.start, week.end];
+    if (typeof deps.nonGuestUsernameSql === 'function') {
+      weekWhere.push(deps.nonGuestUsernameSql('u.username'));
+    } else {
+      weekWhere.push("LEFT(u.username, 8) <> '__guest_'");
+      weekWhere.push('COALESCE(u.user_type, 0) <> 2');
+    }
+    if (opts.admin && typeof deps.appendAdminUserScope === 'function') {
+      deps.appendAdminUserScope(weekWhere, weekParams, opts.admin, 'u.username');
+    }
+    const [weekRows] = await pool.query(
+      'SELECT ' +
+        cnUserDay +
+        ' AS d, COUNT(*) AS registered, SUM(CASE WHEN ' +
+        hasEmailWhereSql() +
+        ' THEN 1 ELSE 0 END) AS with_email FROM users u WHERE ' +
+        weekWhere.join(' AND ') +
+        ' GROUP BY d ORDER BY d',
+      weekParams
+    );
+    var weekRegistered = 0;
+    var weekWithEmail = 0;
+    var byDay = (weekRows || []).map(function (r) {
+      var registered = Number(r && r.registered) || 0;
+      var withEmail = Number(r && r.with_email) || 0;
+      weekRegistered += registered;
+      weekWithEmail += withEmail;
+      var dayKey = r && r.d != null ? formatDateKeyLoose(r.d) : '';
+      return {
+        d: dayKey,
+        registered: registered,
+        with_email: withEmail,
+        fill_rate_pct: fillRatePct(withEmail, registered)
+      };
+    });
     var sent = 0;
     var failed = 0;
     var clicked = 0;
@@ -1297,6 +1380,14 @@ function createUserEmailBulk(deps) {
       clicked: clicked,
       attempts: sent + failed,
       users_with_email: Number(userRows[0] && userRows[0].total) || 0,
+      week_fill: {
+        start: week.start,
+        end: week.end,
+        registered: weekRegistered,
+        with_email: weekWithEmail,
+        fill_rate_pct: fillRatePct(weekWithEmail, weekRegistered),
+        by_day: byDay
+      },
       by_audience: byAudience,
       auto: autoSendStatus()
     };
@@ -1437,6 +1528,8 @@ function createUserEmailBulk(deps) {
 module.exports = {
   createUserEmailBulk: createUserEmailBulk,
   isValidUserEmail: isValidUserEmail,
+  chinaWeekMondayToToday: chinaWeekMondayToToday,
+  fillRatePct: fillRatePct,
   isRefundEmailRequest: isRefundEmailRequest,
   REFUND_EMAIL_STOPPED_MSG: REFUND_EMAIL_STOPPED_MSG,
   buildEmailBodies: buildEmailBodies,

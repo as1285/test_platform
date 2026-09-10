@@ -6,10 +6,29 @@ const {
   buildCtaUrl,
   EMAIL_COPY_TEMPLATES,
   createUserEmailBulk,
-  audienceLabel
+  audienceLabel,
+  chinaWeekMondayToToday,
+  fillRatePct
 } = require('../../src/admin/userEmailBulk');
 
 describe('userEmailBulk helpers', () => {
+  test('chinaWeekMondayToToday starts Monday in China time', () => {
+    var thu = new Date(Date.UTC(2026, 8, 10, 1, 0, 0));
+    expect(chinaWeekMondayToToday(thu)).toEqual({ start: '2026-09-07', end: '2026-09-10' });
+    var mon = new Date(Date.UTC(2026, 8, 6, 16, 0, 0));
+    expect(chinaWeekMondayToToday(mon)).toEqual({ start: '2026-09-07', end: '2026-09-07' });
+    var sun = new Date(Date.UTC(2026, 8, 13, 15, 59, 0));
+    expect(chinaWeekMondayToToday(sun)).toEqual({ start: '2026-09-07', end: '2026-09-13' });
+    var nextMon = new Date(Date.UTC(2026, 8, 13, 16, 0, 0));
+    expect(chinaWeekMondayToToday(nextMon)).toEqual({ start: '2026-09-14', end: '2026-09-14' });
+  });
+
+  test('fillRatePct keeps one decimal', () => {
+    expect(fillRatePct(71, 136)).toBe(52.2);
+    expect(fillRatePct(0, 0)).toBe(0);
+    expect(fillRatePct(1, 3)).toBe(33.3);
+  });
+
   test('isValidUserEmail accepts common addresses', () => {
     expect(isValidUserEmail('name@qq.com')).toBe(true);
     expect(isValidUserEmail('  name@126.com ')).toBe(true);
@@ -300,6 +319,17 @@ describe('userEmailBulk list/send API surface', () => {
                 []
               ];
             }
+            if (/AS registered/.test(sql) && /AS with_email/.test(sql)) {
+              expect(sql).toContain('DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))');
+              expect(sql).toContain('activation_refunded_at IS NULL');
+              return [
+                [
+                  { d: '2026-09-07', registered: 35, with_email: 18 },
+                  { d: '2026-09-08', registered: 5, with_email: 2 }
+                ],
+                []
+              ];
+            }
             return [[{ total: 12 }], []];
           }
         });
@@ -311,6 +341,11 @@ describe('userEmailBulk list/send API surface', () => {
     expect(out.sent).toBe(8);
     expect(out.clicked).toBe(1);
     expect(out.users_with_email).toBe(12);
+    expect(out.week_fill.registered).toBe(40);
+    expect(out.week_fill.with_email).toBe(20);
+    expect(out.week_fill.fill_rate_pct).toBe(50);
+    expect(out.week_fill.by_day).toHaveLength(2);
+    expect(out.week_fill.start <= out.week_fill.end).toBe(true);
     expect(out.auto.some(function (x) { return x.key === 'refund_ad_amount' && x.enabled === false; })).toBe(true);
     expect(out.auto.some(function (x) { return x.key === 'auto_notify_bid' && x.enabled === true; })).toBe(true);
     expect(out.by_audience[0].label).toBeTruthy();
