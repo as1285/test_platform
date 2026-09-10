@@ -1,0 +1,109 @@
+# H5 壳兼容门禁：单测 + 日活机 Playwright 壳冒烟（不跑 API 业务）。
+# 测的是 assemble 后的 frontend/site，避免「源码过、线上包旧」。
+#
+# 本地等价：
+#   ./scripts/ci-ui-compat.sh
+#   ./scripts/ci-ui-compat.sh --chrome
+name: UI Compat CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "scripts/today-changes-selftest.mjs"
+      - "scripts/ci-ui-compat.sh"
+      - ".github/workflows/ui-compat-ci.yml"
+  push:
+    branches: [lkj, master, main]
+    paths:
+      - "frontend/**"
+      - "scripts/today-changes-selftest.mjs"
+      - "scripts/ci-ui-compat.sh"
+      - ".github/workflows/ui-compat-ci.yml"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  unit:
+    name: Vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Vitest
+        working-directory: frontend
+        run: npx vitest run
+
+  chrome:
+    name: Popular chrome-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Assemble static site
+        working-directory: frontend
+        run: npm run assemble
+
+      - name: Serve assembled site
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory frontend/site &
+          echo $! > /tmp/ui-compat-http.pid
+          for i in $(seq 1 40); do
+            if curl --noproxy '*' -sfS --max-time 2 -o /dev/null "http://127.0.0.1:8765/mine.html"; then
+              echo "site up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "assembled site did not start" >&2
+          exit 1
+
+      - name: Chrome-only popular devices
+        working-directory: frontend
+        env:
+          UI_SMOKE_CHROME_ONLY: "1"
+          UI_SMOKE_DEVICES: popular
+          SITE_URL: http://127.0.0.1:8765
+          UI_SMOKE_SHOT_DIR: ${{ github.workspace }}/ui-smoke-shots
+        run: node tests/e2e/ui-smoke-browser.mjs
+
+      - name: Upload mine screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-compat-mine-shots
+          path: ui-smoke-shots
+          if-no-files-found: warn
+          retention-days: 14

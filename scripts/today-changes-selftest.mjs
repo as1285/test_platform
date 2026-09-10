@@ -3184,8 +3184,13 @@ mustInclude(
 );
 mustInclude(
   'frontend/tests/e2e/ui-smoke-browser.mjs',
-  ['UI_SMOKE_CHROME_ONLY', 'CHROME_ONLY'],
+  ['UI_SMOKE_CHROME_ONLY', 'CHROME_ONLY', 'assertAndroidMineStatusGate', 'UI_SMOKE_SHOT_DIR'],
   '20260905 chrome-only smoke skips API business suite'
+);
+mustInclude(
+  '.github/workflows/ui-compat-ci.yml',
+  ['UI_SMOKE_CHROME_ONLY', 'UI_SMOKE_DEVICES: popular', 'vitest run', 'npm run assemble'],
+  '20260910 PR compat CI: unit + popular chrome-only'
 );
 mustInclude(
   'frontend/tests/e2e/ui-smoke-devices.mjs',

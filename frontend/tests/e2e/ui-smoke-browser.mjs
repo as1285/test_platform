@@ -17,6 +17,7 @@ import {
 
 const SITE_URL = (process.env.SITE_URL || process.env.BASE_URL || 'http://127.0.0.1').replace(/\/$/, '');
 const API_URL = (process.env.API_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
+const SHOT_DIR = (process.env.UI_SMOKE_SHOT_DIR || '/tmp/ui-smoke-shots').replace(/\/$/, '');
 const USER = process.env.UI_SMOKE_USER || '';
 const PASS = process.env.UI_SMOKE_PASS || '';
 let TOKEN = process.env.UI_SMOKE_TOKEN || '';
@@ -670,14 +671,7 @@ async function assertMineBlackStatus(page, profile, tag) {
   if (m.imgTop != null && m.imgTop < 35) {
     fail(`${tag} /mine.html header under status bar: top=${m.imgTop}`);
   }
-  try {
-    mkdirSync('/tmp/ui-smoke-shots', { recursive: true });
-    const shotPath = `/tmp/ui-smoke-shots/${profile.id}-mine-black-status.png`;
-    await page.screenshot({ path: shotPath });
-    log(`${tag} screenshot ${shotPath}`);
-  } catch (eShot) {
-    log(`${tag} skip mine screenshot: ${eShot && eShot.message ? eShot.message : eShot}`);
-  }
+  await saveMineShot(page, tag, `${profile.id}-mine-black-status.png`);
   log(
     `${tag} ok mine black-status pad=${m.padTop} bar=${m.beforeH} imgTop=${m.imgTop == null ? '-' : m.imgTop.toFixed(1)} btnTop=${m.btnTop == null ? '-' : m.btnTop.toFixed(1)}`
   );
@@ -700,15 +694,34 @@ async function assertMineNotUnderlapBlack(page, profile, tag) {
   if (classes.includes('app-mine-black-status')) {
     fail(`${tag} /mine.html must not use K70 underlap black pad: ${classes.join(' ')}`);
   }
+  await saveMineShot(page, tag, `${profile.id}-mine-not-black.png`);
   log(`${tag} ok mine is not underlap-black`);
 }
 
-async function runAndroidWhiteTop(page, profile, tag) {
+async function saveMineShot(page, tag, fileName) {
+  try {
+    mkdirSync(SHOT_DIR, { recursive: true });
+    const shotPath = `${SHOT_DIR}/${fileName}`;
+    await page.screenshot({ path: shotPath });
+    log(`${tag} screenshot ${shotPath}`);
+  } catch (eShot) {
+    log(`${tag} skip mine screenshot: ${eShot && eShot.message ? eShot.message : eShot}`);
+  }
+}
+
+/** 所有安卓档：「我的」要么 K70 黑垫，要么禁止黑垫。 */
+async function assertAndroidMineStatusGate(page, profile, tag) {
+  if (profile.platform !== 'android') {
+    return;
+  }
   if (profile.expect?.mineBlackStatus) {
     await assertMineBlackStatus(page, profile, tag);
-  } else if (profile.id === 'xiaomi-15' || profile.id === 'redmi-k70-ultra') {
+  } else {
     await assertMineNotUnderlapBlack(page, profile, tag);
   }
+}
+
+async function runAndroidWhiteTop(page, profile, tag) {
   if (profile.expect?.mineE1PlainImg) {
     await assertMineE1SingleLayer(page, profile, tag);
   }
@@ -755,6 +768,7 @@ async function runProfile(browser, profile) {
     if (!CHROME_ONLY) {
       await runFullSuite(page, tag);
     }
+    await assertAndroidMineStatusGate(page, profile, tag);
     if (profile.suite === 'ios-chrome') {
       await runIosChrome(page, profile, tag);
     } else if (profile.platform === 'ios') {
