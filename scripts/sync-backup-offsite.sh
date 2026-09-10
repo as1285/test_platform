@@ -3,7 +3,7 @@
 # - 热备：data/db-backups（由 backup-mysql.sh 维护，每 15 分钟一份）
 # - 日备：data/db-backups-daily（每天 1 份，默认留 14 天）
 # - 周备：data/db-backups-weekly（每周 1 份，默认留 8 周）
-# - 异地：配置 COS_* 后上传
+# - 异地：配置 COS_* 后上传（整次失败再重试 COS_SYNC_RETRIES 次，默认 3）
 #   - --hot-only：仅上传热备（建议每 15 分钟，抗打挂）
 #   - 默认 full：日备/周备/uploads + 热备（建议每天 03:15）
 # cron 见 scripts/dr-install.sh
@@ -25,6 +25,9 @@ UPLOADS_KEEP="${BACKUP_UPLOADS_KEEP:-7}"
 # COS 热备保留：与本机热备默认对齐（48h / 最多 200 份）
 COS_HOT_RETAIN_HOURS="${COS_HOT_RETAIN_HOURS:-${RETAIN_HOURS:-48}}"
 COS_HOT_MAX="${COS_HOT_MAX:-${MAX_BACKUPS:-200}}"
+# 整次 COS 同步失败后的重试次数（不含首次；默认失败后再跑 3 次）
+COS_SYNC_RETRIES="${COS_SYNC_RETRIES:-3}"
+COS_SYNC_RETRY_SLEEP="${COS_SYNC_RETRY_SLEEP:-20}"
 LOG_FILE="${OFFSITE_BACKUP_LOG:-/var/log/test_platform-offsite-backup.log}"
 VENV_PY="${ROOT}/.venv-dr/bin/python"
 LOCK_FILE="${OFFSITE_LOCK_FILE:-/var/lock/test_platform-offsite-backup.lock}"
@@ -163,13 +166,21 @@ sync_cos() {
   fi
   local prefix="${COS_PREFIX:-test_platform/dr}"
   local mode_py="$MODE"
+  local retries="${COS_SYNC_RETRIES:-3}"
+  local sleep_s="${COS_SYNC_RETRY_SLEEP:-20}"
+  local max_attempts=$((retries + 1))
+  local attempt=1
   local cos_rc=0
-  COS_HOT_RETAIN_HOURS="$COS_HOT_RETAIN_HOURS" COS_HOT_MAX="$COS_HOT_MAX" MODE="$mode_py" \
-  HOT_DIR="$HOT_DIR" DAILY_DIR="$DAILY_DIR" WEEKLY_DIR="$WEEKLY_DIR" UPLOADS_DIR="$UPLOADS_DIR" \
-  COS_SECRET_ID="${COS_SECRET_ID}" COS_SECRET_KEY="${COS_SECRET_KEY}" \
-  COS_BUCKET="${COS_BUCKET}" COS_REGION="${COS_REGION}" COS_PREFIX="$prefix" \
-  COS_TOKEN="${COS_TOKEN:-}" \
-  "$VENV_PY" - <<'PY' >>"$LOG_FILE" 2>&1
+
+  while ((attempt <= max_attempts)); do
+    log "COS 同步开始（第 ${attempt}/${max_attempts} 次）"
+    cos_rc=0
+    COS_HOT_RETAIN_HOURS="$COS_HOT_RETAIN_HOURS" COS_HOT_MAX="$COS_HOT_MAX" MODE="$mode_py" \
+    HOT_DIR="$HOT_DIR" DAILY_DIR="$DAILY_DIR" WEEKLY_DIR="$WEEKLY_DIR" UPLOADS_DIR="$UPLOADS_DIR" \
+    COS_SECRET_ID="${COS_SECRET_ID}" COS_SECRET_KEY="${COS_SECRET_KEY}" \
+    COS_BUCKET="${COS_BUCKET}" COS_REGION="${COS_REGION}" COS_PREFIX="$prefix" \
+    COS_TOKEN="${COS_TOKEN:-}" \
+    "$VENV_PY" - <<'PY' >>"$LOG_FILE" 2>&1 || cos_rc=$?
 import os, sys, time
 from qcloud_cos import CosConfig, CosS3Client
 
@@ -217,6 +228,8 @@ def upload_with_retry(path, key, attempts=3):
                 EnableMD5=False,
             )
             return None
+        except FileNotFoundError as e:
+            return e
         except Exception as e:
             last_err = e
             print(f"[cos] retry {i+1}/{attempts} {key}: {e}", flush=True)
@@ -230,8 +243,17 @@ for d, label, newest_first in dirs:
         path = os.path.join(d, name)
         if name.endswith(".tmp") or "before-import" in name:
             continue
+        if not os.path.isfile(path):
+            print(f"[cos] skip (gone) {path}", flush=True)
+            skipped += 1
+            continue
         key = f"{prefix}/{label}/{name}"
-        local_size = os.path.getsize(path)
+        try:
+            local_size = os.path.getsize(path)
+        except OSError as e:
+            print(f"[cos] skip (gone) {path}: {e}", flush=True)
+            skipped += 1
+            continue
         try:
             meta = client.head_object(Bucket=bucket, Key=key)
             remote_size = int(meta.get("Content-Length") or 0)
@@ -245,6 +267,9 @@ for d, label, newest_first in dirs:
         err = upload_with_retry(path, key)
         if err is None:
             uploaded += 1
+        elif isinstance(err, FileNotFoundError):
+            print(f"[cos] skip (gone) {key}", flush=True)
+            skipped += 1
         else:
             failed += 1
             msg = f"{key}: {err}"
@@ -308,12 +333,21 @@ if errors:
         print(f"  - {e}", flush=True)
     sys.exit(1)
 PY
-  cos_rc=$?
-  if ((cos_rc != 0)); then
-    log "ERROR: COS 同步失败（exit=$cos_rc），详见 $LOG_FILE"
-    return 1
-  fi
-  return 0
+    if ((cos_rc == 0)); then
+      if ((attempt > 1)); then
+        log "COS 同步重试成功（第 ${attempt} 次）"
+      fi
+      return 0
+    fi
+    if ((attempt < max_attempts)); then
+      log "ERROR: COS 同步失败（exit=$cos_rc），${sleep_s}s 后重试（${attempt}/${max_attempts}）"
+      sleep "$sleep_s"
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  log "ERROR: COS 同步失败（exit=$cos_rc），已重试 ${retries} 次，详见 $LOG_FILE"
+  return 1
 }
 
 main() {
