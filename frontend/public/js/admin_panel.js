@@ -3404,10 +3404,13 @@
                     : '') +
                 '</div></div>';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">当日总注册</div><div class="ud-val">' +
+                '<div class="user-data-stat-card"><div class="ud-label">全站注册</div><div class="ud-val">' +
                 esc(String(s.registered != null ? s.registered : 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">按同一 IP 去重 · 占 UV ' +
-                esc(s.register_rate_all_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">含未走安装页 · 同IP去重' +
+                (s.registered_from_install != null
+                    ? ' · 安装页归因 ' +
+                      esc(String(s.registered_from_install))
+                    : '') +
                 '</div></div>';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">平均停留</div><div class="ud-val">' +
