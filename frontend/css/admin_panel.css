@@ -1041,8 +1041,54 @@ tr.users-detail-row > td {
 .channel-analysis-charts-grid {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
+.channel-analysis-tables {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+    margin-top: 4px;
+    align-items: start;
+}
+.channel-funnel-block {
+    padding-top: 4px;
+}
+.channel-funnel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.channel-funnel-tabs {
+    display: inline-flex;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.channel-funnel-tab {
+    appearance: none;
+    background: var(--admin-surface);
+    border: 0;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--admin-text-secondary);
+    cursor: pointer;
+}
+.channel-funnel-tab + .channel-funnel-tab {
+    border-left: 1px solid var(--admin-border);
+}
+.channel-funnel-tab.is-active {
+    background: var(--admin-nav-active-bg, rgba(13, 148, 136, 0.12));
+    color: var(--admin-text);
+}
 .chart-canvas-wrap-trend {
-    height: 320px;
+    height: 260px;
+}
+@media (max-width: 900px) {
+    .channel-analysis-tables {
+        grid-template-columns: 1fr;
+    }
 }
 .channel-daily-trend-section {
     padding: 14px 16px;
@@ -2018,6 +2064,44 @@ tr.users-detail-row > td {
     gap: 10px;
     flex-wrap: wrap;
     margin-top: 8px;
+}
+.admin-toast-host {
+    position: fixed;
+    left: 50%;
+    top: 72px;
+    transform: translateX(-50%);
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    max-width: min(420px, 86vw);
+}
+.admin-toast {
+    background: rgba(28, 28, 30, 0.92);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 10px 18px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity .2s ease, transform .2s ease;
+}
+.admin-toast.is-on {
+    opacity: 1;
+    transform: translateY(0);
+}
+.admin-toast.is-ok {
+    background: var(--admin-primary);
+    color: var(--admin-on-primary);
+}
+.admin-toast.is-err {
+    background: var(--admin-danger-solid);
+    color: var(--admin-on-primary);
 }
 /* 弹层 */
 .admin-modal-backdrop {

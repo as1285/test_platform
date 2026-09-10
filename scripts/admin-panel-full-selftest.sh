@@ -133,7 +133,7 @@ if [[ $? -eq 0 ]]; then ok "menu tree hubs+routes (~24 nav)"; fi
 
 echo "== canvas / chart assets =="
 for id in \
-  channelChartDailyTrend channelChartRegisterPie channelChartRegisterBar channelChartActivationPie \
+  channelChartDailyTrend \
   registerTimeChartPeriods registerTimeChartHourly \
   registerPlatformDailyChart registerPlatformMixChart
 do

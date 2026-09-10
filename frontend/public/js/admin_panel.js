@@ -4,6 +4,34 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        function adminToast(text, opts) {
+            var msg = String(text == null ? '' : text).trim();
+            if (!msg) return;
+            var type = opts && opts.type === 'error' ? 'error' : 'ok';
+            var host = document.getElementById('adminToastHost');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'adminToastHost';
+                host.className = 'admin-toast-host';
+                host.setAttribute('aria-live', 'polite');
+                document.body.appendChild(host);
+            }
+            var el = document.createElement('div');
+            el.className = 'admin-toast is-' + (type === 'error' ? 'err' : 'ok');
+            el.textContent = msg;
+            host.appendChild(el);
+            requestAnimationFrame(function () {
+                el.classList.add('is-on');
+            });
+            setTimeout(function () {
+                el.classList.remove('is-on');
+                setTimeout(function () {
+                    if (el.parentNode) el.parentNode.removeChild(el);
+                }, 220);
+            }, 3000);
+        }
+        window.adminToast = adminToast;
+
         /* ========== Chart Delegate Stubs ========== */
         function analyticsPeriodVal(el) {
             if (window.AdminAnalyticsPeriod) {
@@ -3316,11 +3344,35 @@
             el.innerHTML = html;
         }
 
+        function channelAnalysisFunnelDays() {
+            var raw = analyticsPeriodVal(document.getElementById('channelAnalysisDays'));
+            if (raw === '0' || raw === '' || raw == null) return '90';
+            return raw;
+        }
+
+        function setChannelFunnelTab(which) {
+            var useAct = which === 'activation';
+            document.querySelectorAll('.channel-funnel-tab').forEach(function (btn) {
+                var on = btn.getAttribute('data-funnel') === (useAct ? 'activation' : 'register');
+                btn.classList.toggle('is-active', on);
+                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            var regEl = document.getElementById('analyticsChannelFunnel');
+            var actEl = document.getElementById('analyticsActivationChannelFunnel');
+            if (regEl) {
+                if (useAct) regEl.setAttribute('hidden', '');
+                else regEl.removeAttribute('hidden');
+            }
+            if (actEl) {
+                if (useAct) actEl.removeAttribute('hidden');
+                else actEl.setAttribute('hidden', '');
+            }
+        }
+
         function loadChannelRegistrationFunnel() {
             var el = document.getElementById('analyticsChannelFunnel');
             if (!el) return;
-            var daysEl = document.getElementById('analyticsChannelFunnelDays');
-            var days = analyticsPeriodVal(daysEl);
+            var days = channelAnalysisFunnelDays();
             el.textContent = '渠道漏斗加载中…';
             adminFetch('api/admin/analytics/channel-registration-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3367,8 +3419,7 @@
         function loadActivationChannelFunnel() {
             var el = document.getElementById('analyticsActivationChannelFunnel');
             if (!el) return;
-            var daysEl = document.getElementById('analyticsActivationChannelFunnelDays');
-            var days = analyticsPeriodVal(daysEl);
+            var days = channelAnalysisFunnelDays();
             el.textContent = '激活渠道漏斗加载中…';
             adminFetch('api/admin/analytics/activation-channel-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -9073,12 +9124,17 @@
                             return (window.adminParseJson||function(r){return r.json();})(r);
                         })
                         .then(function (data) {
-                            if (hint) hint.textContent = data.code === 200 ? '已保存' : '';
-                            if (data.code !== 200) alert(data.msg || '保存失败');
+                            if (data.code === 200) {
+                                if (hint) hint.textContent = '已保存';
+                                adminToast(data.msg || '出价配置已保存');
+                            } else {
+                                if (hint) hint.textContent = '';
+                                adminToast(data.msg || '保存失败', { type: 'error' });
+                            }
                         })
                         .catch(function () {
                             if (hint) hint.textContent = '';
-                            alert('网络错误');
+                            adminToast('网络错误', { type: 'error' });
                         })
                         .finally(function () {
                             btnSaveCfg.disabled = false;
@@ -10048,30 +10104,11 @@
                 }
             });
         }
-        var btnRefreshChannelFunnel = document.getElementById('btnRefreshChannelFunnel');
-        if (btnRefreshChannelFunnel) {
-            btnRefreshChannelFunnel.onclick = function () {
-                loadChannelRegistrationFunnel();
-            };
-        }
-        var analyticsChannelFunnelDays = document.getElementById('analyticsChannelFunnelDays');
-        if (analyticsChannelFunnelDays) {
-            analyticsChannelFunnelDays.addEventListener('change', function () {
-                loadChannelRegistrationFunnel();
+        document.querySelectorAll('.channel-funnel-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setChannelFunnelTab(btn.getAttribute('data-funnel'));
             });
-        }
-        var btnRefreshActivationChannelFunnel = document.getElementById('btnRefreshActivationChannelFunnel');
-        if (btnRefreshActivationChannelFunnel) {
-            btnRefreshActivationChannelFunnel.onclick = function () {
-                loadActivationChannelFunnel();
-            };
-        }
-        var analyticsActivationChannelFunnelDays = document.getElementById('analyticsActivationChannelFunnelDays');
-        if (analyticsActivationChannelFunnelDays) {
-            analyticsActivationChannelFunnelDays.addEventListener('change', function () {
-                loadActivationChannelFunnel();
-            });
-        }
+        });
         var btnRefreshInstallGuideStats = document.getElementById('btnRefreshInstallGuideStats');
         if (btnRefreshInstallGuideStats) {
             btnRefreshInstallGuideStats.onclick = function () {

@@ -225,20 +225,13 @@
 
         function renderChannelAnalysis(data) {
             var summaryEl = document.getElementById('channelAnalysisSummary');
-            var cardsEl = document.getElementById('channelAnalysisCards');
             var regTbody = document.getElementById('channelRegisterTbody');
             var actTbody = document.getElementById('channelActivationTbody');
-            var chartsWrap = document.getElementById('channelAnalysisChartsWrap');
-            var chartsEmpty = document.getElementById('channelAnalysisChartsEmpty');
-            var actPieCard = document.getElementById('channelActivationPieCard');
             var trendSection = document.getElementById('channelDailyTrendSection');
             var trendEmpty = document.getElementById('channelDailyTrendEmpty');
             if (!summaryEl || !regTbody) return;
 
             destroyChannelAnalysisCharts();
-            if (chartsWrap) chartsWrap.style.display = 'none';
-            if (chartsEmpty) chartsEmpty.style.display = 'none';
-            if (actPieCard) actPieCard.style.display = 'none';
             if (trendSection) trendSection.style.display = 'none';
             if (trendEmpty) trendEmpty.style.display = 'none';
 
@@ -254,7 +247,6 @@
             if (!total) {
                 var emptyTip = withoutChannel > 0 ? '（' + withoutChannel + ' 人未填写注册渠道，已排除）' : '';
                 summaryEl.textContent = scopeLabel + '：暂无已填写注册渠道的用户。' + emptyTip;
-                if (cardsEl) cardsEl.innerHTML = '';
                 regTbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>';
                 if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
                 if (data && data.trend_days) {
@@ -265,39 +257,17 @@
 
             var summary =
                 scopeLabel +
-                '，已填写注册渠道共 ' +
+                ' · 已填渠道 ' +
                 total +
-                ' 人；其中已激活 ' +
+                ' 人 · 已激活 ' +
                 (data.activated_users || 0) +
-                ' 人（激活率 ' +
+                ' 人（' +
                 (data.overall_activation_pct_text || '—') +
-                '）。';
+                '）';
             if (withoutChannel > 0) {
-                summary += ' 另有 ' + withoutChannel + ' 人未选择渠道，未计入下表与图表。';
+                summary += ' · ' + withoutChannel + ' 人未选渠道，未计入';
             }
             summaryEl.textContent = summary;
-
-            if (cardsEl) {
-                var topCards = regItems.slice(0, 6);
-                cardsEl.innerHTML = topCards
-                    .map(function (it, idx) {
-                        return (
-                            '<div class="register-gender-card channel-card" style="border-top:3px solid ' +
-                            chartColorAtIndex(idx) +
-                            '">' +
-                            '<div class="rg-label">' +
-                            esc(it.label) +
-                            '</div>' +
-                            '<div class="rg-count">' +
-                            esc(String(it.count)) +
-                            ' 人</div>' +
-                            '<div class="rg-pct">' +
-                            esc(it.pct_text || '—') +
-                            '</div></div>'
-                        );
-                    })
-                    .join('');
-            }
 
             regTbody.innerHTML = regItems
                 .map(function (it) {
@@ -341,147 +311,8 @@
                 }
             }
 
-            if (typeof Chart === 'undefined') {
-                if (chartsWrap) {
-                    chartsWrap.style.display = 'block';
-                    if (chartsEmpty) {
-                        chartsEmpty.style.display = 'block';
-                        chartsEmpty.textContent = '图表库未加载，请刷新页面后重试';
-                    }
-                }
-                renderChannelDailyTrendChart(data, regItems);
-                return;
-            }
-
             applyAdminChartDefaults();
             renderChannelDailyTrendChart(data, regItems);
-            if (chartsWrap) chartsWrap.style.display = 'block';
-            var pieReg = document.getElementById('channelChartRegisterPie');
-            var barReg = document.getElementById('channelChartRegisterBar');
-            if (pieReg && regItems.length) {
-                _channelAnalysisChartInstances.push(
-                    new Chart(pieReg, {
-                        type: 'doughnut',
-                        data: {
-                            labels: regItems.map(function (it) {
-                                return it.label;
-                            }),
-                            datasets: [
-                                {
-                                    data: regItems.map(function (it) {
-                                        return it.count;
-                                    }),
-                                    backgroundColor: regItems.map(function (it, idx) {
-                                        return chartColorAtIndex(idx);
-                                    }),
-                                    borderWidth: 2,
-                                    borderColor: '#ffffff',
-                                    hoverOffset: 4
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            cutout: '58%',
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: { usePointStyle: true, pointStyle: 'circle' }
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        label: function (ctx) {
-                                            var v = ctx.parsed || 0;
-                                            var pct = total ? ((v / total) * 100).toFixed(1) : '0';
-                                            return ' ' + v + ' 人 (' + pct + '%)';
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    })
-                );
-            }
-            if (barReg && regItems.length) {
-                _channelAnalysisChartInstances.push(
-                    new Chart(barReg, {
-                        type: 'bar',
-                        data: {
-                            labels: regItems.map(function (it) {
-                                return it.label.length > 8 ? it.label.slice(0, 8) + '…' : it.label;
-                            }),
-                            datasets: [
-                                {
-                                    label: '注册人数',
-                                    data: regItems.map(function (it) {
-                                        return it.count;
-                                    }),
-                                    backgroundColor: regItems.map(function (it, idx) {
-                                        return chartColorAtIndex(idx);
-                                    }),
-                                    borderRadius: 6,
-                                    maxBarThickness: 42
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                x: { grid: { display: false } },
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { precision: 0 },
-                                    grid: { color: 'rgba(148, 163, 184, 0.25)' }
-                                }
-                            }
-                        }
-                    })
-                );
-            }
-
-            if (actTotal && actPieCard) {
-                actPieCard.style.display = '';
-                var pieAct = document.getElementById('channelChartActivationPie');
-                if (pieAct) {
-                    _channelAnalysisChartInstances.push(
-                        new Chart(pieAct, {
-                            type: 'doughnut',
-                            data: {
-                                labels: actItems.map(function (it) {
-                                    return it.label;
-                                }),
-                                datasets: [
-                                    {
-                                        data: actItems.map(function (it) {
-                                            return it.count;
-                                        }),
-                                        backgroundColor: actItems.map(function (it, idx) {
-                                            return chartColorAtIndex(idx + 2);
-                                        }),
-                                        borderWidth: 2,
-                                        borderColor: '#ffffff',
-                                        hoverOffset: 4
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                cutout: '58%',
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: { usePointStyle: true, pointStyle: 'circle' }
-                                    }
-                                }
-                            }
-                        })
-                    );
-                }
-            }
             scheduleChartResize(_channelAnalysisChartInstances);
         }
 
@@ -489,13 +320,11 @@
             var summaryEl = document.getElementById('channelAnalysisSummary');
             var regTbody = document.getElementById('channelRegisterTbody');
             var actTbody = document.getElementById('channelActivationTbody');
-            var cardsEl = document.getElementById('channelAnalysisCards');
             var daysEl = document.getElementById('channelAnalysisDays');
             var days = analyticsPeriodVal(daysEl);
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
             if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            if (cardsEl) cardsEl.innerHTML = '';
             destroyChannelAnalysisCharts();
             adminFetch('api/admin/analytics/register-channels?days=' + encodeURIComponent(days))
                 .then(function (r) {

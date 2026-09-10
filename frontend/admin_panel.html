@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260907-hub6">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260910-bid-toast">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260905-ch-psych-col">
 </head>
 <body>
@@ -3899,35 +3899,23 @@
                 </div>
 
                 <div id="page-channel-analysis" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">对比注册来源、激活来源与渠道趋势</p></div>
                     <section>
-                        <h2>注册渠道分析</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">新注册必须选择<strong>来源渠道</strong>（写入 <code>users.register_source_channel</code>）。统计仅计入已填渠道的用户；历史未选渠道的不计入占比与图表。「其他」为自定义填写。另统计<strong>激活来源</strong>（如闲鱼激活码）。折线图展示<strong>每日各渠道注册人数</strong>（全部注册用户模式下趋势图为近 90 日）。非超级管理员仅统计自己激活码关联的用户。</p></details>
-                        <div class="form-row flex-align-center mt-8">
+                        <div class="form-row flex-align-center">
                             <div>
                                 <label for="channelAnalysisDays">统计范围</label>
                                 <select id="channelAnalysisDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
                             </div>
-                            <button type="button" class="btn-page" id="btnRefreshChannelAnalysis">刷新分析</button>
+                            <button type="button" class="btn-page" id="btnRefreshChannelAnalysis">刷新</button>
                         </div>
-                        <div id="channelAnalysisWrap" class="channel-analysis-wrap" aria-live="polite">
-                            <p id="channelAnalysisSummary" class="stat">加载中…</p>
-                            <div id="channelAnalysisCards" class="register-gender-cards channel-analysis-cards"></div>
-                            <div id="channelDailyTrendSection" class="channel-daily-trend-section mt-16" style="display:none;">
-                                <p class="stat mb-4">每日注册用户数 · 按来源渠道</p>
-                                <p id="channelDailyTrendHint" class="hint mt-0 mb-10"></p>
-                                <div class="device-stats-chart-card chart-card-wide channel-daily-trend-card">
-                                    <div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="channelChartDailyTrend" aria-label="每日注册来源渠道折线图"></canvas></div>
-                                </div>
-                                <p id="channelDailyTrendEmpty" class="hint mt-8" style="display:none;">所选范围内暂无已填写渠道的注册记录</p>
-                            </div>
-                            <div class="scroll-x mt-12">
-                                <p class="stat mb-8">注册来源渠道明细</p>
+                        <p id="channelAnalysisSummary" class="stat mt-8">加载中…</p>
+                        <div class="channel-analysis-tables">
+                            <div class="scroll-x">
+                                <p class="stat mb-8">注册来源</p>
                                 <table>
                                     <thead>
                                         <tr>
                                             <th>渠道</th>
-                                            <th>注册人数</th>
+                                            <th>注册</th>
                                             <th>占比</th>
                                             <th>已激活</th>
                                             <th>激活率</th>
@@ -3936,61 +3924,39 @@
                                     <tbody id="channelRegisterTbody"><tr><td colspan="5">加载中…</td></tr></tbody>
                                 </table>
                             </div>
-                            <div class="scroll-x mt-16">
-                                <p class="stat mb-8">激活来源（已激活用户）</p>
+                            <div class="scroll-x">
+                                <p class="stat mb-8">激活来源</p>
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>激活渠道</th>
+                                            <th>渠道</th>
                                             <th>人数</th>
-                                            <th>占已激活用户比</th>
+                                            <th>占比</th>
                                         </tr>
                                     </thead>
                                     <tbody id="channelActivationTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
                                 </table>
                             </div>
-                            <div id="channelAnalysisChartsWrap" class="device-stats-charts-wrap channel-analysis-charts-wrap mt-14" style="display:none;">
-                                <p id="channelAnalysisChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
-                                <div class="device-stats-charts channel-analysis-charts-grid">
-                                    <div class="device-stats-chart-card">
-                                        <h4>注册来源占比</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="channelChartRegisterPie" aria-label="注册来源渠道占比"></canvas></div>
-                                    </div>
-                                    <div class="device-stats-chart-card chart-card-wide">
-                                        <h4>注册来源人数</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="channelChartRegisterBar" aria-label="注册来源渠道人数"></canvas></div>
-                                    </div>
-                                    <div class="device-stats-chart-card" id="channelActivationPieCard" style="display:none;">
-                                        <h4>激活来源占比</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="channelChartActivationPie" aria-label="激活来源占比"></canvas></div>
-                                    </div>
+                        </div>
+                        <div id="channelDailyTrendSection" class="channel-daily-trend-section mt-16" style="display:none;">
+                            <p class="stat mb-8">每日注册</p>
+                            <p id="channelDailyTrendHint" class="hint mt-0 mb-8"></p>
+                            <div class="device-stats-chart-card chart-card-wide channel-daily-trend-card">
+                                <div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="channelChartDailyTrend" aria-label="每日注册来源渠道折线图"></canvas></div>
+                            </div>
+                            <p id="channelDailyTrendEmpty" class="hint mt-8" style="display:none;">所选范围内暂无已填写渠道的注册记录</p>
+                        </div>
+                        <div class="channel-funnel-block mt-16">
+                            <div class="channel-funnel-head">
+                                <p class="stat mb-0">7 日转化</p>
+                                <div class="channel-funnel-tabs" role="tablist">
+                                    <button type="button" class="channel-funnel-tab is-active" data-funnel="register" role="tab" aria-selected="true">注册来源</button>
+                                    <button type="button" class="channel-funnel-tab" data-funnel="activation" role="tab" aria-selected="false">激活来源</button>
                                 </div>
                             </div>
+                            <div id="analyticsChannelFunnel" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
+                            <div id="analyticsActivationChannelFunnel" class="analytics-conv-wrap" hidden aria-live="polite">进入本页后加载…</div>
                         </div>
-                    </section>
-                    <section>
-                        <h2>分渠道 7 日转化漏斗（注册来源）</h2>
-                        <p class="hint mt-0">按<strong>注册来源渠道</strong>拆分注册后 7 日激活 / 有个税 / 看明细（cohort 口径与转化分析页「四段转化漏斗」一致）。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsChannelFunnelDays">统计区间</label>
-                                <select id="analyticsChannelFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshChannelFunnel">刷新渠道漏斗</button>
-                        </div>
-                        <div id="analyticsChannelFunnel" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
-                    </section>
-                    <section>
-                        <h2>分渠道 7 日转化漏斗（激活来源）</h2>
-                        <p class="hint mt-0">按<strong>激活来源渠道</strong>（<code>activation_source_channel</code>，如闲鱼码）拆分：激活后 168 小时内有个税 / 看明细。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsActivationChannelFunnelDays">统计区间</label>
-                                <select id="analyticsActivationChannelFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshActivationChannelFunnel">刷新激活渠道漏斗</button>
-                        </div>
-                        <div id="analyticsActivationChannelFunnel" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
                     </section>
                 </div>
 
@@ -4398,9 +4364,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260910-admin-op-log"></script>
+    <script src="/js/admin/loader.js?v=20260910-ch-simple"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20260910-admin-op-log"></script>
+    <script src="/js/admin_panel.js?v=20260910-bid-toast"></script>
 </body>
 </html>
