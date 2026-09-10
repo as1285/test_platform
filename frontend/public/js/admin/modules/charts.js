@@ -812,7 +812,7 @@
                 (platformSummary.ios_pct_text || '—') +
                 ' · 共 ' +
                 String(platformSummary.total != null ? platformSummary.total : 0) +
-                ' 人';
+                ' 人（同IP去重）';
 
             cardsEl.innerHTML =
                 '<div class="user-data-stat-card"><div class="ud-label">安卓率</div><div class="ud-val">' +
