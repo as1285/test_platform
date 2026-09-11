@@ -214,7 +214,14 @@ dirs.append((os.environ["HOT_DIR"], "hot", True))
 def list_files(d, newest_first, limit=0):
     if not os.path.isdir(d):
         return []
-    names = [n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n))]
+    names = []
+    for n in os.listdir(d):
+        # 先丢掉临时/导入前快照，再截断，避免 limit=1 命中 before-import 后整次空转
+        if n.endswith(".tmp") or "before-import" in n:
+            continue
+        if not os.path.isfile(os.path.join(d, n)):
+            continue
+        names.append(n)
     names.sort(reverse=bool(newest_first))
     if limit and newest_first and len(names) > limit:
         names = names[:limit]

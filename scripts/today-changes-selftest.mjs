@@ -3384,7 +3384,8 @@ mustInclude(
     'PartSize=1',
     'older hot failed but newest is on COS',
     'Timeout=1200',
-    'COS_HOT_SYNC_LIMIT="${COS_HOT_SYNC_LIMIT:-1}"'
+    'COS_HOT_SYNC_LIMIT="${COS_HOT_SYNC_LIMIT:-1}"',
+    '先丢掉临时/导入前快照，再截断'
   ],
   'cos hot backup aborts leftover multipart, 1MB parts, newest-ok'
 );
