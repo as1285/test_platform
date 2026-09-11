@@ -892,7 +892,7 @@ function toPublicInstallDownloadUrl(raw) {
   }
   // 绕过 Cloudflare 对旧 APK 响应头的缓存（缺 Content-Disposition 时易整页打开失败）
   if (/\.apk$/i.test(s.split('?')[0]) && s.indexOf('?') < 0) {
-    s += '?v=20260717';
+    s += '?v=20260911';
   }
   return s;
 }

@@ -48,6 +48,16 @@
                 return (h >>> 0) % 100;
             }
 
+            /* geshui.vip 安装页只做下载引导，不走 C 方案游客沙盒自动进「我的」 */
+            function stayOnInstallGuideHost() {
+                try {
+                    var host = String(window.location.hostname || '').toLowerCase();
+                    return host === 'www.geshui.vip' || host === 'geshui.vip';
+                } catch (eStay) {
+                    return false;
+                }
+            }
+
             window.__landingAbReady = fetch('/api/public/landing-ab-config', {
                 credentials: 'same-origin',
                 cache: 'no-store',
@@ -109,7 +119,7 @@
                             sales_ch: entry.sales_ch
                         });
                     }
-                    if (variant === 'c' && !downloadOnly) {
+                    if (variant === 'c' && !downloadOnly && !stayOnInstallGuideHost()) {
                         try {
                             var existingToken = localStorage.getItem('token') || '';
                             var existingUserId = localStorage.getItem('user_id') || '';
