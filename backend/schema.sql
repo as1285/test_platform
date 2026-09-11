@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS tax_records (
     medical_insurance DECIMAL(20, 2) DEFAULT 0,
     unemployment_insurance DECIMAL(20, 2) DEFAULT 0,
     housing_fund DECIMAL(20, 2) DEFAULT 0,
+    list_order INT NOT NULL DEFAULT 0 COMMENT '同月列表顺序，越小越靠上',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),

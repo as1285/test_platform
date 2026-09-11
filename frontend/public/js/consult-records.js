@@ -442,6 +442,10 @@ function setTaxRecordsManageMode(on) {
     for (var i = 0; i < dels.length; i++) {
         dels[i].hidden = !taxRecordsManageMode;
     }
+    var moves = document.querySelectorAll('#recordListMount [data-record-move]');
+    for (var m = 0; m < moves.length; m++) {
+        moves[m].hidden = !taxRecordsManageMode;
+    }
 }
 
 function toggleTaxRecordsManageMode() {
@@ -462,6 +466,13 @@ function bindTaxRecordCardEvents(mount) {
             e.preventDefault();
             e.stopPropagation();
             deleteRecord(del.getAttribute('data-record-delete'));
+            return;
+        }
+        var move = e.target.closest('[data-record-move]');
+        if (move && mount.contains(move)) {
+            e.preventDefault();
+            e.stopPropagation();
+            reorderRecord(move.getAttribute('data-record-id'), move.getAttribute('data-record-move'));
             return;
         }
         var card = e.target.closest('.record-card[data-record-id]');
@@ -523,8 +534,29 @@ function renderListFromArray(list) {
         html += '扣缴单位：' + (r.company_name || '') + '<br>';
         html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
         html += '</div></div>';
+        html += '<div class="record-card-actions">';
+        var flags =
+            window.TaxRecordOrder && window.TaxRecordOrder.moveFlags
+                ? window.TaxRecordOrder.moveFlags(list, r.id)
+                : { canUp: false, canDown: false };
+        if (flags.canUp) {
+            html +=
+                '<button type="button" class="record-card-move btn btn-default btn-sm" data-record-id="' +
+                idAttr +
+                '" data-record-move="up"' +
+                (taxRecordsManageMode ? '' : ' hidden') +
+                '>上移</button>';
+        }
+        if (flags.canDown) {
+            html +=
+                '<button type="button" class="record-card-move btn btn-default btn-sm" data-record-id="' +
+                idAttr +
+                '" data-record-move="down"' +
+                (taxRecordsManageMode ? '' : ' hidden') +
+                '>下移</button>';
+        }
         html += '<button type="button" class="record-card-delete btn btn-danger btn-sm" data-record-delete="' + idAttr + '"' + (taxRecordsManageMode ? '' : ' hidden') + '>删除</button>';
-        html += '</div>';
+        html += '</div></div>';
     });
     mount.innerHTML = html;
     syncTaxPayGuideBanner(list);
@@ -625,6 +657,31 @@ function deleteRecord(id) {
         })
         .catch(function (err) {
             showMsg('删除失败：' + (err.message || ''), false);
+        });
+}
+
+/**
+ * 同月记录上移/下移一格并刷新列表。不计入改税天数。
+ */
+function reorderRecord(id, direction) {
+    consultTaxWrite({
+            action: 'reorder_record',
+            user_id: currentUserId(),
+            id: id,
+            direction: direction
+        })
+        .then(function (r) { return (window.authParseJson||function(r){return r.json();})(r); })
+        .then(function (data) {
+            if (data.code === 200) {
+                return refreshRecordList();
+            }
+            throw new Error(data.msg || '调整失败');
+        })
+        .then(function () {
+            showMsg(direction === 'up' ? '已上移' : '已下移', true);
+        })
+        .catch(function (err) {
+            showMsg('调整失败：' + (err.message || ''), false);
         });
 }
 

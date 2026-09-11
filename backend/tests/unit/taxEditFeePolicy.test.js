@@ -66,6 +66,7 @@ describe('taxEditFeePolicy', () => {
     expect(isTaxEditFeeWriteAction('save_record')).toBe(true);
     expect(isTaxEditFeeWriteAction('batch_save_records')).toBe(true);
     expect(isTaxEditFeeWriteAction('log_issue_application')).toBe(false);
+    expect(isTaxEditFeeWriteAction('reorder_record')).toBe(false);
     expect(isTaxEditFeeSkuId('sku_tax_edit_fee_20')).toBe(true);
     expect(isTaxEditFeeSkuId('sku_tax_edit_unlimited_30')).toBe(true);
     expect(isTaxEditFeeSkuId('sku_rename_fee_10')).toBe(false);
