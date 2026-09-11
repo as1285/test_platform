@@ -1,8 +1,9 @@
 /**
  * 运营备数导入（P0）：Excel/CSV → 建用户 / 写个税 / 直接开通。
  * 标准模板：按年份分块，每月一行（税前收入 / 社保公积金 / 其他扣除 / 扣税 / 公司名称）。
- * 亦兼容旧版扁平行列表。
- * 冲突策略：覆盖（同用户名覆盖资料与密码；同用户+年月覆盖未删除个税）。
+ * 亦兼容旧版扁平行列表、薪资流水明细（YYYY-MM / 应发合计 / 当月个税 / 五险一金）。
+ * 薪资流水若无用户名，自动生成 demo 账号并开通。
+ * 冲突策略：覆盖（同用户名覆盖资料与密码；同用户+年月+所得小类覆盖未删除个税）。
  */
 'use strict';
 
@@ -93,10 +94,14 @@ var HEADER_MAP = {
   收入: 'income',
   税前收入: 'income',
   应税收入: 'income',
+  应发合计: 'income',
+  应发: 'income',
   income: 'income',
   已申报税额: 'tax_reported',
   税额: 'tax_reported',
   扣税: 'tax_reported',
+  当月个税: 'tax_reported',
+  本期个税: 'tax_reported',
   tax_reported: 'tax_reported',
   本期收入: 'income_this_period',
   income_this_period: 'income_this_period',
@@ -112,14 +117,23 @@ var HEADER_MAP = {
   捐赠扣除: 'donation_deduction',
   donation_deduction: 'donation_deduction',
   养老保险: 'pension_insurance',
+  养老: 'pension_insurance',
   pension_insurance: 'pension_insurance',
   医疗保险: 'medical_insurance',
+  医疗: 'medical_insurance',
   medical_insurance: 'medical_insurance',
   失业保险: 'unemployment_insurance',
+  失业: 'unemployment_insurance',
   unemployment_insurance: 'unemployment_insurance',
   住房公积金: 'housing_fund',
   公积金: 'housing_fund',
   housing_fund: 'housing_fund',
+  五险一金共计: 'special_deduction',
+  五险一金: 'special_deduction',
+  年终奖: 'annual_bonus',
+  年终奖个税: 'annual_bonus_tax',
+  annual_bonus: 'annual_bonus',
+  annual_bonus_tax: 'annual_bonus_tax',
   所得项目: 'income_type',
   income_type: 'income_type',
   所得细分: 'income_subtype',
@@ -254,19 +268,345 @@ function isBlockFormatMatrix(matrix) {
   return false;
 }
 
+var AUX_SHEET_NAME_RE = /^(参数|假设|目录|说明|年度汇总|汇总|离职|离职赔偿|测算|图表)/;
+
+var PAYROLL_HEADER_MAP = {
+  应发合计: 'income',
+  应发: 'income',
+  当月个税: 'tax_reported',
+  本期个税: 'tax_reported',
+  养老: 'pension_insurance',
+  养老保险: 'pension_insurance',
+  医疗: 'medical_insurance',
+  医疗保险: 'medical_insurance',
+  失业: 'unemployment_insurance',
+  失业保险: 'unemployment_insurance',
+  公积金: 'housing_fund',
+  住房公积金: 'housing_fund',
+  五险一金共计: 'special_deduction',
+  五险一金: 'special_deduction',
+  年终奖: 'annual_bonus',
+  年终奖个税: 'annual_bonus_tax',
+  公司名称: 'company_name',
+  扣缴单位: 'company_name',
+  单位名称: 'company_name',
+  月份: 'period',
+  用户名: 'username',
+  账号: 'username',
+  密码: 'password',
+  姓名: 'real_name',
+  证件号: 'tax_id',
+  身份证号: 'tax_id'
+};
+
+function matrixHasContent(matrix) {
+  if (!matrix || !matrix.length) return false;
+  var i;
+  var j;
+  for (i = 0; i < matrix.length; i++) {
+    var line = matrix[i] || [];
+    for (j = 0; j < line.length; j++) {
+      if (cellStr(line[j]) !== '') return true;
+    }
+  }
+  return false;
+}
+
+function normalizePayrollHeader(h) {
+  var key = cellStr(h).replace(/^\uFEFF/, '');
+  if (!key || /累计/.test(key)) return null;
+  return PAYROLL_HEADER_MAP[key] || null;
+}
+
+function findPayrollHeaderRow(matrix) {
+  var i;
+  var limit = Math.min(8, (matrix && matrix.length) || 0);
+  for (i = 0; i < limit; i++) {
+    var line = matrix[i] || [];
+    var fields = [];
+    var j;
+    for (j = 0; j < line.length; j++) {
+      var f = normalizePayrollHeader(line[j]);
+      if (f) fields.push(f);
+    }
+    if (fields.indexOf('income') >= 0 && fields.indexOf('tax_reported') >= 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function parseYearMonthCell(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return { year: v.getFullYear(), month: v.getMonth() + 1 };
+  }
+  var s = cellStr(v).replace(/[.]/g, '-');
+  var m = /^(\d{4})[-/年](\d{1,2})月?$/.exec(s);
+  if (!m) return null;
+  var year = parseInt(m[1], 10);
+  var month = parseInt(m[2], 10);
+  if (year < 2000 || year > 2100 || month < 1 || month > 12) return null;
+  return { year: year, month: month };
+}
+
+function isPayrollFlowMatrix(matrix) {
+  var headerIdx = findPayrollHeaderRow(matrix);
+  if (headerIdx < 0) return false;
+  var i;
+  for (i = headerIdx + 1; i < matrix.length; i++) {
+    var line = matrix[i] || [];
+    if (parseYearMonthCell(line[0]) || parseYearMonthCell(line[1])) return true;
+  }
+  return false;
+}
+
+function looksLikeCompanyName(s) {
+  var t = cellStr(s);
+  if (t.length < 4 || t.length > 80) return false;
+  if (!/公司|企业|集团|事务所/.test(t)) return false;
+  if (/名称$|年度|测算|合计|参数/.test(t)) return false;
+  return true;
+}
+
+function inferCompanyName(matrix) {
+  var i;
+  var j;
+  var last = '';
+  for (i = 0; i < (matrix || []).length; i++) {
+    var line = matrix[i] || [];
+    for (j = 0; j < line.length; j++) {
+      if (looksLikeCompanyName(line[j])) last = cellStr(line[j]);
+    }
+  }
+  return last;
+}
+
+function shortCompanyName(company) {
+  var s = cellStr(company)
+    .replace(/有限责任公司/g, '')
+    .replace(/有限公司/g, '')
+    .replace(/[()（）]/g, '')
+    .trim();
+  if (!s) return '演示账号';
+  return s.slice(0, 20);
+}
+
+function buildDemoProfile(company, firstPeriod, lastPeriod) {
+  var seed = 'payroll|' + cellStr(company) + '|' + cellStr(firstPeriod) + '|' + cellStr(lastPeriod);
+  var h = crypto.createHash('sha1').update(seed, 'utf8').digest('hex');
+  return {
+    username: 'demo' + h.slice(0, 8),
+    password: 'Demo8888',
+    real_name: shortCompanyName(company),
+    gender: 1,
+    is_demo: true
+  };
+}
+
+function payrollReportDate(year, month) {
+  var y = year;
+  var m = month + 1;
+  if (m > 12) {
+    m = 1;
+    y += 1;
+  }
+  return y + '-' + String(m).padStart(2, '0') + '-15';
+}
+
+function cellByPayrollField(line, colMap, field) {
+  if (!colMap || colMap[field] == null) return '';
+  return line[colMap[field]];
+}
+
+/** 薪资流水：YYYY-MM + 应发合计 + 当月个税 + 五险一金；无用户名则生成 demo */
+function payrollMatrixToRows(matrix, sheetName, sheetIndex) {
+  var headerIdx = findPayrollHeaderRow(matrix);
+  if (headerIdx < 0) {
+    return { error: '工作表「' + sheetName + '」无法识别薪资流水表头', rows: [] };
+  }
+  var headerLine = matrix[headerIdx] || [];
+  var colMap = {};
+  var j;
+  for (j = 0; j < headerLine.length; j++) {
+    var field = normalizePayrollHeader(headerLine[j]);
+    if (!field || colMap[field] != null) continue;
+    colMap[field] = j;
+  }
+
+  var profile = parseProfileFromBlockMatrix(matrix);
+  var company = cellStr(profile.company_name) || inferCompanyName(matrix);
+  var periods = [];
+  var monthRows = [];
+  var i;
+  var lineNoBase = sheetIndex * 10000;
+
+  for (i = headerIdx + 1; i < matrix.length; i++) {
+    var line = matrix[i] || [];
+    var colA = cellStr(line[0]);
+    if (/合计|总计|小计/.test(colA)) continue;
+    var ym =
+      parseYearMonthCell(line[0]) ||
+      parseYearMonthCell(cellByPayrollField(line, colMap, 'period')) ||
+      parseYearMonthCell(line[1]);
+    if (!ym) continue;
+
+    var incomeAll = parseMoney(cellByPayrollField(line, colMap, 'income'), 0);
+    var taxAll = parseMoney(cellByPayrollField(line, colMap, 'tax_reported'), 0);
+    var bonus = parseMoney(cellByPayrollField(line, colMap, 'annual_bonus'), 0);
+    var bonusTax = parseMoney(cellByPayrollField(line, colMap, 'annual_bonus_tax'), 0);
+    var pension = parseMoney(cellByPayrollField(line, colMap, 'pension_insurance'), 0);
+    var medical = parseMoney(cellByPayrollField(line, colMap, 'medical_insurance'), 0);
+    var unemp = parseMoney(cellByPayrollField(line, colMap, 'unemployment_insurance'), 0);
+    var housing = parseMoney(cellByPayrollField(line, colMap, 'housing_fund'), 0);
+    var special = parseMoney(cellByPayrollField(line, colMap, 'special_deduction'), 0);
+    if (!special && (pension || medical || unemp || housing)) {
+      special = Number((pension + medical + unemp + housing).toFixed(2));
+    }
+    var rowCompany = '';
+    var cj;
+    for (cj = 0; cj < line.length; cj++) {
+      if (looksLikeCompanyName(line[cj])) rowCompany = cellStr(line[cj]);
+    }
+    if (!rowCompany) rowCompany = company;
+
+    var wageIncome = incomeAll;
+    var wageTax = taxAll;
+    if (bonus > 0 && incomeAll >= bonus) {
+      wageIncome = Number((incomeAll - bonus).toFixed(2));
+      wageTax = Number((Math.max(0, taxAll - bonusTax)).toFixed(2));
+    }
+    if (!hasMoneyValue(wageIncome) && !hasMoneyValue(bonus)) continue;
+
+    periods.push(ym.year + '-' + String(ym.month).padStart(2, '0'));
+    monthRows.push({
+      _line: lineNoBase + i + 1,
+      year: ym.year,
+      month: ym.month,
+      company_name: rowCompany,
+      income: wageIncome,
+      tax_reported: wageTax,
+      special_deduction: special,
+      pension_insurance: pension,
+      medical_insurance: medical,
+      unemployment_insurance: unemp,
+      housing_fund: housing,
+      income_type: '工资薪金',
+      income_subtype: '正常工资薪金',
+      report_channel: '其他',
+      report_date: payrollReportDate(ym.year, ym.month),
+      tax_period: ym.year + '-' + String(ym.month).padStart(2, '0'),
+      bonus: bonus,
+      bonus_tax: bonusTax
+    });
+  }
+
+  if (!monthRows.length) {
+    return { error: '工作表「' + sheetName + '」未解析到有效月份流水', rows: [] };
+  }
+
+  var demo = buildDemoProfile(company, periods[0], periods[periods.length - 1]);
+  var username = cellStr(profile.username) || cellStr(monthRows[0].username) || demo.username;
+  var password = cellStr(profile.password) || demo.password;
+  var realName = cellStr(profile.real_name) || demo.real_name;
+  var taxId = cellStr(profile.tax_id);
+  var gender = profile.gender != null && cellStr(profile.gender) !== '' ? profile.gender : 1;
+  var isDemo = !cellStr(profile.username);
+
+  var taxRows = [];
+  monthRows.forEach(function (row) {
+    var wage = {
+      _line: row._line,
+      username: username,
+      password: password,
+      real_name: realName,
+      tax_id: taxId,
+      gender: gender,
+      is_demo: isDemo,
+      year: row.year,
+      month: row.month,
+      company_name: row.company_name,
+      income: row.income,
+      tax_reported: row.tax_reported,
+      special_deduction: row.special_deduction,
+      pension_insurance: row.pension_insurance,
+      medical_insurance: row.medical_insurance,
+      unemployment_insurance: row.unemployment_insurance,
+      housing_fund: row.housing_fund,
+      income_type: row.income_type,
+      income_subtype: row.income_subtype,
+      report_channel: row.report_channel,
+      report_date: row.report_date,
+      tax_period: row.tax_period,
+      deduction_fee: 5000
+    };
+    taxRows.push(wage);
+    if (row.bonus > 0) {
+      taxRows.push({
+        _line: row._line,
+        username: username,
+        password: password,
+        real_name: realName,
+        tax_id: taxId,
+        gender: gender,
+        is_demo: isDemo,
+        year: row.year,
+        month: row.month,
+        company_name: row.company_name,
+        income: row.bonus,
+        tax_reported: row.bonus_tax,
+        deduction_fee: 0,
+        special_deduction: 0,
+        pension_insurance: 0,
+        medical_insurance: 0,
+        unemployment_insurance: 0,
+        housing_fund: 0,
+        income_type: '工资薪金',
+        income_subtype: '全年一次性奖金收入',
+        report_channel: row.report_channel,
+        report_date: row.report_date,
+        tax_period: row.tax_period
+      });
+    }
+  });
+
+  return { error: '', rows: taxRows, format: 'payroll' };
+}
+
 /** 从 buffer 解析全部工作表 */
 function workbookToSheets(buf) {
   var wb = XLSX.read(buf, { type: 'buffer', cellDates: true, raw: false });
+  var hiddenByName = {};
+  var meta = (wb.Workbook && wb.Workbook.Sheets) || [];
+  meta.forEach(function (s) {
+    if (s && s.name) hiddenByName[s.name] = Number(s.Hidden) || 0;
+  });
   var out = [];
   (wb.SheetNames || []).forEach(function (name) {
     var sheet = wb.Sheets[name];
     if (!sheet) return;
+    var matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
     out.push({
       name: name,
-      matrix: XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
+      matrix: matrix,
+      hidden: hiddenByName[name] > 0,
+      empty: !matrixHasContent(matrix)
     });
   });
   return out;
+}
+
+function pickImportSheets(sheets) {
+  var vis = (sheets || []).filter(function (s) {
+    if (!s) return false;
+    if (s.hidden) return false;
+    if (s.empty) return false;
+    if (AUX_SHEET_NAME_RE.test(String(s.name || '').trim())) return false;
+    return true;
+  });
+  if (vis.length) return vis;
+  return (sheets || []).filter(function (s) {
+    return s && !s.empty;
+  });
 }
 
 /** 从 buffer/path 解析为二维表（首 sheet，兼容旧逻辑） */
@@ -488,12 +828,46 @@ function matrixToFlatRows(matrix) {
 }
 
 function bufferToImportRows(buf) {
-  var sheets = workbookToSheets(buf);
+  var allSheets = workbookToSheets(buf);
+  if (!allSheets.length) {
+    return { error: '文件为空', rows: [] };
+  }
+  var sheets = pickImportSheets(allSheets);
   if (!sheets.length) {
     return { error: '文件为空', rows: [] };
   }
 
-  if (isBlockFormatMatrix(sheets[0].matrix)) {
+  var payrollSheets = [];
+  var pi;
+  for (pi = 0; pi < allSheets.length; pi++) {
+    if (isPayrollFlowMatrix(allSheets[pi].matrix)) payrollSheets.push(allSheets[pi]);
+  }
+  if (!payrollSheets.length) {
+    for (pi = 0; pi < sheets.length; pi++) {
+      if (isPayrollFlowMatrix(sheets[pi].matrix)) payrollSheets.push(sheets[pi]);
+    }
+  }
+  if (payrollSheets.length) {
+    var payRows = [];
+    var seenPayUser = {};
+    for (pi = 0; pi < payrollSheets.length; pi++) {
+      var payParsed = payrollMatrixToRows(payrollSheets[pi].matrix, payrollSheets[pi].name, pi + 1);
+      if (payParsed.error) return { error: payParsed.error, rows: [] };
+      var payUser = cellStr((payParsed.rows[0] && payParsed.rows[0].username) || '');
+      if (payUser && seenPayUser[payUser]) continue;
+      if (payUser) seenPayUser[payUser] = 1;
+      payRows = payRows.concat(payParsed.rows);
+    }
+    if (!payRows.length) {
+      return { error: '薪资流水未解析到有效月份', rows: [] };
+    }
+    if (payRows.length > MAX_ROWS) {
+      return { error: '单次最多 ' + MAX_ROWS + ' 行数据', rows: [] };
+    }
+    return { error: '', rows: payRows, format: 'payroll' };
+  }
+
+  if (isBlockFormatMatrix(sheets[0].matrix) || sheets.some(function (s) { return isBlockFormatMatrix(s.matrix); })) {
     var allRows = [];
     var seenUser = {};
     var si;
@@ -518,7 +892,11 @@ function bufferToImportRows(buf) {
   }
 
   if (sheets.length > 1) {
-    return { error: '扁平行模板仅支持单工作表', rows: [] };
+    return {
+      error:
+        '扁平行模板仅支持单工作表（已忽略隐藏/辅助表后仍有多张）。请只留一张带「用户名」列的表，或使用年份分块 / 薪资流水明细。',
+      rows: []
+    };
   }
   var flat = matrixToFlatRows(sheets[0].matrix);
   flat.format = 'flat';
@@ -570,6 +948,7 @@ function normalizeImportRow(raw) {
     tax_id: cellStr(raw.tax_id),
     gender: parseGender(raw.gender),
     grant_days: parseGrantDays(raw.grant_days),
+    is_demo: !!raw.is_demo,
     tax: hasTax
       ? {
           year: year,
@@ -580,7 +959,10 @@ function normalizeImportRow(raw) {
           tax_reported: parseMoney(raw.tax_reported, 0),
           income_this_period: incomeThis,
           tax_free_income: parseMoney(raw.tax_free_income, 0),
-          deduction_fee: parseMoney(raw.deduction_fee, 5000),
+          deduction_fee: parseMoney(
+            raw.deduction_fee,
+            cellStr(raw.income_subtype) === '全年一次性奖金收入' ? 0 : 5000
+          ),
           special_deduction: specialDed,
           other_deduction: parseMoney(raw.other_deduction, 0),
           donation_deduction: parseMoney(raw.donation_deduction, 0),
@@ -626,7 +1008,7 @@ async function upsertUser(conn, row) {
          username, salt, hash, real_name, tax_id, gender,
          account_active, banned, user_type, plain_password,
          activation_kind, active_until, register_source_channel
-       ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, 0, ?, ?, ?, 'prep_import')`,
+       ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?)`,
       [
         row.username,
         saltHex,
@@ -634,9 +1016,11 @@ async function upsertUser(conn, row) {
         row.real_name,
         row.tax_id || null,
         row.gender,
+        row.is_demo ? 1 : 0,
         row.password,
         activationKind,
-        activeUntil
+        activeUntil,
+        row.is_demo ? 'prep_import_demo' : 'prep_import'
       ]
     );
     return { created: true, overwritten: false };
@@ -664,11 +1048,14 @@ async function upsertUser(conn, row) {
 
 async function upsertTax(conn, username, tax) {
   if (!tax) return { written: false, overwritten: false };
+  var subtype = cellStr(tax.income_subtype) || '正常工资薪金';
   const [rows] = await conn.execute(
     `SELECT id FROM tax_records
-     WHERE user_id = ? AND year = ? AND month = ? AND deleted_at IS NULL
+     WHERE user_id = ? AND year = ? AND month = ?
+       AND TRIM(IFNULL(income_subtype,'')) = ?
+       AND deleted_at IS NULL
      ORDER BY updated_at DESC, id DESC LIMIT 1`,
-    [username, tax.year, tax.month]
+    [username, tax.year, tax.month, subtype]
   );
   var period = tax.tax_period || tax.year + '-' + String(tax.month).padStart(2, '0');
   if (rows.length) {
@@ -874,8 +1261,10 @@ async function handleAdminUserPrepImport(req, res) {
         }
         try {
           var ures = await upsertUser(conn, n);
-          if (ures.created) createdUsers++;
-          else if (ures.overwritten) overwrittenUsers++;
+          if (!accountOut[n.username]) {
+            if (ures.created) createdUsers++;
+            else if (ures.overwritten) overwrittenUsers++;
+          }
           if (!accountOut[n.username]) {
             accountOut[n.username] = {
               username: n.username,

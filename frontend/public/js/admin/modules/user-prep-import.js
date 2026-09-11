@@ -181,6 +181,7 @@
               ' 个用户；错误 ' +
               (d.error_count || 0) +
               ' 条。冲突=覆盖。' +
+              (d.format === 'payroll' ? '已识别为薪资流水，无账号则生成 demo。' : '') +
               (d.preview_truncated ? '（表仅显示前 50 行）' : '')
           );
           renderPreview(d.preview || []);

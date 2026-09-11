@@ -1178,8 +1178,10 @@
                             用 Excel 批量建用户、写入个税并<strong>直接开通</strong>。请下载并填写
                             <code>user_prep_import_template.xlsx</code>：按<strong>年份分块</strong>，每月一行可填
                             <strong>税前收入、社保公积金、养老/医疗/失业/公积金、其他扣除、扣税、公司名称</strong>等；底部资料区填写
-                            <strong>用户名、密码、姓名</strong>等。多工作表=多用户。亦兼容旧版扁平行 CSV。
-                            冲突策略：<strong>覆盖</strong>（同用户名覆盖资料/密码；同用户+年月覆盖个税）。开通天数留空=永久。
+                            <strong>用户名、密码、姓名</strong>等。多工作表=多用户。亦兼容旧版扁平行 CSV，以及
+                            <strong>薪资流水明细</strong>（应发合计 / 当月个税 / 五险一金；隐藏的参数、汇总表会忽略）。
+                            流水表没有用户名时自动生成 <strong>demo 账号</strong>（密码 Demo8888）并开通。
+                            冲突策略：<strong>覆盖</strong>（同用户名覆盖资料/密码；同用户+年月+所得小类覆盖个税）。开通天数留空=永久。
                         </p>
                         <div class="form-row flex-wrap gap-10 flex-align-center">
                             <a class="btn-page" id="btnUserPrepTemplate" href="/api/admin/user-prep/template">下载 Excel 模板</a>
@@ -2525,7 +2527,7 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260903-split2"></script>
+    <script src="/js/admin/loader.js?v=20260911-payroll"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260903-split2"></script>
