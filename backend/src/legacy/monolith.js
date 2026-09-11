@@ -160,6 +160,7 @@ const { createPriceBids } = require('../payments/priceBids');
 const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
 const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBulk');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
+const taxRecordListOrder = require('../tax/taxRecordListOrder');
 const {
   sumRowMoney,
   splitBasicAndSpecialAdditionalDeduction,
@@ -4096,7 +4097,7 @@ async function getRecords(userId, year, incomeTypes) {
     'id, year, month, income_type, income_subtype, company_name, company_tax_id, tax_authority, ' +
     'report_channel, report_date, tax_period, income, tax_reported, income_this_period, tax_free_income, ' +
     'deduction_fee, special_deduction, other_deduction, donation_deduction, ' +
-    'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, created_at, updated_at';
+    'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, list_order, created_at, updated_at';
   let query =
     'SELECT ' + listCols + ' FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL;
   const params = [userId];
@@ -4131,7 +4132,7 @@ async function getRecords(userId, year, incomeTypes) {
   }
 
   query +=
-    ' ORDER BY year DESC, month DESC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
+    ' ORDER BY year DESC, month DESC, list_order ASC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
 
   const [rows] = await conn.execute(query, params);
   conn.release();
@@ -4155,6 +4156,43 @@ async function getRecords(userId, year, incomeTypes) {
     _taxRecordsListCache.clear();
   }
   return out;
+}
+
+/** 同月两条记录对调上下顺序；不写变更日志、不计入改税天数 */
+async function reorderTaxRecord(userId, id, direction) {
+  const conn = await pool.getConnection();
+  try {
+    const [mine] = await conn.execute(
+      'SELECT id, year, month FROM tax_records WHERE id = ? AND user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      [String(id), String(userId)]
+    );
+    if (!mine.length) {
+      var missing = new Error('记录不存在');
+      missing.status = 404;
+      throw missing;
+    }
+    const [rows] = await conn.execute(
+      'SELECT id, year, month, income_subtype, list_order FROM tax_records WHERE user_id = ? AND year = ? AND month = ? AND ' +
+        TAX_RECORD_NOT_DELETED_SQL,
+      [String(userId), mine[0].year, mine[0].month]
+    );
+    var planned = taxRecordListOrder.planMonthReorder(rows, id, direction);
+    if (!planned.ok) {
+      var bad = new Error(planned.msg || '无法调整顺序');
+      bad.status = 400;
+      throw bad;
+    }
+    for (var i = 0; i < planned.updates.length; i++) {
+      await conn.execute(
+        'UPDATE tax_records SET list_order = ?, updated_at = updated_at WHERE id = ? AND user_id = ?',
+        [planned.updates[i].list_order, planned.updates[i].id, String(userId)]
+      );
+    }
+    invalidateTaxRecordsListCache(userId);
+    return { ok: true, updates: planned.updates };
+  } finally {
+    conn.release();
+  }
 }
 
 var TAX_CHANGE_LOG_FIELDS = [
@@ -13401,6 +13439,25 @@ async function handleTaxPost(req, res) {
           msg: taxEditFeePolicy.taxEditFeeBlockMessage(taxEditPolicy),
           data: Object.assign({ need_tax_edit_fee: true, peer_account: true }, taxEditPolicy)
         });
+      }
+    }
+    if (action === 'reorder_record') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var reorderId = body.id;
+      if (reorderId == null || String(reorderId).trim() === '') {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      try {
+        var reorderOut = await reorderTaxRecord(userId, String(reorderId).trim(), body.direction);
+        return res.json({ code: 200, data: reorderOut });
+      } catch (eReorder) {
+        var st = eReorder && eReorder.status ? eReorder.status : 500;
+        if (st >= 400 && st < 500) {
+          return res.status(st).json({ code: st, msg: String(eReorder.message || '无法调整顺序') });
+        }
+        throw eReorder;
       }
     }
     if (action === 'save_record' || action === 'add_record') {

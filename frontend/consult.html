@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260907-no-fillbtn">
+    <link rel="stylesheet" href="/css/consult.css?v=20260911-tax-reorder">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -558,7 +558,7 @@
                     <button type="button" class="batch-tax-more-item" onclick="openDeleteTaxRecordsByCompanyModal(); closeTaxRecordsManageMenu();">删除公司数据</button>
                     <button type="button" class="batch-tax-more-item is-danger" onclick="deleteAllTaxRecords(); closeTaxRecordsManageMenu();">一键删除全部</button>
                 </div>
-                <p class="tax-records-manage-hint" id="taxRecordsManageHint" hidden>点「删除」移除单条；也可按年或按公司批量处理。删除后可在回收站恢复。</p>
+                <p class="tax-records-manage-hint" id="taxRecordsManageHint" hidden>同月多条可点「上移 / 下移」调整顺序；点「删除」移除单条，也可按年或按公司批量处理。删除后可在回收站恢复。</p>
                 <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>
                     <div class="tax-pay-guide-banner-text">
                         <strong id="taxPayGuideBannerTitle">记录已生成</strong>
@@ -1027,7 +1027,8 @@
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
     <script defer src="/js/consult-core.js?v=20260907-no-fillbtn"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260907-tax-ux"></script>
-    <script defer src="/js/consult-records.js?v=20260907-no-ad-divert"></script>
+    <script defer src="/js/tax-record-order.js?v=20260911-same-month"></script>
+    <script defer src="/js/consult-records.js?v=20260911-tax-reorder"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {
