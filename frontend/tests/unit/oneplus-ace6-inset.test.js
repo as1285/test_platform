@@ -58,5 +58,11 @@ describe('一加 Ace 6 status-bar inset', () => {
     expect(pages.shouye).toMatch(
       /html\.app-android-oneplus-ace6 \.sy-zxk-num \{\s*font-size:\s*28px/
     );
+    expect(pages.shouye).toContain('if (!magic5pro && !isAce6)');
+    expect(pages.shouye).toContain('if (magic5pro && !isAce6)');
+    expect(pages.shouye).toContain(
+      'html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye'
+    );
+    expect(pages.shouye).toContain('--shouye-status-inset: 40px');
   });
 });
