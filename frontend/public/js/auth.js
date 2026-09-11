@@ -2465,18 +2465,20 @@
       /* ColorOS 15 Ace Pro：100vw 常宽于画布，须 important 压过 @sm / HyperOS lock 的 100vw */
       var acepro =
         isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro');
+      var reno10 =
+        isOppoReno10Client() || root.classList.contains('app-android-oppo-reno10');
       var hinova9se =
         isHiNova9SeClient() || root.classList.contains('app-android-hinova9se');
       var xiaomi13ultra =
         isXiaomi13UltraClient() || root.classList.contains('app-android-xiaomi-13ultra');
       var imp =
-        mate60 || mi14pro || p40pro || plainImg || acepro || hinova9se || xiaomi13ultra
+        mate60 || mi14pro || p40pro || plainImg || acepro || reno10 || hinova9se || xiaomi13ultra
           ? 'important'
           : '';
       root.style.setProperty('--mine-rpx', rpx, imp);
       document.body.style.setProperty('--mine-rpx', rpx, imp);
       canvas.style.setProperty('--mine-rpx', rpx, imp);
-      if (mate60 || mi14pro || p40pro || acepro || hinova9se || xiaomi13ultra) {
+      if (mate60 || mi14pro || p40pro || acepro || reno10 || hinova9se || xiaomi13ultra) {
         canvas.style.setProperty('container-type', 'normal', 'important');
         canvas.style.setProperty('width', '100%', 'important');
       }
@@ -2540,6 +2542,12 @@
       return false;
     }
     if (
+      isOppoReno10Client() ||
+      document.documentElement.classList.contains('app-android-oppo-reno10')
+    ) {
+      return false;
+    }
+    if (
       isXiaomi13UltraClient() ||
       document.documentElement.classList.contains('app-android-xiaomi-13ultra')
     ) {
@@ -2562,6 +2570,12 @@
     if (
       isOnePlusAceProClient() ||
       root.classList.contains('app-android-oneplus-acepro')
+    ) {
+      return false;
+    }
+    if (
+      isOppoReno10Client() ||
+      root.classList.contains('app-android-oppo-reno10')
     ) {
       return false;
     }
@@ -2597,7 +2611,7 @@
       var rootSel = 'html.' + cls;
       if (cls === 'app-android-mine-e1-sm') {
         rootSel +=
-          ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra)';
+          ':not(.app-android-mine-e1-plainimg):not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10)';
       }
       css +=
         rootSel + ' body.page-mine,' +
@@ -2861,6 +2875,105 @@
     } catch (eAce) {}
   }
 
+  function reno10MineE1LockCss() {
+    var sel = 'html.app-android-oppo-reno10';
+    return (
+      sel + ' body.page-mine,' +
+      sel + '.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-client.app-top-safe-shell body.page-mine,' +
+      sel + '.app-android-mine-e1-sm body.page-mine{' +
+      '--mine-top-bleed:0px !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas,' +
+      sel + '.app-android-client.app-top-safe-shell.app-android-immersive-white-top body.page-mine .mine-e1-canvas{' +
+      'padding-top:0 !important;margin-top:0 !important;overflow:hidden !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:auto !important;container-type:normal !important;' +
+      'background-image:none !important;background-color:#f5f6fa !important;}' +
+      sel + ' body.page-mine .mine-e1-canvas > img,' +
+      sel + ' body.page-mine .mine-e1-canvas > #headerImg,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-canvas > img,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-canvas > img{' +
+      'margin-top:0 !important;display:block !important;position:relative !important;' +
+      'width:100% !important;height:auto !important;max-height:none !important;' +
+      'aspect-ratio:1284 / 2127 !important;object-fit:fill !important;' +
+      'opacity:1 !important;top:auto !important;transform:none !important;}' +
+      sel + ' body.page-mine .mine-e1-layer,' +
+      sel + '.app-top-safe-shell body.page-mine .mine-e1-layer,' +
+      sel + '.app-android-mine-e1-sm body.page-mine .mine-e1-layer{' +
+      'top:0 !important;height:0 !important;padding-bottom:calc(2127 / 1284 * 100%) !important;}'
+    );
+  }
+
+  function pinReno10MineE1Layout() {
+    try {
+      var root = document.documentElement;
+      if (!isOppoReno10Client() && !root.classList.contains('app-android-oppo-reno10')) {
+        return;
+      }
+      root.classList.add('app-android-oppo-reno10');
+      root.classList.add('app-android-client');
+      root.classList.add('app-android-immersive-white-top');
+      root.classList.remove('app-android-mine-e1-sm');
+      try {
+        var oldLock = document.querySelector('style[data-reno10-mine-e1-lock]');
+        if (oldLock && oldLock.parentNode) oldLock.parentNode.removeChild(oldLock);
+        var lock = document.createElement('style');
+        lock.setAttribute('data-reno10-mine-e1-lock', '1');
+        lock.textContent = reno10MineE1LockCss();
+        (document.head || document.documentElement).appendChild(lock);
+      } catch (eLock) {}
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      root.style.setProperty('--mine-top-bleed', '0px', 'important');
+      document.body.style.setProperty('--mine-top-bleed', '0px', 'important');
+      var canvas = document.getElementById('mineE1Canvas');
+      var layer = document.getElementById('mineE1Layer');
+      var img = document.getElementById('headerImg');
+      if (canvas) {
+        canvas.style.setProperty('padding-top', '0', 'important');
+        canvas.style.setProperty('margin-top', '0', 'important');
+        canvas.style.setProperty('width', '100%', 'important');
+        canvas.style.setProperty('height', 'auto', 'important');
+        canvas.style.setProperty('max-height', 'none', 'important');
+        canvas.style.setProperty('aspect-ratio', 'auto', 'important');
+        canvas.style.setProperty('container-type', 'normal', 'important');
+        canvas.style.setProperty('overflow', 'hidden', 'important');
+        canvas.style.setProperty('background-image', 'none', 'important');
+      }
+      if (img) {
+        img.style.setProperty('margin-top', '0', 'important');
+        img.style.setProperty('display', 'block', 'important');
+        img.style.setProperty('position', 'relative', 'important');
+        img.style.setProperty('width', '100%', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+        img.style.setProperty('max-height', 'none', 'important');
+        img.style.setProperty('aspect-ratio', '1284 / 2127', 'important');
+        img.style.setProperty('opacity', '1', 'important');
+        img.style.setProperty('top', 'auto', 'important');
+        img.style.setProperty('transform', 'none', 'important');
+      }
+      if (layer) {
+        layer.style.setProperty('top', '0', 'important');
+        layer.style.setProperty('height', '0', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(2127 / 1284 * 100%)', 'important');
+      }
+      pinMineE1RpxFromCanvas();
+      if (!pinReno10MineE1Layout._rpxRearm) {
+        pinReno10MineE1Layout._rpxRearm = true;
+        [80, 240, 600, 1200].forEach(function (ms) {
+          setTimeout(function () {
+            try {
+              pinMineE1RpxFromCanvas();
+            } catch (eRpxRe) {}
+          }, ms);
+        });
+      }
+    } catch (eReno) {}
+  }
+
   /**
    * 小米 13 Ultra「我的」：勿走 HyperOS 2 的 background-size:100% 100%。
    * 那条 lock 会把 1242rpx @sm 底图竖向压进 1180rpx 画布（约缩 5%），
@@ -2960,7 +3073,7 @@
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -3259,6 +3372,10 @@
       }
       if (isOnePlusAceProClient() || root.classList.contains('app-android-oneplus-acepro')) {
         pinAceProMineE1Layout();
+        return;
+      }
+      if (isOppoReno10Client() || root.classList.contains('app-android-oppo-reno10')) {
+        pinReno10MineE1Layout();
         return;
       }
       if (isHiNova9SeClient() || root.classList.contains('app-android-hinova9se')) {
@@ -4037,6 +4154,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinReno10MineE1Layout();
       pinHinova9SeMineE1Layout();
       pinXiaomi13UltraMineE1Layout();
       pinMineE1PlainImgLayout();
@@ -7293,6 +7411,7 @@
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
     pinAceProMineE1Layout();
+      pinReno10MineE1Layout();
     pinHinova9SeMineE1Layout();
     pinXiaomi13UltraMineE1Layout();
     pinMineE1PlainImgLayout();
@@ -7370,6 +7489,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinReno10MineE1Layout();
       pinHinova9SeMineE1Layout();
       pinXiaomi13UltraMineE1Layout();
       pinMineE1PlainImgLayout();
@@ -7384,6 +7504,7 @@
       pinMate60MineE1Layout();
       pinXiaomi14ProMineE1Layout();
       pinAceProMineE1Layout();
+      pinReno10MineE1Layout();
       pinHinova9SeMineE1Layout();
       pinXiaomi13UltraMineE1Layout();
       pinMineE1PlainImgLayout();
@@ -7496,6 +7617,7 @@
     pinMate60MineE1Layout();
     pinXiaomi14ProMineE1Layout();
     pinAceProMineE1Layout();
+      pinReno10MineE1Layout();
     pinHinova9SeMineE1Layout();
     pinXiaomi13UltraMineE1Layout();
     pinMineE1PlainImgLayout();

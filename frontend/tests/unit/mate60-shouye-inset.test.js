@@ -13,7 +13,7 @@ describe('Mate 60 Pro homepage top inset', () => {
     expect(shouye).toContain('padding-top: 12px !important');
     expect(shouye).toContain('html.app-android-huawei-mate60.app-top-safe-shell body.page-shouye .sy-apk-ahead');
     expect(shouye).toContain('margin-top: -8px !important');
-    expect(shouye).toMatch(/auth\.js\?v=20260911-ace6-home/);
+    expect(shouye).toMatch(/auth\.js\?v=20260911-reno10-mine/);
   });
 
   it('auth.js overrides the Android 40px home inset on Mate 60', () => {
