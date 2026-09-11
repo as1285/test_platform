@@ -25,8 +25,8 @@ UPLOADS_KEEP="${BACKUP_UPLOADS_KEEP:-7}"
 # COS 热备保留：与本机热备默认对齐（48h / 最多 200 份）
 COS_HOT_RETAIN_HOURS="${COS_HOT_RETAIN_HOURS:-${RETAIN_HOURS:-48}}"
 COS_HOT_MAX="${COS_HOT_MAX:-${MAX_BACKUPS:-200}}"
-# hot-only 只传最近 N 份，避免旧文件分片失败拖垮整次同步并反复告警
-COS_HOT_SYNC_LIMIT="${COS_HOT_SYNC_LIMIT:-6}"
+# hot-only 只传最近 N 份。本机到 COS 约 20–30KB/s，19MB 要十来分钟，一次只传最新。
+COS_HOT_SYNC_LIMIT="${COS_HOT_SYNC_LIMIT:-1}"
 # 整次 COS 同步失败后的重试次数（不含首次；默认失败后再跑 3 次）
 COS_SYNC_RETRIES="${COS_SYNC_RETRIES:-3}"
 COS_SYNC_RETRY_SLEEP="${COS_SYNC_RETRY_SLEEP:-20}"
@@ -196,9 +196,9 @@ token = os.environ.get("COS_TOKEN") or None
 mode = os.environ.get("MODE", "full")
 hot_retain_h = int(os.environ.get("COS_HOT_RETAIN_HOURS") or "48")
 hot_max = int(os.environ.get("COS_HOT_MAX") or "200")
-hot_sync_limit = int(os.environ.get("COS_HOT_SYNC_LIMIT") or "6")
+hot_sync_limit = int(os.environ.get("COS_HOT_SYNC_LIMIT") or "1")
 
-cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https", Timeout=300)
+cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https", Timeout=1200)
 client = CosS3Client(cfg)
 
 # full：先日备/周备/uploads，再热备；热备按文件名新→旧，避免旧文件失败阻断今日包
@@ -250,12 +250,12 @@ def upload_with_retry(path, key, attempts=3):
     for i in range(attempts):
         try:
             abort_incomplete(key)
-            # 19MB 热备用 5MB 分片、单线程；10MB 分片/整文件 PUT 在这台机上会失败或挂死
+            # 本机上行约 20–30KB/s：1MB 分片约 40s；10MB 分片会超过 SDK 超时
             client.upload_file(
                 Bucket=bucket,
                 LocalFilePath=path,
                 Key=key,
-                PartSize=5,
+                PartSize=1,
                 MAXThread=1,
                 EnableMD5=False,
             )

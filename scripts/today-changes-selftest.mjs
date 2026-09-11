@@ -3381,11 +3381,12 @@ mustInclude(
   [
     'def abort_incomplete(key):',
     'COS_HOT_SYNC_LIMIT',
-    'PartSize=5',
+    'PartSize=1',
     'older hot failed but newest is on COS',
-    'Timeout=300'
+    'Timeout=1200',
+    'COS_HOT_SYNC_LIMIT="${COS_HOT_SYNC_LIMIT:-1}"'
   ],
-  'cos hot backup aborts leftover multipart, 5MB parts, newest-ok'
+  'cos hot backup aborts leftover multipart, 1MB parts, newest-ok'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
