@@ -7,7 +7,8 @@ const auth = readFileSync(resolve(__dirname, '../../public/js/auth.js'), 'utf8')
 const pages = {
   shuiming: readFileSync(resolve(__dirname, '../../shuiming.html'), 'utf8'),
   shuimingResult: readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8'),
-  xiangqing: readFileSync(resolve(__dirname, '../../xiangqing.html'), 'utf8')
+  xiangqing: readFileSync(resolve(__dirname, '../../xiangqing.html'), 'utf8'),
+  najilu: readFileSync(resolve(__dirname, '../../najilu.html'), 'utf8')
 };
 
 describe('一加 Ace 6 status-bar inset', () => {
@@ -41,5 +42,23 @@ describe('一加 Ace 6 status-bar inset', () => {
     expect(pages.shuimingResult).toContain(
       'margin-top:calc(var(--header-height,48px) + 40px)'
     );
+  });
+
+  it('compacts the tax-record issue form on Ace 6 364x801', () => {
+    expect(MODEL_RE.test(pages.najilu)).toBe(true);
+    expect(pages.najilu).toContain("classList.add('app-android-oneplus-ace6')");
+    expect(pages.najilu).toContain("'--app-shell-statusbar-top', '40px'");
+    expect(pages.najilu).toContain('html.app-android-oneplus-ace6 body.page-najilu .info-row');
+    expect(pages.najilu).toMatch(
+      /html\.app-android-oneplus-ace6 body\.page-najilu \.info-row \{\s*min-height:\s*50px;/
+    );
+    expect(pages.najilu).toMatch(
+      /html\.app-android-oneplus-ace6 body\.page-najilu \.info-label,[\s\S]{0,80}\.mp-title \{\s*font-size:\s*16px;/
+    );
+    expect(pages.najilu).toMatch(
+      /html\.app-android-oneplus-ace6 body\.page-najilu \.btn-primary \{\s*height:\s*48px;\s*font-size:\s*17px;/
+    );
+    expect(pages.najilu).toContain('left: 98px');
+    expect(pages.najilu).toContain('-webkit-text-size-adjust: 100%');
   });
 });

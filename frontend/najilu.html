@@ -2,6 +2,23 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eModel) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <script src="/js/auth-boot.js?v=20260902-adopt"></script>
     <script src="/js/auth.js?v=20260905-qr-guide" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -750,6 +767,78 @@
             font-size: 13px;
             margin-top: 18px;
             line-height: 1.55;
+        }
+
+        /* 一加 Ace 6（PLQ110，364×801@3.5）：开具页字号/行高按窄屏收一档 */
+        html.app-android-oneplus-ace6 {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu {
+            font-size: 14px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .tips-box {
+            padding: 8px 10px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .tips-title,
+        html.app-android-oneplus-ace6 body.page-najilu .tips-item {
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .info-row {
+            min-height: 50px;
+            padding: 0 14px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .info-label,
+        html.app-android-oneplus-ace6 body.page-najilu .mp-title {
+            font-size: 16px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .info-label,
+        html.app-android-oneplus-ace6 body.page-najilu .mp-title-wrap {
+            width: 122px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .info-value {
+            font-size: 16px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .info-arrow {
+            font-size: 20px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .help-icon {
+            width: 16px;
+            height: 16px;
+            font-size: 11px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu button.help-icon.mp-help-btn {
+            left: 98px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .slider-box {
+            padding: 14px 16px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .slider-lane,
+        html.app-android-oneplus-ace6 body.page-najilu .slider-arrows {
+            height: 48px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .slider-arrows {
+            width: 50px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .slider-hint {
+            line-height: 48px;
+            font-size: 15px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .slider-arrows svg {
+            width: 24px;
+            height: 24px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .btn-section {
+            margin-top: 18px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .btn-primary {
+            height: 48px;
+            font-size: 17px;
+        }
+        html.app-android-oneplus-ace6 body.page-najilu .btn-link {
+            margin-top: 14px;
+            font-size: 15px;
         }
     </style>
 </head>
