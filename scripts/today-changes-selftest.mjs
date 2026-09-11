@@ -202,7 +202,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260907-no-fillbtn'],
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260911-tax-reorder'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');

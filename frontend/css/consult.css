@@ -428,6 +428,15 @@ html.app-ios-iphone15promax .container {
     flex: 0 0 auto;
 }
 #taxRecordsListCard.is-managing .record-card.is-tappable::after { display: none; }
+#panel-records .record-card-actions {
+    display: none;
+    flex: 0 0 auto;
+    align-self: center;
+    align-items: center;
+    gap: 6px;
+}
+#taxRecordsListCard.is-managing .record-card-actions { display: inline-flex; }
+#panel-records .record-card-move,
 #panel-records .record-card-delete {
     display: none;
     flex: 0 0 auto;
@@ -435,6 +444,7 @@ html.app-ios-iphone15promax .container {
     padding: 5px 10px;
     font-size: 12px;
 }
+#taxRecordsListCard.is-managing .record-card-move,
 #taxRecordsListCard.is-managing .record-card-delete { display: inline-flex; }
 #panel-records .record-card .list-item-actions { margin-top: 8px; }
 #panel-records .record-card .btn-sm { padding: 5px 10px; font-size: 12px; }

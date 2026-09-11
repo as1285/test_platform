@@ -1259,6 +1259,68 @@
             margin-top: 0;
         }
 
+        .list-reorder-hint {
+            margin: 14px 16px 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #999;
+            text-align: center;
+        }
+
+        .sm-reorder-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 240;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .sm-reorder-overlay[hidden] {
+            display: none;
+        }
+        .sm-reorder-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .sm-reorder-sheet {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            background: #f5f6fa;
+            border-radius: 12px 12px 0 0;
+            padding: 8px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+            box-sizing: border-box;
+        }
+        .sm-reorder-sheet button {
+            display: block;
+            width: 100%;
+            border: 0;
+            background: #fff;
+            color: #1677ff;
+            font-size: 17px;
+            line-height: 1.2;
+            padding: 14px 12px;
+            margin-bottom: 1px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sm-reorder-sheet button:first-of-type {
+            border-radius: 10px 10px 0 0;
+        }
+        .sm-reorder-sheet button.sm-reorder-down {
+            border-radius: 0 0 10px 10px;
+            margin-bottom: 8px;
+        }
+        .sm-reorder-sheet button:disabled {
+            color: #bbb;
+        }
+        .sm-reorder-sheet .sm-reorder-cancel {
+            border-radius: 10px;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+
         .list-header {
             display: flex;
             justify-content: space-between;
@@ -3320,7 +3382,18 @@
     </div>
     </div>
 
+    <div id="shuimingReorderSheet" class="sm-reorder-overlay" hidden>
+        <div class="sm-reorder-mask" id="shuimingReorderMask"></div>
+        <div class="sm-reorder-sheet" role="dialog" aria-modal="true" aria-labelledby="shuimingReorderTitle">
+            <div id="shuimingReorderTitle" hidden>调整同月顺序</div>
+            <button type="button" id="shuimingReorderUp">上移</button>
+            <button type="button" class="sm-reorder-down" id="shuimingReorderDown">下移</button>
+            <button type="button" class="sm-reorder-cancel" id="shuimingReorderCancel">取消</button>
+        </div>
+    </div>
+
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
+    <script src="/js/tax-record-order.js?v=20260911-same-month"></script>
     <script>
         function resetShuimingScrollTop() {
             try {
@@ -3729,6 +3802,11 @@
                 function (ev) {
                     var item = ev.target.closest('a.list-item');
                     if (!item) return;
+                    if (__shuimingSkipNavUntil && Date.now() < __shuimingSkipNavUntil) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        return;
+                    }
                     var href = item.getAttribute('href') || '';
                     if (!href || href.indexOf('xiangqing.html') < 0) return;
                     var idMatch = href.match(/[?&]id=([^&]+)/);
@@ -3766,6 +3844,123 @@
 
         var __shuimingLastListRecords = null;
         var __shuimingLastListYear = null;
+        var __shuimingSkipNavUntil = 0;
+        var __shuimingReorderId = '';
+
+        function closeShuimingReorderSheet() {
+            var sheet = document.getElementById('shuimingReorderSheet');
+            if (sheet) sheet.hidden = true;
+            __shuimingReorderId = '';
+        }
+
+        function openShuimingReorderSheet(id) {
+            var flags =
+                window.TaxRecordOrder && window.TaxRecordOrder.moveFlags
+                    ? window.TaxRecordOrder.moveFlags(__shuimingLastListRecords || [], id)
+                    : { canUp: false, canDown: false };
+            if (!flags.canUp && !flags.canDown) return;
+            __shuimingReorderId = id;
+            __shuimingSkipNavUntil = Date.now() + 700;
+            var up = document.getElementById('shuimingReorderUp');
+            var down = document.getElementById('shuimingReorderDown');
+            var sheet = document.getElementById('shuimingReorderSheet');
+            if (up) up.disabled = !flags.canUp;
+            if (down) down.disabled = !flags.canDown;
+            if (sheet) sheet.hidden = false;
+        }
+
+        function postShuimingReorder(direction) {
+            var id = __shuimingReorderId;
+            closeShuimingReorderSheet();
+            if (!id || !window.authFetch) return;
+            window
+                .authFetch('api/tax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reorder_record', id: id, direction: direction })
+                })
+                .then(function (r) {
+                    return (window.authParseJson || function (res) { return res.json(); })(r);
+                })
+                .then(function (data) {
+                    if (!data || data.code !== 200) {
+                        throw new Error((data && data.msg) || '调整失败');
+                    }
+                    loadData({ force: true, quiet: true });
+                })
+                .catch(function (err) {
+                    alert((err && err.message) || '调整失败');
+                });
+        }
+
+        function bindShuimingReorder() {
+            var list = document.getElementById('recordList');
+            if (!list || list.__reorderBound) return;
+            list.__reorderBound = true;
+            var pressTimer = null;
+            var startY = 0;
+            function clearPress() {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            }
+            list.addEventListener(
+                'touchstart',
+                function (ev) {
+                    var item = ev.target.closest('[data-record-id]');
+                    if (!item || !list.contains(item)) return;
+                    var id = item.getAttribute('data-record-id') || '';
+                    if (!id || !window.TaxRecordOrder) return;
+                    var flags = window.TaxRecordOrder.moveFlags(__shuimingLastListRecords || [], id);
+                    if (!flags.canUp && !flags.canDown) return;
+                    startY = ev.touches && ev.touches[0] ? ev.touches[0].clientY : 0;
+                    clearPress();
+                    pressTimer = setTimeout(function () {
+                        pressTimer = null;
+                        openShuimingReorderSheet(id);
+                    }, 450);
+                },
+                { passive: true }
+            );
+            list.addEventListener(
+                'touchmove',
+                function (ev) {
+                    if (!pressTimer) return;
+                    var y = ev.touches && ev.touches[0] ? ev.touches[0].clientY : startY;
+                    if (Math.abs(y - startY) > 8) clearPress();
+                },
+                { passive: true }
+            );
+            list.addEventListener('touchend', clearPress);
+            list.addEventListener('touchcancel', clearPress);
+            list.addEventListener('contextmenu', function (ev) {
+                var item = ev.target.closest('[data-record-id]');
+                if (!item || !list.contains(item)) return;
+                var id = item.getAttribute('data-record-id') || '';
+                if (!id || !window.TaxRecordOrder) return;
+                var flags = window.TaxRecordOrder.moveFlags(__shuimingLastListRecords || [], id);
+                if (!flags.canUp && !flags.canDown) return;
+                ev.preventDefault();
+                openShuimingReorderSheet(id);
+            });
+            var up = document.getElementById('shuimingReorderUp');
+            var down = document.getElementById('shuimingReorderDown');
+            var cancel = document.getElementById('shuimingReorderCancel');
+            var mask = document.getElementById('shuimingReorderMask');
+            if (up) {
+                up.addEventListener('click', function () {
+                    postShuimingReorder('up');
+                });
+            }
+            if (down) {
+                down.addEventListener('click', function () {
+                    postShuimingReorder('down');
+                });
+            }
+            if (cancel) cancel.addEventListener('click', closeShuimingReorderSheet);
+            if (mask) mask.addEventListener('click', closeShuimingReorderSheet);
+        }
 
         /** 17 Pro Max 等大屏：文档流若被收窄，把列表钉回视口全宽，去掉左右灰边。 */
         function flushShuimingListToViewport() {
@@ -3820,14 +4015,19 @@
                         : '';
                 var id = record.id != null ? String(record.id).trim() : '';
                 var detailHref = buildXiangqingUrl(record, listYear);
+                var idAttr = id ? ' data-record-id="' + escapeHtml(id) + '"' : '';
                 if (!detailHref) {
                     listHtml +=
-                        '<div class="list-item list-item-disabled" style="text-decoration: none; display: block; opacity: 0.72;">';
+                        '<div class="list-item list-item-disabled" style="text-decoration: none; display: block; opacity: 0.72;"' +
+                        idAttr +
+                        '>';
                 } else {
                     listHtml +=
                         '<a href="' +
                         detailHref +
-                        '" class="list-item" style="text-decoration: none; display: block;">';
+                        '" class="list-item" style="text-decoration: none; display: block;"' +
+                        idAttr +
+                        '>';
                 }
                 listHtml += '<div class="list-header">';
                 listHtml += '<span class="list-title">' + escapeHtml(record.income_type || '') + '</span>';
@@ -3854,10 +4054,19 @@
                     '</span>元</span></div>';
                 listHtml += detailHref ? '</a>' : '</div>';
             });
+            if (
+                records.length &&
+                window.TaxRecordOrder &&
+                window.TaxRecordOrder.monthsWithDupes(records).length
+            ) {
+                listHtml +=
+                    '<div class="list-reorder-hint">同月有多条时，长按记录可调整上下顺序</div>';
+            }
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
             syncListDateToSummaryDecimal();
             syncRecordEmptyUi(records.length > 0);
             bindRecordListNavigation();
+            bindShuimingReorder();
             flushShuimingListToViewport();
             if (
                 records.length === 0 &&

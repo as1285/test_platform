@@ -48,6 +48,8 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
       '</div>';
     window.editRecord = vi.fn();
     window.deleteRecord = vi.fn();
+    window.reorderRecord = vi.fn();
+    indirectEval(readFileSync(resolve(__dirname, '../../public/js/tax-record-order.js'), 'utf8'));
     loadListHelpers();
   });
 
@@ -56,8 +58,9 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="btnTaxRecordsManage"');
     expect(html).toContain('id="taxRecordsManageHint"');
     expect(html).toContain('tax-records-manage-toolbar');
-    expect(html).toContain('consult.css?v=20260907-no-fillbtn');
-    expect(html).toContain('consult-records.js?v=20260907-no-ad-divert');
+    expect(html).toContain('consult.css?v=20260911-tax-reorder');
+    expect(html).toContain('consult-records.js?v=20260911-tax-reorder');
+    expect(html).toContain('tax-record-order.js?v=20260911-same-month');
     expect(html).toContain('consult-batch-tax.js?v=20260907-tax-ux');
     expect(html).toContain('id="compatBugRecordsEntry"');
     expect(html).toContain('兼容问题反馈');
@@ -112,6 +115,39 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     mount.querySelector('[data-record-delete="r-2"]').click();
     expect(window.deleteRecord).toHaveBeenCalledWith('r-2');
     expect(window.editRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows 上移/下移 in manage mode for same-month neighbors', () => {
+    const twins = [
+      {
+        id: 'jul-1',
+        year: 2026,
+        month: 7,
+        income_type: '工资薪金',
+        company_name: '甲公司',
+        income: '1.00',
+        tax_reported: '0.00'
+      },
+      {
+        id: 'jul-2',
+        year: 2026,
+        month: 7,
+        income_type: '工资薪金',
+        company_name: '乙公司',
+        income: '2.00',
+        tax_reported: '0.00'
+      }
+    ];
+    window.renderListFromArray(twins);
+    window.toggleTaxRecordsManageMode();
+    const mount = document.getElementById('recordListMount');
+    expect(mount.querySelector('[data-record-id="jul-1"][data-record-move="down"]')).toBeTruthy();
+    expect(mount.querySelector('[data-record-id="jul-1"][data-record-move="up"]')).toBeNull();
+    expect(mount.querySelector('[data-record-id="jul-2"][data-record-move="up"]')).toBeTruthy();
+    expect(mount.querySelector('[data-record-id="jul-2"][data-record-move="down"]')).toBeNull();
+    mount.querySelector('[data-record-id="jul-2"][data-record-move="up"]').click();
+    expect(window.reorderRecord).toHaveBeenCalledWith('jul-2', 'up');
+    expect(window.editRecord).not.toHaveBeenCalled();
   });
 
   it('styles hide per-row delete until manage mode and keep a tappable chevron', () => {
