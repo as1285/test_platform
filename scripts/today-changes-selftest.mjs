@@ -3376,5 +3376,17 @@ mustInclude(
   '20260910 K70 mine uses underlap-black mode, not outer-zero'
 );
 
+mustInclude(
+  'scripts/sync-backup-offsite.sh',
+  [
+    'def abort_incomplete(key):',
+    'COS_HOT_SYNC_LIMIT',
+    'PartSize=5',
+    'older hot failed but newest is on COS',
+    'Timeout=300'
+  ],
+  'cos hot backup aborts leftover multipart, 5MB parts, newest-ok'
+);
+
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
