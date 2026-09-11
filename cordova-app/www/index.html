@@ -490,7 +490,45 @@
                 false
             );
 
-            mountApp();
+            function isColorOsShell() {
+                var ua = navigator.userAgent || '';
+                return /OPPO|Oppo|ColorOS|HeyTap|OnePlus|realme|PHW110|CPH2531|CPH2525/i.test(ua);
+            }
+
+            /*
+             * ColorOS 15（Reno10 等）：file:// 壳立刻挂 https iframe 时，
+             * WebView 常把父页判成加载失败，弹出
+             * Application Error … file:///android_asset/www/index.html。
+             * 等首帧后再挂 iframe；失败则只重挂一次，勿让壳弹系统框卡死。
+             */
+            var iframeRetries = 0;
+            function mountAppWhenShellReady() {
+                function go() {
+                    mountApp();
+                    var f = document.getElementById('app-frame');
+                    if (f && !f.getAttribute('data-shell-error-bound')) {
+                        f.setAttribute('data-shell-error-bound', '1');
+                        f.addEventListener('error', function () {
+                            if (iframeRetries >= 1) return;
+                            iframeRetries += 1;
+                            try {
+                                f.removeAttribute('data-shell-error-bound');
+                                if (f.parentNode) f.parentNode.removeChild(f);
+                            } catch (eRm) {}
+                            setTimeout(mountAppWhenShellReady, 400);
+                        });
+                    }
+                }
+                if (isColorOsShell()) {
+                    requestAnimationFrame(function () {
+                        setTimeout(go, 80);
+                    });
+                    return;
+                }
+                go();
+            }
+
+            mountAppWhenShellReady();
             hideNativeSplash();
             setTimeout(function () {
                 hideStartShowMain();

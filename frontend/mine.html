@@ -399,6 +399,23 @@
                 if (/PHW110|CPH2531|CPH2525/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.remove('app-android-mine-e1-sm');
+                    document.documentElement.style.setProperty('--mine-top-bleed', '0px');
+                    /*
+                     * ColorOS 15 Reno10：与 Ace Pro 相同，100vw 常宽于画布。
+                     * @sm 的 1180*100vw 定高会把「我的」撑成超高画布，壳 iframe 超时弹 Application Error。
+                     */
+                    if (!document.getElementById('reno10MineFirstPaint')) {
+                        var renoFp = document.createElement('style');
+                        renoFp.id = 'reno10MineFirstPaint';
+                        renoFp.setAttribute('data-reno10-mine-e1-firstpaint', '1');
+                        renoFp.textContent =
+                            'html.app-android-oppo-reno10 body.page-mine{--mine-top-bleed:0px!important;}' +
+                            'html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;background-image:none!important;background-color:#f5f6fa!important;}' +
+                            'html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas>img,html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;position:relative!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1284/2127!important;object-fit:fill!important;opacity:1!important;}' +
+                            'html.app-android-oppo-reno10 body.page-mine .mine-e1-layer{top:0!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}';
+                        document.head.appendChild(renoFp);
+                    }
                 }
                 if (
                     /HUAWEIBLK|BLK-AL80|BLK-AL00|BLK-AL\d{2}|BLK-LX9|BLK-L29|HUAWEIMIS|MIS-AL00|MIS-AL80|MIS-AL\d{2}|MIS-LX9|(?:Huawei|HUAWEI|华为)?[\s_-]*nova[\s_-]*13/i.test(u)
@@ -448,8 +465,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260910-13u-noscale"></script>
-    <script src="/js/auth.js?v=20260910-ios-14pm-fb1" defer></script>
+    <script src="/js/auth-boot.js?v=20260911-reno10-mine"></script>
+    <script src="/js/auth.js?v=20260911-reno10-mine" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -676,7 +693,6 @@
         html.app-android-oneplus-13 body.page-mine,
         html.app-android-oneplus-ace2pro body.page-mine,
         html.app-android-oneplus-ace2v body.page-mine,
-        html.app-android-oppo-reno10 body.page-mine,
         html.app-android-huawei-mate60 body.page-mine,
         html.app-android-xiaomi-mix-fold body.page-mine {
             --mine-top-bleed: var(--app-shell-statusbar-top, 40px);
@@ -687,7 +703,6 @@
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas,
         html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas,
         html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas,
-        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas,
         html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas {
             padding-top: var(--mine-top-bleed) !important;
@@ -698,7 +713,6 @@
         html.app-android-oneplus-13 body.page-mine .mine-e1-canvas > img,
         html.app-android-oneplus-ace2pro body.page-mine .mine-e1-canvas > img,
         html.app-android-oneplus-ace2v body.page-mine .mine-e1-canvas > img,
-        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas > img,
         html.app-android-huawei-mate60 body.page-mine .mine-e1-canvas > img,
         html.app-android-xiaomi-mix-fold body.page-mine .mine-e1-canvas > img {
             margin-top: calc(-1 * var(--mine-top-bleed)) !important;
@@ -882,6 +896,46 @@
         }
         html.app-android-oneplus-acepro body.page-mine .mine-e1-layer,
         html.app-android-oneplus-acepro.app-android-mine-e1-sm body.page-mine .mine-e1-layer {
+            top: 0 !important;
+            height: 0 !important;
+            padding-bottom: calc(2127 / 1284 * 100%) !important;
+        }
+
+        /*
+         * OPPO Reno10 5G ColorOS 15：同 Ace Pro，避开 1180*100vw 定高。
+         * 超高画布会让 Cordova 壳 iframe 卡死，弹出 file:///android_asset/www/index.html。
+         */
+        html.app-android-oppo-reno10 body.page-mine,
+        html.app-android-oppo-reno10.app-android-mine-e1-sm body.page-mine {
+            --mine-top-bleed: 0px !important;
+        }
+        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas,
+        html.app-android-oppo-reno10.app-android-mine-e1-sm body.page-mine .mine-e1-canvas {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            overflow: hidden !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: auto !important;
+            container-type: normal !important;
+            background-image: none !important;
+            background-color: #f5f6fa !important;
+        }
+        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas > img,
+        html.app-android-oppo-reno10 body.page-mine .mine-e1-canvas > #headerImg {
+            margin-top: 0 !important;
+            display: block !important;
+            position: relative !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: 1284 / 2127 !important;
+            object-fit: fill !important;
+            opacity: 1 !important;
+        }
+        html.app-android-oppo-reno10 body.page-mine .mine-e1-layer,
+        html.app-android-oppo-reno10.app-android-mine-e1-sm body.page-mine .mine-e1-layer {
             top: 0 !important;
             height: 0 !important;
             padding-bottom: calc(2127 / 1284 * 100%) !important;
@@ -1328,7 +1382,7 @@
         }
 
         /* Android @sm e1（含 iQOO）：裁到菜单下缘。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas {
             height: calc(1180 * 100vw / 750) !important;
             max-height: calc(1180 * 100vw / 750) !important;
             aspect-ratio: unset !important;
@@ -1336,8 +1390,8 @@
             background-size: 100% auto !important;
             background-position: top center !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas > img,
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas > #headerImg {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas > img,
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas > #headerImg {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -1346,10 +1400,10 @@
             pointer-events: none !important;
             overflow: hidden !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-layer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-layer {
             padding-bottom: calc(1180 / 750 * 100%) !important;
         }
-        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-footer {
+        html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-footer {
             padding-bottom: calc(var(--bottom-nav-height, 54px) + var(--bottom-nav-bottom, 8px) + 12px) !important;
         }
 
