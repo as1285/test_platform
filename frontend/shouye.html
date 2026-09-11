@@ -110,6 +110,15 @@
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-xiaomi-13');
                 }
+                /* 一加 Ace 6（PLQ110，364×801@3.5）：首屏打标，压 a6 卡并钉 40px 沉浸顶 */
+                if (/PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
                 if (/V2408A|I2401\b|PD2408\b|iQOO\s*13(?![a-zA-Z0-9])/i.test(u)) {
                     document.documentElement.classList.add('app-android-iqoo-13');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -901,6 +910,43 @@
             flex: 0 0 max(108px, calc((100% - 16px) / 3.1)) !important;
             width: max(108px, calc((100% - 16px) / 3.1)) !important;
             max-width: 118px !important;
+        }
+
+        /*
+         * 一加 Ace 6（PLQ110，364×801@3.5）：
+         * Android 通用 max(102px)/3.15 在窄屏上会把 a6 卡撑到约 110 宽，
+         * 首屏只剩两张半；压到约 3.25 分栏（3 张 + 第四张露出）。
+         * ColorOS 字体放大也会把专项附加文案撑爆，钉死 text-size-adjust。
+         */
+        html.app-android-oneplus-ace6 {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html.app-android-oneplus-ace6 .sy-apk-hitem,
+        html.app-android-oneplus-ace6.app-android-client .sy-apk-hitem {
+            flex: 0 0 min(100px, calc((100% - 16px) / 3.25)) !important;
+            width: min(100px, calc((100% - 16px) / 3.25)) !important;
+            max-width: 100px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-apk-marquee {
+            font-size: 14px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-title {
+            font-size: 15px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-name {
+            font-size: 15px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-msg,
+        html.app-android-oneplus-ace6 .sy-zxk-card.is-empty .sy-zxk-msg {
+            font-size: 16px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-num {
+            font-size: 28px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-btn span,
+        html.app-android-oneplus-ace6 .sy-zxk-empty-cta {
+            font-size: 13px !important;
         }
 
         html.app-android-honor-pgt-an20 .sy-zxk-empty-bar,
