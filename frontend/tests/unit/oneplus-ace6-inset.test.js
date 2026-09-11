@@ -26,6 +26,16 @@ describe('一加 Ace 6 status-bar inset', () => {
     expect(auth).toContain('isOnePlusAce6Client()');
     expect(auth).toContain(':not(.app-android-oneplus-ace6)');
     expect(auth).toMatch(/isOnePlusAce2ImmersiveTopClient\(\)[\s\S]*isOnePlusAce6Client\(\)/);
+    expect(auth).toMatch(
+      /function isHonorPgtAn20Client\(\) \{\s*if \(isOnePlusAce6Client\(\)\) return false;/
+    );
+    expect(auth).toContain(
+      "if (isOnePlusAce6Client() || root.classList.contains('app-android-oneplus-ace6'))"
+    );
+    expect(auth).toContain(
+      'html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye{'
+    );
+    expect(auth).toContain('--shouye-status-inset:40px !important');
   });
 
   it('first-paints income detail pages below the system status bar', () => {

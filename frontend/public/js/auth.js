@@ -2106,6 +2106,7 @@
    * 首页顶栏 / 通知条单独适配； Cordova iframe UA 常无 PGT，须认 localStorage / device.model / 屏。
    */
   function isHonorPgtAn20Client() {
+    if (isOnePlusAce6Client()) return false;
     var ua = clientUaBlob();
     if (/Magic\s*5\s*Pro/i.test(ua)) return true;
     if (/PGT[\s_-]?AN20|HONORPGT-AN20/i.test(ua)) return true;
@@ -2115,6 +2116,9 @@
   function pinHonorMagic5ProHomeCards() {
     try {
       var root = document.documentElement;
+      if (isOnePlusAce6Client() || root.classList.contains('app-android-oneplus-ace6')) {
+        return;
+      }
       if (!isHonorPgtAn20Client() && !root.classList.contains('app-android-honor-pgt-an20')) {
         return;
       }
@@ -4178,7 +4182,11 @@
           syRoot.classList.add('app-android-client');
           syRoot.classList.add('app-top-safe-shell');
         }
-        if (isHonorPgtAn20Client() || syRoot.classList.contains('app-android-honor-pgt-an20')) {
+        if (
+          !isOnePlusAce6Client() &&
+          !syRoot.classList.contains('app-android-oneplus-ace6') &&
+          (isHonorPgtAn20Client() || syRoot.classList.contains('app-android-honor-pgt-an20'))
+        ) {
           syRoot.classList.add('app-android-honor-pgt-an20');
           syRoot.classList.add('app-android-honor-magic');
           syRoot.classList.add('app-android-client');
@@ -6121,11 +6129,11 @@
           'html.app-android-honor-magic.app-top-safe-shell:not(.app-android-honor-pgt-an20) .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell{--app-shell-statusbar-top:36px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye{--shouye-status-inset:8px !important;--app-shell-statusbar-top:8px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye::before{height:8px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6){--app-shell-statusbar-top:36px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye{--shouye-status-inset:8px !important;--app-shell-statusbar-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye::before{height:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper,html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
           'html.app-android-honor-ptp-an00.app-top-safe-shell{--app-shell-statusbar-top:44px !important;}' +
           'html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(54px + var(--app-shell-statusbar-top,44px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
@@ -6459,12 +6467,16 @@
            * 荣耀 Magic5 Pro：系统栏已在 WebView 外，压过上方 Android 统一 40px，
            * 否则搜索条上会空一截蓝。
            */
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye{' +
           '--shouye-status-inset:8px !important;--app-shell-statusbar-top:8px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{height:8px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,' +
-          'html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
-          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye::before{height:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper,' +
+          'html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper{padding-top:8px !important;}' +
+          'html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,60px) !important;}' +
+          'html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye{' +
+          '--shouye-status-inset:40px !important;--app-shell-statusbar-top:40px !important;}' +
+          'html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye::before{height:40px !important;}' +
+          'html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:40px !important;}' +
           /*
            * Mate 60 / Pro：ahead 图已带顶蓝，再套 Android 统一 40px 会空一截。
            * 压过上方首页统一顶距，只留 12px 并略微上移搜索条。
