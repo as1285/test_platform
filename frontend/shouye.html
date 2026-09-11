@@ -79,8 +79,18 @@
                         document.documentElement.classList.add('app-ios-iphone13promax');
                     }
                 }
+                /* 一加 Ace 6 须先于 Magic5 屏参启发式：364×801@3.5 会误中 1312×2848 */
+                var isAce6 = /PLQ110|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*6(?![\s_-]*Pro)(?!\d)/i.test(u);
+                if (isAce6) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-oneplus-ace6');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
                 var magic5pro = /PGT[\s_-]?AN20|HONORPGT-AN20|(?:Honor|HONOR|荣耀)?[\s_-]*Magic[\s_-]*5[\s_-]*Pro/i.test(u);
-                if (!magic5pro) {
+                if (!magic5pro && !isAce6) {
                     try {
                         var dprM5 = window.devicePixelRatio || 1;
                         var shortM5 = Math.min(screen.width, screen.height) * dprM5;
@@ -93,7 +103,7 @@
                         );
                     } catch (eM5) {}
                 }
-                if (magic5pro) {
+                if (magic5pro && !isAce6) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-honor-pgt-an20');
                     document.documentElement.classList.add('app-android-honor-magic');
@@ -269,16 +279,21 @@
          * 荣耀 Magic5 Pro：系统状态栏已在 WebView 外，再套 Android 40px / honor-magic 8+36
          * 会在搜索条上方空出一截蓝。首页只留 8px。
          */
-        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye {
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye {
             --shouye-status-inset: 8px;
             --app-shell-statusbar-top: 8px !important;
         }
-        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye::before {
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye::before {
             height: 8px !important;
         }
-        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+        html.app-android-client.app-android-honor-pgt-an20.app-top-safe-shell:not(.app-cordova-huawei-pura70):not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper,
+        html.app-android-honor-pgt-an20.app-android-honor-magic.app-top-safe-shell:not(.app-android-oneplus-ace6) body.page-shouye .search-bar-wrapper {
             padding-top: 8px !important;
+        }
+
+        html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 40px;
+            --app-shell-statusbar-top: 40px !important;
         }
 
         /*
@@ -903,6 +918,43 @@
             max-width: 118px !important;
         }
 
+        /*
+         * 一加 Ace 6（PLQ110，364×801@3.5）：
+         * Android 通用 max(102px)/3.15 在窄屏上会把 a6 卡撑到约 110 宽，
+         * 首屏只剩两张半；压到约 3.25 分栏（3 张 + 第四张露出）。
+         * ColorOS 字体放大也会把专项附加文案撑爆，钉死 text-size-adjust。
+         */
+        html.app-android-oneplus-ace6 {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html.app-android-oneplus-ace6 .sy-apk-hitem,
+        html.app-android-oneplus-ace6.app-android-client .sy-apk-hitem {
+            flex: 0 0 min(100px, calc((100% - 16px) / 3.25)) !important;
+            width: min(100px, calc((100% - 16px) / 3.25)) !important;
+            max-width: 100px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-apk-marquee {
+            font-size: 14px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-title {
+            font-size: 15px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-name {
+            font-size: 15px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-msg,
+        html.app-android-oneplus-ace6 .sy-zxk-card.is-empty .sy-zxk-msg {
+            font-size: 16px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-num {
+            font-size: 28px !important;
+        }
+        html.app-android-oneplus-ace6 .sy-zxk-btn span,
+        html.app-android-oneplus-ace6 .sy-zxk-empty-cta {
+            font-size: 13px !important;
+        }
+
         html.app-android-honor-pgt-an20 .sy-zxk-empty-bar,
         html.app-android-honor-magic6pro .sy-zxk-empty-bar {
             height: 18% !important;
@@ -1019,6 +1071,12 @@
                 flex: 0 0 max(108px, calc((min(100%, 430px) - 16px) / 3.1)) !important;
                 width: max(108px, calc((min(100%, 430px) - 16px) / 3.1)) !important;
                 max-width: 118px !important;
+            }
+            html.app-android-oneplus-ace6 .sy-apk-hitem,
+            html.app-android-oneplus-ace6.app-android-client .sy-apk-hitem {
+                flex: 0 0 min(100px, calc((100% - 16px) / 3.25)) !important;
+                width: min(100px, calc((100% - 16px) / 3.25)) !important;
+                max-width: 100px !important;
             }
         }
 
