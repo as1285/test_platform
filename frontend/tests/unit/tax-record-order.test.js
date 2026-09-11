@@ -32,9 +32,12 @@ describe('TaxRecordOrder + 收入纳税明细调序入口', () => {
   it('wires 收入纳税明细 long-press sheet and reorder API', () => {
     expect(shuiming).toContain('tax-record-order.js?v=20260911-same-month');
     expect(shuiming).toContain('id="shuimingReorderSheet"');
-    expect(shuiming).toContain('长按记录可调整上下顺序');
+    expect(shuiming).not.toContain('同月有多条时，长按记录可调整上下顺序');
+    expect(shuiming).not.toContain('list-reorder-hint');
+    expect(shuiming).toContain('-webkit-touch-callout: none');
     expect(shuiming).toContain("action: 'reorder_record'");
     expect(shuiming).toContain('data-record-id=');
     expect(shuiming).toContain('bindShuimingReorder');
+    expect(shuiming).toContain('held >= 400');
   });
 });

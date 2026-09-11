@@ -1253,18 +1253,14 @@
             border-top: none;
             cursor: pointer;
             touch-action: manipulation;
+            /* iOS 长按 <a> 会出系统菜单/预览，抢走同月调序 */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .list-item:first-child {
             margin-top: 0;
-        }
-
-        .list-reorder-hint {
-            margin: 14px 16px 8px;
-            font-size: 12px;
-            line-height: 1.5;
-            color: #999;
-            text-align: center;
         }
 
         .sm-reorder-overlay {
@@ -3805,6 +3801,7 @@
                     if (__shuimingSkipNavUntil && Date.now() < __shuimingSkipNavUntil) {
                         ev.preventDefault();
                         ev.stopPropagation();
+                        if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
                         return;
                     }
                     var href = item.getAttribute('href') || '';
@@ -3860,7 +3857,7 @@
                     : { canUp: false, canDown: false };
             if (!flags.canUp && !flags.canDown) return;
             __shuimingReorderId = id;
-            __shuimingSkipNavUntil = Date.now() + 700;
+            __shuimingSkipNavUntil = Date.now() + 1600;
             var up = document.getElementById('shuimingReorderUp');
             var down = document.getElementById('shuimingReorderDown');
             var sheet = document.getElementById('shuimingReorderSheet');
@@ -3899,50 +3896,89 @@
             list.__reorderBound = true;
             var pressTimer = null;
             var startY = 0;
+            var startX = 0;
+            var startAt = 0;
+            var activeId = '';
+            var opened = false;
             function clearPress() {
                 if (pressTimer) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
                 }
             }
+            function recordIdFromEvent(ev) {
+                var item = ev.target && ev.target.closest ? ev.target.closest('[data-record-id]') : null;
+                if (!item || !list.contains(item)) return '';
+                var id = item.getAttribute('data-record-id') || '';
+                if (!id || !window.TaxRecordOrder) return '';
+                var flags = window.TaxRecordOrder.moveFlags(__shuimingLastListRecords || [], id);
+                if (!flags.canUp && !flags.canDown) return '';
+                return id;
+            }
+            function tryOpen(id) {
+                if (opened || !id) return false;
+                opened = true;
+                clearPress();
+                openShuimingReorderSheet(id);
+                return true;
+            }
             list.addEventListener(
                 'touchstart',
                 function (ev) {
-                    var item = ev.target.closest('[data-record-id]');
-                    if (!item || !list.contains(item)) return;
-                    var id = item.getAttribute('data-record-id') || '';
-                    if (!id || !window.TaxRecordOrder) return;
-                    var flags = window.TaxRecordOrder.moveFlags(__shuimingLastListRecords || [], id);
-                    if (!flags.canUp && !flags.canDown) return;
-                    startY = ev.touches && ev.touches[0] ? ev.touches[0].clientY : 0;
+                    var id = recordIdFromEvent(ev);
+                    var t = ev.touches && ev.touches[0];
+                    activeId = id;
+                    opened = false;
+                    startAt = Date.now();
+                    startY = t ? t.clientY : 0;
+                    startX = t ? t.clientX : 0;
                     clearPress();
+                    if (!id) return;
                     pressTimer = setTimeout(function () {
                         pressTimer = null;
-                        openShuimingReorderSheet(id);
-                    }, 450);
+                        tryOpen(id);
+                    }, 420);
                 },
                 { passive: true }
             );
             list.addEventListener(
                 'touchmove',
                 function (ev) {
-                    if (!pressTimer) return;
-                    var y = ev.touches && ev.touches[0] ? ev.touches[0].clientY : startY;
-                    if (Math.abs(y - startY) > 8) clearPress();
+                    if (!activeId) return;
+                    var t = ev.touches && ev.touches[0];
+                    if (!t) return;
+                    if (Math.abs(t.clientY - startY) > 16 || Math.abs(t.clientX - startX) > 16) {
+                        clearPress();
+                        activeId = '';
+                    }
                 },
                 { passive: true }
             );
-            list.addEventListener('touchend', clearPress);
-            list.addEventListener('touchcancel', clearPress);
+            list.addEventListener(
+                'touchend',
+                function (ev) {
+                    var held = startAt ? Date.now() - startAt : 0;
+                    var id = activeId;
+                    clearPress();
+                    activeId = '';
+                    if (opened || (id && held >= 400)) {
+                        if (ev && ev.preventDefault) ev.preventDefault();
+                        if (ev && ev.stopPropagation) ev.stopPropagation();
+                        tryOpen(id);
+                    }
+                },
+                { passive: false }
+            );
+            list.addEventListener('touchcancel', function () {
+                clearPress();
+                activeId = '';
+            });
             list.addEventListener('contextmenu', function (ev) {
-                var item = ev.target.closest('[data-record-id]');
-                if (!item || !list.contains(item)) return;
-                var id = item.getAttribute('data-record-id') || '';
-                if (!id || !window.TaxRecordOrder) return;
-                var flags = window.TaxRecordOrder.moveFlags(__shuimingLastListRecords || [], id);
-                if (!flags.canUp && !flags.canDown) return;
+                var id = recordIdFromEvent(ev);
+                if (!id) return;
                 ev.preventDefault();
-                openShuimingReorderSheet(id);
+                ev.stopPropagation();
+                tryOpen(id);
             });
             var up = document.getElementById('shuimingReorderUp');
             var down = document.getElementById('shuimingReorderDown');
@@ -4054,14 +4090,6 @@
                     '</span>元</span></div>';
                 listHtml += detailHref ? '</a>' : '</div>';
             });
-            if (
-                records.length &&
-                window.TaxRecordOrder &&
-                window.TaxRecordOrder.monthsWithDupes(records).length
-            ) {
-                listHtml +=
-                    '<div class="list-reorder-hint">同月有多条时，长按记录可调整上下顺序</div>';
-            }
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
             syncListDateToSummaryDecimal();
             syncRecordEmptyUi(records.length > 0);
