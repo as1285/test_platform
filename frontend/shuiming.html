@@ -1005,7 +1005,7 @@
         </div>
     </div>
     
-    <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
+    <script src="/js/tax-year.js?v=20260912-year-keep"></script>
     <script>
         (function () {
             var HOME = 'shouye.html';
@@ -1065,6 +1065,7 @@
             });
             getPickerItems().forEach(function (item, index) {
                 item.addEventListener('click', function () {
+                    selectedYear = String(item.dataset.year || selectedYear);
                     pickerList.scrollTo({
                         top: index * itemHeight,
                         behavior: 'smooth'
@@ -1078,31 +1079,88 @@
         // 从URL参数或localStorage获取上次选择的年份，默认当前年份（2019–当前年）
         function getInitialYear() {
             var urlParams = new URLSearchParams(window.location.search);
-            // reset=1 时清除记忆，回到当前年份
-            if (urlParams.get('reset') === '1') {
-                localStorage.removeItem('selected_year');
-                return String(normalizeTaxYear(null));
-            }
-            // 优先从URL参数获取
             var yearFromUrl = urlParams.get('year');
+            var reset = urlParams.get('reset') === '1';
+            var yearFromStorage = null;
+            try {
+                yearFromStorage = localStorage.getItem('selected_year');
+            } catch (e0) {}
+            // reset=1 只在「没有 year」时清记忆；带 year 从结果页返回必须保留
+            if (reset && !yearFromUrl) {
+                try {
+                    localStorage.removeItem('selected_year');
+                } catch (e1) {}
+                yearFromStorage = null;
+            }
+            if (typeof resolveSelectedTaxYear === 'function') {
+                return resolveSelectedTaxYear({
+                    urlYear: yearFromUrl,
+                    reset: reset && !yearFromUrl,
+                    storedYear: yearFromStorage
+                });
+            }
             if (yearFromUrl) return String(normalizeTaxYear(yearFromUrl));
-            // 其次从localStorage获取
-            var yearFromStorage = localStorage.getItem('selected_year');
             if (yearFromStorage) return String(normalizeTaxYear(yearFromStorage));
-            // 默认当前年份
             return String(normalizeTaxYear(null));
+        }
+
+        function persistSelectedYear(year) {
+            selectedYear = String(normalizeTaxYear(year));
+            yearDisplay.textContent = selectedYear;
+            try {
+                localStorage.setItem('selected_year', selectedYear);
+            } catch (e2) {}
+            try {
+                var url = new URL(window.location.href);
+                url.searchParams.delete('reset');
+                url.searchParams.set('year', selectedYear);
+                var next = url.pathname + url.search + url.hash;
+                var cur = window.location.pathname + window.location.search + window.location.hash;
+                if (next !== cur) {
+                    history.replaceState(null, '', next);
+                }
+            } catch (e3) {}
+        }
+
+        function yearFromPickerCenter() {
+            var items = getPickerItems();
+            if (!items.length) return selectedYear;
+            var indicator = yearPicker.querySelector('.picker-indicator');
+            var midY;
+            if (indicator) {
+                var ir = indicator.getBoundingClientRect();
+                midY = ir.top + ir.height / 2;
+            } else {
+                var wr = pickerList.getBoundingClientRect();
+                midY = wr.top + wr.height / 2;
+            }
+            var best = null;
+            var bestDist = Infinity;
+            for (var i = 0; i < items.length; i++) {
+                var r = items[i].getBoundingClientRect();
+                if (r.height <= 0) continue;
+                var d = Math.abs(r.top + r.height / 2 - midY);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = items[i];
+                }
+            }
+            return best && best.dataset.year ? best.dataset.year : selectedYear;
         }
         
         let selectedYear = getInitialYear();
+        var yearWhenPickerOpened = selectedYear;
         
-        // 初始化显示（纠正 localStorage / 异常系统时间）
-        yearDisplay.textContent = selectedYear;
-        try {
-            localStorage.setItem('selected_year', selectedYear);
-        } catch (e) {}
+        // 初始化显示，并去掉 reset=1，避免从结果页返回又被冲成当年
+        persistSelectedYear(selectedYear);
+        window.addEventListener('pageshow', function () {
+            if (yearPicker.classList.contains('show')) return;
+            persistSelectedYear(getInitialYear());
+        });
         
         // 打开选择器
         yearSelect.addEventListener('click', function() {
+            yearWhenPickerOpened = selectedYear;
             pickerOverlay.classList.add('show');
             yearPicker.classList.add('show');
             // 滚动到当前选中的年份
@@ -1125,8 +1183,12 @@
             yearPicker.classList.remove('show');
         }
         
-        pickerOverlay.addEventListener('click', closePicker);
-        pickerCancel.addEventListener('click', closePicker);
+        function cancelPicker() {
+            selectedYear = yearWhenPickerOpened;
+            closePicker();
+        }
+        pickerOverlay.addEventListener('click', cancelPicker);
+        pickerCancel.addEventListener('click', cancelPicker);
         
         // 滚动时更新选中状态
         let scrollTimer = null;
@@ -1170,10 +1232,9 @@
             });
         }
         
-        // 确定选择
+        // 确定选择：按滚轮中间那年写入，不依赖 scroll 事件是否更新过 selectedYear
         pickerConfirm.addEventListener('click', function() {
-            selectedYear = String(normalizeTaxYear(selectedYear));
-            yearDisplay.textContent = selectedYear;
+            persistSelectedYear(yearFromPickerCenter());
             closePicker();
         });
         
@@ -1210,9 +1271,7 @@
 
         // 查询（未激活也可进入结果页）
         function doQuery() {
-            selectedYear = String(normalizeTaxYear(selectedYear));
-            yearDisplay.textContent = selectedYear;
-            localStorage.setItem('selected_year', selectedYear);
+            persistSelectedYear(selectedYear);
             var types = getSelectedIncomeTypes();
             if (!types.length) {
                 alert('请至少选择一种所得类型');

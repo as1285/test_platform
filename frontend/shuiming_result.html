@@ -3388,7 +3388,7 @@
         </div>
     </div>
 
-    <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
+    <script src="/js/tax-year.js?v=20260912-year-keep"></script>
     <script src="/js/tax-record-order.js?v=20260911-same-month"></script>
     <script>
         function resetShuimingScrollTop() {
@@ -3655,6 +3655,29 @@
             if (r != null) return decodeURIComponent(r[2]);
             return null;
         }
+
+        (function bindShuimingResultBackYear() {
+            var year = String(
+                typeof normalizeTaxYear === 'function'
+                    ? normalizeTaxYear(getUrlParam('year'))
+                    : getUrlParam('year') || new Date().getFullYear()
+            );
+            try {
+                localStorage.setItem('selected_year', year);
+            } catch (eBackStore) {}
+            var back = document.querySelector('.header .back-btn');
+            if (!back) return;
+            var href = 'shuiming.html?year=' + encodeURIComponent(year);
+            back.setAttribute('href', href);
+            back.addEventListener('click', function (e) {
+                e.preventDefault();
+                try {
+                    window.location.assign(href);
+                } catch (eBackGo) {
+                    window.location.href = href;
+                }
+            });
+        })();
 
         function escapeHtml(s) {
             if (s == null) return '';
