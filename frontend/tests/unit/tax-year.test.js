@@ -26,4 +26,12 @@ describe('tax-year', () => {
     expect(window.isPlausibleTaxYear('2024')).toBe(true);
     expect(window.isPlausibleTaxYear('0')).toBe(false);
   });
+
+  it('resolveSelectedTaxYear keeps URL year even when reset=1', () => {
+    const max = window.getMaxTaxYear();
+    expect(window.resolveSelectedTaxYear({ urlYear: '2024', reset: true, storedYear: '2025' })).toBe('2024');
+    expect(window.resolveSelectedTaxYear({ urlYear: '', reset: true, storedYear: '2024' })).toBe(String(max));
+    expect(window.resolveSelectedTaxYear({ urlYear: '', reset: false, storedYear: '2023' })).toBe('2023');
+    expect(window.resolveSelectedTaxYear({ urlYear: '2018', reset: false, storedYear: '2023' })).toBe(String(max));
+  });
 });

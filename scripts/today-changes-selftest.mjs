@@ -3376,5 +3376,26 @@ mustInclude(
   '20260910 K70 mine uses underlap-black mode, not outer-zero'
 );
 
+mustInclude(
+  'frontend/public/js/tax-year.js',
+  ['function resolveSelectedTaxYear', 'reset=1 不应压过 URL'],
+  'tax-year resolveSelectedTaxYear keeps url year'
+);
+mustInclude(
+  'frontend/shuiming.html',
+  [
+    'function persistSelectedYear',
+    'function yearFromPickerCenter',
+    'url.searchParams.delete(\'reset\')',
+    'persistSelectedYear(yearFromPickerCenter())'
+  ],
+  'shuiming year picker persists selection and strips reset'
+);
+mustInclude(
+  'frontend/shuiming_result.html',
+  ['bindShuimingResultBackYear', 'shuiming.html?year='],
+  'shuiming result back keeps selected year'
+);
+
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
