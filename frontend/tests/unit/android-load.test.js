@@ -56,8 +56,8 @@ describe('android first-paint load', () => {
   });
 
   it('auth-boot stays small and exposes sync APIs', () => {
-    /* 首屏同步脚本须保持轻量；含分段注释后约 20KB，硬上限 23KB */
-    expect(boot.length).toBeLessThan(23 * 1024);
+    /* 首屏同步脚本须保持轻量；机型首屏分支增多后约 35KB，硬上限 40KB */
+    expect(boot.length).toBeLessThan(40 * 1024);
     expect(boot).toContain('function getToken()');
     expect(boot).toContain('function isPublicPage()');
     expect(boot).toContain('window.authFetch');

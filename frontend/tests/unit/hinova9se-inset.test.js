@@ -51,7 +51,7 @@ describe('Hi nova 9 SE status-bar inset', () => {
   });
 
   it('mine page keeps e1 layout lock without unified 40px black status pad', () => {
-    expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \|\| xiaomi13ultra/);
+    expect(auth).toMatch(/plainImg \|\| acepro \|\| reno10 \|\| hinova9se \|\| xiaomi13ultra/);
     expect(auth).toContain("? 'important'");
     expect(auth).toContain('function hinova9SeMineE1LockCss');
     expect(auth).toContain('function pinHinova9SeMineE1Layout');

@@ -40,7 +40,7 @@ describe('iPhone 13 Pro Max docked bottom nav', () => {
   it('first-paints tab pages so the clipped capsule does not flash', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html, name).toContain('app-ios-iphone13promax');
-      expect(html, name).toMatch(/auth\.js\?v=2026090/);
+      expect(html, name).toMatch(/auth\.js\?v=202609/);
       expect(UA_RE.test(html), name).toBe(true);
     });
   });
