@@ -41,7 +41,7 @@ describe('Redmi K80 Pro status-bar inset', () => {
       /html\.app-android-redmi-k80pro\.app-top-safe-shell\{--app-shell-statusbar-top:40px/
     );
     expect(auth).toContain('isRedmiK80ProClient() ||');
-    expect(auth).toContain('K80 Pro 同分辨率，须先排除');
+    expect(auth).toContain('勿匹配 K80 Pro');
   });
 
   it('first-paints tax pages so 返回 is not under the system clock', () => {

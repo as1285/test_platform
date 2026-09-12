@@ -26,8 +26,8 @@ describe('管理台搜索能打开支付明细里的账号', () => {
     expect(nav).toContain('api/admin/users?username=');
     expect(html).toContain('搜功能或账号');
     expect(html).toContain('没有匹配的功能或账号');
-    expect(html).toContain('nav.js?v=20260907-user-search');
-    expect(html).toContain('admin_panel.js?v=20260907-abc-ops');
+    expect(html).toContain('nav.js?v=20260908-hub-tab-perm');
+    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
     expect(loader).toContain('ops-conversion.js?v=20260910-ops-range');
   });
 });
