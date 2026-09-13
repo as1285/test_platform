@@ -61,7 +61,10 @@ const BANK_PARTNER_IP_ALLOWLIST = String(process.env.BANK_PARTNER_IP_ALLOWLIST |
   })
   .filter(Boolean)
   .join(',');
-const BANK_PARTNER_RATE_PER_IP_MIN = parseInt(process.env.BANK_PARTNER_RATE_PER_IP_MIN || '30', 10);
+const BANK_PARTNER_RATE_PER_IP_MIN = (function () {
+  var n = parseInt(process.env.BANK_PARTNER_RATE_PER_IP_MIN || '300', 10);
+  return isFinite(n) && n > 0 ? n : 300;
+})();
 /** 管理登录连续失败锁定 */
 const ADMIN_LOGIN_MAX_FAILS = parseInt(process.env.ADMIN_LOGIN_MAX_FAILS || '5', 10) || 5;
 const ADMIN_LOGIN_LOCK_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCK_MINUTES || '30', 10) || 30;

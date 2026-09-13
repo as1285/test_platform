@@ -24,21 +24,40 @@ function parseAllowlist(raw) {
     .filter(Boolean);
 }
 
-function getClientIp(req) {
-  var cf = req && req.headers && req.headers['cf-connecting-ip'];
-  if (cf) {
-    var cfIp = String(cf).split(',')[0].trim();
-    if (cfIp) return cfIp.replace(/^::ffff:/, '');
+function normalizeIp(v) {
+  return String(v || '')
+    .trim()
+    .replace(/^::ffff:/, '');
+}
+
+/**
+ * 对接机出口 IP：用 Nginx 写入的 X-Real-IP / XFF 最后一跳。
+ * 不能用 CF-Connecting-IP 或 XFF 第一跳——模拟器可能带上手机用户 IP，
+ * 会导致白名单 403，并把整机限流打散/打满。
+ */
+function getPartnerClientIp(req) {
+  var h = (req && req.headers) || {};
+  var rip = h['x-real-ip'];
+  if (rip) {
+    var realIp = normalizeIp(String(rip).split(',')[0]);
+    if (realIp) return realIp;
   }
-  var xf = req && req.headers && req.headers['x-forwarded-for'];
+  var xf = h['x-forwarded-for'];
   if (xf) {
-    var first = String(xf).split(',')[0].trim();
-    if (first) return first.replace(/^::ffff:/, '');
+    var parts = String(xf)
+      .split(',')
+      .map(function (s) {
+        return normalizeIp(s);
+      })
+      .filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
   }
-  var rip = req && req.headers && req.headers['x-real-ip'];
-  if (rip) return String(rip).trim().replace(/^::ffff:/, '');
   var ra = req && req.socket && req.socket.remoteAddress;
-  return ra ? String(ra).replace(/^::ffff:/, '') : '';
+  return ra ? normalizeIp(ra) : '';
+}
+
+function getClientIp(req) {
+  return getPartnerClientIp(req);
 }
 
 function timingSafeEqualStr(a, b) {
@@ -250,7 +269,7 @@ async function requirePartnerAuth(req, res) {
     res.status(503).json({ code: 503, msg: '未配置银行对接密钥' });
     return false;
   }
-  var ip = getClientIp(req);
+  var ip = getPartnerClientIp(req);
   var allow = parseAllowlist(config.BANK_PARTNER_IP_ALLOWLIST);
   if (!ipAllowed(ip, allow)) {
     res.status(403).json({ code: 403, msg: '来源 IP 未授权' });
@@ -387,6 +406,8 @@ module.exports = {
   ipAllowed,
   isPrivateOrLocalIp,
   parseAllowlist,
+  getPartnerClientIp,
+  getClientIp,
   timingSafeEqualStr,
   extractApiKey,
   verifyPasswordBySaltHash,

@@ -7,6 +7,7 @@ const {
   ymToIndex,
   ipAllowed,
   parseAllowlist,
+  getPartnerClientIp,
   timingSafeEqualStr,
   extractApiKey,
   validateUsername
@@ -89,12 +90,29 @@ describe('bankSalaryFlow mapper', () => {
 
 describe('bankSalaryFlow auth helpers', () => {
   it('parses allowlist and matches IP', () => {
-    const list = parseAllowlist('43.165.173.213, 127.0.0.1');
-    expect(list).toEqual(['43.165.173.213', '127.0.0.1']);
-    expect(ipAllowed('43.165.173.213', list)).toBe(true);
+    const list = parseAllowlist('43.128.147.171, 127.0.0.1');
+    expect(list).toEqual(['43.128.147.171', '127.0.0.1']);
+    expect(ipAllowed('43.128.147.171', list)).toBe(true);
     expect(ipAllowed('172.18.0.1', list)).toBe(true);
     expect(ipAllowed('1.1.1.1', list)).toBe(false);
     expect(ipAllowed('1.1.1.1', [])).toBe(true);
+  });
+
+  it('uses the partner hop, not the end-user XFF/CF IP', () => {
+    expect(
+      getPartnerClientIp({
+        headers: {
+          'cf-connecting-ip': '8.8.8.8',
+          'x-forwarded-for': '1.2.3.4, 43.128.147.171',
+          'x-real-ip': '43.128.147.171'
+        }
+      })
+    ).toBe('43.128.147.171');
+    expect(
+      getPartnerClientIp({
+        headers: { 'x-forwarded-for': '1.2.3.4, 43.128.147.171' }
+      })
+    ).toBe('43.128.147.171');
   });
 
   it('compares secrets without throwing on length mismatch', () => {
