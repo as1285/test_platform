@@ -191,8 +191,9 @@ https://www.installguide1.top/
 ### 数据库备份
 
 - **本机**：cron 每 30 分钟执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`
+- **每日 COS**：cron 每天 03:10 执行 `./scripts/backup-mysql-to-cos.sh`，上传到腾讯云 COS（`.env` 的 `COS_*`）；对象名 `personal_tax-daily-YYYYMMDD.sql.gz` 与 `personal_tax-latest.sql.gz`，默认保留 30 天
 - **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
-- **保留**：**24 小时**、最多约 50 份
+- **本机保留**：**24 小时**、最多约 50 份（另留最近 7 份 daily）
 - GitHub Actions 远端每日备份已取消
 
 > 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。

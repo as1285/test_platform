@@ -14,6 +14,7 @@ services:
       - personal_tax_mysql_data:/var/lib/mysql
     networks:
       - test_platform_default
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
