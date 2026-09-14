@@ -126,7 +126,18 @@
                             'padding-left:0 !important;padding-right:0 !important;box-sizing:border-box !important;}' +
                             'html.app-android-huawei-mate60 body.page-shuiming-result .list-item{' +
                             '--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;' +
-                            'width:100% !important;max-width:none !important;box-sizing:border-box !important;}';
+                            'width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
+                            'html.app-android-huawei-mate60 body.page-shuiming-result .list-row-with-arrow,' +
+                            'html.app-android-huawei-mate60 body.page-shuiming-result .list-row-left,' +
+                            'html.app-android-huawei-mate60 body.page-shuiming-result .list-row-company{' +
+                            'width:100% !important;max-width:100% !important;min-width:0 !important;box-sizing:border-box !important;}' +
+                            'html.app-android-huawei-mate60 body.page-shuiming-result .list-row-left{flex:1 1 0% !important;overflow:hidden !important;}' +
+                            'html.app-android-huawei-mate60 body.page-shuiming-result .list-company{' +
+                            'display:flex !important;align-items:baseline !important;flex:1 1 0% !important;min-width:0 !important;' +
+                            'max-width:none !important;overflow:hidden !important;text-overflow:clip !important;white-space:nowrap !important;}' +
+                            'html.app-android-huawei-mate60 body.page-shuiming-result .list-company-name{' +
+                            'flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;' +
+                            'text-overflow:ellipsis !important;white-space:nowrap !important;}';
                         (document.head || document.documentElement).appendChild(m60St);
                     }
                 }
@@ -665,7 +676,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260910-mi13u-listtitle" defer></script>
+    <script src="/js/auth.js?v=20260914-m60-company" defer></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -2868,6 +2879,59 @@
             background: #f5f6fa !important;
         }
 
+        /*
+         * Mate 60 / HarmonyOS：公司名吃满箭头左侧剩余宽度。
+         * 不能先 JS 截 12 字再靠 flex 省略，ArkWeb 会叠成大约 7 字。
+         */
+        html.app-android-huawei-mate60 body.page-shuiming-result .list-row-with-arrow,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-row-with-arrow {
+            display: flex !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        html.app-android-huawei-mate60 body.page-shuiming-result .list-row-left,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-row-left {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+        }
+        html.app-android-huawei-mate60 body.page-shuiming-result .list-row-company,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-row-company {
+            display: flex !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+        html.app-android-huawei-mate60 body.page-shuiming-result .list-row-left .list-row,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-row-left .list-row {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+        html.app-android-huawei-mate60 body.page-shuiming-result .list-company,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-company {
+            display: flex !important;
+            align-items: baseline !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            overflow: hidden !important;
+            text-overflow: clip !important;
+            white-space: nowrap !important;
+        }
+        html.app-android-huawei-mate60 body.page-shuiming-result .list-company-name,
+        html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-company-name {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
         .list-arrow {
             width: 10px;
             height: auto;
@@ -3848,6 +3912,19 @@
             );
         }
 
+        /** Mate 60：公司名不走 JS 12 字截断，交给 CSS 吃满箭头左侧宽度。 */
+        function isMate60CompanyFillClient() {
+            try {
+                var root = document.documentElement;
+                if (root.classList.contains('app-android-huawei-mate60')) return true;
+                var ua = navigator.userAgent || '';
+                if (/Mate\s*70|PLA-AL|PLR-AL|PLU-AL/i.test(ua)) return false;
+                return /Mate\s*60|ALN-AL00|ALN-AL10|ALN-AL80|ALN-AN00|ALN-AL\d{2}|ALN-AN\d{2}|HUAWEIALN/i.test(ua);
+            } catch (eM60) {
+                return false;
+            }
+        }
+
         /** iOS：公司名按 13 字截断；Android 仍 12 字。17 Pro Max 用 CSS 把「>」钉在右侧，不再额外截短。 */
         function isIosCompanyNameEllipsisClient() {
             try {
@@ -4054,6 +4131,7 @@
         function renderList(records, listYear) {
             var listHtml = '';
             var iosCompanyEllipsis = isIosCompanyNameEllipsisClient();
+            var mate60CompanyFill = isMate60CompanyFillClient();
             __shuimingLastListRecords = Array.isArray(records) ? records : [];
             __shuimingLastListYear = listYear;
             records.forEach(function(record) {
@@ -4064,10 +4142,13 @@
                 /*
                  * 官方个税 App：公司名约 13 字后省略。
                  * iOS 用 JS 截 13 字；Android 保持 12 字。完整名称放 title 便于长按查看。
+                 * Mate 60 不预截：HarmonyOS flex 会把 12 字再收到约 7 字。
                  * 17 Pro Max 箭头靠右由 CSS flex 处理，勿再截成 11 字。
                  */
                 var companyMaxChars = iosCompanyEllipsis ? 13 : 12;
-                var companyShow = truncateCompanyName(company, companyMaxChars);
+                var companyShow = mate60CompanyFill
+                    ? String(company)
+                    : truncateCompanyName(company, companyMaxChars);
                 var companyTitleAttr =
                     company && companyShow !== company
                         ? ' title="' + escapeHtml(company) + '"'
@@ -4133,7 +4214,19 @@
         }
 
         function maybeRerenderCompanyEllipsis() {
-            /* iOS 公司名已改为 CSS 省略，无需按型号重渲 */
+            if (!isMate60CompanyFillClient()) return;
+            if (!__shuimingLastListRecords || !__shuimingLastListRecords.length) return;
+            var names = document.querySelectorAll('#recordList .list-company-name');
+            var needs = false;
+            for (var i = 0; i < names.length; i++) {
+                if (names[i].getAttribute('title')) {
+                    needs = true;
+                    break;
+                }
+            }
+            if (needs) {
+                renderList(__shuimingLastListRecords, __shuimingLastListYear);
+            }
         }
 
         function syncRecordEmptyUi(hasRecords) {

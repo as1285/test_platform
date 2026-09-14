@@ -6896,6 +6896,20 @@
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-item{' +
           '--list-inline-pad:16px;border-radius:0 !important;margin-left:0 !important;margin-right:0 !important;' +
           'width:100% !important;max-width:none !important;box-sizing:border-box !important;}' +
+          'html.app-android-huawei-mate60 body.page-shuiming-result .list-row-left,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-row-left{' +
+          'flex:1 1 0% !important;min-width:0 !important;max-width:100% !important;overflow:hidden !important;}' +
+          'html.app-android-huawei-mate60 body.page-shuiming-result .list-row-company,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-row-company{' +
+          'display:flex !important;width:100% !important;max-width:100% !important;min-width:0 !important;box-sizing:border-box !important;}' +
+          'html.app-android-huawei-mate60 body.page-shuiming-result .list-company,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-company{' +
+          'display:flex !important;align-items:baseline !important;flex:1 1 0% !important;min-width:0 !important;' +
+          'max-width:none !important;overflow:hidden !important;text-overflow:clip !important;white-space:nowrap !important;}' +
+          'html.app-android-huawei-mate60 body.page-shuiming-result .list-company-name,' +
+          'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list-company-name{' +
+          'flex:1 1 0% !important;min-width:0 !important;max-width:none !important;overflow:hidden !important;' +
+          'text-overflow:ellipsis !important;white-space:nowrap !important;}' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell body.page-shuiming-result .list,' +
           'html.app-android-huawei-mate60.app-top-safe-shell body.page-shuiming-result .list,html.app-android-xiaomi-10.app-top-safe-shell body.page-shuiming-result .list,' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell.app-android-white-page-outer body.page-shuiming-result .list,' +
