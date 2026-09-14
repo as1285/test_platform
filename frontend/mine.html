@@ -95,6 +95,9 @@
                     var k70Std =
                         /23113RKC6[CG]|2311DRK48[CGI]/i.test(blob) ||
                         /(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(blob);
+                    var s15 =
+                        /V2203A|V2203T|PD2203\b/i.test(blob) ||
+                        (/(?:vivo[\s_-]*)?S15\b/i.test(blob) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(blob));
                     var preview = false;
                     try {
                         var q = new URLSearchParams(String(location.search || ''));
@@ -138,12 +141,13 @@
                             } catch (ePlat) {}
                         }
                     }
-                    if (!k70Std && !preview) return;
+                    if (!k70Std && !s15 && !preview) return;
                     var root = document.documentElement;
                     root.classList.add('app-mine-black-status');
                     root.classList.add('app-top-safe-shell');
                     root.classList.remove('app-android-mine-e1-sm');
                     if (k70Std) root.classList.add('app-android-redmi-k70');
+                    if (s15) root.classList.add('app-android-vivo-s15');
                     root.classList.add('app-android-client');
                     root.style.setProperty('--app-shell-statusbar-top', '40px');
                     root.style.setProperty('--android-status-inset', '40px');
@@ -465,8 +469,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260914-a93s-mine"></script>
-    <script src="/js/auth.js?v=20260914-a93s-mine" defer></script>
+    <script src="/js/auth-boot.js?v=20260914-s15-black"></script>
+    <script src="/js/auth.js?v=20260914-s15-black" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">

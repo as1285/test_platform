@@ -129,6 +129,16 @@
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
+                if (
+                    /V2203A|V2203T|PD2203\b/i.test(u) ||
+                    (/(?:vivo[\s_-]*)?S15\b/i.test(u) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-vivo-s15');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/PGCM10|\bK9x\b/i.test(u)) {
                     document.documentElement.classList.add('app-android-oppo-k9x');
                     document.documentElement.classList.add('app-android-immersive-white-top');

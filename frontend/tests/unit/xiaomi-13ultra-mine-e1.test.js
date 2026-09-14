@@ -52,8 +52,8 @@ describe('小米 13 Ultra 我的页三宫格胶囊', () => {
     expect(boot).toContain('2304FPN6|(?:Xiaomi|Mi|小米)[\\s_-]*13[\\s_-]*Ultra');
     expect(boot).toContain('data-xiaomi13ultra-mine-e1-firstpaint');
     expect(boot).toContain('background-size:100% auto!important');
-    expect(mine).toContain('auth-boot.js?v=20260914-a93s-mine');
-    expect(mine).toContain('auth.js?v=20260914-a93s-mine');
+    expect(mine).toContain('auth-boot.js?v=20260914-s15-black');
+    expect(mine).toContain('auth.js?v=20260914-s15-black');
   });
 
   it('Cordova 40px bleed 不再套到 13 Ultra 叠层', () => {

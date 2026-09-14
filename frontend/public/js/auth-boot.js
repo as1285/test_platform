@@ -174,7 +174,11 @@
       }
     } catch (eBody) {}
     var ua = readMineStatusUaBlob();
-    if (isRedmiK70StandardModelBlob(ua) || isMineUnderlapPreviewBlob(ua)) {
+    if (
+      isRedmiK70StandardModelBlob(ua) ||
+      /V2203A|V2203T|PD2203\b|(?:vivo[\s_-]*)?S15\b(?![\s_-]*(?:Pro|e))/i.test(ua) ||
+      isMineUnderlapPreviewBlob(ua)
+    ) {
       return 'underlap-black';
     }
     return '';

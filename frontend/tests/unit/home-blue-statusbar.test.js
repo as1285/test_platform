@@ -18,6 +18,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(fn).not.toContain('ensureAndroidFixedBlackStatusPad');
     expect(fn).toContain('isOnePlusAce2VClient()');
     expect(fn).toContain('isXiaomi14LikeClient()');
+    expect(fn).toContain('isVivoS15Client()');
     expect(fn).toContain("color: '#000000'");
     expect(fn).toContain('overlays: false');
     expect(fn).toContain('color: topColor');
@@ -66,7 +67,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260914-a93s-mine');
+    expect(shouye).toContain('auth.js?v=20260914-s15-black');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
