@@ -387,19 +387,23 @@
             z-index: 100;
         }
 
+        /*
+         * e1@sm 750 宽图实测墨迹：帮助 976–1016、咨询 1062–1102、关于 1148–1186。
+         * 旧热区 1020/1090 各 70 偏高，「我要咨询」文字落在关于热区上。
+         */
         .mine-hit-consult {
-            top: calc(1020 * var(--mine-rpx));
+            top: calc(1048 * var(--mine-rpx));
             left: 0;
             width: 100%;
-            height: calc(70 * var(--mine-rpx));
-            z-index: 100;
+            height: calc(86 * var(--mine-rpx));
+            z-index: 120;
         }
 
         .mine-hit-about {
-            top: calc(1090 * var(--mine-rpx));
+            top: calc(1134 * var(--mine-rpx));
             left: 0;
             width: 100%;
-            height: calc(70 * var(--mine-rpx));
+            height: calc(86 * var(--mine-rpx));
             z-index: 100;
         }
 
