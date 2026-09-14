@@ -44,6 +44,9 @@ describe('uiCompatCatalog + deviceStats', () => {
     const a93s = catalog.listCatalogModels().find((m) => m.id === 'oppo-a93s');
     expect(catalog.modelMatchesBlob(a93s, 'PFGM00 OPPO A93s')).toBe(true);
     expect(catalog.modelMatchesBlob(a93s, 'PHW110 OPPO Reno10')).toBe(false);
+    const s15 = catalog.listCatalogModels().find((m) => m.id === 'vivo-s15');
+    expect(catalog.modelMatchesBlob(s15, 'V2203A vivo S15')).toBe(true);
+    expect(catalog.modelMatchesBlob(s15, 'V2207A vivo S15 Pro')).toBe(false);
     const k70 = catalog.listCatalogModels().find((m) => m.id === 'redmi-k70');
     expect(catalog.modelMatchesBlob(k70, '23113RKC6C')).toBe(true);
     expect(k70.issues.some((i) => i.page === 'mine' && /underlap 黑垫/.test(i.title))).toBe(true);

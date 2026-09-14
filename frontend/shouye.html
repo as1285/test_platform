@@ -140,11 +140,32 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (
+                    /V2203A|V2203T|PD2203\b/i.test(u) ||
+                    (/(?:vivo[\s_-]*)?S15\b/i.test(u) && !/S15\s*Pro|S15e|S15[\s_-]*e/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-vivo-s15');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--shouye-status-inset', '40px');
+                    if (!document.getElementById('vivoS15BlackBarFirstPaint')) {
+                        var s15Fp = document.createElement('style');
+                        s15Fp.id = 'vivoS15BlackBarFirstPaint';
+                        s15Fp.setAttribute('data-vivos15-black-firstpaint', '1');
+                        s15Fp.textContent =
+                            'html.app-android-vivo-s15.app-top-safe-shell{--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--shouye-status-inset:40px!important;}' +
+                            'html.app-android-vivo-s15.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                            'html.app-android-vivo-s15.app-top-safe-shell body.page-shouye::before{background-color:#000!important;background-image:none!important;}';
+                        document.head.appendChild(s15Fp);
+                    }
+                }
             } catch (e0) {}
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260914-a93s-mine" defer></script>
+    <script src="/js/auth.js?v=20260914-s15-black" defer></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -302,6 +323,16 @@
         html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye {
             --shouye-status-inset: 40px;
             --app-shell-statusbar-top: 40px !important;
+        }
+
+        /* vivo S15：正版个税顶部黑框，勿把搜索蓝铺进状态栏 */
+        html.app-android-vivo-s15.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 40px;
+            --app-shell-statusbar-top: 40px !important;
+        }
+        html.app-android-vivo-s15.app-top-safe-shell body.page-shouye::before {
+            background-color: #000 !important;
+            background-image: none !important;
         }
 
         /*

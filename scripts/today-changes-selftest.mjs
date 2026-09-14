@@ -1531,6 +1531,11 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
+  ['isVivoS15Client', 'app-android-vivo-s15', 'V2203A', ':not(.app-android-vivo-s15)'],
+  'vivo s15 official black status pad'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
   ['isVivoX90Client', 'app-android-vivo-x90', 'V2241A|V2241EA|PD2241\\b', ':not(.app-android-vivo-x90)'],
   'vivo X90 detect + immersive'
 );

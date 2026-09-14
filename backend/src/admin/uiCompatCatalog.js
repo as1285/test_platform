@@ -607,6 +607,28 @@ var MODELS = [
     ]
   },
   {
+    id: 'vivo-s15',
+    platform: 'android',
+    family: 'vivo',
+    label: 'vivo S15',
+    match: ['V2203A', 'S15\\b(?!\\s*Pro)(?!e)'],
+    issues: [
+      {
+        page: 'shouye',
+        title: '正版黑框：页内 40px 黑垫',
+        summary:
+          'OriginOS 4 常忽略 overlays=false，又被 vivo 族清零顶距，首页/办查会把蓝白铺进状态栏。对齐正版个税顶部黑框。',
+        since: '2026-09-14'
+      },
+      {
+        page: 'mine',
+        title: '「我的」同样铺 40px 黑垫',
+        summary: '与 K70 underlap 黑垫同一套，勿走 vivo 族 inset 0。',
+        since: '2026-09-14'
+      }
+    ]
+  },
+  {
     id: 'vivo-s50promini',
     platform: 'android',
     family: 'vivo',

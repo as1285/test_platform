@@ -379,6 +379,10 @@ export const DEVICE_PROFILES = [
   immersive('V2527A', 'vivo S50 Pro mini', ['app-android-vivo-s50promini', 'app-android-immersive-white-top'], {
     id: 'vivo-s50promini'
   }),
+  immersive('V2203A', 'vivo S15', ['app-android-vivo-s15'], {
+    id: 'vivo-s15',
+    expect: { mineBlackStatus: true, immersiveWhiteTop: false, minInsetPx: 40 }
+  }),
   immersive('V2241A', 'vivo X90', ['app-android-vivo-x90', 'app-android-immersive-white-top'], {
     id: 'vivo-x90',
     /* OriginOS 5「我的」底图必须单层绘制：见 assertMineE1SingleLayer */
