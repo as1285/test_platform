@@ -86,6 +86,7 @@ const probes = [
 
   // —— 合作伙伴（需 partner API key，无 key 预期 401）——
   ['GET', '/api/partner/bank/health', { expectStatus: [401] }],
+  ['GET', '/api/public/tax-records-policy', { expectStatus: [200] }],
 
   // —— 静态页可达性（nginx）——
   ['GET', '/login.html', { expectStatus: [200], headers: { Accept: 'text/html' } }],

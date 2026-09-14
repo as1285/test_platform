@@ -51,7 +51,7 @@
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、改名费用、个税修改收费与激活引导弹窗</p></div>
+                    <div class="page-lede"><p class="page-lede-text">套餐价格与心理价、离职证明价格、改名费用、个税修改收费、同月多条记录与激活引导弹窗</p></div>
                     <section id="sectionPriceBids">
                         <h2>心理价出价</h2>
                         <p class="stat mt-0" style="margin-bottom:8px;">当前心理价位（支付页「心理价特惠」实付价）</p>
@@ -255,6 +255,14 @@
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveTaxEditFee">保存个税修改收费</button>
                                 <span class="hint" id="taxEditFeeHint" style="margin-left:8px;"></span>
+                            </div>
+                            <p class="hint mt-0"><strong>同月多条记录</strong>：默认同一扣缴单位、同一月份、同一所得小类只保留最新一条。勾选后用户可以在一个月内添加多条（例如当月两笔发放），一键生成也不再自动删旧记录。</p>
+                            <div class="form-field">
+                                <label><input type="checkbox" id="taxAllowMultiplePerMonthAdmin"> 允许同一月份添加多条个税记录</label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveTaxRecordsPolicy">保存个税记录设置</button>
+                                <span class="hint" id="taxRecordsPolicyHint" style="margin-left:8px;"></span>
                             </div>
                         </div>
                     </section>
@@ -4370,6 +4378,6 @@
     <script src="/js/admin/loader.js?v=20260910-ops-range"></script>
     <script src="/js/admin/nav.js?v=20260908-hub-tab-perm"></script>
     <script src="/js/admin-analytics-period.js?v=20260905-ch-psych-col"></script>
-    <script src="/js/admin_panel.js?v=20260910-najilu-unlock"></script>
+    <script src="/js/admin_panel.js?v=20260914-same-month"></script>
 </body>
 </html>

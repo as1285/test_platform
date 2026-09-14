@@ -8390,6 +8390,7 @@
                                 {}
                         );
                         applyTaxEditFeeToForm(data.data.tax_edit_fee || {});
+                        applyTaxRecordsPolicyToForm(data.data.tax_records_policy || {});
                         applyRenameFeeToForm(data.data.rename_fee || {});
                         applyLizhiCertFeeToForm(data.data.lizhi_cert_fee || {});
                         applyNajiluQrFeeToForm(data.data.najilu_qr_fee || {});
@@ -8805,6 +8806,54 @@
                 daily_amount: dailyEl ? String(dailyEl.value || '').trim() : '',
                 days_gt: daysEl ? String(daysEl.value || '').trim() : ''
             };
+        }
+
+        function applyTaxRecordsPolicyToForm(cfg) {
+            cfg = cfg || {};
+            var el = document.getElementById('taxAllowMultiplePerMonthAdmin');
+            if (el) {
+                el.checked = cfg.allow_multiple_per_month === true || cfg.allow_multiple_per_month === 1;
+            }
+        }
+
+        var btnSaveTaxRecordsPolicy = document.getElementById('btnSaveTaxRecordsPolicy');
+        if (btnSaveTaxRecordsPolicy) {
+            btnSaveTaxRecordsPolicy.addEventListener('click', function () {
+                var btn = btnSaveTaxRecordsPolicy;
+                var allowEl = document.getElementById('taxAllowMultiplePerMonthAdmin');
+                var payload = {
+                    allow_multiple_per_month: !!(allowEl && allowEl.checked)
+                };
+                btn.disabled = true;
+                var hint = document.getElementById('taxRecordsPolicyHint');
+                if (hint) hint.textContent = '保存中…';
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ tax_records_policy: payload })
+                })
+                    .then(function (r) {
+                        return (window.adminParseJson || function (r) { return r.json(); })(r);
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) hint.textContent = '已保存';
+                            applyTaxRecordsPolicyToForm(
+                                (data.data && data.data.tax_records_policy) || payload
+                            );
+                            alert('个税记录设置已保存');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
         }
 
         var btnSaveTaxEditFee = document.getElementById('btnSaveTaxEditFee');

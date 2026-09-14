@@ -19,6 +19,7 @@ const OPS_SETTING_KEYS = [
   'pricing_ab_json',
   'sku_catalog_prices_json',
   'tax_edit_fee_json',
+  'tax_records_policy_json',
   'rename_fee_json',
   'lizhi_cert_fee_json',
   'najilu_qr_fee_json',

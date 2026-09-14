@@ -18,7 +18,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260911-tax-reorder">
+    <link rel="stylesheet" href="/css/consult.css?v=20260914-same-month">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
 </head>
@@ -548,6 +548,7 @@
                     <span>税务记录列表</span>
                     <div class="card-title-actions">
                         <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
+                        <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsSettings" aria-expanded="false" aria-pressed="false">设置</button>
                         <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false" aria-pressed="false">管理</button>
                     </div>
                 </div>
@@ -557,6 +558,17 @@
                     <button type="button" class="batch-tax-more-item" onclick="deleteTaxRecordsByYear(); closeTaxRecordsManageMenu();">按年删除</button>
                     <button type="button" class="batch-tax-more-item" onclick="openDeleteTaxRecordsByCompanyModal(); closeTaxRecordsManageMenu();">删除公司数据</button>
                     <button type="button" class="batch-tax-more-item is-danger" onclick="deleteAllTaxRecords(); closeTaxRecordsManageMenu();">一键删除全部</button>
+                </div>
+                <div class="tax-records-settings-panel" id="taxRecordsSettingsPanel" hidden>
+                    <label class="tax-records-settings-check">
+                        <input type="checkbox" id="taxAllowMultiplePerMonth">
+                        <span>允许同一月份添加多条记录</span>
+                    </label>
+                    <p class="tax-records-settings-hint">开启后，同一扣缴单位同一月可以保留多条工资记录（例如当月两笔发放）。关闭时，一键生成仍会自动去掉同单位同月重复旧记录。</p>
+                    <div class="tax-records-settings-actions">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnSaveTaxRecordsSettings">保存设置</button>
+                        <span class="hint" id="taxRecordsSettingsHint"></span>
+                    </div>
                 </div>
                 <p class="tax-records-manage-hint" id="taxRecordsManageHint" hidden>同月多条可点「上移 / 下移」调整顺序；点「删除」移除单条，也可按年或按公司批量处理。删除后可在回收站恢复。</p>
                 <div id="taxPayGuideBanner" class="tax-pay-guide-banner" hidden>
@@ -1025,10 +1037,10 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260907-no-fillbtn"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260907-tax-ux"></script>
+    <script defer src="/js/consult-core.js?v=20260914-same-month"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260914-same-month"></script>
     <script defer src="/js/tax-record-order.js?v=20260911-same-month"></script>
-    <script defer src="/js/consult-records.js?v=20260911-tax-reorder"></script>
+    <script defer src="/js/consult-records.js?v=20260914-same-month"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {

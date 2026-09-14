@@ -21,7 +21,7 @@ describe('注册用户可开通完税二维码权限', () => {
     expect(panel).toContain('api/admin/user-najilu-qr-unlock');
     expect(panel).toContain('najilu_qr_unlocked');
     expect(html).toContain('离职证明、在职证明、完税二维码');
-    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
+    expect(html).toContain('admin_panel.js?v=20260914-same-month');
     expect(routes).toContain('/api/admin/user-najilu-qr-unlock');
     expect(routes).toContain('handleAdminUserNajiluQrUnlock');
     expect(monolith).toContain('function handleAdminUserNajiluQrUnlock');

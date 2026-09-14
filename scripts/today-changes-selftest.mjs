@@ -184,16 +184,27 @@ mustExclude(
   ['bindTaxRecycleBinModal'],
   'recycle bin bind removed from consult-batch-tax'
 );
-mustInclude('frontend/consult.html', ['consult-records.js?v=20260905-list-tap'], 'consult recycle-bind cache');
+mustInclude(
+  'frontend/consult.html',
+  [
+    'consult-records.js?v=20260914-same-month',
+    'id="btnTaxRecordsSettings"',
+    'id="taxAllowMultiplePerMonth"',
+    '允许同一月份添加多条记录'
+  ],
+  'consult recycle-bind cache + same-month settings'
+);
 mustInclude(
   'frontend/public/js/consult-records.js',
   [
     'toggleTaxRecordsManageMode',
     'data-record-id',
     'record-card-delete',
-    'is-tappable'
+    'is-tappable',
+    'isAllowSameMonthTaxRecords',
+    'save_records_policy'
   ],
-  'tax records list tap-to-edit + manage-mode delete'
+  'tax records list tap-to-edit + manage-mode delete + same-month setting'
 );
 mustExclude(
   'frontend/public/js/consult-records.js',
@@ -202,7 +213,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260911-tax-reorder'],
+  ['id="taxRecordsManageHint"', 'consult.css?v=20260914-same-month'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
@@ -379,7 +390,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['admin_panel.js?v=20260907-amt-enter', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
+  ['admin_panel.js?v=20260914-same-month', 'min="0" max="99999.99"', '填 <strong>0</strong> 则超限后也不收费'],
   'admin rename fee allows 0 and cache-busts'
 );
 mustInclude(
@@ -1176,7 +1187,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260907-no-fillbtn', 'consult-batch-tax.js?v=20260907-tax-ux', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
+  ['consult-core.js?v=20260914-same-month', 'consult-batch-tax.js?v=20260914-same-month', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
   '20260906 consult tax screenshot OCR'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴', '上传截图识别'], 'consult copy tpl btn');
@@ -1688,7 +1699,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260907-severance'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260914-same-month'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -2877,7 +2888,7 @@ mustInclude(
     '搜功能或账号',
     '没有匹配的功能或账号',
     'nav.js?v=20260907-user-search',
-    'admin_panel.js?v=20260907-amt-enter',
+    'admin_panel.js?v=20260914-same-month',
     'loader.js?v=20260907-email-hub'
   ],
   'admin search copy and cache for account jump'
@@ -3184,8 +3195,18 @@ mustExclude(
 );
 mustInclude(
   'scripts/api-selftest.mjs',
-  ['/api/health', '/api/najilu-qr/status', '/api/partner/bank/health', 'expectStatus'],
+  ['/api/health', '/api/najilu-qr/status', '/api/partner/bank/health', '/api/public/tax-records-policy', 'expectStatus'],
   '20260905 standalone API selftest script'
+);
+mustInclude(
+  'backend/src/tax/taxRecordsPolicy.js',
+  ['allow_multiple_per_month', 'tax_records_policy_json'],
+  'tax records same-month policy'
+);
+mustInclude(
+  'frontend/admin_panel.html',
+  ['id="taxAllowMultiplePerMonthAdmin"', 'btnSaveTaxRecordsPolicy', '允许同一月份添加多条个税记录'],
+  'admin same-month tax records setting'
 );
 mustInclude(
   'frontend/tests/e2e/ui-smoke-browser.mjs',
@@ -3251,7 +3272,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['橙色<strong>取消激活</strong>', '不计入运营看板「今日激活」', 'admin_panel.js?v=20260907-amt-enter'],
+  ['橙色<strong>取消激活</strong>', '不计入运营看板「今日激活」', 'admin_panel.js?v=20260914-same-month'],
   '20260907 admin cancel activation copy + cache'
 );
 mustInclude(
@@ -3319,7 +3340,7 @@ mustInclude(
     'id="userActivateCreditWrap"',
     '按注册用户列表填写的',
     '线上已付开通会自动带出实收',
-    'admin_panel.js?v=20260907-amt-enter'
+    'admin_panel.js?v=20260914-same-month'
   ],
   '20260907 users list activation amount field'
 );

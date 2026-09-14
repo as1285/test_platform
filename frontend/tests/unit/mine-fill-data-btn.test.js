@@ -28,8 +28,8 @@ describe('我的页左上角填写数据按钮', () => {
     expect(consultHtml).not.toContain('隐藏填写');
     expect(consultCss).not.toContain('.consult-fill-entry-toggle');
     expect(consultCore).not.toContain('function initConsultFillEntryToggle');
-    expect(consultHtml).toContain('consult.css?v=20260911-tax-reorder');
-    expect(consultHtml).toContain('consult-core.js?v=20260907-no-fillbtn');
+    expect(consultHtml).toContain('consult.css?v=20260914-same-month');
+    expect(consultHtml).toContain('consult-core.js?v=20260914-same-month');
   });
 });
 

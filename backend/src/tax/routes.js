@@ -50,6 +50,8 @@ function registerTaxRoutes(app, deps) {
     });
   }
 
+  app.get('/api/public/tax-records-policy', h.handlePublicTaxRecordsPolicy);
+
   ['/api/tax', '/api/tax.php', '/tax.php'].forEach(function (p) {
     app.get(p, taxGetEntry);
     app.post(p, mw.requireAuthAndActivatedUnlessAllowed, h.handleTaxPost);

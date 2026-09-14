@@ -14,13 +14,17 @@
  * 副作用：网络写税；402 时可能弹付费窗。
  */
 function consultTaxWrite(body) {
+    var payload = Object.assign({}, body || {});
+    if (typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords()) {
+        payload.allow_multiple_per_month = true;
+    }
     if (window.consultTaxPost) {
-        return window.consultTaxPost(body);
+        return window.consultTaxPost(payload);
     }
     return window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
+        body: JSON.stringify(payload)
     });
 }
 
@@ -419,6 +423,9 @@ function escapeTaxRecordIdAttr(id) {
  */
 function setTaxRecordsManageMode(on) {
     taxRecordsManageMode = !!on;
+    if (taxRecordsManageMode && typeof window.setTaxRecordsSettingsOpen === 'function') {
+        window.setTaxRecordsSettingsOpen(false);
+    }
     var listCard = document.getElementById('taxRecordsListCard');
     if (listCard) {
         listCard.classList.toggle('is-managing', taxRecordsManageMode);
@@ -455,6 +462,143 @@ function toggleTaxRecordsManageMode() {
 window.isTaxRecordsManageMode = isTaxRecordsManageMode;
 window.setTaxRecordsManageMode = setTaxRecordsManageMode;
 window.toggleTaxRecordsManageMode = toggleTaxRecordsManageMode;
+
+var TAX_ALLOW_SAME_MONTH_LS = 'tax_allow_multiple_per_month';
+var taxAllowSameMonth = null;
+
+function isAllowSameMonthTaxRecords() {
+    if (taxAllowSameMonth === true) return true;
+    if (taxAllowSameMonth === false) return false;
+    try {
+        return localStorage.getItem(TAX_ALLOW_SAME_MONTH_LS) === '1';
+    } catch (eLs) {
+        return false;
+    }
+}
+
+function applyAllowSameMonthTaxRecords(on, persistLs) {
+    taxAllowSameMonth = !!on;
+    var box = document.getElementById('taxAllowMultiplePerMonth');
+    if (box) box.checked = !!on;
+    if (persistLs) {
+        try {
+            localStorage.setItem(TAX_ALLOW_SAME_MONTH_LS, on ? '1' : '0');
+        } catch (eSet) {}
+    }
+}
+
+function setTaxRecordsSettingsOpen(on) {
+    var panel = document.getElementById('taxRecordsSettingsPanel');
+    var btn = document.getElementById('btnTaxRecordsSettings');
+    var open = !!on;
+    if (panel) panel.hidden = !open;
+    if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.setAttribute('aria-pressed', open ? 'true' : 'false');
+        btn.classList.toggle('is-active', open);
+    }
+}
+
+function toggleTaxRecordsSettings() {
+    var panel = document.getElementById('taxRecordsSettingsPanel');
+    var opening = !panel || panel.hidden;
+    if (opening && typeof window.setTaxRecordsManageMode === 'function') {
+        window.setTaxRecordsManageMode(false);
+    }
+    if (opening && typeof window.closeBatchTaxMoreMenu === 'function') {
+        window.closeBatchTaxMoreMenu();
+    }
+    setTaxRecordsSettingsOpen(opening);
+}
+
+function saveTaxRecordsSettings() {
+    var box = document.getElementById('taxAllowMultiplePerMonth');
+    var on = !!(box && box.checked);
+    applyAllowSameMonthTaxRecords(on, true);
+    var hint = document.getElementById('taxRecordsSettingsHint');
+    var btn = document.getElementById('btnSaveTaxRecordsSettings');
+    if (hint) hint.textContent = '保存中…';
+    if (btn) btn.disabled = true;
+    var req = window.authFetch
+        ? window.authFetch('api/tax', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'save_records_policy',
+                allow_multiple_per_month: on
+            })
+        })
+        : Promise.reject(new Error('no auth'));
+    return req
+        .then(function (r) {
+            return (window.authParseJson || function (r) { return r.json(); })(r);
+        })
+        .then(function (data) {
+            if (data && data.code === 200) {
+                applyAllowSameMonthTaxRecords(
+                    !!(data.data && data.data.allow_multiple_per_month),
+                    true
+                );
+                if (hint) hint.textContent = '已保存';
+                return;
+            }
+            throw new Error((data && data.msg) || '保存失败');
+        })
+        .catch(function () {
+            if (hint) hint.textContent = '已保存在本机，登录后将同步到服务器';
+        })
+        .finally(function () {
+            if (btn) btn.disabled = false;
+        });
+}
+
+function loadTaxRecordsSettings() {
+    applyAllowSameMonthTaxRecords(isAllowSameMonthTaxRecords(), false);
+    var fetchFn = typeof fetch === 'function' ? fetch : null;
+    if (!fetchFn) return;
+    fetchFn('/api/public/tax-records-policy', { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
+            if (data && data.code === 200 && data.data) {
+                applyAllowSameMonthTaxRecords(!!data.data.allow_multiple_per_month, true);
+            }
+        })
+        .catch(function () {});
+}
+
+function initTaxRecordsSettings() {
+    var btn = document.getElementById('btnTaxRecordsSettings');
+    if (btn && !btn.__bound) {
+        btn.__bound = true;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleTaxRecordsSettings();
+        });
+    }
+    var saveBtn = document.getElementById('btnSaveTaxRecordsSettings');
+    if (saveBtn && !saveBtn.__bound) {
+        saveBtn.__bound = true;
+        saveBtn.addEventListener('click', function () {
+            saveTaxRecordsSettings();
+        });
+    }
+    var box = document.getElementById('taxAllowMultiplePerMonth');
+    if (box && !box.__bound) {
+        box.__bound = true;
+        box.addEventListener('change', function () {
+            applyAllowSameMonthTaxRecords(!!box.checked, false);
+        });
+    }
+    loadTaxRecordsSettings();
+}
+
+window.isAllowSameMonthTaxRecords = isAllowSameMonthTaxRecords;
+window.applyAllowSameMonthTaxRecords = applyAllowSameMonthTaxRecords;
+window.toggleTaxRecordsSettings = toggleTaxRecordsSettings;
+window.setTaxRecordsSettingsOpen = setTaxRecordsSettingsOpen;
+window.initTaxRecordsSettings = initTaxRecordsSettings;
 
 /** 列表容器事件委托：点卡片编辑，管理模式下点删除。只绑一次。 */
 function bindTaxRecordCardEvents(mount) {

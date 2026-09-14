@@ -22,6 +22,7 @@ describe('settingsPolicy', () => {
     expect(isOpsSettingKey('pricing_ab_json')).toBe(true);
     expect(isOpsSettingKey('ad_pages_json')).toBe(true);
     expect(isOpsSettingKey('tax_edit_fee_json')).toBe(true);
+    expect(isOpsSettingKey('tax_records_policy_json')).toBe(true);
     expect(isOpsSettingKey('rename_fee_json')).toBe(true);
     expect(isOpsSettingKey('lizhi_cert_fee_json')).toBe(true);
     expect(isForbiddenSettingKey('pricing_ab_json')).toBe(false);

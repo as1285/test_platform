@@ -31,7 +31,7 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
+    expect(html).toContain('admin_panel.js?v=20260914-same-month');
     expect(html).toContain('id="page-admin-operation-log"');
     expect(html).not.toContain('id="loginLogMode"');
   });

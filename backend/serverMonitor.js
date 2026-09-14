@@ -153,6 +153,13 @@ const API_PROBE_DEFS = [
     accept: [200]
   },
   {
+    id: 'public-tax-records-policy',
+    label: '个税记录策略',
+    method: 'GET',
+    path: '/api/public/tax-records-policy',
+    accept: [200]
+  },
+  {
     id: 'partner-bank',
     label: '银行合作健康',
     method: 'GET',

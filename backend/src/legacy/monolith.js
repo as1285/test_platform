@@ -160,6 +160,7 @@ const { createPriceBids } = require('../payments/priceBids');
 const purchasePriceSurvey = require('../growth/purchasePriceSurvey');
 const { createUserEmailBulk, isValidUserEmail } = require('../admin/userEmailBulk');
 const taxEditFeePolicy = require('../tax/taxEditFeePolicy');
+const taxRecordsPolicy = require('../tax/taxRecordsPolicy');
 const taxRecordListOrder = require('../tax/taxRecordListOrder');
 const {
   sumRowMoney,
@@ -4874,14 +4875,15 @@ async function withTaxBatchUserLock(userId, fn) {
 }
 
 /** 批量保存税务记录（一键生成等） */
-async function batchSaveRecords(userId, records) {
+async function batchSaveRecords(userId, records, opts) {
   return withTaxBatchUserLock(userId, async function () {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
       var out = await bulkInsertRecordsInConn(conn, userId, records);
       await conn.commit();
-      var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
+      var skipDedupe = await shouldSkipTaxRecordDedupe(opts);
+      var dedupeOut = skipDedupe ? { deleted: 0 } : await dedupeTaxRecordsScoped(userId, records);
       invalidateTaxRecordsListCache(userId);
       invalidateUserInfoApiCache(userId);
       var batchResult = {
@@ -4930,7 +4932,7 @@ async function deleteRecord(userId, id) {
 }
 
 /** batch replace tax records */
-async function batchReplaceTaxRecords(userId, idsToDelete, records) {
+async function batchReplaceTaxRecords(userId, idsToDelete, records, opts) {
   return withTaxBatchUserLock(userId, async function () {
     const conn = await pool.getConnection();
     try {
@@ -4939,7 +4941,8 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
       var deleted = await softDeleteTaxRecordsByIdsInConn(conn, userId, ids);
       var out = await bulkInsertRecordsInConn(conn, userId, records);
       await conn.commit();
-      var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
+      var skipDedupe = await shouldSkipTaxRecordDedupe(opts);
+      var dedupeOut = skipDedupe ? { deleted: 0 } : await dedupeTaxRecordsScoped(userId, records);
       invalidateTaxRecordsListCache(userId);
       invalidateUserInfoApiCache(userId);
       var replaceResult = {
@@ -6163,6 +6166,61 @@ async function saveTaxEditFeeConfigFromAdmin(body) {
   _taxEditFeeConfigCache = next;
   _taxEditFeeConfigCacheAt = Date.now();
   return next;
+}
+
+var _taxRecordsPolicyCache = null;
+var _taxRecordsPolicyCacheAt = 0;
+var TAX_RECORDS_POLICY_CACHE_MS = 10000;
+
+async function loadTaxRecordsPolicy(force) {
+  var now = Date.now();
+  if (!force && _taxRecordsPolicyCache && now - _taxRecordsPolicyCacheAt < TAX_RECORDS_POLICY_CACHE_MS) {
+    return _taxRecordsPolicyCache;
+  }
+  var out = taxRecordsPolicy.defaultTaxRecordsPolicy();
+  try {
+    const [rows] = await pool.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [taxRecordsPolicy.SETTING_KEY_TAX_RECORDS_POLICY]
+    );
+    if (rows.length && rows[0].setting_value) {
+      out = taxRecordsPolicy.normalizeTaxRecordsPolicy(JSON.parse(String(rows[0].setting_value)));
+    }
+  } catch (eCfg) {
+    /* 保持默认：同月自动去重 */
+  }
+  _taxRecordsPolicyCache = out;
+  _taxRecordsPolicyCacheAt = now;
+  return out;
+}
+
+async function saveTaxRecordsPolicyFromAdmin(body) {
+  var next = taxRecordsPolicy.parseTaxRecordsPolicyFromAdmin(body);
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, taxRecordsPolicy.SETTING_KEY_TAX_RECORDS_POLICY, JSON.stringify(next));
+  } finally {
+    conn.release();
+  }
+  _taxRecordsPolicyCache = next;
+  _taxRecordsPolicyCacheAt = Date.now();
+  return next;
+}
+
+async function shouldSkipTaxRecordDedupe(opts) {
+  if (taxRecordsPolicy.isAllowMultiplePerMonth(opts)) return true;
+  var policy = await loadTaxRecordsPolicy(false);
+  return taxRecordsPolicy.isAllowMultiplePerMonth(policy);
+}
+
+async function handlePublicTaxRecordsPolicy(req, res) {
+  try {
+    var policy = await loadTaxRecordsPolicy(false);
+    return res.json({ code: 200, data: policy });
+  } catch (e) {
+    console.error('[tax-records-policy] public', e);
+    return res.status(500).json({ code: 500, msg: '读取个税记录设置失败' });
+  }
 }
 
 var _renameFeeConfigCache = null;
@@ -10987,6 +11045,9 @@ function classifyAnalyticsRoute(req) {
   if (path === '/api/public/lizhi-cert-fee') {
     return { route_key: method + ' /api/public/lizhi-cert-fee', biz_category: '公开配置' };
   }
+  if (path === '/api/public/tax-records-policy') {
+    return { route_key: method + ' /api/public/tax-records-policy', biz_category: '公开配置' };
+  }
   if (path === '/api/public/install-packages') {
     return { route_key: method + ' /api/public/install-packages', biz_category: '公开配置' };
   }
@@ -12649,6 +12710,15 @@ async function handleTaxVerifyIssueGet(req, res) {
 /** 税务域 GET */
 async function handleTaxGet(req, res) {
   var action = req.query.action;
+  if (action === 'records_policy') {
+    try {
+      var recPol = await loadTaxRecordsPolicy(false);
+      return res.json({ code: 200, data: recPol });
+    } catch (eRecPol) {
+      console.error(eRecPol);
+      return res.status(500).json({ code: 500, msg: String(eRecPol.message) });
+    }
+  }
   if (action === 'tax_edit_policy') {
     var uidPol = req.authUserId;
     if (uidPol == null || uidPol === '') {
@@ -13431,6 +13501,13 @@ async function handleTaxPost(req, res) {
   var taxEditPolicy = null;
 
   try {
+    if (action === 'save_records_policy') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var savedPolicy = await saveTaxRecordsPolicyFromAdmin(body);
+      return res.json({ code: 200, data: savedPolicy });
+    }
     if (taxEditFeePolicy.isTaxEditFeeWriteAction(action) && userId) {
       taxEditPolicy = await getTaxEditFeePolicy(userId);
       if (taxEditPolicy.subject && !taxEditPolicy.can_edit_now) {
@@ -13486,7 +13563,7 @@ async function handleTaxPost(req, res) {
           msg: '单次最多写入 ' + TAX_BATCH_MAX_RECORDS + ' 条记录'
         });
       }
-      var batchOut = await batchSaveRecords(userId, records);
+      var batchOut = await batchSaveRecords(userId, records, body);
       return okTaxWrite(res, userId, taxEditPolicy, batchOut);
     }
     if (action === 'batch_replace_records') {
@@ -13507,7 +13584,7 @@ async function handleTaxPost(req, res) {
           msg: '单次最多处理 ' + TAX_BATCH_MAX_RECORDS + ' 条删除或写入'
         });
       }
-      var replaceOut = await batchReplaceTaxRecords(userId, idsToDelete, replaceRecords);
+      var replaceOut = await batchReplaceTaxRecords(userId, idsToDelete, replaceRecords, body);
       return okTaxWrite(res, userId, taxEditPolicy, replaceOut);
     }
     if (action === 'delete_record') {
@@ -21097,6 +21174,7 @@ async function handleAdminSettingsGet(req, res) {
         sku_catalog_prices: await getPricingAb().loadCatalogAmounts(true),
         sku_catalog: await getPricingAb().loadCatalogConfig(true),
         tax_edit_fee: await loadTaxEditFeeConfig(true),
+        tax_records_policy: await loadTaxRecordsPolicy(true),
         rename_fee: await loadRenameFeeConfig(true),
         lizhi_cert_fee: await loadLizhiCertFeeConfig(true),
         najilu_qr_fee: await najiluQrMod.loadNajiluQrFeeConfig(true),
@@ -21129,6 +21207,7 @@ async function handleAdminSettingsPost(req, res) {
     (body.sku_catalog != null && typeof body.sku_catalog === 'object') ||
     (body.sku_catalog_prices != null && typeof body.sku_catalog_prices === 'object');
   var hasTaxEditFee = body.tax_edit_fee != null && typeof body.tax_edit_fee === 'object';
+  var hasTaxRecordsPolicy = body.tax_records_policy != null && typeof body.tax_records_policy === 'object';
   var hasRenameFee = body.rename_fee != null && typeof body.rename_fee === 'object';
   var hasLizhiCertFee = body.lizhi_cert_fee != null && typeof body.lizhi_cert_fee === 'object';
   var hasNajiluQrFee = body.najilu_qr_fee != null && typeof body.najilu_qr_fee === 'object';
@@ -21149,6 +21228,7 @@ async function handleAdminSettingsPost(req, res) {
     !hasPricingAb &&
     !hasSkuCatalogPrices &&
     !hasTaxEditFee &&
+    !hasTaxRecordsPolicy &&
     !hasRenameFee &&
     !hasLizhiCertFee &&
     !hasNajiluQrFee &&
@@ -21156,7 +21236,7 @@ async function handleAdminSettingsPost(req, res) {
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、改名费用、离职证明价格、完税二维码价格或激活引导弹窗配置'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、支付套餐、个税修改收费、个税记录设置、改名费用、离职证明价格、完税二维码价格或激活引导弹窗配置'
     });
   }
 
@@ -21178,6 +21258,7 @@ async function handleAdminSettingsPost(req, res) {
       hasPricingAb ||
       hasSkuCatalogPrices ||
       hasTaxEditFee ||
+      hasTaxRecordsPolicy ||
       hasRenameFee ||
       hasLizhiCertFee ||
       hasNajiluQrFee ||
@@ -21488,6 +21569,21 @@ async function handleAdminSettingsPost(req, res) {
       }
     }
 
+    if (hasTaxRecordsPolicy) {
+      try {
+        await saveTaxRecordsPolicyFromAdmin(body.tax_records_policy);
+      } catch (eTaxRecPolSave) {
+        var taxRecPolMsg =
+          eTaxRecPolSave && eTaxRecPolSave.message
+            ? String(eTaxRecPolSave.message)
+            : '保存个税记录设置失败';
+        return res.status(eTaxRecPolSave && eTaxRecPolSave.statusCode === 400 ? 400 : 500).json({
+          code: eTaxRecPolSave && eTaxRecPolSave.statusCode === 400 ? 400 : 500,
+          msg: taxRecPolMsg
+        });
+      }
+    }
+
     if (hasTaxEditFee) {
       try {
         await saveTaxEditFeeConfigFromAdmin(body.tax_edit_fee);
@@ -21583,6 +21679,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.sku_catalog_prices = await getPricingAb().loadCatalogAmounts(true);
     outData.sku_catalog = await getPricingAb().loadCatalogConfig(true);
     outData.tax_edit_fee = await loadTaxEditFeeConfig(true);
+    outData.tax_records_policy = await loadTaxRecordsPolicy(true);
     outData.rename_fee = await loadRenameFeeConfig(true);
     outData.lizhi_cert_fee = await loadLizhiCertFeeConfig(true);
     outData.najilu_qr_fee = await najiluQrMod.loadNajiluQrFeeConfig(true);
@@ -22028,7 +22125,7 @@ async function handleAdminUserTaxRecordsWrite(req, res) {
           msg: '单次最多写入 ' + TAX_BATCH_MAX_RECORDS + ' 条记录'
         });
       }
-      var batchOut = await batchSaveRecords(canonical, batchRecords);
+      var batchOut = await batchSaveRecords(canonical, batchRecords, body);
       return res.json({
         code: 200,
         msg: '批量已保存',
@@ -22051,7 +22148,7 @@ async function handleAdminUserTaxRecordsWrite(req, res) {
           msg: '单次最多处理 ' + TAX_BATCH_MAX_RECORDS + ' 条删除或写入'
         });
       }
-      var replaceOut = await batchReplaceTaxRecords(canonical, idsToDelete, replaceRecords);
+      var replaceOut = await batchReplaceTaxRecords(canonical, idsToDelete, replaceRecords, body);
       return res.json({
         code: 200,
         msg: '批量已覆盖',
@@ -24878,6 +24975,7 @@ function getHandlers() {
     handleBilibiliShareStart,
     handleBilibiliShareComplete,
     handlePublicMineUi,
+    handlePublicTaxRecordsPolicy,
     handlePublicInstallPackages,
     handlePublicAssetGet,
     handlePublicResolveSalesChannel,
