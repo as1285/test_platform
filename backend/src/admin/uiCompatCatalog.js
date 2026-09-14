@@ -472,6 +472,13 @@ var MODELS = [
         since: '2026-09-03'
       },
       {
+        page: 'shuiming',
+        title: '扣缴义务人吃满箭头左侧宽度',
+        summary:
+          'JS 先截 12 字、HarmonyOS flex 再收到约 7 字；改为不预截，公司名吃满「>」左侧剩余宽度，「苏州宇量引力网络科技有限公司」完整显示。',
+        since: '2026-09-14'
+      },
+      {
         page: 'message',
         title: '消息详情避开 ark 白顶 52/66',
         summary:
