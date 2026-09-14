@@ -8,15 +8,16 @@ const mine = readFileSync(resolve(__dirname, '../../mine.html'), 'utf8');
 const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
 const cordova = readFileSync(resolve(__dirname, '../../../cordova-app/www/index.html'), 'utf8');
 
-const MODEL_RE = /PHW110|CPH2531|CPH2525/i;
+const MODEL_RE = /PHW110|CPH2531|CPH2525|PFGM00|A93s/i;
 
 describe('OPPO Reno10 5G mine / home ColorOS 15', () => {
-  it('matches Reno10 5G model codes and not Reno10 Pro', () => {
-    ['PHW110', 'CPH2531', 'CPH2525'].forEach((id) => {
+  it('matches Reno10 5G and A93s model codes and not Reno10 Pro', () => {
+    ['PHW110', 'CPH2531', 'CPH2525', 'PFGM00', 'A93s', 'OPPO A93s'].forEach((id) => {
       expect(MODEL_RE.test(id), id).toBe(true);
     });
     expect(MODEL_RE.test('PHV110')).toBe(false);
     expect(MODEL_RE.test('PHU110')).toBe(false);
+    expect(MODEL_RE.test('PEHM00')).toBe(false);
   });
 
   it('locks Reno10 off the 100vw @sm crop like Ace Pro', () => {
@@ -31,6 +32,9 @@ describe('OPPO Reno10 5G mine / home ColorOS 15', () => {
     expect(boot).toContain('data-reno10-mine-e1-firstpaint');
     expect(boot).toContain("classList.add('app-android-oppo-reno10')");
     expect(boot).toMatch(/if \(reno10\) \{[\s\S]*?return;/);
+    expect(auth).toContain('PFGM00');
+    expect(boot).toContain('PFGM00');
+    expect(mine).toContain('PFGM00');
   });
 
   it('does not keep Reno10 on the 40px mine bleed group', () => {

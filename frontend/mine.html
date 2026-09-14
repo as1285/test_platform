@@ -396,14 +396,14 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
-                if (/PHW110|CPH2531|CPH2525/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
+                if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
                     document.documentElement.classList.remove('app-android-mine-e1-sm');
                     document.documentElement.style.setProperty('--mine-top-bleed', '0px');
                     /*
-                     * ColorOS 15 Reno10：与 Ace Pro 相同，100vw 常宽于画布。
-                     * @sm 的 1180*100vw 定高会把「我的」撑成超高画布，壳 iframe 超时弹 Application Error。
+                     * ColorOS Reno10 / A93s（PFGM00）：与 Ace Pro 相同，100vw 常宽于画布。
+                     * @sm 的 1180*100vw 定高会把「我的」撑成超高画布，叠层与底图错位。
                      */
                     if (!document.getElementById('reno10MineFirstPaint')) {
                         var renoFp = document.createElement('style');
@@ -465,8 +465,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260911-reno10-mine"></script>
-    <script src="/js/auth.js?v=20260911-reno10-mine" defer></script>
+    <script src="/js/auth-boot.js?v=20260914-a93s-mine"></script>
+    <script src="/js/auth.js?v=20260914-a93s-mine" defer></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">

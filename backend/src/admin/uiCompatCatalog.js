@@ -726,6 +726,22 @@ var MODELS = [
     ]
   },
   {
+    id: 'oppo-a93s',
+    platform: 'android',
+    family: 'oppo',
+    label: 'OPPO A93s 5G',
+    match: ['PFGM00', 'A93s'],
+    issues: [
+      {
+        page: 'mine',
+        title: '「我的」勿走 1180×100vw @sm 裁切',
+        summary:
+          'ColorOS WebView 上 100vw 常宽于画布，通用 @sm 会把底图与姓名/胶囊/热区错位。与 Reno10 同一套真实 <img> + 1284/2127 比例锁。',
+        since: '2026-09-14'
+      }
+    ]
+  },
+  {
     id: 'oppo-k9x',
     platform: 'android',
     family: 'oppo',

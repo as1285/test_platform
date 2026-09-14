@@ -258,6 +258,10 @@ export const DEVICE_PROFILES = [
   immersive('PHW110', 'OPPO Reno10 5G', ['app-android-oppo-reno10', 'app-android-immersive-white-top'], {
     id: 'oppo-reno10'
   }),
+  /* ColorOS 13 A93s：与 Reno10 同走 100vw @sm 裁切，须挂 reno10 锁 */
+  immersive('PFGM00', 'OPPO A93s 5G', ['app-android-oppo-reno10', 'app-android-immersive-white-top'], {
+    id: 'oppo-a93s'
+  }),
   immersive('PGCM10', 'OPPO K9x', ['app-android-oppo-k9x', 'app-android-immersive-white-top'], {
     id: 'oppo-k9x'
   }),

@@ -41,6 +41,9 @@ describe('uiCompatCatalog + deviceStats', () => {
     const a57 = catalog.listCatalogModels().find((m) => m.id === 'oppo-a57');
     expect(catalog.modelMatchesBlob(a57, 'PFTM20 OPPO A57')).toBe(true);
     expect(catalog.modelMatchesBlob(a57, 'PHJ110 OPPO A58')).toBe(false);
+    const a93s = catalog.listCatalogModels().find((m) => m.id === 'oppo-a93s');
+    expect(catalog.modelMatchesBlob(a93s, 'PFGM00 OPPO A93s')).toBe(true);
+    expect(catalog.modelMatchesBlob(a93s, 'PHW110 OPPO Reno10')).toBe(false);
     const k70 = catalog.listCatalogModels().find((m) => m.id === 'redmi-k70');
     expect(catalog.modelMatchesBlob(k70, '23113RKC6C')).toBe(true);
     expect(k70.issues.some((i) => i.page === 'mine' && /underlap 黑垫/.test(i.title))).toBe(true);
