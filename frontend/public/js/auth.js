@@ -363,7 +363,7 @@
       return true;
     }
     if (
-      /CPH2797|CPH2791|CPH2841|CPH2873|PLJ110|PLG110|PMA110|PME110|OPG07|PKB110|PJE110|PJD110|PHJ110|PHP110/i.test(
+      /CPH2797|CPH2791|CPH2841|CPH2873|PLJ110|PLG110|PMA110|PME110|OPG07|PKB110|PJE110|PJD110|PHJ110|PHP110|PFGM00/i.test(
         ua
       )
     ) {
@@ -386,13 +386,15 @@
   }
 
   /**
-   * OPPO Reno10 5G（国行 PHW110 / 海外 CPH2531、CPH2525）。ColorOS 15 WebView 仍压在系统栏下，
-   * 不可套用 OPPO 族「外置黑条 → inset 0」，否则顶栏返回/标题贴到系统时间。
+   * OPPO Reno10 5G（国行 PHW110 / 海外 CPH2531、CPH2525）与 A93s 5G（PFGM00）。
+   * ColorOS WebView 仍压在系统栏下，不可套用 OPPO 族「外置黑条 → inset 0」，
+   * 否则顶栏返回/标题贴到系统时间。「我的」页与 Reno10 同病：100vw 常宽于画布，
+   * 通用 @sm 的 1180×100vw 裁切会把姓名/胶囊/热区与底图错开。
    * 勿匹配 Reno10 Pro（PHV110）/ Reno10 Pro+（PHU110）。
    */
   function isOppoReno10Client() {
     var ua = clientUaBlob();
-    if (/PHW110|CPH2531|CPH2525/i.test(ua)) {
+    if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(ua)) {
       return true;
     }
     if (/Reno\s*10\s*Pro/i.test(ua)) {

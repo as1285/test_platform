@@ -66,7 +66,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260911-reno10-mine');
+    expect(shouye).toContain('auth.js?v=20260914-a93s-mine');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {

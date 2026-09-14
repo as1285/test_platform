@@ -491,7 +491,8 @@
         document.documentElement.classList.add('app-android-huawei-p40pro');
         document.documentElement.classList.remove('app-huawei-mine-noclip');
       }
-      var reno10 = /PHW110|CPH2531|CPH2525/i.test(ua) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(ua) && !/Reno\s*10\s*Pro/i.test(ua));
+      /* Reno10 + A93s（PFGM00）：ColorOS 100vw @sm 裁切会错位，须 early return 勿打 sm */
+      var reno10 = /PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(ua) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(ua) && !/Reno\s*10\s*Pro/i.test(ua));
       if (reno10) {
         document.documentElement.classList.add('app-android-oppo-reno10');
         document.documentElement.classList.add('app-android-immersive-white-top');

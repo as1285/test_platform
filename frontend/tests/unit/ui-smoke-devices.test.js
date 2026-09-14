@@ -24,6 +24,7 @@ describe('ui-smoke device catalog', () => {
       'oneplus-ace2v',
       'oneplus-acepro',
       'oppo-reno10',
+      'oppo-a93s',
       'oppo-k9x',
       'xiaomi-13',
       'xiaomi-13pro',

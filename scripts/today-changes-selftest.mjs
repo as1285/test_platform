@@ -674,7 +674,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260824-aug12r6', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done', 'data-acepro-mine-e1-firstpaint', 'aspect-ratio:1284/2127'],
+  ['20260824-aug12r6', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'PFGM00', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done', 'data-acepro-mine-e1-firstpaint', 'aspect-ratio:1284/2127'],
   'mine.html mate60 e1 (plan B / c93c3cc) + reno10 + neo8 + nova13 cache'
 );
 mustExclude(
@@ -794,7 +794,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isOppoReno10Client', 'PHW110', 'CPH2531', 'app-android-oppo-reno10'],
+  ['isOppoReno10Client', 'PHW110', 'CPH2531', 'PFGM00', 'app-android-oppo-reno10'],
   'oppo reno10 5g immersive top'
 );
 mustInclude(
@@ -1091,13 +1091,15 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
 })();
 
 (function testOppoReno10Ua() {
-  const reModel = /PHW110|CPH2531|CPH2525/i;
+  const reModel = /PHW110|CPH2531|CPH2525|PFGM00|A93s/i;
   const reName = /(?:OPPO\s*)?Reno\s*10\s*5G/i;
   const rePro = /Reno\s*10\s*Pro/i;
   const hit = [
     'Mozilla/5.0 (Linux; Android 15; PHW110 Build/UKQ1) AppleWebKit/537.36',
     'Mozilla/5.0 (Linux; Android 15; CPH2531) OPPO Reno10 5G',
-    'Mozilla/5.0 (Linux; Android 15) OPPO Reno 10 5G'
+    'Mozilla/5.0 (Linux; Android 15) OPPO Reno 10 5G',
+    'Mozilla/5.0 (Linux; Android 13; PFGM00 Build/TP1A.220624.014) ColorOS',
+    'Mozilla/5.0 (Linux; Android 13) OPPO A93s'
   ];
   const miss = [
     'Mozilla/5.0 (Linux; Android 15; PHV110) OPPO Reno10 Pro 5G',
