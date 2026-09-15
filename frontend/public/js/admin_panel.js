@@ -894,6 +894,7 @@
             if (menuKey === 'peer-accounts') menuKey = 'rename-tax-daily';
             if (!menuKey) return false;
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
+            if (menuKey === 'codes' && currentAdminProfile) return true;
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
             if (menus.indexOf(menuKey) >= 0) return true;
             if (menuKey === 'rename-tax-daily' && menus.indexOf('peer-accounts') >= 0) return true;
@@ -1065,6 +1066,7 @@
                 }
                 if (out.indexOf(key) < 0) out.push(key);
             });
+            if (out.indexOf('codes') < 0) out.push('codes');
             return out;
         }
 
@@ -1376,6 +1378,7 @@
             menuKey = String(menuKey || '');
             if (!menuKey) return false;
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
+            if (menuKey === 'codes' && currentAdminProfile) return true;
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
             return menus.indexOf(menuKey) >= 0;
         }
@@ -7458,9 +7461,29 @@
             });
         }
 
+        function requiredAdminMenuKeys() {
+            var keys = [];
+            adminMenuDefsForSelector().forEach(function (d) {
+                if (d && d.required && d.key && keys.indexOf(d.key) < 0) keys.push(d.key);
+            });
+            if (keys.indexOf('codes') < 0) keys.push('codes');
+            return keys;
+        }
+
+        function menusWithRequired(selected) {
+            var out = [];
+            (selected || []).forEach(function (k) {
+                if (k && out.indexOf(k) < 0) out.push(k);
+            });
+            requiredAdminMenuKeys().forEach(function (k) {
+                if (out.indexOf(k) < 0) out.push(k);
+            });
+            return out;
+        }
+
         function adminMenuSelectorHtml(selected) {
             var selectedMap = {};
-            (selected || []).forEach(function (k) { selectedMap[k] = true; });
+            menusWithRequired(selected).forEach(function (k) { selectedMap[k] = true; });
             var defs = adminMenuDefsForSelector();
             var groups = [];
             var groupIndex = Object.create(null);
@@ -7491,9 +7514,16 @@
                 html += '<div class="admin-menu-selector-group-items">';
                 g.items.forEach(function (d) {
                     var k = d.key;
+                    var locked = !!d.required || k === 'codes';
                     html += '<label class="admin-menu-selector-item">';
-                    html += '<input type="checkbox" data-menu-key="' + esc(k) + '"' + (selectedMap[k] ? ' checked' : '') + '>';
-                    html += '<span>' + esc(d.label || menuLabel(k)) + '</span>';
+                    html +=
+                        '<input type="checkbox" data-menu-key="' +
+                        esc(k) +
+                        '"' +
+                        (selectedMap[k] || locked ? ' checked' : '') +
+                        (locked ? ' disabled data-required-menu="1"' : '') +
+                        '>';
+                    html += '<span>' + esc(d.label || menuLabel(k)) + (locked ? '（必选）' : '') + '</span>';
                     html += '</label>';
                 });
                 html += '</div>';
@@ -7594,9 +7624,11 @@
             if (!rootEl) return [];
             var out = [];
             rootEl.querySelectorAll('input[type="checkbox"][data-menu-key]').forEach(function (el) {
-                if (el.checked) out.push(String(el.getAttribute('data-menu-key') || ''));
+                if (el.checked || el.getAttribute('data-required-menu') === '1') {
+                    out.push(String(el.getAttribute('data-menu-key') || ''));
+                }
             });
-            return out.filter(Boolean);
+            return menusWithRequired(out.filter(Boolean));
         }
 
         /* ========== Admin Accounts ========== */
@@ -7616,8 +7648,8 @@
             if (createBtn) createBtn.textContent = isSuper ? '新增账号' : '新增下线';
             if (hint) {
                 hint.textContent = isSuper
-                    ? '可新增后台账号并勾选可用菜单。给子管理员勾选「下线管理员」后，她可以再发展自己的下线，并查看下线的用户、激活码等全部业务数据。'
-                    : '可新增自己的下线管理员，并查看其激活用户、注册用户与激活码等全部业务数据。下线账号的菜单不能超出你当前拥有的权限。';
+                    ? '可新增后台账号并勾选可用菜单。「激活码」为子管理员必选权限，不可取消。给子管理员勾选「下线管理员」后，她可以再发展自己的下线，并查看下线的用户、激活码等全部业务数据。'
+                    : '可新增自己的下线管理员，并查看其激活用户、注册用户与激活码等全部业务数据。下线账号的菜单不能超出你当前拥有的权限；「激活码」为必选，不可取消。';
             }
         }
 
@@ -7641,7 +7673,9 @@
                         adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
                         adminMenuDefsList = [];
                     }
-                    var defaultMenus = adminMenuKeyList.indexOf('codes') >= 0 ? ['codes'] : adminMenuKeyList.slice(0, 1);
+                    var defaultMenus = menusWithRequired(
+                        adminMenuKeyList.indexOf('codes') >= 0 ? ['codes'] : adminMenuKeyList.slice(0, 1)
+                    );
                     renderAdminMenuSelector(document.getElementById('adminAccountMenuSelector'), defaultMenus);
                     var list = Array.isArray(data.data.accounts) ? data.data.accounts : [];
                     var html = '';
@@ -7680,7 +7714,7 @@
                             html += '</div>';
                             html += '<div style="margin:0 0 6px;font-size:12px;color:#666;">可用菜单</div>';
                             html += '<div class="admin-account-menu-row" data-username="' + esc(a.username) + '">';
-                            html += adminMenuSelectorHtml(a.menus || []);
+                            html += adminMenuSelectorHtml(menusWithRequired(a.menus || []));
                             html += '</div>';
                             html += '<div style="margin-top:8px;">';
                             html += '<button type="button" class="btn-sm btn-primary btn-admin-account-save" data-username="' + esc(a.username) + '">保存</button>';

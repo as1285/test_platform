@@ -30,7 +30,7 @@ describe('保存出价配置成功弹出 Toast', () => {
   it('接线与缓存戳齐全', () => {
     expect(panel).toContain("adminToast(data.msg || '出价配置已保存')");
     expect(panel).toContain("adminToast(data.msg || '保存失败', { type: 'error' })");
-    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
+    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
     expect(html).toContain('admin_panel.css?v=20260910-bid-toast');
     expect(css).toContain('.admin-toast-host');
     expect(css).toContain('.admin-toast.is-ok');

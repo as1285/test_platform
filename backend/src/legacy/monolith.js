@@ -935,7 +935,7 @@ function normalizeAdminMenuList(rawMenus, isSuper) {
     seen[key] = true;
     out.push(key);
   });
-  return out;
+  return adminMenuRegistry.ensureRequiredSubadminMenus(out);
 }
 
 var _wechatPayQrcodeCache = null;
@@ -3985,6 +3985,12 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT id, 'downline-admins' FROM admin_accounts WHERE is_super = 0`
+  );
+
+  /* 激活码：所有子管理员必带，即使未勾选运营看板也能发码/看码 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT id, 'codes' FROM admin_accounts WHERE is_super = 0`
   );
 
   await conn.execute(
@@ -8560,6 +8566,11 @@ function adminHasMenu(admin, menuKey) {
     return false;
   }
   if (admin.is_super) {
+    return true;
+  }
+  if (
+    adminMenuRegistry.getRequiredSubadminMenuKeys().indexOf(String(menuKey)) >= 0
+  ) {
     return true;
   }
   if (!Array.isArray(admin.menus)) {
@@ -14279,11 +14290,13 @@ function adminCanManageAccountsPage(admin) {
 function constrainMenusToActor(actor, rawMenus) {
   var menus = normalizeAdminMenuList(rawMenus, false);
   if (!actor || actor.is_super) {
-    return menus.filter(function (k) {
+    menus = menus.filter(function (k) {
       return k !== 'admin-accounts';
     });
+  } else {
+    menus = adminDownline.intersectMenuKeys(menus, actor.menus || []);
   }
-  return adminDownline.intersectMenuKeys(menus, actor.menus || []);
+  return adminMenuRegistry.ensureRequiredSubadminMenus(menus);
 }
 
 /** 返回当前操作者可勾选的菜单定义 */
@@ -14294,8 +14307,12 @@ function menuDefsForActor(admin) {
   (admin.menus || []).forEach(function (k) {
     allowed[String(k)] = 1;
   });
+  var required = Object.create(null);
+  adminMenuRegistry.getRequiredSubadminMenuKeys().forEach(function (k) {
+    required[k] = 1;
+  });
   return defs.filter(function (d) {
-    return d && d.key && allowed[d.key] && !d.super_only;
+    return d && d.key && !d.super_only && (allowed[d.key] || required[d.key]);
   });
 }
 

@@ -18,7 +18,7 @@ describe('管理后台取消激活', () => {
   it('说明、样式与缓存版本已更新', () => {
     expect(html).toContain('橙色<strong>取消激活</strong>');
     expect(html).toContain('不计入运营看板「今日激活」');
-    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
+    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
     expect(panel).toContain('badge-cancelled');
     expect(panel).toContain('c.activation_cancelled');
     expect(css).toContain('.btn-deactivate');

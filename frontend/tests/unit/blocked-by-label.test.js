@@ -13,6 +13,6 @@ describe('IP 黑名单操作管理员列', () => {
   });
 
   it('busts admin_panel.js cache after the label fix', () => {
-    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
+    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
   });
 });
