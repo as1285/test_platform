@@ -95,6 +95,13 @@ describe('C 端完税二维码使用说明', () => {
     expect(html).toContain('替换完成后可用官方 APP 扫码查验');
     expect(html).toContain('替换完成后能扫码查验吗');
   });
+
+  it('完整完税源图限高，预览/保存钉在底部不被挡住', () => {
+    expect(html).toContain('max-height: min(42vh, 360px)');
+    expect(html).toContain('class="tool-actions"');
+    expect(html).toContain('id="najiluQrCropHint"');
+    expect(html).toContain('najilu-qr-user.js?v=20260915-btn-overlap');
+  });
 });
 
 describe('C 端完税二维码入口位置', () => {
