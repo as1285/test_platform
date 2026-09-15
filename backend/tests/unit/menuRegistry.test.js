@@ -370,7 +370,7 @@ describe('menuRegistry', () => {
       adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-lift')
     ).toBe(true);
     expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'ops-inactive')).toBe(
-      true
+      false
     );
     expect(adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-inactive')).toBe(
       false
@@ -381,6 +381,54 @@ describe('menuRegistry', () => {
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-ad-analytics')
     ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'user-emails')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['user-emails'] }, 'user-emails')
+    ).toBe(true);
+    expect(getPageDef('user-emails').strict_hub_tab).toBe(true);
+  });
+
+  it('19106014552 这类勾选账号不能因 users/codes 打开未勾选的看板与邮箱', () => {
+    const admin = {
+      is_super: false,
+      username: '19106014552',
+      menus: [
+        'blocked-ips',
+        'ccb-flow',
+        'codes',
+        'downline-admins',
+        'lizhi-cert',
+        'najilu-qr',
+        'payment-orders',
+        'rename-tax-daily',
+        'sbdy-demo',
+        'tax-records-edit',
+        'user-data',
+        'users',
+        'users-deleted',
+        'zaizhi-cert'
+      ]
+    };
+    const session = buildAdminSessionPayload(admin);
+    const nav = session.menu_tree.flatMap((g) => (g.items || []).map((i) => i.page));
+    expect(nav).toEqual(['ops-board', 'users', 'sbdy-demo', 'login-log']);
+    expect(adminProfileCanAccessPage(session.admin, 'codes')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'payment-orders')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'users')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'user-data')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'downline-admins')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'blocked-ips')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'user-emails')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'insights-product')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'ops-inactive')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'analytics-activity')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'ops-ad-analytics')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'abc-ops')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'settings')).toBe(false);
+    expect(adminProfileCanAccessPage(session.admin, 'login-log')).toBe(true);
+    expect(adminProfileCanAccessPage(session.admin, 'ops-board')).toBe(true);
   });
 
   it('hub aliases grant access to nested content pages', () => {

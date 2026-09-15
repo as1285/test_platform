@@ -17,7 +17,10 @@ describe('子管理员必带激活码权限', () => {
   it('菜单定义把 codes 标成 required_subadmin', () => {
     expect(menuRegistry).toMatch(/menu_key: 'codes'[\s\S]*required_subadmin: true/);
     expect(menuRegistry).toContain('function ensureRequiredSubadminMenus(');
-    expect(menuRegistry).toContain("alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research', 'codes']");
+    expect(menuRegistry).toContain("alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research']");
+    expect(menuRegistry).toMatch(
+      /page: 'ops-board'[\s\S]{0,220}alias_menus: \['analytics-conversion', 'ops-lift', 'ops-research'\]/
+    );
   });
 
   it('存量迁移给所有非超管写入 codes', () => {
@@ -34,6 +37,6 @@ describe('子管理员必带激活码权限', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
+    expect(html).toContain('admin_panel.js?v=20260915-perm-match');
   });
 });

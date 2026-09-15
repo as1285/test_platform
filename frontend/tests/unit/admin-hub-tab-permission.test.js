@@ -18,6 +18,9 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
     expect(adminPanel).toContain("tabPage === 'server-monitor'");
     expect(adminPanel).toContain("adminHasExactMenu('login-log')");
     expect(adminPanel).toContain("tabPage === 'admin-accounts' || tabPage === 'admin-operation-log'");
+    expect(adminPanel).toContain("if (hubKey === 'ops-board')");
+    expect(adminPanel).toContain("if (tabPage === 'ops-board') return adminHasExactMenu('ops-board')");
+    expect(adminPanel).toContain("if (tabPage === 'user-emails') return adminHasExactMenu('user-emails')");
     expect(adminPanel).toContain('listVisibleHubTabs(hubKey)');
     expect(adminPanel).toMatch(/无权限 TAB：落到该 hub 第一个可见 TAB/);
   });
@@ -31,7 +34,7 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
+    expect(html).toContain('admin_panel.js?v=20260915-perm-match');
     expect(html).toContain('id="page-admin-operation-log"');
     expect(html).not.toContain('id="loginLogMode"');
   });

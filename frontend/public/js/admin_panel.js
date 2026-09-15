@@ -903,7 +903,7 @@
             /* hub 合并：有子页权限也可进 hub；有 hub 也可进子页 */
             var hubAlias = {
                 settings: ['install-guide', 'appearance'],
-                'ops-board': ['ops-ad-analytics', 'codes', 'payment-orders', 'ops-research', 'ops-lift', 'abc-ops'],
+                'ops-board': ['ops-ad-analytics', 'payment-orders', 'ops-research', 'ops-lift', 'abc-ops'],
                 users: ['rename-tax-daily', 'user-emails', 'users-deleted', 'user-data', 'tax-records-edit', 'peer-accounts'],
                 'lizhi-cert': ['zaizhi-cert'],
                 'sbdy-demo': ['gjj-demo', 'lizhi-cert', 'zaizhi-cert', 'ccb-flow', 'najilu-qr'],
@@ -965,13 +965,14 @@
                 'abc-users': 'abc-ops',
                 'abc-ops': 'ops-board' 
             };
-            /* 系统与安全独立 TAB：不因持有 hub 而判定有子页权限 */
+            /* 独立 TAB：不因持有 hub 而判定有该页权限 */
             if (
                 menuKey === 'blocked-ips' ||
                 menuKey === 'server-monitor' ||
                 menuKey === 'downline-admins' ||
                 menuKey === 'admin-accounts' ||
-                menuKey === 'admin-operation-log'
+                menuKey === 'admin-operation-log' ||
+                menuKey === 'user-emails'
             ) {
                 return false;
             }
@@ -1384,16 +1385,36 @@
         }
 
         /**
-         * 系统与安全 hub 的 TAB 独立授权：
-         * - 账号权限 / 操作日志：仅超管（admin）
-         * - 下线管理员：需精确 downline-admins（超管不显示）
-         * - 管理登录：需精确 login-log
-         * - 用户登录：随 login-log（不可单独勾选）
-         * - 监控 / IP 黑名单：需各自精确菜单
+         * hub TAB 按账号勾选的精确权限显示：
+         * - 转化运营：运营看板 / 广告 / ABC 需各自或看板权限；激活码必选；订单检索可随发码
+         * - 用户管理：邮箱管理独立勾选，不因有注册用户而出现
+         * - 系统与安全：账号权限 / 操作日志仅超管；其余 TAB 精确授权
          */
         function adminCanSeeHubTab(hubKey, tabPage) {
             tabPage = String(tabPage || '');
             if (!tabPage) return false;
+            if (hubKey === 'ops-board') {
+                if (tabPage === 'ops-board') return adminHasExactMenu('ops-board');
+                if (tabPage === 'ops-ad-analytics') {
+                    return adminHasExactMenu('ops-ad-analytics') || adminHasExactMenu('ops-board');
+                }
+                if (tabPage === 'codes') return adminHasExactMenu('codes');
+                if (tabPage === 'payment-orders') {
+                    return (
+                        adminHasExactMenu('payment-orders') ||
+                        adminHasExactMenu('ops-board') ||
+                        adminHasExactMenu('codes')
+                    );
+                }
+                if (tabPage === 'abc-ops') {
+                    return adminHasExactMenu('abc-ops') || adminHasExactMenu('ops-board');
+                }
+                return adminHasMenu(tabPage);
+            }
+            if (hubKey === 'users') {
+                if (tabPage === 'user-emails') return adminHasExactMenu('user-emails');
+                return adminHasMenu(tabPage);
+            }
             if (hubKey !== 'login-log') {
                 return adminHasMenu(tabPage);
             }
