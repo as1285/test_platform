@@ -27,6 +27,7 @@ const ADMIN_MENU_GROUPS = [
  * @property {number} order
  * @property {boolean} [super_only]
  * @property {boolean} [assignable] 是否出现在子账号勾选列表；默认 true（仅正式 menu_key 一次）
+ * @property {boolean} [required_subadmin] 子管理员必带权限，创建/保存时不可去掉
  */
 
 /** @type {AdminPageDef[]} */
@@ -39,7 +40,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 5,
-    alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research']
+    alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research', 'codes']
   },
   {
     page: 'ops-research',
@@ -122,6 +123,7 @@ const ADMIN_PAGE_DEFS = [
     module: 'codes',
     order: 50,
     alias_menus: ['ops-board'],
+    required_subadmin: true,
     nav_hidden: true
   },
   {
@@ -671,6 +673,45 @@ function menuGroupMeta(groupId) {
   return { id: groupId || '', label: '', order: 999 };
 }
 
+/** 子管理员必带的菜单键（发码等） */
+const REQUIRED_SUBADMIN_MENU_KEYS = (function () {
+  var seen = Object.create(null);
+  var out = [];
+  for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
+    var d = ADMIN_PAGE_DEFS[i];
+    if (!d || !d.required_subadmin) continue;
+    var k = d.menu_key;
+    if (!k || seen[k]) continue;
+    seen[k] = 1;
+    out.push(k);
+  }
+  return out;
+})();
+
+function getRequiredSubadminMenuKeys() {
+  return REQUIRED_SUBADMIN_MENU_KEYS.slice();
+}
+
+/** 子管理员菜单列表补上必带权限 */
+function ensureRequiredSubadminMenus(rawMenus) {
+  var src = Array.isArray(rawMenus) ? rawMenus : [];
+  var seen = Object.create(null);
+  var out = [];
+  src.forEach(function (m) {
+    var key = String(m || '').trim();
+    if (!key || seen[key]) return;
+    seen[key] = 1;
+    out.push(key);
+  });
+  REQUIRED_SUBADMIN_MENU_KEYS.forEach(function (k) {
+    if (!seen[k]) {
+      seen[k] = 1;
+      out.push(k);
+    }
+  });
+  return out;
+}
+
 /** 获取：AssignableMenuDefs */
 function getAssignableMenuDefs() {
   var seen = Object.create(null);
@@ -689,7 +730,8 @@ function getAssignableMenuDefs() {
       group_order: grp.order,
       order: d.order,
       module: d.module,
-      super_only: !!d.super_only
+      super_only: !!d.super_only,
+      required: !!d.required_subadmin
     });
   }
   return out;
@@ -924,21 +966,26 @@ function firstAllowedPage(admin) {
 
 /** 构建：AdminSessionPayload */
 function buildAdminSessionPayload(admin) {
-  var built = buildMenuTreeForAdmin(admin);
+  var sessionMenus = Array.isArray(admin.menus) ? admin.menus.slice() : [];
+  if (!(admin && admin.is_super)) {
+    sessionMenus = ensureRequiredSubadminMenus(sessionMenus);
+  }
+  var viewAdmin = Object.assign({}, admin, { menus: sessionMenus });
+  var built = buildMenuTreeForAdmin(viewAdmin);
   return {
     admin: {
-      username: admin.username,
-      full_name: admin.full_name || '',
-      is_super: !!admin.is_super,
+      username: viewAdmin.username,
+      full_name: viewAdmin.full_name || '',
+      is_super: !!viewAdmin.is_super,
       is_root_admin:
-        String(admin.username || '').trim().toLowerCase() ===
+        String(viewAdmin.username || '').trim().toLowerCase() ===
         String((config.ADMIN_PANEL_USER || 'admin') + '').trim().toLowerCase(),
-      menus: Array.isArray(admin.menus) ? admin.menus.slice() : []
+      menus: sessionMenus
     },
     menu_tree: built.menu_tree,
     pages: built.pages,
     menu_defs: getAssignableMenuDefs(),
-    first_page: firstAllowedPage(admin),
+    first_page: firstAllowedPage(viewAdmin),
     hubs: ADMIN_HUB_DEFS
   };
 }
@@ -951,6 +998,9 @@ module.exports = {
   ADMIN_CONTENT_TO_HUB,
   ADMIN_MENU_KEYS,
   ADMIN_MENU_LABELS,
+  REQUIRED_SUBADMIN_MENU_KEYS,
+  getRequiredSubadminMenuKeys,
+  ensureRequiredSubadminMenus,
   getAssignableMenuDefs,
   parseAdminRoute,
   normalizeAdminPageKey,

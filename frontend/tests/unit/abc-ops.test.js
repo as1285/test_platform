@@ -15,7 +15,7 @@ describe('admin ABC ops module', () => {
     expect(html).toContain('id="abcOpsFunnel"');
     expect(html).toContain('id="abcOpsUserTbody"');
     expect(html).toContain('href="#abc-ops"');
-    expect(html).toContain('admin_panel.js?v=20260910-najilu-unlock');
+    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
     expect(html).toContain('admin_panel.css?v=20260910-bid-toast');
     expect(loader).toContain('abc-ops.js?v=20260907-hub6');
     expect(loader).toContain("'abc-users': 'abc-ops'");

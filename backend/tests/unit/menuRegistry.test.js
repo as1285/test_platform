@@ -8,6 +8,9 @@ const {
   firstAllowedPage,
   getAssignableMenuDefs,
   parseAdminRoute,
+  ensureRequiredSubadminMenus,
+  getRequiredSubadminMenuKeys,
+  buildAdminSessionPayload,
   ADMIN_MENU_GROUPS,
   ADMIN_PAGE_DEFS,
   ADMIN_HUB_DEFS
@@ -145,6 +148,35 @@ describe('menuRegistry', () => {
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'codes')
     ).toBe(true);
+  });
+
+  it('codes is required for every sub-admin', () => {
+    expect(getRequiredSubadminMenuKeys()).toEqual(['codes']);
+    expect(getPageDef('codes').required_subadmin).toBe(true);
+    expect(ensureRequiredSubadminMenus(['users'])).toEqual(['users', 'codes']);
+    expect(ensureRequiredSubadminMenus(['codes', 'users'])).toEqual(['codes', 'users']);
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ensureRequiredSubadminMenus(['users']) },
+        'codes'
+      )
+    ).toBe(true);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-board')
+    ).toBe(true);
+    const codesDef = getAssignableMenuDefs().find((d) => d.key === 'codes');
+    expect(codesDef).toBeTruthy();
+    expect(codesDef.required).toBe(true);
+    const session = buildAdminSessionPayload({
+      is_super: false,
+      username: 'agent',
+      menus: ['users']
+    });
+    expect(session.admin.menus).toContain('codes');
+    expect(session.pages.map((p) => p.page)).toContain('codes');
+    expect(session.menu_tree.some((g) => (g.items || []).some((i) => i.page === 'ops-board'))).toBe(
+      true
+    );
   });
 
   it('guest-users and activated-user-analysis are removed from menu', () => {
