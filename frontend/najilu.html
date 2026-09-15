@@ -629,6 +629,40 @@
             border-top: 1px solid #e8e8e8;
         }
 
+        .preview-footer--split {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .preview-footer--split .preview-album-btn {
+            flex: 1;
+            width: auto;
+        }
+
+        .preview-close-btn {
+            flex: 0 0 auto;
+            min-width: 88px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d0d5dd;
+            border-radius: 8px;
+            background: #fff;
+            color: #333;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: 500;
+            padding: 14px 16px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .preview-close-btn:active {
+            background: #f5f6fa;
+        }
+
         .preview-album-btn {
             display: block;
             width: 100%;
@@ -840,7 +874,7 @@
 
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260915-cert-align"></script>
+    <script src="/js/najilu.js?v=20260915-preview-consult"></script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

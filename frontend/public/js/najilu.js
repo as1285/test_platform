@@ -1152,12 +1152,21 @@
     );
   }
 
+  function previewConsultHref() {
+    return 'consult.html?tab=records';
+  }
+
   function renderPreviewDetailHeader() {
+    var consultHref = previewConsultHref();
     return (
       '<div class="header header--detail">' +
-      '<a href="javascript:history.back()" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
+      '<a href="' +
+      consultHref +
+      '" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
       '<span class="header-title">纳税记录详情</span>' +
-      '<a href="javascript:history.back()" class="header-close-btn">关闭</a>' +
+      '<a href="' +
+      consultHref +
+      '" class="header-close-btn">关闭</a>' +
       '</div>'
     );
   }
@@ -2491,8 +2500,9 @@
       '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div></div>' +
       '<div class="preview-pager" id="previewPager" hidden></div>' +
       '</div>' +
-      '<div class="preview-footer">' +
+      '<div class="preview-footer preview-footer--split">' +
       '<button type="button" class="preview-album-btn" id="btnAddToAlbum" disabled>添加到相册</button>' +
+      '<a class="preview-close-btn" id="btnPreviewCloseConsult" href="consult.html?tab=records">关闭</a>' +
       '</div></div>';
     var btnAlbum = document.getElementById('btnAddToAlbum');
     if (btnAlbum) {

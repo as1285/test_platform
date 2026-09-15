@@ -37,6 +37,8 @@ describe('我的页：附近按钮都进我要咨询', () => {
     expect(hitTag(html, 'consultModifyLink')).toContain('href="consult.html?tab=records"');
     expect(hitTag(html, 'mineAboutLink')).toContain('href="consult.html?tab=records"');
     expect(html).toContain("['consultModifyLink', 'mineHelpCenterLink', 'mineAboutLink']");
+    expect(html).toContain('goMineFillData');
+    expect(html).not.toContain('关闭编辑：静默拦截');
     expect(hitTag(html, 'mineHelpCenterLink')).not.toContain('help_center.html');
     expect(hitTag(html, 'mineAboutLink')).not.toContain('about_update.html');
   });

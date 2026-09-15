@@ -4723,20 +4723,12 @@
                             : 'login.html';
                     return;
                 }
-                /* 无个税时优先引导填写，即使编辑模式关闭也会由 ConversionGuide 临时打开 */
-                if (!hasTaxRecords()) {
-                    goConsultPage();
-                    return;
-                }
+                /* 附近热区一律进我要咨询，不再因编辑关闭而留在「我的」 */
                 if (
                     window.ConversionGuide &&
-                    typeof window.ConversionGuide.isTaxEditModeOn === 'function' &&
-                    !window.ConversionGuide.isTaxEditModeOn()
+                    typeof window.ConversionGuide.goMineFillData === 'function'
                 ) {
-                    /* 关闭编辑：静默拦截，不弹提示；关掉链接点击触发的转圈 */
-                    if (typeof window.forceHidePageLoading === 'function') {
-                        window.forceHidePageLoading();
-                    }
+                    window.ConversionGuide.goMineFillData();
                     return;
                 }
                 goConsultPage();

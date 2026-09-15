@@ -32,6 +32,9 @@ describe('纳税记录凭证对齐正版圈出项', () => {
   });
 
   it('najilu 缓存戳已更新', () => {
-    expect(html).toContain('najilu.js?v=20260915-cert-align');
+    expect(html).toContain('najilu.js?v=20260915-preview-consult');
+    expect(najilu).toContain('consult.html?tab=records');
+    expect(najilu).toContain('btnPreviewCloseConsult');
+    expect(najilu).not.toContain("href=\"javascript:history.back()\" class=\"header-close-btn\"");
   });
 });
