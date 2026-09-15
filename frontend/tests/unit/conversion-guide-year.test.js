@@ -111,3 +111,15 @@ describe('afterTaxRecordsCreated year wiring', () => {
     expect(guideSrc).toContain("shuiming_result.html?year=' +");
   });
 });
+
+describe('填完个税后附近按钮进我要咨询，不再进纳税记录预览', () => {
+  it('价值确认弹层与填写完成条都指向咨询页', () => {
+    expect(guideSrc).toContain("id=\"cgValueGoNajilu\"");
+    expect(guideSrc).toContain('去我要咨询');
+    expect(guideSrc).not.toContain('纳税记录证书预览');
+    expect(guideSrc).toContain("function goNajilu() {\n    window.location.href = 'consult.html?tab=records';");
+    expect(guideSrc).not.toContain("window.location.href = 'najilu.html'");
+    expect(guideSrc).not.toContain('href="najilu.html"');
+    expect(guideSrc).toContain('href="consult.html?tab=records"');
+  });
+});

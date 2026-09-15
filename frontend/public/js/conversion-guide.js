@@ -1867,7 +1867,7 @@
   }
 
   function goNajilu() {
-    window.location.href = 'najilu.html';
+    window.location.href = 'consult.html?tab=records';
   }
 
   function goNajiluQrReplace(from) {
@@ -1925,7 +1925,7 @@
       '>' +
       (inactive ? '先查看收入明细' : '查看收入纳税明细') +
       '</button>' +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录证书预览</button>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">去我要咨询</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueGoEdit">去修改或补充记录</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
       '</div>';
@@ -1987,7 +1987,7 @@
       goIncomeDetail(year);
     };
     document.getElementById('cgValueGoNajilu').onclick = function () {
-      closeOv('najilu');
+      closeOv('consult');
       goNajilu();
     };
     document.getElementById('cgValueGoEdit').onclick = function () {
@@ -2701,10 +2701,10 @@
     banner.style.margin = '0 16px 12px';
     if (isLandingGuest()) {
       banner.innerHTML =
-        '填写完成！建议 <a href="mine.html?guest_dl=1" style="color:#1e6fff;font-weight:600;">下载 App 同步保存</a>；也可先查看下方明细或 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">纳税记录演示</a>。';
+        '填写完成！建议 <a href="mine.html?guest_dl=1" style="color:#1e6fff;font-weight:600;">下载 App 同步保存</a>；也可先查看下方明细或 <a href="consult.html?tab=records" style="color:#1e6fff;font-weight:600;">去我要咨询</a>。';
     } else {
       banner.innerHTML =
-        '填写完成！可查看下方明细，或 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>；需要调整时 <a href="javascript:void(0)" id="cgPostTaxGoEdit" style="color:#1e6fff;font-weight:600;">去修改或补充</a>。';
+        '填写完成！可查看下方明细，或 <a href="consult.html?tab=records" style="color:#1e6fff;font-weight:600;">去我要咨询</a>；需要调整时 <a href="javascript:void(0)" id="cgPostTaxGoEdit" style="color:#1e6fff;font-weight:600;">去修改或补充</a>。';
     }
     var list = document.querySelector('.list');
     if (list && list.parentNode) {
