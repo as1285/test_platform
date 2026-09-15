@@ -1,1 +1,3 @@
-PLACEHOLDER_TEST
+'use strict';
+
+const catalog = require('../../src/admin/uiCompatCatalog');
