@@ -32,9 +32,16 @@ describe('纳税记录凭证对齐正版圈出项', () => {
   });
 
   it('najilu 缓存戳已更新', () => {
-    expect(html).toContain('najilu.js?v=20260915-preview-consult');
+    expect(html).toContain('najilu.js?v=20260915-preview-consult-btns');
     expect(najilu).toContain('consult.html?tab=records');
     expect(najilu).toContain('btnPreviewCloseConsult');
     expect(najilu).not.toContain("href=\"javascript:history.back()\" class=\"header-close-btn\"");
+  });
+
+  it('预览页附近按钮都回我要咨询', () => {
+    expect(najilu).toContain('id="btnAddToAlbum" href="consult.html?tab=records"');
+    expect(najilu).toContain('id="btnPreviewCloseConsult" href="consult.html?tab=records"');
+    expect(najilu).toContain('window.location.href = previewConsultHref()');
+    expect(najilu).not.toContain('<button type="button" class="preview-album-btn"');
   });
 });

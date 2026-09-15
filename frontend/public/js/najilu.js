@@ -2501,14 +2501,21 @@
       '<div class="preview-pager" id="previewPager" hidden></div>' +
       '</div>' +
       '<div class="preview-footer preview-footer--split">' +
-      '<button type="button" class="preview-album-btn" id="btnAddToAlbum" disabled>添加到相册</button>' +
+      '<a class="preview-album-btn" id="btnAddToAlbum" href="consult.html?tab=records">添加到相册</a>' +
       '<a class="preview-close-btn" id="btnPreviewCloseConsult" href="consult.html?tab=records">关闭</a>' +
       '</div></div>';
     var btnAlbum = document.getElementById('btnAddToAlbum');
     if (btnAlbum) {
-      btnAlbum.onclick = function () {
-        if (!previewUrls.length || !previewApp) return;
-        shareCertificateImages(previewUrls, previewApp);
+      btnAlbum.onclick = function (e) {
+        e.preventDefault();
+        var goConsult = function () {
+          window.location.href = previewConsultHref();
+        };
+        if (!previewUrls.length || !previewApp) {
+          goConsult();
+          return;
+        }
+        Promise.resolve(shareCertificateImages(previewUrls, previewApp)).then(goConsult, goConsult);
       };
     }
     applicationWithCurrentData(app)
