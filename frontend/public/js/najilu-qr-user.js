@@ -425,7 +425,8 @@
         var img = document.createElement('img');
         img.src = dataUrl;
         img.alt = '完税证明结果';
-        img.style.cssText = 'max-width:100%;border:1px solid #ddd;margin-bottom:12px;background:#fff;';
+        img.style.cssText =
+          'max-width:100%;max-height:min(48vh,420px);width:auto;object-fit:contain;border:1px solid #ddd;margin-bottom:12px;background:#fff;';
         wrap.appendChild(img);
       }
     }
@@ -650,6 +651,8 @@
         sourceObjectUrl = URL.createObjectURL(file);
         if (imgEl) imgEl.src = sourceObjectUrl;
         if (wrap) wrap.style.display = 'block';
+        var cropHint = document.getElementById('najiluQrCropHint');
+        if (cropHint) cropHint.hidden = false;
         currentRegion = locateQrRegion(img, val('najiluQrMode') || 'block');
         applyCurrentRegion(
           lastQrAuto
