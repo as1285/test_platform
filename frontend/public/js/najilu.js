@@ -857,11 +857,22 @@
       return '';
     }
     var raw = cleanText(r.remark || r.remarks || r.remark_text);
-    if (!raw) return '原始申报';
     raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
     raw = raw.replace(/\s+/g, '');
-    if (raw === '原申报') return '原始申报';
+    /* 正版备注多为空，不填「原始申报」 */
+    if (!raw || raw === '原申报' || raw === '原始申报') return '';
     return raw;
+  }
+
+  /** 入库税务机关按正版两行断：国家税务总局××市 / ××区税务局 */
+  function splitTaxAuthorityLines(text) {
+    var s = String(text || '').replace(/\s+/g, '');
+    if (!s) return [];
+    var m = s.match(/^(国家税务总局[\u4e00-\u9fa5]{2,10}?[市州盟])(.+税务局)$/);
+    if (m && m[2]) return [m[1], m[2]];
+    m = s.match(/^(国家税务总局)(.+税务局)$/);
+    if (m && m[2].length >= 4) return [m[1], m[2]];
+    return [s];
   }
 
   /** 指定账号纳税记录章面机关（覆盖明细里的区局/市局） */
@@ -1853,7 +1864,7 @@
   var CERT_TABLE_HEADER_H = 44;
   var CERT_TABLE_TOTAL_ROW_H = 40;
   var CERT_TABLE_ROW_H = 56;
-  var CERT_FOOTER_BLOCK_H = 292;
+  var CERT_FOOTER_BLOCK_H = 236;
   var CERT_BODY_FONT = 'SimSun, STSong, serif';
   /** 导出倍率：2x 画布提升文字、表格线与公章锐度（逻辑坐标不变） */
   var CERT_RENDER_SCALE = 2;
@@ -1941,7 +1952,7 @@
       var tableFootH = isLastPage ? CERT_TABLE_TOTAL_ROW_H : 0;
       var tableTotalH = CERT_TABLE_HEADER_H + tableBodyH + tableFootH;
       var footY = y0 + CERT_TABLE_HEADER_H + tableBodyH;
-      var explainY = y0 + tableTotalH + 48;
+      var explainY = y0 + tableTotalH + 30;
       var height = explainY + CERT_FOOTER_BLOCK_H;
       var dataRowsOnPage = rows.length;
       var renderScale = CERT_RENDER_SCALE;
@@ -2010,11 +2021,15 @@
 
       var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
+      var headerTextY = y0 + Math.round(CERT_TABLE_HEADER_H / 2) + 6;
       var xx = x0;
       heads.forEach(function (h, i) {
-        drawText(ctx, h, xx + cols[i] / 2, y0 + 28, { size: 16, align: 'center', color: '#333' });
+        drawText(ctx, h, xx + cols[i] / 2, headerTextY, { size: 16, align: 'center', color: '#333' });
         xx += cols[i];
       });
+      var cellMidY = function (rowTop) {
+        return rowTop + Math.round(rowH / 2) + 6;
+      };
 
       var remarkColW = cols[6];
       var remarkColX = x0;
@@ -2051,7 +2066,8 @@
       }
 
       rows.forEach(function (r, idx) {
-        var y = y0 + 44 + idx * rowH;
+        var y = y0 + CERT_TABLE_HEADER_H + idx * rowH;
+        var midY = cellMidY(y);
         var vals = [
           displayReportDateFromRecord(r),
           money(r.tax_reported),
@@ -2064,14 +2080,37 @@
         var cx = x0;
         vals.forEach(function (v, i) {
           if (i === 5) {
+            var lines = splitTaxAuthorityLines(v);
             ctx.font = '16px serif';
-            wrapText(ctx, v, cx + 10, y + 25, cols[i] - 18, 22, { size: 16, color: '#333', maxLines: 2 });
+            if (lines.length <= 1 && ctx.measureText(String(v || '')).width <= cols[i] - 12) {
+              drawText(ctx, v, cx + cols[i] / 2, midY, { size: 16, align: 'center', color: '#333' });
+            } else {
+              if (lines.length < 2) {
+                wrapText(ctx, v, cx + cols[i] / 2, y + 22, cols[i] - 16, 20, {
+                  size: 15,
+                  color: '#333',
+                  maxLines: 2,
+                  align: 'center'
+                });
+              } else {
+                drawText(ctx, lines[0], cx + cols[i] / 2, y + 22, {
+                  size: 15,
+                  align: 'center',
+                  color: '#333'
+                });
+                drawText(ctx, lines[1], cx + cols[i] / 2, y + 42, {
+                  size: 15,
+                  align: 'center',
+                  color: '#333'
+                });
+              }
+            }
           } else if (i === 6) {
             if (mergedRemark == null) {
-              drawRemarkCell(v, cx, y + 42);
+              drawRemarkCell(v, cx, midY);
             }
           } else {
-            drawText(ctx, v, cx + cols[i] / 2, y + 42, { size: 16, align: 'center', color: '#333' });
+            drawText(ctx, v, cx + cols[i] / 2, midY, { size: 16, align: 'center', color: '#333' });
           }
           cx += cols[i];
         });
@@ -2092,25 +2131,25 @@
       }
 
       ctx.beginPath();
-      ctx.moveTo(x0, explainY - 28);
-      ctx.lineTo(width - x0, explainY - 28);
+      ctx.moveTo(x0, explainY - 18);
+      ctx.lineTo(width - x0, explainY - 18);
       ctx.stroke();
-      drawText(ctx, '说明：', 90, explainY, { size: 18, color: '#555' });
-      drawText(ctx, '1.本记录涉及纳税人敏感信息，请妥善保存。', 90, explainY + 42, { size: 16, color: '#999' });
-      drawText(ctx, '2.您可以通过以下方式对本记录进行验证：', 90, explainY + 76, { size: 16, color: '#999' });
-      drawText(ctx, '（1）通过手机App扫描右上角二维码进行验证；', 112, explainY + 110, { size: 16, color: '#999' });
-      drawText(ctx, '（2）通过自然人电子税务局输入右上角查询验证码进行验证；', 112, explainY + 144, { size: 16, color: '#999' });
-      drawText(ctx, '3.不同打印设备造成的色差不影响使用效力。', 90, explainY + 178, { size: 16, color: '#999' });
-      drawText(ctx, '本凭证不作为纳税人记账、抵扣凭证', 90, explainY + 232, { size: 20, color: '#555' });
-      drawText(ctx, '开具机关（盖章）', width - 430, explainY + 138, { size: 20, color: '#555' });
-      drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 212, { size: 20, color: '#555' });
-      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 268, {
-        size: 18,
+      drawText(ctx, '说明：', 90, explainY, { size: 17, color: '#444' });
+      drawText(ctx, '1.本记录涉及纳税人敏感信息，请妥善保存。', 90, explainY + 28, { size: 15, color: '#666' });
+      drawText(ctx, '2.您可以通过以下方式对本记录进行验证：', 90, explainY + 52, { size: 15, color: '#666' });
+      drawText(ctx, '（1）通过手机App扫描右上角二维码进行验证；', 112, explainY + 76, { size: 15, color: '#666' });
+      drawText(ctx, '（2）通过自然人电子税务局输入右上角查询验证码进行验证；', 112, explainY + 100, { size: 15, color: '#666' });
+      drawText(ctx, '3.不同打印设备造成的色差不影响使用效力。', 90, explainY + 124, { size: 15, color: '#666' });
+      drawText(ctx, '本凭证不作为纳税人记账、抵扣凭证。', 90, explainY + 162, { size: 18, color: '#444' });
+      drawText(ctx, '开具机关（盖章）', width - 430, explainY + 96, { size: 18, color: '#444' });
+      drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 168, { size: 18, color: '#444' });
+      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 210, {
+        size: 17,
         color: '#555'
       });
       if (showStamp) {
-        /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
-        drawStamp(ctx, width - 238, explainY + 122, resolveStampAuthority(allRows, app), stampImg);
+        /* 压住「盖章」，略淡、略右下，贴近正版电子章 */
+        drawStamp(ctx, width - 248, explainY + 92, resolveStampAuthority(allRows, app), stampImg);
       }
       if (demoWatermark) {
         drawDemoSampleWatermark(ctx, width, height);
@@ -2352,7 +2391,7 @@
     var radius = 92;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
     ctx.save();
-    ctx.globalAlpha = 0.88;
+    ctx.globalAlpha = 0.74;
     if (ctx.globalCompositeOperation) {
       try {
         ctx.globalCompositeOperation = 'multiply';
