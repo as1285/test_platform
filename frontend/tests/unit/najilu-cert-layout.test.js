@@ -6,9 +6,18 @@ const najilu = readFileSync(resolve(__dirname, '../../public/js/najilu.js'), 'ut
 const html = readFileSync(resolve(__dirname, '../../najilu.html'), 'utf8');
 
 describe('纳税记录凭证对齐正版圈出项', () => {
-  it('备注列默认留空，不再写原始申报', () => {
-    expect(najilu).toContain("if (!raw || raw === '原申报' || raw === '原始申报') return ''");
-    expect(najilu).not.toMatch(/if \(!raw\) return '原始申报'/);
+  it('备注列按行写原始申报，不合并成一格', () => {
+    expect(najilu).toContain("if (!raw || raw === '原申报' || raw === '原始申报') return '原始申报'");
+    expect(najilu).not.toContain('var mergedRemark');
+    expect(najilu).toContain('drawRemarkCell(v, cx, midY)');
+  });
+
+  it('表格按本页行数收缩，金额合计紧贴末行', () => {
+    expect(najilu).toContain(
+      'var tableBodySlots = Math.max(1, Math.min(CERT_TABLE_BODY_SLOTS, rows.length))'
+    );
+    expect(najilu).not.toContain('var tableBodySlots = CERT_TABLE_BODY_SLOTS;');
+    expect(najilu).toContain("drawText(ctx, '金额合计'");
   });
 
   it('入库税务机关按市/区两行居中断行', () => {
@@ -25,14 +34,14 @@ describe('纳税记录凭证对齐正版圈出项', () => {
     expect(najilu).not.toContain('var CERT_FOOTER_BLOCK_H = 292');
   });
 
-  it('电子章略淡并压住开具机关', () => {
-    expect(najilu).toContain('ctx.globalAlpha = 0.74');
-    expect(najilu).toContain('drawStamp(ctx, width - 248, explainY + 92');
-    expect(najilu).not.toContain('ctx.globalAlpha = 0.88');
+  it('电子章压住开具机关', () => {
+    expect(najilu).toContain('width - 248');
+    expect(najilu).toContain('explainY + 92');
+    expect(najilu).toContain('ctx.globalAlpha = 0.88');
   });
 
   it('najilu 缓存戳已更新', () => {
-    expect(html).toContain('najilu.js?v=20260915-preview-consult-btns');
+    expect(html).toContain('najilu.js?v=20260915-cert-remark-stamp');
     expect(najilu).toContain('consult.html?tab=records');
     expect(najilu).toContain('btnPreviewCloseConsult');
     expect(najilu).not.toContain("href=\"javascript:history.back()\" class=\"header-close-btn\"");

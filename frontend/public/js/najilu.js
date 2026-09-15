@@ -847,20 +847,12 @@
     return s + '所得';
   }
 
-  /** 指定账号备注列留空（正版样张无「原始申报」） */
-  var USER_CERT_BLANK_REMARK = {
-    zl901010: true
-  };
-
-  function rowRemark(r, app) {
-    if (USER_CERT_BLANK_REMARK[certUsername(app).toLowerCase()]) {
-      return '';
-    }
-    var raw = cleanText(r.remark || r.remarks || r.remark_text);
+  function rowRemark(r) {
+    var raw = cleanText(r && (r.remark || r.remarks || r.remark_text));
     raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
     raw = raw.replace(/\s+/g, '');
-    /* 正版备注多为空，不填「原始申报」 */
-    if (!raw || raw === '原申报' || raw === '原始申报') return '';
+    /* 正版原始申报行备注写「原始申报」，空备注按原始申报展示 */
+    if (!raw || raw === '原申报' || raw === '原始申报') return '原始申报';
     return raw;
   }
 
@@ -1868,7 +1860,7 @@
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
   var CERT_MAX_ROWS_PER_PAGE = 16;
-  /** 每页表格固定行位（数据不足也占满，版式与满页一致） */
+  /** 每页最多行位；实际高度按本页数据行收缩，合计紧贴末行 */
   var CERT_TABLE_BODY_SLOTS = 16;
   var CERT_TABLE_HEADER_H = 44;
   var CERT_TABLE_TOTAL_ROW_H = 40;
@@ -1956,14 +1948,13 @@
       var x0 = 72;
       var y0 = certInfoY0 + certInfoLine * 2 + 28;
       var tableW = width - x0 * 2;
-      var tableBodySlots = CERT_TABLE_BODY_SLOTS;
+      var tableBodySlots = Math.max(1, Math.min(CERT_TABLE_BODY_SLOTS, rows.length));
       var tableBodyH = tableBodySlots * rowH;
       var tableFootH = isLastPage ? CERT_TABLE_TOTAL_ROW_H : 0;
       var tableTotalH = CERT_TABLE_HEADER_H + tableBodyH + tableFootH;
       var footY = y0 + CERT_TABLE_HEADER_H + tableBodyH;
       var explainY = y0 + tableTotalH + 30;
       var height = explainY + CERT_FOOTER_BLOCK_H;
-      var dataRowsOnPage = rows.length;
       var renderScale = CERT_RENDER_SCALE;
       var canvas = document.createElement('canvas');
       canvas.width = Math.round(width * renderScale);
@@ -2041,24 +2032,6 @@
       };
 
       var remarkColW = cols[6];
-      var remarkColX = x0;
-      for (var ci = 0; ci < 6; ci++) remarkColX += cols[ci];
-      var remarks = rows.map(function (r) {
-        return rowRemark(r, app);
-      });
-      var mergedRemark = null;
-      if (remarks.length > 0) {
-        var remarkFirst = remarks[0];
-        var remarksAllSame = true;
-        for (var ri = 1; ri < remarks.length; ri++) {
-          if (remarks[ri] !== remarkFirst) {
-            remarksAllSame = false;
-            break;
-          }
-        }
-        if (remarksAllSame) mergedRemark = remarkFirst;
-      }
-
       function drawRemarkCell(remark, cellX, cellY) {
         var cellPad = 8;
         var maxW = Math.max(24, remarkColW - cellPad);
@@ -2084,7 +2057,7 @@
           displayIncomeTypeForCert(r),
           displayTaxPeriodFromRecord(r),
           r.tax_authority || '',
-          rowRemark(r, app)
+          rowRemark(r)
         ];
         var cx = x0;
         vals.forEach(function (v, i) {
@@ -2115,20 +2088,13 @@
               }
             }
           } else if (i === 6) {
-            if (mergedRemark == null) {
-              drawRemarkCell(v, cx, midY);
-            }
+            drawRemarkCell(v, cx, midY);
           } else {
             drawText(ctx, v, cx + cols[i] / 2, midY, { size: 16, align: 'center', color: '#333' });
           }
           cx += cols[i];
         });
       });
-
-      if (mergedRemark != null && dataRowsOnPage > 0) {
-        var dataBodyMidY = y0 + CERT_TABLE_HEADER_H + (dataRowsOnPage * rowH) / 2 + 10;
-        drawRemarkCell(mergedRemark, remarkColX, dataBodyMidY);
-      }
 
       ctx.strokeRect(x0, y0, tableW, tableTotalH);
       if (isLastPage) {
@@ -2157,8 +2123,17 @@
         color: '#555'
       });
       if (showStamp) {
-        /* 压住「盖章」，略淡、略右下，贴近正版电子章 */
-        drawStamp(ctx, width - 248, explainY + 92, resolveStampAuthority(allRows, app), stampImg);
+        /* 压住「盖章」：双圈 + 五角星 + 业务专用章 + 底弧编号 */
+        drawStamp(
+          ctx,
+          width - 248,
+          explainY + 92,
+          resolveStampAuthority(allRows, app),
+          stampImg,
+          cleanText((app && app.record_no) || '') +
+            cleanText((app && app.id) || '') +
+            issueDateFromApp(app)
+        );
       }
       if (demoWatermark) {
         drawDemoSampleWatermark(ctx, width, height);
@@ -2298,7 +2273,7 @@
     function paintAtAngle(angle, ch) {
       ctx.save();
       ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-      ctx.rotate(angle + Math.PI / 2);
+      ctx.rotate(opt.bottomArc ? angle - Math.PI / 2 : angle + Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(ch, 0, 0);
@@ -2376,8 +2351,28 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制（双圈+上弧+五角星+业务专用章，无底弧编号） */
-  function drawStamp(ctx, cx, cy, authority, stampImg) {
+  /** 正版电子章底弧 13 位防伪码（由记录号/申请 id 稳定派生） */
+  function stampSerialCode(seed) {
+    var s = cleanText(seed) || 'najilu';
+    var h = 2166136261;
+    var i;
+    for (i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    var out = '';
+    for (i = 0; i < 13; i++) {
+      h ^= h << 13;
+      h ^= h >>> 17;
+      h ^= h << 5;
+      h >>>= 0;
+      out += String(h % 10);
+    }
+    return out;
+  }
+
+  /** 纳税记录右下角章：优先叠指定账号实物章图，否则 Canvas 绘制（双圈+上弧+五角星+业务专用章+底弧编号） */
+  function drawStamp(ctx, cx, cy, authority, stampImg, serialSeed) {
     if (stampImg && stampImg.complete && stampImg.naturalWidth) {
       var size = 188;
       ctx.save();
@@ -2399,8 +2394,9 @@
     var stampRed = '#c62828';
     var radius = 92;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
+    var serial = stampSerialCode(serialSeed || name);
     ctx.save();
-    ctx.globalAlpha = 0.74;
+    ctx.globalAlpha = 0.88;
     if (ctx.globalCompositeOperation) {
       try {
         ctx.globalCompositeOperation = 'multiply';
@@ -2419,9 +2415,8 @@
     ctx.stroke();
 
     var arcR = radius - 17;
-    var arcSize = name.length > 14 ? 14.5 : name.length >= 13 ? 15.5 : 16.5;
-    /* 上弧机关名字距略拉开，贴近正版观感 */
-    var arcGap = name.length > 14 ? 3.2 : name.length >= 13 ? 2.8 : 3.4;
+    var arcSize = name.length > 14 ? 15 : name.length >= 13 ? 16 : 17;
+    var arcGap = name.length > 14 ? 2.2 : name.length >= 13 ? 1.9 : 2.2;
     drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.12, Math.PI * 1.88, {
       size: arcSize,
       weight: 'bold',
@@ -2429,24 +2424,35 @@
       strokeWidth: 0.45,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 1.02
+      maxSpanRad: Math.PI * 0.94
     });
 
-    /* 章心五角星居中；「业务专用章」横排在星下方 */
+    /* 章心五角星居中；「业务专用章」在星与底弧编号之间 */
     drawFivePointStar(ctx, cx, cy - 2, 24, {
       color: stampRed,
       strokeWidth: 0.3,
       innerR: 24 * 0.38
     });
 
-    drawSpacedText(ctx, '业务专用章', cx, cy + 34, {
+    drawSpacedText(ctx, '业务专用章', cx, cy + 32, {
       size: 15.5,
       weight: 'bold',
       color: stampRed,
-      letterGap: 7.5,
+      letterGap: 5,
       strokeWidth: 0.35,
       font: font,
       baseline: 'middle'
+    });
+
+    drawArcText(ctx, serial, cx, cy, radius - 15, Math.PI * 0.22, Math.PI * 0.78, {
+      size: 11.5,
+      weight: 'bold',
+      color: stampRed,
+      strokeWidth: 0.25,
+      font: font,
+      arcLetterGap: 1.6,
+      maxSpanRad: Math.PI * 0.52,
+      bottomArc: true
     });
     ctx.restore();
   }
