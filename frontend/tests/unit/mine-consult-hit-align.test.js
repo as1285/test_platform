@@ -13,30 +13,31 @@ function consultBlock(html) {
   return html.slice(start, end);
 }
 
-function aboutBlock(html) {
-  const start = html.indexOf('.mine-hit-about {');
-  const end = html.indexOf('.mine-e1-pill {', start);
-  expect(start).toBeGreaterThan(-1);
-  expect(end).toBeGreaterThan(start);
-  return html.slice(start, end);
+function hitTag(html, id) {
+  const idx = html.indexOf('id="' + id + '"');
+  expect(idx).toBeGreaterThan(-1);
+  const from = html.lastIndexOf('<a', idx);
+  const to = html.indexOf('>', idx);
+  expect(from).toBeGreaterThan(-1);
+  expect(to).toBeGreaterThan(from);
+  return html.slice(from, to + 1);
 }
 
-describe('我的页：我要咨询热区对齐底图行', () => {
+describe('我的页：附近按钮都进我要咨询', () => {
   it.each([
     ['mine.html', mine],
     ['mine_mate60_aug12.html', mate60]
-  ])('%s 咨询热区覆盖 1062–1102 墨迹，不再跟帮助/关于抢点', (_name, html) => {
+  ])('%s 帮助/咨询/关于热区都指向咨询页', (_name, html) => {
     const consult = consultBlock(html);
-    const about = aboutBlock(html);
-    expect(consult).toContain('top: calc(1048 * var(--mine-rpx))');
-    expect(consult).toContain('height: calc(86 * var(--mine-rpx))');
+    expect(consult).toContain('top: calc(950 * var(--mine-rpx))');
+    expect(consult).toContain('height: calc(270 * var(--mine-rpx))');
     expect(consult).toContain('z-index: 120');
-    expect(consult).not.toContain('top: calc(1020 * var(--mine-rpx))');
-    expect(about).toContain('top: calc(1134 * var(--mine-rpx))');
-    expect(about).toContain('height: calc(86 * var(--mine-rpx))');
-    expect(about).not.toContain('top: calc(1090 * var(--mine-rpx))');
-    expect(html).toContain('href="help_center.html"');
-    expect(html).toContain('href="about_update.html"');
-    expect(html).toContain('id="consultModifyLink"');
+    expect(consult).not.toContain('top: calc(1048 * var(--mine-rpx))');
+    expect(hitTag(html, 'mineHelpCenterLink')).toContain('href="consult.html?tab=records"');
+    expect(hitTag(html, 'consultModifyLink')).toContain('href="consult.html?tab=records"');
+    expect(hitTag(html, 'mineAboutLink')).toContain('href="consult.html?tab=records"');
+    expect(html).toContain("['consultModifyLink', 'mineHelpCenterLink', 'mineAboutLink']");
+    expect(hitTag(html, 'mineHelpCenterLink')).not.toContain('help_center.html');
+    expect(hitTag(html, 'mineAboutLink')).not.toContain('about_update.html');
   });
 });

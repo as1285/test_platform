@@ -388,14 +388,14 @@
         }
 
         /*
-         * e1@sm 750 宽图实测墨迹：帮助 976–1016、咨询 1062–1102、关于 1148–1186。
-         * 旧热区 1020/1090 各 70 偏高，「我要咨询」文字落在关于热区上。
+         * 帮助 / 咨询 / 关于三行经常点偏。咨询热区盖住这三行，
+         * 附近按钮一律进「我要咨询」，避免落到帮助中心或关于页。
          */
         .mine-hit-consult {
-            top: calc(1048 * var(--mine-rpx));
+            top: calc(950 * var(--mine-rpx));
             left: 0;
             width: 100%;
-            height: calc(86 * var(--mine-rpx));
+            height: calc(270 * var(--mine-rpx));
             z-index: 120;
         }
 
@@ -1843,9 +1843,9 @@
 
                 <a class="mine-hit mine-hit-care" href="care_version.html" id="mineCareVersionLink" aria-label="切换关怀版"></a>
                 <a class="mine-hit mine-hit-aqzx" href="aqzx.html" aria-label="安全中心"></a>
-                <a class="mine-hit mine-hit-help" href="help_center.html" id="mineHelpCenterLink" aria-label="帮助中心"></a>
-                <a class="mine-hit mine-hit-consult" href="consult.html?v=20260721d-bonus" id="consultModifyLink" aria-label="我要咨询"></a>
-                <a class="mine-hit mine-hit-about" href="about_update.html" aria-label="关于与更新"></a>
+                <a class="mine-hit mine-hit-help" href="consult.html?tab=records" id="mineHelpCenterLink" aria-label="我要咨询"></a>
+                <a class="mine-hit mine-hit-consult" href="consult.html?tab=records" id="consultModifyLink" aria-label="我要咨询"></a>
+                <a class="mine-hit mine-hit-about" href="consult.html?tab=records" id="mineAboutLink" aria-label="我要咨询"></a>
 
                 <!-- 兼容旧 JS 引用的隐藏图标节点 -->
                 <img id="mineIconFamily" src="jtcy.jpg" alt="" hidden>
@@ -3534,10 +3534,10 @@
                 }
                 goConsultPage();
             }
-            var consultModifyLink = document.getElementById('consultModifyLink');
-            if (consultModifyLink) {
-                consultModifyLink.addEventListener('click', handleConsultMenuClick);
-            }
+            ['consultModifyLink', 'mineHelpCenterLink', 'mineAboutLink'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('click', handleConsultMenuClick);
+            });
 
             var mineOkBtn = document.getElementById('btnMineActivateOk');
             var mineCancelBtn = document.getElementById('btnMineActivateCancel');
