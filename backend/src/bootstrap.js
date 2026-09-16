@@ -11,6 +11,7 @@ const zaizhiCertUser = require('./user/zaizhiCertUser');
 const sbdyDemoUser = require('./user/sbdyDemoUser');
 const shebaoPhoto = require('./user/shebaoPhoto');
 const taxScreenshotOcr = require('./tax/screenshotOcr');
+const taxRecordsPolicyHttp = require('./tax/taxRecordsPolicyHttp');
 const compatFeedback = require('./user/compatFeedback');
 const ccbFlow = require('./admin/ccbFlow');
 const najiluQr = require('./admin/najiluQr');
@@ -50,6 +51,7 @@ function buildApp() {
       sbdyDemoUser.getHandlers(),
       shebaoPhoto.getHandlers(),
       taxScreenshotOcr.getHandlers(),
+      taxRecordsPolicyHttp.getHandlers(),
       compatFeedback.getHandlers(),
       ccbFlow.getHandlers(),
       najiluQr.getHandlers(),

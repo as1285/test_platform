@@ -6,6 +6,9 @@ function registerTaxRoutes(app, deps) {
   var h = deps.handlers;
   var mw = deps.middleware;
 
+  /* 咨询页：是否允许同月多条个税记录（公开只读） */
+  app.get('/api/public/tax-records-policy', h.handlePublicTaxRecordsPolicy);
+
   /* 个税 APP 截图 OCR：仅需登录（未激活也可填税务记录） */
   app.post(
     '/api/tax/screenshot-ocr',
