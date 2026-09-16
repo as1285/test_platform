@@ -457,6 +457,22 @@
     } catch (eMark) {}
   }
 
+  /**
+   * 安卓 WebView 的 100vw 常宽于画布。只裁横向溢出，避免底栏各页和明细页横滑卡顿。
+   * 不作用于 iOS：部分机型 overflow-x:hidden 会把 position:fixed 底栏抬高。
+   */
+  function clipAndroidHorizontalOverflow() {
+    try {
+      if (!document.documentElement.classList.contains('app-android-client')) return;
+      if (document.getElementById('androidPageOverflowClip')) return;
+      var st = document.createElement('style');
+      st.id = 'androidPageOverflowClip';
+      st.textContent =
+        'html.app-android-client,html.app-android-client body{overflow-x:hidden;max-width:100%;}';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (eClip) {}
+  }
+
   /** Android「我的」：不依赖机型 UA，首屏即走 750px @sm 底图（HyperOS WebView 大图合成极慢） */
   function primeAndroidMineE1SmFirstPaint() {
     try {
@@ -816,6 +832,7 @@
   }
 
   markViewportChromeClasses();
+  clipAndroidHorizontalOverflow();
   applyAndroidWhitePageInsetFirstPaint();
   primeAndroidMineE1SmFirstPaint();
 

@@ -8,16 +8,23 @@
       文末 defer：tax-edit-pay → core → batch-tax → records。
       TAX_APP_SHELL_* 标记供 assemble 替换为 content-hash 壳资源。
     -->
-    <script src="/js/auth-boot.js?v=20260902-adopt"></script>
-    <script src="/js/auth.js?v=20260907-android-hdr" defer></script>
+    <script src="/js/auth-boot.js?v=20260916-android-pages"></script>
+    <script src="/js/auth.js?v=20260907-android-hdr" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
-    <script src="/js/app/ui.js"></script>
-    <script src="/js/app/nav.js"></script>
-    <script src="/js/app/core.js"></script>
+    <script src="/js/app/ui.js" defer></script>
+    <script src="/js/app/nav.js" defer></script>
+    <script src="/js/app/core.js" defer></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人中心</title>
+    <style>
+        html.app-android-client,
+        html.app-android-client body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+    </style>
     <link rel="stylesheet" href="/css/consult.css?v=20260911-tax-reorder">
     <link rel="stylesheet" href="css/nav.css?v=20260826-iphone13pm">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>

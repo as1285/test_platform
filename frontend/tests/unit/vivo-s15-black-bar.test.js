@@ -60,7 +60,7 @@ describe('vivo S15 OriginOS 4 official black status bar', () => {
     expect(mine).toContain("classList.add('app-android-vivo-s15')");
     expect(mine).toContain("classList.add('app-mine-black-status')");
     expect(mine).toContain('auth.js?v=20260914-s15-black');
-    expect(mine).toContain('auth-boot.js?v=20260914-s15-black');
+    expect(mine).toContain('auth-boot.js?v=20260916-android-pages');
   });
 
   it('首页首屏把搜索蓝顶改成黑框', () => {

@@ -97,8 +97,8 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260910-ios-14pm-fb1" defer></script>
+    <script src="/js/auth-boot.js?v=20260916-android-pages"></script>
+    <script src="/js/auth.js?v=20260910-ios-14pm-fb1" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e8fff">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -117,7 +117,13 @@
             background: #f5f7fa;
             min-height: 100vh;
             color: #191e26;
-            /* 勿 overflow-x:hidden：iOS 会破坏底栏 position:fixed，切 TAB 时位置不统一且偏高 */
+            /* 勿对 iOS 写 overflow-x:hidden：会破坏底栏 position:fixed，切 TAB 时位置不统一且偏高 */
+        }
+
+        html.app-android-client,
+        html.app-android-client body {
+            overflow-x: hidden;
+            max-width: 100%;
         }
         
         html {
