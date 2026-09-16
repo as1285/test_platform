@@ -24,6 +24,7 @@ const { inferBankNameFromCardNo } = require('../../bank_card_bins');
 const config = require('../shared/config');
 const signedAssets = require('../shared/signedAssets');
 const sharedDb = require('../shared/db');
+const waitForMysql = require('../shared/waitForMysql');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const adminDownline = require('../admin/downline');
@@ -2719,7 +2720,7 @@ async function updateUserLastLoginCity(username, req) {
 /** 初始化库表与连接池 */
 async function initDatabase() {
   try {
-    const conn = await mysql.createConnection({
+    const conn = await waitForMysql.connectWithRetry(mysql, {
       host: DB_HOST,
       port: DB_PORT,
       user: DB_USER,
@@ -2741,6 +2742,7 @@ async function initDatabase() {
       connectionLimit: parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30,
       // 有限排队：满则快速失败，避免 message/user 等接口无限挂起成几十秒假慢
       queueLimit: parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60,
+      connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '3000', 10) || 3000,
       enableKeepAlive: true,
       keepAliveInitialDelay: 10000
     });
@@ -2751,6 +2753,7 @@ async function initDatabase() {
     await runMigrations(pool);
     await ensurePaymentOrdersVariantColumns(pool);
     registerGuard.initRegisterGuard(pool);
+    sharedDb.markReady(true);
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -12601,6 +12604,7 @@ async function recordAdminOperationLog(req, res) {
 
 const app = express();
 app.set('trust proxy', true);
+app.use(sharedDb.databaseReadyMiddleware);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(function attachClientDevicePayload(req, res, next) {
@@ -25011,6 +25015,14 @@ async function startServer() {
   if (PUBLIC_ASSET_BASE_URL) {
     console.log('[uploads] PUBLIC_ASSET_BASE_URL=' + PUBLIC_ASSET_BASE_URL);
   }
+  // 先监听再连库：主机重启后 MySQL 恢复期间 nginx 不再空等 10–15s
+  await new Promise(function (resolve, reject) {
+    var server = app.listen(PORT, '0.0.0.0', function () {
+      console.log('api listening on ' + PORT + ' (waiting for database)');
+      resolve();
+    });
+    server.on('error', reject);
+  });
   await initDatabase();
   try {
     await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
@@ -25030,10 +25042,8 @@ async function startServer() {
   purchaseUxMonitor.schedulePurchaseUxMonitor(function () {
     return pool;
   });
-  app.listen(PORT, '0.0.0.0', function () {
-    console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
-    serverMonitor.startServerMonitor();
-  });
+  console.log('api ready, database: ' + DB_DATABASE);
+  serverMonitor.startServerMonitor();
 }
 
 module.exports = {

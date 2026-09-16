@@ -18,10 +18,12 @@ services:
     networks:
       - test_platform_default
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      # SELECT 1：仅 ping 在 InnoDB 恢复期也会 healthy，导致 API 连库被拒
+      test: ["CMD", "mysql", "-h", "127.0.0.1", "-uroot", "-ppassword", "--connect-timeout=3", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 20s
     # 小机：关 PS 后 768M 足够；留余量给 API/Redis/系统
     mem_limit: 768m
     # 主机重启后必须自动拉起；否则 API 会因连不上 db 起不来
@@ -188,7 +190,8 @@ services:
       - "0.0.0.0:80:80"
       - "0.0.0.0:443:443"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
       - uploads_static:/usr/share/nginx/html/uploads
       - ./certs:/etc/nginx/certs:ro
