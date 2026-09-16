@@ -71,7 +71,7 @@ services:
       # 生产环境请设置强随机串；未设置时使用 server.js 内默认开发密钥
       JWT_SECRET: ${JWT_SECRET:-}
       ASSET_SIGN_SECRET: ${ASSET_SIGN_SECRET:-}
-      ASSET_SIGN_TTL_SEC: ${ASSET_SIGN_TTL_SEC:-1800}
+      ASSET_SIGN_TTL_SEC: ${ASSET_SIGN_TTL_SEC:-86400}
       # 管理员发激活码：POST api/auth.php action=admin_issue_code，请求体带 admin_key 与同值；未设置则无法发码
       ADMIN_ACTIVATION_KEY: ${ADMIN_ACTIVATION_KEY:-}
       # 管理后台登录（务必在生产修改密码）

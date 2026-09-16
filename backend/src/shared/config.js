@@ -85,8 +85,8 @@ const DB_POOL_SIZE = parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30;
 const DB_POOL_QUEUE_LIMIT = parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60;
 /** 安装包等敏感下载签名密钥；空则回退 JWT_SECRET */
 const ASSET_SIGN_SECRET = String(process.env.ASSET_SIGN_SECRET || '').trim();
-/** 签名下载链接有效秒数（默认 30 分钟） */
-const ASSET_SIGN_TTL_SEC = parseInt(process.env.ASSET_SIGN_TTL_SEC || '1800', 10) || 1800;
+/** 签名下载链接有效秒数（默认 1 天，方便安卓下载器暂停后续传） */
+const ASSET_SIGN_TTL_SEC = parseInt(process.env.ASSET_SIGN_TTL_SEC || '86400', 10) || 86400;
 
 module.exports = {
   BACKEND_ROOT,

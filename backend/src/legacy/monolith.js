@@ -11004,7 +11004,7 @@ function classifyAnalyticsRoute(req) {
   if (path === '/api/public/install-packages') {
     return { route_key: method + ' /api/public/install-packages', biz_category: '公开配置' };
   }
-  if (path === '/api/public/asset') {
+  if (path === '/api/public/asset' || /^\/api\/public\/asset\//.test(path)) {
     return { route_key: method + ' /api/public/asset', biz_category: '公开下载' };
   }
   return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };

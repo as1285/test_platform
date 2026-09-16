@@ -1811,9 +1811,8 @@
                     if (/^https?:\/\//i.test(apkHref)) {
                         a.target = '_blank';
                         a.rel = 'noopener noreferrer';
-                    } else {
-                        a.setAttribute('download', 'geshui.apk');
                     }
+                    /* 不设 download=geshui.apk：Android WebView 会改走 blob，连接被掐后只剩几十 KB */}
                     a.textContent = layout.inApp
                         ? '下载最新 Android 安装包'
                         : layout.desktop
