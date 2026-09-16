@@ -155,13 +155,13 @@ app.get(
 app.get(
   '/api/admin/analytics/d1-return-cohort',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'ops-lift', 'ops-board']),
   h.handleAdminD1ReturnCohort
 );
 app.get(
   '/api/admin/analytics/high-income-inactive',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'ops-lift', 'ops-board']),
   h.handleAdminHighIncomeInactive
 );
 app.get(
@@ -183,7 +183,6 @@ app.get(
     'ops-inactive',
     'insights-growth',
     'analytics-conversion',
-    'users',
     'ops-board'
   ]),
   h.handleOpsInactiveSummary
@@ -195,7 +194,6 @@ app.get(
     'ops-inactive',
     'insights-growth',
     'analytics-conversion',
-    'users',
     'ops-board'
   ]),
   h.handleOpsInactiveUsers
@@ -293,37 +291,37 @@ app.get(
 app.post(
   '/api/admin/messages/bulk',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-ad-analytics', 'ops-board']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'ops-lift', 'ops-ad-analytics', 'ops-board']),
   h.handleAdminMessagesBulk
 );
 app.post(
   '/api/admin/emails/bulk',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users', 'ops-lift', 'ops-board', 'user-emails', 'ops-ad-analytics']),
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'ops-lift', 'ops-board', 'user-emails', 'ops-ad-analytics']),
   h.handleAdminEmailsBulk
 );
 app.get(
   '/api/admin/emails/users',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
+  mw.requireAdminAnyMenu(['user-emails']),
   h.handleAdminEmailsUsers
 );
 app.get(
   '/api/admin/emails/sends',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
+  mw.requireAdminAnyMenu(['user-emails', 'ops-ad-analytics']),
   h.handleAdminEmailsSends
 );
 app.get(
   '/api/admin/emails/overview',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
+  mw.requireAdminAnyMenu(['user-emails', 'ops-ad-analytics']),
   h.handleAdminEmailsOverview
 );
 app.get(
   '/api/admin/emails/campaign-stats',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board', 'ops-ad-analytics']),
+  mw.requireAdminAnyMenu(['user-emails', 'ops-ad-analytics']),
   h.handleAdminEmailsCampaignStats
 );
 app.get('/api/admin/emails/send', function (req, res) {
@@ -333,13 +331,13 @@ app.get('/api/admin/emails/send', function (req, res) {
 app.post(
   '/api/admin/emails/send',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users', 'ops-board']),
+  mw.requireAdminAnyMenu(['user-emails']),
   h.handleAdminEmailsSend
 );
 app.post(
   '/api/admin/emails/clear',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-emails', 'users']),
+  mw.requireAdminAnyMenu(['user-emails']),
   h.handleAdminEmailsClear
 );
 app.get(
