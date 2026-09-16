@@ -20,6 +20,13 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
     expect(adminPanel).toContain("tabPage === 'admin-accounts' || tabPage === 'admin-operation-log'");
     expect(adminPanel).toContain('listVisibleHubTabs(hubKey)');
     expect(adminPanel).toMatch(/无权限 TAB：落到该 hub 第一个可见 TAB/);
+    expect(adminPanel).toContain("hubKey === 'ops-board' && (tabPage === 'ops-board' || tabPage === 'codes')");
+    expect(adminPanel).toContain("id: 'board', label: '运营看板', page: 'ops-board', super_only: true");
+    expect(adminPanel).toContain("id: 'codes', label: '激活码', page: 'codes', super_only: true");
+    expect(adminPanel).toContain("hubKey === 'ops-board'");
+    expect(adminPanel).toContain("tabPage === 'user-emails'");
+    expect(adminPanel).toContain("nav: 'ops-board',\n                super_only: true");
+    expect(adminPanel).toContain("nav: 'insights-product',\n                super_only: true");
   });
 
   it('后端独立 TAB 去掉 login-log 别名继承', () => {
@@ -31,7 +38,7 @@ describe('系统与安全 hub TAB 按精确权限显示', () => {
   });
 
   it('admin_panel 缓存戳已更新', () => {
-    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
+    expect(html).toContain('admin_panel.js?v=20260915-ops-hide');
     expect(html).toContain('id="page-admin-operation-log"');
     expect(html).not.toContain('id="loginLogMode"');
   });
