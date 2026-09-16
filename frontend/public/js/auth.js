@@ -10692,7 +10692,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260910-ios-14pm-fb1';
+    s.src = '/js/tab-shell.js?v=20260916-android-tab';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);
