@@ -162,10 +162,22 @@
                     }
                 }
             } catch (e0) {}
+            /* ColorOS / ArkWeb 的 100vw 常宽于画布，首页 rpx 按实测 clientWidth 锁，避免撑宽卡顿 */
+            try {
+                var uaSy = String(navigator.userAgent || '');
+                if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(uaSy)) {
+                    var wSy = document.documentElement.clientWidth || window.innerWidth || 0;
+                    var innerSy = window.innerWidth || wSy;
+                    if (innerSy > 0 && innerSy < wSy) wSy = innerSy;
+                    if (wSy >= 240 && wSy <= 720) {
+                        document.documentElement.style.setProperty('--sy-rpx', wSy / 750 + 'px');
+                    }
+                }
+            } catch (eRpx) {}
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260909-android-statusbar-sep1"></script>
-    <script src="/js/auth.js?v=20260914-s15-black" defer></script>
+    <script src="/js/auth.js?v=20260914-s15-black" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -178,8 +190,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>个人所得税</title>
-    <!-- 首屏关键图预加载：固定顶栏背景（CSS 背景图，否则需等 CSS 解析后才发起请求） -->
-    <link rel="preload" as="image" href="/img/home/apk-home-header-bg.png?v=20260828-android-load" fetchpriority="high">
+    <!-- 首屏关键图预加载：顶栏背景 + 通知条 + 未登录汇算卡，避免被 580KB auth.js 挤到进度条后 -->
+    <link rel="preload" as="image" href="/img/home/apk-home-header-bg.png?v=20260916-shouye-jank" fetchpriority="high">
+    <link rel="preload" as="image" href="/img/home/ahead.png?v=20260916-shouye-jank" fetchpriority="high">
+    <link rel="preload" as="image" href="/img/home/a1.png?v=20260811-header-blue" fetchpriority="high">
+    <link rel="preload" as="image" href="/img/home/a32.png?v=20260901-home-compress" fetchpriority="high">
     <meta name="description" content="模拟器APP，打开即可体验首页服务。">
     <meta property="og:type" content="website">
     <meta property="og:title" content="模拟器APP">
@@ -200,11 +215,21 @@
         }
 
         body.page-shouye {
-            --sy-rpx: calc(100vw / 750);
+            /* 100% 随画布，勿用 100vw：安卓 WebView 常把 vw 算得比可见区宽，首页会横滑卡顿 */
+            --sy-rpx: calc(100% / 750);
             /* 官方 zdj-home 头图 pending-tasks-bg 顶缘 #4f90f3；垫色/theme-color/StatusBar 同色 */
             --shouye-top-bar-rgb: 79, 144, 243;
             --shouye-header-bg: url('/img/home/apk-home-header-bg.png');
             background: #f4f6f9;
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        html.app-android-client,
+        html.app-android-client body.page-shouye,
+        html.app-android-client .shouye-page {
+            overflow-x: hidden;
+            max-width: 100%;
         }
 
         /* 固定顶栏：官方头图铺底（含柔光）+ ahead 搜索条，安全区同色无缝 */
@@ -1331,12 +1356,12 @@
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260910-ios-14pm-fb1">
     <script src="/js/theme-loader.js?v=20260828-android-load" defer></script>
-    <script src="/js/home-services.js?v=20260908-apk-icons"></script>
+    <script src="/js/home-services.js?v=20260908-apk-icons" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
     <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
     <div class="search-bar-wrapper" id="syAheadWrap">
-        <img class="sy-apk-ahead" src="/img/home/ahead.png?v=20260828-android-load" alt="搜索" width="1284" height="167" decoding="async" fetchpriority="high">
+        <img class="sy-apk-ahead" src="/img/home/ahead.png?v=20260916-shouye-jank" alt="搜索" width="1284" height="167" decoding="async" fetchpriority="high">
         <a href="sousuo.html" class="sy-ahead-hit sy-hit-search" aria-label="搜索功能与服务"></a>
         <button type="button" class="sy-ahead-hit sy-hit-scan" id="syScanBtn" aria-label="扫一扫"></button>
     </div>
@@ -1357,6 +1382,7 @@
                     <img
                         id="syDeclareImg"
                         class="sy-apk-slice"
+                        src="/img/home/a32.png?v=20260901-home-compress"
                         alt="综合所得年度汇算"
                         width="1179"
                         height="610"
@@ -1594,6 +1620,9 @@
                 hs.syncHomeRow(row, hs.HOME_ASSET_Q || '?v=20260908-apk-icons');
             }
             syncHomeKeyServices();
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', syncHomeKeyServices);
+            }
 
             /* 专项附加扣除：未填报用原 a3；已填报展示动态条数白卡 */
             (function initZxkHomeCount() {
