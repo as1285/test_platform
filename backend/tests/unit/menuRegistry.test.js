@@ -8,9 +8,6 @@ const {
   firstAllowedPage,
   getAssignableMenuDefs,
   parseAdminRoute,
-  ensureRequiredSubadminMenus,
-  getRequiredSubadminMenuKeys,
-  buildAdminSessionPayload,
   ADMIN_MENU_GROUPS,
   ADMIN_PAGE_DEFS,
   ADMIN_HUB_DEFS
@@ -147,36 +144,34 @@ describe('menuRegistry', () => {
     ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'codes')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['ops-board'] }, 'codes')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: true, menus: [] }, 'codes')
     ).toBe(true);
   });
 
-  it('codes is required for every sub-admin', () => {
-    expect(getRequiredSubadminMenuKeys()).toEqual(['codes']);
-    expect(getPageDef('codes').required_subadmin).toBe(true);
-    expect(ensureRequiredSubadminMenus(['users'])).toEqual(['users', 'codes']);
-    expect(ensureRequiredSubadminMenus(['codes', 'users'])).toEqual(['codes', 'users']);
-    expect(
-      adminProfileCanAccessPage(
-        { is_super: false, menus: ensureRequiredSubadminMenus(['users']) },
-        'codes'
-      )
-    ).toBe(true);
-    expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-board')
-    ).toBe(true);
-    const codesDef = getAssignableMenuDefs().find((d) => d.key === 'codes');
-    expect(codesDef).toBeTruthy();
-    expect(codesDef.required).toBe(true);
-    const session = buildAdminSessionPayload({
-      is_super: false,
-      username: 'agent',
-      menus: ['users']
-    });
-    expect(session.admin.menus).toContain('codes');
-    expect(session.pages.map((p) => p.page)).toContain('codes');
-    expect(session.menu_tree.some((g) => (g.items || []).some((i) => i.page === 'ops-board'))).toBe(
-      true
-    );
+  it('转化运营整组与邮箱管理仅超管', () => {
+    const sub = { is_super: false, menus: ['ops-board', 'users', 'user-emails', 'payment-orders'] };
+    expect(adminProfileCanAccessPage(sub, 'ops-board')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'payment-orders')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'ops-ad-analytics')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'abc-ops')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'codes')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'user-emails')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'users')).toBe(true);
+    expect(adminProfileCanAccessPage({ is_super: true, menus: [] }, 'ops-board')).toBe(true);
+    expect(adminProfileCanAccessPage({ is_super: true, menus: [] }, 'user-emails')).toBe(true);
+    expect(getPageDef('ops-board').super_only).toBe(true);
+    expect(getPageDef('ops-board').assignable).toBe(false);
+    expect(getPageDef('user-emails').super_only).toBe(true);
+    expect(getPageDef('user-emails').strict_hub_tab).toBe(true);
+    expect(ADMIN_HUB_DEFS['ops-board'].super_only).toBe(true);
+    const subTree = buildMenuTreeForAdmin(sub);
+    expect(subTree.menu_tree.map((g) => g.id)).not.toContain('ops-desk');
+    expect(subTree.pages.map((p) => p.page)).not.toContain('user-emails');
   });
 
   it('guest-users and activated-user-analysis are removed from menu', () => {
@@ -335,16 +330,16 @@ describe('menuRegistry', () => {
     expect(getPageDef('abc-install-stats').menu_key).toBe('abc-ops');
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['abc-ops'] }, 'abc-install-stats')
-    ).toBe(true);
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage(
         { is_super: false, menus: ['install-guide-stats'] },
         'abc-install-stats'
       )
-    ).toBe(true);
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['insights-growth'] }, 'abc-install-stats')
-    ).toBe(true);
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'abc-install-stats')
     ).toBe(false);
@@ -362,22 +357,22 @@ describe('menuRegistry', () => {
   it('ops conversion pages are visible via analytics-conversion alias', () => {
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-inactive')
-    ).toBe(true);
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-research')
-    ).toBe(true);
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['analytics-conversion'] }, 'ops-lift')
-    ).toBe(true);
+    ).toBe(false);
     expect(adminProfileCanAccessPage({ is_super: false, menus: ['users'] }, 'ops-inactive')).toBe(
-      true
+      false
     );
     expect(adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-inactive')).toBe(
       false
     );
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['ops-board'] }, 'ops-ad-analytics')
-    ).toBe(true);
+    ).toBe(false);
     expect(
       adminProfileCanAccessPage({ is_super: false, menus: ['codes'] }, 'ops-ad-analytics')
     ).toBe(false);
@@ -407,7 +402,26 @@ describe('menuRegistry', () => {
         { is_super: false, menus: ['analytics-activity'] },
         'insights-product'
       )
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it('数据分析 hub 仅超管，子账号不可进侧栏或子页', () => {
+    const sub = { is_super: false, menus: ['ops-board', 'insights-product', 'analytics-activity'] };
+    expect(adminProfileCanAccessPage(sub, 'insights-product')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'insights-growth')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'analytics-activity')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'ops-inactive')).toBe(false);
+    expect(adminProfileCanAccessPage(sub, 'analytics-purchase')).toBe(false);
+    expect(adminProfileCanAccessPage({ is_super: true, menus: [] }, 'insights-product')).toBe(true);
+    expect(getPageDef('insights-product').super_only).toBe(true);
+    expect(getPageDef('insights-product').assignable).toBe(false);
+    expect(ADMIN_HUB_DEFS['insights-product'].super_only).toBe(true);
+    const subTree = buildMenuTreeForAdmin(sub);
+    expect(subTree.menu_tree.map((g) => g.id)).not.toContain('insights');
+    const superTree = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
+    expect(superTree.menu_tree.find((g) => g.id === 'insights').items.map((i) => i.page)).toEqual([
+      'insights-product'
+    ]);
   });
 
   it('系统与安全独立 TAB：持有 login-log 不能自动开 IP/监控/下线', () => {
@@ -444,12 +458,8 @@ describe('menuRegistry', () => {
         'lizhi-cert',
         'sbdy-demo',
         'login-log',
-        'insights-product',
-        'insights-growth',
         'rename-tax-daily',
-        'users-deleted',
-        'abc-ops',
-        'payment-orders'
+        'users-deleted'
       ])
     );
     expect(assignable).not.toContain('peer-accounts');
@@ -459,6 +469,13 @@ describe('menuRegistry', () => {
     expect(assignable).not.toContain('gjj-demo');
     expect(assignable).not.toContain('user-login-log');
     expect(assignable).not.toContain('admin-operation-log');
+    expect(assignable).not.toContain('codes');
+    expect(assignable).not.toContain('insights-product');
+    expect(assignable).not.toContain('insights-growth');
+    expect(assignable).not.toContain('ops-board');
+    expect(assignable).not.toContain('abc-ops');
+    expect(assignable).not.toContain('payment-orders');
+    expect(assignable).not.toContain('user-emails');
     expect(assignable).not.toContain('analytics-activity');
     expect(getPageDef('rename-tax-daily').menu_key).toBe('rename-tax-daily');
     expect(getPageDef('peer-accounts')).toEqual(getPageDef('rename-tax-daily'));
