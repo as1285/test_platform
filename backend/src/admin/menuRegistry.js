@@ -40,7 +40,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'ops-conversion',
     order: 5,
-    alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research', 'codes']
+    alias_menus: ['analytics-conversion', 'ops-lift', 'ops-research']
   },
   {
     page: 'ops-research',
@@ -195,7 +195,8 @@ const ADMIN_PAGE_DEFS = [
     group: 'users',
     module: 'user-emails',
     order: 20,
-    alias_menus: ['users', 'ops-board'],
+    /* 独立授权：有注册用户 / 运营看板不能自动开邮箱管理 */
+    strict_hub_tab: true,
     nav_hidden: true
   },
   {
@@ -329,7 +330,7 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'ops-conversion',
     order: 21,
-    alias_menus: ['analytics-conversion', 'users', 'ops-board', 'insights-growth', 'insights-product'],
+    alias_menus: ['analytics-conversion', 'ops-board', 'insights-growth', 'insights-product'],
     assignable: false,
     nav_hidden: true
   },
