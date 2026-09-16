@@ -84,7 +84,20 @@ describe('tab shell (bottom nav cache)', () => {
     expect(tabShell).toContain(
       'html.app-ios-iphone14promax[data-tab-shell="1"] #tab-shell-stage.tab-shell-stage-active{background:#1677ff}'
     );
-    expect(auth).toContain('tab-shell.js?v=20260910-ios-14pm-fb1');
+    expect(auth).toContain('tab-shell.js?v=20260916-android-tab');
+  });
+
+  it('安卓切走 Tab 用 visibility 保图层，按下底栏即预热', () => {
+    expect(tabShell).toContain('applyNativeShown');
+    expect(tabShell).toContain('applyIframeShown');
+    expect(tabShell).toContain('armNavWarm');
+    expect(tabShell).toContain('data-tab-shell-keep-layer');
+    expect(tabShell).toContain('html[data-tab-shell-keep-layer="1"] .tab-shell-pane:not(.tab-shell-pane-active)');
+    expect(tabShell).toContain('display:block!important;visibility:hidden');
+    expect(tabShell).toContain("addEventListener('pointerdown'");
+    expect(tabShell).not.toMatch(
+      /function showPane\(key\) \{[\s\S]{0,220}iframes\[k\]\.style\.display = 'none'/
+    );
   });
 
   it('tab-shell host scrubs iframe bottom nav (iOS frameElement null)', () => {

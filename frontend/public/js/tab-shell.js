@@ -180,7 +180,15 @@
       'html.tab-embed-mode body.page-daiban,' +
       'html.tab-embed-mode body.page-bancha,' +
       'html.tab-embed-mode body.page-message{' +
-      '--bottom-nav-clearance:0px!important;padding-bottom:0!important}';
+      '--bottom-nav-clearance:0px!important;padding-bottom:0!important}' +
+      /* 安卓：切走 Tab 勿 display:none，否则 WebView 丢掉合成层，马上回来要整页重绘 */
+      'html[data-tab-shell-keep-layer="1"] .tab-shell-pane:not(.tab-shell-pane-active){' +
+      'display:block!important;visibility:hidden;pointer-events:none;' +
+      'position:fixed;top:0;left:0;right:0;bottom:var(--bottom-nav-clearance,70px);z-index:8998;overflow:hidden}' +
+      'html[data-tab-shell-keep-layer="1"] #tab-shell-native{transform:translateZ(0)}' +
+      'html[data-tab-shell-keep-layer="1"] #tab-shell-stage{display:block!important;visibility:hidden;pointer-events:none}' +
+      'html[data-tab-shell-keep-layer="1"] #tab-shell-stage.tab-shell-stage-active{visibility:visible;pointer-events:auto}' +
+      'html[data-tab-shell-keep-layer="1"] .tab-shell-iframe{position:absolute;inset:0}';
     document.head.appendChild(st);
   }
 
@@ -227,6 +235,73 @@
     } catch (e14stg) {}
   }
 
+  function isIframeShowing(fr) {
+    if (!fr) return false;
+    if (fr.classList.contains('tab-shell-iframe-active')) return true;
+    if (fr.style.visibility === 'hidden') return false;
+    return fr.style.display !== 'none';
+  }
+
+  function applyIframeShown(iframe, shown) {
+    if (!iframe) return;
+    iframe.classList.toggle('tab-shell-iframe-active', !!shown);
+    if (isAndroidLike()) {
+      iframe.style.display = 'block';
+      iframe.style.visibility = shown ? 'visible' : 'hidden';
+      iframe.style.pointerEvents = shown ? 'auto' : 'none';
+    } else {
+      iframe.style.display = shown ? 'block' : 'none';
+      iframe.style.visibility = '';
+      iframe.style.pointerEvents = '';
+    }
+  }
+
+  function applyNativeShown(shown) {
+    if (!nativeEl) return;
+    if (shown) {
+      nativeEl.classList.add('tab-shell-pane-active');
+      nativeEl.hidden = false;
+      nativeEl.removeAttribute('hidden');
+      if (isAndroidLike()) {
+        nativeEl.style.visibility = 'visible';
+        nativeEl.style.pointerEvents = '';
+      }
+    } else {
+      nativeEl.classList.remove('tab-shell-pane-active');
+      if (isAndroidLike()) {
+        nativeEl.hidden = false;
+        nativeEl.removeAttribute('hidden');
+        nativeEl.style.visibility = 'hidden';
+        nativeEl.style.pointerEvents = 'none';
+      } else {
+        nativeEl.hidden = true;
+      }
+    }
+  }
+
+  function applyStageShown(shown) {
+    if (!stageEl) return;
+    if (shown) {
+      stageEl.classList.add('tab-shell-stage-active');
+      stageEl.hidden = false;
+      stageEl.removeAttribute('hidden');
+      if (isAndroidLike()) {
+        stageEl.style.visibility = 'visible';
+        stageEl.style.pointerEvents = 'auto';
+      }
+    } else {
+      stageEl.classList.remove('tab-shell-stage-active');
+      if (isAndroidLike()) {
+        stageEl.hidden = false;
+        stageEl.removeAttribute('hidden');
+        stageEl.style.visibility = 'hidden';
+        stageEl.style.pointerEvents = 'none';
+      } else {
+        stageEl.hidden = true;
+      }
+    }
+  }
+
   function iframePageFile(iframe) {
     if (!iframe) return '';
     try {
@@ -242,7 +317,7 @@
     if (stageEl && stageEl.classList.contains('tab-shell-stage-active')) {
       Object.keys(iframes).forEach(function (k) {
         var fr = iframes[k];
-        if (!fr || fr.style.display === 'none') return;
+        if (!isIframeShowing(fr)) return;
         if (SUB_PAGE_FILES[iframePageFile(fr)]) hideNav = true;
       });
     }
@@ -302,7 +377,7 @@
       (typeof global.appendSalesChannelToUrl === 'function'
         ? global.appendSalesChannelToUrl(FILE_BY_KEY[key] + '?tab_embed=1')
         : FILE_BY_KEY[key] + '?tab_embed=1');
-    iframe.style.display = 'none';
+    applyIframeShown(iframe, false);
     stageEl.appendChild(iframe);
     bindIframeNavWatch(iframe, key);
     iframes[key] = iframe;
@@ -311,31 +386,18 @@
 
   function showPane(key) {
     if (key === nativeKey) {
-      if (nativeEl) {
-        nativeEl.classList.add('tab-shell-pane-active');
-        nativeEl.hidden = false;
-      }
-      if (stageEl) {
-        stageEl.classList.remove('tab-shell-stage-active');
-        stageEl.hidden = true;
-      }
+      applyNativeShown(true);
+      applyStageShown(false);
       Object.keys(iframes).forEach(function (k) {
-        if (iframes[k]) iframes[k].style.display = 'none';
+        applyIframeShown(iframes[k], false);
       });
       return;
     }
-    if (nativeEl) {
-      nativeEl.classList.remove('tab-shell-pane-active');
-      nativeEl.hidden = true;
-    }
-    if (stageEl) {
-      stageEl.classList.add('tab-shell-stage-active');
-      stageEl.hidden = false;
-      paint14pmStage(key);
-    }
+    applyNativeShown(false);
+    applyStageShown(true);
+    paint14pmStage(key);
     Object.keys(iframes).forEach(function (k) {
-      if (!iframes[k]) return;
-      iframes[k].style.display = k === key ? 'block' : 'none';
+      applyIframeShown(iframes[k], k === key);
       if (k === key) scrubIframeBottomNav(iframes[k]);
     });
   }
@@ -397,7 +459,13 @@
     stageEl = document.createElement('div');
     stageEl.id = 'tab-shell-stage';
     stageEl.className = 'tab-shell-stage';
-    stageEl.hidden = true;
+    if (isAndroidLike()) {
+      stageEl.hidden = false;
+      stageEl.style.visibility = 'hidden';
+      stageEl.style.pointerEvents = 'none';
+    } else {
+      stageEl.hidden = true;
+    }
 
     var kids = Array.prototype.slice.call(document.body.children);
     for (var i = 0; i < kids.length; i++) {
@@ -435,6 +503,23 @@
     });
   }
 
+  function armNavWarm() {
+    var nav = document.querySelector('.bottom-nav');
+    if (!nav || nav.getAttribute('data-tab-shell-warm') === '1') return;
+    nav.setAttribute('data-tab-shell-warm', '1');
+    function warmFromEvent(ev) {
+      var t = ev && ev.target;
+      if (!t || !t.closest) return;
+      var a = t.closest('.bottom-nav a.nav-item[href]');
+      if (!a) return;
+      var file = normalizeTabHref(a.getAttribute('href'));
+      var key = file && TAB_BY_FILE[file];
+      if (key && key !== nativeKey) ensureIframe(key);
+    }
+    nav.addEventListener('pointerdown', warmFromEvent, true);
+    nav.addEventListener('touchstart', warmFromEvent, { capture: true, passive: true });
+  }
+
   function onPopState(ev) {
     var key = ev && ev.state && ev.state.tabShell ? ev.state.tabShell : '';
     if (!key || !FILE_BY_KEY[key]) {
@@ -452,6 +537,9 @@
     activeKey = nativeKey;
     injectStyles();
     document.documentElement.setAttribute('data-tab-shell', '1');
+    if (isAndroidLike()) {
+      document.documentElement.setAttribute('data-tab-shell-keep-layer', '1');
+    }
 
     if (!wrapNativeContent()) return;
 
@@ -472,6 +560,7 @@
     } catch (e0) {}
 
     refreshNavIcons();
+    armNavWarm();
 
     global.setTimeout(warmOtherTabs, isAndroidLike() ? 2200 : 1200);
     /* iOS：切 Tab 后子页 auth 机型锁可能晚于 load 事件再钉底栏，宿主侧持续清 */
