@@ -469,8 +469,8 @@
             } catch (eHn) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260914-s15-black"></script>
-    <script src="/js/auth.js?v=20260914-s15-black" defer></script>
+    <script src="/js/auth-boot.js?v=20260916-android-pages"></script>
+    <script src="/js/auth.js?v=20260914-s15-black" defer fetchpriority="low"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -526,6 +526,11 @@
             /* 勿在 body 上 overflow-x:hidden，iOS 会导致底栏 position:fixed 相对文档错位、看起来偏高 */
             -webkit-font-smoothing: antialiased;
             overscroll-behavior-y: none;
+        }
+        html.app-android-client,
+        html.app-android-client body.page-mine {
+            overflow-x: hidden;
+            max-width: 100%;
         }
         html {
             min-height: 100vh;
