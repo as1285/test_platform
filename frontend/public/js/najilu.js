@@ -847,13 +847,22 @@
     return s + '所得';
   }
 
-  function rowRemark(r) {
-    var raw = cleanText(r && (r.remark || r.remarks || r.remark_text));
-    raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
-    raw = raw.replace(/\s+/g, '');
-    /* 正版原始申报行备注写「原始申报」，空备注按原始申报展示 */
-    if (!raw || raw === '原申报' || raw === '原始申报') return '原始申报';
-    return raw;
+  /** 正版一页备注「原始申报」固定 2 条，其余行留空 */
+  var CERT_ORIGINAL_REMARK_PER_PAGE = 2;
+
+  function pageRowRemarks(rows) {
+    var left = CERT_ORIGINAL_REMARK_PER_PAGE;
+    return (rows || []).map(function (r) {
+      var raw = cleanText(r && (r.remark || r.remarks || r.remark_text));
+      raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
+      raw = raw.replace(/\s+/g, '');
+      if (raw && raw !== '原申报' && raw !== '原始申报') return raw;
+      if (left > 0) {
+        left -= 1;
+        return '原始申报';
+      }
+      return '';
+    });
   }
 
   /** 入库税务机关按正版两行断：国家税务总局××市 / ××区税务局 */
@@ -1866,6 +1875,10 @@
   var CERT_TABLE_TOTAL_ROW_H = 40;
   var CERT_TABLE_ROW_H = 56;
   var CERT_FOOTER_BLOCK_H = 236;
+  /** 金额合计与说明之间的最小空白（正版合计下先留白，说明贴页底） */
+  var CERT_EXPLAIN_GAP_MIN = 168;
+  /** 短表时整页最小高度，避免说明紧贴合计 */
+  var CERT_PAGE_MIN_H = 1754;
   var CERT_BODY_FONT = 'SimSun, STSong, serif';
   /** 导出倍率：2x 画布提升文字、表格线与公章锐度（逻辑坐标不变） */
   var CERT_RENDER_SCALE = 2;
@@ -1953,8 +1966,12 @@
       var tableFootH = isLastPage ? CERT_TABLE_TOTAL_ROW_H : 0;
       var tableTotalH = CERT_TABLE_HEADER_H + tableBodyH + tableFootH;
       var footY = y0 + CERT_TABLE_HEADER_H + tableBodyH;
-      var explainY = y0 + tableTotalH + 30;
-      var height = explainY + CERT_FOOTER_BLOCK_H;
+      var tableBottom = y0 + tableTotalH;
+      var explainY = Math.max(
+        tableBottom + CERT_EXPLAIN_GAP_MIN,
+        CERT_PAGE_MIN_H - CERT_FOOTER_BLOCK_H
+      );
+      var height = Math.max(explainY + CERT_FOOTER_BLOCK_H, CERT_PAGE_MIN_H);
       var renderScale = CERT_RENDER_SCALE;
       var canvas = document.createElement('canvas');
       canvas.width = Math.round(width * renderScale);
@@ -2032,6 +2049,7 @@
       };
 
       var remarkColW = cols[6];
+      var pageRemarks = pageRowRemarks(rows);
       function drawRemarkCell(remark, cellX, cellY) {
         var cellPad = 8;
         var maxW = Math.max(24, remarkColW - cellPad);
@@ -2057,7 +2075,7 @@
           displayIncomeTypeForCert(r),
           displayTaxPeriodFromRecord(r),
           r.tax_authority || '',
-          rowRemark(r)
+          pageRemarks[idx] || ''
         ];
         var cx = x0;
         vals.forEach(function (v, i) {

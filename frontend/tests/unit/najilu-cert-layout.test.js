@@ -6,17 +6,20 @@ const najilu = readFileSync(resolve(__dirname, '../../public/js/najilu.js'), 'ut
 const html = readFileSync(resolve(__dirname, '../../najilu.html'), 'utf8');
 
 describe('纳税记录凭证对齐正版圈出项', () => {
-  it('备注列按行写原始申报，不合并成一格', () => {
-    expect(najilu).toContain("if (!raw || raw === '原申报' || raw === '原始申报') return '原始申报'");
+  it('每页备注「原始申报」固定 2 条', () => {
+    expect(najilu).toContain('var CERT_ORIGINAL_REMARK_PER_PAGE = 2');
+    expect(najilu).toContain('function pageRowRemarks');
     expect(najilu).not.toContain('var mergedRemark');
     expect(najilu).toContain('drawRemarkCell(v, cx, midY)');
   });
 
-  it('表格按本页行数收缩，金额合计紧贴末行', () => {
+  it('表格按本页行数收缩，合计与说明拉开并贴页底', () => {
     expect(najilu).toContain(
       'var tableBodySlots = Math.max(1, Math.min(CERT_TABLE_BODY_SLOTS, rows.length))'
     );
     expect(najilu).not.toContain('var tableBodySlots = CERT_TABLE_BODY_SLOTS;');
+    expect(najilu).toContain('var CERT_EXPLAIN_GAP_MIN = 168');
+    expect(najilu).toContain('var CERT_PAGE_MIN_H = 1754');
     expect(najilu).toContain("drawText(ctx, '金额合计'");
   });
 
@@ -41,7 +44,7 @@ describe('纳税记录凭证对齐正版圈出项', () => {
   });
 
   it('najilu 缓存戳已更新', () => {
-    expect(html).toContain('najilu.js?v=20260915-cert-remark-stamp');
+    expect(html).toContain('najilu.js?v=20260916-cert-official-gap');
     expect(najilu).toContain('consult.html?tab=records');
     expect(najilu).toContain('btnPreviewCloseConsult');
     expect(najilu).not.toContain("href=\"javascript:history.back()\" class=\"header-close-btn\"");
