@@ -61,6 +61,50 @@
                     if (ip15pm) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
                     }
+                    /* 14 Pro（393×852 灵动岛）：首屏把刘海垫成搜索蓝，避免 Cordova 黑条露在头图上 */
+                    var ip14pro =
+                        /iPhone\s*14\s*Pro\b(?!\s*Max)|iPhone15,2\b/i.test(u) && !ip14pm;
+                    if (!ip14pro && !ip14pm && !ip15pm) {
+                        try {
+                            var sw14p = Math.min(screen.width || 0, screen.height || 0);
+                            var sh14p = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr14p = window.devicePixelRatio || 1;
+                            if (dpr14p >= 2 && sw14p >= 700) {
+                                sw14p = Math.round(sw14p / dpr14p);
+                                sh14p = Math.round(sh14p / dpr14p);
+                            }
+                            if (
+                                sw14p >= 390 &&
+                                sw14p <= 396 &&
+                                sh14p >= 848 &&
+                                sh14p <= 856 &&
+                                !/iPhone\s*15\b|iPhone15,4\b|iPhone16,|iPhone17,|iPhone18,/i.test(u)
+                            ) {
+                                ip14pro = true;
+                            }
+                        } catch (e14p) {}
+                    }
+                    if (ip14pro) {
+                        document.documentElement.classList.add('app-ios-iphone14pro');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                        document.documentElement.style.backgroundColor = '#4f90f3';
+                        if (!document.getElementById('sy14proHomeLock')) {
+                            var lock14p = document.createElement('style');
+                            lock14p.id = 'sy14proHomeLock';
+                            lock14p.setAttribute('data-iphone14pro-home-blue', '1');
+                            lock14p.textContent =
+                                'html.app-ios-iphone14pro{background-color:#4f90f3!important;background-image:none!important;}' +
+                                'html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye{' +
+                                'background-color:#f6f7fb!important;' +
+                                'background-image:linear-gradient(#4f90f3,#4f90f3)!important;' +
+                                'background-size:100% 59px!important;background-repeat:no-repeat!important;}' +
+                                'html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye::before{' +
+                                'height:59px!important;background-color:#4f90f3!important;background-image:none!important;}' +
+                                'html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{' +
+                                'padding-top:59px!important;background-color:#4f90f3!important;}';
+                            document.head.appendChild(lock14p);
+                        }
+                    }
                     /* 20260826-iphone13pm：13 Pro Max 底栏须首绘铺满，避免被拽出屏 */
                     var ip13pm = /iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(u);
                     if (!ip13pm && !ip14pm && !ip15pm && !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(u)) {
@@ -177,7 +221,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260916-android-pages"></script>
-    <script src="/js/auth.js?v=20260916-iphone14pm-font" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-14pro-blue-top" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -443,6 +487,31 @@
             background-image: none !important;
         }
         html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 59px !important;
+            background-color: #4f90f3 !important;
+        }
+
+        /* iPhone 14 Pro（393×852）：刘海跟搜索蓝，去掉 Cordova 顶黑框 */
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell:has(body.page-shouye) {
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye {
+            background-color: #f6f7fb !important;
+            background-image: linear-gradient(
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243)),
+                rgb(var(--shouye-top-bar-rgb, 79, 144, 243))
+            ) !important;
+            background-size: 100% 59px !important;
+            background-repeat: no-repeat !important;
+            background-position: top center !important;
+        }
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye::before {
+            height: 59px !important;
+            background-color: #4f90f3 !important;
+            background-image: none !important;
+        }
+        html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 59px !important;
             background-color: #4f90f3 !important;
         }

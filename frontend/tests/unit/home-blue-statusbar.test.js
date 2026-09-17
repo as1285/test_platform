@@ -66,7 +66,20 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260916-iphone14pm-font');
+    expect(shouye).toContain('auth.js?v=20260917-14pro-blue-top');
+  });
+
+  it('iPhone 14 Pro 首页刘海垫搜索蓝，不留 Cordova 顶黑框', () => {
+    expect(shouye).toContain('data-iphone14pro-home-blue');
+    expect(shouye).toContain("classList.add('app-ios-iphone14pro')");
+    expect(shouye).toContain('iPhone15,2');
+    expect(shouye).toMatch(
+      /html\.app-ios-iphone14pro\.app-ios-client\.app-top-safe-shell body\.page-shouye::before[\s\S]{0,80}background-color:\s*#4f90f3/
+    );
+    expect(auth).toContain('isIPhone14ProLikeClient()');
+    expect(auth).toContain(
+      'html.app-ios-client.app-ios-iphone14promax,html.app-ios-client.app-ios-iphone14pro{background-color:#'
+    );
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {
