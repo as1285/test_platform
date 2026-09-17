@@ -4069,6 +4069,8 @@
               document.body.classList.contains('page-message')) &&
             (isIPhone14ProMaxClient() ||
               document.documentElement.classList.contains('app-ios-iphone14promax') ||
+              isIPhone14ProLikeClient() ||
+              document.documentElement.classList.contains('app-ios-iphone14pro') ||
               isIPhone15PlusProMaxLikeClient() ||
               isIPhone16ProLikeClient() ||
               isIPhone16ProMaxClient() ||
@@ -4110,6 +4112,7 @@
           isIPhone16ProMaxClient() ||
           isIPhone15PlusProMaxLikeClient() ||
           isIPhone14ProMaxClient() ||
+          isIPhone14ProLikeClient() ||
           isIPhone17ProLikeClient() ||
           isIPhone17ProMaxClient() ||
           isIPhone15LikeClient()
@@ -4613,7 +4616,9 @@
         try {
           if (
             isIPhone14ProMaxClient() ||
-            document.documentElement.classList.contains('app-ios-iphone14promax')
+            document.documentElement.classList.contains('app-ios-iphone14promax') ||
+            isIPhone14ProLikeClient() ||
+            document.documentElement.classList.contains('app-ios-iphone14pro')
           ) {
             document.documentElement.style.setProperty(
               '--app-shell-statusbar-top',
@@ -4633,10 +4638,10 @@
             APP_SHOUYE_BAR_RGB +
             ')) !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;min-height:100vh !important;height:auto !important;}' +
             'html.app-ios-client body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;height:auto !important;}' +
-            'html.app-ios-client.app-ios-iphone14promax{background-color:#' +
+            'html.app-ios-client.app-ios-iphone14promax,html.app-ios-client.app-ios-iphone14pro{background-color:#' +
             APP_SHOUYE_BAR_BLUE.replace('#', '') +
             ' !important;background-image:none !important;}' +
-            'html.app-ios-client.app-ios-iphone14promax body.page-shouye{background-color:#f6f7fb !important;background-image:linear-gradient(rgb(' +
+            'html.app-ios-client.app-ios-iphone14promax body.page-shouye,html.app-ios-client.app-ios-iphone14pro body.page-shouye{background-color:#f6f7fb !important;background-image:linear-gradient(rgb(' +
             APP_SHOUYE_BAR_RGB +
             '),rgb(' +
             APP_SHOUYE_BAR_RGB +
@@ -4644,7 +4649,7 @@
             'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,' +
             APP_SHOUYE_BAR_RGB +
             ')) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
-            'html.app-ios-client.app-ios-iphone14promax.app-top-safe-shell body.page-shouye::before{height:59px !important;background-color:#' +
+            'html.app-ios-client.app-ios-iphone14promax.app-top-safe-shell body.page-shouye::before,html.app-ios-client.app-ios-iphone14pro.app-top-safe-shell body.page-shouye::before{height:59px !important;background-color:#' +
             APP_SHOUYE_BAR_BLUE.replace('#', '') +
             ' !important;background-image:none !important;}' +
             'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,' +
@@ -6452,6 +6457,10 @@
       }
       if (iosIPhone14Pro) {
         document.documentElement.classList.add('app-ios-iphone14pro');
+        if (!immersiveBlueTop) {
+          upsertMeta('theme-color', APP_SHOUYE_BAR_BLUE);
+          upsertMeta('msapplication-navbutton-color', APP_SHOUYE_BAR_BLUE);
+        }
       }
       if (iosIPhone14ProMax) {
         document.documentElement.classList.add('app-ios-iphone14promax');

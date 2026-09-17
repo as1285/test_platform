@@ -73,7 +73,7 @@ describe('vivo S15 status-bar inset', () => {
     expect(pages.shuimingResult).toContain('auth.js?v=20260917-14pm-list');
     expect(pages.shuiming).toContain('auth.js?v=20260917-14pm-list');
     expect(pages.xiangqing).toContain('auth.js?v=20260917-14pm-list');
-    expect(pages.shouye).toContain('auth.js?v=20260916-iphone14pm-font');
+    expect(pages.shouye).toContain('auth.js?v=20260917-14pro-blue-top');
     expect(pages.mine).toContain('auth.js?v=20260917-matepad115s-name');
     expect(pages.mine).toContain('auth-boot.js?v=20260915-s15-white');
   });
