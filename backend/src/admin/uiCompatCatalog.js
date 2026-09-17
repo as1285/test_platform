@@ -93,6 +93,13 @@ var CORE_MODELS = [
     match: ['iPhone\\s*12\\s*Pro\\b(?!\\s*Max)', 'iPhone\\s*12\\b(?!\\s*Pro)', 'iPhone13,3', 'iPhone13,2'],
     issues: [
       { page: 'shuiming', title: '白顶栏深色系统时间', summary: '12 Pro 白顶栏改深色时间，避免浅色图标看不见。', since: '2026-08-13' },
+      {
+        page: 'shuiming',
+        title: '进页首条钻进汇总',
+        summary:
+          'iPhone13,2 被误判成 13；14/12 安全区样式把汇总刷白且列表顶距不含刘海，首条「工资薪金」一进来就压在合计下。排除 12 系硬件号，汇总灰底并按盒底实测下推列表。',
+        since: '2026-09-17'
+      },
       { page: 'mine', title: '底栏不悬空', summary: 'layout viewport 比屏幕矮一截刘海，100dvh 会把底栏抬高。', since: '2026-08-11' }
     ]
   },
@@ -164,8 +171,8 @@ var CORE_MODELS = [
       },
       {
         page: 'mine',
-        title: '我的页叠字与胶囊错位',
-        summary: '430 大屏姓名/税号偏小，添加/暂无胶囊压住家庭成员三宫格，按画布实测 rpx 并加大胶囊。',
+        title: '我的页回退 9/1 画布',
+        summary: '14 Pro Max 单独回退到 9/1 底图：去掉遮罩/HTML 标题，并隐藏 HTML 胶囊，避免压住家庭成员。其它机型不动。',
         since: '2026-09-17'
       },
       {

@@ -17,14 +17,14 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('白顶页 59px 灵动岛兜底含 iPhone 15', () => {
     expect(auth).toContain('isIPhone15LikeClient() ||');
     expect(auth).toContain(
-      'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer){--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;'
+      'html.app-ios-iphone15.app-top-safe-shell,html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;'
     );
   });
 
   it('通用规则不再关掉 15 的状态栏白底盾牌', () => {
     expect(auth).toContain(':not(.app-ios-iphone15promax):not(.app-ios-iphone15):not(.app-ios-iphone14)');
     expect(auth).toMatch(
-      /html\.app-ios-iphone15\.app-top-safe-shell:not\(\.app-ios-status-outer\) body\.page-shuiming-result::before\{[^}]*background:#fff/
+      /html\.app-ios-iphone15\.app-top-safe-shell body\.page-shuiming-result::before,html\.app-ios-liquid-glass body\.page-shuiming-result::before\{[^}]*background:#fff/
     );
     expect(auth).toMatch(
       /html\.app-ios-iphone15\.app-top-safe-shell body\.page-shuiming-result \.top-fixed \.header\{[^}]*backdrop-filter:none/
@@ -62,7 +62,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20260917-ios27-line');
+    expect(shuimingResult).toContain('auth.js?v=20260917-iphone12-first');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -126,10 +126,23 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     expect(shuiming).toContain('+ 56px');
   });
 
+  it('iOS 26/27 WebClip 不走外置栏，首屏按 393×852 打 15 并垫 59px', () => {
+    expect(auth).toContain('function isIosLiquidGlassWebClip');
+    expect(auth).toContain('isIosLiquidGlassWebClip() && isIosWhiteStatusPage()');
+    expect(auth).toContain("classList.add('app-ios-liquid-glass')");
+    expect(auth).toContain('height:calc(44px + var(--app-shell-statusbar-top,59px))');
+    expect(shuimingResult).toContain('app-ios-liquid-glass');
+    expect(shuimingResult).toContain('longSide >= 848');
+    expect(shuimingResult).toContain("classList.remove('app-ios-status-outer')");
+    expect(shuiming).toContain('app-ios-liquid-glass');
+    expect(shuiming).toContain("classList.remove('app-ios-status-outer')");
+    expect(shuimingResult).toContain('--safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px))');
+  });
+
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20260917-ios27-line');
+    expect(shuiming).toContain('auth.js?v=20260917-iphone12-first');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );
@@ -142,8 +155,11 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     );
     expect(fn).toContain('var useOuterBar = hasNativeBar || isCordovaTaxAppShell() || webclipOwnsBar');
     expect(fn).toContain('isIosStandaloneApp()');
-    expect(fn).toContain('measureSafeAreaInsetTop() < 20');
+    expect(fn).toContain('measureSafeAreaInsetTop() < 20 && !liquidGlassWebclip');
     expect(fn).toContain("overlays: !useOuterBar");
+    expect(fn).toContain("classList.remove('app-ios-status-outer')");
+    expect(auth).toContain('function isIosLiquidGlassWebClip');
+    expect(auth).toContain('getIOSMajorVersion() >= 26');
     expect(auth).toContain(
       'html.app-ios-status-outer.app-cordova-shell.app-ios-client.app-top-safe-shell'
     );

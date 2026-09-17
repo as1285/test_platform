@@ -317,14 +317,32 @@
                 try {
                     standalone = standalone || window.matchMedia('(display-mode: standalone)').matches;
                 } catch (e1) {}
+                var iosMajor = 0;
+                var mIos = ua.match(/OS (\d+)[_.]/i);
+                if (mIos) iosMajor = parseInt(mIos[1], 10);
+                var liquidGlass = iosMajor >= 26;
+                var shortSide = 0;
+                var longSide = 0;
+                try {
+                    var sw = window.screen && window.screen.width ? Number(window.screen.width) : Number(window.innerWidth || 0);
+                    var sh = window.screen && window.screen.height ? Number(window.screen.height) : Number(window.innerHeight || 0);
+                    shortSide = Math.min(sw, sh);
+                    longSide = Math.max(sw, sh);
+                } catch (eSz) {}
+                var is15Vp = shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
                 var is15LikeSm =
-                    /iPhone\s*15\b|iPhone15,4\b/i.test(ua) &&
+                    (/iPhone\s*15\b|iPhone15,4\b/i.test(ua) || is15Vp) &&
                     !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,1|iPhone16,2/i.test(ua);
                 if (is15LikeSm) {
                     root.classList.add('app-ios-iphone15');
                     root.classList.add('app-top-safe-shell');
                 }
-                if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
+                if (liquidGlass) {
+                    root.classList.remove('app-ios-status-outer');
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.add('app-ios-liquid-glass');
+                    root.style.setProperty('--app-shell-statusbar-top', '59px');
+                } else if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
                     root.classList.add('app-ios-status-outer');
                 }
                 if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
@@ -350,7 +368,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-ios27-line" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-iphone12-first" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -379,6 +397,15 @@
         }
         html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header {
             background: #fff;
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,
+        html.app-ios-liquid-glass body.page-shuiming > .header {
+            background: #fff;
+            padding-top: calc(14px + var(--app-shell-statusbar-top, 59px));
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,
+        html.app-ios-liquid-glass body.page-shuiming > .content {
+            padding-top: calc(44px + var(--app-shell-statusbar-top, 59px));
         }
         html.app-ios-sticky-chrome body.page-shuiming > .header {
             background: transparent;

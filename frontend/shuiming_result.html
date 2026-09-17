@@ -449,11 +449,63 @@
                     }
                 } catch (eM) {}
                 if (
-                    /iPhone\s*13\b|iPhone14,5\b/i.test(u + ' ' + model) &&
+                    /iPhone\s*13\b(?![\d,])|iPhone14,5\b/i.test(u + ' ' + model) &&
+                    !/iPhone13,[1-4]\b/i.test(u + ' ' + model) &&
                     !/iPhone\s*13\s*Pro|iPhone\s*13\s*(?:mini|Mini)|iPhone14,[234]\b/i.test(u + ' ' + model)
                 ) {
                     document.documentElement.classList.add('app-ios-iphone13');
                 }
+                /*
+                 * iPhone 12 / 12 Pro（iPhone13,2 / 13,3，390×844）：
+                 * 首屏若只按顶栏高度留白、汇总又被刷成白底，首条「工资薪金」会钻进汇总区。
+                 * 首帧打标并抬高列表顶距；汇总保持灰底，最终仍由 syncTopFixedHeight 实测。
+                 */
+                try {
+                    var blob12 = u + ' ' + model;
+                    var is12Like =
+                        /iPhone\s*12\b(?!\s*Pro\s*Max)|iPhone13,[123]\b/i.test(blob12) &&
+                        !/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(blob12);
+                    var short12 = 0;
+                    var long12 = 0;
+                    try {
+                        var sw12 = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+                        var sh12 = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+                        if (!sw12 || !sh12) {
+                            sw12 = window.innerWidth ? Number(window.innerWidth) : 0;
+                            sh12 = window.innerHeight ? Number(window.innerHeight) : 0;
+                        }
+                        short12 = Math.min(sw12, sh12);
+                        long12 = Math.max(sw12, sh12);
+                    } catch (eVp12) {}
+                    var is12Vp =
+                        short12 >= 388 &&
+                        short12 <= 392 &&
+                        long12 >= 840 &&
+                        long12 <= 848 &&
+                        !/iPhone\s*14\s*Pro|iPhone15,[23]\b|iPhone\s*16\s*Pro|iPhone17,1\b/i.test(blob12);
+                    if (is12Like || is12Vp) {
+                        document.documentElement.classList.add('app-ios-iphone12pro');
+                        document.documentElement.classList.add('app-ios-iphone14');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                        document.documentElement.classList.remove('app-ios-iphone13');
+                        if (!document.querySelector('style[data-iphone12-result-firstpaint]')) {
+                            var p12St = document.createElement('style');
+                            p12St.setAttribute('data-iphone12-result-firstpaint', '1');
+                            p12St.textContent =
+                                'html.app-ios-iphone12pro body.page-shuiming-result .page-root,' +
+                                'html.app-ios-iphone14.app-ios-iphone12pro body.page-shuiming-result .page-root{' +
+                                '--list-summary-pad:112px;--shuiming-chrome-top:var(--safe-top,env(safe-area-inset-top,47px));}' +
+                                'html.app-ios-iphone12pro body.page-shuiming-result .top-fixed .summary,' +
+                                'html.app-ios-iphone12pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,' +
+                                'html.app-ios-iphone14.app-top-safe-shell.app-ios-iphone12pro body.page-shuiming-result .top-fixed .summary{' +
+                                'background:#f5f6fa !important;}' +
+                                'html.app-ios-iphone12pro body.page-shuiming-result .list{' +
+                                'margin-top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,env(safe-area-inset-top,47px))) !important;' +
+                                'padding-top:var(--list-summary-pad,112px) !important;}';
+                            (document.head || document.documentElement).appendChild(p12St);
+                        }
+                    }
+                } catch (e12fp) {}
                 /* 大屏 Pro Max 宽度：440×956，或显示放大后的 430×932；勿只认 440 */
                 try {
                     var blob16 = u + ' ' + model;
@@ -589,13 +641,20 @@
                         !is16pmUa &&
                         !is16pmVp &&
                         !/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(blob16);
+                    var is15Vp =
+                        short16 >= 390 &&
+                        short16 <= 396 &&
+                        long16 >= 848 &&
+                        long16 <= 856;
                     var is15Like =
-                        /iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))|iPhone15,4\b/i.test(blob16) &&
+                        (/iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))|iPhone15,4\b/i.test(blob16) ||
+                            (is15Vp && !is15pmLike && !is16pmUa && !is16pmVp)) &&
                         !is15pmLike &&
                         !is17pmLike &&
                         !is16pmUa;
                     if (is15Like) {
                         document.documentElement.classList.add('app-ios-iphone15');
+                        document.documentElement.classList.add('app-top-safe-shell');
                     }
                     if (is15pmLike) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
@@ -723,14 +782,32 @@
                 try {
                     standalone = standalone || window.matchMedia('(display-mode: standalone)').matches;
                 } catch (e1) {}
+                var iosMajor = 0;
+                var mIos = ua.match(/OS (\d+)[_.]/i);
+                if (mIos) iosMajor = parseInt(mIos[1], 10);
+                var liquidGlass = iosMajor >= 26;
+                var shortSide = 0;
+                var longSide = 0;
+                try {
+                    var sw = window.screen && window.screen.width ? Number(window.screen.width) : Number(window.innerWidth || 0);
+                    var sh = window.screen && window.screen.height ? Number(window.screen.height) : Number(window.innerHeight || 0);
+                    shortSide = Math.min(sw, sh);
+                    longSide = Math.max(sw, sh);
+                } catch (eSz) {}
+                var is15Vp = shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
                 var is15LikeSm =
-                    /iPhone\s*15\b|iPhone15,4\b/i.test(ua) &&
+                    (/iPhone\s*15\b|iPhone15,4\b/i.test(ua) || is15Vp) &&
                     !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,1|iPhone16,2/i.test(ua);
                 if (is15LikeSm) {
                     root.classList.add('app-ios-iphone15');
                     root.classList.add('app-top-safe-shell');
                 }
-                if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
+                if (liquidGlass) {
+                    root.classList.remove('app-ios-status-outer');
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.add('app-ios-liquid-glass');
+                    root.style.setProperty('--app-shell-statusbar-top', '59px');
+                } else if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
                     root.classList.add('app-ios-status-outer');
                 }
                 if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
@@ -740,7 +817,9 @@
                     st.textContent =
                         'html.platform-ios,html.platform-ios body.page-shuiming-result{background:#fff !important;background-image:linear-gradient(#fff, #fff) !important;background-size:100% 200px !important;background-repeat:no-repeat !important;}' +
                         'html.platform-ios body.page-shuiming-result .shuiming-chrome-shield{background:#fff !important;}' +
-                        'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header{background:#fff !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .page-root,html.app-ios-liquid-glass body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top,59px) !important;--shuiming-chrome-top:var(--app-shell-statusbar-top,59px) !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{top:calc(44px + var(--app-shell-statusbar-top,59px)) !important;}' +
                         'html.app-ios-status-outer body.page-shuiming-result::before{content: none !important;}' +
                         'html.app-ios-status-outer.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn{color: #1e6fff !important;top:auto !important;}' +
                         '.top-fixed .header::before{content:"";visibility: visible !important;}' +
@@ -778,7 +857,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-ios27-line" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-iphone12-first" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1929,8 +2008,22 @@
         html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
         html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-            background: #fff;
+            /* 须灰底：白底会把汇总与首条糊成一片，首条标题像钻进合计行 */
+            background: #f5f6fa;
             z-index: 121;
+        }
+
+        /*
+         * iPhone 12 / 12 Pro（与 14 同挂 app-ios-iphone14，另打 app-ios-iphone12pro）：
+         * 首屏列表顶距含刘海 + 汇总高度，避免一进页首条被合计挡住。
+         */
+        html.app-ios-iphone12pro body.page-shuiming-result .page-root {
+            --list-summary-pad: 112px;
+            --shuiming-chrome-top: var(--safe-top, env(safe-area-inset-top, 47px));
+        }
+        html.app-ios-iphone12pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-iphone14.app-top-safe-shell.app-ios-iphone12pro body.page-shuiming-result .top-fixed .summary {
+            background: #f5f6fa !important;
         }
 
         /* iPhone 16 Pro：状态栏与顶栏同白；顶栏 44px 贴 Island；汇总顶 12px 灰缝对齐官方 */
@@ -1962,6 +2055,49 @@
             height: var(--header-height, 44px);
             display: flex;
             align-items: center;
+        }
+
+        /* iPhone 15 / iOS 26+：WebClip env=0 仍叠栏，必须按 16 Pro 同套 59px 垫顶 */
+        html.app-ios-iphone15.app-top-safe-shell,
+        html.app-ios-liquid-glass.app-top-safe-shell {
+            --app-shell-statusbar-top: max(59px, env(safe-area-inset-top, 59px));
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-ios-iphone15 body.page-shuiming-result .page-root,
+        html.app-ios-liquid-glass body.page-shuiming-result .page-root {
+            --header-height: 44px;
+            --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px));
+            --shuiming-chrome-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px));
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header {
+            top: 0;
+            height: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+            min-height: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+            padding: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) 16px 0;
+            background: #fff;
+            box-sizing: border-box;
+            align-items: center;
+            box-shadow: 0 3px 0 0 #fff;
+            z-index: 120;
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right {
+            top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px));
+            height: var(--header-height, 44px);
+            display: flex;
+            align-items: center;
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-iphone15 body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+        }
+        html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list,
+        html.app-ios-liquid-glass body.page-shuiming-result .list {
+            margin-top: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
         }
 
         /*
@@ -3750,10 +3886,11 @@
             }
             function measureAndApply() {
                 var headerBottom = syncChromeBelowHeader();
-                var isAndroid = false;
+                    var isAndroid = false;
                 var isIphone15Wide = false;
                 var isIphone16ProSeam = false;
                 var isIphone11Seam = false;
+                var isIphone12Seam = false;
                 try {
                     isAndroid =
                         document.documentElement.classList.contains('platform-android') ||
@@ -3798,6 +3935,14 @@
                                 return false;
                             }
                         })();
+                    /* iPhone 12 / 12 Pro / 14（390×844）：按汇总盒底起算，防止首条标题钻进合计 */
+                    isIphone12Seam =
+                        document.documentElement.classList.contains('app-ios-iphone12pro') ||
+                        (document.documentElement.classList.contains('app-ios-iphone14') &&
+                            !document.documentElement.classList.contains('app-ios-iphone14pro') &&
+                            !document.documentElement.classList.contains('app-ios-iphone14promax') &&
+                            !isIphone15Wide &&
+                            !isIphone16ProSeam);
                 } catch (eA) {}
                 /*
                  * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
@@ -3807,17 +3952,19 @@
                 var summaryRect = summary.getBoundingClientRect();
                 if (!(summaryRect.height > 0)) return;
                 var contentBottom = summaryContentBottom(summary, summaryRect);
-                if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam) {
+                if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam || isIphone12Seam) {
                     contentBottom = Math.max(contentBottom, summaryRect.bottom);
                 }
-                /* 16 Pro / 11：灰缝已写在汇总 padding-bottom，勿再叠 JS gap；15 宽档略留 10 */
+                /* 16 Pro / 11 / 12：灰缝已写在汇总 padding-bottom，勿再叠过大 JS gap；15 宽档略留 10 */
                 var gap = isAndroid
                     ? 8
                     : isIphone16ProSeam || isIphone11Seam
                       ? 0
-                      : isIphone15Wide
-                        ? 10
-                        : 8;
+                      : isIphone12Seam
+                        ? 8
+                        : isIphone15Wide
+                          ? 10
+                          : 8;
                 var listTop = Math.ceil(contentBottom + gap);
                 if (listTop < headerBottom + 24) listTop = headerBottom + 24;
                 if (root) {
@@ -3832,7 +3979,7 @@
                 if (firstItem) {
                     var sr = summary.getBoundingClientRect();
                     var cb = summaryContentBottom(summary, sr);
-                    if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam) {
+                    if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam || isIphone12Seam) {
                         cb = Math.max(cb, sr.bottom);
                     }
                     var visualGap = firstItem.getBoundingClientRect().top - cb;
