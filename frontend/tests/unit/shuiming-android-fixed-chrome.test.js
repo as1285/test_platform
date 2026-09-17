@@ -15,6 +15,7 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
       'html.app-android-client,html.app-android-client body{overflow-x:hidden;max-width:100%;}'
     );
     expect(boot).toContain('ColorOS 上明细页 fixed 顶栏会跟滑走');
+    expect(boot).toContain("root.style.setProperty('--shuiming-chrome-top', '40px')");
   });
 
   it('明细页首屏钉住顶栏/汇总，并压过旧缓存的 overflow-x:hidden', () => {
@@ -25,10 +26,14 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
       'html.platform-android body.page-shuiming-result .top-fixed .header'
     );
     expect(shuimingResult).toContain('position:fixed!important');
+    expect(shuimingResult).toContain('z-index:130!important');
     expect(shuimingResult).toContain(
-      '.top-fixed .header .header-title{visibility:visible!important'
+      'top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important'
     );
-    expect(shuimingResult).toContain('auth-boot.js?v=20260917-fixed-chrome');
+    expect(shuimingResult).toContain(
+      '.top-fixed .header .header-title{display:block!important'
+    );
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-header-pin');
   });
 
   it('页面样式对 Android 再用 clip 钉住 header/summary', () => {
@@ -37,7 +42,13 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
       /html\.platform-android body\.page-shuiming-result \.top-fixed \.header,[\s\S]*position:\s*fixed !important/
     );
     expect(shuimingResult).toMatch(
-      /html\.platform-android body\.page-shuiming-result \.top-fixed \.header \.header-title,[\s\S]*visibility:\s*visible !important/
+      /html\.platform-android body\.page-shuiming-result \.top-fixed \.header,[\s\S]*z-index:\s*130 !important/
+    );
+    expect(shuimingResult).toMatch(
+      /html\.platform-android body\.page-shuiming-result \.top-fixed \.summary,[\s\S]*top:\s*calc\(var\(--header-height, 48px\) \+ var\(--shuiming-chrome-top/
+    );
+    expect(shuimingResult).toMatch(
+      /html\.platform-android body\.page-shuiming-result \.top-fixed \.header \.header-title,[\s\S]*display:\s*block !important/
     );
   });
 });

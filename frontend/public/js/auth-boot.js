@@ -856,6 +856,9 @@
         root.style.setProperty('--app-shell-statusbar-top', '40px');
         root.style.setProperty('--android-status-inset', '40px');
         root.style.setProperty('--safe-top', '40px');
+        root.style.setProperty('--shuiming-chrome-top', '40px');
+      } else if (cur) {
+        root.style.setProperty('--shuiming-chrome-top', cur);
       }
     } catch (ePaint) {}
   }

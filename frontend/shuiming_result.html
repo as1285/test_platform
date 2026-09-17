@@ -43,6 +43,14 @@
                 }
                 if (/Android/i.test(u)) {
                     document.documentElement.classList.add('platform-android');
+                    try {
+                        var chromeTop = document.documentElement.style.getPropertyValue('--app-shell-statusbar-top')
+                            || document.documentElement.style.getPropertyValue('--safe-top')
+                            || '';
+                        if (chromeTop) {
+                            document.documentElement.style.setProperty('--shuiming-chrome-top', chromeTop);
+                        }
+                    } catch (eChromeTop) {}
                     /*
                      * ColorOS / ArkWeb：html/body overflow-x:hidden 会建滚动包含块，
                      * position:fixed 顶栏跟页滚，划一下「收入纳税明细」整块滑出视口。
@@ -53,8 +61,12 @@
                         andFixSt.setAttribute('data-shuiming-android-fixed-chrome', '1');
                         andFixSt.textContent =
                             'html.platform-android,html.platform-android body,html.app-android-client,html.app-android-client body{overflow-x:clip!important;overscroll-behavior-y:none;}' +
-                            'html.platform-android body.page-shuiming-result .top-fixed .header,html.app-android-client body.page-shuiming-result .top-fixed .header,html.platform-android body.page-shuiming-result .top-fixed .summary,html.app-android-client body.page-shuiming-result .top-fixed .summary,html.platform-android body.page-shuiming-result .shuiming-chrome-shield,html.app-android-client body.page-shuiming-result .shuiming-chrome-shield{position:fixed!important;visibility:visible!important;opacity:1!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
-                            'html.platform-android body.page-shuiming-result .top-fixed .header .header-title,html.app-android-client body.page-shuiming-result .top-fixed .header .header-title{visibility:visible!important;opacity:1!important;color:#000!important;}';
+                            'html.platform-android body.page-shuiming-result,html.app-android-client body.page-shuiming-result{--shuiming-chrome-top:var(--app-shell-statusbar-top,var(--safe-top,0px));}' +
+                            'html.platform-android body.page-shuiming-result .top-fixed .header,html.app-android-client body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:130!important;height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;min-height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;padding:var(--shuiming-chrome-top,var(--safe-top,0px)) 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
+                            'html.platform-android body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-client body.page-shuiming-result .top-fixed .header .back-btn,html.platform-android body.page-shuiming-result .top-fixed .header .header-right,html.app-android-client body.page-shuiming-result .top-fixed .header .header-right{top:var(--shuiming-chrome-top,var(--safe-top,0px))!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;}' +
+                            'html.platform-android body.page-shuiming-result .top-fixed .header .header-title,html.app-android-client body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:2!important;visibility:visible!important;opacity:1!important;color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;}' +
+                            'html.platform-android body.page-shuiming-result .top-fixed .summary,html.app-android-client body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;left:0!important;right:0!important;z-index:125!important;visibility:visible!important;opacity:1!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
+                            'html.platform-android body.page-shuiming-result .shuiming-chrome-shield,html.app-android-client body.page-shuiming-result .shuiming-chrome-shield{position:fixed!important;visibility:visible!important;opacity:1!important;}';
                         (document.head || document.documentElement).appendChild(andFixSt);
                     }
                 }
@@ -795,7 +807,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260917-fixed-chrome"></script>
+    <script src="/js/auth-boot.js?v=20260918-header-pin"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -815,6 +827,12 @@
                 try {
                     standalone = standalone || window.matchMedia('(display-mode: standalone)').matches;
                 } catch (e1) {}
+                var inIframe = false;
+                try {
+                    inIframe = window.top !== window.self;
+                } catch (eFr) {
+                    inIframe = true;
+                }
                 var iosMajor = 0;
                 var mIos = ua.match(/OS (\d+)[_.]/i);
                 if (mIos) iosMajor = parseInt(mIos[1], 10);
@@ -844,8 +862,10 @@
                     root.classList.add('app-top-safe-shell');
                     root.classList.add('app-ios-liquid-glass');
                     root.style.setProperty('--app-shell-statusbar-top', '59px');
-                } else if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
+                } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua)) {
                     root.classList.add('app-ios-status-outer');
+                } else {
+                    root.classList.remove('app-ios-status-outer');
                 }
                 if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
                     var st = document.createElement('style');
@@ -877,7 +897,7 @@
                         source: 'tax-h5',
                         type: 'status-bar',
                         style: 'default',
-                        overlays: false,
+                        overlays: true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -995,23 +1015,65 @@
             overflow-x: clip !important;
             overscroll-behavior-y: none;
         }
+        html.platform-android body.page-shuiming-result,
+        html.app-android-client body.page-shuiming-result {
+            --shuiming-chrome-top: var(--app-shell-statusbar-top, var(--safe-top, 0px));
+        }
         html.platform-android body.page-shuiming-result .top-fixed .header,
-        html.app-android-client body.page-shuiming-result .top-fixed .header,
-        html.platform-android body.page-shuiming-result .top-fixed .summary,
-        html.app-android-client body.page-shuiming-result .top-fixed .summary,
-        html.platform-android body.page-shuiming-result .shuiming-chrome-shield,
-        html.app-android-client body.page-shuiming-result .shuiming-chrome-shield {
+        html.app-android-client body.page-shuiming-result .top-fixed .header {
             position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 130 !important;
+            height: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
+            min-height: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
+            padding: var(--shuiming-chrome-top, var(--safe-top, 0px)) 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            overflow: visible !important;
             visibility: visible !important;
             opacity: 1 !important;
             -webkit-backface-visibility: visible !important;
             backface-visibility: visible !important;
         }
+        html.platform-android body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-client body.page-shuiming-result .top-fixed .header .back-btn,
+        html.platform-android body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-client body.page-shuiming-result .top-fixed .header .header-right {
+            top: var(--shuiming-chrome-top, var(--safe-top, 0px)) !important;
+            height: var(--header-height, 48px) !important;
+            display: flex !important;
+            align-items: center !important;
+        }
         html.platform-android body.page-shuiming-result .top-fixed .header .header-title,
         html.app-android-client body.page-shuiming-result .top-fixed .header .header-title {
+            display: block !important;
+            position: relative !important;
+            z-index: 2 !important;
             visibility: visible !important;
             opacity: 1 !important;
             color: #000 !important;
+            line-height: var(--header-height, 48px) !important;
+            height: var(--header-height, 48px) !important;
+        }
+        html.platform-android body.page-shuiming-result .top-fixed .summary,
+        html.app-android-client body.page-shuiming-result .top-fixed .summary {
+            position: fixed !important;
+            top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 125 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            -webkit-backface-visibility: visible !important;
+            backface-visibility: visible !important;
+        }
+        html.platform-android body.page-shuiming-result .shuiming-chrome-shield,
+        html.app-android-client body.page-shuiming-result .shuiming-chrome-shield {
+            position: fixed !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
 
         html::-webkit-scrollbar,
