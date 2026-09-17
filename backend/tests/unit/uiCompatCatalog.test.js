@@ -21,6 +21,13 @@ describe('uiCompatCatalog + deviceStats', () => {
     const iphone13pm = catalog.listCatalogModels().find((m) => m.id === 'iphone-13-promax');
     expect(catalog.modelMatchesBlob(iphone13pm, 'iPhone 13 Pro Max iPhone14,3')).toBe(true);
     expect(catalog.modelMatchesBlob(iphone13pm, 'iPhone 13 iPhone14,5')).toBe(false);
+    const iphone14 = catalog.listCatalogModels().find((m) => m.id === 'iphone-14');
+    const iphone14pm = catalog.listCatalogModels().find((m) => m.id === 'iphone-14-promax');
+    expect(catalog.modelMatchesBlob(iphone14, 'iPhone 14 iPhone14,7')).toBe(true);
+    expect(catalog.modelMatchesBlob(iphone14, 'iPhone 14 Pro Max iPhone15,3')).toBe(false);
+    expect(catalog.modelMatchesBlob(iphone14pm, 'iPhone 14 Pro Max iPhone15,3')).toBe(true);
+    expect(catalog.modelMatchesBlob(iphone14pm, 'iPhone 14 iPhone14,7')).toBe(false);
+    expect(iphone14pm.issues.some((i) => i.page === 'shuiming' && /字号/.test(i.title))).toBe(true);
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 2211133C')).toBe(true);
     expect(catalog.modelMatchesBlob(xiaomi13, 'Xiaomi 13 Pro 2210132C')).toBe(false);
     const oneplus12 = catalog.listCatalogModels().find((m) => m.id === 'oneplus-12');

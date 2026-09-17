@@ -37,8 +37,8 @@ describe('红米 K70 标准版「我的」页 underlap 黑垫', () => {
     expect(mine).toContain(
       'html.app-mine-black-status body.page-mine .mine-activate-btn{top:calc(10px + 40px)'
     );
-    expect(mine).toContain('auth.js?v=20260914-s15-black');
-    expect(mine).toContain('auth-boot.js?v=20260916-android-pages');
+    expect(mine).toContain('auth.js?v=20260915-s15-white');
+    expect(mine).toContain('auth-boot.js?v=20260915-s15-white');
     expect(mine).toContain('sdk_gphone|Android SDK|goldfish|ranchu');
     expect(mine).toContain('Windows|Macintosh|X11');
     expect(mine).toContain('Win32|Win64|Windows|MacIntel|Macintosh');

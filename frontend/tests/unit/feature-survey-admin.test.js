@@ -20,7 +20,7 @@ describe('admin feature survey overview', () => {
     expect(html).toContain('id="page-feature-survey"');
     expect(html).toContain('id="featureSurveyMount"');
     expect(html).toContain('href="#insights-product/features"');
-    expect(loader).toContain('feature-survey.js?v=20260907-hub6');
+    expect(loader).toContain('feature-survey.js?v=20260907-survey-ord');
     expect(src).toContain('api/admin/feature-survey/overview');
   });
 

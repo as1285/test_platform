@@ -23,9 +23,8 @@ describe('收入纳税明细：公司名括号按半个汉字宽截断', () => {
   it('定义了 truncateCompanyName 并用于列表渲染', () => {
     expect(html).toContain('function truncateCompanyName');
     expect(html).toContain('truncateCompanyName(company, companyMaxChars)');
-    // 保留既有断言契约：仍按 iOS/Android 取 13/12；Mate 60 跳过预截
+    // 保留既有断言契约：仍按 iOS/Android 取 13/12
     expect(html).toContain('var companyMaxChars = iosCompanyEllipsis ? 13 : 12');
-    expect(html).toContain('mate60CompanyFill');
   });
 
   it('两个全角括号合算一个汉字宽，带括号公司名在 12 内可完整显示', () => {

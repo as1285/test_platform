@@ -270,6 +270,20 @@
                     if (is16pmUaSm || is16pmVpSm) {
                         document.documentElement.classList.add('app-ios-iphone16promax');
                     }
+                    var is14pmSm =
+                        /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(blobSm) ||
+                        (shortSm >= 428 &&
+                            shortSm <= 432 &&
+                            longSm >= 928 &&
+                            longSm <= 936 &&
+                            !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(
+                                blobSm
+                            ));
+                    if (is14pmSm) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.classList.add('app-top-safe-shell');
+                    }
                     if (is16pmUaSm || is16pmVpSm || isLargePmSm || seenWideSm) {
                         document.documentElement.classList.add('app-ios-promax-wide');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
@@ -284,7 +298,59 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260916-android-pages"></script>
-    <script src="/js/auth.js?v=20260909-android-aug1-blue" defer fetchpriority="low"></script>
+    <meta name="theme-color" content="#ffffff">
+    <script>
+        (function () {
+            try {
+                var root = document.documentElement;
+                var ua = navigator.userAgent || '';
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                var ios =
+                    /iPhone|iPad|iPod/i.test(ua) ||
+                    (typeof navigator !== 'undefined' &&
+                        navigator.platform === 'MacIntel' &&
+                        (navigator.maxTouchPoints || 0) > 1);
+                if (!ios) return;
+                root.classList.add('platform-ios');
+                root.classList.add('app-ios-sticky-chrome');
+                var standalone = navigator.standalone === true;
+                try {
+                    standalone = standalone || window.matchMedia('(display-mode: standalone)').matches;
+                } catch (e1) {}
+                var is15LikeSm =
+                    /iPhone\s*15\b|iPhone15,4\b/i.test(ua) &&
+                    !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,1|iPhone16,2/i.test(ua);
+                if (is15LikeSm) {
+                    root.classList.add('app-ios-iphone15');
+                    root.classList.add('app-top-safe-shell');
+                }
+                if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
+                    root.classList.add('app-ios-status-outer');
+                }
+                if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
+                    var st = document.createElement('style');
+                    st.setAttribute('data-ios-white-status-firstpaint', '1');
+                    st.textContent =
+                        'html.platform-ios,html.platform-ios body.page-shuiming{background:#fff !important;background-image:linear-gradient(#fff, #fff) !important;background-size:100% 200px !important;background-repeat:no-repeat !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header{background:#fff !important;}' +
+                        '#iosStickyTint.ios-sticky-tint{position:sticky;top:0;height:calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px);margin:0 0 calc(-1 * (var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px));background:#fff;z-index:110;}';
+                    (document.head || root).appendChild(st);
+                }
+                try {
+                    window.parent.postMessage({
+                        source: 'tax-h5',
+                        type: 'status-bar',
+                        style: 'default',
+                        overlays: false,
+                        color: '#ffffff',
+                        paint_shell: true,
+                        shell_bg: '#ffffff'
+                    }, '*');
+                } catch (e2) {}
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260917-ios27-line" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -305,6 +371,18 @@
         }
         
         /* 顶部导航：对齐官方 its-header；安全区仅在有 inset 时追加 */
+
+        html.platform-ios.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header {
+            background: #fff;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+        html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header {
+            background: #fff;
+        }
+        html.app-ios-sticky-chrome body.page-shuiming > .header {
+            background: transparent;
+        }
         .header {
             background: #fff;
             position: fixed;
@@ -552,6 +630,12 @@
             line-height: 22px;
             font-weight: 400;
             pointer-events: none;
+        }
+        html.app-ios-iphone14promax body.page-shuiming .year-label {
+            font-size: 17px;
+        }
+        html.app-ios-iphone14promax body.page-shuiming .year-value {
+            font-size: 18px;
         }
         
         .year-chevron-wrap {

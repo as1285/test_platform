@@ -84,8 +84,8 @@ const probes = [
   ['GET', '/api/admin/me', { expectStatus: [401] }],
   ['GET', '/api/admin/users', { expectStatus: [401] }],
 
-  // —— 合作伙伴（需 partner API key，无 key 预期 401）——
-  ['GET', '/api/partner/bank/health', { expectStatus: [401] }],
+  // —— 合作伙伴：未带密钥。未配 key 为 503；已配 key 时本机/非白名单 IP 为 403，错密钥为 401 ——
+  ['GET', '/api/partner/bank/health', { expectStatus: [401, 403, 503] }],
 
   // —— 静态页可达性（nginx）——
   ['GET', '/login.html', { expectStatus: [200], headers: { Accept: 'text/html' } }],

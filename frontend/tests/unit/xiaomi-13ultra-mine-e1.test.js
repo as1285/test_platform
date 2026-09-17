@@ -13,7 +13,7 @@ describe('小米 13 Ultra 我的页三宫格胶囊', () => {
     expect(auth).toContain('function pinXiaomi13UltraMineE1Layout()');
     expect(auth).toContain('data-xiaomi13ultra-mine-e1-lock');
     expect(auth).toContain("var xiaomi13ultra =");
-    expect(auth).toMatch(/acepro \|\| reno10 \|\| hinova9se \|\| xiaomi13ultra/);
+    expect(auth).toMatch(/acepro \|\| hinova9se \|\| xiaomi13ultra/);
     expect(auth).toContain('pinXiaomi13UltraMineE1Layout()');
     expect(auth).toContain('aspect-ratio:750 / 1180');
     expect(auth).toContain('background-size:100% auto !important');
@@ -21,7 +21,7 @@ describe('小米 13 Ultra 我的页三宫格胶囊', () => {
 
   it('不走 HyperOS 2 的 100% 100% 压扁锁', () => {
     expect(auth).toMatch(
-      /function isHyperOs2MineE1SmClient\(\) \{\s*[\s\S]{0,720}app-android-xiaomi-13ultra/
+      /function isHyperOs2MineE1SmClient\(\) \{\s*[\s\S]{0,420}app-android-xiaomi-13ultra/
     );
     expect(auth).toContain(
       ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra)'
@@ -35,10 +35,10 @@ describe('小米 13 Ultra 我的页三宫格胶囊', () => {
     expect(auth).toContain("canvas13.style.setProperty('background-size', '100% auto', 'important')");
     expect(auth).toContain("canvas13.style.setProperty('aspect-ratio', '750 / 1180', 'important')");
     expect(boot).toContain(
-      ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas'
+      ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas'
     );
     expect(mine).toContain(
-      ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas'
+      ':not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas'
     );
   });
 
@@ -52,8 +52,8 @@ describe('小米 13 Ultra 我的页三宫格胶囊', () => {
     expect(boot).toContain('2304FPN6|(?:Xiaomi|Mi|小米)[\\s_-]*13[\\s_-]*Ultra');
     expect(boot).toContain('data-xiaomi13ultra-mine-e1-firstpaint');
     expect(boot).toContain('background-size:100% auto!important');
-    expect(mine).toContain('auth-boot.js?v=20260916-android-pages');
-    expect(mine).toContain('auth.js?v=20260914-s15-black');
+    expect(mine).toContain('auth-boot.js?v=20260915-s15-white');
+    expect(mine).toContain('auth.js?v=20260915-s15-white');
   });
 
   it('Cordova 40px bleed 不再套到 13 Ultra 叠层', () => {

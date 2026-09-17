@@ -41,15 +41,17 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
   beforeEach(() => {
     document.body.innerHTML =
       '<div id="taxRecordsListCard">' +
+      '<button type="button" id="btnTaxRecordsRefill">回填修改</button>' +
       '<button type="button" id="btnTaxRecordsManage" aria-expanded="false" aria-pressed="false">管理</button>' +
-      '<div id="taxRecordsManageMenu" hidden></div>' +
+      '<div id="taxRecordsManageMenu" hidden>' +
+      '<button type="button" data-recycle="1">回收站</button>' +
+      '<button type="button" data-manage-need="records">一键去重</button>' +
+      '</div>' +
       '<p id="taxRecordsManageHint" hidden></p>' +
       '<div id="recordListMount"></div>' +
       '</div>';
     window.editRecord = vi.fn();
     window.deleteRecord = vi.fn();
-    window.reorderRecord = vi.fn();
-    indirectEval(readFileSync(resolve(__dirname, '../../public/js/tax-record-order.js'), 'utf8'));
     loadListHelpers();
   });
 
@@ -58,10 +60,12 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="btnTaxRecordsManage"');
     expect(html).toContain('id="taxRecordsManageHint"');
     expect(html).toContain('tax-records-manage-toolbar');
-    expect(html).toContain('consult.css?v=20260911-tax-reorder');
-    expect(html).toContain('consult-records.js?v=20260911-tax-reorder');
-    expect(html).toContain('tax-record-order.js?v=20260911-same-month');
-    expect(html).toContain('consult-batch-tax.js?v=20260907-tax-ux');
+    expect(html).toContain('consult.css?v=20260914-manage-menu');
+    expect(html).toContain('consult-records.js?v=20260914-manage-menu');
+    expect(html).toContain('consult-batch-tax.js?v=20260914-tax-manage');
+    expect(html).toContain('id="btnTaxRecordsRefill"');
+    expect(html).toContain('tax-records-manage-wrap');
+    expect(html).toContain('data-manage-need="records"');
     expect(html).toContain('id="compatBugRecordsEntry"');
     expect(html).toContain('兼容问题反馈');
     expect(html).toContain('按模板生成');
@@ -107,53 +111,57 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(document.getElementById('taxRecordsListCard').classList.contains('is-managing')).toBe(
       true
     );
+    expect(document.getElementById('taxRecordsListCard').classList.contains('is-manage-menu')).toBe(
+      true
+    );
     expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('完成');
+    expect(document.getElementById('btnTaxRecordsRefill').hidden).toBe(true);
     expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(false);
     expect(document.getElementById('taxRecordsManageHint').hidden).toBe(false);
+    expect(document.querySelector('#taxRecordsManageMenu [data-manage-need="records"]').hidden).toBe(
+      false
+    );
     expect(mount.querySelector('[data-record-delete="r-2"]').hidden).toBe(false);
+
+    mount.querySelector('.record-card').click();
+    expect(window.editRecord).toHaveBeenCalledTimes(1);
 
     mount.querySelector('[data-record-delete="r-2"]').click();
     expect(window.deleteRecord).toHaveBeenCalledWith('r-2');
     expect(window.editRecord).toHaveBeenCalledTimes(1);
   });
 
-  it('shows 上移/下移 in manage mode for same-month neighbors', () => {
-    const twins = [
-      {
-        id: 'jul-1',
-        year: 2026,
-        month: 7,
-        income_type: '工资薪金',
-        company_name: '甲公司',
-        income: '1.00',
-        tax_reported: '0.00'
-      },
-      {
-        id: 'jul-2',
-        year: 2026,
-        month: 7,
-        income_type: '工资薪金',
-        company_name: '乙公司',
-        income: '2.00',
-        tax_reported: '0.00'
-      }
-    ];
-    window.renderListFromArray(twins);
+  it('empty list: 管理 opens recycle-only menu instead of full manage mode', () => {
+    window.renderListFromArray([]);
     window.toggleTaxRecordsManageMode();
-    const mount = document.getElementById('recordListMount');
-    expect(mount.querySelector('[data-record-id="jul-1"][data-record-move="down"]')).toBeTruthy();
-    expect(mount.querySelector('[data-record-id="jul-1"][data-record-move="up"]')).toBeNull();
-    expect(mount.querySelector('[data-record-id="jul-2"][data-record-move="up"]')).toBeTruthy();
-    expect(mount.querySelector('[data-record-id="jul-2"][data-record-move="down"]')).toBeNull();
-    mount.querySelector('[data-record-id="jul-2"][data-record-move="up"]').click();
-    expect(window.reorderRecord).toHaveBeenCalledWith('jul-2', 'up');
-    expect(window.editRecord).not.toHaveBeenCalled();
+    expect(window.isTaxRecordsManageMode()).toBe(false);
+    expect(window.isTaxRecordsManageMenuOnly()).toBe(true);
+    expect(document.getElementById('taxRecordsListCard').classList.contains('is-manage-menu')).toBe(
+      true
+    );
+    expect(document.getElementById('taxRecordsListCard').classList.contains('is-managing')).toBe(
+      false
+    );
+    expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('收起');
+    expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(false);
+    expect(document.getElementById('taxRecordsManageHint').hidden).toBe(true);
+    expect(document.getElementById('btnTaxRecordsRefill').hidden).toBe(false);
+    expect(document.querySelector('#taxRecordsManageMenu [data-manage-need="records"]').hidden).toBe(
+      true
+    );
+
+    window.dismissTaxRecordsManageMenuOnly();
+    expect(window.isTaxRecordsManageMenuOnly()).toBe(false);
+    expect(document.getElementById('btnTaxRecordsManage').textContent).toBe('管理');
+    expect(document.getElementById('taxRecordsManageMenu').hidden).toBe(true);
   });
 
   it('styles hide per-row delete until manage mode and keep a tappable chevron', () => {
     expect(css).toContain('#taxRecordsListCard.is-managing .record-card-delete');
     expect(css).toContain('.record-card.is-tappable');
     expect(css).toContain('#taxRecordsListCard.is-managing .tax-records-manage-toolbar');
+    expect(css).toContain('#taxRecordsListCard.is-manage-menu .tax-records-manage-toolbar');
+    expect(css).toContain('taxManagePanelIn');
   });
 
   it('updates post-activate copy to tap-card instead of 右侧编辑', () => {

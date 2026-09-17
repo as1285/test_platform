@@ -24,7 +24,6 @@ describe('ui-smoke device catalog', () => {
       'oneplus-ace2v',
       'oneplus-acepro',
       'oppo-reno10',
-      'oppo-a93s',
       'oppo-k9x',
       'xiaomi-13',
       'xiaomi-13pro',
@@ -46,7 +45,6 @@ describe('ui-smoke device catalog', () => {
       'vivo-x200pro',
       'vivo-x300pro',
       'vivo-s50promini',
-      'vivo-s15',
       'vivo-x90',
       'iqoo-neo8',
       'iqoo-neo8pro',
@@ -136,9 +134,9 @@ describe('ui-smoke device catalog', () => {
     expect(resolveSmokeDevices('redmi-k70').map((d) => d.id)).toEqual(['redmi-k70']);
   });
 
-  it('K70 标准版与 vivo S15 的「我的」走 underlap 黑垫', () => {
+  it('只有 K70 标准版 expect.mineBlackStatus，其余安卓走禁止黑垫', () => {
     const blacks = DEVICE_PROFILES.filter((d) => d.expect && d.expect.mineBlackStatus);
-    expect(blacks.map((d) => d.id).sort()).toEqual(['redmi-k70', 'vivo-s15']);
+    expect(blacks.map((d) => d.id)).toEqual(['redmi-k70']);
     expect(DEVICE_PROFILES.filter((d) => d.platform === 'android').length).toBeGreaterThan(20);
   });
 });

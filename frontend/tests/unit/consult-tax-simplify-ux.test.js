@@ -45,7 +45,7 @@ describe('consult 税务记录 batch generate: simplified period + action hierar
   it('keeps list header actions 回填修改 / 管理 for the simplified card list', () => {
     const cardStart = html.indexOf('id="taxRecordsListCard"');
     expect(cardStart).toBeGreaterThan(-1);
-    const cardChunk = html.slice(cardStart, cardStart + 1800);
+    const cardChunk = html.slice(cardStart, cardStart + 2800);
     expect(cardChunk).toContain('回填修改');
     expect(cardChunk).toContain('id="btnTaxRecordsManage"');
     expect(cardChunk).toContain('id="taxRecordsManageHint"');

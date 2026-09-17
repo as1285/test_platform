@@ -125,6 +125,16 @@ export const DEVICE_PROFILES = [
     deviceModel: 'iPhone 15'
   },
   {
+    id: 'iphone-15-webclip',
+    label: 'iPhone 15 描述文件 WebClip',
+    playwrightDevice: 'iPhone 15',
+    suite: 'ios-chrome',
+    platform: 'ios',
+    deviceModel: 'iPhone 15',
+    webclipStandalone: true,
+    expect: { iosWebClipOuter: true }
+  },
+  {
     id: 'iphone-15-promax',
     label: 'iPhone 15 Pro Max',
     playwrightDevice: 'iPhone 15 Pro Max',
@@ -220,8 +230,9 @@ export const DEVICE_PROFILES = [
     cordovaUa: true
   },
   Object.assign(outer('SM-S9210', 'Galaxy S24', { id: 'galaxy-s24', maxInsetPx: 8 }), {
-    playwrightDevice: 'Galaxy S24',
-    userAgent: undefined /* 用内置 Galaxy UA + Cordova 后缀 */
+    /* Playwright 1.52 无 Galaxy S24 内置档，视口走 Pixel 7，UA 仍用 SM-S9210 */
+    playwrightDevice: 'Pixel 7',
+    userAgent: androidUa('SM-S9210', 'Galaxy S24')
   }),
   {
     id: 'pixel-9',
@@ -257,10 +268,6 @@ export const DEVICE_PROFILES = [
   }),
   immersive('PHW110', 'OPPO Reno10 5G', ['app-android-oppo-reno10', 'app-android-immersive-white-top'], {
     id: 'oppo-reno10'
-  }),
-  /* ColorOS 13 A93s：与 Reno10 同走 100vw @sm 裁切，须挂 reno10 锁 */
-  immersive('PFGM00', 'OPPO A93s 5G', ['app-android-oppo-reno10', 'app-android-immersive-white-top'], {
-    id: 'oppo-a93s'
   }),
   immersive('PGCM10', 'OPPO K9x', ['app-android-oppo-k9x', 'app-android-immersive-white-top'], {
     id: 'oppo-k9x'
@@ -379,9 +386,8 @@ export const DEVICE_PROFILES = [
   immersive('V2527A', 'vivo S50 Pro mini', ['app-android-vivo-s50promini', 'app-android-immersive-white-top'], {
     id: 'vivo-s50promini'
   }),
-  immersive('V2203A', 'vivo S15', ['app-android-vivo-s15'], {
-    id: 'vivo-s15',
-    expect: { mineBlackStatus: true, immersiveWhiteTop: false, minInsetPx: 40 }
+  immersive('V2203A', 'vivo S15', ['app-android-vivo-s15', 'app-android-immersive-white-top'], {
+    id: 'vivo-s15'
   }),
   immersive('V2241A', 'vivo X90', ['app-android-vivo-x90', 'app-android-immersive-white-top'], {
     id: 'vivo-x90',
@@ -447,6 +453,7 @@ export const POPULAR_DEVICE_IDS = [...new Set(PRODUCTION_TOP_MODELS.map((row) =>
 
 /** 近期频繁改兼容性的机型（白顶栏 / 顶距 / 首屏） */
 export const RECENT_DEVICE_IDS = [
+  'iphone-15-webclip',
   'iphone-16-promax',
   'iphone-17-promax',
   'iphone-air',

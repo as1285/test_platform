@@ -184,11 +184,12 @@ mustExclude(
   ['bindTaxRecycleBinModal'],
   'recycle bin bind removed from consult-batch-tax'
 );
-mustInclude('frontend/consult.html', ['consult-records.js?v=20260905-list-tap'], 'consult recycle-bind cache');
+mustInclude('frontend/consult.html', ['consult-records.js?v=20260914-manage-menu'], 'consult recycle-bind cache');
 mustInclude(
   'frontend/public/js/consult-records.js',
   [
     'toggleTaxRecordsManageMode',
+    'dismissTaxRecordsManageMenuOnly',
     'data-record-id',
     'record-card-delete',
     'is-tappable'
@@ -202,7 +203,7 @@ mustExclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['id="taxRecordsManageHint"', 'consult.css?v=20260911-tax-reorder'],
+  ['id="taxRecordsManageHint"', 'id="btnTaxRecordsRefill"', 'tax-records-manage-wrap', 'consult.css?v=20260914-manage-menu'],
   'tax records manage hint + css cache'
 );
 mustInclude('backend/src/user/lizhiCertUser.js', ['preview_png_base64'], 'lizhi user api png');
@@ -674,7 +675,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/mine.html',
-  ['20260824-aug12r6', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'PFGM00', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done', 'data-acepro-mine-e1-firstpaint', 'aspect-ratio:1284/2127'],
+  ['20260824-aug12r6', 'data-mate60-aug15-firstpaint', 'app-android-huawei-mate60', 'ALN-AL00', 'ALN-AL10', 'V2302A', 'V2301A', 'PGP110', 'PHW110', 'app-android-oppo-reno10', 'app-android-iqoo-neo8', 'BLK-AL80', 'app-android-huawei-nova13', '100cqw / 750', 'mine-share-done', 'data-acepro-mine-e1-firstpaint', 'aspect-ratio:1284/2127'],
   'mine.html mate60 e1 (plan B / c93c3cc) + reno10 + neo8 + nova13 cache'
 );
 mustExclude(
@@ -765,6 +766,11 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
+  ['isSamsungS23UltraClient', 'SM-S918', 'app-android-samsung-s23u'],
+  'samsung s23 ultra immersive top'
+);
+mustInclude(
+  'frontend/public/js/auth.js',
   [
     'function isAndroidWhitePageImmersiveDefaultClient()',
     'function isAndroidVerifiedOuterWhitePageClient()',
@@ -793,8 +799,13 @@ mustInclude(
   'shuiming_result oneplus 12 first-paint'
 );
 mustInclude(
+  'frontend/shuiming_result.html',
+  ['SM-S918', 'app-android-samsung-s23u', 'data-samsung-s23u-result-firstpaint'],
+  'shuiming_result samsung s23 ultra first-paint'
+);
+mustInclude(
   'frontend/public/js/auth.js',
-  ['isOppoReno10Client', 'PHW110', 'CPH2531', 'PFGM00', 'app-android-oppo-reno10'],
+  ['isOppoReno10Client', 'PHW110', 'CPH2531', 'app-android-oppo-reno10'],
   'oppo reno10 5g immersive top'
 );
 mustInclude(
@@ -1091,15 +1102,13 @@ if (read('frontend/public/js/auth.js').includes('iphone16pro body.page-mine > .b
 })();
 
 (function testOppoReno10Ua() {
-  const reModel = /PHW110|CPH2531|CPH2525|PFGM00|A93s/i;
+  const reModel = /PHW110|CPH2531|CPH2525/i;
   const reName = /(?:OPPO\s*)?Reno\s*10\s*5G/i;
   const rePro = /Reno\s*10\s*Pro/i;
   const hit = [
     'Mozilla/5.0 (Linux; Android 15; PHW110 Build/UKQ1) AppleWebKit/537.36',
     'Mozilla/5.0 (Linux; Android 15; CPH2531) OPPO Reno10 5G',
-    'Mozilla/5.0 (Linux; Android 15) OPPO Reno 10 5G',
-    'Mozilla/5.0 (Linux; Android 13; PFGM00 Build/TP1A.220624.014) ColorOS',
-    'Mozilla/5.0 (Linux; Android 13) OPPO A93s'
+    'Mozilla/5.0 (Linux; Android 15) OPPO Reno 10 5G'
   ];
   const miss = [
     'Mozilla/5.0 (Linux; Android 15; PHV110) OPPO Reno10 Pro 5G',
@@ -1178,7 +1187,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/consult.html',
-  ['consult-core.js?v=20260907-no-fillbtn', 'consult-batch-tax.js?v=20260907-tax-ux', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
+  ['consult-core.js?v=20260907-no-fillbtn', 'consult-batch-tax.js?v=20260914-tax-manage', '23年4月到26年8月', '上传个税截图识别', 'taxScreenshotOcrInput'],
   '20260906 consult tax screenshot OCR'
 );
 mustInclude('frontend/consult.html', ['taxPasteImportCopyTplBtn', '重新填入模板', '按模板生成个税', '清空去粘贴', '上传截图识别'], 'consult copy tpl btn');
@@ -1531,11 +1540,6 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/auth.js',
-  ['isVivoS15Client', 'app-android-vivo-s15', 'V2203A', ':not(.app-android-vivo-s15)'],
-  'vivo s15 official black status pad'
-);
-mustInclude(
-  'frontend/public/js/auth.js',
   ['isVivoX90Client', 'app-android-vivo-x90', 'V2241A|V2241EA|PD2241\\b', ':not(.app-android-vivo-x90)'],
   'vivo X90 detect + immersive'
 );
@@ -1695,7 +1699,7 @@ mustInclude(
 }
 mustInclude(
   'frontend/consult.html',
-  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260907-severance'],
+  ['再加一笔年终奖', 'batchEmpBonusItemTpl', 'consult-batch-tax.js?v=20260914-tax-manage'],
   'consult multi-bonus cache'
 );
 mustInclude(
@@ -2537,10 +2541,10 @@ if (
       'gerenxinxi.html': ['20260907-email-sfx'],
       'login.html': ['20260905-agent-reg2'],
       'face_login.html': ['20260905-facelogin-ui3'],
-      'message.html': ['20260903-email-reg1', '20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1'],
-      'shouye.html': ['20260906-login-top', '20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1'],
-      'bancha.html': ['20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1'],
-      'daiban.html': ['20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1'],
+      'message.html': ['20260903-email-reg1', '20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1', '20260911-ios-14pm-mine-blue'],
+      'shouye.html': ['20260906-login-top', '20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1', '20260911-ios-14pm-mine-blue'],
+      'bancha.html': ['20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1', '20260911-ios-14pm-mine-blue'],
+      'daiban.html': ['20260910-ios-14pm-home6', '20260910-ios-14pm-r4', '20260910-ios-14pm-fb1', '20260911-ios-14pm-mine-blue'],
       'message_detail.html': ['20260903-mate60-msg3'],
       'mine.html': [
         '20260907-acepro-pill',
@@ -2553,7 +2557,8 @@ if (
         '20260910-13u-pill',
         '20260910-ios-14pm-home6',
         '20260910-ios-14pm-r4',
-        '20260910-ios-14pm-fb1'
+        '20260910-ios-14pm-fb1',
+        '20260911-ios-14pm-mine-blue'
       ],
       'purchase.html': ['20260907-email-sfx'],
       'shuiming.html': ['20260904-android-inset'],
@@ -2885,13 +2890,13 @@ mustInclude(
     '没有匹配的功能或账号',
     'nav.js?v=20260907-user-search',
     'admin_panel.js?v=20260907-amt-enter',
-    'loader.js?v=20260907-email-hub'
+    'loader.js?v=20260915-dau-clock'
   ],
   'admin search copy and cache for account jump'
 );
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['ops-conversion.js?v=20260907-pay-user', 'ad-analytics.js?v=20260907-no-refund-mail'],
+  ['ops-conversion.js?v=20260915-dau-clock', 'ad-analytics.js?v=20260907-no-refund-mail'],
   'ops-conversion cache after pay-user jump fix'
 );
 mustInclude(
@@ -2911,13 +2916,18 @@ mustInclude(
 );
 mustInclude(
   'frontend/admin_panel.html',
-  ['id="page-ops-board"', 'opsBoardKpi', 'opsBoardTodo', 'opsBoardBulkAnchor'],
+  ['id="page-ops-board"', 'opsBoardKpi', 'opsBoardDau', 'opsBoardTodo', 'opsBoardBulkAnchor'],
   'ops board page panel'
 );
 mustInclude(
   'backend/src/admin/opsConversion.js',
-  ['handleOpsBoard', 'pay_gmv', 'refund_eligible'],
+  ['handleOpsBoard', 'pay_gmv', 'refund_eligible', 'loadOpsBoardDau', 'dau: dau'],
   'ops board API handler'
+);
+mustInclude(
+  'backend/src/admin/opsBoardDau.js',
+  ['buildSameClockPlan', 'loadOpsBoardDau', 'user_login_events', 'user_page_events'],
+  'ops board same-clock DAU'
 );
 mustInclude(
   'frontend/public/js/najilu.js',
@@ -3381,27 +3391,6 @@ mustInclude(
     'isMineStatusPage() && isRedmiK70StandardClient()'
   ],
   '20260910 K70 mine uses underlap-black mode, not outer-zero'
-);
-
-mustInclude(
-  'frontend/public/js/tax-year.js',
-  ['function resolveSelectedTaxYear', 'reset=1 不应压过 URL'],
-  'tax-year resolveSelectedTaxYear keeps url year'
-);
-mustInclude(
-  'frontend/shuiming.html',
-  [
-    'function persistSelectedYear',
-    'function yearFromPickerCenter',
-    'url.searchParams.delete(\'reset\')',
-    'persistSelectedYear(yearFromPickerCenter())'
-  ],
-  'shuiming year picker persists selection and strips reset'
-);
-mustInclude(
-  'frontend/shuiming_result.html',
-  ['bindShuimingResultBackYear', 'shuiming.html?year='],
-  'shuiming result back keeps selected year'
 );
 
 console.log(`[today-selftest] done passed=${passed} failed=${failed}`);

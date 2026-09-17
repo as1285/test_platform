@@ -54,6 +54,7 @@ describe('serverMonitor API selftest', () => {
     var defs = getApiProbeDefs();
     expect(defs.length).toBeGreaterThan(5);
     expect(defs.some(function (d) { return d.path === '/api/health'; })).toBe(true);
+    expect(defs.some(function (d) { return d.path === '/api/public/tax-records-policy'; })).toBe(true);
   });
 
   it('classifies expected statuses as healthy', () => {

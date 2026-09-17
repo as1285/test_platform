@@ -587,6 +587,16 @@ html.app-ios-client body.page-mine {
     min-height: 100vh !important;
 }
 
+/* iPhone 16 Pro 待办 / 办查：与首页、我的同一大视口，禁止 100dvh 把胶囊抬高 */
+html.app-ios-iphone16pro,
+html.app-ios-iphone16pro body.page-daiban,
+html.app-ios-iphone16pro body.page-bancha,
+html.app-ios-iphone16pro .daiban-page,
+html.app-ios-iphone16pro .bancha-page {
+    min-height: 100vh !important;
+    height: auto !important;
+}
+
 html.app-ios-client {
     height: auto !important;
     min-height: 100vh !important;

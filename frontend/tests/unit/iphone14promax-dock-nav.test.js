@@ -59,19 +59,26 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
       expect(html, name).toContain('iPhone15,3');
       expect(html, name).toMatch(/auth\.js\?v=/);
     });
-    expect(pages.shouye).toContain('auth.js?v=20260914-s15-black');
+    expect(pages.shouye).toContain('auth.js?v=20260916-iphone14pm-font');
     expect(pages.shouye).toContain('nav.css?v=20260910-ios-14pm-fb1');
   });
 
   it('14 Pro Max 各 Tab 系统栏跟页头蓝，不透黑底/浅灰留白', () => {
     expect(pages.mine).toContain("backgroundColor = '#1677ff'");
     expect(pages.mine).toContain('mine14pmTopLock');
-    expect(pages.mine).toContain('html.app-ios-iphone14promax{background-color:#1677ff!important');
+    expect(pages.mine).toContain('html.app-ios-iphone14promax.app-ios-client.app-top-safe-shell body.page-mine::before');
     expect(pages.mine).toContain("setAttribute('content', '#1677ff')");
     expect(auth).toContain('data-14pm-mine-chrome');
     expect(auth).toContain('html:not(.app-ios-iphone14promax){background-color:#f5f6fa !important;background-image:');
     expect(auth).toContain('html.app-ios-iphone14promax{background-color:#1677ff !important;background-image:none !important;');
     expect(auth).toContain('html.app-ios-iphone14promax{background-color:#2b81f2 !important;background-image:none !important;');
+    expect(auth).toContain('html.app-top-safe-shell:not(.app-ios-iphone14promax) body.page-mine::before');
+    expect(auth).toContain(
+      'html.app-ios-client.app-ios-iphone14promax.app-top-safe-shell body.page-mine::before'
+    );
+    expect(auth).toContain(
+      'html.app-ios-client.app-ios-iphone14promax.app-top-safe-shell{--app-shell-statusbar-top:59px!important;--mine-top-bleed:59px!important;}'
+    );
     expect(pages.daiban).toContain("backgroundColor = '#2b81f2'");
     expect(pages.bancha).toContain("backgroundColor = '#2b81f2'");
     expect(pages.message).toContain("backgroundColor = '#1e8fff'");

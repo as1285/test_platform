@@ -18,7 +18,6 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(fn).not.toContain('ensureAndroidFixedBlackStatusPad');
     expect(fn).toContain('isOnePlusAce2VClient()');
     expect(fn).toContain('isXiaomi14LikeClient()');
-    expect(fn).toContain('isVivoS15Client()');
     expect(fn).toContain("color: '#000000'");
     expect(fn).toContain('overlays: false');
     expect(fn).toContain('color: topColor');
@@ -59,15 +58,15 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
   });
 
   it('纳税明细 iOS 状态栏区铺实底白，列表仍可滚动', () => {
-    expect(shuimingResult).toContain('html.platform-ios body.page-shuiming-result::before');
+    expect(shuimingResult).toContain('html.platform-ios:not(.app-ios-status-outer) body.page-shuiming-result::before');
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260914-m60-company');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios27-line');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260914-s15-black');
+    expect(shouye).toContain('auth.js?v=20260916-iphone14pm-font');
   });
 
   it('蓝顶 StatusBar 在 style 后再钉 overlays（11 / 14PM 防黑条变矮）', () => {

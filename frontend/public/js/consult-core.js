@@ -16,13 +16,17 @@
  * 副作用：网络写税；可能弹付费窗。
  */
 function consultTaxWrite(body) {
+    var payload = Object.assign({}, body || {});
+    if (typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords()) {
+        payload.allow_multiple_per_month = true;
+    }
     if (window.consultTaxPost) {
-        return window.consultTaxPost(body);
+        return window.consultTaxPost(payload);
     }
     return window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
+        body: JSON.stringify(payload)
     });
 }
 
@@ -3077,6 +3081,9 @@ function boot() {
     initSingleTaxDraftAutosave();
     initBatchCompanyHistoryUi();
     initConsultRecordsUx();
+    if (typeof window.initTaxRecordsSettings === 'function') {
+        window.initTaxRecordsSettings();
+    }
     initTabs();
     tryOpenEmployerFormFromUrl();
     setDefaultMsgDate();

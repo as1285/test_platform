@@ -6,6 +6,9 @@
  * 机型：见 ui-smoke-devices.mjs
  *   UI_SMOKE_DEVICES=all|full|recent|popular|mainstream|iphone-12,oneplus-12,...
  *   UI_SMOKE_CHROME_ONLY=1  跳过 API 业务冒烟，只验壳 class / 白顶栏顶距（静态站可用）
+ *
+ * 测不到：iOS 26/27 系统 Liquid Glass。Playwright 是 Chromium，没有 WKWebView
+ * 系统毛玻璃；assertIosWhiteTopOpaque 只验 H5 顶栏实底白 / 无 backdrop-filter。
  */
 import { mkdirSync } from 'fs';
 import { chromium, devices } from 'playwright';
@@ -93,12 +96,23 @@ function attachSession(context, profile) {
       if (s.deviceModel) {
         localStorage.setItem('tax_device_model_v1', s.deviceModel);
       }
+      if (s.webclipStandalone) {
+        try {
+          Object.defineProperty(window.navigator, 'standalone', {
+            configurable: true,
+            get: function () {
+              return true;
+            }
+          });
+        } catch (eSa) {}
+      }
     },
     {
       token: TOKEN,
       username: USER,
       inApp: !!profile.inApp,
-      deviceModel: profile.deviceModel || ''
+      deviceModel: profile.deviceModel || '',
+      webclipStandalone: !!profile.webclipStandalone
     }
   );
 }
@@ -394,6 +408,106 @@ async function assertIosShuimingResultLayout(page, profile, tag) {
   }
   log(
     `${tag} ok ios tax-list pad=${layout.listPadL}/${layout.listPadR} arrow=${layout.arrowTag || 'none'} ty=${layout.arrowTy || '-'} w=${layout.innerWidth}`
+  );
+  await assertIosWhiteTopOpaque(page, profile, tag);
+}
+
+/**
+ * 只验 H5 顶栏不透明。Chromium 看不到 iOS Liquid Glass，绿了也不代表真机不糊。
+ */
+async function assertIosWhiteTopOpaque(page, profile, tag) {
+  await page.goto(`${SITE_URL}/shuiming_result.html`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(400);
+  const paint = await page.evaluate(() => {
+    const header = document.querySelector(
+      'body.page-shuiming-result .top-fixed .header, body.page-shuiming > .header'
+    );
+    if (!header) {
+      return { hasHeader: false };
+    }
+    const cs = getComputedStyle(header);
+    const bg = String(cs.backgroundColor || '');
+    const afterCs = getComputedStyle(header, '::after');
+    const afterBg = String(afterCs.backgroundColor || '');
+    const parse = (raw) => {
+      const m = String(raw || '').match(
+        /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)/i
+      );
+      return {
+        r: m ? Number(m[1]) : -1,
+        g: m ? Number(m[2]) : -1,
+        b: m ? Number(m[3]) : -1,
+        a: m && m[4] != null ? Number(m[4]) : 1
+      };
+    };
+    const face = parse(bg);
+    const plate = parse(afterBg);
+    const sticky = document.documentElement.classList.contains('app-ios-sticky-chrome');
+    const sampled = sticky && plate.a >= 0.99 ? plate : face;
+    const backdrop = String(cs.backdropFilter || cs.webkitBackdropFilter || 'none');
+    const rect = header.getBoundingClientRect();
+    const back = header.querySelector('.back-btn');
+    const backCs = back ? getComputedStyle(back) : null;
+    const backRect = back ? back.getBoundingClientRect() : null;
+    return {
+      hasHeader: true,
+      bg: sticky ? afterBg : bg,
+      r: sampled.r,
+      g: sampled.g,
+      b: sampled.b,
+      a: sampled.a,
+      backdrop: backdrop,
+      sticky: sticky,
+      hasTint: !!document.getElementById('iosStickyTint'),
+      classes: Array.from(document.documentElement.classList),
+      headerH: rect.height,
+      headerTop: rect.top,
+      hoisted: document.documentElement.classList.contains('app-ios-header-hoisted'),
+      hasBack: !!back,
+      backDisplay: backCs ? backCs.display : '',
+      backVisibility: backCs ? backCs.visibility : '',
+      backOpacity: backCs ? Number(backCs.opacity) : 0,
+      backW: backRect ? backRect.width : 0,
+      backH: backRect ? backRect.height : 0,
+      backTop: backRect ? backRect.top : -1
+    };
+  });
+  if (!paint.hasHeader) {
+    fail(`${tag} shuiming_result missing white header`);
+  }
+  if (
+    !paint.hasBack ||
+    paint.backDisplay === 'none' ||
+    paint.backVisibility === 'hidden' ||
+    paint.backOpacity < 0.5 ||
+    paint.backW < 8 ||
+    paint.backH < 8
+  ) {
+    fail(
+      `${tag} shuiming_result missing back button: display=${paint.backDisplay} vis=${paint.backVisibility} op=${paint.backOpacity} ${paint.backW}x${paint.backH}`
+    );
+  }
+  if (paint.a < 0.99 || paint.r < 250 || paint.g < 250 || paint.b < 250) {
+    fail(`${tag} white header not opaque: bg=${paint.bg}`);
+  }
+  if (paint.classes.includes('platform-ios') && (!paint.sticky || !paint.hasTint)) {
+    fail(`${tag} iOS 27 missing sticky tint chrome sticky=${paint.sticky} tint=${paint.hasTint}`);
+  }
+  if (paint.backdrop && paint.backdrop !== 'none') {
+    fail(`${tag} white header still has backdrop-filter: ${paint.backdrop}`);
+  }
+  if (paint.classes.includes('platform-ios') && !paint.hoisted) {
+    fail(`${tag} iOS 27 header still inside page-root (not hoisted)`);
+  }
+  const expectOuter = !!(profile.expect && profile.expect.iosWebClipOuter);
+  if (expectOuter && !paint.classes.includes('app-ios-status-outer')) {
+    fail(`${tag} WebClip missing app-ios-status-outer: ${paint.classes.join(' ')}`);
+  }
+  if (expectOuter && paint.headerH > 56) {
+    fail(`${tag} WebClip header still padded as overlay: h=${paint.headerH}`);
+  }
+  log(
+    `${tag} ok ios white header opaque bg=${paint.bg} h=${paint.headerH} (H5 only; Chromium cannot see iOS Liquid Glass)`
   );
 }
 

@@ -144,6 +144,39 @@ var CORE_MODELS = [
     ]
   },
   {
+    id: 'iphone-14-promax',
+    platform: 'ios',
+    family: 'apple',
+    label: 'iPhone 14 Pro Max',
+    match: ['iPhone\\s*14\\s*Pro\\s*Max', 'iPhone15,3'],
+    issues: [
+      {
+        page: 'shouye',
+        title: '通知条字号放大',
+        summary: '430 大屏上 a1 通知条 16px 偏小，提到 18px/500。',
+        since: '2026-09-16'
+      },
+      {
+        page: 'shuiming',
+        title: '大屏正文字号放大',
+        summary: '收入纳税明细默认 14–16px 偏小，对齐 16 Pro Max 放大。',
+        since: '2026-09-16'
+      },
+      {
+        page: 'mine',
+        title: '我的页叠字与胶囊错位',
+        summary: '430 大屏姓名/税号偏小，添加/暂无胶囊压住家庭成员三宫格，按画布实测 rpx 并加大胶囊。',
+        since: '2026-09-17'
+      },
+      {
+        page: 'login',
+        title: '登录页字号与表单过窄',
+        summary: '按 375 设计的 15–17px / 343 宽在 14 Pro Max 上显小，标题 20px、输入 17px、表单拉到 390。',
+        since: '2026-09-17'
+      }
+    ]
+  },
+  {
     id: 'iphone-15',
     platform: 'ios',
     family: 'apple',

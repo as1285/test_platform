@@ -2864,6 +2864,9 @@ function initConsultRecordsUx() {
         manageBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             closeBatchTaxMoreMenu();
+            if (typeof window.setTaxRecordsSettingsOpen === 'function') {
+                window.setTaxRecordsSettingsOpen(false);
+            }
             if (typeof window.toggleTaxRecordsManageMode === 'function') {
                 window.toggleTaxRecordsManageMode();
                 return;
@@ -3412,7 +3415,10 @@ function parseOneBatchEmpRow(row, rowIdx) {
             return { ok: false, error: '第 ' + seg + ' 段第 ' + (bi + 1) + ' 笔年终奖归属年度不合法（须为 2000–2100）' };
         }
         var bonusYmKey = bonusItem.year + '-' + bonusItem.month;
-        if (bonusYmSeen[bonusYmKey]) {
+        if (
+            bonusYmSeen[bonusYmKey] &&
+            !(typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords())
+        ) {
             return {
                 ok: false,
                 error: '第 ' + seg + ' 段有两笔年终奖同属 ' + bonusItem.year + ' 年 ' + bonusItem.month + ' 月，请改成不同月份'
@@ -3433,7 +3439,10 @@ function parseOneBatchEmpRow(row, rowIdx) {
             return { ok: false, error: '第 ' + seg + ' 段第 ' + (si + 1) + ' 笔裁员补偿归属年度不合法（须为 2000–2100）' };
         }
         var severanceYmKey = severanceItem.year + '-' + severanceItem.month;
-        if (severanceYmSeen[severanceYmKey]) {
+        if (
+            severanceYmSeen[severanceYmKey] &&
+            !(typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords())
+        ) {
             return {
                 ok: false,
                 error: '第 ' + seg + ' 段有两笔裁员补偿同属 ' + severanceItem.year + ' 年 ' + severanceItem.month + ' 月，请改成不同月份'
@@ -3518,7 +3527,10 @@ function parseBatchEmploymentsFromDom() {
         for (fi = 0; fi < filled.length; fi++) {
             var fb = filled[fi];
             var companyYm = empCheck.company + '|' + fb.year + '|' + fb.month;
-            if (companyBonusYm[companyYm]) {
+            if (
+                companyBonusYm[companyYm] &&
+                !(typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords())
+            ) {
                 return {
                     ok: false,
                     employments: [],
@@ -3543,7 +3555,10 @@ function parseBatchEmploymentsFromDom() {
         for (sj = 0; sj < filledSev.length; sj++) {
             var fs = filledSev[sj];
             var companySevYm = empSev.company + '|' + fs.year + '|' + fs.month;
-            if (companySeveranceYm[companySevYm]) {
+            if (
+                companySeveranceYm[companySevYm] &&
+                !(typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords())
+            ) {
                 return {
                     ok: false,
                     employments: [],
@@ -5090,6 +5105,8 @@ function batchEmpRandomSalaryInRange(minV, maxV) {
     return round2(lo + Math.random() * (hi - lo));
 }
 
+var _batchSalaryIdSeq = 0;
+
 /** 由写入项构建一条正常工资薪金 record。 */
 function buildBatchSalaryRecord(w, base, uidKey) {
     var o = JSON.parse(JSON.stringify(base));
@@ -5101,6 +5118,10 @@ function buildBatchSalaryRecord(w, base, uidKey) {
     o.tax_period = taxPeriodFromYearMonth(w.year, w.month);
     o.report_date = reportDateOneMonthAfterBelonging(w.year, w.month, 15);
     o.id = 'tr_' + uidKey + '_' + w.year + '_' + pad2(w.month) + '_e' + w.empIdx;
+    if (typeof window.isAllowSameMonthTaxRecords === 'function' && window.isAllowSameMonthTaxRecords()) {
+        _batchSalaryIdSeq += 1;
+        o.id += '_m' + _batchSalaryIdSeq;
+    }
     var inc = round2(w.salary);
     o.income = String(inc);
     o.income_this_period = String(inc);

@@ -11,8 +11,8 @@ describe('注册用户列表可保存激活金额', () => {
     expect(html).toContain('激活金额');
     expect(html).toContain('id="userActivateCreditAmount"');
     expect(html).toContain('按注册用户列表填写的');
-    expect(html).toContain('admin_panel.js?v=20260915-subadmin-codes');
-    expect(html).toContain('admin_panel.css?v=20260910-bid-toast');
+    expect(html).toContain('admin_panel.js?v=20260907-abc-ops');
+    expect(html).toContain('admin_panel.css?v=20260907-abc-ops');
     expect(panel).toContain("key !== 'Enter'");
     expect(panel).not.toContain('btn-user-credit-save');
     expect(html).toContain('线上已付开通会自动带出实收');

@@ -68,13 +68,27 @@
                             'max(59px, env(safe-area-inset-top, 59px))'
                         );
                     }
+                    if (
+                        /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(u) ||
+                        (shortSide >= 428 &&
+                            shortSide <= 432 &&
+                            longSide >= 928 &&
+                            longSide <= 936 &&
+                            !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(
+                                u
+                            ))
+                    ) {
+                        document.documentElement.classList.add('app-ios-iphone14promax');
+                        document.documentElement.classList.add('app-ios-iphone-promax-font');
+                        document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
+                    }
                 }
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260906-login-top"></script>
     <script src="/js/auth-boot.js?v=20260902-ip16pm-login"></script>
-    <script src="/js/auth.js?v=20260905-agent-reg2" defer></script>
+    <script src="/js/auth.js?v=20260917-iphone14pm-ui" defer></script>
     <script src="/js/browser-install-prompt.js?v=20260827-cend-sync" defer></script>
     <title>登录</title>
     <style>
@@ -728,6 +742,48 @@
             line-height: 1;
             padding: 0 0 0 8px;
             cursor: pointer;
+        }
+        html.app-ios-iphone14promax body.page-login {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html.app-ios-iphone14promax body.page-login .header-title {
+            font-size: 20px;
+            line-height: 26px;
+        }
+        html.app-ios-iphone14promax body.page-login .back-btn {
+            font-size: 17px;
+        }
+        html.app-ios-iphone14promax body.page-login .form-label,
+        html.app-ios-iphone14promax body.page-login .form-input {
+            font-size: 17px;
+            line-height: 24px;
+        }
+        html.app-ios-iphone14promax body.page-login .form-section,
+        html.app-ios-iphone14promax body.page-login .slider-section,
+        html.app-ios-iphone14promax body.page-login .login-aux,
+        html.app-ios-iphone14promax body.page-login .btn-section,
+        html.app-ios-iphone14promax body.page-login .other-login-section {
+            max-width: 390px;
+        }
+        html.app-ios-iphone14promax body.page-login .login-btn,
+        html.app-ios-iphone14promax body.page-login .register-btn {
+            font-size: 18px;
+            height: 50px;
+        }
+        html.app-ios-iphone14promax body.page-login .slider-hint {
+            font-size: 17px;
+        }
+        html.app-ios-iphone14promax body.page-login .login-aux {
+            font-size: 16px;
+        }
+        html.app-ios-iphone14promax body.page-login .other-login-divider {
+            font-size: 14px;
+        }
+        html.app-ios-iphone14promax body.page-login .other-login-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 12px;
         }
     </style>
 </head>

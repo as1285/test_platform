@@ -475,6 +475,41 @@ html.app-ios-iphone15promax .container {
 #taxRecordsListCard.is-managing .tax-records-manage-toolbar:not([hidden]) {
     display: flex;
 }
+#taxRecordsListCard .tax-records-settings-panel {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 10px;
+    background: var(--color-surface-alt);
+}
+#taxRecordsListCard .tax-records-settings-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+#taxRecordsListCard .tax-records-settings-check input {
+    margin-top: 3px;
+}
+#taxRecordsListCard .tax-records-settings-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+}
+#taxRecordsListCard .tax-records-settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+#taxRecordsListCard #btnTaxRecordsSettings.is-active {
+    color: var(--color-primary);
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-bg);
+}
 #taxRecordsListCard .tax-records-manage-toolbar .batch-tax-more-item {
     flex: 1 1 auto;
     text-align: center;
