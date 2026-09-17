@@ -94,6 +94,7 @@ describe('纳税记录生成不再弹替换完税二维码', () => {
   it('源码去掉拦截弹框文案与生成按钮 capture 拦截', () => {
     expect(najiluHtml).toContain('id="generateBtn"');
     expect(najiluHtml).not.toContain('id="najiluQrReplaceLink"');
+    expect(najiluJs).toContain('function removeQrReplaceHeaderLink');
     expect(najiluJs).not.toContain('请先替换完税二维码');
     expect(najiluJs).not.toContain('建议先替换完税二维码');
     expect(najiluJs).not.toContain('najilu-qr-guide-root');

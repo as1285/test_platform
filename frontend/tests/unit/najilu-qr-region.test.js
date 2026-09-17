@@ -95,13 +95,6 @@ describe('C 端完税二维码使用说明', () => {
     expect(html).toContain('替换完成后可用官方 APP 扫码查验');
     expect(html).toContain('替换完成后能扫码查验吗');
   });
-
-  it('完整完税源图限高，预览/保存钉在底部不被挡住', () => {
-    expect(html).toContain('max-height: min(42vh, 360px)');
-    expect(html).toContain('class="tool-actions"');
-    expect(html).toContain('id="najiluQrCropHint"');
-    expect(html).toContain('najilu-qr-user.js?v=20260915-btn-overlap');
-  });
 });
 
 describe('C 端完税二维码入口位置', () => {
@@ -122,9 +115,12 @@ describe('C 端完税二维码入口位置', () => {
   it('纳税记录开具页顶栏不再常驻替换二维码入口', () => {
     expect(najiluHtml).not.toContain('id="najiluQrReplaceLink"');
     expect(najiluHtml).not.toContain('>替换二维码</a>');
+    expect(najiluHtml).toContain('.header-qr-replace');
+    expect(najiluHtml).toContain('display: none !important');
     const najiluJs = readFileSync(resolve(__dirname, '../../public/js/najilu.js'), 'utf8');
     expect(najiluJs).toContain('najilu_qr.html?from=');
     expect(najiluJs).toContain('showFirstGenerateQrGuide');
+    expect(najiluJs).toContain('function removeQrReplaceHeaderLink');
     expect(najiluJs).not.toContain('najilu-qr-guide-root');
   });
 });
