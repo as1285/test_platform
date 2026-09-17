@@ -211,6 +211,7 @@ https://www.installguide1.top/
 - **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
 - **热备保留**：**48 小时**、最多 **36** 份（可用 `RETAIN_HOURS` / `MAX_BACKUPS` 覆盖）
 - **日备 / 周备 / uploads**：`./scripts/sync-backup-offsite.sh`（日备 14 天、周备 8 周；配置 `COS_*` 后异地上传）
+- **`.env` 封机备份**：`./scripts/backup-env.sh`（AES-256 密文寄告警邮箱；口令在 `/root/.env-backup-passphrase`，须另存离机）。恢复见 [`docs/env-recovery.md`](docs/env-recovery.md)
 - GitHub Actions 远端每日备份已取消
 
 > 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。
@@ -277,6 +278,7 @@ npm start
 git clone git@github.com:as1285/test_platform.git
 cd test_platform
 git checkout lkj
+# 有邮箱密文时：./scripts/restore-env.sh ~/env-xxxx.enc .env
 cp .env.example .env
 # 编辑 PUBLIC_SITE_URL / APP_URL / DEPLOY_BRANCH=lkj
 ./scripts/deploy.sh

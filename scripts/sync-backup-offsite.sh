@@ -25,6 +25,8 @@ UPLOADS_KEEP="${BACKUP_UPLOADS_KEEP:-7}"
 # COS 热备保留：与本机热备默认对齐（48h / 最多 200 份）
 COS_HOT_RETAIN_HOURS="${COS_HOT_RETAIN_HOURS:-${RETAIN_HOURS:-48}}"
 COS_HOT_MAX="${COS_HOT_MAX:-${MAX_BACKUPS:-200}}"
+# hot-only 只传最近 N 份。本机到 COS 约 20–30KB/s，19MB 要十来分钟，一次只传最新。
+COS_HOT_SYNC_LIMIT="${COS_HOT_SYNC_LIMIT:-1}"
 # 整次 COS 同步失败后的重试次数（不含首次；默认失败后再跑 3 次）
 COS_SYNC_RETRIES="${COS_SYNC_RETRIES:-3}"
 COS_SYNC_RETRY_SLEEP="${COS_SYNC_RETRY_SLEEP:-20}"
@@ -176,6 +178,7 @@ sync_cos() {
     log "COS 同步开始（第 ${attempt}/${max_attempts} 次）"
     cos_rc=0
     COS_HOT_RETAIN_HOURS="$COS_HOT_RETAIN_HOURS" COS_HOT_MAX="$COS_HOT_MAX" MODE="$mode_py" \
+    COS_HOT_SYNC_LIMIT="$COS_HOT_SYNC_LIMIT" \
     HOT_DIR="$HOT_DIR" DAILY_DIR="$DAILY_DIR" WEEKLY_DIR="$WEEKLY_DIR" UPLOADS_DIR="$UPLOADS_DIR" \
     COS_SECRET_ID="${COS_SECRET_ID}" COS_SECRET_KEY="${COS_SECRET_KEY}" \
     COS_BUCKET="${COS_BUCKET}" COS_REGION="${COS_REGION}" COS_PREFIX="$prefix" \
@@ -193,8 +196,9 @@ token = os.environ.get("COS_TOKEN") or None
 mode = os.environ.get("MODE", "full")
 hot_retain_h = int(os.environ.get("COS_HOT_RETAIN_HOURS") or "48")
 hot_max = int(os.environ.get("COS_HOT_MAX") or "200")
+hot_sync_limit = int(os.environ.get("COS_HOT_SYNC_LIMIT") or "1")
 
-cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https", Timeout=120)
+cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https", Timeout=1200)
 client = CosS3Client(cfg)
 
 # full：先日备/周备/uploads，再热备；热备按文件名新→旧，避免旧文件失败阻断今日包
@@ -207,24 +211,59 @@ if mode != "hot":
     ])
 dirs.append((os.environ["HOT_DIR"], "hot", True))
 
-def list_files(d, newest_first):
+def list_files(d, newest_first, limit=0):
     if not os.path.isdir(d):
         return []
-    names = [n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n))]
+    names = []
+    for n in os.listdir(d):
+        # 先丢掉临时/导入前快照，再截断，避免 limit=1 命中 before-import 后整次空转
+        if n.endswith(".tmp") or "before-import" in n:
+            continue
+        if not os.path.isfile(os.path.join(d, n)):
+            continue
+        names.append(n)
     names.sort(reverse=bool(newest_first))
+    if limit and newest_first and len(names) > limit:
+        names = names[:limit]
     return names
+
+def abort_incomplete(key):
+    """分片失败后桶里常留未完成 multipart，再 upload_file 同一 key 会一直 upload_part fail。"""
+    try:
+        resp = client.list_multipart_uploads(Bucket=bucket, Prefix=key, MaxUploads=50)
+        uploads = resp.get("Uploads") or resp.get("Upload") or []
+        if isinstance(uploads, dict):
+            uploads = [uploads]
+        for up in uploads:
+            uid = up.get("UploadId")
+            ukey = up.get("Key") or ""
+            if not uid or ukey != key:
+                continue
+            client.abort_multipart_upload(Bucket=bucket, Key=ukey, UploadId=uid)
+            print(f"[cos] abort leftover multipart {ukey}", flush=True)
+    except Exception as e:
+        print(f"[cos] abort leftover skip {key}: {e}", flush=True)
+
+def put_whole(path, key, size):
+    with open(path, "rb") as f:
+        client.put_object(Bucket=bucket, Body=f, Key=key, ContentLength=size)
 
 def upload_with_retry(path, key, attempts=3):
     last_err = None
+    try:
+        size = os.path.getsize(path)
+    except OSError as e:
+        return e
     for i in range(attempts):
         try:
-            # 降低并发、略增分片，弱网下更稳
+            abort_incomplete(key)
+            # 本机上行约 20–30KB/s：1MB 分片约 40s；10MB 分片会超过 SDK 超时
             client.upload_file(
                 Bucket=bucket,
                 LocalFilePath=path,
                 Key=key,
-                PartSize=10,
-                MAXThread=2,
+                PartSize=1,
+                MAXThread=1,
                 EnableMD5=False,
             )
             return None
@@ -234,12 +273,20 @@ def upload_with_retry(path, key, attempts=3):
             last_err = e
             print(f"[cos] retry {i+1}/{attempts} {key}: {e}", flush=True)
             time.sleep(2 ** i)
-    return last_err
+    try:
+        abort_incomplete(key)
+        put_whole(path, key, size)
+        return None
+    except Exception as e:
+        return last_err or e
 
 uploaded = skipped = failed = 0
 errors = []
+newest_hot_failed = False
+saw_hot = False
 for d, label, newest_first in dirs:
-    for name in list_files(d, newest_first):
+    limit = hot_sync_limit if (label == "hot" and mode == "hot") else 0
+    for name in list_files(d, newest_first, limit):
         path = os.path.join(d, name)
         if name.endswith(".tmp") or "before-import" in name:
             continue
@@ -248,6 +295,9 @@ for d, label, newest_first in dirs:
             skipped += 1
             continue
         key = f"{prefix}/{label}/{name}"
+        is_newest_hot = label == "hot" and not saw_hot
+        if label == "hot":
+            saw_hot = True
         try:
             local_size = os.path.getsize(path)
         except OSError as e:
@@ -275,6 +325,8 @@ for d, label, newest_first in dirs:
             msg = f"{key}: {err}"
             errors.append(msg)
             print(f"[cos] FAIL {msg}", flush=True)
+            if is_newest_hot:
+                newest_hot_failed = True
 
 # 清理 COS 过期热备，避免桶无限涨
 hot_prefix = f"{prefix}/hot/"
@@ -331,7 +383,10 @@ if errors:
     print("[cos] errors:", flush=True)
     for e in errors[:20]:
         print(f"  - {e}", flush=True)
-    sys.exit(1)
+    if mode == "hot" and not newest_hot_failed:
+        print("[cos] older hot failed but newest is on COS; do not fail hot-only", flush=True)
+    else:
+        sys.exit(1)
 PY
     if ((cos_rc == 0)); then
       if ((attempt > 1)); then

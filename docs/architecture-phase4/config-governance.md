@@ -20,6 +20,10 @@
 
 `upsertAppSetting` / `classifySettingKey` 会拒绝密钥类键名（含 `password`/`token`/`private_key`/`api_key` 等模式）。
 
+## 封机后密钥不可取回
+
+生产 `.env` 禁止进 git。源站被封时本机文件一起没。用 `scripts/backup-env.sh` 把 **AES-256 密文**寄到告警邮箱（可选再上 COS `…/env/`）；解密口令只放在 `/root/.env-backup-passphrase` 和你自己的密码管理器。恢复步骤见 [`docs/env-recovery.md`](../env-recovery.md)。
+
 ## 明文密码（用户表）
 
 与 `app_settings` 无关：`users.plain_password` 由 `REGISTER_STORE_PLAIN_PASSWORD` 控制。  

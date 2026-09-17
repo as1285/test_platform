@@ -5,10 +5,15 @@
 ```bash
 git clone -b lkj git@github.com:as1285/test_platform.git
 cd test_platform
+# 新机优先从邮箱密文恢复，不要只靠手抄：
+#   ./scripts/restore-env.sh ~/env-YYYYMMDD-HHMMSS.enc .env
+# 没有密文时才：
 cp .env.example .env
 # 编辑 PUBLIC_SITE_URL / APP_URL，例如 https://lkj.qiyun888.top
 ./scripts/deploy.sh
 ```
+
+封机后密钥恢复见 [`docs/env-recovery.md`](../docs/env-recovery.md)。
 
 ## Docker 国内加速（推荐）
 

@@ -53,4 +53,5 @@ personal_tax.sql
 data/db-backups-daily/
 data/db-backups-weekly/
 data/uploads-backups/
+data/env-backups/
 data/.admin_creds_local
