@@ -43,6 +43,7 @@
     <plugin name="cordova-clipboard" spec="^1.3.0" />
     <hook type="after_prepare" src="hooks/after_prepare/10-fullscreen-splash.js" />
     <hook type="after_prepare" src="hooks/after_prepare/20-tax-file-bridge.js" />
+    <hook type="after_prepare" src="hooks/after_prepare/30-ios-liquid-glass-compat.js" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
         <!-- 桌面图标：按密度使用真实尺寸，避免全密度塞入 1024 导致包体过大 / 系统缩放发虚 -->
@@ -82,6 +83,10 @@
     </platform>
 
     <platform name="ios">
+        <!-- iOS 26/27：退出 Liquid Glass，否则白顶页状态栏会一直采样 WebView 发糊 -->
+        <config-file target="*-Info.plist" parent="UIDesignRequiresCompatibility">
+            <true />
+        </config-file>
         <icon height="20" src="res/icon/ios/icon-20.png" width="20" />
         <icon height="40" src="res/icon/ios/icon-20@2x.png" width="40" />
         <icon height="60" src="res/icon/ios/icon-20@3x.png" width="60" />

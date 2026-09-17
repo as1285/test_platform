@@ -47,6 +47,18 @@
             height: 100%;
             display: block;
         }
+        /* 父文档实底顶垫：盖住 iOS 26 毛玻璃采样区（iframe 里的白底采不到） */
+        #iosStatusPlate {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: calc(env(safe-area-inset-top, 59px) + 18px);
+            background: #fff;
+            z-index: 2147483646;
+            pointer-events: none;
+        }
         html.app-huawei-pura70-shell #app-frame {
             width: 100vw;
             max-width: 100%;
@@ -57,6 +69,7 @@
     <div id="startPage" aria-hidden="false">
         <img src="start.png" alt="启动图" fetchpriority="high" decoding="sync">
     </div>
+    <div id="iosStatusPlate" aria-hidden="true"></div>
     <div id="main"></div>
     <script src="distribution-config.js"></script>
     <script>
@@ -490,54 +503,37 @@
                 false
             );
 
-            function isColorOsShell() {
-                var ua = navigator.userAgent || '';
-                return /OPPO|Oppo|ColorOS|HeyTap|OnePlus|realme|PHW110|CPH2531|CPH2525|PFGM00/i.test(ua);
-            }
-
-            /*
-             * ColorOS 15（Reno10 等）：file:// 壳立刻挂 https iframe 时，
-             * WebView 常把父页判成加载失败，弹出
-             * Application Error … file:///android_asset/www/index.html。
-             * 等首帧后再挂 iframe；失败则只重挂一次，勿让壳弹系统框卡死。
-             */
-            var iframeRetries = 0;
-            function mountAppWhenShellReady() {
-                function go() {
-                    mountApp();
-                    var f = document.getElementById('app-frame');
-                    if (f && !f.getAttribute('data-shell-error-bound')) {
-                        f.setAttribute('data-shell-error-bound', '1');
-                        f.addEventListener('error', function () {
-                            if (iframeRetries >= 1) return;
-                            iframeRetries += 1;
-                            try {
-                                f.removeAttribute('data-shell-error-bound');
-                                if (f.parentNode) f.parentNode.removeChild(f);
-                            } catch (eRm) {}
-                            setTimeout(mountAppWhenShellReady, 400);
-                        });
-                    }
-                }
-                if (isColorOsShell()) {
-                    requestAnimationFrame(function () {
-                        setTimeout(go, 80);
-                    });
-                    return;
-                }
-                go();
-            }
-
-            mountAppWhenShellReady();
+            mountApp();
             hideNativeSplash();
             setTimeout(function () {
                 hideStartShowMain();
                 hideNativeSplash();
             }, START_PAGE_MS);
 
+            var pendingStatusBar = null;
+
+            function paintParentStatusPlate(d) {
+                var plate = document.getElementById('iosStatusPlate');
+                if (!plate) {
+                    return;
+                }
+                var styleDefault = d && (d.style === 'default' || d.style === 'dark');
+                /* iOS 26 可能无视 overlays:false，白顶页一律在父文档铺实底白，
+                 * 让系统毛玻璃采到白而不是 iframe 灰底 */
+                if (styleDefault) {
+                    plate.style.display = 'block';
+                    plate.style.background = '#ffffff';
+                    return;
+                }
+                plate.style.display = 'none';
+            }
+
             document.addEventListener('deviceready', function () {
                 hideNativeSplash();
                 if (!window.StatusBar) {
+                    if (pendingStatusBar) {
+                        paintParentStatusPlate(pendingStatusBar);
+                    }
                     return;
                 }
                 if (isHuaweiPura70Shell()) {
@@ -552,23 +548,26 @@
                     StatusBar.styleLightContent();
                     return;
                 }
+                if (pendingStatusBar) {
+                    applyStatusBarFromH5(pendingStatusBar);
+                    return;
+                }
                 /* 对齐 8/1：默认透明沉浸，由 H5 蓝顶页再染顶色；勿默认实底黑 */
                 StatusBar.overlaysWebView(true);
                 StatusBar.backgroundColorByHexString('#00000000');
                 StatusBar.styleDefault();
             });
 
-            /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default。
-             * StatusBar 可用顶栏蓝；壳层 html/body/iframe 底色用 shell_bg（默认浅灰），
-             * 切勿用顶栏蓝整页铺色，否则 iOS Home Indicator 区域露蓝。 */
-            window.addEventListener('message', function (ev) {
-                var d = ev && ev.data;
+            function applyStatusBarFromH5(d) {
                 if (!d || d.source !== 'tax-h5' || d.type !== 'status-bar') {
                     return;
                 }
+                paintParentStatusPlate(d);
                 if (!window.StatusBar) {
+                    pendingStatusBar = d;
                     return;
                 }
+                pendingStatusBar = null;
                 try {
                     var styleDefault =
                         d.style === 'default' || d.style === 'dark';
@@ -640,6 +639,17 @@
                         }
                     }
                 } catch (eSbMsg) {}
+            }
+
+            /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default。
+             * StatusBar 可用顶栏蓝；壳层 html/body/iframe 底色用 shell_bg（默认浅灰），
+             * 切勿用顶栏蓝整页铺色，否则 iOS Home Indicator 区域露蓝。 */
+            window.addEventListener('message', function (ev) {
+                var d = ev && ev.data;
+                if (!d || d.source !== 'tax-h5' || d.type !== 'status-bar') {
+                    return;
+                }
+                applyStatusBarFromH5(d);
             });
         })();
     </script>
