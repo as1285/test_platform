@@ -691,7 +691,7 @@
       looksJs = false;
     if (looksJsNew) looksJs = false;
     var looksBj = !!(
-      /北京市社会保险|个人权益记录|查询流水号|查询时间段|补充资料|校验码|朝阳区社会保险|海淀区社会保险|fuwu\.rsj\.beijing/.test(
+      /北京市社会保险|个人权益记录|查询流水号|查询时间段|查询日期|补充资料|校验码|趸缴|本息合计|朝阳区社会保险|海淀区社会保险|fuwu\.rsj\.beijing/.test(
         text
       ) ||
       (/北京/.test(text) &&

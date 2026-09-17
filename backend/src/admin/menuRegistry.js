@@ -133,7 +133,9 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'payment-orders',
     order: 55,
-    alias_menus: ['analytics-purchase', 'ops-board', 'codes'],
+    super_only: true,
+    assignable: false,
+    strict_hub_tab: true,
     nav_hidden: true
   },
 
@@ -573,7 +575,7 @@ const ADMIN_HUB_DEFS = {
       { id: 'ads-data', label: '广告数据', page: 'ops-ad-analytics' },
       { id: 'ads-reach', label: '广告触达', page: 'ops-ad-analytics' },
       { id: 'codes', label: '激活码', page: 'codes' },
-      { id: 'orders', label: '订单检索', page: 'payment-orders' },
+      { id: 'orders', label: '订单检索', page: 'payment-orders', super_only: true },
       { id: 'abc', label: 'ABC渠道', page: 'abc-ops' }
     ]
   },
@@ -691,6 +693,39 @@ const REQUIRED_SUBADMIN_MENU_KEYS = (function () {
 
 function getRequiredSubadminMenuKeys() {
   return REQUIRED_SUBADMIN_MENU_KEYS.slice();
+}
+
+/** 仅超管可持有的菜单键 */
+function getSuperOnlyMenuKeys() {
+  var seen = Object.create(null);
+  var out = [];
+  for (var i = 0; i < ADMIN_PAGE_DEFS.length; i++) {
+    var d = ADMIN_PAGE_DEFS[i];
+    if (!d || !d.super_only) continue;
+    var k = d.menu_key;
+    if (!k || seen[k]) continue;
+    seen[k] = 1;
+    out.push(k);
+  }
+  return out;
+}
+
+/** 子管理员菜单去掉超管专属项 */
+function stripSuperOnlyMenus(rawMenus) {
+  var deny = Object.create(null);
+  getSuperOnlyMenuKeys().forEach(function (k) {
+    deny[k] = 1;
+  });
+  var src = Array.isArray(rawMenus) ? rawMenus : [];
+  var out = [];
+  var seen = Object.create(null);
+  src.forEach(function (m) {
+    var key = String(m || '').trim();
+    if (!key || deny[key] || seen[key]) return;
+    seen[key] = 1;
+    out.push(key);
+  });
+  return out;
 }
 
 /** 子管理员菜单列表补上必带权限 */
@@ -969,7 +1004,7 @@ function firstAllowedPage(admin) {
 function buildAdminSessionPayload(admin) {
   var sessionMenus = Array.isArray(admin.menus) ? admin.menus.slice() : [];
   if (!(admin && admin.is_super)) {
-    sessionMenus = ensureRequiredSubadminMenus(sessionMenus);
+    sessionMenus = stripSuperOnlyMenus(ensureRequiredSubadminMenus(sessionMenus));
   }
   var viewAdmin = Object.assign({}, admin, { menus: sessionMenus });
   var built = buildMenuTreeForAdmin(viewAdmin);
@@ -1001,6 +1036,8 @@ module.exports = {
   ADMIN_MENU_LABELS,
   REQUIRED_SUBADMIN_MENU_KEYS,
   getRequiredSubadminMenuKeys,
+  getSuperOnlyMenuKeys,
+  stripSuperOnlyMenus,
   ensureRequiredSubadminMenus,
   getAssignableMenuDefs,
   parseAdminRoute,

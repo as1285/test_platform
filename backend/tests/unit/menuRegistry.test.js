@@ -8,6 +8,7 @@ const {
   firstAllowedPage,
   getAssignableMenuDefs,
   parseAdminRoute,
+  stripSuperOnlyMenus,
   ADMIN_MENU_GROUPS,
   ADMIN_PAGE_DEFS,
   ADMIN_HUB_DEFS
@@ -172,6 +173,23 @@ describe('menuRegistry', () => {
     const subTree = buildMenuTreeForAdmin(sub);
     expect(subTree.menu_tree.map((g) => g.id)).not.toContain('ops-desk');
     expect(subTree.pages.map((p) => p.page)).not.toContain('user-emails');
+  });
+
+  it('订单检索仅超管，子账号即使库里有权限也看不到', () => {
+    const def = getPageDef('payment-orders');
+    expect(def.super_only).toBe(true);
+    expect(def.assignable).toBe(false);
+    expect(def.strict_hub_tab).toBe(true);
+    expect(def.alias_menus).toBeFalsy();
+    expect(
+      adminProfileCanAccessPage(
+        { is_super: false, menus: ['payment-orders', 'codes', 'ops-board', 'analytics-purchase'] },
+        'payment-orders'
+      )
+    ).toBe(false);
+    expect(adminProfileCanAccessPage({ is_super: true, menus: [] }, 'payment-orders')).toBe(true);
+    expect(stripSuperOnlyMenus(['users', 'codes', 'payment-orders'])).toEqual(['users', 'codes']);
+    expect(getAssignableMenuDefs().map((d) => d.key)).not.toContain('payment-orders');
   });
 
   it('guest-users and activated-user-analysis are removed from menu', () => {

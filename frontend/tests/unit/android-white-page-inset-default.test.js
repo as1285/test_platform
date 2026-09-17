@@ -59,7 +59,7 @@ describe('Android white-page default immersive inset', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html).toContain('auth-boot.js?v=20260909-android-statusbar-sep1');
       expect(html).toMatch(
-        /auth\.js\?v=202609(?:09-android-aug1-blue|10-mi13u-listtitle|15-s15-white|16-iphone15-opaque|16-iphone15-plate|16-iphone15-outer|16-iphone14pm-font|16-webclip-outer|16-webclip-plate|16-webclip-back|16-ios27-back|16-ios27-sticky|17-ios27-line|17-ios27-pad|17-iphone12-first|17-ios27-seam)/
+        /auth\.js\?v=202609(?:09-android-aug1-blue|10-mi13u-listtitle|15-s15-white|16-iphone15-opaque|16-iphone15-plate|16-iphone15-outer|16-iphone14pm-font|16-webclip-outer|16-webclip-plate|16-webclip-back|16-ios27-back|16-ios27-sticky|17-ios27-line|17-ios27-pad|17-iphone12-first|17-ios27-seam|17-ios27-unify|17-ios27-island|17-ios27-resume|17-ios27-cover|17-ios27-flow)/
       );
     });
   });

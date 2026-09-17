@@ -637,21 +637,26 @@ function bjDistrictCode(area) {
   return '105';
 }
 
+function bjAgencyOrg(area) {
+  var a = String(area || '');
+  if (/事业管理中心/.test(a)) return '社会保险事业管理中心';
+  if (/基金管理中心/.test(a) && !/事业/.test(a)) return '社会保险基金管理中心';
+  if (/顺义|昌平/.test(a)) return '社会保险事业管理中心';
+  return '社会保险基金管理中心';
+}
+
 function bjAgencyName(area) {
   var a = String(area || '').trim();
-  if (/社会保险基金管理中心/.test(a)) return a.substring(0, 40);
+  if (/社会保险(基金|事业)管理中心/.test(a)) return a.substring(0, 40);
   var dist = a.replace(/^北京市/, '').replace(/市$/, '').trim();
   if (/区|县/.test(dist)) {
-    return ('北京市' + dist + '社会保险基金管理中心').substring(0, 40);
+    return ('北京市' + dist + bjAgencyOrg(dist)).substring(0, 40);
   }
   return '北京市朝阳区社会保险基金管理中心';
 }
 
 function bjDistrictLabel(area) {
-  var a = String(area || '').trim();
-  a = a.replace(/社会保险基金管理中心$/, '').replace(/^北京市/, '').replace(/市$/, '').trim();
-  if (/区|县/.test(a)) return ('北京市' + a).substring(0, 16);
-  return '北京市朝阳区';
+  return bjAgencyName(area);
 }
 
 function formatYmCnRange(startYm, endYm) {
@@ -674,6 +679,13 @@ function formatYearsMonths(totalMonths) {
   var y = Math.floor(n / 12);
   var m = n % 12;
   return y + '年' + pad2(m) + '个月';
+}
+
+function formatYearsMonths00(totalMonths) {
+  var n = Math.max(0, parseInt(totalMonths, 10) || 0);
+  var y = Math.floor(n / 12);
+  var m = n % 12;
+  return pad2(y) + '年' + pad2(m) + '个月';
 }
 
 function buildBjEmployerChanges(body, periodStart, periodEnd, company, area) {
@@ -757,13 +769,14 @@ function buildBjYearRows(periodStart, periodEnd, monthlyBase, iu) {
     var monthPay = bjEraMonthlyBase(y, monthlyBase);
     var unempMonthPay = bjEraMonthlyBase(y, unempMonthly);
     var injuryMonthPay = bjEraMonthlyBase(y, injuryMonthly);
-    var annualBase = round2(monthPay * 12);
-    var unempAnnual = round2(unempMonthPay * 12);
-    var injuryAnnual = round2(injuryMonthPay * 12);
+    var annualBase = round2(monthPay * n);
+    var unempAnnual = round2(unempMonthPay * n);
+    var injuryAnnual = round2(injuryMonthPay * n);
     var unempOn = y >= 1999;
     var injuryOn = y >= 2004;
     var medicalOn = y >= 2001;
     var maternityOn = y >= 2005;
+    var unempRate = y >= 2023 ? 0.005 : 0.002;
     var star = y < 2006;
     rows.push({
       label: (star ? '*' : '') + y + '-' + pad2(sm) + '至' + y + '-' + pad2(em),
@@ -776,12 +789,12 @@ function buildBjYearRows(periodStart, periodEnd, monthlyBase, iu) {
       pension_pay: round2(monthPay * 0.08 * n),
       unemp_months: unempOn ? n : 0,
       unemp_base: unempOn ? unempAnnual : 0,
-      unemp_pay: unempOn ? round2(unempMonthPay * 0.005 * n) : 0,
+      unemp_pay: unempOn ? round2(unempMonthPay * unempRate * n) : 0,
       injury_months: injuryOn ? n : 0,
       injury_base: injuryOn ? injuryAnnual : 0,
       medical_months: medicalOn ? n : 0,
       medical_base: medicalOn ? annualBase : 0,
-      medical_pay: medicalOn ? round2(monthPay * 0.02 * n) : 0,
+      medical_pay: medicalOn ? round2(monthPay * 0.02 * n + 3 * n) : 0,
       maternity_months: maternityOn ? n : 0,
       maternity_base: maternityOn ? annualBase : 0
     });
@@ -833,7 +846,7 @@ function normalizeBjPayload(body) {
   if (!listCompany && employers.length) {
     listCompany = employers[employers.length - 1].company_name;
   }
-  var headerCompany = employers.length > 1 ? '' : listCompany;
+  var headerCompany = listCompany;
   var serialArea = area;
   if (employers.length && employers[employers.length - 1].area) {
     serialArea = employers[employers.length - 1].area;
@@ -894,7 +907,7 @@ function normalizeBjPayload(body) {
     period_end: periodEnd,
     period_label: formatYmCnRange(periodStart, periodEnd),
     query_period_label: formatYmCnRange(periodStart, periodEnd),
-    query_date_label: printDate,
+    query_date_label: formatYmCnRange(periodStart, periodEnd),
     base_amount: baseAmt,
     injury_base: iuBases.injury_base,
     unemp_base: iuBases.unemp_base,
@@ -918,6 +931,12 @@ function normalizeBjPayload(body) {
     medical_total_months: extraMedical,
     pension_years_label: formatYearsMonths(extraPension),
     medical_years_label: formatYearsMonths(extraMedical),
+    pension_lump_label: formatYearsMonths00(
+      b.pension_lump_months != null ? b.pension_lump_months : b.pensionLumpMonths
+    ),
+    medical_lump_label: formatYearsMonths00(
+      b.medical_lump_months != null ? b.medical_lump_months : b.medicalLumpMonths
+    ),
     account_balance: accountBal,
     as_of_year: asOfYear
   };
@@ -5048,134 +5067,60 @@ function bjHtmlPay(n, months) {
   return x.toFixed(2);
 }
 
-function renderBjCertHtml(payload, links, opts) {
-  opts = opts || {};
-  var p = payload || {};
-  var employers = Array.isArray(p.employers) ? p.employers : [];
-  var yearRows = Array.isArray(p.year_rows) ? p.year_rows : [];
-  var totals = p.totals || {};
-  var empHtml = '';
-  employers.forEach(function (r) {
-    empHtml +=
-      '<tr><td>' +
-      escHtml(r.start_ym || '') +
-      '</td><td>' +
-      escHtml(r.end_ym || '') +
-      '</td><td>' +
-      escHtml(r.months || '') +
-      '</td><td class="cn">' +
-      escHtml(r.company_name || '') +
-      '</td><td class="cn">' +
-      escHtml(r.agency || '') +
-      '</td></tr>';
-  });
-  var yearHtml = '';
-  yearRows.forEach(function (r) {
-    yearHtml +=
-      '<tr><td class="l">' +
-      escHtml(r.label || '') +
-      '</td><td>' +
-      escHtml(r.pension_months || '') +
-      '</td><td>' +
-      escHtml(bjHtmlNum(r.pension_base, r.pension_months)) +
-      '</td><td>' +
-      escHtml(bjHtmlPay(r.pension_pay, r.pension_months)) +
-      '</td><td>' +
-      escHtml(r.unemp_months || '') +
-      '</td><td>' +
-      escHtml(bjHtmlNum(r.unemp_base, r.unemp_months)) +
-      '</td><td>' +
-      escHtml(bjHtmlPay(r.unemp_pay, r.unemp_months)) +
-      '</td><td>' +
-      escHtml(r.injury_months || '') +
-      '</td><td>' +
-      escHtml(bjHtmlNum(r.injury_base, r.injury_months)) +
-      '</td><td>' +
-      escHtml(r.medical_months || '') +
-      '</td><td>' +
-      escHtml(bjHtmlNum(r.medical_base, r.medical_months)) +
-      '</td><td>' +
-      escHtml(bjHtmlPay(r.medical_pay, r.medical_months)) +
-      '</td><td>' +
-      escHtml(r.maternity_months || '') +
-      '</td><td>' +
-      escHtml(bjHtmlNum(r.maternity_base, r.maternity_months)) +
-      '</td></tr>';
-  });
-  var headerBlock =
-    '<div class="seals">' +
-    '<img class="seal si" src="/img/sbdy_bj_si_seal.png" alt="">' +
-    '<img class="seal mi" src="/img/sbdy_bj_mi_seal.png" alt="">' +
-    '</div>' +
-    '<h1>北京市社会保险个人权益记录<br><span>（参保人员缴费信息）</span></h1>' +
-    '<div class="meta">' +
-    '<div><span class="k">参保人姓名</span>' +
-    escHtml(p.name || '') +
-    '</div>' +
-    '<div><span class="k">校验码</span>' +
-    escHtml(p.verify_code || '') +
-    '</div>' +
-    '<div><span class="k">社会保障号码</span>' +
-    escHtml(p.id_number || '') +
-    '</div>' +
-    '<div><span class="k">查询流水号</span>' +
-    escHtml(p.query_serial || opts.authCode || '') +
-    '</div>' +
-    '<div><span class="k">单位名称</span>' +
-    escHtml(p.header_company || '') +
-    '</div>' +
-    '<div><span class="k">查询日期</span>' +
-    escHtml(p.query_date_label || p.print_date || '') +
-    '</div>' +
-    '<div><span class="k">查询时间段</span>' +
-    escHtml(p.query_period_label || p.period_label || '') +
-    '</div>' +
-    '<div></div>' +
-    '</div>';
+function bjYearRowHtml(r) {
   return (
-    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>北京市社会保险个人权益记录（参保人员缴费信息）</title>' +
-    '<style>' +
-    '*{box-sizing:border-box}' +
-    'html,body{margin:0;padding:0;background:#fff}' +
-    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;' +
-    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-    '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
-    'padding:10mm 8mm 12mm;position:relative}' +
-    '.page+.page{page-break-before:always}' +
-    'h1{margin:2mm 28mm 4mm;text-align:center;font-size:16pt;font-weight:700;line-height:1.35}' +
-    'h1 span{font-size:13pt;font-weight:700}' +
-    '.seals{position:absolute;left:8mm;right:8mm;top:6mm;height:28mm;pointer-events:none}' +
-    '.seal{position:absolute;width:26mm;height:26mm;opacity:.92}' +
-    '.seal.si{left:8mm;top:0}' +
-    '.seal.mi{right:8mm;top:0}' +
-    '.meta{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:10.5pt;margin:2mm 0 4mm}' +
-    '.meta .k{display:inline-block;min-width:7.2em;font-weight:700}' +
-    'h2{margin:5mm 0 2mm;font-size:11.5pt;font-weight:700}' +
-    'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
-    'th,td{border:0.6pt solid #222;padding:2px 2px;text-align:center;font-size:8pt;font-weight:400;line-height:1.25;word-break:break-all}' +
-    'th{font-weight:700}' +
-    'td.cn,td.l{text-align:left;padding-left:3px}' +
-    '.sum{margin:8mm 1mm 0;font-size:11pt;line-height:1.75;text-indent:2em}' +
-    '.notes{margin-top:8mm;font-size:10pt;line-height:1.7}' +
-    '.notes .t{font-weight:700}' +
-    '.foot{margin-top:14mm;text-align:right;font-size:11pt;line-height:1.8;padding-right:8mm}' +
-    '.pn{text-align:center;font-size:10pt;margin-top:8mm}' +
-    '@media print{.page{padding:8mm 7mm}}' +
-    '</style></head><body>' +
-    '<div class="page">' +
-    headerBlock +
-    '<h2>一、养老保险单位变动记录</h2>' +
-    '<table><thead><tr>' +
-    '<th style="width:14%">缴费起始年月</th><th style="width:14%">缴费截止年月</th>' +
-    '<th style="width:12%">实际缴费月数</th><th style="width:28%">单位名称</th>' +
-    '<th>缴费区县</th></tr></thead><tbody>' +
-    empHtml +
-    '</tbody></table>' +
-    '<h2>二、五险缴费明细</h2>' +
-    '<table><thead>' +
-    '<tr><th rowspan="2" style="width:13%">缴费起止年月</th>' +
+    '<tr><td>' +
+    escHtml(r.label || '') +
+    '</td><td>' +
+    escHtml(r.pension_months || '') +
+    '</td><td>' +
+    escHtml(bjHtmlNum(r.pension_base, r.pension_months)) +
+    '</td><td>' +
+    escHtml(bjHtmlPay(r.pension_pay, r.pension_months)) +
+    '</td><td>' +
+    escHtml(r.unemp_months || '') +
+    '</td><td>' +
+    escHtml(bjHtmlNum(r.unemp_base, r.unemp_months)) +
+    '</td><td>' +
+    escHtml(bjHtmlPay(r.unemp_pay, r.unemp_months)) +
+    '</td><td>' +
+    escHtml(r.injury_months || '') +
+    '</td><td>' +
+    escHtml(bjHtmlNum(r.injury_base, r.injury_months)) +
+    '</td><td>' +
+    escHtml(r.medical_months || '') +
+    '</td><td>' +
+    escHtml(bjHtmlNum(r.medical_base, r.medical_months)) +
+    '</td><td>' +
+    escHtml(bjHtmlPay(r.medical_pay, r.medical_months)) +
+    '</td><td>' +
+    escHtml(r.maternity_months || '') +
+    '</td><td>' +
+    escHtml(bjHtmlNum(r.maternity_base, r.maternity_months)) +
+    '</td></tr>'
+  );
+}
+
+function bjEmpRowHtml(r) {
+  return (
+    '<tr><td>' +
+    escHtml(r.start_ym || '') +
+    '</td><td>' +
+    escHtml(r.end_ym || '') +
+    '</td><td>' +
+    escHtml(r.months || '') +
+    '</td><td>' +
+    escHtml(r.company_name || '') +
+    '</td><td>' +
+    escHtml(r.agency || '') +
+    '</td></tr>'
+  );
+}
+
+function bjDetailHeadHtml() {
+  return (
+    '<table class="detail"><thead>' +
+    '<tr><th rowspan="2" class="ym">缴费起止年月</th>' +
     '<th colspan="3">养老实际缴费</th><th colspan="3">失业实际缴费</th>' +
     '<th colspan="2">工伤实际缴费</th><th colspan="3">医疗实际缴费</th>' +
     '<th colspan="2">生育实际缴费</th></tr>' +
@@ -5184,52 +5129,195 @@ function renderBjCertHtml(payload, links, opts) {
     '<th>月数</th><th>年缴费基数</th>' +
     '<th>月数</th><th>年缴费基数</th><th>个人缴费</th>' +
     '<th>月数</th><th>年缴费基数</th></tr>' +
-    '</thead><tbody>' +
-    yearHtml +
+    '</thead><tbody>'
+  );
+}
+
+function bjTotalRowHtml(totals) {
+  return (
     '<tr><td>合计</td><td>' +
     escHtml(totals.pension_months || '') +
-    '</td><td></td><td>' +
+    '</td><td>------</td><td>' +
     escHtml(bjHtmlPay(totals.pension_pay, totals.pension_months)) +
     '</td><td>' +
     escHtml(totals.unemp_months || '') +
-    '</td><td></td><td>' +
+    '</td><td>------</td><td>' +
     escHtml(bjHtmlPay(totals.unemp_pay, totals.unemp_months)) +
     '</td><td>' +
     escHtml(totals.injury_months || '') +
-    '</td><td></td><td>' +
+    '</td><td>------</td><td>' +
     escHtml(totals.medical_months || '') +
-    '</td><td></td><td>' +
+    '</td><td>------</td><td>' +
     escHtml(bjHtmlPay(totals.medical_pay, totals.medical_months)) +
     '</td><td>' +
     escHtml(totals.maternity_months || '') +
-    '</td><td></td></tr>' +
-    '</tbody></table>' +
-    '<div class="pn">第1页 （共2页）</div>' +
+    '</td><td>------</td></tr>'
+  );
+}
+
+function bjChunkList(items, firstCap, nextCap) {
+  var rows = items && items.length ? items.slice() : [];
+  if (!rows.length) return [[]];
+  if (rows.length <= firstCap) return [rows];
+  var chunks = [rows.slice(0, firstCap)];
+  var rest = rows.slice(firstCap);
+  while (rest.length) {
+    chunks.push(rest.slice(0, nextCap));
+    rest = rest.slice(nextCap);
+  }
+  return chunks;
+}
+
+function renderBjCertHtml(payload, links, opts) {
+  opts = opts || {};
+  var p = payload || {};
+  var employers = Array.isArray(p.employers) ? p.employers : [];
+  var yearRows = Array.isArray(p.year_rows) ? p.year_rows : [];
+  var totals = p.totals || {};
+  var empChunks = bjChunkList(employers, 14, 18);
+  var firstYearCap = Math.max(1, 16 - (empChunks[0] || []).length);
+  var yearChunks = empChunks.length > 1 ? bjChunkList(yearRows, 14, 15) : bjChunkList(yearRows, firstYearCap, 15);
+  var totalPages = (empChunks.length > 1 ? empChunks.length + yearChunks.length : yearChunks.length) + 1;
+  var headerBlock =
+    '<div class="seals">' +
+    '<img class="seal mi" src="/img/sbdy_bj_mi_seal.png?v=20260917" alt="">' +
+    '<img class="seal si" src="/img/sbdy_bj_si_seal.png?v=20260917" alt="">' +
     '</div>' +
-    '<div class="page">' +
-    headerBlock +
-    '<h2>三、补充资料</h2>' +
-    '<p class="sum">参保人在我市养老保险累计实际缴费月数为' +
-    escHtml(p.pension_total_months || '') +
-    '个月，医疗保险累计实际缴费月数为' +
-    escHtml(p.medical_total_months || '') +
-    '个月。北京市养老保险个人账户资金余额为' +
-    escHtml(bjHtmlPay(p.account_balance, 1)) +
-    '元。</p>' +
-    '<div class="notes"><div class="t">备注：</div>' +
-    '1. 本记录可通过北京市人力资源和社会保障局公共服务平台核验：' +
-    escHtml(p.verify_url || BJ_VERIFY_URL) +
-    '<br>2. 本记录涉及个人权益信息，请妥善保管，因泄露造成的不良后果由参保人自行承担。<br>' +
-    '3. 缴费起止年月前标注“*”的，含补缴信息。<br>' +
-    '4. 养老保险、工伤保险、失业保险数据来源于社会保险经办机构；医疗保险、生育保险数据来源于医疗保险经办机构。' +
+    '<h1>北京市社会保险个人权益记录(参保人员缴费信息)</h1>' +
+    '<div class="meta">' +
+    '<div><span class="k">参保人姓名:</span>' +
+    escHtml(p.name || '') +
     '</div>' +
-    '<div class="foot">' +
-    escHtml(p.agency_name || '北京市朝阳区社会保险基金管理中心') +
-    '<br>日期：' +
-    escHtml(p.print_date || defaultPrintDateCn()) +
+    '<div><span class="k">校验码:</span>' +
+    escHtml(p.verify_code || '') +
     '</div>' +
-    '<div class="pn">第2页 （共2页）</div>' +
-    '</div></body></html>'
+    '<div><span class="k">社会保障号码:</span>' +
+    escHtml(p.id_number || '') +
+    '</div>' +
+    '<div><span class="k">查询流水号:</span>' +
+    escHtml(p.query_serial || opts.authCode || '') +
+    '</div>' +
+    '<div><span class="k">单位名称:</span>' +
+    escHtml(p.header_company || p.company_name || '') +
+    '</div>' +
+    '<div><span class="k">查询日期:</span>' +
+    escHtml(p.query_date_label || p.query_period_label || p.period_label || '') +
+    '</div>' +
+    '</div>';
+  function pageWrap(inner, idx) {
+    return (
+      '<div class="page">' +
+      headerBlock +
+      inner +
+      '<div class="pn">第 ' +
+      idx +
+      ' 页 ( 共 ' +
+      totalPages +
+      ' 页 )</div></div>'
+    );
+  }
+  var pages = [];
+  var yearIdx = 0;
+  empChunks.forEach(function (emps, ei) {
+    var html = '';
+    if (ei === 0) html += '<h2>一、养老保险单位变动记录：</h2>';
+    html +=
+      '<table class="emp"><thead><tr>' +
+      '<th style="width:12.5%">缴费起始年月</th><th style="width:12.5%">缴费截止年月</th>' +
+      '<th style="width:12.5%">实际缴费月数</th><th style="width:30.5%">单位名称</th>' +
+      '<th>缴费区县</th></tr></thead><tbody>';
+    (emps.length ? emps : [{}]).forEach(function (r) {
+      html += bjEmpRowHtml(r);
+    });
+    html += '</tbody></table>';
+    if (ei === empChunks.length - 1 && yearChunks[yearIdx]) {
+      html += '<h2>二、五险缴费明细：</h2>' + bjDetailHeadHtml();
+      yearChunks[yearIdx].forEach(function (r) {
+        html += bjYearRowHtml(r);
+      });
+      if (yearIdx === yearChunks.length - 1) html += bjTotalRowHtml(totals);
+      html += '</tbody></table>';
+      yearIdx += 1;
+    }
+    pages.push(pageWrap(html, pages.length + 1));
+  });
+  while (yearIdx < yearChunks.length) {
+    var yhtml = bjDetailHeadHtml();
+    yearChunks[yearIdx].forEach(function (r) {
+      yhtml += bjYearRowHtml(r);
+    });
+    if (yearIdx === yearChunks.length - 1) yhtml += bjTotalRowHtml(totals);
+    yhtml += '</tbody></table>';
+    pages.push(pageWrap(yhtml, pages.length + 1));
+    yearIdx += 1;
+  }
+  pages.push(
+    pageWrap(
+      '<h2>三、补充资料</h2>' +
+        '<p class="sum">参保人在我市养老保险累计实际缴费年限 ' +
+        escHtml(p.pension_years_label || '') +
+        '  (其中趸缴年限 ' +
+        escHtml(p.pension_lump_label || '00年00个月') +
+        ')，医疗保险累计实际缴费年限 ' +
+        escHtml(p.medical_years_label || '') +
+        '(其中趸缴年限 ' +
+        escHtml(p.medical_lump_label || '00年00个月') +
+        ')。</p>' +
+        '<p class="sum">截至     ' +
+        escHtml(p.as_of_year || '') +
+        '    年末，参保人在我市养老保险个人账户本息合计金额：    ' +
+        escHtml(bjHtmlPay(p.account_balance, 1)) +
+        '     元。</p>' +
+        '<div class="notes"><div class="t">备注：</div>' +
+        '1.如需鉴定真伪，请30日内通过登录  ' +
+        escHtml(p.verify_url || BJ_VERIFY_URL) +
+        ' ，进入“社保权益单校验”，录入校验码和查询流水号进行甄别，黑色与红色印章效力相同。<br>' +
+        '2.为保证信息安全，请妥善保管个人权益记录。<br>' +
+        '3.上述“缴费起止年月”栏目中带“*”标识为该年内含有补缴信息。<br>' +
+        '4.养老、工伤、失业保险相关数据来源于社保经办机构，医疗、生育保险相关数据来源于医保经办机构。' +
+        '</div>' +
+        '<div class="foot">' +
+        escHtml(p.agency_name || '北京市朝阳区社会保险基金管理中心') +
+        '<br>日期: ' +
+        escHtml(p.print_date || defaultPrintDateCn()) +
+        '</div>',
+      pages.length + 1
+    )
+  );
+  return (
+    '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>北京市社会保险个人权益记录(参保人员缴费信息)</title>' +
+    '<style>' +
+    '*{box-sizing:border-box}' +
+    'html,body{margin:0;padding:0;background:#e8e8e8}' +
+    'body{font-family:SimHei,"黑体","Heiti SC","Noto Sans CJK SC","Noto Sans SC",sans-serif;color:#000;' +
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.page{width:297mm;max-width:100%;min-height:210mm;margin:8px auto;background:#fff;' +
+    'padding:8mm 10mm 10mm;position:relative}' +
+    '.page+.page{page-break-before:always}' +
+    'h1{margin:7mm 36mm 3mm;text-align:center;font-size:15pt;font-weight:400;line-height:1.2}' +
+    '.seals{position:absolute;left:0;right:0;top:3mm;height:42mm;pointer-events:none}' +
+    '.seal{position:absolute;width:42mm;height:42mm;top:0;opacity:.92}' +
+    '.seal.mi{left:50%;margin-left:-62mm}' +
+    '.seal.si{left:50%;margin-left:10mm}' +
+    '.meta{display:grid;grid-template-columns:1.15fr .85fr;gap:3px 18px;font-size:10.5pt;margin:1mm 0 3mm}' +
+    '.meta .k{display:inline-block;min-width:7.4em}' +
+    'h2{margin:2.5mm 0 1.5mm;font-size:10.5pt;font-weight:400}' +
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
+    'th,td{border:0.6pt solid #111;padding:2px 1px;text-align:center;font-size:10pt;font-weight:400;line-height:1.25;word-break:break-all}' +
+    'th{font-weight:400}' +
+    '.detail th.ym{width:13%}' +
+    '.sum{margin:1.5mm 2mm 0;font-size:10.5pt;line-height:1.7}' +
+    '.notes{margin-top:4mm;font-size:10.5pt;line-height:1.65}' +
+    '.notes .t{margin-bottom:1mm}' +
+    '.foot{margin-top:8mm;text-align:right;font-size:10.5pt;line-height:1.8;padding-right:12mm}' +
+    '.pn{position:absolute;left:0;right:0;bottom:5mm;text-align:center;font-size:10pt}' +
+    '@page{size:A4 landscape;margin:8mm}' +
+    '@media print{html,body{background:#fff}.page{margin:0;padding:6mm 8mm 8mm;box-shadow:none}}' +
+    '</style></head><body>' +
+    pages.join('') +
+    '</body></html>'
   );
 }
 

@@ -355,8 +355,10 @@
                     st.textContent =
                         'html.platform-ios,html.platform-ios body.page-shuiming{background:#fff !important;background-image:linear-gradient(#fff, #fff) !important;background-size:100% 200px !important;background-repeat:no-repeat !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header{background:#fff !important;}' +
-                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass body.page-shuiming > .header,html.app-ios-unified-chrome body.page-shuiming > .header{border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass body.page-shuiming > .header,html.app-ios-unified-chrome body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,html.app-ios-liquid-glass body.page-shuiming > .content,html.app-ios-unified-chrome body.page-shuiming > .content{padding-top:0 !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header::after,html.app-ios-liquid-glass body.page-shuiming > .header::after{content:none !important;display:none !important;}' +
+                        'html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint{display:none !important;height:0 !important;margin:0 !important;}' +
                         '#iosStickyTint.ios-sticky-tint{position:sticky;top:0;height:calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px);margin:0 0 calc(-1 * (var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px));background:#fff;z-index:110;}';
                     (document.head || root).appendChild(st);
                 }
@@ -374,7 +376,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-ios27-seam" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-ios27-flow" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -407,14 +409,24 @@
         html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,
         html.app-ios-liquid-glass body.page-shuiming > .header,
         html.app-ios-unified-chrome body.page-shuiming > .header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
             background: #fff;
             padding-top: calc(14px + var(--app-shell-statusbar-top, 59px));
             border-bottom: none !important;
             box-shadow: 0 8px 0 0 #f4f6f9 !important;
         }
         html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,
-        html.app-ios-liquid-glass body.page-shuiming > .content {
-            padding-top: calc(44px + var(--app-shell-statusbar-top, 59px));
+        html.app-ios-liquid-glass body.page-shuiming > .content,
+        html.app-ios-unified-chrome body.page-shuiming > .content {
+            padding-top: 0;
+        }
+        html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,
+        html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
         }
         html.app-ios-sticky-chrome:not(.app-ios-iphone15):not(.app-ios-liquid-glass) body.page-shuiming > .header {
             background: transparent;
@@ -992,6 +1004,7 @@
     </style>
 </head>
 <body class="page-shuiming">
+    <div id="iosStickyTint" class="ios-sticky-tint" aria-hidden="true"></div>
     <!-- 顶部导航 -->
     <div class="header">
         <a href="shouye.html" class="back-btn" id="shuimingBack" data-no-page-loading="1">

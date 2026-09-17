@@ -57,7 +57,20 @@ describe('Huawei MatePad 11.5S mine e1 pills', () => {
     expect(boot).toContain('app-android-huawei-matepad115s');
     expect(boot).toMatch(/if \(matepad115s\) \{[\s\S]*?\n        return;/);
     expect(mine).toMatch(/auth-boot\.js\?v=2026091/);
-    expect(mine).toMatch(/auth\.js\?v=2026091/);
+    expect(mine).toContain('auth.js?v=20260917-matepad115s-name');
+  });
+
+  it('overrides the 16px .user-name so tablet name follows canvas rpx', () => {
+    expect(mine).toContain(
+      'html.app-android-huawei-matepad115s body.page-mine .mine-ov-name.user-name'
+    );
+    expect(mine).toMatch(
+      /html\.app-android-huawei-matepad115s body\.page-mine \.user-name \{[\s\S]{0,80}font-size:\s*calc\(38 \* var\(--mine-rpx\)\)/
+    );
+    expect(auth).toContain(
+      'font-size:calc(38 * var(--mine-rpx)) !important;font-weight:600 !important;'
+    );
+    expect(auth).toContain('font-size:calc(26 * var(--mine-rpx)) !important;');
   });
 
   it('keeps the pill row on the 3-grid card instead of the 1180 crop', () => {

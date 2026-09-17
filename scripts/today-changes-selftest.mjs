@@ -1360,7 +1360,7 @@ mustInclude(
 /* loader cache must point at the latest sbdy-demo bundle */
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['20260906-js-new-441'],
+  ['20260917-bj-landscape'],
   'sbdy-demo loader cache for Beijing layout'
 );
 if (!exists('backend/assets/sbdy/wh_seal.png') || !exists('frontend/public/img/sbdy_wh_seal.png')) {
@@ -1417,7 +1417,7 @@ mustInclude(
     '养老保险单位变动记录',
     'bj_si_seal.png',
     'bj_mi_seal.png',
-    '查询时间段',
+    '查询日期',
     '补充资料',
     'fuwu.rsj.beijing.gov.cn'
   ],
@@ -1440,7 +1440,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionBj', '20260906-js-new-441'],
+  ['sbdyRegionBj', '20260917-bj-landscape'],
   'sbdy Beijing C-end radio + cache'
 );
 mustInclude(
@@ -1502,7 +1502,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdyRegionXm', '20260906-js-new-441'],
+  ['sbdyRegionXm', '20260917-bj-landscape'],
   'sbdy Xiamen C-end radio + cache'
 );
 if (!exists('backend/assets/sbdy/xm_seal.png') || !exists('frontend/public/img/sbdy_xm_seal.png')) {
@@ -2794,12 +2794,12 @@ mustInclude(
 );
 mustInclude(
   'frontend/public/js/admin/loader.js',
-  ['sbdy-demo.js?v=20260906-js-new-441'],
+  ['sbdy-demo.js?v=20260917-bj-landscape'],
   '20260906 sbdy-demo cache bust after js_new 3-line watermark + seal below'
 );
 mustInclude(
   'frontend/sbdy_demo.html',
-  ['sbdy-demo.js?v=20260906-js-new-441'],
+  ['sbdy-demo.js?v=20260917-bj-landscape'],
   '20260906 user sbdy page cache matches admin loader'
 );
 mustInclude(

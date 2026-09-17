@@ -936,7 +936,7 @@ function normalizeAdminMenuList(rawMenus, isSuper) {
     seen[key] = true;
     out.push(key);
   });
-  return adminMenuRegistry.ensureRequiredSubadminMenus(out);
+  return adminMenuRegistry.stripSuperOnlyMenus(adminMenuRegistry.ensureRequiredSubadminMenus(out));
 }
 
 var _wechatPayQrcodeCache = null;
@@ -4064,11 +4064,12 @@ async function createTables() {
      WHERE menu_key IN ('channel-analysis', 'install-guide-stats')`
   );
 
-  /* 订单检索：已有支付分析 / 运营看板 / 发码权限的账号自动开通 */
+  /* 订单检索仅超管：去掉子账号上因发码/看板自动开通的权限 */
   await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT DISTINCT admin_id, 'payment-orders' FROM admin_account_menus
-     WHERE menu_key IN ('analytics-purchase', 'ops-board', 'codes')`
+    `DELETE aam FROM admin_account_menus aam
+     INNER JOIN admin_accounts aa ON aa.id = aam.admin_id
+     WHERE aam.menu_key = 'payment-orders'
+       AND IFNULL(aa.is_super, 0) = 0`
   );
 
   conn.release();

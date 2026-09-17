@@ -825,14 +825,18 @@
                         'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;box-shadow:none !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header::after,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header::after{content:none !important;display:none !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{top:calc(44px + var(--app-shell-statusbar-top,59px)) !important;background:#f5f6fa !important;padding:12px 0 10px !important;}' +
-                        'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:auto !important;z-index:140 !important;background:#fff !important;}' +
-                        'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{position:relative !important;top:auto !important;box-shadow:none !important;border:none !important;transform:none !important;}' +
-                        'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary{position:relative !important;top:auto !important;background:#f5f6fa !important;padding:12px 0 10px !important;transform:none !important;}' +
+                        'html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;height:auto !important;z-index:20 !important;background:#fff !important;}' +
+                        'html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{position:relative !important;top:auto !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;box-shadow:none !important;border:none !important;transform:none !important;}' +
+                        'html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary{position:relative !important;top:auto !important;background:#f5f6fa !important;padding:12px 0 10px !important;transform:none !important;}' +
+                        'html.app-ios-unified-chrome body.page-shuiming-result .shuiming-chrome-shield{display:none !important;}' +
+                        'html.app-ios-unified-chrome body.page-shuiming-result .list{padding-top:0 !important;margin-top:0 !important;}' +
+                        'html.app-ios-unified-chrome body.page-shuiming-result::before,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result::before{content:none !important;display:none !important;}' +
+                        'html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint{display:none !important;height:0 !important;margin:0 !important;}' +
+                        'html.app-ios-unified-chrome body.page-shuiming-result .page-root{isolation:auto !important;}' +
                         'html.app-ios-status-outer body.page-shuiming-result::before{content: none !important;}' +
                         'html.app-ios-status-outer.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn{color: #1e6fff !important;top:auto !important;}' +
                         '.top-fixed .header::before{content:"";visibility: visible !important;}' +
-                        'html.app-ios-header-hoisted .top-fixed .header{transform: none !important;}' +
-                        '#iosStickyTint.ios-sticky-tint{position:sticky;top:0;height:calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px);margin:0 0 calc(-1 * (var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px));background:#fff;z-index:110;}';
+                        'html.app-ios-header-hoisted .top-fixed .header{transform: none !important;}';
                     (document.head || root).appendChild(st);
                 }
                 try {
@@ -850,6 +854,7 @@
             function hoistIos27ResultChrome() {
                 try {
                     var root = document.documentElement;
+                    if (root.classList.contains('app-ios-unified-chrome')) return;
                     if (root.classList.contains('app-ios-header-hoisted')) return;
                     var pageRoot = document.querySelector('.page-root');
                     var topFixed = document.querySelector('.top-fixed');
@@ -865,7 +870,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-ios27-seam" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-ios27-flow" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -2079,16 +2084,33 @@
         }
         html.app-ios-unified-chrome body.page-shuiming-result .top-fixed,
         html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result .top-fixed {
-            position: fixed !important;
+            position: sticky !important;
             top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
+            left: auto !important;
+            right: auto !important;
             height: auto !important;
-            z-index: 140 !important;
+            z-index: 20 !important;
             background: #fff !important;
             overflow: visible !important;
             transform: none !important;
             -webkit-transform: none !important;
+        }
+        html.app-ios-unified-chrome body.page-shuiming-result .page-root {
+            isolation: auto !important;
+        }
+        html.app-ios-unified-chrome body.page-shuiming-result::before,
+        html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result::before {
+            content: none !important;
+            display: none !important;
+        }
+        html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,
+        html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+        }
+        html.app-ios-unified-chrome body.page-shuiming-result .shuiming-chrome-shield {
+            display: none !important;
         }
         html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header {
@@ -2102,15 +2124,24 @@
             box-shadow: none !important;
             z-index: 120;
         }
+        html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
         html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header {
             position: relative !important;
             top: auto !important;
             left: auto !important;
             right: auto !important;
+            height: calc(44px + var(--app-shell-statusbar-top, 59px)) !important;
+            min-height: calc(44px + var(--app-shell-statusbar-top, 59px)) !important;
+            padding: var(--app-shell-statusbar-top, 59px) 16px 0 !important;
             transform: none !important;
             -webkit-transform: none !important;
             border: none !important;
             box-shadow: none !important;
+        }
+        html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right {
+            top: var(--app-shell-statusbar-top, 59px) !important;
+            height: 44px !important;
         }
         html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header::after,
         html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header::after {
@@ -2153,6 +2184,12 @@
         html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list,
         html.app-ios-liquid-glass body.page-shuiming-result .list {
             margin-top: calc(var(--header-height, 44px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)));
+            background: #f5f6fa !important;
+        }
+        html.app-ios-unified-chrome body.page-shuiming-result .list,
+        html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
             background: #f5f6fa !important;
         }
 
@@ -3741,6 +3778,7 @@
     </style>
 </head>
 <body class="page-shuiming-result">
+    <div id="iosStickyTint" class="ios-sticky-tint" aria-hidden="true"></div>
     <div class="page-root is-record-empty">
     <div class="shuiming-chrome-shield" id="shuimingChromeShield" aria-hidden="true"></div>
     <div class="top-fixed">
@@ -3835,6 +3873,23 @@
                 var headerEl = document.querySelector('.top-fixed .header');
                 if (headerEl) {
                     var ht = headerEl.getBoundingClientRect().top;
+                    var rootEl = document.documentElement;
+                    var unified =
+                        rootEl.classList.contains('app-ios-unified-chrome') ||
+                        rootEl.classList.contains('app-ios-iphone15');
+                    if (unified) {
+                        var pad = parseFloat(
+                            String(
+                                window.getComputedStyle(rootEl).getPropertyValue('--app-shell-statusbar-top') || '59'
+                            ).replace(/px/i, '')
+                        );
+                        if (!(pad > 0)) pad = 59;
+                        /* 整块顶栏从 0 盖住灵动岛，标题区在 59px，header.top≈0 是稳定态，不能当错位跳过测量 */
+                        if (Math.abs(ht) <= 12) return false;
+                        if (Math.abs(ht - pad) <= 12) return false;
+                        if (ht > pad + 24 || ht < -8) return true;
+                        return false;
+                    }
                     if (ht > 2 || ht < -8) return true;
                 }
             } catch (eU) {}
@@ -4019,12 +4074,28 @@
                  * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
                  * 旧方案把汇总高度写进 padding-top：轻拖还好，使劲橡皮筋会把那一整截灰垫拽出来。
                  */
-                if (shuimingChromeUnstable() || !(headerBottom > 0) || !summary || !list) return;
+                if (isIosUnifiedSeam) {
+                    if (root) root.style.setProperty('--list-summary-pad', '0px', 'important');
+                    if (list) {
+                        list.style.setProperty('padding-top', '0px', 'important');
+                        list.style.setProperty('margin-top', '0px', 'important');
+                    }
+                    return;
+                }
+                if (shuimingChromeUnstable() || !(headerBottom > 0)) return;
+                if (!summary || !list) return;
                 var summaryRect = summary.getBoundingClientRect();
                 if (!(summaryRect.height > 0)) return;
                 var contentBottom = summaryContentBottom(summary, summaryRect);
                 if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam || isIphone12Seam || isIosUnifiedSeam) {
                     contentBottom = Math.max(contentBottom, summaryRect.bottom);
+                }
+                if (isIosUnifiedSeam) {
+                    var topFixedEl = document.querySelector('.top-fixed');
+                    if (topFixedEl) {
+                        var chromeBottom = Math.ceil(topFixedEl.getBoundingClientRect().bottom || 0);
+                        if (chromeBottom > 0) contentBottom = chromeBottom;
+                    }
                 }
                 /* 16 Pro / 11 / 12 / 15 整块顶栏：灰缝已写在汇总 padding-bottom，勿再叠过大 JS gap；15 宽档略留 10 */
                 var gap = isAndroid
@@ -4049,8 +4120,10 @@
                     list.querySelector('.list-empty-state');
                 if (firstItem) {
                     var sr = summary.getBoundingClientRect();
-                    var cb = summaryContentBottom(summary, sr);
-                    if (isIphone15Wide || isIphone16ProSeam || isIphone11Seam || isIphone12Seam || isIosUnifiedSeam) {
+                    var cb = isIosUnifiedSeam
+                        ? contentBottom
+                        : summaryContentBottom(summary, sr);
+                    if (!isIosUnifiedSeam && (isIphone15Wide || isIphone16ProSeam || isIphone11Seam || isIphone12Seam)) {
                         cb = Math.max(cb, sr.bottom);
                     }
                     var visualGap = firstItem.getBoundingClientRect().top - cb;
@@ -5123,6 +5196,7 @@
             if (document.visibilityState === 'visible') {
                 refreshActivateUiAfterReturn();
                 finishShuimingPageLoading();
+                syncTopFixedHeight();
             }
         });
         window.addEventListener('resize', flushShuimingListToViewport);

@@ -655,7 +655,7 @@ app.get(
 app.get(
   '/api/admin/payment-orders',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['payment-orders', 'analytics-purchase', 'ops-board', 'codes']),
+  mw.requireAdminAnyMenu(['payment-orders']),
   h.handleAdminPaymentOrders
 );
 app.post(

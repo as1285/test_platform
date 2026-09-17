@@ -23,7 +23,7 @@ describe('子管理员操作日志 TAB', () => {
     expect(html).toContain('>页面</th>');
     expect(html).toContain('>操作</th>');
     expect(html).toContain('id="adminOpLogKindFilter"');
-    expect(html).toContain('admin_panel.js?v=20260915-ops-hide');
+    expect(html).toContain('admin_panel.js?v=20260917-hide-orders');
     expect(panel).toContain('function reportAdminUiEvent(');
     expect(panel).toContain("kind === 'page'");
     expect(panel).toContain("api/admin/ui-events");

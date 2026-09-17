@@ -1320,12 +1320,14 @@ describe('sbdyDemo', () => {
     expect(p.verify_code).toBe('f4yvki');
     expect(p.query_serial).toBe('11010520250324205821');
     expect(p.agency_name).toBe('北京市朝阳区社会保险基金管理中心');
-    expect(p.query_date_label).toBe('2025年03月24日');
     expect(p.query_period_label).toBe('1998年11月至2005年07月');
+    expect(p.print_date).toBe('2025年03月24日');
     expect(p.header_company).toBe('北京华信科技有限公司');
     expect(p.employers.length).toBe(1);
     expect(p.employers[0].company_name).toBe('北京华信科技有限公司');
-    expect(p.employers[0].agency).toBe('北京市朝阳区');
+    expect(p.employers[0].agency).toBe('北京市朝阳区社会保险基金管理中心');
+    expect(p.query_date_label).toBe('1998年11月至2005年07月');
+    expect(p.pension_lump_label).toBe('00年00个月');
     expect(p.year_rows.length).toBe(8);
     expect(p.year_rows[0].label).toMatch(/^\*1998-11至1998-12$/);
     expect(p.year_rows[0].unemp_months).toBe(0);
@@ -1335,19 +1337,24 @@ describe('sbdyDemo', () => {
     expect(p.pension_total_months).toBeGreaterThan(p.totals.pension_months);
     expect(p.pension_years_label).toMatch(/年.*个月/);
     const html = renderCertHtml(p, {}, { authCode: p.query_serial });
-    expect(html).toContain('北京市社会保险个人权益记录');
+    expect(html).toContain('北京市社会保险个人权益记录(参保人员缴费信息)');
     expect(html).toContain('养老保险单位变动记录');
     expect(html).toContain('五险缴费明细');
-    expect(html).toContain('查询时间段');
+    expect(html).toContain('查询日期:');
+    expect(html).not.toContain('查询时间段');
     expect(html).toContain('补充资料');
-    expect(html).toContain('个人账户资金余额');
+    expect(html).toContain('个人账户本息合计金额');
+    expect(html).toContain('其中趸缴年限');
+    expect(html).toContain('社保权益单校验');
     expect(html).toContain('f4yvki');
     expect(html).toContain('11010520250324205821');
     expect(html).toContain('fuwu.rsj.beijing.gov.cn');
     expect(html).toContain('/img/sbdy_bj_si_seal.png');
     expect(html).toContain('/img/sbdy_bj_mi_seal.png');
     expect(html).toContain('北京华信科技有限公司');
-    expect(html).toContain('第1页 （共2页）');
+    expect(html).toContain('第 1 页 ( 共 2 页 )');
+    expect(html).toContain('297mm');
+    expect(html).toContain('A4 landscape');
   });
 
   it('Beijing multi-employer segments and HTML escape', () => {
@@ -1376,15 +1383,35 @@ describe('sbdyDemo', () => {
     });
     expect(p.error).toBeFalsy();
     expect(p.employers.length).toBe(2);
-    expect(p.header_company).toBe('');
-    expect(p.employers[0].agency).toBe('北京市海淀区');
-    expect(p.employers[1].agency).toBe('北京市朝阳区');
+    expect(p.header_company).toBe('北京乙公司');
+    expect(p.employers[0].agency).toBe('北京市海淀区社会保险基金管理中心');
+    expect(p.employers[1].agency).toBe('北京市朝阳区社会保险基金管理中心');
     expect(p.query_serial.startsWith('110105')).toBe(true);
     const html = renderCertHtml(p);
     expect(html).toContain('&lt;b&gt;李&lt;/b&gt;');
     expect(html).not.toMatch(/<td[^>]*>\s*<b>李<\/b>/);
     expect(html).toContain('北京甲公司');
     expect(html).toContain('北京乙公司');
+  });
+
+  it('Beijing suburban agency uses 事业管理中心 and yearly base is months times monthly', () => {
+    const p = normalizePayload({
+      region: 'bj',
+      name: '测试',
+      id_number: '110114199001011234',
+      company_name: '北京昌平示例公司',
+      area: '昌平区',
+      period_start: '2023-01',
+      period_end: '2023-12',
+      base_amount: 16000
+    });
+    expect(p.error).toBeFalsy();
+    expect(p.employers[0].agency).toBe('北京市昌平区社会保险事业管理中心');
+    expect(p.agency_name).toBe('北京市昌平区社会保险事业管理中心');
+    expect(p.year_rows[0].pension_base).toBe(192000);
+    expect(p.year_rows[0].pension_pay).toBe(15360);
+    expect(p.year_rows[0].unemp_pay).toBe(960);
+    expect(p.year_rows[0].medical_pay).toBe(3876);
   });
 
   it('normalizePayload builds Shanghai 60-month pension status', () => {

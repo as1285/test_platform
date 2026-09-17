@@ -972,7 +972,8 @@
                 menuKey === 'downline-admins' ||
                 menuKey === 'admin-accounts' ||
                 menuKey === 'admin-operation-log' ||
-                menuKey === 'user-emails'
+                menuKey === 'user-emails' ||
+                menuKey === 'payment-orders'
             ) {
                 return false;
             }
@@ -1053,7 +1054,7 @@
             return 'analytics-conversion';
         }
 
-        function sanitizeAdminMenus(menus) {
+        function sanitizeAdminMenus(menus, isSuper) {
             if (!Array.isArray(menus)) return [];
             var out = [];
             menus.forEach(function (m) {
@@ -1068,6 +1069,11 @@
                 if (out.indexOf(key) < 0) out.push(key);
             });
             if (out.indexOf('codes') < 0) out.push('codes');
+            if (!isSuper) {
+                out = out.filter(function (k) {
+                    return k !== 'payment-orders';
+                });
+            }
             return out;
         }
 
@@ -1082,7 +1088,7 @@
                     full_name: parsed.full_name ? String(parsed.full_name) : '',
                     is_super: !!parsed.is_super,
                     is_root_admin: !!parsed.is_root_admin,
-                    menus: sanitizeAdminMenus(parsed.menus)
+                    menus: sanitizeAdminMenus(parsed.menus, !!parsed.is_super)
                 };
             } catch (e) {}
         }
@@ -1196,7 +1202,7 @@
                     { id: 'ads-data', label: '广告数据', page: 'ops-ad-analytics' },
                     { id: 'ads-reach', label: '广告触达', page: 'ops-ad-analytics' },
                     { id: 'codes', label: '激活码', page: 'codes' },
-                    { id: 'orders', label: '订单检索', page: 'payment-orders' },
+                    { id: 'orders', label: '订单检索', page: 'payment-orders', super_only: true },
                     { id: 'abc', label: 'ABC渠道', page: 'abc-ops' }
                 ]
             },
@@ -1386,7 +1392,7 @@
 
         /**
          * hub TAB 按账号勾选的精确权限显示：
-         * - 转化运营：运营看板 / 广告 / ABC 需各自或看板权限；激活码必选；订单检索可随发码
+         * - 转化运营：运营看板 / 广告 / ABC 需各自或看板权限；激活码必选；订单检索仅超管
          * - 用户管理：邮箱管理独立勾选，不因有注册用户而出现
          * - 系统与安全：账号权限 / 操作日志仅超管；其余 TAB 精确授权
          */
@@ -1400,11 +1406,7 @@
                 }
                 if (tabPage === 'codes') return adminHasExactMenu('codes');
                 if (tabPage === 'payment-orders') {
-                    return (
-                        adminHasExactMenu('payment-orders') ||
-                        adminHasExactMenu('ops-board') ||
-                        adminHasExactMenu('codes')
-                    );
+                    return !!(currentAdminProfile && currentAdminProfile.is_super);
                 }
                 if (tabPage === 'abc-ops') {
                     return adminHasExactMenu('abc-ops') || adminHasExactMenu('ops-board');
@@ -1444,6 +1446,9 @@
             var hubDef = ADMIN_HUB_DEFS[hubKey];
             if (!hubDef || !Array.isArray(hubDef.tabs)) return [];
             return hubDef.tabs.filter(function (t) {
+                if (t && t.super_only && !(currentAdminProfile && currentAdminProfile.is_super)) {
+                    return false;
+                }
                 return t && t.page && adminCanSeeHubTab(hubKey, t.page);
             });
         }
@@ -7703,7 +7708,16 @@
                     list.forEach(function (a) {
                         var isSuper = !!a.is_super;
                         var accKey = keyForAdminAccount(a.username);
-                        var menuText = isSuper ? '全部菜单（超级账号）' : (Array.isArray(a.menus) ? a.menus.map(menuLabel).join('、') : '—');
+                        var menuText = isSuper
+                ? '全部菜单（超级账号）'
+                : Array.isArray(a.menus)
+                  ? a.menus
+                        .filter(function (k) {
+                            return k !== 'payment-orders';
+                        })
+                        .map(menuLabel)
+                        .join('、')
+                  : '—';
                         var roleText = isSuper ? 'admin(超级)' : (a.parent_admin_username ? '下线' : '子账号');
                         html += '<tr>';
                         html += '<td>' + esc(a.username) + '</td>';
@@ -10842,6 +10856,17 @@
             });
         }
 
+        function applySuperOnlyUi() {
+            var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
+            document.querySelectorAll('[data-super-only]').forEach(function (el) {
+                if (isSuper) {
+                    el.removeAttribute('hidden');
+                } else {
+                    el.setAttribute('hidden', '');
+                }
+            });
+        }
+
         function applyAdminSessionPayload(data) {
             if (!data || !data.admin) return;
             var a = data.admin;
@@ -10850,7 +10875,7 @@
                 full_name: a.full_name ? String(a.full_name) : '',
                 is_super: !!a.is_super,
                 is_root_admin: !!a.is_root_admin,
-                menus: sanitizeAdminMenus(a.menus)
+                menus: sanitizeAdminMenus(a.menus, !!a.is_super)
             };
             if (window.AdminNav && typeof AdminNav.applyAdminIdentity === 'function') {
                 AdminNav.applyAdminIdentity(currentAdminProfile);
@@ -10868,6 +10893,7 @@
                 adminMenuKeyList = data.menu_defs.map(function (d) { return d.key; });
             }
             if (data.first_page) window._adminFirstPage = String(data.first_page);
+            applySuperOnlyUi();
             if (data.hubs && typeof data.hubs === 'object') {
                 Object.keys(data.hubs).forEach(function (k) {
                     if (data.hubs[k] && Array.isArray(data.hubs[k].tabs)) {
@@ -10883,8 +10909,9 @@
 
         function initAdminSession() {
             readAdminProfileCache();
+            applySuperOnlyUi();
             try {
-                var MENU_TREE_VER = 'ops-ia-v25-op-log';
+                var MENU_TREE_VER = 'ops-ia-v26-hide-orders';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

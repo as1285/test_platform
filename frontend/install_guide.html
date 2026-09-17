@@ -674,7 +674,26 @@
             letter-spacing: 0;
         }
         .install-extra-apps {
-            margin-top: 14px;
+            margin-top: 28px;
+        }
+        body.is-download-intent .lp-wrap {
+            min-height: calc(100vh - 72px - var(--safe-b));
+            min-height: calc(100dvh - 72px - var(--safe-b));
+            display: flex;
+            flex-direction: column;
+        }
+        body.is-download-intent .lp-download {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        body.is-download-intent .install-extra-apps {
+            margin-top: auto;
+            padding-top: 24px;
+            padding-bottom: 0;
+        }
+        body.is-download-intent .lp-download > .lp-disclaimer {
+            margin-top: 16px;
         }
         .install-extra-apps .btn-cmb-sim {
             background: #f25d68;
@@ -1051,10 +1070,6 @@
                     <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
                     <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
                 </div>
-                <div class="install-extra-apps" id="cmbSimulatorDownload">
-                    <a class="btn btn-cmb-sim" href="http://43.128.147.171/download" target="_blank" rel="noopener noreferrer">下载招商银行模拟器</a>
-                    <p class="cmb-sim-hint">招商银行界面模拟器独立安装页，与个人所得税 App 分开下载</p>
-                </div>
                 <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
                 <p class="dl-intent-register">
                     已安装？
@@ -1064,6 +1079,10 @@
                 </p>
             </section>
 
+            <div class="install-extra-apps" id="cmbSimulatorDownload">
+                <a class="btn btn-cmb-sim" href="http://43.128.147.171/download" target="_blank" rel="noopener noreferrer">下载招商银行模拟器</a>
+                <p class="cmb-sim-hint">招商银行界面模拟器独立安装页，与个人所得税 App 分开下载</p>
+            </div>
             <p class="lp-disclaimer">本应用为界面演示与学习参考，非官方申报渠道。</p>
         </section>
     </div>
