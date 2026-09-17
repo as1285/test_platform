@@ -416,6 +416,33 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(out[0].amount).toBe('199.00');
     expect(out[0].list_amount).toBeUndefined();
     expect(out[0].psych_offer).toBeUndefined();
+    expect(out[0].bid_min).toBe('150.00');
+  });
+
+  it('applyChannelCatalogPrices uses below-pay psych as C-end bid floor', () => {
+    const out = applyChannelCatalogPrices(
+      [
+        { id: 'sku_300_7d', amount: '300.00', label: '周卡', grant_days: 7, grant_hours: 0 },
+        { id: 'sku_348_14d', amount: '348.00', label: '双周卡', grant_days: 14, grant_hours: 0 },
+        { id: 'sku_398_30d', amount: '398.00', label: '月卡', grant_days: 30, grant_hours: 0 }
+      ],
+      {
+        sku_300_7d: { amount: '60.00', grant_days: 0, grant_hours: 1, label: '小时卡' },
+        sku_348_14d: { amount: '200.00', list_amount: '100.00', grant_days: 7, label: '周卡' },
+        sku_398_30d: { amount: '300.00', list_amount: '200.00', grant_days: 30, label: '月卡' },
+        sku_ch_t4: { amount: '498.00', list_amount: '300.00', grant_days: 3650, label: '年卡' }
+      }
+    );
+    const hour = out.find((s) => s.id === 'sku_300_7d');
+    const week = out.find((s) => s.id === 'sku_348_14d');
+    const month = out.find((s) => s.id === 'sku_398_30d');
+    const year = out.find((s) => s.id === 'sku_ch_t4');
+    expect(hour.bid_min).toBeUndefined();
+    expect(week.bid_min).toBe('100.00');
+    expect(week.list_amount).toBeUndefined();
+    expect(month.bid_min).toBe('200.00');
+    expect(year.bid_min).toBe('300.00');
+    expect(year.amount).toBe('498.00');
   });
 
   it('applyChannelCatalogPrices blank psych clears site-wide strikethrough', () => {
@@ -494,6 +521,7 @@ describe('GitHub legacy helpers (no longer applied in resolveOfferForUser)', () 
     expect(s.list_amount).toBe('598.00');
     expect(s.psych_offer).toBe(true);
     expect(s.label).toContain('心理价');
+    expect(s.bid_min).toBeUndefined();
   });
 
   it('applyChannelCatalogPrices appends extra tier with list_amount', () => {
