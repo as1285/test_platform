@@ -63,6 +63,8 @@ describe('opsConversion helpers', () => {
     );
     expect(src).toContain('resolveKpiRange(req.query)');
     expect(src).toContain('cnDay} >= ? AND ${cnDay} <= ?');
+    expect(src).toContain('loadOpsBoardDau');
+    expect(src).toContain('dau: dau');
   });
 
   it('keeps high-income threshold at 15000', () => {
@@ -77,6 +79,39 @@ describe('opsConversion helpers', () => {
     expect(opsSkuGmvLabel({ sku_id: 'sku_ch_t4', subject: '激活码·季卡' })).toBe('季卡');
     expect(opsSkuGmvLabel({ sku_id: 'sku_398_30d', subject: '激活码·月卡' })).toBe('月卡');
     expect(opsSkuGmvLabel({ grant_kind: 'tax_edit_daily' })).toBe('同行费用（每天无限）');
+  });
+
+  it('ops sku label uses 周卡/月卡/永久 instead of 档位N·专属价', () => {
+    expect(
+      opsSkuGmvLabel({
+        sku_id: 'sku_ch_t5',
+        subject: '激活码·档位5·专属价',
+        grant_kind: 'permanent'
+      })
+    ).toBe('永久');
+    expect(
+      opsSkuGmvLabel({
+        sku_id: 'sku_ch_t5',
+        subject: '激活码·档位5·专属价',
+        grant_kind: 'trial',
+        grant_days: 30
+      })
+    ).toBe('月卡');
+    expect(
+      opsSkuGmvLabel({
+        sku_id: 'sku_300_7d',
+        subject: '激活码·周卡',
+        grant_kind: 'trial',
+        grant_days: 7
+      })
+    ).toBe('周卡');
+    expect(
+      opsSkuGmvLabel({
+        sku_id: 'sku_99_1h',
+        grant_kind: 'trial',
+        grant_hours: 1
+      })
+    ).toBe('小时卡');
   });
 
   it('refund eligible sql uses 2023-2025 tax or 150000 income', () => {

@@ -2927,6 +2927,89 @@ tr.users-detail-row > td {
 .ops-board-head .ops-board-date {
     min-width: 150px;
 }
+.ops-board-dau {
+    margin: 0 0 16px;
+    padding: 16px 16px 14px;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: var(--admin-surface);
+}
+.ops-board-dau-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.ops-board-dau-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 650;
+    color: var(--admin-heading);
+}
+.ops-board-dau-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+.ops-board-dau .ops-board-kpi-card {
+    margin: 0;
+}
+.ops-board-dau .ops-board-kpi-card .value.is-down {
+    color: var(--admin-warning);
+}
+.ops-board-dau .ops-board-kpi-card .value.is-up {
+    color: var(--admin-success);
+}
+.ops-board-dau-range {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: var(--admin-text-secondary);
+}
+.ops-board-dau-charts {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 16px;
+    margin-top: 14px;
+}
+.ops-board-dau-chart {
+    min-width: 0;
+}
+.ops-board-dau-chart-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--admin-text-muted);
+    margin-bottom: 6px;
+}
+.ops-board-dau-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.ops-board-dau-legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--admin-text-secondary);
+}
+.ops-board-dau-legend i {
+    display: inline-block;
+    width: 10px;
+    height: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+    background: var(--admin-primary);
+}
+.ops-board-dau-legend i.is-compare {
+    background: var(--admin-slate-muted);
+}
+.ops-board-dau-caption {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--admin-text-muted);
+}
 .ops-board-kpi {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3176,7 +3259,9 @@ tr.users-detail-row > td {
     margin-top: 4px;
 }
 @media (max-width: 900px) {
-    .ops-board-kpi {
+    .ops-board-kpi,
+    .ops-board-dau-kpis,
+    .ops-board-dau-charts {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }

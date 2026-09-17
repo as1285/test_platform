@@ -569,6 +569,225 @@
       .join('');
   }
 
+  function dauToneClass(pct) {
+    if (pct == null || !isFinite(Number(pct))) return '';
+    if (Number(pct) >= 100) return ' is-up';
+    return ' is-down';
+  }
+
+  function dauPctText(pct) {
+    if (pct == null || !isFinite(Number(pct))) return '—';
+    return String(Math.round(Number(pct))) + '%';
+  }
+
+  function sparkLineSvg(hours, current, compare) {
+    var w = 420;
+    var h = 128;
+    var padL = 28;
+    var padR = 10;
+    var padT = 8;
+    var padB = 22;
+    var innerW = w - padL - padR;
+    var innerH = h - padT - padB;
+    var n = hours.length;
+    var max = 1;
+    current.concat(compare).forEach(function (v) {
+      var x = Number(v) || 0;
+      if (x > max) max = x;
+    });
+    function xAt(i) {
+      if (n <= 1) return padL + innerW / 2;
+      return padL + (i / (n - 1)) * innerW;
+    }
+    function yAt(v) {
+      return padT + innerH - ((Number(v) || 0) / max) * innerH;
+    }
+    function poly(arr) {
+      return arr
+        .map(function (v, i) {
+          return xAt(i).toFixed(1) + ',' + yAt(v).toFixed(1);
+        })
+        .join(' ');
+    }
+    var ticks = [];
+    hours.forEach(function (hr, i) {
+      if (n > 10 && i % 2 && i !== n - 1) return;
+      ticks.push(
+        '<text x="' +
+          xAt(i).toFixed(1) +
+          '" y="' +
+          (h - 6) +
+          '" text-anchor="middle" fill="currentColor" font-size="10">' +
+          esc(String(hr)) +
+          '</text>'
+      );
+    });
+    return (
+      '<svg viewBox="0 0 ' +
+      w +
+      ' ' +
+      h +
+      '" role="img" aria-label="累计 IP 日活">' +
+      '<line x1="' +
+      padL +
+      '" y1="' +
+      (padT + innerH) +
+      '" x2="' +
+      (w - padR) +
+      '" y2="' +
+      (padT + innerH) +
+      '" stroke="currentColor" stroke-opacity="0.18"/>' +
+      '<polyline fill="none" stroke="#64748b" stroke-width="1.6" points="' +
+      poly(compare) +
+      '"/>' +
+      '<polyline fill="none" stroke="#0d9488" stroke-width="2" points="' +
+      poly(current) +
+      '"/>' +
+      ticks.join('') +
+      '</svg>'
+    );
+  }
+
+  function historyBarSvg(history) {
+    var rows = Array.isArray(history) ? history : [];
+    if (!rows.length) return '';
+    var w = 320;
+    var h = 128;
+    var padL = 8;
+    var padR = 8;
+    var padT = 8;
+    var padB = 28;
+    var innerW = w - padL - padR;
+    var innerH = h - padT - padB;
+    var max = 1;
+    rows.forEach(function (r) {
+      var v = Number(r.dau_ip) || 0;
+      if (v > max) max = v;
+    });
+    var gap = 3;
+    var bw = Math.max(4, (innerW - gap * (rows.length - 1)) / rows.length);
+    var bars = rows
+      .map(function (r, i) {
+        var v = Number(r.dau_ip) || 0;
+        var bh = max ? (v / max) * innerH : 0;
+        var x = padL + i * (bw + gap);
+        var y = padT + innerH - bh;
+        var last = i === rows.length - 1;
+        var label = String(r.date || '').slice(5).replace('-', '/') + (r.weekday || '');
+        return (
+          '<rect x="' +
+          x.toFixed(1) +
+          '" y="' +
+          y.toFixed(1) +
+          '" width="' +
+          bw.toFixed(1) +
+          '" height="' +
+          Math.max(1, bh).toFixed(1) +
+          '" rx="2" fill="' +
+          (last ? '#0d9488' : '#94a3b8') +
+          '"/>' +
+          (i % 2 === 0 || last
+            ? '<text x="' +
+              (x + bw / 2).toFixed(1) +
+              '" y="' +
+              (h - 8) +
+              '" text-anchor="middle" fill="currentColor" font-size="9">' +
+              esc(label) +
+              '</text>'
+            : '')
+        );
+      })
+      .join('');
+    return (
+      '<svg viewBox="0 0 ' +
+      w +
+      ' ' +
+      h +
+      '" role="img" aria-label="近 14 日同时点 IP 日活">' +
+      bars +
+      '</svg>'
+    );
+  }
+
+  function renderDau(dau) {
+    var el = document.getElementById('opsBoardDau');
+    if (!el) return;
+    if (!dau || !dau.current) {
+      el.innerHTML = '<p class="hint">同时点日活暂不可用</p>';
+      return;
+    }
+    var live = dau.live === true;
+    var cur = dau.current || {};
+    var cmp = dau.compare || {};
+    var week = dau.week || {};
+    var title = live ? '同时点日活' : '日活对比';
+    var curLabel = live ? '同时点日活' : '当日日活';
+    var cmpLabel = live ? '昨天同时点' : '前一日';
+    var vsLabel = live ? '相对昨天' : '相对前一日';
+    var weekLabel = '上周' + (week.weekday || '') + (live ? '同时点' : '');
+    var asOf = live && dau.as_of ? '截至 ' + dau.as_of : live ? '截至现在' : '全天';
+    var rangeHtml = '';
+    if (dau.range) {
+      rangeHtml =
+        '<p class="ops-board-dau-range">所选区间去重 ' +
+        esc(String(dau.range.dau_ip != null ? dau.range.dau_ip : 0)) +
+        ' IP / ' +
+        esc(String(dau.range.accounts != null ? dau.range.accounts : 0)) +
+        ' 账号 · 上一段 ' +
+        esc(String(dau.range.prev_dau_ip != null ? dau.range.prev_dau_ip : 0)) +
+        ' IP（' +
+        esc(dauPctText(dau.range.vs_prev_pct)) +
+        '）</p>';
+    }
+    var hourly = dau.hourly;
+    var charts = '';
+    if (hourly && hourly.hours && hourly.hours.length) {
+      charts +=
+        '<div class="ops-board-dau-chart"><div class="ops-board-dau-chart-title">累计 IP（北京时间整点）</div>' +
+        sparkLineSvg(hourly.hours, hourly.current || [], hourly.compare || []) +
+        '<div class="ops-board-dau-legend"><span><i></i>' +
+        (live ? '今天' : '当日') +
+        '</span><span><i class="is-compare"></i>' +
+        (live ? '昨天' : '前一日') +
+        '</span></div></div>';
+    }
+    if (dau.history && dau.history.length) {
+      charts +=
+        '<div class="ops-board-dau-chart"><div class="ops-board-dau-chart-title">近 14 日同一截点</div>' +
+        historyBarSvg(dau.history) +
+        '</div>';
+    }
+    el.innerHTML =
+      '<div class="ops-board-dau-head"><h3>' +
+      esc(title) +
+      '</h3><span class="hint">' +
+      esc(asOf) +
+      '</span></div>' +
+      '<div class="ops-board-dau-kpis">' +
+      kpiCard(
+        curLabel,
+        cur.dau_ip,
+        cur.accounts +
+          ' 账号 · 回访 ' +
+          (cur.returning != null ? cur.returning : '—') +
+          ' / 新 ' +
+          (cur.new_users != null ? cur.new_users : '—')
+      ) +
+      kpiCard(cmpLabel, cmp.dau_ip, (cmp.accounts != null ? cmp.accounts : 0) + ' 账号') +
+      kpiCard(
+        vsLabel,
+        dauPctText(dau.vs_compare_pct),
+        '上周同星期 ' + dauPctText(dau.vs_week_pct)
+      ).replace('class="value"', 'class="value' + dauToneClass(dau.vs_compare_pct) + '"') +
+      kpiCard(weekLabel, week.dau_ip, (week.accounts != null ? week.accounts : 0) + ' 账号') +
+      '</div>' +
+      rangeHtml +
+      (charts ? '<div class="ops-board-dau-charts">' + charts + '</div>' : '') +
+      '<p class="ops-board-dau-caption">' +
+      esc(dau.caption || '') +
+      '</p>';
+  }
+
   function kpiCard(label, value, sub) {
     return (
       '<div class="ops-board-kpi-card"><div class="label">' +
@@ -671,6 +890,7 @@
   }
 
   function renderBoard(data) {
+    renderDau(data && data.dau);
     var today = (data && data.today) || {};
     var stock = (data && data.stock) || {};
     var funnel = ((data && data.research) || {}).funnel || {};
@@ -730,7 +950,9 @@
     var kpi = document.getElementById('opsBoardKpi');
     var todo = document.getElementById('opsBoardTodo');
     var research = document.getElementById('opsBoardResearch');
+    var dauBox = document.getElementById('opsBoardDau');
     if (kpi) kpi.textContent = '加载中…';
+    if (dauBox) dauBox.textContent = '加载中…';
     if (todo) todo.innerHTML = '';
     if (research) research.textContent = '加载中…';
     var range = ensureBoardRange();
@@ -746,6 +968,7 @@
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
           if (kpi) kpi.textContent = (j && j.msg) || '加载失败';
+          if (dauBox) dauBox.textContent = (j && j.msg) || '加载失败';
           if (research) research.textContent = (j && j.msg) || '加载失败';
           return;
         }
@@ -753,6 +976,7 @@
       })
       .catch(function () {
         if (kpi) kpi.textContent = '加载失败';
+        if (dauBox) dauBox.textContent = '加载失败';
         if (research) research.textContent = '加载失败';
       });
   }

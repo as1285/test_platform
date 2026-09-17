@@ -22,6 +22,6 @@ describe('运营看板 KPI 日期区间', () => {
     expect(ops).toContain("'&date_from='");
     expect(ops).toContain("boardDateFrom.addEventListener('change', loadBoard)");
     expect(ops).toContain("boardDateTo.addEventListener('change', loadBoard)");
-    expect(loader).toContain('ops-conversion.js?v=20260910-ops-range');
+    expect(loader).toContain('ops-conversion.js?v=20260915-dau-clock');
   });
 });
