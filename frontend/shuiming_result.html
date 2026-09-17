@@ -41,7 +41,23 @@
                         (document.head || document.documentElement).appendChild(rn11St);
                     }
                 }
-                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+                if (/Android/i.test(u)) {
+                    document.documentElement.classList.add('platform-android');
+                    /*
+                     * ColorOS / ArkWeb：html/body overflow-x:hidden 会建滚动包含块，
+                     * position:fixed 顶栏跟页滚，划一下「收入纳税明细」整块滑出视口。
+                     * clip 只裁横向，不拆固定层。须 !important 压过 auth-boot 旧缓存的 hidden。
+                     */
+                    if (!document.querySelector('style[data-shuiming-android-fixed-chrome]')) {
+                        var andFixSt = document.createElement('style');
+                        andFixSt.setAttribute('data-shuiming-android-fixed-chrome', '1');
+                        andFixSt.textContent =
+                            'html.platform-android,html.platform-android body,html.app-android-client,html.app-android-client body{overflow-x:clip!important;overscroll-behavior-y:none;}' +
+                            'html.platform-android body.page-shuiming-result .top-fixed .header,html.app-android-client body.page-shuiming-result .top-fixed .header,html.platform-android body.page-shuiming-result .top-fixed .summary,html.app-android-client body.page-shuiming-result .top-fixed .summary,html.platform-android body.page-shuiming-result .shuiming-chrome-shield,html.app-android-client body.page-shuiming-result .shuiming-chrome-shield{position:fixed!important;visibility:visible!important;opacity:1!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
+                            'html.platform-android body.page-shuiming-result .top-fixed .header .header-title,html.app-android-client body.page-shuiming-result .top-fixed .header .header-title{visibility:visible!important;opacity:1!important;color:#000!important;}';
+                        (document.head || document.documentElement).appendChild(andFixSt);
+                    }
+                }
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
                 }
@@ -779,7 +795,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260916-android-pages"></script>
+    <script src="/js/auth-boot.js?v=20260917-fixed-chrome"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -961,9 +977,41 @@
         body {
             width: 100%;
             overflow-x: hidden;
+            overflow-x: clip;
             /* 隐藏系统过长滚动条；改用下方按内容比例的自然短拉手 */
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
+        }
+
+        /*
+         * Android / ColorOS：overflow-x:hidden 在 html/body 上会让 position:fixed
+         * 相对滚动包含块定位，划一下顶栏「收入纳税明细」跟列表一起滑走。
+         * clip 裁横向溢出、不建滚动包含块。
+         */
+        html.platform-android,
+        html.app-android-client,
+        html.platform-android body.page-shuiming-result,
+        html.app-android-client body.page-shuiming-result {
+            overflow-x: clip !important;
+            overscroll-behavior-y: none;
+        }
+        html.platform-android body.page-shuiming-result .top-fixed .header,
+        html.app-android-client body.page-shuiming-result .top-fixed .header,
+        html.platform-android body.page-shuiming-result .top-fixed .summary,
+        html.app-android-client body.page-shuiming-result .top-fixed .summary,
+        html.platform-android body.page-shuiming-result .shuiming-chrome-shield,
+        html.app-android-client body.page-shuiming-result .shuiming-chrome-shield {
+            position: fixed !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            -webkit-backface-visibility: visible !important;
+            backface-visibility: visible !important;
+        }
+        html.platform-android body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-client body.page-shuiming-result .top-fixed .header .header-title {
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #000 !important;
         }
 
         html::-webkit-scrollbar,
