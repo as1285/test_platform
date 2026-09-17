@@ -145,7 +145,8 @@ async function queryTrade(outTradeNo) {
     tradeStatus: tradeStatus,
     tradeNo: String(data.trade_no || data.tradeNo || '').trim(),
     totalAmount: normalizeAmount(data.total_amount || data.totalAmount),
-    buyerLogonId: String(data.buyer_logon_id || data.buyerLogonId || '').trim()
+    buyerLogonId: String(data.buyer_logon_id || data.buyerLogonId || '').trim(),
+    refundFee: normalizeAmount(data.refund_fee || data.refundFee)
   };
 }
 

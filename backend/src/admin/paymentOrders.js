@@ -38,7 +38,15 @@ function isActivationProduct(row) {
 }
 
 function isCurrentlyActive(user) {
-  if (!user || Number(user.account_active) !== 1) return false;
+  if (!user) return false;
+  var kind = user.activation_kind != null ? String(user.activation_kind).trim() : '';
+  if (kind === 'permanent') return true;
+  if (kind === 'trial') {
+    if (!user.active_until) return false;
+    var trialUntil = new Date(user.active_until).getTime();
+    return isFinite(trialUntil) && trialUntil > Date.now();
+  }
+  if (Number(user.account_active) !== 1) return false;
   if (!user.active_until) return true;
   var t = new Date(user.active_until).getTime();
   if (!isFinite(t)) return true;
@@ -156,7 +164,7 @@ function createHandlers(deps) {
         const [rows] = await conn.query(
           `SELECT po.id, po.username, po.subject, po.amount, po.status, po.sku_id, po.grant_kind,
                   po.out_trade_no, po.alipay_trade_no, po.paid_at, po.created_at,
-                  u.real_name, u.account_active, u.active_until
+                  u.real_name, u.account_active, u.activation_kind, u.active_until
            FROM payment_orders po
            LEFT JOIN users u
              ON u.username COLLATE utf8mb4_unicode_ci = po.username COLLATE utf8mb4_unicode_ci

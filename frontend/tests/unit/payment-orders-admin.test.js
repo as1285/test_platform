@@ -23,7 +23,7 @@ describe('admin payment orders', () => {
     expect(html).toContain('option value="pending"');
     expect(html).toContain('option value="paid_not_active"');
     expect(html).toContain('href="#payment-orders"');
-    expect(loader).toContain('payment-orders.js?v=20260907-hub6');
+    expect(loader).toContain('payment-orders.js?v=20260907-survey-ord');
     expect(src).toContain('api/admin/payment-orders');
   });
 

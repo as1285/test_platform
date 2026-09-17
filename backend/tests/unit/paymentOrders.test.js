@@ -111,4 +111,16 @@ describe('paymentOrders helpers', () => {
       })
     ).toBe(false);
   });
+
+  it('treats leftover trial/permanent as active even if account_active is 0', () => {
+    expect(isCurrentlyActive({ account_active: 0, activation_kind: 'permanent' })).toBe(true);
+    expect(
+      isCurrentlyActive({
+        account_active: 0,
+        activation_kind: 'trial',
+        active_until: new Date(Date.now() + 86400000).toISOString()
+      })
+    ).toBe(true);
+    expect(isCurrentlyActive({ account_active: 0, activation_kind: 'none' })).toBe(false);
+  });
 });
