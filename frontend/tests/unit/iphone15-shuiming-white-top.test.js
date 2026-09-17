@@ -62,7 +62,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20260917-iphone12-first');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios27-seam');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -126,6 +126,22 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     expect(shuiming).toContain('+ 56px');
   });
 
+  it('iPhone 15 / iOS 27 顶栏实底白，标题下留官方灰缝', () => {
+    expect(auth).toContain(
+      'html.platform-ios.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.platform-ios.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{background:#fff !important;box-shadow:none !important;'
+    );
+    expect(auth).toContain(
+      'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header::after,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header::after'
+    );
+    expect(auth).toContain(':not(.app-ios-iphone15):not(.app-ios-liquid-glass) body.page-shuiming-result .top-fixed .header');
+    expect(auth).toContain('background:#f5f6fa !important;padding:12px 0 10px !important');
+    expect(shuimingResult).toContain('box-shadow: none !important');
+    expect(shuimingResult).toContain('content: none !important');
+    expect(shuimingResult).toMatch(
+      /html\.app-ios-iphone15[\s\S]*?\.top-fixed \.summary[\s\S]*?background:\s*#f5f6fa/
+    );
+  });
+
   it('iOS 26/27 WebClip 不走外置栏，首屏按 393×852 打 15 并垫 59px', () => {
     expect(auth).toContain('function isIosLiquidGlassWebClip');
     expect(auth).toContain('isIosLiquidGlassWebClip() && isIosWhiteStatusPage()');
@@ -142,7 +158,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20260917-iphone12-first');
+    expect(shuiming).toContain('auth.js?v=20260917-ios27-seam');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );

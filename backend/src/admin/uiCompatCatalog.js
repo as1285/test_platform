@@ -172,7 +172,7 @@ var CORE_MODELS = [
       {
         page: 'mine',
         title: '我的页回退 9/1 画布',
-        summary: '14 Pro Max 单独回退到 9/1 底图：去掉遮罩/HTML 标题，并隐藏 HTML 胶囊，避免压住家庭成员。其它机型不动。',
+        summary: '14 Pro Max 单独回退到 9/1 底图：按型号/430×932/显示放大+灵动岛识别，隐藏 HTML 胶囊，避免压住家庭成员。其它机型不动。',
         since: '2026-09-17'
       },
       {
@@ -535,6 +535,30 @@ var CORE_MODELS = [
     label: '华为 Mate 70 / 70 Air',
     match: ['Mate\\s*70', 'PLA-AL', 'PLR-AL', 'PLU-AL', 'SUP-AL90', 'CLS-AL00'],
     issues: [{ page: 'shuiming', title: '沿用 Mate60 顶距', summary: '全页避开状态栏，勿与 Mate60「我的」0-bleed 混用。', since: '2026-08-13' }]
+  },
+  {
+    id: 'huawei-matepad115s',
+    platform: 'android',
+    family: 'huawei',
+    label: '华为 MatePad 11.5S',
+    match: [
+      'MatePad[\\s_-]*11[\\s.]*5[\\s"]*S',
+      'TGR-W09',
+      'TGR-W19',
+      'TGR-W00',
+      'TGR-AL00',
+      'TGR-AL09',
+      'HUAWEITGR'
+    ],
+    issues: [
+      {
+        page: 'mine',
+        title: '姓名/三宫格胶囊按画布宽度对齐',
+        summary:
+          '平板 ArkWeb 的 100vw/100cqw 常宽于画布，@sm 1180 裁切再竖向压底图；姓名漂在米色卡，添加/暂无掉到白卡下沿。改为真实底图比例 + 画布实测 rpx。',
+        since: '2026-09-17'
+      }
+    ]
   },
   {
     id: 'huawei-nova13',

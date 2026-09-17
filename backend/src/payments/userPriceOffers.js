@@ -215,10 +215,17 @@ function buildSkuFromOffer(row) {
   var amount = row.amount != null ? String(row.amount) : '';
   if (!amount) return null;
   var customLabel = row.label != null ? String(row.label).trim() : '';
+  var catalogAmount = base.amount;
   base.amount = amount;
   base.label = customLabel || base.label + '（专属价）';
   base.subject = String(base.subject || '').replace(/·专属价$/, '') + '·专属价';
   if (base.subject.length > 128) base.subject = base.subject.slice(0, 128);
+  if (catalogAmount && Number(catalogAmount) > Number(amount)) {
+    base.list_amount = String(catalogAmount);
+  }
+  if (/心理价/.test(customLabel) || /心理价/.test(String((row && row.note) || ''))) {
+    base.psych_offer = true;
+  }
   /* 渠道永久档：专属价标签常含「永久」，勿沿用模板 trial 天数 */
   if (
     String(base.label || '').indexOf('永久') >= 0 ||
@@ -408,7 +415,16 @@ function createUserPriceOffers(deps) {
       return { offer: pricingOffer, customOffer: null };
     }
     var cfg = await catalogConfigSafe();
-    if (cfg && cfg[sku.id]) applyCatalogEntryToSku(sku, cfg[sku.id]);
+    if (cfg && cfg[sku.id]) {
+      applyCatalogEntryToSku(sku, cfg[sku.id]);
+      var catAmt = cfg[sku.id].amount != null ? String(cfg[sku.id].amount) : '';
+      if (catAmt && Number(catAmt) > Number(sku.amount)) {
+        sku.list_amount = catAmt;
+      }
+    }
+    if (/心理价/.test(String(sku.label || '')) || /心理价/.test(String(row.note || ''))) {
+      sku.psych_offer = true;
+    }
     var next = Object.assign({}, pricingOffer || {}, {
       skus: [sku],
       custom_offer: true,

@@ -365,6 +365,9 @@ export const DEVICE_PROFILES = [
   immersive('BLK-AL80', '华为 nova 13', ['app-android-huawei-nova13', 'app-android-immersive-white-top'], {
     id: 'huawei-nova13'
   }),
+  immersive('TGR-W09', '华为 MatePad 11.5S', ['app-android-huawei-matepad115s'], {
+    id: 'huawei-matepad115s'
+  }),
   immersive('FIO-BD00', 'Hi nova 9 SE', ['app-android-hinova9se', 'app-android-immersive-white-top'], {
     id: 'hinova9se'
   }),

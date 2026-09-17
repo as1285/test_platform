@@ -40,6 +40,7 @@ describe('ui-smoke device catalog', () => {
       'mate30',
       'mate30pro',
       'huawei-nova13',
+      'huawei-matepad115s',
       'hinova9se',
       'pura70',
       'vivo-x200pro',
@@ -132,6 +133,17 @@ describe('ui-smoke device catalog', () => {
     expect(POPULAR_DEVICE_IDS).toContain('redmi-k70');
     expect(MAINSTREAM_DEVICE_IDS).toContain('redmi-k70');
     expect(resolveSmokeDevices('redmi-k70').map((d) => d.id)).toEqual(['redmi-k70']);
+  });
+
+  it('华为 MatePad 11.5S 列入目录且不进 recent 默认队列', () => {
+    const pad = DEVICE_PROFILES.find((d) => d.id === 'huawei-matepad115s');
+    expect(pad, 'huawei-matepad115s profile').toBeTruthy();
+    expect(pad.deviceModel).toBe('TGR-W09');
+    expect(pad.expect.classContains).toContain('app-android-huawei-matepad115s');
+    expect(RECENT_DEVICE_IDS).not.toContain('huawei-matepad115s');
+    expect(resolveSmokeDevices('huawei-matepad115s').map((d) => d.id)).toEqual([
+      'huawei-matepad115s'
+    ]);
   });
 
   it('只有 K70 标准版 expect.mineBlackStatus，其余安卓走禁止黑垫', () => {

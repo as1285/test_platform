@@ -49,7 +49,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(shuimingResult).toMatch(
       /html\.app-ios-iphone14promax\.app-ios-iphone-promax-font body\.page-shuiming-result \.list-value \{[\s\S]{0,40}font-size:\s*17px/
     );
-    expect(shuimingResult).toContain('auth.js?v=20260917-iphone12-first');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios27-seam');
   });
 
   it('年度选择页首屏打 14promax，并放大标题/年度行', () => {
@@ -58,19 +58,20 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(shuiming).toMatch(
       /html\.app-ios-iphone14promax body\.page-shuiming \.year-value \{[\s\S]{0,40}font-size:\s*18px/
     );
-    expect(shuiming).toContain('auth.js?v=20260917-iphone12-first');
+    expect(shuiming).toContain('auth.js?v=20260917-ios27-seam');
   });
 
   it('我的页 14 Pro Max 单独回退到 9/1 底图，隐藏 HTML 胶囊避免叠字', () => {
     expect(mine).toContain('mine14pmTopLock');
+    expect(mine).toContain('data-mine-14pm-plain');
+    expect(mine).toContain('__applyMine14pmPlain');
+    expect(mine).toContain('__mine14pmDetect');
     expect(mine).not.toContain('class="mine-e1-shortcut-mask"');
     expect(mine).not.toContain('mine-e1-label-family');
-    expect(mine).toContain('html.app-ios-iphone14promax body.page-mine .mine-e1-pill');
-    expect(mine).toMatch(
-      /html\.app-ios-iphone14promax body\.page-mine \.mine-e1-pill \{[\s\S]{0,80}visibility:\s*hidden/
-    );
-    expect(mine).toContain('auth.js?v=20260917-14pm-sep1');
-    expect(auth).toContain('html.app-ios-iphone14promax body.page-mine .mine-e1-pill{visibility:hidden!important;}');
+    expect(mine).toContain('html[data-mine-14pm-plain] body.page-mine .mine-e1-pill');
+    expect(mine).toContain('auth.js?v=20260917-14pm-plain2');
+    expect(auth).toContain('html[data-mine-14pm-plain] body.page-mine .mine-e1-pill{visibility:hidden!important;opacity:0!important;}');
+    expect(auth).toContain('safeTop >= 54');
     expect(auth).not.toContain('top:calc(748 * var(--mine-rpx))');
     expect(auth).not.toMatch(/xiaomi13ultra \|\|[\s\S]{0,40}ip14pm/);
   });

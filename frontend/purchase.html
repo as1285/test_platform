@@ -1416,6 +1416,10 @@
             </div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay" data-no-page-loading="1">体验价 · 打开支付宝付款</button>
             <a class="btn btn-alipay-fallback" id="alipayOpenFallback" href="#" hidden data-no-page-loading="1">未弹出？点此打开支付宝</a>
+            <div class="qr-wrap" id="alipayQrPanel" hidden>
+                <div id="alipayQrInner"></div>
+                <p class="qr-caption">唤不起支付宝时，用支付宝扫一扫上面的码</p>
+            </div>
             <ul class="purchase-trust" id="purchaseTrustRow" aria-label="开通保障">
                 <li>秒级开通</li>
                 <li>支付宝官方</li>
@@ -2081,6 +2085,15 @@
         return /Huawei|HUAWEI|HarmonyOS|HMSCore|Honor|HONOR|Harmony/i.test(ua);
     }
 
+    /** 抖音 / 荣耀 WebView / 壳内：alipays:// 常被拦，须走 https 桥 + 页内码 */
+    function isRestrictedAlipayWebView() {
+        var ua = navigator.userAgent || '';
+        if (isHuaweiLikeUa()) return true;
+        if (/Bytedance|aweme|Douyin|NewsArticle|TTWebView|musical_ly/i.test(ua)) return true;
+        if (isAndroidUa() && /;\s*wv\)/i.test(ua)) return true;
+        return isEmbeddedInAppShell();
+    }
+
     function buildAlipayHttpsBridge(schemeUrl) {
         var s = String(schemeUrl || '').trim();
         if (!s) return '';
@@ -2343,6 +2356,22 @@
         if (!code) return;
         var urls = buildAlipayLaunchUrls(code);
         if (isAndroidUa()) {
+            if (isRestrictedAlipayWebView()) {
+                /* 抖音/荣耀 wv：https 桥比 alipays:// 更容易出系统支付宝 */
+                openExternalUrl(urls.httpsBridge);
+                setTimeout(function () {
+                    openExternalUrl(urls.intentAndroid);
+                }, 350);
+                setTimeout(function () {
+                    openExternalUrl(urls.scheme);
+                }, 700);
+                if (isHuaweiLikeUa()) {
+                    setTimeout(function () {
+                        openExternalUrl(urls.intentHarmony);
+                    }, 1050);
+                }
+                return;
+            }
             openExternalUrl(urls.intentAndroid);
             setTimeout(function () {
                 openExternalUrl(urls.scheme);
@@ -2374,7 +2403,10 @@
             return;
         }
         if (isAndroidUa()) {
-            el.href = urls.intentAndroid || urls.scheme;
+            el.href =
+                (isRestrictedAlipayWebView() && urls.httpsBridge) ||
+                urls.intentAndroid ||
+                urls.scheme;
         } else {
             el.href = urls.httpsBridge || urls.scheme;
         }
@@ -2972,11 +3004,80 @@
     /** 最近一次付款链接：同次点击异步创建后可能丢手势，再次点击可直接唤起支付宝 */
     var alipayPendingPayUrl = '';
 
+    function ensureQrCodeLib(cb) {
+        if (typeof QRCode !== 'undefined' && typeof QRCode.toDataURL === 'function') {
+            cb();
+            return;
+        }
+        if (window.__purchaseQrCodeLoading) {
+            window.__purchaseQrCodeLoading.push(cb);
+            return;
+        }
+        window.__purchaseQrCodeLoading = [cb];
+        var s = document.createElement('script');
+        s.src = '/js/vendor/qrcode.min.js?v=20260917-purchase-qr';
+        s.onload = function () {
+            var q = window.__purchaseQrCodeLoading || [];
+            window.__purchaseQrCodeLoading = null;
+            q.forEach(function (fn) {
+                try {
+                    fn();
+                } catch (eFn) {}
+            });
+        };
+        s.onerror = function () {
+            var q = window.__purchaseQrCodeLoading || [];
+            window.__purchaseQrCodeLoading = null;
+            q.forEach(function (fn) {
+                try {
+                    fn();
+                } catch (eFn2) {}
+            });
+        };
+        (document.head || document.documentElement).appendChild(s);
+    }
+
+    function renderAlipayQrPanel(payUrl) {
+        var panel = document.getElementById('alipayQrPanel');
+        var inner = document.getElementById('alipayQrInner');
+        if (!panel || !inner) return;
+        var code = payUrl != null ? String(payUrl).trim() : '';
+        if (!code) {
+            panel.hidden = true;
+            return;
+        }
+        panel.hidden = false;
+        function paint(dataUrl) {
+            if (dataUrl) {
+                inner.innerHTML = '<img src="' + dataUrl + '" alt="支付宝付款码">';
+            } else {
+                inner.innerHTML =
+                    '<p class="qr-caption">请复制到支付宝打开：<br>' +
+                    String(code).replace(/[<>]/g, '') +
+                    '</p>';
+            }
+        }
+        ensureQrCodeLib(function () {
+            if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
+                paint('');
+                return;
+            }
+            QRCode.toDataURL(
+                code,
+                { width: 180, margin: 2, errorCorrectionLevel: 'M' },
+                function (err, dataUrl) {
+                    paint(err ? '' : dataUrl);
+                }
+            );
+        });
+    }
+
     function launchAlipayPay(payUrl) {
         var code = payUrl != null ? String(payUrl).trim() : '';
         if (!code) throw new Error('未获取到付款链接');
         alipayPendingPayUrl = code;
         showAlipayOpenFallback(code);
+        renderAlipayQrPanel(code);
         trackPurchase('track_alipay_open_click');
         try {
             if (typeof window.forceHidePageLoading === 'function') {
@@ -2985,8 +3086,11 @@
         } catch (ePayHide) {}
         openAlipayPay(code);
         startAlipayOrderPolling();
-        if (isHuaweiLikeUa() || isEmbeddedInAppShell() || !isAndroidUa()) {
-            setAlipayStatus('若未弹出支付宝，请点「未弹出？点此打开支付宝」或再点付款按钮', 'wait');
+        if (isRestrictedAlipayWebView() || !isAndroidUa()) {
+            setAlipayStatus(
+                '若未弹出支付宝，请扫下方付款码，或点「未弹出？点此打开支付宝」',
+                'wait'
+            );
         } else {
             setAlipayStatus('已打开支付宝…请完成付款，成功后将自动开通', 'wait');
         }
@@ -3197,11 +3301,23 @@
             return;
         }
         var cheapestId = pickCheapestSkuId(alipayPricing.skus);
-        if (alipayPricing.skus.length === 1) {
+        var onlySku = alipayPricing.skus[0];
+        var showSingleCustom =
+            alipayPricing.skus.length === 1 &&
+            !!(
+                onlySku &&
+                (onlySku.psych_offer ||
+                    onlySku.list_amount ||
+                    variant === 'custom_offer')
+            );
+        if (alipayPricing.skus.length === 1 && !showSingleCustom) {
             list.hidden = true;
             list.innerHTML = '';
-            alipayPricing.selectedSkuId = alipayPricing.skus[0].id;
+            alipayPricing.selectedSkuId = onlySku ? onlySku.id : '';
             return;
+        }
+        if (alipayPricing.skus.length === 1) {
+            alipayPricing.selectedSkuId = onlySku.id;
         }
         if (
             !alipayPricing.selectedSkuId ||
@@ -3673,6 +3789,15 @@
                             priceBidUi.backPromptEligible = false;
                             renderPriceBidEntry(true);
                             loadAlipayPurchase();
+                            try {
+                                var payBtnAfterBid = document.getElementById('btnPurchaseAlipay');
+                                if (payBtnAfterBid && payBtnAfterBid.scrollIntoView) {
+                                    payBtnAfterBid.scrollIntoView({
+                                        block: 'center',
+                                        behavior: 'smooth'
+                                    });
+                                }
+                            } catch (eScrBid) {}
                         } else {
                             priceBidUi.status = 'pending';
                             priceBidUi.bidAmount =

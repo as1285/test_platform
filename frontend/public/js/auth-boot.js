@@ -575,6 +575,34 @@
         return;
       }
       /*
+       * MatePad 11.5S：勿走 @sm 1180 裁切 / noclip 100cqw。
+       * 平板 ArkWeb 会把姓名和三宫格胶囊顶出米色卡 / 白卡。
+       */
+      var matepad115s =
+        /TGR-W09|TGR-W19|TGR-W00|TGR-AL00|TGR-AL09|TGR-W\d{2}|TGR-AL\d{2}|HUAWEITGR|(?:Huawei|HUAWEI|华为)?[\s_-]*MatePad[\s_-]*11[\s.]*5[\s\"]*S/i.test(
+          ua
+        );
+      if (matepad115s) {
+        cl.add('app-android-client');
+        cl.add('app-android-huawei-matepad115s');
+        cl.remove('app-android-mine-e1-sm');
+        cl.remove('app-huawei-mine-noclip');
+        document.documentElement.style.setProperty('--mine-top-bleed', '0px', 'important');
+        if (!document.getElementById('matepad115sMineFirstPaint')) {
+          var padSt = document.createElement('style');
+          padSt.id = 'matepad115sMineFirstPaint';
+          padSt.setAttribute('data-matepad115s-mine-e1-firstpaint', '1');
+          padSt.textContent =
+            'html.app-android-huawei-matepad115s body.page-mine{--mine-top-bleed:0px!important;}' +
+            'html.app-android-huawei-matepad115s body.page-mine .mine-e1-canvas,html.app-android-huawei-matepad115s.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:auto!important;container-type:normal!important;background-image:none!important;background-color:#f5f6fa!important;}' +
+            'html.app-android-huawei-matepad115s body.page-mine .mine-e1-canvas>img,html.app-android-huawei-matepad115s body.page-mine .mine-e1-canvas>#headerImg,html.app-android-huawei-matepad115s.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img{margin-top:0!important;display:block!important;position:relative!important;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1284/2127!important;object-fit:fill!important;opacity:1!important;top:auto!important;transform:none!important;}' +
+            'html.app-android-huawei-matepad115s body.page-mine .mine-e1-layer,html.app-android-huawei-matepad115s.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;height:0!important;padding-bottom:calc(2127 / 1284 * 100%)!important;}' +
+            'html.app-android-huawei-matepad115s body.page-mine .mine-e1-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;}';
+          document.head.appendChild(padSt);
+        }
+        return;
+      }
+      /*
        * 红米 K70 标准版「我的」：underlap 黑垫，勿进 @sm 裁切。
        * HyperOS lock 会把画布 padding 清零、把头图蓝铺进系统栏。
        */
@@ -594,12 +622,12 @@
       st.setAttribute('data-android-mine-e1-sm-firstpaint', '1');
       st.textContent =
         'html.app-android-mine-e1-sm body.page-mine{--mine-top-bleed:0px!important;--mine-rpx:calc(100vw / 750)!important;background-color:#f5f6fa!important;background-image:none!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:unset!important;container-type:normal!important;width:100%!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% auto!important;background-position:top center!important;height:calc(1180 * 100vw / 750)!important;max-height:calc(1180 * 100vw / 750)!important;aspect-ratio:unset!important;container-type:normal!important;width:100%!important;}' +
         'html.app-android-huawei-p40pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{padding-top:0!important;margin-top:0!important;overflow:hidden!important;background-color:#f5f6fa!important;background-image:url(/img/mine/e1_01@sm.png?v=20260901-android-mine-sm)!important;background-size:100% 100%!important;background-position:top center!important;height:auto!important;max-height:none!important;aspect-ratio:750/1180!important;container-type:normal!important;width:100%!important;}' +
         'html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>img,html.app-android-mine-e1-sm body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;display:block!important;width:1px!important;height:1px!important;max-height:none!important;object-fit:fill!important;position:absolute!important;top:auto!important;transform:none!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
         'html.app-android-huawei-p40pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0!important;padding-bottom:calc(1180 / 750 * 100%)!important;}' +
-        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
+        'html.app-android-mine-e1-sm:not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine .mine-e1-footer{padding-bottom:calc(var(--bottom-nav-height,54px) + var(--bottom-nav-bottom,8px) + 12px)!important;}';
       document.head.appendChild(st);
       if (/2304FPN6|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Ultra/i.test(ua)) {
         cl.add('app-android-xiaomi-13ultra');

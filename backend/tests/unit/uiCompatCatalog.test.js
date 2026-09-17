@@ -53,6 +53,16 @@ describe('uiCompatCatalog + deviceStats', () => {
     expect(k70.issues.some((i) => i.page === 'mine' && /underlap 黑垫/.test(i.title))).toBe(true);
   });
 
+  it('matches MatePad 11.5S without taking Mate 60 or MatePad 11.5', () => {
+    const m = catalog.listCatalogModels().find((x) => x.id === 'huawei-matepad115s');
+    expect(m).toBeTruthy();
+    expect(catalog.modelMatchesBlob(m, 'HUAWEI MatePad 11.5S TGR-W09')).toBe(true);
+    expect(catalog.modelMatchesBlob(m, 'Android 12; TGR-W19 Build/HUAWEITGR-W09')).toBe(true);
+    expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 60 ALN-AL00')).toBe(false);
+    expect(catalog.modelMatchesBlob(m, 'HUAWEI MatePad 11.5 BTK-W09')).toBe(false);
+    expect(m.issues.some((i) => i.page === 'mine' && /三宫格/.test(i.title))).toBe(true);
+  });
+
   it('matches Mate 30 without taking Mate 30 Pro or Mate 60', () => {
     const m = catalog.listCatalogModels().find((x) => x.id === 'huawei-mate30');
     expect(catalog.modelMatchesBlob(m, 'HUAWEI Mate 30 TAS-AL00')).toBe(true);

@@ -28,7 +28,7 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
     expect(auth).toContain('data-acepro-mine-e1-lock');
     expect(auth).toContain('aspect-ratio:1284 / 2127');
     expect(auth).toContain("var acepro =");
-    expect(auth).toMatch(/plainImg \|\| acepro \|\| hinova9se \|\| xiaomi13ultra/);
+    expect(auth).toMatch(/plainImg \|\|[\s\S]{0,80}acepro \|\|[\s\S]{0,80}hinova9se \|\|[\s\S]{0,80}xiaomi13ultra/);
     expect(auth).toContain(':not(.app-android-oneplus-acepro) body.page-mine');
     expect(auth).toContain(
       ':not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-oneplus-acepro)'
@@ -47,7 +47,7 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
     expect(mine).toContain('aspect-ratio: 1284 / 2127');
     expect(mine).toContain('--mine-top-bleed: 0px !important');
     expect(mine).toContain(
-      ':not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra) body.page-mine .mine-e1-canvas'
+      ':not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine .mine-e1-canvas'
     );
     expect(boot).toContain('app-android-oneplus-acepro');
     expect(boot).toContain("classList.remove('app-android-mine-e1-sm')");
@@ -64,7 +64,7 @@ describe('OnePlus Ace Pro mine e1 pills', () => {
   it('does not keep Ace Pro on the 40px mine bleed group', () => {
     const bleedGroup = mine.slice(
       mine.indexOf('html.app-android-oneplus-13 body.page-mine,'),
-      mine.indexOf('html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro) body.page-mine {')
+      mine.indexOf('html.app-huawei-mine-noclip:not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-huawei-matepad115s) body.page-mine {')
     );
     expect(bleedGroup).toContain('ace2pro');
     expect(bleedGroup).not.toContain('oneplus-acepro');
