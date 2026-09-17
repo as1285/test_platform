@@ -459,6 +459,7 @@
 
   /**
    * 安卓 WebView 的 100vw 常宽于画布。只裁横向溢出，避免底栏各页和明细页横滑卡顿。
+   * 用 overflow-x:clip：hidden 会建滚动包含块，ColorOS 上明细页 fixed 顶栏会跟滑走。
    * 不作用于 iOS：部分机型 overflow-x:hidden 会把 position:fixed 底栏抬高。
    */
   function clipAndroidHorizontalOverflow() {
@@ -468,7 +469,7 @@
       var st = document.createElement('style');
       st.id = 'androidPageOverflowClip';
       st.textContent =
-        'html.app-android-client,html.app-android-client body{overflow-x:hidden;max-width:100%;}';
+        'html.app-android-client,html.app-android-client body{overflow-x:clip;max-width:100%;}';
       (document.head || document.documentElement).appendChild(st);
     } catch (eClip) {}
   }
