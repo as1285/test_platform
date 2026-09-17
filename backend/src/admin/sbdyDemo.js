@@ -149,6 +149,25 @@ function defaultPrintDateCn() {
   return p.y + '年' + String(p.m).padStart(2, '0') + '月' + String(p.d).padStart(2, '0') + '日';
 }
 
+/** 个人专用证明区间只允许近 12 个月或近 48 个月（4 年） */
+function resolvePersonalWindowMonths(raw) {
+  var n = Number(raw);
+  if (n === 12 || n === 1) return 12;
+  if (n === 48 || n === 4) return 48;
+  var s = String(raw == null ? '' : raw).trim();
+  if (/^(12|1年|一年|近12)/.test(s)) return 12;
+  return 48;
+}
+
+function parsePrintDateYm(s) {
+  var t = String(s || '').trim();
+  var m = t.match(/^(\d{4})年\s*(\d{1,2})月/);
+  if (m) return { y: Number(m[1]), m: Number(m[2]) };
+  m = t.match(/^(\d{4})[-/](\d{1,2})/);
+  if (m) return { y: Number(m[1]), m: Number(m[2]) };
+  return bjNowParts();
+}
+
 function defaultQueryDate() {
   var p = bjNowParts();
   return p.y + '-' + String(p.m).padStart(2, '0') + '-' + String(p.d).padStart(2, '0');
@@ -832,6 +851,27 @@ function normalizePayload(body) {
   var periodStart =
     overallStart.year + '-' + String(overallStart.month).padStart(2, '0');
   var periodEnd = overallEnd.year + '-' + String(overallEnd.month).padStart(2, '0');
+  var windowMonths = isLinian || isSichuan ? 0 : resolvePersonalWindowMonths(b.window_months || b.windowMonths);
+  var periodLabel =
+    formatYmCn(Number(overallStart.year), Number(overallStart.month)) +
+    '-' +
+    formatYmCn(Number(overallEnd.year), Number(overallEnd.month));
+  if (windowMonths === 12 || windowMonths === 48) {
+    var winEnd = parsePrintDateYm(printDate);
+    var winStart = addMonthsYmParts(winEnd.y, winEnd.m, -(windowMonths - 1));
+    var winStartKey = ymKey(winStart.y, winStart.m);
+    var winEndKey = ymKey(winEnd.y, winEnd.m);
+    periodStart = winStart.y + '-' + String(winStart.m).padStart(2, '0');
+    periodEnd = winEnd.y + '-' + String(winEnd.m).padStart(2, '0');
+    periodLabel = formatYmCn(winStart.y, winStart.m) + '至' + formatYmCn(winEnd.y, winEnd.m);
+    months = months.filter(function (row) {
+      var k = ymKey(Number(row.year), Number(row.month));
+      return k >= winStartKey && k <= winEndKey;
+    });
+    if (!months.length) {
+      return { error: '所选证明区间内没有缴费记录' };
+    }
+  }
 
   var basePayload = {
     name: name,
@@ -846,10 +886,8 @@ function normalizePayload(body) {
     area: latest.area,
     period_start: periodStart,
     period_end: periodEnd,
-    period_label:
-      formatYmCn(Number(overallStart.year), Number(overallStart.month)) +
-      '-' +
-      formatYmCn(Number(overallEnd.year), Number(overallEnd.month)),
+    period_label: periodLabel,
+    window_months: windowMonths || undefined,
     base_amount: latest.base_amount,
     pension_pay: latest.pension_pay,
     unemployment_pay: latest.unemployment_pay,
@@ -1394,9 +1432,7 @@ function renderCertHtml(payload, links, opts) {
   var authCode = opts.authCode || '';
   var companyDisp = companyDisplayOf(p);
   var periodLabel = p.period_label || '';
-  var monthCount = Array.isArray(months) ? months.length : 0;
-  if (monthCount < 1) monthCount = 12;
-  if (monthCount > 48) monthCount = 48;
+  var monthCount = resolvePersonalWindowMonths(p.window_months || p.windowMonths);
   var paySecTitle =
     '出具证明前' + monthCount + '个月缴费情况（' + escHtml(periodLabel) + '）';
   var officialValidateHint =

@@ -257,6 +257,20 @@ ROWS_PER_PAGE = 24
 MAX_MONTHS = 48
 
 
+def resolve_window_months(p):
+    """个人专用标题只允许 12 或 48，与实际缴费行数无关。"""
+    raw = p.get('window_months')
+    if raw is None:
+        raw = p.get('windowMonths')
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        n = 0
+    if n in (12, 1):
+        return 12
+    return 48
+
+
 def ensure_months(p):
     months = list(p.get('months') or [])
     area = str(p.get('area') or '')
@@ -474,7 +488,7 @@ def collect_text_blob(p, months, auth_code):
     parts = [
         '浙江省社会保险参保证明（个人专用）',
         '共%d页，第1页' % page_n,
-        '出具证明前%d个月缴费情况' % (n or 12),
+        '出具证明前%d个月缴费情况' % resolve_window_months(p),
         '参加社会保险基本情况',
         '养老保险工伤保险失业保险',
         BOLD_LABEL_CHARS,
@@ -1169,9 +1183,8 @@ def render(payload, auth_code, qr_url, out_path):
     months = ensure_months(p)
     month_chunks = chunk_months(months, ROWS_PER_PAGE)
     total_pages = len(month_chunks)
-    real_count = len([m for m in months if m])
     period = p.get('period_label') or ''
-    section_title = '出具证明前%d个月缴费情况（%s）' % (real_count or 12, period)
+    section_title = '出具证明前%d个月缴费情况（%s）' % (resolve_window_months(p), period)
 
     blob = collect_text_blob(p, months, auth_code)
     full_body = ensure_full_cjk_font()

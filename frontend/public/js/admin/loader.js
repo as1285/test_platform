@@ -17,7 +17,7 @@
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260903-split2',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260917-window48',
     'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260911-payroll',
     'user-remote-sync': '/js/admin/modules/user-remote-sync.js?v=20260810-sync1'
   };
