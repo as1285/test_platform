@@ -192,6 +192,13 @@
             '<div class="ud-label">近7天已点击</div><div class="ud-val">' +
             esc(String(d.clicked || 0)) +
             '</div></button>' +
+            '<div class="user-data-stat-card">' +
+            '<div class="ud-label">硬退信 / 无效</div><div class="ud-val">' +
+            esc(String((d.bounce && d.bounce.hard) || 0)) +
+            '</div><div class="ud-label">软退信 ' +
+            esc(String((d.bounce && d.bounce.soft) || 0)) +
+            (d.imap_ready ? ' · IMAP 已配' : ' · 未开 IMAP') +
+            '</div></div>' +
             dayLine;
         }
         if (autoList) {
@@ -213,6 +220,125 @@
       })
       .catch(function (e) {
         if (stat) stat.textContent = (e && e.message) || '总览加载失败';
+      });
+  }
+
+  function bounceTypeLabel(t) {
+    if (t === 'soft') return '软退信';
+    if (t === 'hard') return '硬退信';
+    return t || '—';
+  }
+
+  function loadBounces() {
+    var tbody = document.getElementById('userEmailBounceTbody');
+    var stat = document.getElementById('userEmailBounceStat');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+    fetchAdmin('api/admin/emails/bounces?limit=30')
+      .then(function (r) {
+        return parseAdminJson(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="7">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
+          if (stat) stat.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        var items = Array.isArray(j.data.items) ? j.data.items : [];
+        if (stat) {
+          stat.textContent =
+            '共 ' +
+            (j.data.total || 0) +
+            ' 条有效退信 · ' +
+            (j.data.imap_ready ? 'IMAP 已配置' : 'IMAP 未配置（用 SMTP 账号即可）');
+        }
+        if (!items.length) {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="7">暂无退信。发出去后若地址不存在，通常几分钟到几小时会回到发件箱。</td></tr>';
+          return;
+        }
+        var html = '';
+        items.forEach(function (it) {
+          html +=
+            '<tr>' +
+            '<td>' +
+            esc(it.email || '') +
+            '</td>' +
+            '<td>' +
+            (it.username ? userJumpBtn(it.username) : '—') +
+            '</td>' +
+            '<td>' +
+            esc(bounceTypeLabel(it.bounce_type)) +
+            '</td>' +
+            '<td>' +
+            esc(it.reason || '') +
+            '</td>' +
+            '<td>' +
+            esc(formatDt(it.last_seen_at)) +
+            '</td>' +
+            '<td>' +
+            esc(String(it.hit_count || 1)) +
+            '</td>' +
+            '<td>' +
+            '<button type="button" class="btn-page js-email-bounce-dismiss" data-email="' +
+            esc(it.email) +
+            '">标为有效</button>' +
+            '</td>' +
+            '</tr>';
+        });
+        if (tbody) tbody.innerHTML = html;
+      })
+      .catch(function (e) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7">' + esc((e && e.message) || '加载失败') + '</td></tr>';
+        if (stat) stat.textContent = (e && e.message) || '加载失败';
+      });
+  }
+
+  function syncBounces() {
+    var btn = document.getElementById('btnUserEmailBounceSync');
+    var stat = document.getElementById('userEmailBounceStat');
+    if (btn) btn.disabled = true;
+    if (stat) stat.textContent = '正在拉取发件箱退信…';
+    fetchAdmin('api/admin/emails/bounces/sync', { method: 'POST', body: JSON.stringify({ days: 14 }) })
+      .then(function (r) {
+        return parseAdminJson(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200) throw new Error((j && j.msg) || '拉取失败');
+        var d = j.data || {};
+        if (stat) {
+          stat.textContent =
+            '扫描 ' + (d.scanned || 0) + ' 封 · 识别退信 ' + (d.matched || 0) + ' · 写入 ' + (d.saved || 0);
+        }
+        loadBounces();
+        loadOverview();
+        loadUsers();
+      })
+      .catch(function (e) {
+        if (stat) stat.textContent = (e && e.message) || '拉取失败';
+      })
+      .then(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  function dismissBounce(email) {
+    var addr = String(email || '').trim();
+    if (!addr) return;
+    if (!confirm('把 ' + addr + ' 重新标为有效？以后会再给这个地址发信。')) return;
+    fetchAdmin('api/admin/emails/bounces/dismiss', {
+      method: 'POST',
+      body: JSON.stringify({ email: addr })
+    })
+      .then(function (r) {
+        return parseAdminJson(r);
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200) throw new Error((j && j.msg) || '操作失败');
+        loadBounces();
+        loadOverview();
+        loadUsers();
+      })
+      .catch(function (e) {
+        alert((e && e.message) || '操作失败');
       });
   }
 
@@ -248,9 +374,10 @@
     var tbody = document.getElementById('userEmailTbody');
     var stat = document.getElementById('userEmailStat');
     var pageInfo = document.getElementById('userEmailPageInfo');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载中…</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
     var active = String((document.getElementById('userEmailActive') || {}).value || '');
     var half = String((document.getElementById('userEmailHalf') || {}).value || '');
+    var bounce = String((document.getElementById('userEmailBounce') || {}).value || '');
     var q = String((document.getElementById('userEmailQ') || {}).value || '').trim();
     var url =
       'api/admin/emails/users?page=' +
@@ -258,6 +385,7 @@
       '&limit=20' +
       (active ? '&active=' + encodeURIComponent(active) : '') +
       (half ? '&half_price=' + encodeURIComponent(half) : '') +
+      (bounce ? '&bounce=' + encodeURIComponent(bounce) : '') +
       (q ? '&q=' + encodeURIComponent(q) : '');
     fetchAdmin(url)
       .then(function (r) {
@@ -265,7 +393,7 @@
       })
       .then(function (j) {
         if (!j || j.code !== 200 || !j.data) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="10">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="11">' + esc((j && j.msg) || '加载失败') + '</td></tr>';
           if (stat) stat.textContent = (j && j.msg) || '加载失败';
           return;
         }
@@ -281,7 +409,7 @@
         var pages = Math.max(1, Math.ceil(lastTotal / lastLimit) || 1);
         if (pageInfo) pageInfo.textContent = '第 ' + page + ' / ' + pages + ' 页';
         if (!lastUsers.length) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="10">暂无已留邮箱用户</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="11">暂无已留邮箱用户</td></tr>';
           syncCheckAll();
           syncSendSelectedBtn();
           return;
@@ -305,6 +433,13 @@
             '</td>' +
             '<td>' +
             esc(u.email || '') +
+            '</td>' +
+            '<td>' +
+            (u.email_invalid
+              ? '<span title="' + esc(u.bounce_reason || '退信') + '">无效</span>'
+              : u.bounce_type === 'soft'
+                ? '<span title="' + esc(u.bounce_reason || '') + '">暂不可达</span>'
+                : '有效') +
             '</td>' +
             '<td>' +
             (u.account_active ? '已开通' : '未开通') +
@@ -351,7 +486,7 @@
       .catch(function (e) {
         if (tbody) {
           tbody.innerHTML =
-            '<tr><td colspan="10">' + esc((e && e.message) || '加载失败') + '</td></tr>';
+            '<tr><td colspan="11">' + esc((e && e.message) || '加载失败') + '</td></tr>';
         }
         if (stat) stat.textContent = (e && e.message) || '加载失败';
       });
@@ -778,6 +913,25 @@
         loadUsers();
       });
     }
+    var bounce = document.getElementById('userEmailBounce');
+    if (bounce) {
+      bounce.addEventListener('change', function () {
+        page = 1;
+        loadUsers();
+      });
+    }
+    var bounceSync = document.getElementById('btnUserEmailBounceSync');
+    if (bounceSync) {
+      bounceSync.addEventListener('click', syncBounces);
+    }
+    var bounceTbody = document.getElementById('userEmailBounceTbody');
+    if (bounceTbody) {
+      bounceTbody.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.js-email-bounce-dismiss') : null;
+        if (!btn) return;
+        dismissBounce(btn.getAttribute('data-email'));
+      });
+    }
     var half = document.getElementById('userEmailHalf');
     if (half) {
       half.addEventListener('change', function () {
@@ -965,6 +1119,7 @@
     loadOverview();
     loadUsers();
     loadSends();
+    loadBounces();
   }
 
   global.AdminModules = global.AdminModules || {};

@@ -78,10 +78,12 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
     expect(guideSrc).toContain('setHasEmail: function');
     expect(gerenxinxiHtml).toContain('id="emailSuffixChips"');
     expect(gerenxinxiHtml).toContain('function bindProfileEmailSuffix');
+    expect(gerenxinxiHtml).not.toMatch(/alert\(['"]纳税人识别号/);
+    expect(gerenxinxiHtml).toContain('data-taxid-view="inline"');
   });
 
   it('auth 注入新版 conversion-guide 与 email-suffix', () => {
     expect(authSrc).toContain('email-suffix.js?v=20260907-email-sfx');
-    expect(authSrc).toContain('conversion-guide.js?v=20260915-consult-not-preview');
+    expect(authSrc).toContain('conversion-guide.js?v=20260908-no-qr-guide');
   });
 });
