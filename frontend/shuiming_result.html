@@ -41,7 +41,7 @@
                         (document.head || document.documentElement).appendChild(rn11St);
                     }
                 }
-                /* OPPO A57 / A557：再往回退，顶栏改文档流，避免 fixed 被合计盖住 */
+                /* OPPO A57 / A557：回退到上周（9/12）整页滚动 + fixed 顶栏 */
                 var isOppoA57 = /PFTM20|PFTM\d|OPPO\s*A557|A557\s*5G|OPPO\s*A57(?:\s*5G)?(?!\d)/i.test(u);
                 if (!isOppoA57 && /ColorOS|HeyTap|OPPO|Oppo/i.test(u) && !/PHJ110|PGP110|PJD110|PLQ110|PHW110|PGCM10|PFGM00|Find\s*X|Reno\s*10|Ace\s*|A58|A93s|Xiaomi|Redmi|Huawei|HONOR|vivo|iQOO/i.test(u)) {
                     try {
@@ -52,7 +52,7 @@
                 }
                 if (isOppoA57) {
                     document.documentElement.classList.add('app-android-oppo-a57');
-                    document.documentElement.classList.add('shuiming-android-legacy-flow');
+                    document.documentElement.classList.add('shuiming-android-weekback');
                 }
                 if (/Android/i.test(u)) {
                     document.documentElement.classList.add('platform-android');
@@ -64,23 +64,24 @@
                             document.documentElement.style.setProperty('--shuiming-chrome-top', chromeTop);
                         }
                     } catch (eChromeTop) {}
-                    if (isOppoA57 && !document.querySelector('style[data-shuiming-a57-legacy-flow]')) {
+                    if (isOppoA57 && !document.querySelector('style[data-shuiming-a57-weekback]')) {
                         var a57St = document.createElement('style');
-                        a57St.setAttribute('data-shuiming-a57-legacy-flow', '1');
+                        a57St.setAttribute('data-shuiming-a57-weekback', '1');
                         a57St.textContent =
-                            'html.shuiming-android-legacy-flow,html.shuiming-android-legacy-flow body,html.shuiming-android-legacy-flow body.page-shuiming-result,html.shuiming-android-legacy-flow body.page-shuiming-result .page-root{height:auto!important;max-height:none!important;min-height:100vh!important;overflow:visible!important;overflow-x:hidden!important;isolation:isolate;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed{position:relative!important;height:auto!important;overflow:visible!important;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:2!important;height:48px!important;min-height:48px!important;padding:8px 16px!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;display:flex!important;align-items:center!important;justify-content:center!important;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header .header-right{top:50%!important;transform:translateY(-50%)!important;height:auto!important;display:flex!important;align-items:center!important;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:2!important;visibility:visible!important;opacity:1!important;color:#000!important;line-height:32px!important;height:auto!important;font-size:17px!important;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .summary{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:1!important;transform:none!important;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;margin-top:0!important;}' +
-                            'html.shuiming-android-legacy-flow body.page-shuiming-result .shuiming-chrome-shield{display:none!important;}';
+                            'html.platform-android.app-android-oppo-a57,html.app-android-client.app-android-oppo-a57,html.shuiming-android-weekback,html.shuiming-android-weekback body,html.shuiming-android-weekback body.page-shuiming-result{height:auto!important;max-height:none!important;min-height:100%!important;overflow:visible!important;overflow-x:hidden!important;overscroll-behavior:auto!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .page-root{height:auto!important;max-height:none!important;min-height:100vh!important;overflow:visible!important;isolation:isolate;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed{position:static!important;height:0!important;overflow:visible!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:130!important;height:calc(var(--header-height,48px) + 40px)!important;min-height:calc(var(--header-height,48px) + 40px)!important;padding:40px 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right{top:40px!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;transform:none!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:2!important;visibility:visible!important;opacity:1!important;color:#000!important;-webkit-text-fill-color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;font-size:17px!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + 40px)!important;left:0!important;right:0!important;z-index:125!important;visibility:visible!important;opacity:1!important;transform:translateZ(0);}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;margin-top:calc(var(--header-height,48px) + 40px)!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield{display:block!important;position:fixed!important;visibility:visible!important;}';
                         (document.head || document.documentElement).appendChild(a57St);
                     }
                     /*
                      * ColorOS / ArkWeb：锁页面会裁掉「收入纳税明细」。
-                     * 其它 Android 仍钉顶栏；A57/A557 走文档流顶栏。
+                     * 其它 Android 仍钉顶栏；A57/A557 走上周整页滚动。
                      */
                     if (!isOppoA57 && !document.querySelector('style[data-shuiming-android-fixed-chrome]')) {
                         var andFixSt = document.createElement('style');
@@ -855,7 +856,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-a57-flow"></script>
+    <script src="/js/auth-boot.js?v=20260918-a57-week"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -1692,71 +1693,92 @@
         }
 
         /*
-         * OPPO A57 / A557：比 9/16 再往前，顶栏/汇总回到文档流。
-         * fixed + 合计 top 会把「收入纳税明细」盖住。
+         * OPPO A57 / A557：回到上周（9/12）布局。
+         * 顶栏/汇总仍 fixed，列表在文档流里，整页滚动；不锁 overflow、不改文档流。
          */
-        html.shuiming-android-legacy-flow,
-        html.shuiming-android-legacy-flow body,
-        html.shuiming-android-legacy-flow body.page-shuiming-result,
-        html.shuiming-android-legacy-flow body.page-shuiming-result .page-root {
+        html.platform-android.app-android-oppo-a57,
+        html.app-android-client.app-android-oppo-a57,
+        html.shuiming-android-weekback,
+        html.shuiming-android-weekback body,
+        html.platform-android.app-android-oppo-a57 body.page-shuiming-result,
+        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result,
+        html.shuiming-android-weekback body.page-shuiming-result {
+            height: auto !important;
+            max-height: none !important;
+            min-height: 100% !important;
+            overflow: visible !important;
+            overflow-x: hidden !important;
+            overscroll-behavior: auto !important;
+        }
+        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .page-root,
+        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .page-root,
+        html.shuiming-android-weekback body.page-shuiming-result .page-root {
             height: auto !important;
             max-height: none !important;
             min-height: 100vh !important;
             overflow: visible !important;
-            overflow-x: hidden !important;
             isolation: isolate;
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed {
-            position: relative !important;
-            height: auto !important;
+        html.shuiming-android-weekback body.page-shuiming-result .top-fixed {
+            position: static !important;
+            height: 0 !important;
             overflow: visible !important;
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header {
-            position: relative !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            z-index: 2 !important;
-            height: 48px !important;
-            min-height: 48px !important;
-            padding: 8px 16px !important;
+        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header,
+        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header,
+        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 130 !important;
+            height: calc(var(--header-height, 48px) + 40px) !important;
+            min-height: calc(var(--header-height, 48px) + 40px) !important;
+            padding: 40px 16px 0 !important;
             box-sizing: border-box !important;
             background: #fff !important;
             overflow: visible !important;
             visibility: visible !important;
             opacity: 1 !important;
             display: flex !important;
-            align-items: center !important;
+            align-items: flex-end !important;
             justify-content: center !important;
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header .back-btn,
-        html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header .header-right {
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            height: auto !important;
+        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,
+        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right {
+            top: 40px !important;
+            height: var(--header-height, 48px) !important;
             display: flex !important;
             align-items: center !important;
+            transform: none !important;
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header .header-title {
+        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title {
             display: block !important;
             position: relative !important;
             z-index: 2 !important;
             visibility: visible !important;
             opacity: 1 !important;
             color: #000 !important;
-            line-height: 32px !important;
-            height: auto !important;
+            -webkit-text-fill-color: #000 !important;
+            line-height: var(--header-height, 48px) !important;
+            height: var(--header-height, 48px) !important;
             font-size: 17px !important;
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .summary {
-            position: relative !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            z-index: 1 !important;
-            transform: none !important;
+        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .top-fixed .summary,
+        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .top-fixed .summary,
+        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .summary {
+            position: fixed !important;
+            top: calc(var(--header-height, 48px) + 40px) !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 125 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            transform: translateZ(0);
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .list {
+        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .list,
+        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .list,
+        html.shuiming-android-weekback body.page-shuiming-result .list {
             position: relative !important;
             top: auto !important;
             bottom: auto !important;
@@ -1765,10 +1787,12 @@
             height: auto !important;
             max-height: none !important;
             overflow: visible !important;
-            margin-top: 0 !important;
+            margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
-        html.shuiming-android-legacy-flow body.page-shuiming-result .shuiming-chrome-shield {
-            display: none !important;
+        html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield {
+            display: block !important;
+            position: fixed !important;
+            visibility: visible !important;
         }
 
         .list-item {
@@ -4205,7 +4229,11 @@
         function isOppoA57ShuimingClient() {
             try {
                 var root = document.documentElement;
-                if (root.classList.contains('app-android-oppo-a57') || root.classList.contains('shuiming-android-legacy-flow')) {
+                if (
+                    root.classList.contains('app-android-oppo-a57') ||
+                    root.classList.contains('shuiming-android-weekback') ||
+                    root.classList.contains('shuiming-android-legacy-flow')
+                ) {
                     return true;
                 }
                 var ua = navigator.userAgent || '';
@@ -4430,20 +4458,6 @@
                         }
                     }
                 } catch (eForce) {}
-                if (isOppoA57ShuimingClient()) {
-                    try {
-                        var a57Fixed = document.querySelector('.top-fixed');
-                        if (a57Fixed) {
-                            a57Fixed.style.setProperty('position', 'relative', 'important');
-                            a57Fixed.style.setProperty('height', 'auto', 'important');
-                        }
-                        header.style.setProperty('position', 'relative', 'important');
-                        header.style.setProperty('top', 'auto', 'important');
-                        summary.style.setProperty('position', 'relative', 'important');
-                        summary.style.removeProperty('top');
-                    } catch (eA57flow) {}
-                    return Math.max(1, Math.ceil(header.getBoundingClientRect().bottom || 0));
-                }
                 var headerBottom = Math.ceil(header.getBoundingClientRect().bottom || 0);
                 if (headerBottom <= 0) return null;
                 var unifiedChrome =
@@ -4577,7 +4591,7 @@
                  * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
                  * 旧方案把汇总高度写进 padding-top：轻拖还好，使劲橡皮筋会把那一整截灰垫拽出来。
                  */
-                if (isIosUnifiedSeam || isOppoA57ShuimingClient()) {
+                if (isIosUnifiedSeam) {
                     if (root) root.style.setProperty('--list-summary-pad', '0px', 'important');
                     if (list) {
                         list.style.setProperty('padding-top', '0px', 'important');
@@ -5759,7 +5773,7 @@
                 try {
                     if (isOppoA57ShuimingClient()) {
                         document.documentElement.classList.add('app-android-oppo-a57');
-                        document.documentElement.classList.add('shuiming-android-legacy-flow');
+                        document.documentElement.classList.add('shuiming-android-weekback');
                         syncTopFixedHeight();
                     }
                 } catch (eA57late) {}
