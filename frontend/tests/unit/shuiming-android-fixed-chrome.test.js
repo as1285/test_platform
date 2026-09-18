@@ -39,23 +39,24 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     );
     expect(shuimingResult).toContain('function applyShuimingListTop');
     expect(shuimingResult).toContain('function lockAndroidShuimingPageScroll');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-a57-legacy');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-a57-flow');
   });
 
-  it('OPPO A57/A557 回退 9/16 整页滚动，不走锁页面', () => {
+  it('OPPO A57/A557 再往回退：顶栏走文档流，不钉 fixed', () => {
     expect(shuimingResult).toContain('app-android-oppo-a57');
-    expect(shuimingResult).toContain('shuiming-android-legacy-sep16');
-    expect(shuimingResult).toContain('data-shuiming-a57-legacy-sep16');
-    expect(shuimingResult).toContain('PFTM20|OPPO\\s*A557');
+    expect(shuimingResult).toContain('shuiming-android-legacy-flow');
+    expect(shuimingResult).toContain('data-shuiming-a57-legacy-flow');
+    expect(shuimingResult).toContain('PFTM20|PFTM\\d|OPPO\\s*A557');
     expect(shuimingResult).toContain('function isOppoA57ShuimingClient');
     expect(shuimingResult).toContain('if (!isOppoA57 && !document.querySelector(\'style[data-shuiming-android-fixed-chrome]\'))');
     expect(shuimingResult).toContain(
-      'html.app-android-oppo-a57 body.page-shuiming-result .list{position:relative!important'
+      'html.shuiming-android-legacy-flow body.page-shuiming-result .top-fixed .header{position:relative!important'
     );
     expect(shuimingResult).toMatch(
-      /html\.app-android-oppo-a57 body\.page-shuiming-result \.list \{[\s\S]*position:\s*relative !important/
+      /html\.shuiming-android-legacy-flow body\.page-shuiming-result \.top-fixed \.header \{[\s\S]*position:\s*relative !important/
     );
     expect(shuimingResult).toContain('if (!isAndroidShuimingClient() || isOppoA57ShuimingClient()) return');
+    expect(shuimingResult).toContain('if (isIosUnifiedSeam || isOppoA57ShuimingClient())');
   });
 
   it('页面样式对 Android 再锁页面并绝对铺列表', () => {
