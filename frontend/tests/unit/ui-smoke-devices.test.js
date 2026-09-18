@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { devices } from 'playwright';
 import {
   DEVICE_PROFILES,
@@ -9,6 +11,8 @@ import {
   resolveSmokeDevices,
   buildContextOptions
 } from '../e2e/ui-smoke-devices.mjs';
+
+const smokeBrowser = readFileSync(resolve(__dirname, '../e2e/ui-smoke-browser.mjs'), 'utf8');
 
 describe('ui-smoke device catalog', () => {
   it('covers recent compatibility phones with inset unit tests', () => {
@@ -104,6 +108,12 @@ describe('ui-smoke device catalog', () => {
       'mate60'
     ]);
     expect(resolveSmokeDevices('all').length).toBe(DEVICE_PROFILES.length);
+    const androidOnly = resolveSmokeDevices('android');
+    expect(androidOnly.length).toBe(DEVICE_PROFILES.filter((d) => d.platform === 'android').length);
+    expect(androidOnly.every((d) => d.platform === 'android')).toBe(true);
+    expect(androidOnly.map((d) => d.id)).toEqual(
+      expect.arrayContaining(['oppo-a57', 'oneplus-acepro', 'xiaomi-15', 'mate60'])
+    );
     expect(resolveSmokeDevices('recent').map((d) => d.id).sort()).toEqual(
       [...RECENT_DEVICE_IDS].sort()
     );
@@ -144,6 +154,14 @@ describe('ui-smoke device catalog', () => {
     expect(resolveSmokeDevices('huawei-matepad115s').map((d) => d.id)).toEqual([
       'huawei-matepad115s'
     ]);
+  });
+
+  it('安卓全量冒烟验纳税明细标题/返回，避免 ColorOS 白顶空壳漏过', () => {
+    expect(smokeBrowser).toContain('async function assertAndroidShuimingResultHeader');
+    expect(smokeBrowser).toContain('if (profile.platform === \'android\')');
+    expect(smokeBrowser).toContain('await assertAndroidShuimingResultHeader(page, profile, tag)');
+    expect(smokeBrowser).toContain('missing shuiming-android-inflow');
+    expect(smokeBrowser).toContain('header still uses padding-top');
   });
 
   it('只有 K70 标准版 expect.mineBlackStatus，其余安卓走禁止黑垫', () => {

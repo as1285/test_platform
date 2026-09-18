@@ -12,11 +12,12 @@
  *   android-home      — 安卓首页壳 class / 顶栏存在
  *   android-white-top — 收入纳税明细/查询/详情顶距
  *
- * UI_SMOKE_DEVICES=all|full|recent|popular|mainstream|id1,id2
+ * UI_SMOKE_DEVICES=all|android|full|recent|popular|mainstream|id1,id2
  *   mainstream = 近一个月日活主力机 ∪ 近期兼容档（默认自测）
  *   recent     = 近期频繁改兼容性的机型
  *   popular    = 近一个月日活高频型号（见 PRODUCTION_TOP_MODELS）
  *   all        = 目录全量（长，本地/夜间用）
+ *   android    = 仅安卓档（纳税明细标题/返回 + 白顶距）
  *   full       = 仅 iPhone 12 完整业务冒烟
  */
 
@@ -506,11 +507,12 @@ export const RECENT_DEVICE_IDS = [
 /** 默认自测：近一个月日活主力 ∪ 近期兼容档 */
 export const MAINSTREAM_DEVICE_IDS = [...new Set(RECENT_DEVICE_IDS.concat(POPULAR_DEVICE_IDS))];
 
-/** UI_SMOKE_DEVICES=all|full|recent|popular|mainstream|id1,id2 */
+/** UI_SMOKE_DEVICES=all|android|full|recent|popular|mainstream|id1,id2 */
 export function resolveSmokeDevices(raw) {
   const all = DEVICE_PROFILES.slice();
   const spec = String(raw || process.env.UI_SMOKE_DEVICES || 'mainstream').trim().toLowerCase();
   if (spec === 'all') return all;
+  if (spec === 'android') return all.filter((d) => d.platform === 'android');
   if (spec === 'full') return all.filter((d) => d.suite === 'full');
   if (spec === 'recent') {
     const want = new Set(RECENT_DEVICE_IDS);
@@ -533,7 +535,7 @@ export function resolveSmokeDevices(raw) {
   const picked = all.filter((d) => want.has(d.id));
   if (!picked.length) {
     throw new Error(
-      'UI_SMOKE_DEVICES 无匹配机型。可选: all | full | recent | popular | mainstream | ' +
+      'UI_SMOKE_DEVICES 无匹配机型。可选: all | android | full | recent | popular | mainstream | ' +
         all.map((d) => d.id).join(', ')
     );
   }

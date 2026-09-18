@@ -26,6 +26,8 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     expect(shuimingResult).toContain('function placeAndroidShuimingModules');
     expect(shuimingResult).toContain('function paintAndroidHeaderBar');
     expect(shuimingResult).toContain('function androidChromeTopPx');
+    expect(shuimingResult).toContain('if (!(n > 0) || n > 80) return 40');
+    expect(shuimingResult).toContain('if (root && !isAndroidInflowClient())');
     expect(shuimingResult).toContain('shuiming-android-module');
     expect(shuimingResult).toContain('shuiming-android-status-pad');
     expect(shuimingResult).toContain('data-shuiming-android-status-pad');

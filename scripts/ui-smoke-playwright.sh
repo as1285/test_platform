@@ -9,6 +9,7 @@
 #   UI_SMOKE_USE_MIRROR=0 ...                                  # 禁用 npmmirror 下载 Chromium
 #   UI_SMOKE_DEVICES=mainstream ./scripts/ui-smoke-playwright.sh  # 近一个月日活主力 ∪ 近期兼容（默认）
 #   UI_SMOKE_DEVICES=all ./scripts/ui-smoke-playwright.sh         # 目录全量
+#   UI_SMOKE_DEVICES=android ./scripts/ui-smoke-playwright.sh     # 仅安卓：纳税明细标题/返回 + 白顶距
 #   UI_SMOKE_DEVICES=full ./scripts/ui-smoke-playwright.sh        # 仅 iPhone 12 完整业务冒烟
 #   UI_SMOKE_DEVICES=recent ./scripts/ui-smoke-playwright.sh      # 近期频繁改兼容的机型
 #   UI_SMOKE_DEVICES=popular ./scripts/ui-smoke-playwright.sh     # 近一个月日活高频型号

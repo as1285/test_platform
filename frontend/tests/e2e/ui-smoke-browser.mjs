@@ -532,6 +532,108 @@ async function runAndroidHome(page, profile, tag) {
   log(`${tag} ok android home chrome`);
 }
 
+function readShuimingResultHeaderPaint() {
+  const header = document.querySelector(
+    '.page-root > .header, .header.shuiming-android-module, .top-fixed .header, .header'
+  );
+  const title = header && header.querySelector('.header-title');
+  if (!title || !/收入纳税明细/.test(String(title.textContent || ''))) return null;
+  const back = header.querySelector('.back-btn');
+  const pad = document.getElementById('shuimingAndroidStatusPad');
+  const titleCs = getComputedStyle(title);
+  const titleR = title.getBoundingClientRect();
+  const backCs = back ? getComputedStyle(back) : null;
+  const backR = back ? back.getBoundingClientRect() : null;
+  const headerCs = getComputedStyle(header);
+  return {
+    inflow: document.documentElement.classList.contains('shuiming-android-inflow'),
+    hoisted: !!(header.parentElement && header.parentElement.classList.contains('page-root')),
+    padH: pad ? Math.round(pad.getBoundingClientRect().height) : 0,
+    headerPadT: parseFloat(headerCs.paddingTop) || 0,
+    headerH: Math.round(header.getBoundingClientRect().height),
+    titleText: String(title.textContent || '').replace(/\s+/g, ' ').trim(),
+    titleW: Math.round(titleR.width),
+    titleH: Math.round(titleR.height),
+    titleY: Math.round(titleR.y),
+    titleVis: titleCs.visibility,
+    titleOp: Number(titleCs.opacity),
+    titleDisplay: titleCs.display,
+    titleColor: titleCs.color,
+    backW: backR ? Math.round(backR.width) : 0,
+    backH: backR ? Math.round(backR.height) : 0,
+    backVis: backCs ? backCs.visibility : '',
+    backOp: backCs ? Number(backCs.opacity) : 0,
+    backDisplay: backCs ? backCs.display : ''
+  };
+}
+
+/**
+ * 安卓纳税明细：白顶不能只剩空壳。标题/返回须在文档流里，且不能再用 padding-top 挤位置
+ * （ColorOS 会把那一行裁成白底）。
+ */
+async function assertAndroidShuimingResultHeader(page, profile, tag) {
+  const ready = page.waitForFunction(readShuimingResultHeaderPaint, null, { timeout: 12000 });
+  await page.goto(`${SITE_URL}/shuiming_result.html`, { waitUntil: 'domcontentloaded' });
+  let paint;
+  try {
+    paint = await (await ready).jsonValue();
+  } catch (eSnap) {
+    fail(
+      `${tag} shuiming_result header snapshot lost: ${eSnap && eSnap.message ? eSnap.message : eSnap}`
+    );
+  }
+  try {
+    if (/shuiming_result/i.test(page.url())) {
+      await page.waitForTimeout(350);
+      const later = await page.evaluate(readShuimingResultHeaderPaint);
+      if (later) paint = later;
+    }
+  } catch (eLater) {}
+
+  if (!paint || !/收入纳税明细/.test(paint.titleText || '')) {
+    fail(`${tag} shuiming_result missing title 收入纳税明细`);
+  }
+  if (!paint.inflow) {
+    fail(`${tag} shuiming_result missing shuiming-android-inflow`);
+  }
+  if (!paint.hoisted) {
+    fail(`${tag} shuiming_result header still inside top-fixed`);
+  }
+  if (paint.titleDisplay === 'none' || paint.titleVis === 'hidden' || paint.titleOp < 0.5) {
+    fail(
+      `${tag} shuiming_result title not visible display=${paint.titleDisplay} vis=${paint.titleVis} op=${paint.titleOp}`
+    );
+  }
+  if (paint.titleH < 18 || paint.titleW < 40) {
+    fail(`${tag} shuiming_result title box too small ${paint.titleW}x${paint.titleH}`);
+  }
+  if (/rgb\(\s*255\s*,\s*255\s*,\s*255/.test(paint.titleColor || '')) {
+    fail(`${tag} shuiming_result title is white: ${paint.titleColor}`);
+  }
+  if (paint.headerPadT > 8) {
+    fail(`${tag} shuiming_result header still uses padding-top ${paint.headerPadT}`);
+  }
+  if (paint.headerH > 64) {
+    fail(`${tag} shuiming_result header bar too tall ${paint.headerH} (expected 48)`);
+  }
+  if (
+    paint.backDisplay === 'none' ||
+    paint.backVis === 'hidden' ||
+    paint.backOp < 0.5 ||
+    paint.backW < 8 ||
+    paint.backH < 14
+  ) {
+    fail(`${tag} shuiming_result missing back button ${paint.backW}x${paint.backH}`);
+  }
+  const maxPad = profile.id === 'redmi-note11-5g' ? 80 : 56;
+  if (paint.padH > maxPad) {
+    fail(`${tag} shuiming_result status pad too tall ${paint.padH} (need <= ${maxPad})`);
+  }
+  log(
+    `${tag} ok shuiming header title y=${paint.titleY} h=${paint.titleH} pad=${paint.padH} hoisted=${paint.hoisted}`
+  );
+}
+
 async function assertWhiteTopOnPath(page, profile, tag, path, insetOpts) {
   await page.goto(`${SITE_URL}${path}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
@@ -881,6 +983,9 @@ async function runProfile(browser, profile) {
     /* 完整业务冒烟需要 API/DB；chrome-only 只验壳 class / 顶距 */
     if (!CHROME_ONLY) {
       await runFullSuite(page, tag);
+    }
+    if (profile.platform === 'android') {
+      await assertAndroidShuimingResultHeader(page, profile, tag);
     }
     await assertAndroidMineStatusGate(page, profile, tag);
     if (profile.suite === 'ios-chrome') {

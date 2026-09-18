@@ -4295,8 +4295,9 @@
                     || '';
             } catch (eRaw) {}
             var n = parseFloat(String(raw).replace(/px/i, ''));
-            if (n > 0) return Math.round(n);
-            return 40;
+            /* 状态栏垫只能是 40/70 这一档；headerBottom-48 回写会把垫层撑出屏 */
+            if (!(n > 0) || n > 80) return 40;
+            return Math.round(n);
         }
 
         function paintAndroidHeaderBar() {
@@ -4324,7 +4325,19 @@
                 if (pad.parentElement !== root || pad.nextElementSibling !== header) {
                     root.insertBefore(pad, header);
                 }
-                pad.style.cssText = 'display:block;flex:0 0 ' + inset + 'px;height:' + inset + 'px;min-height:' + inset + 'px;max-height:' + inset + 'px;width:100%;background:#fff;margin:0;padding:0;border:0;box-sizing:border-box;overflow:hidden;';
+                try {
+                    document.documentElement.style.setProperty('--shuiming-chrome-top', inset + 'px');
+                    root.style.setProperty('--shuiming-chrome-top', inset + 'px');
+                } catch (eVar) {}
+                pad.style.setProperty('display', 'block', 'important');
+                pad.style.setProperty('flex', '0 0 ' + inset + 'px', 'important');
+                pad.style.setProperty('height', inset + 'px', 'important');
+                pad.style.setProperty('min-height', inset + 'px', 'important');
+                pad.style.setProperty('max-height', inset + 'px', 'important');
+                pad.style.setProperty('width', '100%', 'important');
+                pad.style.setProperty('background', '#fff', 'important');
+                pad.style.setProperty('margin', '0', 'important');
+                pad.style.setProperty('padding', '0', 'important');
 
                 header.style.setProperty('position', 'relative', 'important');
                 header.style.setProperty('top', 'auto', 'important');
@@ -4690,7 +4703,7 @@
                     summary.style.setProperty('top', headerBottom + 'px', 'important');
                 }
                 /* 列表 margin 由 measureAndApply 接到汇总底；此处勿写成顶栏底，否则 padding-top 会在使劲回弹时整块露出来 */
-                if (root) {
+                if (root && !isAndroidInflowClient()) {
                     var barHVar = parseFloat(
                         (window.getComputedStyle(root).getPropertyValue('--header-height') || '48').replace(/px/i, '')
                     );
