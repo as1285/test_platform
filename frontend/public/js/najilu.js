@@ -904,63 +904,62 @@
     return mapped ? resolveCertAssetUrl(mapped) : '';
   }
 
-  /** 章面机关名：官方样式为「国家税务总局××市税务局」，开发区/区局归到所属市 */
-  function authorityToCityStampText(raw) {
-    var v = cleanText(raw);
+  /**
+   * 章面机关名：跟个税流水「入库税务机关」走，保留到区/县/开发区。
+   * 去掉所、分局；不再上收到「××市税务局」。
+   */
+  function authorityToDistrictStampText(raw) {
+    var v = cleanText(raw).replace(/\s+/g, '');
     if (!v || /^[\dA-Z]{15,20}$/.test(v)) return '';
 
-    // 已是「××市」：国家税务总局武汉市东湖… / 深圳市南山区…
-    var city =
-      (v.match(/国家税务总局\s*([\u4e00-\u9fa5]{2,6}?市)/) || [])[1] ||
-      (v.match(/国家税务局\s*([\u4e00-\u9fa5]{2,6}?市)/) || [])[1] ||
-      '';
+    v = v.replace(/第[\u4e00-\u9fff0-9]+税务分局$/, '');
+    v = v.replace(/第[\u4e00-\u9fff0-9]+税务所$/, '');
+    v = v.replace(/税务所$/, '');
 
-    // 无「市」字的开发区/高新区等：武汉东湖新技术开发区 → 武汉市
-    if (!city) {
-      var zone =
-        v.match(
-          /国家税务总局\s*([\u4e00-\u9fa5]{2,3})(?:东湖|高新|经济技术|经济|技术|产业|保税|旅游|化学工业)?(?:开发区|高新技术产业开发区|新技术开发区|工业园区|新区)/
-        ) || [];
-      if (zone[1]) city = zone[1] + '市';
-    }
+    var district = v.match(
+      /^(国家税务总局.+?(?:高新技术产业开发区|新技术开发区|经济技术开发区|工业园区|开发区|新区|保税区|自治县|区|县|旗))税务局/
+    );
+    if (district) return district[1] + '税务局';
 
-    // 仍无市：尝试「××区税务局」前的地级地名（不含「市」的表述）
-    if (!city) {
-      var dist = (v.match(/国家税务总局\s*([\u4e00-\u9fa5]{2,3})(?:[\u4e00-\u9fa5]{0,6}?)区税务局/) || [])[1];
-      // 排除「市辖区」等；常见如「黄岛区」不好推断，仅在明确地级前缀时使用
-      if (dist && /^(武汉|广州|深圳|成都|杭州|南京|西安|郑州|长沙|青岛|大连|厦门|苏州|宁波|济南|沈阳|哈尔滨|长春|福州|合肥|南昌|昆明|贵阳|南宁|海口|石家庄|太原|呼和浩特|乌鲁木齐|兰州|西宁|银川|拉萨)$/.test(dist)) {
-        city = dist + '市';
-      }
-    }
-
-    if (city) {
-      city = city.replace(/.*(重庆|上海|北京|天津)市$/, '$1市');
-      if (!/市$/.test(city)) city = city + '市';
-      return '国家税务总局' + city + '税务局';
-    }
-
-    // 县局保留县级，避免落到错误默认市
-    var county = (v.match(/国家税务总局\s*([\u4e00-\u9fa5]{2,8}?县)/) || [])[1];
-    if (county) return '国家税务总局' + county + '税务局';
-
-    // 已是完整机关名则原样用于盖章，与表格入库税务机关一致
     if (/^国家税务总局.+税务局$/.test(v)) return v;
-
-    if (v.indexOf('深圳') >= 0) return '国家税务总局深圳市税务局';
+    if (v.indexOf('国家税务总局') === 0 && /税务局$/.test(v)) return v;
     return '';
+  }
+
+  function authorityToCityStampText(raw) {
+    return authorityToDistrictStampText(raw);
   }
 
   function stampAuthority(rows) {
     rows = Array.isArray(rows) ? rows : [];
-    var firstRaw = '';
-    for (var i = 0; i < rows.length; i++) {
-      var raw = cleanText(rows[i] && rows[i].tax_authority);
-      if (!raw || /^[\dA-Z]{15,20}$/.test(raw)) continue;
-      if (!firstRaw) firstRaw = raw;
-      var t = authorityToCityStampText(raw);
-      if (t) return t;
+    var counts = {};
+    var lastIdx = {};
+    var seen = [];
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      var t = authorityToDistrictStampText(rows[i] && rows[i].tax_authority);
+      if (!t) continue;
+      if (!counts[t]) {
+        counts[t] = 0;
+        seen.push(t);
+      }
+      counts[t] += 1;
+      lastIdx[t] = i;
     }
-    if (firstRaw && /税务局/.test(firstRaw)) return firstRaw;
+    var best = '';
+    var bestN = 0;
+    var bestLast = -1;
+    for (i = 0; i < seen.length; i++) {
+      var name = seen[i];
+      var n = counts[name];
+      var last = lastIdx[name];
+      if (n > bestN || (n === bestN && last > bestLast)) {
+        best = name;
+        bestN = n;
+        bestLast = last;
+      }
+    }
+    if (best) return best;
     return '国家税务总局深圳市税务局';
   }
 
@@ -1758,11 +1757,70 @@
     ctx.restore();
   }
 
+  /** 去掉替换图四周大块白边，避免二维码被缩到扫不出来 */
+  function trimQrBlockImage(img, padPx) {
+    var nw = img.naturalWidth || img.width || 0;
+    var nh = img.naturalHeight || img.height || 0;
+    if (!nw || !nh) return null;
+    var src = document.createElement('canvas');
+    src.width = nw;
+    src.height = nh;
+    var sctx = src.getContext('2d');
+    if (!sctx) return img;
+    sctx.fillStyle = '#fff';
+    sctx.fillRect(0, 0, nw, nh);
+    sctx.drawImage(img, 0, 0);
+    var data;
+    try {
+      data = sctx.getImageData(0, 0, nw, nh).data;
+    } catch (eTrim) {
+      return img;
+    }
+    var minX = nw;
+    var minY = nh;
+    var maxX = -1;
+    var maxY = -1;
+    var x;
+    var y;
+    var i;
+    for (y = 0; y < nh; y++) {
+      for (x = 0; x < nw; x++) {
+        i = (y * nw + x) * 4;
+        if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return null;
+    padPx = padPx == null ? 8 : padPx;
+    minX = Math.max(0, minX - padPx);
+    minY = Math.max(0, minY - padPx);
+    maxX = Math.min(nw - 1, maxX + padPx);
+    maxY = Math.min(nh - 1, maxY + padPx);
+    var tw = maxX - minX + 1;
+    var th = maxY - minY + 1;
+    if (tw >= nw * 0.92 && th >= nh * 0.92) return img;
+    var out = document.createElement('canvas');
+    out.width = tw;
+    out.height = th;
+    var octx = out.getContext('2d');
+    if (!octx) return img;
+    octx.fillStyle = '#fff';
+    octx.fillRect(0, 0, tw, th);
+    octx.drawImage(src, minX, minY, tw, th, 0, 0, tw, th);
+    return out;
+  }
+
   /** 管理后台整块替换：二维码 +「查询验证码」+ 验证码文字 */
   function drawQrVerifyBlock(ctx, x, y, width, blockImg) {
     if (!blockImg || !blockImg.complete || !blockImg.naturalWidth) return false;
-    var nw = blockImg.naturalWidth;
-    var nh = blockImg.naturalHeight;
+    var src = trimQrBlockImage(blockImg, 8) || blockImg;
+    var nw = src.naturalWidth || src.width;
+    var nh = src.naturalHeight || src.height;
+    if (!nw || !nh) return false;
     var h = Math.max(1, Math.round((width * nh) / nw));
     ctx.save();
     ctx.fillStyle = '#fff';
@@ -1771,9 +1829,36 @@
     if (typeof ctx.imageSmoothingQuality === 'string') {
       ctx.imageSmoothingQuality = 'high';
     }
-    ctx.drawImage(blockImg, x, y, width, h);
+    ctx.drawImage(src, x, y, width, h);
     ctx.restore();
     return true;
+  }
+
+  /** 自定义替换图若是纯白，视为无效，回退去生成可扫码 */
+  function imageHasInk(img) {
+    if (!img || !(img.naturalWidth || img.width)) return false;
+    try {
+      var w = Math.max(1, Math.min(160, img.naturalWidth || img.width));
+      var h = Math.max(1, Math.min(160, img.naturalHeight || img.height));
+      var c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      var ctx = c.getContext('2d');
+      if (!ctx) return true;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      var data = ctx.getImageData(0, 0, w, h).data;
+      var ink = 0;
+      var n = w * h;
+      var i;
+      for (i = 0; i < data.length; i += 4) {
+        if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) ink++;
+      }
+      return ink / n >= 0.015;
+    } catch (eInk) {
+      return true;
+    }
   }
 
   function loadImageUrl(src) {
@@ -2245,8 +2330,8 @@
 
       if (qrBlockUrl) {
         return loadImageUrl(qrBlockUrl).then(function (blockImg) {
-          if (blockImg) return finishWithQr(null, blockImg);
-          /* 整块素材加载失败时改生成可扫二维码，避免对角假图案 */
+          if (blockImg && imageHasInk(blockImg)) return finishWithQr(null, blockImg);
+          /* 整块素材加载失败或纯白时改生成可扫二维码，避免右上角空白 */
           return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
             return finishWithQr(qrCanvas, null);
           });
@@ -2255,7 +2340,7 @@
 
       if (qrOnlyUrl) {
         return loadImageUrl(qrOnlyUrl).then(function (customQr) {
-          if (customQr) return finishWithQr(customQr, null);
+          if (customQr && imageHasInk(customQr)) return finishWithQr(customQr, null);
           return makeCertificateQrCanvas(verifyUrl, 185 * CERT_RENDER_SCALE).then(function (qrCanvas) {
             return finishWithQr(qrCanvas, null);
           });
@@ -2410,7 +2495,7 @@
       return;
     }
     var name =
-      authorityToCityStampText(authority) ||
+      authorityToDistrictStampText(authority) ||
       cleanText(authority) ||
       '国家税务总局深圳市税务局';
     /* 对照官方纳税记录红章：朱红单圈、无星、无底弧编号 */
@@ -2432,8 +2517,8 @@
     ctx.stroke();
 
     var arcR = radius - 15;
-    var arcSize = name.length > 14 ? 16 : 17;
-    var arcGap = name.length > 14 ? 7.2 : name.length >= 13 ? 9 : 10.5;
+    var arcSize = name.length > 18 ? 14 : name.length > 14 ? 15.5 : 17;
+    var arcGap = name.length > 18 ? 5.4 : name.length > 14 ? 6.4 : name.length >= 13 ? 9 : 10.5;
     drawArcText(ctx, name, cx, cy, arcR, Math.PI * 0.95, Math.PI * 2.05, {
       size: arcSize,
       weight: 'bold',
@@ -2840,7 +2925,10 @@
     shouldGuideFirstGenerateQr: shouldGuideFirstGenerateQr,
     najiluQrReplaceHref: najiluQrReplaceHref,
     showInactiveGenerateGuide: showInactiveGenerateGuide,
-    showFirstGenerateQrGuide: showFirstGenerateQrGuide
+    showFirstGenerateQrGuide: showFirstGenerateQrGuide,
+    imageHasInk: imageHasInk,
+    authorityToDistrictStampText: authorityToDistrictStampText,
+    stampAuthority: stampAuthority
   };
 
   if (isNajiluPage()) {

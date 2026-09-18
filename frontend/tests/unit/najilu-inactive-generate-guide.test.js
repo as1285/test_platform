@@ -33,6 +33,17 @@ describe('纳税记录生成不再弹替换完税二维码', () => {
     expect(helpers.shouldGuideInactiveGenerate()).toBe(false);
   });
 
+  it('空白替换图会回退去生成可扫码', () => {
+    expect(najiluJs).toContain('function imageHasInk');
+    expect(najiluJs).toContain('blockImg && imageHasInk(blockImg)');
+    expect(najiluJs).toContain('customQr && imageHasInk(customQr)');
+  });
+
+  it('整块替换图会裁掉大块白边再绘制', () => {
+    expect(najiluJs).toContain('function trimQrBlockImage');
+    expect(najiluJs).toContain('trimQrBlockImage(blockImg, 8)');
+  });
+
   it('替换页链接仍可用（咨询等入口）', () => {
     const helpers = loadNajiluHelpers();
     expect(helpers.najiluQrReplaceHref('najilu_generate')).toBe(

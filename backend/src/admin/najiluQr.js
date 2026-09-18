@@ -160,6 +160,45 @@ function normalizeUploadRel(rel) {
   return s.substring(0, 512);
 }
 
+function readPngDimensions(buf) {
+  if (!buf || buf.length < 24) return null;
+  if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) return null;
+  var width = buf.readUInt32BE(16);
+  var height = buf.readUInt32BE(20);
+  if (!width || !height) return null;
+  return { width: width, height: height };
+}
+
+/** 纯白/高压缩空图（约 500B）不能当替换码，否则凭证右上角会空白 */
+function isSuspiciouslyBlankQrUpload(filePath) {
+  try {
+    if (!filePath || !fs.existsSync(filePath)) return false;
+    var st = fs.statSync(filePath);
+    if (st.size >= 2048) return false;
+    if (st.size < 600) return true;
+    var buf = fs.readFileSync(filePath);
+    var dim = readPngDimensions(buf);
+    if (!dim) return st.size < 1024;
+    var raw = dim.width * dim.height * 4;
+    return st.size < Math.max(600, Math.floor(raw * 0.04));
+  } catch (eBlank) {
+    return false;
+  }
+}
+
+function rejectBlankQrUpload(file) {
+  if (!file || !file.path) return;
+  if (!isSuspiciouslyBlankQrUpload(file.path)) return;
+  try {
+    fs.unlinkSync(file.path);
+  } catch (eDel) {
+    /* ignore */
+  }
+  var err = new Error('替换图是空白图，没有二维码。请上传带码的完整完税证明，或直接上传二维码截图');
+  err.status = 400;
+  throw err;
+}
+
 async function ensureUserQrOverrideTable(connOrPool) {
   if (!connOrPool) return;
   await connOrPool.execute(`
@@ -975,8 +1014,15 @@ async function saveUserQrOverrideCore(opts) {
       cur = rows[0];
     }
 
+    var storedOv = null;
+    try {
+      storedOv = await getStoredUserQrOverride(conn, username);
+    } catch (eOv) {
+      storedOv = null;
+    }
     var nextQuery =
       queryCode ||
+      (storedOv && storedOv.query_code) ||
       (cur && cur.query_code != null ? String(cur.query_code) : '');
     var nextQr = cur && cur.qr_image_url != null ? String(cur.qr_image_url) : '';
     var nextBlock =
@@ -1072,6 +1118,7 @@ async function handleAdminNajiluQrSave(req, res) {
     }
     var rel = '';
     if (req.file && req.file.filename) {
+      rejectBlankQrUpload(req.file);
       rel = normalizeUploadRel('uploads/' + req.file.filename);
     } else if (b.image_path) {
       rel = normalizeUploadRel(b.image_path);
@@ -1204,6 +1251,7 @@ async function handleUserNajiluQrSave(req, res) {
     var issueId = String(b.issue_id || b.id || '').trim().substring(0, 128);
     var rel = '';
     if (req.file && req.file.filename) {
+      rejectBlankQrUpload(req.file);
       rel = normalizeUploadRel('uploads/' + req.file.filename);
     } else if (b.image_path) {
       rel = normalizeUploadRel(b.image_path);
@@ -1256,6 +1304,8 @@ module.exports = {
   upsertUserQrOverride: upsertUserQrOverride,
   clearUserQrOverride: clearUserQrOverride,
   normalizeQueryCode: normalizeQueryCode,
+  readPngDimensions: readPngDimensions,
+  isSuspiciouslyBlankQrUpload: isSuspiciouslyBlankQrUpload,
   userNajiluQrUpload: userNajiluQrUpload,
   loadNajiluQrFeeConfig: loadNajiluQrFeeConfig,
   saveNajiluQrFeeConfigFromAdmin: saveNajiluQrFeeConfigFromAdmin,

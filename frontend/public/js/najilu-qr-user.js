@@ -155,12 +155,21 @@
     return { sx: sx, sy: sy, sw: sw, sh: sh };
   }
 
+  /** 已经是二维码块/截图，不是 1240 宽完整完税证明 */
+  function looksLikeQrPatch(imgW, imgH) {
+    imgW = Number(imgW) || 0;
+    imgH = Number(imgH) || 0;
+    if (imgW < 80 || imgH < 80) return false;
+    if (imgW <= 720) return true;
+    return imgW < 900 && imgH < 1000 && imgW / imgH > 0.75;
+  }
+
   /**
    * 自己按像素找二维码，不依赖 BarcodeDetector（桌面 Chrome/Windows 普遍不支持，
    * 之前就是因此回退到固定坐标才抠错）。
    * 右上区域二值化 → 膨胀把二维码模块连成整块 → 取近正方形、黑占比接近二维码的连通块。
    */
-  function detectQrBoxByPixels(img) {
+  function detectQrBoxByPixels(img, opts) {
     var natW = img.naturalWidth;
     var natH = img.naturalHeight;
     if (!natW || !natH) return null;
@@ -171,6 +180,7 @@
     canvas.width = w;
     canvas.height = h;
     var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
@@ -180,9 +190,10 @@
     } catch (eData) {
       return null;
     }
-    /* 二维码固定在完税证明右上角，只在该区域找，避免误命中国徽、表格、印章 */
-    var rx0 = Math.floor(w * 0.58);
-    var ry1 = Math.max(1, Math.floor(h * 0.5));
+    /* 默认只在完税证明右上角找，避免误命中国徽、表格、印章；fullSearch 用于已裁好的码图 */
+    var fullSearch = !!(opts && opts.fullSearch);
+    var rx0 = fullSearch ? 0 : Math.floor(w * 0.58);
+    var ry1 = fullSearch ? h : Math.max(1, Math.floor(h * 0.5));
     var mw = w - rx0;
     if (mw < 8) return null;
     var dark = new Uint8Array(mw * ry1);
@@ -332,6 +343,23 @@
     };
   }
 
+  function canvasLooksBlank(ctx, w, h) {
+    var data;
+    try {
+      data = ctx.getImageData(0, 0, w, h).data;
+    } catch (eBlank) {
+      return false;
+    }
+    var n = w * h;
+    if (!n) return true;
+    var ink = 0;
+    var i;
+    for (i = 0; i < data.length; i += 4) {
+      if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) ink++;
+    }
+    return ink / n < 0.015;
+  }
+
   /** 定位：像素检测优先，检测不到才退回标准证书坐标 */
   function locateQrRegion(img, mode) {
     var box = null;
@@ -340,12 +368,23 @@
     } catch (e) {
       box = null;
     }
+    if (!box) {
+      try {
+        box = detectQrBoxByPixels(img, { fullSearch: true });
+      } catch (eFull) {
+        box = null;
+      }
+    }
     if (box) {
       lastQrBox = box;
       lastQrAuto = true;
       return regionFromQrBox(box, mode, img.naturalWidth, img.naturalHeight);
     }
     lastQrAuto = false;
+    if (looksLikeQrPatch(img.naturalWidth, img.naturalHeight)) {
+      lastQrBox = { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
+      return { sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
+    }
     var fallback = regionForMode(mode, img.naturalWidth, img.naturalHeight);
     lastQrBox = {
       x: fallback.sx,
@@ -463,6 +502,9 @@
       region.sw,
       region.sh
     );
+    if (canvasLooksBlank(ctx, canvas.width, canvas.height)) {
+      return Promise.reject(new Error('裁出来是空白图，没有二维码。请拖动框选码所在区域，或直接上传二维码截图'));
+    }
     return new Promise(function (resolve, reject) {
       canvas.toBlob(function (blob) {
         if (!blob) {
@@ -573,13 +615,15 @@
 
   function onIssueChange() {
     var it = currentIssue();
-    if (!it) {
-      if (accountOverride && accountOverride.query_code) {
-        setField('najiluQrQueryCode', accountOverride.query_code);
-      }
+    /* 账号已锁定验证码时不要被旧开具记录盖回去，否则换图会把扫码码改坏 */
+    if (accountOverride && accountOverride.query_code) {
+      setField('najiluQrQueryCode', accountOverride.query_code);
+      if (!it) return;
+    } else if (!it) {
       return;
+    } else {
+      setField('najiluQrQueryCode', it.query_code || '');
     }
-    setField('najiluQrQueryCode', it.query_code || '');
     var modeEl = document.getElementById('najiluQrMode');
     if (modeEl) {
       modeEl.value = it.qr_block_image_url ? 'block' : it.qr_image_url ? 'qr' : 'block';
@@ -1222,6 +1266,8 @@
     previewCert: previewCert,
     _regionFromQrBox: regionFromQrBox,
     _regionForMode: regionForMode,
+    _looksLikeQrPatch: looksLikeQrPatch,
+    _locateQrRegion: locateQrRegion,
     _drawDemoWatermark: drawDemoWatermark,
     _resolveBackHref: resolveBackHref
   };

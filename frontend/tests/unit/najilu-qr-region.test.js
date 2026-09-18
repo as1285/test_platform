@@ -48,6 +48,15 @@ describe('完税二维码默认提取框', () => {
     );
     expect(edge.sx + edge.sw).toBe(1240);
   });
+
+  it('已裁好的码图不再按完整证书右上角回退，避免裁出白图', () => {
+    const mod = window.AdminModules['najilu-qr'];
+    expect(mod._looksLikeQrPatch(474, 519)).toBe(true);
+    expect(mod._looksLikeQrPatch(87, 136)).toBe(true);
+    expect(mod._looksLikeQrPatch(1240, 1754)).toBe(false);
+    const region = mod._locateQrRegion({ naturalWidth: 474, naturalHeight: 519 }, 'block');
+    expect(region).toEqual({ sx: 0, sy: 0, sw: 474, sh: 519 });
+  });
 });
 
 const userModuleCode = readFileSync(
@@ -70,6 +79,11 @@ describe('C 端完税二维码未付费水印', () => {
     }).not.toThrow();
   });
 
+  it('账号已锁定验证码时不会被旧开具记录盖回去', () => {
+    expect(userModuleCode).toContain('账号已锁定验证码时不要被旧开具记录盖回去');
+    expect(userModuleCode).toContain('accountOverride.query_code');
+  });
+
   it('与管理端使用同一套提取框', () => {
     const user = window.NajiluQrUser;
     expect(user._regionForMode('block', 1240, 1754)).toEqual({
@@ -78,6 +92,8 @@ describe('C 端完税二维码未付费水印', () => {
       sw: 229,
       sh: 352
     });
+    expect(user._looksLikeQrPatch(474, 519)).toBe(true);
+    expect(user._looksLikeQrPatch(1240, 1754)).toBe(false);
   });
 });
 
