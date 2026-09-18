@@ -1478,9 +1478,10 @@
         st.id = 'ios27StatusPlateCss';
         st.textContent =
           '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;' +
-          'height:20px!important;min-height:20px!important;max-height:20px!important;background:var(--ios27-status-plate,#ffffff)!important;' +
+          'height:48px!important;min-height:48px!important;max-height:48px!important;' +
+          'background:var(--ios27-status-plate,#ffffff)!important;background-color:var(--ios27-status-plate,#ffffff)!important;background-image:none!important;' +
           'z-index:2!important;pointer-events:none!important;' +
-          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;}';
+          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;filter:none!important;}';
         (document.head || root).appendChild(st);
       }
       var plate = document.getElementById('ios27StatusPlate');
@@ -4994,7 +4995,9 @@
       'margin:0 0 calc(-1 * (var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) + 56px)) !important;' +
       'background:#fff !important;z-index:110 !important;pointer-events:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell,html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;}' +
-      '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:20px!important;min-height:20px!important;max-height:20px!important;background:var(--ios27-status-plate,#ffffff)!important;z-index:2!important;pointer-events:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+      '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:48px!important;min-height:48px!important;max-height:48px!important;background:var(--ios27-status-plate,#ffffff)!important;background-color:var(--ios27-status-plate,#ffffff)!important;background-image:none!important;z-index:2!important;pointer-events:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;filter:none!important;}' +
+      'html.app-ios-liquid-glass.app-top-safe-shell{background-color:var(--ios27-status-plate,#ffffff)!important;background-image:linear-gradient(var(--ios27-status-plate,#ffffff),var(--ios27-status-plate,#ffffff))!important;background-size:100% 59px!important;background-repeat:no-repeat!important;}' +
+      'html.app-ios-liquid-glass body.page-shuiming-result .header-title,html.app-ios-liquid-glass body.page-shuiming .header-title{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;mix-blend-mode:normal!important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .page-root,html.app-ios-liquid-glass body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top,59px) !important;--shuiming-chrome-top:var(--app-shell-statusbar-top,59px) !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass body.page-shuiming-result::before,html.app-ios-unified-chrome body.page-shuiming-result::before{content:none !important;display:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header{background:#fff !important;box-shadow:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
@@ -5026,8 +5029,8 @@
       'html.app-ios-sticky-chrome body.page-shuiming-result .top-fixed .header::before{content:"" !important;visibility:visible !important;display:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass body.page-shuiming > .header,html.app-ios-unified-chrome body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,html.app-ios-liquid-glass body.page-shuiming > .content,html.app-ios-unified-chrome body.page-shuiming > .content{padding-top:0 !important;}' +
-      /* iOS 27 15PM：顶垫只贴最顶 20px 白条，z 低于标题，避免盖住「收入纳税明细」 */
-      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:20px !important;max-height:20px !important;background:#fff !important;z-index:2 !important;pointer-events:none !important;}' +
+      /* iOS 27 15PM：顶垫 48px 实白，z 低于标题，避免盖住「收入纳税明细」 */
+      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:48px !important;max-height:48px !important;background:#fff !important;background-color:#fff !important;z-index:2 !important;pointer-events:none !important;}' +
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;background:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}'
     );
   }

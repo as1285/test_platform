@@ -35,7 +35,7 @@ describe('iOS 全机去掉顶部黑框', () => {
     );
     expect(shouye).toContain('html.app-ios-client.app-top-safe-shell:has(body.page-shouye)');
     expect(shouye).toContain('background-color: #4f90f3 !important');
-    expect(shouye).toContain('auth.js?v=20260918-ios27-short');
+    expect(shouye).toContain('auth.js?v=20260918-ios27-strong');
   });
 
   it('我的 / 办查 iOS html 实底顶蓝', () => {
@@ -59,7 +59,7 @@ describe('iOS 全机去掉顶部黑框', () => {
     expect(shuimingResult).toContain('standalone && !inIframe');
     expect(shuiming).toContain("overlays: true");
     expect(shuimingResult).toContain("overlays: true");
-    expect(shuiming).toContain('auth.js?v=20260918-ios27-short');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-short');
+    expect(shuiming).toContain('auth.js?v=20260918-ios27-strong');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-strong');
   });
 });

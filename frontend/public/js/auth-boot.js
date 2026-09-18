@@ -898,7 +898,7 @@
 
   /**
    * iOS 26/27 Liquid Glass 叠在 WebView 上，与机型无关。
-   * 白垫只贴最顶 20px（时间栏），高度短于标题，避免盖住「返回 / 收入纳税明细」。
+   * 白垫贴顶 48px（盖满时间/岛行），z 低于标题，避免盖住「返回 / 收入纳税明细」。
    */
   function paintIos27LiquidGlassPlate() {
     try {
@@ -925,10 +925,16 @@
         st.id = 'ios27StatusPlateCss';
         st.textContent =
           '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;' +
-          'height:20px!important;min-height:20px!important;max-height:20px!important;background:var(--ios27-status-plate,#ffffff)!important;' +
+          'height:48px!important;min-height:48px!important;max-height:48px!important;' +
+          'background:var(--ios27-status-plate,#ffffff)!important;background-color:var(--ios27-status-plate,#ffffff)!important;background-image:none!important;' +
           'z-index:2!important;pointer-events:none!important;' +
-          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;}' +
-          'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;}';
+          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;filter:none!important;}' +
+          'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;' +
+          'background-color:var(--ios27-status-plate,#ffffff)!important;' +
+          'background-image:linear-gradient(var(--ios27-status-plate,#ffffff),var(--ios27-status-plate,#ffffff))!important;' +
+          'background-size:100% 59px!important;background-repeat:no-repeat!important;}' +
+          'html.app-ios-liquid-glass body.page-shuiming-result .header-title,html.app-ios-liquid-glass body.page-shuiming .header-title{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;}' +
+          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming>.header{background:#fff!important;background-color:#fff!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}';
         (document.head || root).appendChild(st);
       }
       var plate = document.getElementById('ios27StatusPlate');

@@ -47,17 +47,18 @@
             height: 100%;
             display: block;
         }
-        /* 父文档顶垫只盖时间栏：贴顶、高度短，避免盖住 iframe 里的标题字 */
+        /* 父文档顶垫盖满时间/岛行：48px 实白，z 低于 iframe 标题 */
         #iosStatusPlate {
             display: none;
             position: fixed;
             left: 0;
             right: 0;
             top: 0;
-            height: 20px;
-            min-height: 20px;
-            max-height: 20px;
+            height: 48px;
+            min-height: 48px;
+            max-height: 48px;
             background: #fff;
+            background-color: #fff;
             z-index: 2;
             pointer-events: none;
         }
@@ -86,9 +87,9 @@
                     var earlyPlate = document.getElementById('iosStatusPlate');
                     if (earlyPlate) {
                         earlyPlate.style.display = 'block';
-                        earlyPlate.style.height = '20px';
-                        earlyPlate.style.minHeight = '20px';
-                        earlyPlate.style.maxHeight = '20px';
+                        earlyPlate.style.height = '48px';
+                        earlyPlate.style.minHeight = '48px';
+                        earlyPlate.style.maxHeight = '48px';
                         earlyPlate.style.background = '#ffffff';
                     }
                 }
@@ -551,9 +552,9 @@
                 } else {
                     plate.style.background = '#4f90f3';
                 }
-                plate.style.height = '20px';
-                plate.style.minHeight = '20px';
-                plate.style.maxHeight = '20px';
+                plate.style.height = '48px';
+                plate.style.minHeight = '48px';
+                plate.style.maxHeight = '48px';
                 plate.style.display = 'block';
             }
 

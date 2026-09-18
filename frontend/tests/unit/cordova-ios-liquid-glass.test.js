@@ -22,6 +22,23 @@ describe('Cordova iOS Liquid Glass 彻底退出', () => {
     );
   });
 
+  it('hook 给 MainViewController 关掉 iOS 26 顶部边缘模糊', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ios-edge-'));
+    const file = join(dir, 'MainViewController.m');
+    writeFileSync(
+      file,
+      '@implementation MainViewController\n- (void)viewDidLoad {\n    [super viewDidLoad];\n}\n@end\n'
+    );
+    expect(hook.patchViewController(file)).toBe(true);
+    const once = readFileSync(file, 'utf8');
+    expect(once).toContain('taxHideIos26ScrollEdgeEffect');
+    expect(once).toContain('topEdgeEffect');
+    expect(once).toContain('setHidden:@YES');
+    expect(hook.patchViewController(file)).toBe(false);
+    expect(readFileSync(file, 'utf8')).toBe(once);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('hook 给 Info.plist 补兼容开关，已有则不重复', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ios-glass-'));
     const file = join(dir, 'Info.plist');
