@@ -886,7 +886,77 @@
     } catch (ePaint) {}
   }
 
+  function ios27StatusPlateColor() {
+    var page = currentPageName();
+    if (page === 'shouye.html' || page === 'index.html') return '#4f90f3';
+    if (page === 'mine.html') return '#1677ff';
+    if (page === 'daiban.html' || page === 'bancha.html') return '#2b81f2';
+    if (page === 'message.html') return '#1e8fff';
+    if (page === 'login.html' || page === 'register.html') return '#4f90f3';
+    return '#ffffff';
+  }
+
+  /**
+   * iOS 26/27 Liquid Glass 叠在 WebView 上，与机型无关。
+   * 首屏在状态栏区铺 59px 实底，避免毛玻璃采到后面灰列表。
+   */
+  function paintIos27LiquidGlassPlate() {
+    try {
+      var ua = String(navigator.userAgent || '');
+      var ios =
+        /iPhone|iPad|iPod/i.test(ua) ||
+        (typeof navigator.platform === 'string' &&
+          navigator.platform === 'MacIntel' &&
+          navigator.maxTouchPoints > 1);
+      if (!ios) return;
+      var m = ua.match(/OS (\d+)[_.]/i);
+      var major = m ? parseInt(m[1], 10) : 0;
+      if (major < 26) return;
+      var root = document.documentElement;
+      root.classList.add('app-ios-client');
+      root.classList.add('app-top-safe-shell');
+      root.classList.add('app-ios-liquid-glass');
+      root.classList.remove('app-ios-status-outer');
+      root.style.setProperty('--app-shell-statusbar-top', '59px');
+      var color = ios27StatusPlateColor();
+      root.style.setProperty('--ios27-status-plate', color);
+      if (!document.getElementById('ios27StatusPlateCss')) {
+        var st = document.createElement('style');
+        st.id = 'ios27StatusPlateCss';
+        st.textContent =
+          '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;' +
+          'height:59px!important;min-height:59px!important;background:var(--ios27-status-plate,#ffffff)!important;' +
+          'z-index:2147483000!important;pointer-events:none!important;' +
+          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;}' +
+          'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;}';
+        (document.head || root).appendChild(st);
+      }
+      var plate = document.getElementById('ios27StatusPlate');
+      if (!plate) {
+        plate = document.createElement('div');
+        plate.id = 'ios27StatusPlate';
+        plate.setAttribute('aria-hidden', 'true');
+        if (document.body) {
+          document.body.appendChild(plate);
+        } else {
+          root.appendChild(plate);
+          document.addEventListener('DOMContentLoaded', function () {
+            try {
+              if (document.body && plate.parentNode !== document.body) {
+                document.body.appendChild(plate);
+              }
+            } catch (eMove) {}
+          });
+        }
+      }
+      plate.style.setProperty('background', color, 'important');
+    } catch (ePlate) {}
+  }
+
+  window.__paintIos27LiquidGlassPlate = paintIos27LiquidGlassPlate;
+
   markViewportChromeClasses();
+  paintIos27LiquidGlassPlate();
   clipAndroidHorizontalOverflow();
   applyAndroidWhitePageInsetFirstPaint();
   primeAndroidMineE1SmFirstPaint();

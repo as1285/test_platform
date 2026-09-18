@@ -49,7 +49,7 @@ describe('iPhone 15 Pro（iPhone16,1）走 15 档实底顶栏', () => {
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before'
     );
     expect(auth).toContain('background:#fff !important;z-index:122 !important');
-    expect(shuimingResult).toContain('auth.js?v=20260918-15pro-glass');
-    expect(shouye).toContain('auth.js?v=20260918-15pro-glass');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-plate');
+    expect(shouye).toContain('auth.js?v=20260918-ios27-plate');
   });
 });

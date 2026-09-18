@@ -47,14 +47,15 @@
             height: 100%;
             display: block;
         }
-        /* 父文档实底顶垫：盖住 iOS 26 毛玻璃采样区（iframe 里的白底采不到） */
+        /* 父文档实底顶垫：盖住 iOS 26/27 毛玻璃。env()=0 时 fallback 不会生效，必须写死至少 59px */
         #iosStatusPlate {
             display: none;
             position: fixed;
             left: 0;
             right: 0;
             top: 0;
-            height: calc(env(safe-area-inset-top, 59px) + 18px);
+            height: 59px;
+            min-height: 59px;
             background: #fff;
             z-index: 2147483646;
             pointer-events: none;
@@ -78,6 +79,18 @@
             // 壳内只加载线上 H5；打包前由 .env 的 PUBLIC_SITE_URL 同步（见 build-agent-apk.sh）
             var APP_ORIGIN = 'https://lkj.qiyun888.top/';
             var ALLOWED_ORIGIN_HOST = 'lkj.qiyun888.top';
+
+            try {
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+                    var earlyPlate = document.getElementById('iosStatusPlate');
+                    if (earlyPlate) {
+                        earlyPlate.style.display = 'block';
+                        earlyPlate.style.height = '59px';
+                        earlyPlate.style.minHeight = '59px';
+                        earlyPlate.style.background = '#ffffff';
+                    }
+                }
+            } catch (eEarlyPlate) {}
 
             function isCordovaXiaomi23127() {
                 var ua = navigator.userAgent || '';
@@ -536,6 +549,8 @@
                 } else {
                     plate.style.background = '#4f90f3';
                 }
+                plate.style.height = '59px';
+                plate.style.minHeight = '59px';
                 plate.style.display = 'block';
             }
 

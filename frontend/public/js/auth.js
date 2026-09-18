@@ -1451,6 +1451,52 @@
     return isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 26;
   }
 
+  /** iOS 26/27 全机（Cordova / WebClip / Safari）：Liquid Glass 与机型无关。 */
+  function isIosLiquidGlassOS() {
+    return isLikelyIOSViewportClient() && getIOSMajorVersion() >= 26;
+  }
+
+  function syncIos27StatusPlate(color) {
+    try {
+      if (!isIosLiquidGlassOS()) return;
+      var root = document.documentElement;
+      root.classList.add('app-ios-liquid-glass');
+      root.classList.add('app-top-safe-shell');
+      root.classList.remove('app-ios-status-outer');
+      var plateColor = color || '';
+      try {
+        plateColor =
+          plateColor ||
+          String(
+            (root.style && root.style.getPropertyValue('--ios27-status-plate')) || ''
+          ).trim();
+      } catch (eC) {}
+      if (!plateColor) plateColor = '#ffffff';
+      root.style.setProperty('--ios27-status-plate', plateColor);
+      if (!document.getElementById('ios27StatusPlateCss')) {
+        var st = document.createElement('style');
+        st.id = 'ios27StatusPlateCss';
+        st.textContent =
+          '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;' +
+          'height:59px!important;min-height:59px!important;background:var(--ios27-status-plate,#ffffff)!important;' +
+          'z-index:2147483000!important;pointer-events:none!important;' +
+          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;}';
+        (document.head || root).appendChild(st);
+      }
+      var plate = document.getElementById('ios27StatusPlate');
+      if (!plate) {
+        plate = document.createElement('div');
+        plate.id = 'ios27StatusPlate';
+        plate.setAttribute('aria-hidden', 'true');
+        (document.body || root).appendChild(plate);
+      }
+      plate.style.setProperty('background', plateColor, 'important');
+      if (typeof window.__paintIos27LiquidGlassPlate === 'function') {
+        window.__paintIos27LiquidGlassPlate();
+      }
+    } catch (ePlate) {}
+  }
+
   /**
    * iOS 逻辑屏短边/长边。WKWebView / Cordova 偶发上报物理像素（如 1170×2532），
    * 需按 dpr 折回 CSS 点，否则 12 Pro 对不上 390×844。
@@ -4267,6 +4313,7 @@
         paint_shell: true,
         shell_bg: pageBg
       });
+      syncIos27StatusPlate(topColor);
     } catch (e) {}
   }
 
@@ -4859,7 +4906,7 @@
       } else {
         document.documentElement.classList.remove('app-ios-status-outer');
       }
-      if (liquidGlassWebclip) {
+      if (liquidGlassWebclip || isIosLiquidGlassOS()) {
         document.documentElement.classList.add('app-top-safe-shell');
         document.documentElement.classList.add('app-ios-liquid-glass');
         document.documentElement.style.setProperty(
@@ -4867,6 +4914,7 @@
           IOS_DYNAMIC_ISLAND_INSET_PX + 'px',
           'important'
         );
+        syncIos27StatusPlate('#ffffff');
       }
       var whiteBarOpts = {
         style: 'default',
@@ -4946,6 +4994,7 @@
       'margin:0 0 calc(-1 * (var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) + 56px)) !important;' +
       'background:#fff !important;z-index:110 !important;pointer-events:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell,html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;}' +
+      '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:59px!important;min-height:59px!important;background:var(--ios27-status-plate,#ffffff)!important;z-index:2147483000!important;pointer-events:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .page-root,html.app-ios-liquid-glass body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top,59px) !important;--shuiming-chrome-top:var(--app-shell-statusbar-top,59px) !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass body.page-shuiming-result::before,html.app-ios-unified-chrome body.page-shuiming-result::before{content:none !important;display:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header{background:#fff !important;box-shadow:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
@@ -5068,6 +5117,7 @@
       var root = document.documentElement;
       root.style.setProperty('background-color', '#fff', 'important');
       if (document.body) document.body.style.setProperty('background-color', '#fff', 'important');
+      syncIos27StatusPlate('#ffffff');
       var y = window.scrollY || 0;
       window.scrollTo(0, y + 1);
       window.scrollTo(0, y);
