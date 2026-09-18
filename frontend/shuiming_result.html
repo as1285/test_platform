@@ -68,15 +68,15 @@
                         var a57St = document.createElement('style');
                         a57St.setAttribute('data-shuiming-a57-weekback', '1');
                         a57St.textContent =
-                            'html.platform-android.app-android-oppo-a57,html.app-android-client.app-android-oppo-a57,html.shuiming-android-weekback,html.shuiming-android-weekback body,html.shuiming-android-weekback body.page-shuiming-result{height:auto!important;max-height:none!important;min-height:100%!important;overflow:visible!important;overflow-x:hidden!important;overscroll-behavior:auto!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .page-root{height:auto!important;max-height:none!important;min-height:100vh!important;overflow:visible!important;isolation:isolate;}' +
+                            'html.platform-android.app-android-oppo-a57,html.app-android-client.app-android-oppo-a57,html.shuiming-android-weekback,html.shuiming-android-weekback body,html.shuiming-android-weekback body.page-shuiming-result{height:auto!important;max-height:none!important;min-height:100%!important;overflow:visible!important;overscroll-behavior:auto!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .page-root{height:auto!important;max-height:none!important;min-height:100vh!important;overflow:visible!important;isolation:auto;}' +
                             'html.shuiming-android-weekback body.page-shuiming-result .top-fixed{position:static!important;height:0!important;overflow:visible!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:130!important;height:calc(var(--header-height,48px) + 40px)!important;min-height:calc(var(--header-height,48px) + 40px)!important;padding:40px 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right{top:40px!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;transform:none!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:2!important;visibility:visible!important;opacity:1!important;color:#000!important;-webkit-text-fill-color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;font-size:17px!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + 40px)!important;left:0!important;right:0!important;z-index:125!important;visibility:visible!important;opacity:1!important;transform:translateZ(0);}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;margin-top:calc(var(--header-height,48px) + 40px)!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield{display:block!important;position:fixed!important;visibility:visible!important;}';
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:140!important;height:calc(var(--header-height,48px) + 40px)!important;min-height:calc(var(--header-height,48px) + 40px)!important;padding:40px 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right{top:40px!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:3!important;visibility:visible!important;opacity:1!important;color:#000!important;-webkit-text-fill-color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;font-size:17px!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + 40px)!important;left:0!important;right:0!important;z-index:125!important;visibility:visible!important;opacity:1!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;height:auto!important;max-height:none!important;overflow-x:hidden!important;overflow-y:visible!important;margin-top:calc(var(--header-height,48px) + 40px)!important;}' +
+                            'html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield{display:block!important;position:fixed!important;visibility:visible!important;z-index:90!important;-webkit-transform:none!important;transform:none!important;}';
                         (document.head || document.documentElement).appendChild(a57St);
                     }
                     /*
@@ -856,7 +856,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-a57-week"></script>
+    <script src="/js/auth-boot.js?v=20260918-a57-top"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -1707,7 +1707,6 @@
             max-height: none !important;
             min-height: 100% !important;
             overflow: visible !important;
-            overflow-x: hidden !important;
             overscroll-behavior: auto !important;
         }
         html.platform-android.app-android-oppo-a57 body.page-shuiming-result .page-root,
@@ -1717,7 +1716,7 @@
             max-height: none !important;
             min-height: 100vh !important;
             overflow: visible !important;
-            isolation: isolate;
+            isolation: auto;
         }
         html.shuiming-android-weekback body.page-shuiming-result .top-fixed {
             position: static !important;
@@ -1731,7 +1730,7 @@
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            z-index: 130 !important;
+            z-index: 140 !important;
             height: calc(var(--header-height, 48px) + 40px) !important;
             min-height: calc(var(--header-height, 48px) + 40px) !important;
             padding: 40px 16px 0 !important;
@@ -1743,6 +1742,10 @@
             display: flex !important;
             align-items: flex-end !important;
             justify-content: center !important;
+            -webkit-transform: translateZ(0) !important;
+            transform: translateZ(0) !important;
+            -webkit-backface-visibility: visible !important;
+            backface-visibility: visible !important;
         }
         html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,
         html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right {
@@ -1750,12 +1753,13 @@
             height: var(--header-height, 48px) !important;
             display: flex !important;
             align-items: center !important;
-            transform: none !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title {
             display: block !important;
             position: relative !important;
-            z-index: 2 !important;
+            z-index: 3 !important;
             visibility: visible !important;
             opacity: 1 !important;
             color: #000 !important;
@@ -1774,7 +1778,8 @@
             z-index: 125 !important;
             visibility: visible !important;
             opacity: 1 !important;
-            transform: translateZ(0);
+            -webkit-transform: translateZ(0) !important;
+            transform: translateZ(0) !important;
         }
         html.platform-android.app-android-oppo-a57 body.page-shuiming-result .list,
         html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .list,
@@ -1786,13 +1791,17 @@
             right: auto !important;
             height: auto !important;
             max-height: none !important;
-            overflow: visible !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
         html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield {
             display: block !important;
             position: fixed !important;
             visibility: visible !important;
+            z-index: 90 !important;
+            -webkit-transform: none !important;
+            transform: none !important;
         }
 
         .list-item {
@@ -4457,8 +4466,73 @@
                             aceShield.style.setProperty('-webkit-transform', 'none', 'important');
                         }
                     }
+                    if (isOppoA57ShuimingClient()) {
+                        rootEl.classList.add('app-android-oppo-a57');
+                        rootEl.classList.add('shuiming-android-weekback');
+                        var a57Inset = 40;
+                        var a57BarH = 48;
+                        header.style.setProperty('top', '0', 'important');
+                        header.style.setProperty('padding-top', a57Inset + 'px', 'important');
+                        header.style.setProperty('height', a57BarH + a57Inset + 'px', 'important');
+                        header.style.setProperty('min-height', a57BarH + a57Inset + 'px', 'important');
+                        header.style.setProperty('box-sizing', 'border-box', 'important');
+                        header.style.setProperty('background', '#fff', 'important');
+                        header.style.setProperty('overflow', 'visible', 'important');
+                        header.style.setProperty('z-index', '140', 'important');
+                        header.style.setProperty('display', 'flex', 'important');
+                        header.style.setProperty('align-items', 'flex-end', 'important');
+                        header.style.setProperty('visibility', 'visible', 'important');
+                        header.style.setProperty('opacity', '1', 'important');
+                        header.style.setProperty('transform', 'translateZ(0)', 'important');
+                        header.style.setProperty('-webkit-transform', 'translateZ(0)', 'important');
+                        var a57Title = header.querySelector('.header-title');
+                        if (a57Title) {
+                            a57Title.style.setProperty('display', 'block', 'important');
+                            a57Title.style.setProperty('visibility', 'visible', 'important');
+                            a57Title.style.setProperty('opacity', '1', 'important');
+                            a57Title.style.setProperty('color', '#000', 'important');
+                            a57Title.style.setProperty('-webkit-text-fill-color', '#000', 'important');
+                            a57Title.style.setProperty('line-height', a57BarH + 'px', 'important');
+                            a57Title.style.setProperty('height', a57BarH + 'px', 'important');
+                            a57Title.style.setProperty('position', 'relative', 'important');
+                            a57Title.style.setProperty('z-index', '3', 'important');
+                        }
+                        var a57Back = header.querySelector('.back-btn');
+                        var a57Right = header.querySelector('.header-right');
+                        if (a57Back) {
+                            a57Back.style.setProperty('top', a57Inset + 'px', 'important');
+                            a57Back.style.setProperty('height', a57BarH + 'px', 'important');
+                            a57Back.style.setProperty('display', 'flex', 'important');
+                            a57Back.style.setProperty('visibility', 'visible', 'important');
+                            a57Back.style.setProperty('opacity', '1', 'important');
+                        }
+                        if (a57Right) {
+                            a57Right.style.setProperty('top', a57Inset + 'px', 'important');
+                            a57Right.style.setProperty('height', a57BarH + 'px', 'important');
+                            a57Right.style.setProperty('display', 'flex', 'important');
+                            a57Right.style.setProperty('visibility', 'visible', 'important');
+                            a57Right.style.setProperty('opacity', '1', 'important');
+                        }
+                        rootEl.style.setProperty('--app-shell-statusbar-top', a57Inset + 'px');
+                        rootEl.style.setProperty('--android-status-inset', a57Inset + 'px');
+                        rootEl.style.setProperty('--safe-top', a57Inset + 'px');
+                        rootEl.style.setProperty('--shuiming-chrome-top', a57Inset + 'px');
+                        if (root) {
+                            root.style.setProperty('--app-shell-statusbar-top', a57Inset + 'px');
+                            root.style.setProperty('--safe-top', a57Inset + 'px');
+                            root.style.setProperty('--shuiming-chrome-top', a57Inset + 'px');
+                        }
+                        summary.style.setProperty('top', a57BarH + a57Inset + 'px', 'important');
+                        var a57Shield = document.getElementById('shuimingChromeShield');
+                        if (a57Shield) {
+                            a57Shield.style.setProperty('z-index', '90', 'important');
+                            a57Shield.style.setProperty('transform', 'none', 'important');
+                            a57Shield.style.setProperty('-webkit-transform', 'none', 'important');
+                        }
+                    }
                 } catch (eForce) {}
                 var headerBottom = Math.ceil(header.getBoundingClientRect().bottom || 0);
+                if (isOppoA57ShuimingClient() && headerBottom < 48) headerBottom = 88;
                 if (headerBottom <= 0) return null;
                 var unifiedChrome =
                     document.documentElement.classList.contains('app-ios-unified-chrome') ||
@@ -4469,7 +4543,7 @@
                         summary.style.removeProperty('top');
                         header.style.removeProperty('top');
                     } catch (eUni) {}
-                } else {
+                } else if (!isOppoA57ShuimingClient()) {
                     /* 汇总顶边必须贴齐顶栏底，消除红框空隙 */
                     summary.style.setProperty('top', headerBottom + 'px', 'important');
                 }

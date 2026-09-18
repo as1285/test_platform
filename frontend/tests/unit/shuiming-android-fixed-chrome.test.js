@@ -39,7 +39,7 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     );
     expect(shuimingResult).toContain('function applyShuimingListTop');
     expect(shuimingResult).toContain('function lockAndroidShuimingPageScroll');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-a57-week');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-a57-top');
   });
 
   it('OPPO A57/A557 回退到上周：fixed 顶栏 + 整页滚动', () => {
@@ -55,6 +55,9 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     expect(shuimingResult).toMatch(
       /html\.shuiming-android-weekback body\.page-shuiming-result \.top-fixed \.header \{[\s\S]*position:\s*fixed !important/
     );
+    expect(shuimingResult).toContain('-webkit-transform: translateZ(0) !important');
+    expect(shuimingResult).toContain('z-index: 140 !important');
+    expect(shuimingResult).toContain('else if (!isOppoA57ShuimingClient())');
     expect(shuimingResult).toContain('if (!isAndroidShuimingClient() || isOppoA57ShuimingClient()) return');
     expect(shuimingResult).toContain('if (isIosUnifiedSeam) {');
   });
