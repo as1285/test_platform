@@ -215,7 +215,9 @@
                         !/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM/i.test(u))
                 ) {
                     document.documentElement.classList.add('app-android-redmi-k70');
-                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.classList.remove('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
                 if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');

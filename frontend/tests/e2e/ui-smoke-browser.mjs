@@ -652,6 +652,13 @@ async function assertWhiteTopOnPath(page, profile, tag, path, insetOpts) {
       }
     }
   }
+  if (expect.classExcludes) {
+    for (const cls of expect.classExcludes) {
+      if (chrome.classes.includes(cls)) {
+        fail(`${tag} ${path} unexpected class ${cls}: ${chrome.classes.join(' ')}`);
+      }
+    }
+  }
 
   const immersive = chrome.classes.includes('app-android-immersive-white-top');
   if (expect.immersiveWhiteTop === true && !immersive) {

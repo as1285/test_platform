@@ -434,9 +434,9 @@ var CORE_MODELS = [
       { page: 'shuiming', title: 'K70 至尊白顶栏避让', summary: 'WebView 压在状态栏下的机型须留顶距。', since: '2026-08-13' },
       {
         page: 'mine',
-        title: '「我的」underlap 黑垫',
-        summary: 'K70 标准版（23113RKC6C）「我的」页顶 40px 黑垫；时间/电量由系统浅色图标画出，激活钮下移，勿把头图蓝铺进系统栏。至尊档仍走白顶沉浸。',
-        since: '2026-09-10'
+        title: 'K70 标准版全页黑状态栏',
+        summary: '23113RKC6C 全页 Cordova 黑条 + 浅色系统图标，40px 顶距；禁止 body::before 盖住时间/电量。至尊档仍走白顶沉浸。',
+        since: '2026-09-18'
       }
     ]
   },

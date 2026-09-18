@@ -13,6 +13,19 @@
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-top-safe-shell');
                 }
+                if (
+                    /23113RKC6[CG]|2311DRK48[CGI]/i.test(u) ||
+                    (/(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(u) &&
+                        !/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-redmi-k70');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.remove('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.backgroundColor = '#000000';
+                }
                 if (isMate60) {
                     document.documentElement.classList.add('app-android-huawei-mate60');
                 }

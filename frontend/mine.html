@@ -176,7 +176,8 @@
                 if (/Android|HarmonyOS|OpenHarmony|ArkWeb|HMSCore|HUAWEI|Huawei/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                 }
-                /* 红米 K70「我的」underlap 黑垫；桌面窄屏 / AVD / Chrome 设备模式也可预览。 */
+                /* 红米 K70 标准版：全页黑条，首屏只留 40px 顶距，禁止 body::before 盖系统字。
+                   桌面窄屏 / AVD / Chrome 设备模式仍可预览旧 underlap。 */
                 (function paintMineBlackStatusFirst() {
                     if (/iPhone|iPad|iPod/.test(u)) return;
                     var blob = u;
@@ -238,12 +239,38 @@
                             } catch (ePlat) {}
                         }
                     }
-                    if (!k70Std && !s15 && !preview) return;
+                    if (k70Std) {
+                        var k70Root = document.documentElement;
+                        k70Root.classList.add('app-android-redmi-k70');
+                        k70Root.classList.add('app-android-client');
+                        k70Root.classList.add('app-top-safe-shell');
+                        k70Root.classList.remove('app-android-immersive-white-top');
+                        k70Root.classList.remove('app-android-mine-e1-sm');
+                        k70Root.classList.remove('app-mine-black-status');
+                        k70Root.style.setProperty('--app-shell-statusbar-top', '40px');
+                        k70Root.style.setProperty('--android-status-inset', '40px');
+                        k70Root.style.setProperty('--mine-top-bleed', '40px');
+                        if (!document.getElementById('k70StdMineFirstPaint')) {
+                            var k70Fp = document.createElement('style');
+                            k70Fp.id = 'k70StdMineFirstPaint';
+                            k70Fp.setAttribute('data-k70-std-mine-firstpaint', '1');
+                            k70Fp.textContent =
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra){background-color:#000!important;background-image:none!important;}' +
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine{--mine-top-bleed:40px!important;--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--mine-activate-btn-top-offset:10px!important;background-color:#f5f6fa!important;background-image:none!important;}' +
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine::before{display:none!important;content:none!important;}' +
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas{padding-top:40px!important;background-color:#000!important;background-image:none!important;}' +
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas>img,html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas>#headerImg{margin-top:0!important;}' +
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-layer{top:40px!important;}' +
+                                'html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-activate-btn{top:calc(10px + 40px)!important;}';
+                            document.head.appendChild(k70Fp);
+                        }
+                        return;
+                    }
+                    if (!s15 && !preview) return;
                     var root = document.documentElement;
                     root.classList.add('app-mine-black-status');
                     root.classList.add('app-top-safe-shell');
                     root.classList.remove('app-android-mine-e1-sm');
-                    if (k70Std) root.classList.add('app-android-redmi-k70');
                     if (s15) root.classList.add('app-android-vivo-s15');
                     root.classList.add('app-android-client');
                     root.style.setProperty('--app-shell-statusbar-top', '40px');
@@ -454,7 +481,7 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
-                /* 红米 K70 标准版 class 仍打上，黑条首屏已由 app-mine-black-status 处理 */
+                /* 红米 K70 标准版 class 由上方首屏全页黑条处理，勿再加 immersive-white-top */
                 if (/V2527A|V2527DA|V2527B|PD2527[A-Z]?|\bV2527\b|(?:vivo[\s_-]*)?S50[\s_-]*Pro[\s_-]*[Mm]ini|S50Promini/i.test(u)) {
                     document.documentElement.classList.add('app-android-vivo-s50promini');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -1043,10 +1070,13 @@
             margin-top: 0 !important;
         }
         /*
-         * 「我的」underlap 黑垫：仅红米 K70 标准版。
-         * 系统栏铺黑，时间/电量由系统浅色图标画出；头图蓝从 40px 下开始。
+         * 「我的」underlap 黑垫：仅预览档（app-mine-black-status）。
+         * 红米 K70 标准版改全页 Cordova 黑条，禁止 body::before 盖住时间/电量。
          */
-        html.app-mine-black-status,
+        html.app-mine-black-status {
+            background-color: #000;
+            background-image: none;
+        }
         html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) {
             background-color: #000;
             background-image: none;
@@ -1060,8 +1090,7 @@
             background-color: #f5f6fa;
             background-image: none;
         }
-        html.app-mine-black-status body.page-mine::before,
-        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine::before {
+        html.app-mine-black-status body.page-mine::before {
             content: '';
             display: block;
             position: fixed;
@@ -1072,6 +1101,10 @@
             background: #000;
             z-index: 40;
             pointer-events: none;
+        }
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine::before {
+            display: none !important;
+            content: none !important;
         }
         html.app-mine-black-status body.page-mine .mine-e1-canvas,
         html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-mine .mine-e1-canvas {

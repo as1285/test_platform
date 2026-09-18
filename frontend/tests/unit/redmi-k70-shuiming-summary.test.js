@@ -36,10 +36,10 @@ describe('红米 K70 标准版收入纳税明细汇总加高', () => {
     );
   });
 
-  it('首屏打上 K70 标准版 class 与沉浸白顶栏', () => {
+  it('首屏打上 K70 标准版 class，且不走沉浸白顶', () => {
     expect(shuimingResult).toContain("classList.add('app-android-redmi-k70')");
     expect(shuimingResult).toMatch(
-      /classList\.add\('app-android-redmi-k70'\);\s*document\.documentElement\.classList\.add\('app-android-immersive-white-top'\)/
+      /classList\.add\('app-android-redmi-k70'\);\s*document\.documentElement\.classList\.remove\('app-android-immersive-white-top'\)/
     );
     expect(auth).toContain("classList.add('app-android-redmi-k70')");
   });

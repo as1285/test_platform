@@ -131,13 +131,15 @@ describe('ui-smoke device catalog', () => {
     expect(() => resolveSmokeDevices('no-such-phone')).toThrow(/无匹配机型/);
   });
 
-  it('红米 K70 标准版列入自动测试，且「我的」走 underlap 黑垫', () => {
+  it('红米 K70 标准版列入自动测试，全页黑条且不走白顶沉浸', () => {
     const k70 = DEVICE_PROFILES.find((d) => d.id === 'redmi-k70');
     const ultra = DEVICE_PROFILES.find((d) => d.id === 'redmi-k70-ultra');
     expect(k70, 'redmi-k70 profile').toBeTruthy();
     expect(k70.deviceModel).toBe('23113RKC6C');
-    expect(k70.expect.mineBlackStatus).toBe(true);
-    expect(k70.expect.immersiveWhiteTop).toBe(true);
+    expect(k70.expect.mineBlackStatus).toBeFalsy();
+    expect(k70.expect.immersiveWhiteTop).toBe(false);
+    expect(k70.expect.classContains).toContain('app-android-redmi-k70');
+    expect(k70.expect.classExcludes).toContain('app-android-immersive-white-top');
     expect(ultra.expect.mineBlackStatus).toBeFalsy();
     expect(RECENT_DEVICE_IDS).toContain('redmi-k70');
     expect(POPULAR_DEVICE_IDS).toContain('redmi-k70');
@@ -164,9 +166,9 @@ describe('ui-smoke device catalog', () => {
     expect(smokeBrowser).toContain('header still uses padding-top');
   });
 
-  it('只有 K70 标准版 expect.mineBlackStatus，其余安卓走禁止黑垫', () => {
+  it('K70 标准版不再走 mine underlap 黑垫', () => {
     const blacks = DEVICE_PROFILES.filter((d) => d.expect && d.expect.mineBlackStatus);
-    expect(blacks.map((d) => d.id)).toEqual(['redmi-k70']);
+    expect(blacks.map((d) => d.id)).toEqual([]);
     expect(DEVICE_PROFILES.filter((d) => d.platform === 'android').length).toBeGreaterThan(20);
   });
 });

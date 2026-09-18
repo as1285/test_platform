@@ -163,7 +163,7 @@
     return false;
   }
 
-  /** 「我的」顶栏档。K70 标准版，或桌面窄屏 / AVD 预览。 */
+  /** 「我的」顶栏档。桌面窄屏 / AVD 预览。K70 标准版走全页黑条，不在此档。 */
   function resolveMineStatusMode() {
     if (currentPageName() !== 'mine.html') {
       return '';
@@ -174,8 +174,10 @@
       }
     } catch (eBody) {}
     var ua = readMineStatusUaBlob();
+    if (isRedmiK70StandardModelBlob(ua)) {
+      return '';
+    }
     if (
-      isRedmiK70StandardModelBlob(ua) ||
       /V2203A|V2203T|PD2203\b|(?:vivo[\s_-]*)?S15\b(?![\s_-]*(?:Pro|e))/i.test(ua) ||
       isMineUnderlapPreviewBlob(ua)
     ) {
