@@ -41,6 +41,13 @@
                         (document.head || document.documentElement).appendChild(rn11St);
                     }
                 }
+                /* OPPO A57 / A557（PFTM20）：钉顶栏/锁滚动会裁掉「收入纳税明细」，回退 9/16 整页滚动 */
+                var isOppoA57 =
+                    /PFTM20|OPPO\s*A557|A557\s*5G|OPPO\s*A57(?:\s*5G)?(?!\d)/i.test(u);
+                if (isOppoA57) {
+                    document.documentElement.classList.add('app-android-oppo-a57');
+                    document.documentElement.classList.add('shuiming-android-legacy-sep16');
+                }
                 if (/Android/i.test(u)) {
                     document.documentElement.classList.add('platform-android');
                     try {
@@ -51,12 +58,25 @@
                             document.documentElement.style.setProperty('--shuiming-chrome-top', chromeTop);
                         }
                     } catch (eChromeTop) {}
+                    if (isOppoA57 && !document.querySelector('style[data-shuiming-a57-legacy-sep16]')) {
+                        var a57St = document.createElement('style');
+                        a57St.setAttribute('data-shuiming-a57-legacy-sep16', '1');
+                        a57St.textContent =
+                            'html.app-android-oppo-a57,html.app-android-oppo-a57 body,html.app-android-oppo-a57 body.page-shuiming-result,html.app-android-oppo-a57 body.page-shuiming-result .page-root{height:auto!important;max-height:none!important;min-height:100vh!important;overflow:visible!important;overflow-x:hidden!important;isolation:isolate;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .top-fixed{position:static!important;height:0!important;overflow:visible!important;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;height:calc(var(--header-height,48px) + var(--safe-top,0px))!important;min-height:calc(var(--header-height,48px) + var(--safe-top,0px))!important;padding:calc(8px + var(--safe-top,0px)) 16px 8px!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header .header-right{top:auto!important;height:auto!important;display:flex!important;align-items:center!important;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:2!important;visibility:visible!important;opacity:1!important;color:#000!important;line-height:1.25!important;height:auto!important;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;left:0!important;right:0!important;z-index:101!important;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;margin-top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;}' +
+                            'html.app-android-oppo-a57 body.page-shuiming-result .shuiming-chrome-shield{position:fixed!important;}';
+                        (document.head || document.documentElement).appendChild(a57St);
+                    }
                     /*
-                     * ColorOS / ArkWeb（含 OPPO A57/A557 PFTM20）：
-                     * overflow-x:clip 仍会让 position:fixed 跟页滚，划一下「收入纳税明细」滑出视口。
-                     * 锁死 html/body/page-root，只让 .list 在汇总下滚动。
+                     * ColorOS / ArkWeb：锁死页面滚动后，A57 会裁掉「收入纳税明细」。
+                     * 其它 Android 仍钉顶栏；A57/A557 走上面的 9/16 回退。
                      */
-                    if (!document.querySelector('style[data-shuiming-android-fixed-chrome]')) {
+                    if (!isOppoA57 && !document.querySelector('style[data-shuiming-android-fixed-chrome]')) {
                         var andFixSt = document.createElement('style');
                         andFixSt.setAttribute('data-shuiming-android-fixed-chrome', '1');
                         andFixSt.setAttribute('data-shuiming-android-list-lock', '1');
@@ -829,7 +849,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-acepro-top"></script>
+    <script src="/js/auth-boot.js?v=20260918-a57-legacy"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -1663,6 +1683,77 @@
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-y: contain;
+        }
+
+        /*
+         * OPPO A57 / A557（PFTM20）：回退 9 月 16 日整页滚动。
+         * 锁 html/overflow + 绝对列表会把「收入纳税明细」裁掉，只剩合计。
+         */
+        html.app-android-oppo-a57,
+        html.app-android-oppo-a57 body,
+        html.app-android-oppo-a57 body.page-shuiming-result,
+        html.app-android-oppo-a57 body.page-shuiming-result .page-root {
+            height: auto !important;
+            max-height: none !important;
+            min-height: 100vh !important;
+            overflow: visible !important;
+            overflow-x: hidden !important;
+            isolation: isolate;
+        }
+        html.app-android-oppo-a57 body.page-shuiming-result .top-fixed {
+            position: static !important;
+            height: 0 !important;
+            overflow: visible !important;
+        }
+        html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 100 !important;
+            height: calc(var(--header-height, 48px) + var(--safe-top, 0px)) !important;
+            min-height: calc(var(--header-height, 48px) + var(--safe-top, 0px)) !important;
+            padding: calc(8px + var(--safe-top, 0px)) 16px 8px !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            overflow: visible !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header .header-right {
+            top: auto !important;
+            height: auto !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header .header-title {
+            display: block !important;
+            position: relative !important;
+            z-index: 2 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #000 !important;
+            line-height: 1.25 !important;
+            height: auto !important;
+        }
+        html.app-android-oppo-a57 body.page-shuiming-result .top-fixed .summary {
+            position: fixed !important;
+            top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 101 !important;
+        }
+        html.app-android-oppo-a57 body.page-shuiming-result .list {
+            position: relative !important;
+            top: auto !important;
+            bottom: auto !important;
+            left: auto !important;
+            right: auto !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin-top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
         }
 
         .list-item {
@@ -4096,6 +4187,21 @@
             }
         }
 
+        function isOppoA57ShuimingClient() {
+            try {
+                var root = document.documentElement;
+                if (root.classList.contains('app-android-oppo-a57') || root.classList.contains('shuiming-android-legacy-sep16')) {
+                    return true;
+                }
+                var ua = navigator.userAgent || '';
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eM) {}
+                try { ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eU) {}
+                return /PFTM20|OPPO\s*A557|A557\s*5G|OPPO\s*A57(?:\s*5G)?(?!\d)/i.test(ua);
+            } catch (eA57) {
+                return false;
+            }
+        }
+
         function resetShuimingScrollTop() {
             try {
                 if (window.history && 'scrollRestoration' in window.history) {
@@ -5410,7 +5516,7 @@
             var wantShow = false;
 
             function listScroller() {
-                if (!isAndroidShuimingClient()) return null;
+                if (!isAndroidShuimingClient() || isOppoA57ShuimingClient()) return null;
                 return document.getElementById('recordList');
             }
 
@@ -5503,7 +5609,7 @@
         })();
 
         (function lockAndroidShuimingPageScroll() {
-            if (!isAndroidShuimingClient()) return;
+            if (!isAndroidShuimingClient() || isOppoA57ShuimingClient()) return;
             function pin() {
                 try {
                     var y =
