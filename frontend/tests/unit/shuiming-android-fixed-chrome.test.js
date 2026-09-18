@@ -18,10 +18,14 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     expect(boot).toContain("root.style.setProperty('--shuiming-chrome-top', '40px')");
   });
 
-  it('明细页首屏钉住顶栏/汇总，并压过旧缓存的 overflow-x:hidden', () => {
+  it('明细页首屏锁死页面滚动，只让列表在汇总下滚动', () => {
     expect(shuimingResult).toContain('data-shuiming-android-fixed-chrome');
-    expect(shuimingResult).toContain('overflow-x:clip!important');
-    expect(shuimingResult).toContain('overscroll-behavior-y:none');
+    expect(shuimingResult).toContain('data-shuiming-android-list-lock');
+    expect(shuimingResult).toContain('overflow:hidden!important');
+    expect(shuimingResult).toContain('overscroll-behavior:none');
+    expect(shuimingResult).toContain('isolation:auto');
+    expect(shuimingResult).toContain('--shuiming-list-top:calc(var(--header-height,48px)');
+    expect(shuimingResult).toContain('overflow-y:auto!important');
     expect(shuimingResult).toContain(
       'html.platform-android body.page-shuiming-result .top-fixed .header'
     );
@@ -33,11 +37,13 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     expect(shuimingResult).toContain(
       '.top-fixed .header .header-title{display:block!important'
     );
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-header-pin');
+    expect(shuimingResult).toContain('function applyShuimingListTop');
+    expect(shuimingResult).toContain('function lockAndroidShuimingPageScroll');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-list-lock');
   });
 
-  it('页面样式对 Android 再用 clip 钉住 header/summary', () => {
-    expect(shuimingResult).toContain('overflow-x: clip !important');
+  it('页面样式对 Android 再锁页面并绝对铺列表', () => {
+    expect(shuimingResult).toContain('overflow: hidden !important');
     expect(shuimingResult).toMatch(
       /html\.platform-android body\.page-shuiming-result \.top-fixed \.header,[\s\S]*position:\s*fixed !important/
     );
@@ -49,6 +55,15 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     );
     expect(shuimingResult).toMatch(
       /html\.platform-android body\.page-shuiming-result \.top-fixed \.header \.header-title,[\s\S]*display:\s*block !important/
+    );
+    expect(shuimingResult).toMatch(
+      /html\.platform-android body\.page-shuiming-result \.list,[\s\S]*position:\s*absolute !important/
+    );
+    expect(shuimingResult).toMatch(
+      /html\.platform-android body\.page-shuiming-result \.list,[\s\S]*overflow-y:\s*auto !important/
+    );
+    expect(shuimingResult).toMatch(
+      /html\.platform-android body\.page-shuiming-result \.page-root,[\s\S]*isolation:\s*auto/
     );
   });
 });
