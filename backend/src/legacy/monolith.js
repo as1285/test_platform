@@ -7423,6 +7423,7 @@ async function handleAlipayCreateOrder(req, res) {
     console.error('create order channel_price', eChPriceCreate);
   }
   var customOffer = null;
+  var halfPriceAll = false;
   try {
     var appliedCreate = await getUserPriceOffers().applyOfferToPricingOffer(
       req.authUserId || '',
@@ -7430,6 +7431,7 @@ async function handleAlipayCreateOrder(req, res) {
     );
     offer = appliedCreate.offer || offer;
     customOffer = appliedCreate.customOffer || null;
+    halfPriceAll = !!(appliedCreate && appliedCreate.halfPriceAll) || !!(offer && offer.half_price_all);
   } catch (eCustomCreate) {
     console.error('create order user_price_offer', eCustomCreate);
   }
@@ -7446,13 +7448,14 @@ async function handleAlipayCreateOrder(req, res) {
     }
   } catch (eCodeOnly) {}
   var sku = getPricingAb().pickSkuFromOffer(offer, skuIdReq);
-  if (!sku && customOffer) {
+  /* 半价铺满整架后必须按所选档下单，不能回落到库里那条周卡专属价 */
+  if (!sku && customOffer && !halfPriceAll) {
     sku = getUserPriceOffers().buildSkuFromOffer(customOffer);
   }
   if (!sku) {
     return res.status(400).json({ code: 400, msg: '请选择要购买的套餐' });
   }
-  if (customOffer && String(sku.id) !== String(customOffer.sku_id)) {
+  if (!halfPriceAll && customOffer && String(sku.id) !== String(customOffer.sku_id)) {
     return res.status(400).json({
       code: 400,
       msg: '当前账号已设置专属报价，请按专属套餐支付'

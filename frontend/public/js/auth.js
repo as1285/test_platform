@@ -828,12 +828,12 @@
 
   /** 系统状态栏在 WebView 外：首页/顶栏勿再叠 statusbar 占位 */
   function isAndroidOuterStatusBarClient() {
-    /* K70 标准版「我的」是 underlap 黑垫，不能当外置清零 */
+    /* K70 标准版：全页页内黑条 40px（对齐小米 14），不能当外置清零 */
     try {
-      if (isMineStatusPage() && isRedmiK70StandardClient()) {
+      if (isRedmiK70StandardClient()) {
         return false;
       }
-    } catch (eK70MineOuter) {}
+    } catch (eK70Outer) {}
     if (
       isOnePlus13Client() ||
       isOnePlus12Client() ||
@@ -1194,9 +1194,9 @@
 
   /**
    * 红米 K70 族（标准版 + 至尊）。用于非「我的」页的机型桶，勿再写成「外置故清零」。
-   * 标准版「我的」是 underlap 黑垫，见 resolveMineStatusMode / isRedmiK70StandardClient。
+   * 标准版：全页黑状态栏 + 40px 页内黑边（对齐小米 14），见 isRedmiK70StandardClient。
    * 至尊仍是沉浸压栏，见 isRedmiK70UltraClient。
-   * UA 偶无型号时的 1440×3200 兜底只服务本函数，不打「我的」黑垫。
+   * UA 偶无型号时的 1440×3200 兜底只服务本函数，不打标准版黑条。
    */
   function isRedmiK70Client() {
     var ua = clientUaBlob();
@@ -1337,7 +1337,7 @@
 
   /**
    * 「我的」顶栏档：underlap-black | ''。
-   * K70 标准版，或桌面窄屏 / AVD 预览（无其它 OEM、非真机 Pixel）。
+   * 仅桌面窄屏 / AVD 预览（无其它 OEM）。K70 标准版改走全页黑状态栏，不再用单页 underlap。
    */
   function resolveMineStatusMode() {
     if (typeof window.resolveMineStatusMode === 'function' && window.resolveMineStatusMode !== resolveMineStatusMode) {
@@ -1351,14 +1351,10 @@
     if (!isMineStatusPage()) {
       return '';
     }
-    if (isLikelyIOSViewportClient() || isRedmiK70UltraClient()) {
+    if (isLikelyIOSViewportClient() || isRedmiK70UltraClient() || isRedmiK70StandardClient()) {
       return '';
     }
-    if (
-      isRedmiK70StandardClient() ||
-      isVivoS15Client() ||
-      isMineUnderlapPreviewBlob(clientUaBlob())
-    ) {
+    if (isMineUnderlapPreviewBlob(clientUaBlob())) {
       return 'underlap-black';
     }
     return '';
@@ -4305,33 +4301,43 @@
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
-      /* 一加 Ace 2V / 小米 14 外置黑条；K70「我的」underlap 黑垫。勿把头图蓝铺进状态栏 */
-      var k70MineBlackBar = false;
+      /* 一加 Ace 2V / 小米 14 外置黑条；K70 标准版全页黑条。勿把头图蓝铺进状态栏 */
+      var k70StdBlackBar = false;
       try {
-        k70MineBlackBar =
-          shouldApplyMineBlackStatus() ||
-          document.documentElement.classList.contains('app-mine-black-status');
-      } catch (eK70MineBar) {}
+        k70StdBlackBar =
+          isRedmiK70StandardClient() ||
+          (document.documentElement.classList.contains('app-android-redmi-k70') &&
+            !document.documentElement.classList.contains('app-android-redmi-k70-ultra'));
+      } catch (eK70Bar) {}
       if (
-        (isLikelyAndroidViewportClient() || k70MineBlackBar) &&
+        (isLikelyAndroidViewportClient() || k70StdBlackBar) &&
         (isOnePlusAce2VClient() ||
           isXiaomi14LikeClient() ||
-          isVivoS15Client() ||
-          k70MineBlackBar ||
+          k70StdBlackBar ||
           document.documentElement.classList.contains('app-android-xiaomi-14') ||
-          document.documentElement.classList.contains('app-android-vivo-s15') ||
           document.documentElement.classList.contains('app-cordova-xiaomi-23127'))
       ) {
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
         setStatusBarStyleMeta('black');
-        requestShellStatusBar({
+        var k70BlackOpts = {
           style: 'light',
           overlays: false,
           color: '#000000',
           paint_shell: true,
           shell_bg: pageBg
-        });
+        };
+        requestShellStatusBar(k70BlackOpts);
+        /* HyperOS 常把图标刷回深色；浅色图标多钉几次，避免黑底盖住时间/电量 */
+        if (k70StdBlackBar) {
+          var reapplyK70Light = function () {
+            requestShellStatusBar(k70BlackOpts);
+          };
+          setTimeout(reapplyK70Light, 0);
+          setTimeout(reapplyK70Light, 80);
+          setTimeout(reapplyK70Light, 320);
+          setTimeout(reapplyK70Light, 800);
+        }
         return;
       }
       upsertMeta('theme-color', topColor);
@@ -4363,6 +4369,20 @@
           document.documentElement.classList.add('app-mine-black-status');
           document.documentElement.classList.add('app-top-safe-shell');
           document.documentElement.classList.remove('app-android-mine-e1-sm');
+          document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+          document.documentElement.style.setProperty('--android-status-inset', '40px');
+          document.documentElement.style.setProperty('--mine-top-bleed', '40px');
+        } else if (
+          isRedmiK70StandardClient() ||
+          (document.documentElement.classList.contains('app-android-redmi-k70') &&
+            !document.documentElement.classList.contains('app-android-redmi-k70-ultra'))
+        ) {
+          /* K70 标准版：全页 Cordova 黑条 + 浅色图标，勿再叠 body::before 盖系统字 */
+          document.documentElement.classList.add('app-android-redmi-k70');
+          document.documentElement.classList.add('app-top-safe-shell');
+          document.documentElement.classList.remove('app-android-immersive-white-top');
+          document.documentElement.classList.remove('app-android-mine-e1-sm');
+          document.documentElement.classList.remove('app-mine-black-status');
           document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
           document.documentElement.style.setProperty('--android-status-inset', '40px');
           document.documentElement.style.setProperty('--mine-top-bleed', '40px');
@@ -4449,7 +4469,6 @@
           'html.app-android-vivo-family.app-top-safe-shell:not(.app-android-iqoo-13):not(.app-android-iqoo-15):not(.app-android-vivo-s15):not(.app-android-immersive-white-top),' +
           'html.app-android-oppo-family.app-top-safe-shell:not(.app-android-oneplus-ace2pro):not(.app-android-oneplus-ace2v):not(.app-android-oneplus-acepro):not(.app-android-oneplus-ace6):not(.app-android-oneplus-12):not(.app-android-oppo-reno10):not(.app-android-oppo-k9x):not(.app-android-immersive-white-top),' +
           'html.app-android-mi-family.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-immersive-white-top),' +
-          'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k80pro):not(.app-android-redmi-k80ultra):not(.app-android-immersive-white-top):not(:has(body.page-mine)),' +
           'html.app-android-samsung.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-samsung-s24u.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-huawei-harmony.app-top-safe-shell:not(.app-android-huawei-mate60):not(.app-android-immersive-white-top),' +
@@ -4457,15 +4476,15 @@
           'html.app-android-honor-flc.app-top-safe-shell:not(.app-android-immersive-white-top),' +
           'html.app-android-honor-fcp.app-top-safe-shell:not(.app-android-immersive-white-top){--app-shell-statusbar-top:0px !important;}' +
           /*
-           * 红米 K70 标准版「我的」：underlap 黑垫（时间/电量仍由系统浅色图标画出）。
-           * HyperOS 常忽略 overlays=false，页内只垫 40px 黑底，禁止头图蓝铺进状态栏。
+           * 红米 K70 标准版「我的」：全页黑状态栏（Cordova overlays=false + 浅色图标）。
+           * 只垫 40px 顶距与 html 黑底，禁止 body::before 再盖一层（会盖掉时间/电量）。
            */
           'html.app-mine-black-status,' +
-          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra):has(body.page-mine){--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;background-color:#000000 !important;background-image:none !important;}' +
+          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra){--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;background-color:#000000 !important;background-image:none !important;}' +
           'html.app-mine-black-status body.page-mine,' +
           'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine{--mine-top-bleed:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;--mine-activate-btn-top-offset:10px !important;background-color:#f5f6fa !important;background-image:none !important;}' +
-          'html.app-mine-black-status body.page-mine::before,' +
-          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:40px !important;background:#000000 !important;z-index:40 !important;pointer-events:none !important;}' +
+          'html.app-mine-black-status body.page-mine::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:40px !important;background:#000000 !important;z-index:40 !important;pointer-events:none !important;}' +
+          'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine::before{display:none !important;content:none !important;}' +
           'html.app-mine-black-status body.page-mine .mine-activate-btn,' +
           'html.app-android-redmi-k70.app-android-client.app-top-safe-shell:not(.app-android-redmi-k70-ultra) body.page-mine .mine-activate-btn{top:calc(10px + 40px) !important;right:16px !important;z-index:500 !important;}' +
           'html.app-mine-black-status body.page-mine .mine-e1-canvas,' +
@@ -5213,6 +5232,43 @@
           body.classList.contains('page-shuiming-result') ||
           body.classList.contains('page-xiangqing'));
       if (!isWhitePage) {
+        return;
+      }
+      /* 红米 K70 标准版：全页黑状态栏（对齐小米 14），勿走白顶沉浸 */
+      var redmiK70StdPaintedBar =
+        isRedmiK70StandardClient() ||
+        (root.classList.contains('app-android-redmi-k70') &&
+          !root.classList.contains('app-android-redmi-k70-ultra'));
+      if (redmiK70StdPaintedBar) {
+        try {
+          root.classList.add('app-android-redmi-k70');
+          root.classList.remove('app-android-immersive-white-top');
+          root.classList.remove('app-android-white-page-outer');
+          root.style.setProperty('--app-shell-statusbar-top', '40px');
+          root.style.setProperty('--android-status-inset', '40px');
+          if (body) {
+            body.style.setProperty('--app-shell-statusbar-top', '40px');
+            body.style.setProperty('--android-status-inset', '40px');
+          }
+        } catch (eK70Inset) {}
+        upsertMeta('theme-color', '#000000');
+        upsertMeta('msapplication-navbutton-color', '#000000');
+        setStatusBarStyleMeta('black');
+        var k70WhiteOpts = {
+          style: 'light',
+          overlays: false,
+          color: '#000000',
+          paint_shell: true,
+          shell_bg: '#f5f6fa'
+        };
+        requestShellStatusBar(k70WhiteOpts);
+        var reapplyK70WhiteLight = function () {
+          requestShellStatusBar(k70WhiteOpts);
+        };
+        setTimeout(reapplyK70WhiteLight, 0);
+        setTimeout(reapplyK70WhiteLight, 80);
+        setTimeout(reapplyK70WhiteLight, 320);
+        setTimeout(reapplyK70WhiteLight, 800);
         return;
       }
       /* 小米 13 / 13 Pro / 14 Pro / 15 / 15 Pro / 10 刘海 / K70 至尊 / 12C / Mate 30 / Mate 60 / Mate 70 / nova 13 / 一加 Ace 2 Pro / Ace 2V / Neo8 Pro / iQOO 15 / X300 Pro / S50 Pro mini / 魅族 20 Pro：WebView 仍叠在系统栏下，保留 40px 顶距 */
@@ -6033,6 +6089,7 @@
       var redmiNote13Pro = androidClient && isRedmiNote13ProClient();
       var redmiK70Client = androidClient && isRedmiK70Client();
       var redmiK70UltraClient = androidClient && isRedmiK70UltraClient();
+      var redmiK70StdClient = androidClient && isRedmiK70StandardClient();
       var redmiK80ProClient = androidClient && isRedmiK80ProClient();
       var redmi12CClient = androidClient && isRedmi12CClient();
       var redmiNote115GClient = androidClient && isRedmiNote115GClient();
@@ -6200,7 +6257,7 @@
        * iOS 仍用顶色 + translucent，本分支不改 iOS。
        */
       var rootChromeBg =
-        cordovaXiaomi23127 || xiaomi14Client
+        cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient
           ? '#000000'
           : immersiveBlueTop
             ? immersiveBlueTop

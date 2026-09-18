@@ -209,6 +209,57 @@ function plainOfferRow(row) {
   };
 }
 
+/** 邮件/活动「半价」：折扣打在整架套餐上，不是只留周卡。心理价仍是单档专属价。 */
+function isHalfPriceAllOffer(row) {
+  if (!row) return false;
+  var label = String(row.label || '');
+  var note = String(row.note || '');
+  if (/心理价/.test(label) || /心理价/.test(note)) return false;
+  return /半价/.test(label) || /半价/.test(note);
+}
+
+function money2(raw) {
+  var n = Number(raw);
+  if (!isFinite(n)) return '';
+  return (Math.round(n * 100) / 100).toFixed(2);
+}
+
+function halfAmountString(raw) {
+  var n = Number(raw);
+  if (!isFinite(n) || n <= 0) return '';
+  var cents = Math.round((n / 2) * 100);
+  if (cents < 1) cents = 1;
+  return (cents / 100).toFixed(2);
+}
+
+/** 货架每一档按当前实付价打五折，划线保留折前价。 */
+function applyHalfPriceToSku(sku) {
+  if (!sku || !sku.id) return null;
+  var next = Object.assign({}, sku);
+  var pay = Number(next.amount);
+  if (!isFinite(pay) || pay <= 0) return null;
+  var half = halfAmountString(pay);
+  if (!half) return null;
+  if (Number(half) < pay) next.list_amount = money2(pay);
+  next.amount = half;
+  var label = String(next.label || '').trim();
+  if (label.indexOf('半价') < 0) {
+    next.label = label ? '半价' + label : '半价';
+  }
+  var subject = String(next.subject || '').replace(/·半价$/, '');
+  if (!subject) subject = '激活码·' + (label || next.id);
+  if (subject.indexOf('半价') < 0) subject = subject + '·半价';
+  if (subject.length > 128) subject = subject.slice(0, 128);
+  next.subject = subject;
+  next.half_price = true;
+  delete next.psych_offer;
+  return next;
+}
+
+function applyHalfPriceToShelf(skus) {
+  return (Array.isArray(skus) ? skus : []).map(applyHalfPriceToSku).filter(Boolean);
+}
+
 function buildSkuFromOffer(row) {
   var base = findOfferableSku(row && row.sku_id);
   if (!base) return null;
@@ -402,17 +453,33 @@ function createUserPriceOffers(deps) {
   }
 
   /**
-   * 若有启用中的专属价，覆盖 offer.skus 为单档特价。
-   * 返回 { offer, customOffer }；无专属价时原样返回。
+   * 若有启用中的专属价：半价活动把整架套餐都打五折；其它专属价仍覆盖为单档。
+   * 返回 { offer, customOffer, halfPriceAll }；无专属价时原样返回。
    */
   async function applyOfferToPricingOffer(username, pricingOffer) {
     var row = await getOffer(username, { enabledOnly: true });
     if (!row) {
-      return { offer: pricingOffer, customOffer: null };
+      return { offer: pricingOffer, customOffer: null, halfPriceAll: false };
+    }
+    if (isHalfPriceAllOffer(row)) {
+      var halved = applyHalfPriceToShelf(pricingOffer && pricingOffer.skus);
+      if (halved.length) {
+        return {
+          offer: Object.assign({}, pricingOffer || {}, {
+            skus: halved,
+            custom_offer: true,
+            half_price_all: true,
+            abc_source: 'user_price_offer',
+            force_client_abc: true
+          }),
+          customOffer: row,
+          halfPriceAll: true
+        };
+      }
     }
     var sku = buildSkuFromOffer(row);
     if (!sku) {
-      return { offer: pricingOffer, customOffer: null };
+      return { offer: pricingOffer, customOffer: null, halfPriceAll: false };
     }
     var cfg = await catalogConfigSafe();
     if (cfg && cfg[sku.id]) {
@@ -431,7 +498,7 @@ function createUserPriceOffers(deps) {
       abc_source: 'user_price_offer',
       force_client_abc: true
     });
-    return { offer: next, customOffer: row };
+    return { offer: next, customOffer: row, halfPriceAll: false };
   }
 
   return {
@@ -443,7 +510,9 @@ function createUserPriceOffers(deps) {
     getOffer: getOffer,
     upsertOffer: upsertOffer,
     clearOffer: clearOffer,
-    applyOfferToPricingOffer: applyOfferToPricingOffer
+    applyOfferToPricingOffer: applyOfferToPricingOffer,
+    isHalfPriceAllOffer: isHalfPriceAllOffer,
+    applyHalfPriceToShelf: applyHalfPriceToShelf
   };
 }
 
@@ -451,5 +520,7 @@ module.exports = {
   createUserPriceOffers: createUserPriceOffers,
   listOfferableSkus: listOfferableSkus,
   findOfferableSku: findOfferableSku,
-  buildSkuFromOffer: buildSkuFromOffer
+  buildSkuFromOffer: buildSkuFromOffer,
+  isHalfPriceAllOffer: isHalfPriceAllOffer,
+  applyHalfPriceToShelf: applyHalfPriceToShelf
 };

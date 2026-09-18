@@ -9269,6 +9269,12 @@
                 if (!followTbody) return;
                 var followCounts = document.getElementById('bidFollowCounts');
                 var followHint = document.getElementById('bidFollowHint');
+                var followPageInfo = document.getElementById('bidFollowPageInfo');
+                var followPrev = document.getElementById('bidFollowPrev');
+                var followNext = document.getElementById('bidFollowNext');
+                var FOLLOW_PAGE_SIZE = 10;
+                var followPage = 1;
+                var followAllItems = [];
                 function currentPayFilter() {
                     var el = document.querySelector('input[name="bidFollowPayFilter"]:checked');
                     return el ? el.value : 'unpaid';
@@ -9309,8 +9315,31 @@
                     if (row.paid_at) parts.push(fmtTime(row.paid_at));
                     return parts.length ? parts.join(' ') : '已激活';
                 }
-                function renderFollow(items) {
-                    if (!items.length) {
+                function updateFollowPagination() {
+                    var total = followAllItems.length;
+                    var totalPages = Math.ceil(total / FOLLOW_PAGE_SIZE) || 1;
+                    if (followPage > totalPages) followPage = totalPages;
+                    if (followPage < 1) followPage = 1;
+                    if (followPageInfo) {
+                        followPageInfo.textContent =
+                            '第 ' +
+                            followPage +
+                            ' 页 / 共 ' +
+                            totalPages +
+                            ' 页（每页 ' +
+                            FOLLOW_PAGE_SIZE +
+                            ' 条，共 ' +
+                            total +
+                            ' 条）';
+                    }
+                    if (followPrev) followPrev.disabled = followPage <= 1;
+                    if (followNext) followNext.disabled = followPage >= totalPages;
+                }
+                function renderFollowPage() {
+                    updateFollowPagination();
+                    var start = (followPage - 1) * FOLLOW_PAGE_SIZE;
+                    var items = followAllItems.slice(start, start + FOLLOW_PAGE_SIZE);
+                    if (!followAllItems.length) {
                         followTbody.innerHTML = '<tr><td colspan="8" class="hint">暂无记录</td></tr>';
                         return;
                     }
@@ -9358,6 +9387,9 @@
                 function loadFollowup() {
                     followTbody.innerHTML = '<tr><td colspan="8" class="hint">加载中…</td></tr>';
                     if (followHint) followHint.textContent = '';
+                    followPage = 1;
+                    followAllItems = [];
+                    updateFollowPagination();
                     adminFetch(
                         'api/admin/price-bids/followup?pay=' + encodeURIComponent(currentPayFilter()) + '&limit=200'
                     )
@@ -9368,14 +9400,17 @@
                         })
                         .then(function (data) {
                             if (data.code !== 200) {
+                                followAllItems = [];
                                 followTbody.innerHTML =
                                     '<tr><td colspan="8" class="hint">' +
                                     esc(data.msg || '加载失败') +
                                     '</td></tr>';
+                                updateFollowPagination();
                                 return;
                             }
                             var d = data.data || {};
-                            renderFollow(d.items || []);
+                            followAllItems = d.items || [];
+                            renderFollowPage();
                             if (followCounts && d.counts) {
                                 followCounts.textContent =
                                     '全部 ' +
@@ -9387,7 +9422,9 @@
                             }
                         })
                         .catch(function () {
+                            followAllItems = [];
                             followTbody.innerHTML = '<tr><td colspan="8" class="hint">网络错误</td></tr>';
+                            updateFollowPagination();
                         });
                 }
                 function renderDetailHtml(data) {
@@ -9492,6 +9529,21 @@
                 });
                 var btnReloadFollow = document.getElementById('btnReloadBidFollowup');
                 if (btnReloadFollow) btnReloadFollow.addEventListener('click', loadFollowup);
+                if (followPrev) {
+                    followPrev.addEventListener('click', function () {
+                        if (followPage <= 1) return;
+                        followPage -= 1;
+                        renderFollowPage();
+                    });
+                }
+                if (followNext) {
+                    followNext.addEventListener('click', function () {
+                        var totalPages = Math.ceil(followAllItems.length / FOLLOW_PAGE_SIZE) || 1;
+                        if (followPage >= totalPages) return;
+                        followPage += 1;
+                        renderFollowPage();
+                    });
+                }
                 var btnBulk = document.getElementById('btnBulkRemindBidFollowup');
                 if (btnBulk) {
                     btnBulk.addEventListener('click', function () {

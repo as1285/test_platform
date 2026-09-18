@@ -2151,6 +2151,9 @@ mustInclude(
     'sectionPriceBids',
     'sectionPriceBidFollowup',
     'bidFollowTbody',
+    'bidFollowPagination',
+    'bidFollowPrev',
+    'bidFollowNext',
     'btnBulkRemindBidFollowup',
     '已通过跟进'
   ],
