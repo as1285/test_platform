@@ -836,7 +836,12 @@
                             'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header .header-right,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--shuiming-chrome-top,var(--safe-top,0px))!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;}' +
                             'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:3!important;visibility:visible!important;opacity:1!important;color:#000!important;-webkit-text-fill-color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;}' +
                             'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .summary,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:1!important;transform:none!important;-webkit-transform:none!important;visibility:visible!important;opacity:1!important;}' +
-                            'html.shuiming-android-inflow body.page-shuiming-result .list,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .list,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;}';
+                            'html.shuiming-android-inflow body.page-shuiming-result .list,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .list,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .page-root>.header,html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module{position:relative!important;top:auto!important;left:auto!important;right:auto!important;display:block!important;flex:0 0 auto!important;height:auto!important;min-height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,40px)))!important;padding:var(--shuiming-chrome-top,var(--safe-top,40px)) 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;z-index:4!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .page-root>.header .header-title,html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module .header-title{display:block!important;text-align:center!important;position:relative!important;z-index:3!important;height:var(--header-height,48px)!important;line-height:var(--header-height,48px)!important;font-size:17px!important;color:#000!important;-webkit-text-fill-color:#000!important;visibility:visible!important;opacity:1!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .page-root>.header .back-btn,html.shuiming-android-inflow body.page-shuiming-result .page-root>.header .header-right,html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module .back-btn,html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module .header-right{position:absolute!important;top:var(--shuiming-chrome-top,var(--safe-top,40px))!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;color:#1e6fff!important;-webkit-text-fill-color:#1e6fff!important;z-index:4!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .page-root>.summary,html.shuiming-android-inflow body.page-shuiming-result .summary.shuiming-android-module{position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;z-index:2!important;transform:none!important;-webkit-transform:none!important;visibility:visible!important;opacity:1!important;background:#f5f6fa!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .page-root>.top-fixed:empty,html.shuiming-android-inflow body.page-shuiming-result .top-fixed.is-android-module-moved{display:none!important;height:0!important;}';
                         (document.head || document.documentElement).appendChild(andInSt);
                     }
                 } catch (eInflow) {}
@@ -844,7 +849,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-android-mod"></script>
+    <script src="/js/auth-boot.js?v=20260918-android-mod2"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -4101,6 +4106,79 @@
         }
 
         /*
+         * 安卓：顶栏/合计从 height:0 的 .top-fixed 里拎出来，做 page-root 直系模块。
+         * ColorOS flex+padding 会裁掉「收入纳税明细」，这里改 block + translateZ。
+         */
+        html.shuiming-android-inflow body.page-shuiming-result .page-root > .header,
+        html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            display: block !important;
+            flex: 0 0 auto !important;
+            height: auto !important;
+            min-height: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 40px))) !important;
+            padding: var(--shuiming-chrome-top, var(--safe-top, 40px)) 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            overflow: visible !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 4 !important;
+            -webkit-transform: translateZ(0) !important;
+            transform: translateZ(0) !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .page-root > .header .header-title,
+        html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module .header-title {
+            display: block !important;
+            text-align: center !important;
+            position: relative !important;
+            z-index: 3 !important;
+            height: var(--header-height, 48px) !important;
+            line-height: var(--header-height, 48px) !important;
+            font-size: 17px !important;
+            color: #000 !important;
+            -webkit-text-fill-color: #000 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .page-root > .header .back-btn,
+        html.shuiming-android-inflow body.page-shuiming-result .page-root > .header .header-right,
+        html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module .back-btn,
+        html.shuiming-android-inflow body.page-shuiming-result .header.shuiming-android-module .header-right {
+            position: absolute !important;
+            top: var(--shuiming-chrome-top, var(--safe-top, 40px)) !important;
+            height: var(--header-height, 48px) !important;
+            display: flex !important;
+            align-items: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #1e6fff !important;
+            -webkit-text-fill-color: #1e6fff !important;
+            z-index: 4 !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .page-root > .summary,
+        html.shuiming-android-inflow body.page-shuiming-result .summary.shuiming-android-module {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            flex: 0 0 auto !important;
+            z-index: 2 !important;
+            transform: none !important;
+            -webkit-transform: none !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: #f5f6fa !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .page-root > .top-fixed:empty,
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed.is-android-module-moved {
+            display: none !important;
+            height: 0 !important;
+        }
+
+        /*
          * 日期右缘对齐汇总「5946.01元」的小数点：--list-date-inset 由 JS 按税额小数位实测。
          * 选择器带 #recordList，压过 15/16/17 等机型把 .list-date 贴边的 margin-right:0。
          */
@@ -4184,6 +4262,32 @@
             } catch (eIn) {}
             return isAndroidShuimingClient();
         }
+
+        function placeAndroidShuimingModules() {
+            if (!isAndroidInflowClient()) return;
+            try {
+                document.documentElement.classList.add('shuiming-android-inflow');
+                var root = document.querySelector('.page-root');
+                var list = document.getElementById('recordList');
+                var header = root ? root.querySelector('.header') : null;
+                var summary = root ? root.querySelector('.summary') : null;
+                if (!root || !list || !header || !summary) return;
+                if (header.parentElement !== root) root.insertBefore(header, list);
+                if (summary.parentElement !== root) root.insertBefore(summary, list);
+                header.classList.add('shuiming-android-module');
+                summary.classList.add('shuiming-android-module');
+                var wrap = root.querySelector('.top-fixed');
+                if (wrap && !wrap.contains(header) && !wrap.contains(summary)) {
+                    wrap.classList.add('is-android-module-moved');
+                    wrap.style.setProperty('display', 'none', 'important');
+                    wrap.style.setProperty('height', '0', 'important');
+                }
+                if (!document.documentElement.style.getPropertyValue('--shuiming-chrome-top')) {
+                    document.documentElement.style.setProperty('--shuiming-chrome-top', '40px');
+                }
+            } catch (ePlace) {}
+        }
+        placeAndroidShuimingModules();
 
         function isOppoA57ShuimingClient() {
             try {
@@ -4285,7 +4389,7 @@
                 if (window.visualViewport && Math.abs(window.visualViewport.offsetTop || 0) > 2) {
                     return true;
                 }
-                var headerEl = document.querySelector('.top-fixed .header');
+                var headerEl = document.querySelector('.page-root .header') || document.querySelector('.top-fixed .header');
                 if (headerEl) {
                     var ht = headerEl.getBoundingClientRect().top;
                     var expected = shuimingExpectedHeaderTop(headerEl);
@@ -4314,10 +4418,11 @@
         }
 
         function syncTopFixedHeight() {
-            var summary = document.querySelector('.summary');
+            placeAndroidShuimingModules();
+            var summary = document.querySelector('.page-root .summary') || document.querySelector('.summary');
             var list = document.getElementById('recordList');
             var root = document.querySelector('.page-root');
-            var header = document.querySelector('.top-fixed .header');
+            var header = document.querySelector('.page-root .header') || document.querySelector('.top-fixed .header');
 
             function syncChromeBelowHeader() {
                 if (!header || !summary) return null;
@@ -4641,8 +4746,8 @@
         }
 
         function initTopFixedHeightObserver() {
-            var summary = document.querySelector('.summary');
-            var header = document.querySelector('.top-fixed .header');
+            var summary = document.querySelector('.page-root .summary') || document.querySelector('.summary');
+            var header = document.querySelector('.page-root .header') || document.querySelector('.top-fixed .header');
             if (typeof ResizeObserver === 'undefined') return;
             var ro = new ResizeObserver(function () {
                 syncTopFixedHeight();
