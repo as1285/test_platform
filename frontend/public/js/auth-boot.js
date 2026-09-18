@@ -914,11 +914,17 @@
       if (major < 26) return;
       var root = document.documentElement;
       root.classList.add('app-ios-client');
-      root.classList.add('app-top-safe-shell');
       root.classList.add('app-ios-liquid-glass');
       root.classList.add('app-ios-unified-chrome');
+      /*
+       * iOS 27 根治：standalone 一律 default 不透明状态栏，系统单独占状态栏，
+       * 网页从其下方开始，env(safe-area-inset-top)=0。因此顶距清零、不再垫 59px，
+       * 头部按正常内边距渲染，杜绝“奶白毛玻璃”与标题下方多余空白。
+       */
+      root.classList.remove('app-top-safe-shell');
       root.classList.remove('app-ios-status-outer');
-      root.style.setProperty('--app-shell-statusbar-top', '59px');
+      /* 内联 !important：胜过任何后注入的样式表 !important（max(59px) 顶垫规则） */
+      root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
       var color = ios27StatusPlateColor();
       root.style.setProperty('--ios27-status-plate', color);
       root.style.setProperty('background-color', color, 'important');
@@ -929,24 +935,14 @@
         var st = document.createElement('style');
         st.id = 'ios27StatusPlateCss';
         st.textContent =
+          /* 任何 fixed 顶垫都不要了：default 模式下系统状态栏不采样网页内容 */
           '#ios27StatusPlate,#iosStickyTint,.shuiming-chrome-shield{display:none!important;height:0!important;visibility:hidden!important;pointer-events:none!important;}' +
+          'html.app-ios-liquid-glass.app-top-safe-shell,html.app-ios-liquid-glass{--app-shell-statusbar-top:0px!important;}' +
           'html.app-ios-liquid-glass,html.app-ios-liquid-glass body{background-color:var(--ios27-status-plate,#ffffff)!important;}' +
-          'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;}' +
-          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed{' +
-          'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;z-index:20!important;' +
-          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
-          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
-          'position:relative!important;top:auto!important;left:auto!important;right:auto!important;' +
-          'height:calc(44px + var(--app-shell-statusbar-top,59px))!important;' +
-          'min-height:calc(44px + var(--app-shell-statusbar-top,59px))!important;' +
-          'padding:var(--app-shell-statusbar-top,59px) 16px 0!important;box-sizing:border-box!important;' +
-          'background:#fff!important;background-color:#fff!important;box-shadow:none!important;}' +
-          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{' +
-          'position:relative!important;top:auto!important;left:auto!important;right:auto!important;background:#f5f6fa!important;}' +
-          'html.app-ios-liquid-glass body.page-shuiming-result .list{margin-top:0!important;padding-top:0!important;}' +
+          /* 收入纳税明细等白顶页：头部保持实白、标题纯黑、无需再垫刘海高 */
+          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
           'html.app-ios-liquid-glass body.page-shuiming>.header{' +
-          'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
-          'padding-top:calc(14px + var(--app-shell-statusbar-top,59px))!important;z-index:20!important;' +
+          'background:#fff!important;background-color:#fff!important;' +
           '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
           'html.app-ios-liquid-glass body.page-shuiming-result .header-title,' +
           'html.app-ios-liquid-glass body.page-shuiming .header-title{' +
