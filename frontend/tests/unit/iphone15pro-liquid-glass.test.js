@@ -44,12 +44,12 @@ describe('iPhone 15 Pro（iPhone16,1）走 15 档实底顶栏', () => {
     );
   });
 
-  it('iOS 27 误打 15promax 时仍恢复状态栏白垫', () => {
+  it('iOS 27 误打 15promax 时顶垫只贴 20px 且低于标题', () => {
     expect(auth).toContain(
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before'
     );
-    expect(auth).toContain('background:#fff !important;z-index:122 !important');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-plate');
-    expect(shouye).toContain('auth.js?v=20260918-ios27-plate');
+    expect(auth).toContain('height:20px !important;max-height:20px !important;background:#fff !important;z-index:2 !important');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-short');
+    expect(shouye).toContain('auth.js?v=20260918-ios27-short');
   });
 });

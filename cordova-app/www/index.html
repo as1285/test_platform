@@ -47,17 +47,18 @@
             height: 100%;
             display: block;
         }
-        /* 父文档实底顶垫：盖住 iOS 26/27 毛玻璃。env()=0 时 fallback 不会生效，必须写死至少 59px */
+        /* 父文档顶垫只盖时间栏：贴顶、高度短，避免盖住 iframe 里的标题字 */
         #iosStatusPlate {
             display: none;
             position: fixed;
             left: 0;
             right: 0;
             top: 0;
-            height: 59px;
-            min-height: 59px;
+            height: 20px;
+            min-height: 20px;
+            max-height: 20px;
             background: #fff;
-            z-index: 2147483646;
+            z-index: 2;
             pointer-events: none;
         }
         html.app-huawei-pura70-shell #app-frame {
@@ -85,8 +86,9 @@
                     var earlyPlate = document.getElementById('iosStatusPlate');
                     if (earlyPlate) {
                         earlyPlate.style.display = 'block';
-                        earlyPlate.style.height = '59px';
-                        earlyPlate.style.minHeight = '59px';
+                        earlyPlate.style.height = '20px';
+                        earlyPlate.style.minHeight = '20px';
+                        earlyPlate.style.maxHeight = '20px';
                         earlyPlate.style.background = '#ffffff';
                     }
                 }
@@ -549,8 +551,9 @@
                 } else {
                     plate.style.background = '#4f90f3';
                 }
-                plate.style.height = '59px';
-                plate.style.minHeight = '59px';
+                plate.style.height = '20px';
+                plate.style.minHeight = '20px';
+                plate.style.maxHeight = '20px';
                 plate.style.display = 'block';
             }
 

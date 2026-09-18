@@ -898,7 +898,7 @@
 
   /**
    * iOS 26/27 Liquid Glass 叠在 WebView 上，与机型无关。
-   * 首屏在状态栏区铺 59px 实底，避免毛玻璃采到后面灰列表。
+   * 白垫只贴最顶 20px（时间栏），高度短于标题，避免盖住「返回 / 收入纳税明细」。
    */
   function paintIos27LiquidGlassPlate() {
     try {
@@ -925,8 +925,8 @@
         st.id = 'ios27StatusPlateCss';
         st.textContent =
           '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;' +
-          'height:59px!important;min-height:59px!important;background:var(--ios27-status-plate,#ffffff)!important;' +
-          'z-index:2147483000!important;pointer-events:none!important;' +
+          'height:20px!important;min-height:20px!important;max-height:20px!important;background:var(--ios27-status-plate,#ffffff)!important;' +
+          'z-index:2!important;pointer-events:none!important;' +
           '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;}' +
           'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;}';
         (document.head || root).appendChild(st);

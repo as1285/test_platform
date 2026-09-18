@@ -851,7 +851,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-ios27-plate"></script>
+    <script src="/js/auth-boot.js?v=20260918-ios27-short"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -967,7 +967,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260918-ios27-plate" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260918-ios27-short" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -1887,6 +1887,12 @@
             letter-spacing: -0.01em;
         }
 
+        /* iOS 顶栏对齐官方 UINavigationBar：返回 / 批量申诉 17pt，勿低于标题 */
+        html.platform-ios body.page-shuiming-result .back-btn,
+        html.platform-ios body.page-shuiming-result .header-right {
+            font-size: 17px;
+        }
+
         html.platform-ios body.page-shuiming-result .summary-label,
         html.platform-ios body.page-shuiming-result .summary-value {
             font-weight: 400;
@@ -2079,8 +2085,8 @@
         }
 
         /*
-         * iPhone 14 Pro（393×852）：中心标题突出、两侧操作收小；
-         * 明细四行固定为约 27px 基线节奏，避免 PingFang 行高忽紧忽松。
+         * iPhone 14 Pro（393×852）：顶栏对齐官方 17pt「返回 / 批量申诉」，
+         * 不再收成 14px；标题保持略大。明细四行固定为约 27px 基线节奏。
          */
         html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .header-title {
             font-size: 19px !important;
@@ -2089,17 +2095,17 @@
         }
 
         html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .back-btn {
-            font-size: 14px !important;
-            line-height: 20px !important;
+            font-size: 17px !important;
+            line-height: 22px !important;
         }
 
         html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .back-btn .back-icon {
-            width: 8px;
+            width: 10px;
         }
 
         html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .header-right {
-            font-size: 14px !important;
-            line-height: 20px !important;
+            font-size: 17px !important;
+            line-height: 22px !important;
         }
 
         html.app-ios-iphone14pro body.page-shuiming-result .list-header {
