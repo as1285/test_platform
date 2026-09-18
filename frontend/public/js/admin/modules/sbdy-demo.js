@@ -96,7 +96,7 @@
           '四川证明为<strong>横向 A4</strong>：按参保经历生成缴费明细（含单位/个人缴纳）。单位编号填「统一社会信用代码」栏；可填工伤额外状态行模拟双行工伤。';
       } else {
         hint.innerHTML =
-          '可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。标题「出具证明前N个月」只按上方<strong>证明区间</strong>取 12 或 48，与实际缴费月数无关。';
+          '可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。标题「出具证明前N个月」按<strong>证明区间</strong>取 12 或 48；窗口止于打印月的上一自然月（当月社保通常未到账），与实际缴费行数无关。';
       }
     }
     document.querySelectorAll('.sbdy-pay-fields').forEach(function (el) {

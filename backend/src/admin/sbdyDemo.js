@@ -168,6 +168,22 @@ function parsePrintDateYm(s) {
   return bjNowParts();
 }
 
+/**
+ * 个人专用 12/48 个月窗口止于已到账月份：默认打印月的上一自然月。
+ * 当月社保通常尚未到账；仅当缴费记录已包含打印当月时才把当月算进去。
+ */
+function personalWindowEndYm(printDate, lastContribYm) {
+  var printYm = parsePrintDateYm(printDate);
+  var prev = addMonthsYmParts(printYm.y, printYm.m, -1);
+  if (
+    lastContribYm &&
+    ymKey(Number(lastContribYm.y), Number(lastContribYm.m)) >= ymKey(printYm.y, printYm.m)
+  ) {
+    return printYm;
+  }
+  return prev;
+}
+
 function defaultQueryDate() {
   var p = bjNowParts();
   return p.y + '-' + String(p.m).padStart(2, '0') + '-' + String(p.d).padStart(2, '0');
@@ -857,7 +873,10 @@ function normalizePayload(body) {
     '-' +
     formatYmCn(Number(overallEnd.year), Number(overallEnd.month));
   if (windowMonths === 12 || windowMonths === 48) {
-    var winEnd = parsePrintDateYm(printDate);
+    var winEnd = personalWindowEndYm(printDate, {
+      y: Number(overallEnd.year),
+      m: Number(overallEnd.month)
+    });
     var winStart = addMonthsYmParts(winEnd.y, winEnd.m, -(windowMonths - 1));
     var winStartKey = ymKey(winStart.y, winStart.m);
     var winEndKey = ymKey(winEnd.y, winEnd.m);
