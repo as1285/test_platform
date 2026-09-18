@@ -916,37 +916,92 @@
       root.classList.add('app-ios-client');
       root.classList.add('app-ios-liquid-glass');
       root.classList.add('app-ios-unified-chrome');
-      /*
-       * iOS 27 根治：standalone 一律 default 不透明状态栏，系统单独占状态栏，
-       * 网页从其下方开始，env(safe-area-inset-top)=0。因此顶距清零、不再垫 59px，
-       * 头部按正常内边距渲染，杜绝“奶白毛玻璃”与标题下方多余空白。
-       */
-      root.classList.remove('app-top-safe-shell');
       root.classList.remove('app-ios-status-outer');
-      /* 内联 !important：胜过任何后注入的样式表 !important（max(59px) 顶垫规则） */
-      root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
       var color = ios27StatusPlateColor();
       root.style.setProperty('--ios27-status-plate', color);
       root.style.setProperty('background-color', color, 'important');
       if (document.body) {
         document.body.style.setProperty('background-color', color, 'important');
       }
+      var isIos27Plus = major >= 27;
+      if (isIos27Plus) {
+        /*
+         * iOS 27+ 根治：
+         * 1) standalone 走 default 不透明状态栏（nginx 按 UA 改写启动文档 meta），系统单独占
+         *    状态栏、网页从其下方开始，env(safe-area-inset-top)=0，故顶距清零、不再垫 59px。
+         * 2) 顶部“奶白毛玻璃”真正来源是 iOS 27 对"可滚动根文档"施加的滚动边缘毛玻璃
+         *    （同会话里不可滚动的查询页干净、可滚动的明细页起雾即为证据）。
+         *    解法：根文档锁死不滚，列表放进内部 overflow 滚动容器（inflow），
+         *    根 ScrollView 永不滚动 → 系统不再叠边缘毛玻璃。iOS 26 无此问题，不走此分支。
+         */
+        root.classList.add('app-ios27');
+        root.classList.remove('app-top-safe-shell');
+        /* 内联 !important：胜过任何后注入的样式表 !important（max(59px) 顶垫规则） */
+        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+      } else {
+        /* iOS 26：保持原有行为（黑透明沉浸 + 59px 顶垫 + sticky 实白顶栏） */
+        root.classList.add('app-top-safe-shell');
+        root.style.setProperty('--app-shell-statusbar-top', '59px');
+      }
       if (!document.getElementById('ios27StatusPlateCss')) {
         var st = document.createElement('style');
         st.id = 'ios27StatusPlateCss';
-        st.textContent =
-          /* 任何 fixed 顶垫都不要了：default 模式下系统状态栏不采样网页内容 */
+        var css =
           '#ios27StatusPlate,#iosStickyTint,.shuiming-chrome-shield{display:none!important;height:0!important;visibility:hidden!important;pointer-events:none!important;}' +
-          'html.app-ios-liquid-glass.app-top-safe-shell,html.app-ios-liquid-glass{--app-shell-statusbar-top:0px!important;}' +
           'html.app-ios-liquid-glass,html.app-ios-liquid-glass body{background-color:var(--ios27-status-plate,#ffffff)!important;}' +
-          /* 收入纳税明细等白顶页：头部保持实白、标题纯黑、无需再垫刘海高 */
-          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
-          'html.app-ios-liquid-glass body.page-shuiming>.header{' +
-          'background:#fff!important;background-color:#fff!important;' +
-          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
           'html.app-ios-liquid-glass body.page-shuiming-result .header-title,' +
           'html.app-ios-liquid-glass body.page-shuiming .header-title{' +
           'color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;}';
+        if (isIos27Plus) {
+          css +=
+            'html.app-ios27.app-top-safe-shell,html.app-ios27{--app-shell-statusbar-top:0px!important;}' +
+            /* 明细页 inflow：根文档不滚，列表内部滚动 —— 消除 iOS 27 顶部滚动边缘毛玻璃 */
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
+            'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .page-root{' +
+            'display:flex!important;flex-direction:column!important;height:100dvh!important;max-height:100dvh!important;min-height:0!important;' +
+            'overflow:hidden!important;isolation:auto!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed{' +
+            'position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;' +
+            'height:auto!important;background:#fff!important;z-index:2!important;transform:none!important;-webkit-transform:none!important;' +
+            '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
+            'position:relative!important;top:auto!important;height:44px!important;min-height:44px!important;padding:0 16px!important;' +
+            'box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;' +
+            '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:0!important;height:44px!important;display:flex!important;align-items:center!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{position:relative!important;top:auto!important;background:#f5f6fa!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list{' +
+            'position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;' +
+            'flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;' +
+            'margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
+            '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
+            /* 其它白顶页（如查询页）：头部实白即可，无需垫刘海高 */
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header{position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
+            'padding-top:14px!important;z-index:20!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}';
+        } else {
+          /* iOS 26 原样：59px 顶垫 + sticky 实白顶栏 */
+          css +=
+            'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;}' +
+            'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed{' +
+            'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;z-index:20!important;' +
+            '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+            'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
+            'position:relative!important;top:auto!important;left:auto!important;right:auto!important;' +
+            'height:calc(44px + var(--app-shell-statusbar-top,59px))!important;' +
+            'min-height:calc(44px + var(--app-shell-statusbar-top,59px))!important;' +
+            'padding:var(--app-shell-statusbar-top,59px) 16px 0!important;box-sizing:border-box!important;' +
+            'background:#fff!important;background-color:#fff!important;box-shadow:none!important;}' +
+            'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{' +
+            'position:relative!important;top:auto!important;left:auto!important;right:auto!important;background:#f5f6fa!important;}' +
+            'html.app-ios-liquid-glass body.page-shuiming-result .list{margin-top:0!important;padding-top:0!important;}' +
+            'html.app-ios-liquid-glass body.page-shuiming>.header{' +
+            'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
+            'padding-top:calc(14px + var(--app-shell-statusbar-top,59px))!important;z-index:20!important;' +
+            '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}';
+        }
+        st.textContent = css;
         (document.head || root).appendChild(st);
       }
       var plate = document.getElementById('ios27StatusPlate');

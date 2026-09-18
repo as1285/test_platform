@@ -1463,12 +1463,18 @@
       root.classList.add('app-ios-liquid-glass');
       root.classList.add('app-ios-unified-chrome');
       root.classList.remove('app-ios-status-outer');
-      /*
-       * iOS 27 根治：default 不透明状态栏，系统已占状态栏，顶距清零、不加 app-top-safe-shell，
-       * 否则 max(59px) 顶垫会让标题下方多一条空白。内联 !important 压过后注入样式表。
-       */
-      root.classList.remove('app-top-safe-shell');
-      root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+      if (getIOSMajorVersion() >= 27) {
+        /*
+         * iOS 27+ 根治：default 不透明状态栏，系统已占状态栏，顶距清零、不加 app-top-safe-shell，
+         * 否则 max(59px) 顶垫会让标题下方多一条空白。内联 !important 压过后注入样式表。
+         */
+        root.classList.add('app-ios27');
+        root.classList.remove('app-top-safe-shell');
+        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+      } else {
+        /* iOS 26：保持原有 59px 顶垫行为，不改动 */
+        root.classList.add('app-top-safe-shell');
+      }
       var plateColor = color || '';
       try {
         plateColor =
@@ -4009,7 +4015,7 @@
          * 占状态栏、网页从其下方开始，无内容可采样 → 干净实色栏。旧系统（≤18）无此问题，
          * 保留原“蓝到刘海”沉浸式效果不动。
          */
-        if (getIOSMajorVersion() >= 26) {
+        if (getIOSMajorVersion() >= 27) {
           upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
           return;
         }
@@ -4082,7 +4088,7 @@
        * 系统单独占了状态栏、网页从其下方开始，env(safe-area-inset-top)=0 即真实值。
        * 此时绝不能再兜底垫 59px（否则标题下方多一条空白/蓝带）。旧系统不走此分支。
        */
-      if (isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 26) {
+      if (isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 27) {
         document.documentElement.classList.remove('app-ios-status-outer');
         document.documentElement.classList.remove('app-top-safe-shell');
         /* 内联 !important：压过所有 max(59px) 顶垫规则 */

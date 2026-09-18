@@ -27,9 +27,17 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'default')");
     // 旧系统分支仍保留 black-translucent
     expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent')");
-    // default / 顶距清零仅在 iOS>=26 生效
-    expect(auth).toContain('getIOSMajorVersion() >= 26');
+    // default / 顶距清零仅在 iOS>=27 生效；iOS 26 保持原样
+    expect(auth).toContain('getIOSMajorVersion() >= 27');
+    expect(auth).toContain("classList.add('app-ios27')");
     expect(auth).toContain("'--app-shell-statusbar-top', '0px', 'important'");
+    // iOS 27 明细页 inflow：根文档不滚、列表内部滚动，消除顶部滚动边缘毛玻璃
+    expect(boot).toContain('var isIos27Plus = major >= 27');
+    expect(boot).toContain("classList.add('app-ios27')");
+    expect(boot).toContain('html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list{');
+    expect(boot).toContain('overflow-y:auto!important');
+    // iOS 26 分支保留 59px 顶垫
+    expect(boot).toContain("root.style.setProperty('--app-shell-statusbar-top', '59px')");
     // 启动文档静态 meta 保持 black-translucent（旧系统直用；新系统由 nginx 按 UA 改写成 default）
     expect(shouye).toContain('content="black-translucent"');
   });
@@ -51,9 +59,9 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   });
 
   it('主页面已刷新缓存戳', () => {
-    expect(shouye).toContain('auth-boot.js?v=20260918-ios27-default');
-    expect(shouye).toContain('auth.js?v=20260918-ios27-default');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-ios27-default');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-default');
+    expect(shouye).toContain('auth-boot.js?v=20260918-ios27-inflow');
+    expect(shouye).toContain('auth.js?v=20260918-ios27-inflow');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-ios27-inflow');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-inflow');
   });
 });
