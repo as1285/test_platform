@@ -47,20 +47,12 @@
             height: 100%;
             display: block;
         }
-        /* 父文档顶垫盖满时间/岛行：48px 实白，z 低于 iframe 标题 */
+        /* iOS 26/27：不要放 fixed 顶垫（会维持系统毛玻璃透明）。原生靠 topEdgeEffect.isHidden */
         #iosStatusPlate {
-            display: none;
-            position: fixed;
-            left: 0;
-            right: 0;
-            top: 0;
-            height: 48px;
-            min-height: 48px;
-            max-height: 48px;
-            background: #fff;
-            background-color: #fff;
-            z-index: 2;
-            pointer-events: none;
+            display: none !important;
+            height: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
         }
         html.app-huawei-pura70-shell #app-frame {
             width: 100vw;
@@ -86,11 +78,9 @@
                 if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
                     var earlyPlate = document.getElementById('iosStatusPlate');
                     if (earlyPlate) {
-                        earlyPlate.style.display = 'block';
-                        earlyPlate.style.height = '48px';
-                        earlyPlate.style.minHeight = '48px';
-                        earlyPlate.style.maxHeight = '48px';
-                        earlyPlate.style.background = '#ffffff';
+                        earlyPlate.style.display = 'none';
+                        earlyPlate.style.height = '0';
+                        earlyPlate.style.visibility = 'hidden';
                     }
                 }
             } catch (eEarlyPlate) {}
@@ -552,10 +542,10 @@
                 } else {
                     plate.style.background = '#4f90f3';
                 }
-                plate.style.height = '48px';
-                plate.style.minHeight = '48px';
-                plate.style.maxHeight = '48px';
-                plate.style.display = 'block';
+                /* 不再显示父文档 fixed 顶垫：iOS 26/27 会采样它并保持毛玻璃 */
+                plate.style.display = 'none';
+                plate.style.height = '0';
+                plate.style.visibility = 'hidden';
             }
 
             document.addEventListener('deviceready', function () {

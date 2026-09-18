@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
- * iOS 26/27 Liquid Glass：
- * 1) Info.plist 写入 UIDesignRequiresCompatibility（iOS 27 SDK 会忽略此键）
- * 2) MainViewController 关掉 WKWebView.scrollView.topEdgeEffect，否则顶栏一直发糊
+ * iOS 26/27 Liquid Glass（社区标准解法）：
+ * StackOverflow / Apple UIScrollEdgeEffect：
+ *   webView.scrollView.topEdgeEffect.isHidden = true
+ * UIDesignRequiresCompatibility 在 iOS 27 SDK 会被忽略，不能单靠 plist。
+ * 同时 patch MainViewController + CDVWebViewEngine，避免只打一处被覆盖。
  */
 var fs = require('fs');
 var path = require('path');
@@ -26,21 +28,35 @@ function patchPlist(file) {
   return true;
 }
 
-var EDGE_METHOD =
-  '- (void)taxHideIos26ScrollEdgeEffect {\n' +
+var EDGE_SNIPPET =
   '    if (@available(iOS 26.0, *)) {\n' +
-  '        id wv = [self valueForKey:@"webView"];\n' +
-  '        id sv = [wv valueForKey:@"scrollView"];\n' +
-  '        id top = [sv valueForKey:@"topEdgeEffect"];\n' +
-  '        if ([top respondsToSelector:@selector(setHidden:)]) {\n' +
-  '            [top setHidden:@YES];\n' +
+  '        UIScrollView *sv = nil;\n' +
+  '        if ([self respondsToSelector:@selector(webView)]) {\n' +
+  '            id wv = [self valueForKey:@"webView"];\n' +
+  '            if ([wv respondsToSelector:@selector(scrollView)]) {\n' +
+  '                sv = [wv valueForKey:@"scrollView"];\n' +
+  '            }\n' +
   '        }\n' +
-  '        id bottom = [sv valueForKey:@"bottomEdgeEffect"];\n' +
-  '        if ([bottom respondsToSelector:@selector(setHidden:)]) {\n' +
-  '            [bottom setHidden:@YES];\n' +
+  '        if (!sv && [self respondsToSelector:@selector(engineWebView)]) {\n' +
+  '            id wv = [self valueForKey:@"engineWebView"];\n' +
+  '            if ([wv respondsToSelector:@selector(scrollView)]) {\n' +
+  '                sv = [wv valueForKey:@"scrollView"];\n' +
+  '            }\n' +
   '        }\n' +
-  '    }\n' +
-  '}\n';
+  '        if (sv) {\n' +
+  '            id top = [sv valueForKey:@"topEdgeEffect"];\n' +
+  '            if ([top respondsToSelector:@selector(setHidden:)]) {\n' +
+  '                [top setValue:@YES forKey:@"hidden"];\n' +
+  '            }\n' +
+  '            id bottom = [sv valueForKey:@"bottomEdgeEffect"];\n' +
+  '            if ([bottom respondsToSelector:@selector(setHidden:)]) {\n' +
+  '                [bottom setValue:@YES forKey:@"hidden"];\n' +
+  '            }\n' +
+  '        }\n' +
+  '    }\n';
+
+var EDGE_METHOD =
+  '- (void)taxHideIos26ScrollEdgeEffect {\n' + EDGE_SNIPPET + '}\n';
 
 function patchViewController(file) {
   var src = fs.readFileSync(file, 'utf8');
@@ -75,12 +91,57 @@ function patchViewController(file) {
   return true;
 }
 
+/** Cordova 引擎里 WKWebView 创建/更新设置后立刻关 topEdgeEffect */
+function patchWebViewEngine(file) {
+  var src = fs.readFileSync(file, 'utf8');
+  if (src.indexOf('taxHideIos26ScrollEdgeEffect') >= 0 || src.indexOf('topEdgeEffect') >= 0) {
+    return false;
+  }
+  var changed = false;
+  var hideBlock =
+    '\n    /* tax: hide iOS 26/27 Liquid Glass scroll edge blur */\n' +
+    '    if (@available(iOS 26.0, *)) {\n' +
+    '        UIScrollView *sv = wkWebView.scrollView;\n' +
+    '        if ([sv respondsToSelector:@selector(topEdgeEffect)]) {\n' +
+    '            id top = [sv valueForKey:@"topEdgeEffect"];\n' +
+    '            if ([top respondsToSelector:@selector(setHidden:)]) {\n' +
+    '                [top setValue:@YES forKey:@"hidden"];\n' +
+    '            }\n' +
+    '        }\n' +
+    '        if ([sv respondsToSelector:@selector(bottomEdgeEffect)]) {\n' +
+    '            id bottom = [sv valueForKey:@"bottomEdgeEffect"];\n' +
+    '            if ([bottom respondsToSelector:@selector(setHidden:)]) {\n' +
+    '                [bottom setValue:@YES forKey:@"hidden"];\n' +
+    '            }\n' +
+    '        }\n' +
+    '    }\n';
+
+  if (/- \(void\)updateSettings:/.test(src)) {
+    src = src.replace(
+      /(- \(void\)updateSettings:[^{]*\{)/,
+      '$1' + hideBlock
+    );
+    changed = true;
+  } else if (/WKWebView\s*\*\s*wkWebView\s*=/.test(src)) {
+    src = src.replace(
+      /(WKWebView\s*\*\s*wkWebView\s*=[^;]+;)/,
+      '$1' + hideBlock
+    );
+    changed = true;
+  }
+  if (!changed) {
+    return false;
+  }
+  fs.writeFileSync(file, src, 'utf8');
+  return true;
+}
+
 function walk(dir, files) {
   if (!fs.existsSync(dir)) {
     return;
   }
   fs.readdirSync(dir).forEach(function (name) {
-    if (name === 'Pods' || name === 'build' || name === 'CordovaLib') {
+    if (name === 'Pods' || name === 'build') {
       return;
     }
     var p = path.join(dir, name);
@@ -89,7 +150,11 @@ function walk(dir, files) {
       walk(p, files);
       return;
     }
-    if (/Info\.plist$/i.test(name) || name === 'MainViewController.m') {
+    if (
+      /Info\.plist$/i.test(name) ||
+      name === 'MainViewController.m' ||
+      name === 'CDVWebViewEngine.m'
+    ) {
       files.push(p);
     }
   });
@@ -109,12 +174,15 @@ function run(ctx) {
       patchPlist(file);
     } else if (/MainViewController\.m$/.test(file)) {
       patchViewController(file);
+    } else if (/CDVWebViewEngine\.m$/.test(file)) {
+      patchWebViewEngine(file);
     }
   });
 }
 
 run.patchPlist = patchPlist;
 run.patchViewController = patchViewController;
+run.patchWebViewEngine = patchWebViewEngine;
 module.exports = run;
 
 if (require.main === module) {

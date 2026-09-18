@@ -1473,25 +1473,24 @@
       } catch (eC) {}
       if (!plateColor) plateColor = '#ffffff';
       root.style.setProperty('--ios27-status-plate', plateColor);
+      root.style.setProperty('background-color', plateColor, 'important');
+      if (document.body) {
+        document.body.style.setProperty('background-color', plateColor, 'important');
+      }
+      /* 不再创建 fixed 顶垫：会让 Liquid Glass 保持透明毛玻璃（StackOverflow / Safari26 社区结论） */
       if (!document.getElementById('ios27StatusPlateCss')) {
         var st = document.createElement('style');
         st.id = 'ios27StatusPlateCss';
         st.textContent =
-          '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;' +
-          'height:48px!important;min-height:48px!important;max-height:48px!important;' +
-          'background:var(--ios27-status-plate,#ffffff)!important;background-color:var(--ios27-status-plate,#ffffff)!important;background-image:none!important;' +
-          'z-index:2!important;pointer-events:none!important;' +
-          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;filter:none!important;}';
+          '#ios27StatusPlate{display:none!important;height:0!important;visibility:hidden!important;pointer-events:none!important;}' +
+          'html.app-ios-liquid-glass,html.app-ios-liquid-glass body{background-color:var(--ios27-status-plate,#ffffff)!important;}';
         (document.head || root).appendChild(st);
       }
       var plate = document.getElementById('ios27StatusPlate');
-      if (!plate) {
-        plate = document.createElement('div');
-        plate.id = 'ios27StatusPlate';
-        plate.setAttribute('aria-hidden', 'true');
-        (document.body || root).appendChild(plate);
+      if (plate) {
+        plate.style.setProperty('display', 'none', 'important');
       }
-      plate.style.setProperty('background', plateColor, 'important');
+      injectIos27StickyStyles();
       if (typeof window.__paintIos27LiquidGlassPlate === 'function') {
         window.__paintIos27LiquidGlassPlate();
       }
@@ -4995,13 +4994,15 @@
       'margin:0 0 calc(-1 * (var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) + 56px)) !important;' +
       'background:#fff !important;z-index:110 !important;pointer-events:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell,html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;}' +
-      '#ios27StatusPlate{display:block!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:48px!important;min-height:48px!important;max-height:48px!important;background:var(--ios27-status-plate,#ffffff)!important;background-color:var(--ios27-status-plate,#ffffff)!important;background-image:none!important;z-index:2!important;pointer-events:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;opacity:1!important;filter:none!important;}' +
-      'html.app-ios-liquid-glass.app-top-safe-shell{background-color:var(--ios27-status-plate,#ffffff)!important;background-image:linear-gradient(var(--ios27-status-plate,#ffffff),var(--ios27-status-plate,#ffffff))!important;background-size:100% 59px!important;background-repeat:no-repeat!important;}' +
+      /* fixed 顶垫会让 Liquid Glass 保持透明毛玻璃；隐藏它，改靠 sticky 实白顶栏采样 */
+      '#ios27StatusPlate{display:none!important;height:0!important;visibility:hidden!important;pointer-events:none!important;}' +
+      'html.app-ios-liquid-glass,html.app-ios-liquid-glass body{background-color:var(--ios27-status-plate,#ffffff)!important;}' +
       'html.app-ios-liquid-glass body.page-shuiming-result .header-title,html.app-ios-liquid-glass body.page-shuiming .header-title{color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;mix-blend-mode:normal!important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .page-root,html.app-ios-liquid-glass body.page-shuiming-result .page-root{--header-height:44px !important;--safe-top:var(--app-shell-statusbar-top,59px) !important;--shuiming-chrome-top:var(--app-shell-statusbar-top,59px) !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass body.page-shuiming-result::before,html.app-ios-unified-chrome body.page-shuiming-result::before{content:none !important;display:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header{background:#fff !important;box-shadow:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
-      'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
+      'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;z-index:120 !important;background:#fff !important;}' +
+      'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{top:0 !important;position:sticky !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;box-sizing:border-box !important;z-index:120 !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,59px) !important;height:44px !important;display:flex !important;align-items:center !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{top:calc(44px + var(--app-shell-statusbar-top,59px)) !important;background:#f5f6fa !important;padding:12px 0 10px !important;box-sizing:border-box !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .summary > .summary-item,html.app-ios-liquid-glass body.page-shuiming-result .summary > .summary-item{padding-left:16px !important;padding-right:16px !important;border-radius:0 !important;}' +
@@ -5029,9 +5030,9 @@
       'html.app-ios-sticky-chrome body.page-shuiming-result .top-fixed .header::before{content:"" !important;visibility:visible !important;display:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass body.page-shuiming > .header,html.app-ios-unified-chrome body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,html.app-ios-liquid-glass body.page-shuiming > .content,html.app-ios-unified-chrome body.page-shuiming > .content{padding-top:0 !important;}' +
-      /* iOS 27 15PM：顶垫 48px 实白，z 低于标题，避免盖住「收入纳税明细」 */
-      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:48px !important;max-height:48px !important;background:#fff !important;background-color:#fff !important;z-index:2 !important;pointer-events:none !important;}' +
-      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;background:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}'
+      /* iOS 27 15PM：不要再铺 fixed ::before 白垫（会维持毛玻璃透明）；靠 sticky 实白顶栏 */
+      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:none !important;display:none !important;}' +
+      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{position:sticky !important;top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}'
     );
   }
 

@@ -44,12 +44,13 @@ describe('iPhone 15 Pro（iPhone16,1）走 15 档实底顶栏', () => {
     );
   });
 
-  it('iOS 27 误打 15promax 时顶垫 48px 且低于标题', () => {
+  it('iOS 27 误打 15promax 时不再铺 fixed ::before，改 sticky 实白', () => {
     expect(auth).toContain(
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before'
     );
-    expect(auth).toContain('height:48px !important;max-height:48px !important;background:#fff !important;background-color:#fff !important;z-index:2 !important');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-strong');
-    expect(shouye).toContain('auth.js?v=20260918-ios27-strong');
+    expect(auth).toContain('content:none !important;display:none !important');
+    expect(auth).toContain('position:sticky !important;top:0 !important');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-edge');
+    expect(shouye).toContain('auth.js?v=20260918-ios27-edge');
   });
 });

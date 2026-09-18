@@ -33,9 +33,24 @@ describe('Cordova iOS Liquid Glass 彻底退出', () => {
     const once = readFileSync(file, 'utf8');
     expect(once).toContain('taxHideIos26ScrollEdgeEffect');
     expect(once).toContain('topEdgeEffect');
-    expect(once).toContain('setHidden:@YES');
+    expect(once).toContain('setValue:@YES forKey:@"hidden"');
     expect(hook.patchViewController(file)).toBe(false);
     expect(readFileSync(file, 'utf8')).toBe(once);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('hook 给 CDVWebViewEngine 在 updateSettings 里关 topEdgeEffect', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ios-engine-'));
+    const file = join(dir, 'CDVWebViewEngine.m');
+    writeFileSync(
+      file,
+      '@implementation CDVWebViewEngine\n- (void)updateSettings:(id)settings\n{\n    WKWebView* wkWebView = (WKWebView*)_engineWebView;\n    wkWebView.allowsLinkPreview = YES;\n}\n@end\n'
+    );
+    expect(hook.patchWebViewEngine(file)).toBe(true);
+    const once = readFileSync(file, 'utf8');
+    expect(once).toContain('topEdgeEffect');
+    expect(once).toContain('setValue:@YES forKey:@"hidden"');
+    expect(hook.patchWebViewEngine(file)).toBe(false);
     rmSync(dir, { recursive: true, force: true });
   });
 
