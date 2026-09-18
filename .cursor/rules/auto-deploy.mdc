@@ -36,13 +36,13 @@ Shell 需 `required_permissions: ["all"]`（要访问 `docker.sock`）。
 
 ### B. Cloud Agent / 无本地 Docker（默认远程）
 
-本开发站在 **`lkj.qiyun888.top`**，代码目录 `/root/test_platform`。推送成功后 **SSH 免密**到服务器执行：
+本开发站在 **`lkj.qiyun888.top`**（源站 IP **`43.251.101.111`**，SSH `root@` 端口 22），代码目录 `/root/test_platform`。推送成功后 **SSH 免密**到服务器执行：
 
 ```bash
 ssh lkj 'cd /root/test_platform && git fetch origin lkj && git checkout lkj && git pull --ff-only origin lkj && ./scripts/deploy.sh'
 ```
 
-（`Host lkj` 已在 `~/.ssh/config` 配置；若无别名则用 `ssh root@lkj.qiyun888.top ...`。）
+（`Host lkj` 指向 `43.251.101.111`；若无别名则用 `ssh root@43.251.101.111 ...` 或 `ssh root@lkj.qiyun888.top ...`。勿把 root 密码写入仓库。）
 
 ### 失败处理
 
