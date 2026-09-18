@@ -926,18 +926,18 @@
       var isIos27Plus = major >= 27;
       if (isIos27Plus) {
         /*
-         * iOS 27+ 根治：
+         * iOS 27+：
          * 1) standalone 走 default 不透明状态栏（nginx 按 UA 改写启动文档 meta），系统单独占
-         *    状态栏、网页从其下方开始，env(safe-area-inset-top)=0，故顶距清零、不再垫 59px。
-         * 2) 顶部“奶白毛玻璃”真正来源是 iOS 27 对"可滚动根文档"施加的滚动边缘毛玻璃
-         *    （同会话里不可滚动的查询页干净、可滚动的明细页起雾即为证据）。
-         *    解法：根文档锁死不滚，列表放进内部 overflow 滚动容器（inflow），
-         *    根 ScrollView 永不滚动 → 系统不再叠边缘毛玻璃。iOS 26 无此问题，不走此分支。
+         *    状态栏、网页从其下方开始，不再需要 59px 刘海顶垫。
+         * 2) 明细页 inflow：根文档锁死不滚、列表内部滚动，杜绝系统从滚动文档采样成雾。
+         * 3) iOS 27 系统玻璃状态栏会向下绘制约 50pt 的渐隐带，系统合成、网页无法关闭。
+         *    渐隐带盖在纯白上=白，肉眼不可见；盖在文字上才显“糊”。故把顶栏文字下移
+         *    var(--app-shell-statusbar-top)=40px，让渐隐带只落在实白区。iOS 26 无此带，不走此分支。
          */
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
         /* 内联 !important：胜过任何后注入的样式表 !important（max(59px) 顶垫规则） */
-        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+        root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
       } else {
         /* iOS 26：保持原有行为（黑透明沉浸 + 59px 顶垫 + sticky 实白顶栏） */
         root.classList.add('app-top-safe-shell');
@@ -954,7 +954,7 @@
           'color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;}';
         if (isIos27Plus) {
           css +=
-            'html.app-ios27.app-top-safe-shell,html.app-ios27{--app-shell-statusbar-top:0px!important;}' +
+            'html.app-ios27.app-top-safe-shell,html.app-ios27{--app-shell-statusbar-top:40px!important;}' +
             /* 明细页 inflow：根文档不滚，列表内部滚动 —— 消除 iOS 27 顶部滚动边缘毛玻璃 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
             'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
@@ -965,12 +965,16 @@
             'position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;' +
             'height:auto!important;background:#fff!important;z-index:2!important;transform:none!important;-webkit-transform:none!important;' +
             '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+            /* 顶栏文字下移 var(--app-shell-statusbar-top)=40px：避开 iOS 27 系统玻璃状态栏向下的渐隐带，
+             * 渐隐带盖在纯白上=白，肉眼不可见；盖在文字上才显“糊”。 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
-            'position:relative!important;top:auto!important;height:44px!important;min-height:44px!important;padding:0 16px!important;' +
+            'position:relative!important;top:auto!important;' +
+            'height:calc(44px + var(--app-shell-statusbar-top,40px))!important;min-height:calc(44px + var(--app-shell-statusbar-top,40px))!important;' +
+            'padding:var(--app-shell-statusbar-top,40px) 16px 0!important;' +
             'box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;' +
             '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
-            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:0!important;height:44px!important;display:flex!important;align-items:center!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,40px)!important;height:44px!important;display:flex!important;align-items:center!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{position:relative!important;top:auto!important;background:#f5f6fa!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list{' +
             'position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;' +
@@ -979,7 +983,7 @@
             '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
             /* 其它白顶页（如查询页）：头部实白即可，无需垫刘海高 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header{position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
-            'padding-top:14px!important;z-index:20!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}';
+            'padding-top:calc(14px + var(--app-shell-statusbar-top,40px))!important;z-index:20!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}';
         } else {
           /* iOS 26 原样：59px 顶垫 + sticky 实白顶栏 */
           css +=

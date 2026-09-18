@@ -1470,7 +1470,7 @@
          */
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
-        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+        root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
       } else {
         /* iOS 26：保持原有 59px 顶垫行为，不改动 */
         root.classList.add('app-top-safe-shell');
@@ -4092,7 +4092,7 @@
         document.documentElement.classList.remove('app-ios-status-outer');
         document.documentElement.classList.remove('app-top-safe-shell');
         /* 内联 !important：压过所有 max(59px) 顶垫规则 */
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
         return;
       }
       /* 描述文件 WebClip：env≈0 表示系统已经占了状态栏。

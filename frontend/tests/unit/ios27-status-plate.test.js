@@ -16,7 +16,7 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(boot).toContain("classList.add('app-ios-unified-chrome')");
     expect(boot).toContain("classList.remove('app-top-safe-shell')");
     expect(boot).toContain(".shuiming-chrome-shield{display:none!important");
-    expect(boot).toContain("'--app-shell-statusbar-top', '0px', 'important'");
+    expect(boot).toContain("'--app-shell-statusbar-top', '40px', 'important'");
     expect(boot).toContain("page === 'shouye.html'");
     expect(boot).toContain("return '#ffffff'");
     expect(boot).toContain('paintIos27LiquidGlassPlate()');
@@ -30,7 +30,7 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     // default / 顶距清零仅在 iOS>=27 生效；iOS 26 保持原样
     expect(auth).toContain('getIOSMajorVersion() >= 27');
     expect(auth).toContain("classList.add('app-ios27')");
-    expect(auth).toContain("'--app-shell-statusbar-top', '0px', 'important'");
+    expect(auth).toContain("'--app-shell-statusbar-top', '40px', 'important'");
     // iOS 27 明细页 inflow：根文档不滚、列表内部滚动，消除顶部滚动边缘毛玻璃
     expect(boot).toContain('var isIos27Plus = major >= 27');
     expect(boot).toContain("classList.add('app-ios27')");
@@ -59,9 +59,9 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   });
 
   it('主页面已刷新缓存戳', () => {
-    expect(shouye).toContain('auth-boot.js?v=20260918-ios27-inflow');
-    expect(shouye).toContain('auth.js?v=20260918-ios27-inflow');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-ios27-inflow');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-inflow');
+    expect(shouye).toContain('auth-boot.js?v=20260918-ios27-fadepad');
+    expect(shouye).toContain('auth.js?v=20260918-ios27-fadepad');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-ios27-fadepad');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-fadepad');
   });
 });
