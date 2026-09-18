@@ -41,7 +41,7 @@
                         (document.head || document.documentElement).appendChild(rn11St);
                     }
                 }
-                /* OPPO A57 / A557：回退到上周（9/12）整页滚动 + fixed 顶栏 */
+                /* OPPO A57 只打标；所有 Android 顶栏/合计按文档流模块放，不再 fixed 空挂 */
                 var isOppoA57 = /PFTM20|PFTM\d|OPPO\s*A557|A557\s*5G|OPPO\s*A57(?:\s*5G)?(?!\d)/i.test(u);
                 if (!isOppoA57 && /ColorOS|HeyTap|OPPO|Oppo/i.test(u) && !/PHJ110|PGP110|PJD110|PLQ110|PHW110|PGCM10|PFGM00|Find\s*X|Reno\s*10|Ace\s*|A58|A93s|Xiaomi|Redmi|Huawei|HONOR|vivo|iQOO/i.test(u)) {
                     try {
@@ -52,54 +52,20 @@
                 }
                 if (isOppoA57) {
                     document.documentElement.classList.add('app-android-oppo-a57');
-                    document.documentElement.classList.add('shuiming-android-weekback');
                 }
                 if (/Android/i.test(u)) {
                     document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('shuiming-android-inflow');
                     try {
                         var chromeTop = document.documentElement.style.getPropertyValue('--app-shell-statusbar-top')
                             || document.documentElement.style.getPropertyValue('--safe-top')
                             || '';
                         if (chromeTop) {
                             document.documentElement.style.setProperty('--shuiming-chrome-top', chromeTop);
+                        } else if (!document.documentElement.style.getPropertyValue('--shuiming-chrome-top')) {
+                            document.documentElement.style.setProperty('--shuiming-chrome-top', '40px');
                         }
                     } catch (eChromeTop) {}
-                    if (isOppoA57 && !document.querySelector('style[data-shuiming-a57-weekback]')) {
-                        var a57St = document.createElement('style');
-                        a57St.setAttribute('data-shuiming-a57-weekback', '1');
-                        a57St.textContent =
-                            'html.platform-android.app-android-oppo-a57,html.app-android-client.app-android-oppo-a57,html.shuiming-android-weekback,html.shuiming-android-weekback body,html.shuiming-android-weekback body.page-shuiming-result{height:auto!important;max-height:none!important;min-height:100%!important;overflow:visible!important;overscroll-behavior:auto!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .page-root{height:auto!important;max-height:none!important;min-height:100vh!important;overflow:visible!important;isolation:auto;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed{position:static!important;height:0!important;overflow:visible!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:140!important;height:calc(var(--header-height,48px) + 40px)!important;min-height:calc(var(--header-height,48px) + 40px)!important;padding:40px 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right{top:40px!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:3!important;visibility:visible!important;opacity:1!important;color:#000!important;-webkit-text-fill-color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;font-size:17px!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + 40px)!important;left:0!important;right:0!important;z-index:125!important;visibility:visible!important;opacity:1!important;-webkit-transform:translateZ(0)!important;transform:translateZ(0)!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;height:auto!important;max-height:none!important;overflow-x:hidden!important;overflow-y:visible!important;margin-top:calc(var(--header-height,48px) + 40px)!important;}' +
-                            'html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield{display:block!important;position:fixed!important;visibility:visible!important;z-index:90!important;-webkit-transform:none!important;transform:none!important;}';
-                        (document.head || document.documentElement).appendChild(a57St);
-                    }
-                    /*
-                     * ColorOS / ArkWeb：锁页面会裁掉「收入纳税明细」。
-                     * 其它 Android 仍钉顶栏；A57/A557 走上周整页滚动。
-                     */
-                    if (!isOppoA57 && !document.querySelector('style[data-shuiming-android-fixed-chrome]')) {
-                        var andFixSt = document.createElement('style');
-                        andFixSt.setAttribute('data-shuiming-android-fixed-chrome', '1');
-                        andFixSt.setAttribute('data-shuiming-android-list-lock', '1');
-                        andFixSt.textContent =
-                            'html.platform-android,html.app-android-client{height:100%;height:100vh;}' +
-                            'html.platform-android,html.platform-android body,html.app-android-client,html.app-android-client body{overflow:hidden!important;overscroll-behavior:none;}' +
-                            'html.platform-android body.page-shuiming-result,html.app-android-client body.page-shuiming-result{height:100%;height:100vh;max-height:100%;max-height:100vh;overflow:hidden!important;--shuiming-chrome-top:var(--app-shell-statusbar-top,var(--safe-top,0px));}' +
-                            'html.platform-android body.page-shuiming-result .page-root,html.app-android-client body.page-shuiming-result .page-root{height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;isolation:auto;--shuiming-list-top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)) + var(--list-summary-pad,68px));}' +
-                            'html.platform-android body.page-shuiming-result .top-fixed .header,html.app-android-client body.page-shuiming-result .top-fixed .header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:130!important;height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;min-height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;padding:var(--shuiming-chrome-top,var(--safe-top,0px)) 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
-                            'html.platform-android body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-client body.page-shuiming-result .top-fixed .header .back-btn,html.platform-android body.page-shuiming-result .top-fixed .header .header-right,html.app-android-client body.page-shuiming-result .top-fixed .header .header-right{top:var(--shuiming-chrome-top,var(--safe-top,0px))!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;}' +
-                            'html.platform-android body.page-shuiming-result .top-fixed .header .header-title,html.app-android-client body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:2!important;visibility:visible!important;opacity:1!important;color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;}' +
-                            'html.platform-android body.page-shuiming-result .top-fixed .summary,html.app-android-client body.page-shuiming-result .top-fixed .summary{position:fixed!important;top:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;left:0!important;right:0!important;z-index:125!important;visibility:visible!important;opacity:1!important;-webkit-backface-visibility:visible!important;backface-visibility:visible!important;}' +
-                            'html.platform-android body.page-shuiming-result .shuiming-chrome-shield,html.app-android-client body.page-shuiming-result .shuiming-chrome-shield{position:fixed!important;visibility:visible!important;opacity:1!important;}' +
-                            'html.platform-android body.page-shuiming-result .list,html.app-android-client body.page-shuiming-result .list{position:absolute!important;left:0!important;right:0!important;width:100%!important;max-width:100%!important;top:var(--shuiming-list-top,180px)!important;bottom:0!important;margin-top:0!important;height:auto!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}';
-                        (document.head || document.documentElement).appendChild(andFixSt);
-                    }
                 }
                 if (/2410DPN6CC|24101PNB7C|Xiaomi\s*15\s*Pro|Mi\s*15\s*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-xiaomi-15pro');
@@ -852,11 +818,33 @@
                         (document.head || document.documentElement).appendChild(arrowBaseSt);
                     }
                 } catch (e16pm) {}
+                /* 各机型 first-paint 之后再挂文档流模块，压过它们的 fixed / margin-top */
+                try {
+                    if (
+                        document.documentElement.classList.contains('shuiming-android-inflow') &&
+                        !document.querySelector('style[data-shuiming-android-inflow]')
+                    ) {
+                        var andInSt = document.createElement('style');
+                        andInSt.setAttribute('data-shuiming-android-inflow', '1');
+                        andInSt.setAttribute('data-shuiming-android-module', '1');
+                        andInSt.textContent =
+                            'html.shuiming-android-inflow,html.shuiming-android-inflow body,html.shuiming-android-inflow body.page-shuiming-result{height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .page-root,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .page-root,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root{display:flex!important;flex-direction:column!important;height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;isolation:auto;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .shuiming-chrome-shield{display:none!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .top-fixed,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed{position:relative!important;height:auto!important;flex:0 0 auto!important;z-index:3!important;overflow:visible!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:2!important;height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;min-height:calc(var(--header-height,48px) + var(--shuiming-chrome-top,var(--safe-top,0px)))!important;padding:var(--shuiming-chrome-top,var(--safe-top,0px)) 16px 0!important;box-sizing:border-box!important;background:#fff!important;overflow:visible!important;visibility:visible!important;opacity:1!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;transform:none!important;-webkit-transform:none!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header .header-right,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--shuiming-chrome-top,var(--safe-top,0px))!important;height:var(--header-height,48px)!important;display:flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header .header-title{display:block!important;position:relative!important;z-index:3!important;visibility:visible!important;opacity:1!important;color:#000!important;-webkit-text-fill-color:#000!important;line-height:var(--header-height,48px)!important;height:var(--header-height,48px)!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .top-fixed .summary,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:1!important;transform:none!important;-webkit-transform:none!important;visibility:visible!important;opacity:1!important;}' +
+                            'html.shuiming-android-inflow body.page-shuiming-result .list,html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .list,html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list{position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;}';
+                        (document.head || document.documentElement).appendChild(andInSt);
+                    }
+                } catch (eInflow) {}
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-a57-top"></script>
+    <script src="/js/auth-boot.js?v=20260918-android-mod"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -1053,32 +1041,44 @@
         }
 
         /*
-         * Android / ColorOS：overflow-x:hidden/clip 仍会让 position:fixed
-         * 跟页滚，划一下「收入纳税明细」滑出视口。锁死页面，只让列表滚。
+         * Android：顶栏/合计按真实模块排进文档流，不再 position:fixed 空挂。
+         * 很多机 WebView 把 height:0 容器里的 fixed 当成没放，只剩列表。
          */
         html.platform-android,
-        html.app-android-client {
+        html.app-android-client,
+        html.shuiming-android-inflow {
             height: 100%;
             height: 100vh;
         }
         html.platform-android,
         html.app-android-client,
+        html.shuiming-android-inflow,
         html.platform-android body.page-shuiming-result,
-        html.app-android-client body.page-shuiming-result {
+        html.app-android-client body.page-shuiming-result,
+        html.shuiming-android-inflow body.page-shuiming-result {
             overflow: hidden !important;
             overscroll-behavior: none;
         }
         html.platform-android body.page-shuiming-result,
-        html.app-android-client body.page-shuiming-result {
+        html.app-android-client body.page-shuiming-result,
+        html.shuiming-android-inflow body.page-shuiming-result {
             --shuiming-chrome-top: var(--app-shell-statusbar-top, var(--safe-top, 0px));
         }
+        html.platform-android body.page-shuiming-result .top-fixed,
+        html.app-android-client body.page-shuiming-result .top-fixed,
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed {
+            position: relative !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
         html.platform-android body.page-shuiming-result .top-fixed .header,
-        html.app-android-client body.page-shuiming-result .top-fixed .header {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 130 !important;
+        html.app-android-client body.page-shuiming-result .top-fixed .header,
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            z-index: 2 !important;
             height: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
             min-height: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
             padding: var(--shuiming-chrome-top, var(--safe-top, 0px)) 16px 0 !important;
@@ -1087,8 +1087,9 @@
             overflow: visible !important;
             visibility: visible !important;
             opacity: 1 !important;
-            -webkit-backface-visibility: visible !important;
-            backface-visibility: visible !important;
+            display: flex !important;
+            align-items: flex-end !important;
+            justify-content: center !important;
         }
         html.platform-android body.page-shuiming-result .top-fixed .header .back-btn,
         html.app-android-client body.page-shuiming-result .top-fixed .header .back-btn,
@@ -1111,22 +1112,22 @@
             height: var(--header-height, 48px) !important;
         }
         html.platform-android body.page-shuiming-result .top-fixed .summary,
-        html.app-android-client body.page-shuiming-result .top-fixed .summary {
-            position: fixed !important;
-            top: calc(var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px))) !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 125 !important;
+        html.app-android-client body.page-shuiming-result .top-fixed .summary,
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed .summary {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            z-index: 1 !important;
             visibility: visible !important;
             opacity: 1 !important;
-            -webkit-backface-visibility: visible !important;
-            backface-visibility: visible !important;
+            transform: none !important;
+            -webkit-transform: none !important;
         }
         html.platform-android body.page-shuiming-result .shuiming-chrome-shield,
-        html.app-android-client body.page-shuiming-result .shuiming-chrome-shield {
-            position: fixed !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+        html.app-android-client body.page-shuiming-result .shuiming-chrome-shield,
+        html.shuiming-android-inflow body.page-shuiming-result .shuiming-chrome-shield {
+            display: none !important;
         }
 
         html::-webkit-scrollbar,
@@ -1650,12 +1651,11 @@
         }
 
         /*
-         * ColorOS / ArkWeb（含 OPPO A57/A557 PFTM20）：
-         * 仅 overflow-x:clip 仍会让顶栏跟页滚，划一下「收入纳税明细」不见。
-         * 页面本身不滚，列表绝对铺在汇总下，只滚这一层。
+         * Android：页面不滚。顶栏+合计是 flex 模块占位，列表自己滑。
          */
         html.platform-android body.page-shuiming-result,
-        html.app-android-client body.page-shuiming-result {
+        html.app-android-client body.page-shuiming-result,
+        html.shuiming-android-inflow body.page-shuiming-result {
             height: 100%;
             height: 100vh;
             max-height: 100%;
@@ -1663,145 +1663,36 @@
             overflow: hidden !important;
         }
         html.platform-android body.page-shuiming-result .page-root,
-        html.app-android-client body.page-shuiming-result .page-root {
+        html.app-android-client body.page-shuiming-result .page-root,
+        html.shuiming-android-inflow body.page-shuiming-result .page-root {
+            display: flex !important;
+            flex-direction: column !important;
             height: 100% !important;
             max-height: 100% !important;
             min-height: 0 !important;
             overflow: hidden !important;
             isolation: auto;
-            --shuiming-list-top: calc(
-                var(--header-height, 48px) + var(--shuiming-chrome-top, var(--safe-top, 0px)) +
-                    var(--list-summary-pad, 68px)
-            );
         }
         html.platform-android body.page-shuiming-result .list,
-        html.app-android-client body.page-shuiming-result .list {
-            position: absolute !important;
-            left: 0 !important;
-            right: 0 !important;
+        html.app-android-client body.page-shuiming-result .list,
+        html.shuiming-android-inflow body.page-shuiming-result .list {
+            position: relative !important;
+            top: auto !important;
+            bottom: auto !important;
+            left: auto !important;
+            right: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            top: var(--shuiming-list-top, 180px) !important;
-            bottom: 0 !important;
             margin-top: 0 !important;
+            padding-top: 0 !important;
             height: auto !important;
             max-height: none !important;
             overflow-x: hidden !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-y: contain;
-        }
-
-        /*
-         * OPPO A57 / A557：回到上周（9/12）布局。
-         * 顶栏/汇总仍 fixed，列表在文档流里，整页滚动；不锁 overflow、不改文档流。
-         */
-        html.platform-android.app-android-oppo-a57,
-        html.app-android-client.app-android-oppo-a57,
-        html.shuiming-android-weekback,
-        html.shuiming-android-weekback body,
-        html.platform-android.app-android-oppo-a57 body.page-shuiming-result,
-        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result,
-        html.shuiming-android-weekback body.page-shuiming-result {
-            height: auto !important;
-            max-height: none !important;
-            min-height: 100% !important;
-            overflow: visible !important;
-            overscroll-behavior: auto !important;
-        }
-        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .page-root,
-        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .page-root,
-        html.shuiming-android-weekback body.page-shuiming-result .page-root {
-            height: auto !important;
-            max-height: none !important;
-            min-height: 100vh !important;
-            overflow: visible !important;
-            isolation: auto;
-        }
-        html.shuiming-android-weekback body.page-shuiming-result .top-fixed {
-            position: static !important;
-            height: 0 !important;
-            overflow: visible !important;
-        }
-        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header,
-        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .top-fixed .header,
-        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 140 !important;
-            height: calc(var(--header-height, 48px) + 40px) !important;
-            min-height: calc(var(--header-height, 48px) + 40px) !important;
-            padding: 40px 16px 0 !important;
-            box-sizing: border-box !important;
-            background: #fff !important;
-            overflow: visible !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            display: flex !important;
-            align-items: flex-end !important;
-            justify-content: center !important;
-            -webkit-transform: translateZ(0) !important;
-            transform: translateZ(0) !important;
-            -webkit-backface-visibility: visible !important;
-            backface-visibility: visible !important;
-        }
-        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .back-btn,
-        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-right {
-            top: 40px !important;
-            height: var(--header-height, 48px) !important;
-            display: flex !important;
-            align-items: center !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .header .header-title {
-            display: block !important;
-            position: relative !important;
-            z-index: 3 !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            color: #000 !important;
-            -webkit-text-fill-color: #000 !important;
-            line-height: var(--header-height, 48px) !important;
-            height: var(--header-height, 48px) !important;
-            font-size: 17px !important;
-        }
-        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .top-fixed .summary,
-        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .top-fixed .summary,
-        html.shuiming-android-weekback body.page-shuiming-result .top-fixed .summary {
-            position: fixed !important;
-            top: calc(var(--header-height, 48px) + 40px) !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 125 !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            -webkit-transform: translateZ(0) !important;
-            transform: translateZ(0) !important;
-        }
-        html.platform-android.app-android-oppo-a57 body.page-shuiming-result .list,
-        html.app-android-client.app-android-oppo-a57 body.page-shuiming-result .list,
-        html.shuiming-android-weekback body.page-shuiming-result .list {
-            position: relative !important;
-            top: auto !important;
-            bottom: auto !important;
-            left: auto !important;
-            right: auto !important;
-            height: auto !important;
-            max-height: none !important;
-            overflow-x: hidden !important;
-            overflow-y: visible !important;
-            margin-top: calc(var(--header-height, 48px) + 40px) !important;
-        }
-        html.shuiming-android-weekback body.page-shuiming-result .shuiming-chrome-shield {
-            display: block !important;
-            position: fixed !important;
-            visibility: visible !important;
-            z-index: 90 !important;
-            -webkit-transform: none !important;
-            transform: none !important;
         }
 
         .list-item {
@@ -4158,6 +4049,58 @@
         }
 
         /*
+         * 压过各机型把顶栏/合计写成 fixed、把列表顶距写成空位的规则。
+         * 安卓这块模块必须占文档流，否则很多机等于没放。
+         */
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed,
+        html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed,
+        html.shuiming-android-inflow.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed,
+        html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed {
+            position: relative !important;
+            height: auto !important;
+            flex: 0 0 auto !important;
+            overflow: visible !important;
+            z-index: 3 !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed .header,
+        html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.shuiming-android-inflow.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            -webkit-transform: none !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .top-fixed .summary,
+        html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.shuiming-android-inflow.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            -webkit-transform: none !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .list,
+        html.shuiming-android-inflow.app-top-safe-shell body.page-shuiming-result .list,
+        html.shuiming-android-inflow.app-android-client.app-top-safe-shell body.page-shuiming-result .list,
+        html.shuiming-android-inflow.app-cordova-shell.app-android-client.app-top-safe-shell body.page-shuiming-result .list {
+            position: relative !important;
+            top: auto !important;
+            bottom: auto !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+        }
+        html.shuiming-android-inflow body.page-shuiming-result .shuiming-chrome-shield {
+            display: none !important;
+        }
+
+        /*
          * 日期右缘对齐汇总「5946.01元」的小数点：--list-date-inset 由 JS 按税额小数位实测。
          * 选择器带 #recordList，压过 15/16/17 等机型把 .list-date 贴边的 margin-right:0。
          */
@@ -4235,12 +4178,18 @@
             }
         }
 
+        function isAndroidInflowClient() {
+            try {
+                if (document.documentElement.classList.contains('shuiming-android-inflow')) return true;
+            } catch (eIn) {}
+            return isAndroidShuimingClient();
+        }
+
         function isOppoA57ShuimingClient() {
             try {
                 var root = document.documentElement;
                 if (
                     root.classList.contains('app-android-oppo-a57') ||
-                    root.classList.contains('shuiming-android-weekback') ||
                     root.classList.contains('shuiming-android-legacy-flow')
                 ) {
                     return true;
@@ -4282,6 +4231,12 @@
 
         function applyShuimingListTop(listEl, rootEl, topPx) {
             if (!listEl) return;
+            if (isAndroidInflowClient()) {
+                listEl.style.setProperty('margin-top', '0px', 'important');
+                listEl.style.setProperty('padding-top', '0px', 'important');
+                if (rootEl) rootEl.style.setProperty('--shuiming-list-top', '0px');
+                return;
+            }
             var y = Math.max(0, Math.round(Number(topPx) || 0));
             listEl.style.setProperty('margin-top', y + 'px', 'important');
             if (rootEl) rootEl.style.setProperty('--shuiming-list-top', y + 'px');
@@ -4466,84 +4421,37 @@
                             aceShield.style.setProperty('-webkit-transform', 'none', 'important');
                         }
                     }
-                    if (isOppoA57ShuimingClient()) {
-                        rootEl.classList.add('app-android-oppo-a57');
-                        rootEl.classList.add('shuiming-android-weekback');
-                        var a57Inset = 40;
-                        var a57BarH = 48;
-                        header.style.setProperty('top', '0', 'important');
-                        header.style.setProperty('padding-top', a57Inset + 'px', 'important');
-                        header.style.setProperty('height', a57BarH + a57Inset + 'px', 'important');
-                        header.style.setProperty('min-height', a57BarH + a57Inset + 'px', 'important');
-                        header.style.setProperty('box-sizing', 'border-box', 'important');
-                        header.style.setProperty('background', '#fff', 'important');
-                        header.style.setProperty('overflow', 'visible', 'important');
-                        header.style.setProperty('z-index', '140', 'important');
-                        header.style.setProperty('display', 'flex', 'important');
-                        header.style.setProperty('align-items', 'flex-end', 'important');
-                        header.style.setProperty('visibility', 'visible', 'important');
-                        header.style.setProperty('opacity', '1', 'important');
-                        header.style.setProperty('transform', 'translateZ(0)', 'important');
-                        header.style.setProperty('-webkit-transform', 'translateZ(0)', 'important');
-                        var a57Title = header.querySelector('.header-title');
-                        if (a57Title) {
-                            a57Title.style.setProperty('display', 'block', 'important');
-                            a57Title.style.setProperty('visibility', 'visible', 'important');
-                            a57Title.style.setProperty('opacity', '1', 'important');
-                            a57Title.style.setProperty('color', '#000', 'important');
-                            a57Title.style.setProperty('-webkit-text-fill-color', '#000', 'important');
-                            a57Title.style.setProperty('line-height', a57BarH + 'px', 'important');
-                            a57Title.style.setProperty('height', a57BarH + 'px', 'important');
-                            a57Title.style.setProperty('position', 'relative', 'important');
-                            a57Title.style.setProperty('z-index', '3', 'important');
-                        }
-                        var a57Back = header.querySelector('.back-btn');
-                        var a57Right = header.querySelector('.header-right');
-                        if (a57Back) {
-                            a57Back.style.setProperty('top', a57Inset + 'px', 'important');
-                            a57Back.style.setProperty('height', a57BarH + 'px', 'important');
-                            a57Back.style.setProperty('display', 'flex', 'important');
-                            a57Back.style.setProperty('visibility', 'visible', 'important');
-                            a57Back.style.setProperty('opacity', '1', 'important');
-                        }
-                        if (a57Right) {
-                            a57Right.style.setProperty('top', a57Inset + 'px', 'important');
-                            a57Right.style.setProperty('height', a57BarH + 'px', 'important');
-                            a57Right.style.setProperty('display', 'flex', 'important');
-                            a57Right.style.setProperty('visibility', 'visible', 'important');
-                            a57Right.style.setProperty('opacity', '1', 'important');
-                        }
-                        rootEl.style.setProperty('--app-shell-statusbar-top', a57Inset + 'px');
-                        rootEl.style.setProperty('--android-status-inset', a57Inset + 'px');
-                        rootEl.style.setProperty('--safe-top', a57Inset + 'px');
-                        rootEl.style.setProperty('--shuiming-chrome-top', a57Inset + 'px');
-                        if (root) {
-                            root.style.setProperty('--app-shell-statusbar-top', a57Inset + 'px');
-                            root.style.setProperty('--safe-top', a57Inset + 'px');
-                            root.style.setProperty('--shuiming-chrome-top', a57Inset + 'px');
-                        }
-                        summary.style.setProperty('top', a57BarH + a57Inset + 'px', 'important');
-                        var a57Shield = document.getElementById('shuimingChromeShield');
-                        if (a57Shield) {
-                            a57Shield.style.setProperty('z-index', '90', 'important');
-                            a57Shield.style.setProperty('transform', 'none', 'important');
-                            a57Shield.style.setProperty('-webkit-transform', 'none', 'important');
-                        }
+                    if (isAndroidInflowClient()) {
+                        rootEl.classList.add('shuiming-android-inflow');
+                        try {
+                            header.style.removeProperty('top');
+                            header.style.removeProperty('position');
+                            header.style.removeProperty('transform');
+                            header.style.removeProperty('-webkit-transform');
+                            summary.style.removeProperty('top');
+                            summary.style.removeProperty('position');
+                            summary.style.removeProperty('transform');
+                            summary.style.removeProperty('-webkit-transform');
+                            var inflowFixed = document.querySelector('.top-fixed');
+                            if (inflowFixed) {
+                                inflowFixed.style.setProperty('position', 'relative', 'important');
+                                inflowFixed.style.setProperty('height', 'auto', 'important');
+                            }
+                        } catch (eInflowClr) {}
                     }
                 } catch (eForce) {}
                 var headerBottom = Math.ceil(header.getBoundingClientRect().bottom || 0);
-                if (isOppoA57ShuimingClient() && headerBottom < 48) headerBottom = 88;
                 if (headerBottom <= 0) return null;
                 var unifiedChrome =
                     document.documentElement.classList.contains('app-ios-unified-chrome') ||
                     document.documentElement.classList.contains('app-ios-iphone15');
-                if (unifiedChrome) {
+                if (unifiedChrome || isAndroidInflowClient()) {
                     /* 顶栏+汇总合成一块，勿再把汇总写成独立 fixed */
                     try {
                         summary.style.removeProperty('top');
                         header.style.removeProperty('top');
                     } catch (eUni) {}
-                } else if (!isOppoA57ShuimingClient()) {
+                } else {
                     /* 汇总顶边必须贴齐顶栏底，消除红框空隙 */
                     summary.style.setProperty('top', headerBottom + 'px', 'important');
                 }
@@ -4665,7 +4573,7 @@
                  * 列表从汇总底下起排（margin-top = 汇总底 + 灰缝），padding-top 置 0。
                  * 旧方案把汇总高度写进 padding-top：轻拖还好，使劲橡皮筋会把那一整截灰垫拽出来。
                  */
-                if (isIosUnifiedSeam) {
+                if (isIosUnifiedSeam || isAndroidInflowClient()) {
                     if (root) root.style.setProperty('--list-summary-pad', '0px', 'important');
                     if (list) {
                         list.style.setProperty('padding-top', '0px', 'important');
@@ -5642,7 +5550,7 @@
             var wantShow = false;
 
             function listScroller() {
-                if (!isAndroidShuimingClient() || isOppoA57ShuimingClient()) return null;
+                if (!isAndroidShuimingClient()) return null;
                 return document.getElementById('recordList');
             }
 
@@ -5735,7 +5643,7 @@
         })();
 
         (function lockAndroidShuimingPageScroll() {
-            if (!isAndroidShuimingClient() || isOppoA57ShuimingClient()) return;
+            if (!isAndroidShuimingClient()) return;
             function pin() {
                 try {
                     var y =
@@ -5845,9 +5753,11 @@
                     }
                 } catch (e0) {}
                 try {
-                    if (isOppoA57ShuimingClient()) {
-                        document.documentElement.classList.add('app-android-oppo-a57');
-                        document.documentElement.classList.add('shuiming-android-weekback');
+                    if (isAndroidShuimingClient()) {
+                        document.documentElement.classList.add('shuiming-android-inflow');
+                        if (isOppoA57ShuimingClient()) {
+                            document.documentElement.classList.add('app-android-oppo-a57');
+                        }
                         syncTopFixedHeight();
                     }
                 } catch (eA57late) {}
