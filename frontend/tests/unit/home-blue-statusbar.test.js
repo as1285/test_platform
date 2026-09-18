@@ -63,11 +63,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
+    expect(shuimingResult).toContain('auth.js?v=20260918-15pro-glass');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260917-ios-no-black');
+    expect(shouye).toContain('auth.js?v=20260918-15pro-glass');
   });
 
   it('iPhone 14 Pro 首页刘海垫搜索蓝，不留 Cordova 顶黑框', () => {
@@ -79,7 +79,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     );
     expect(auth).toContain('isIPhone14ProLikeClient()');
     expect(auth).toContain(
-      'html.app-ios-client.app-ios-iphone14promax,html.app-ios-client.app-ios-iphone14pro{background-color:#'
+      'html.app-ios-client.app-ios-iphone14promax,html.app-ios-client.app-ios-iphone14pro,html.app-ios-client.app-ios-iphone15{background-color:#'
     );
   });
 

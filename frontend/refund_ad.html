@@ -17,7 +17,7 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                 }
                 var ip14pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(u);
-                var ip15pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(u);
+                var ip15pm = /iPhone|iPad|iPod/i.test(u) && /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(u);
                 if (!ip14pm && !ip15pm && /iPhone|iPad|iPod/i.test(u)) {
                     try {
                         var sw15 = Math.min(screen.width || 0, screen.height || 0);

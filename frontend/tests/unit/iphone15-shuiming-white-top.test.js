@@ -9,7 +9,9 @@ const shuiming = readFileSync(resolve(__dirname, '../../shuiming.html'), 'utf8')
 describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('识别 15 / iPhone15,4，并用 393×852 兜底', () => {
     expect(auth).toContain('function isIPhone15LikeClient');
+    expect(auth).toContain('function isIPhone15ProHardwareId');
     expect(auth).toContain('iPhone15,4');
+    expect(auth).toContain('iPhone16,1');
     expect(auth).toContain('return isIPhone393x852Viewport()');
     expect(auth).toContain('classList.add(\'app-ios-iphone15\')');
   });
@@ -62,7 +64,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
+    expect(shuimingResult).toContain('auth.js?v=20260918-15pro-glass');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -183,7 +185,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20260917-ios-no-black');
+    expect(shuiming).toContain('auth.js?v=20260918-15pro-glass');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );

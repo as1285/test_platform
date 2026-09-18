@@ -660,7 +660,7 @@
                             short16 <= 432 &&
                             long16 >= 928 &&
                             long16 <= 936 &&
-                            !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone16,1\b|iPhone15,5\b/i.test(
+                            !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(
                                 blob16
                             ) &&
                             !is16pmUa &&
@@ -686,7 +686,7 @@
                     }
                     /* 13 Pro Max / 12 PM / 14 Plus（428×926）继续走 15 Plus 明细贴边 UI（与两天前一致） */
                     var is15pmLike =
-                        (/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5\b|iPhone16,1\b|iPhone16,2\b/i.test(
+                        (/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5\b|iPhone16,2\b/i.test(
                             blob16
                         ) ||
                             (short16 >= 428 &&
@@ -702,7 +702,7 @@
                         long16 >= 848 &&
                         long16 <= 856;
                     var is15Like =
-                        (/iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))|iPhone15,4\b/i.test(blob16) ||
+                        (/iPhone\s*15\b(?!\s*(?:Plus|Pro\s*Max))|iPhone15,4\b|iPhone16,1\b|iPhone15Pro\b(?!Max)/i.test(blob16) ||
                             (is15Vp && !is15pmLike && !is16pmUa && !is16pmVp)) &&
                         !is15pmLike &&
                         !is17pmLike &&
@@ -891,8 +891,8 @@
                 } catch (eSz) {}
                 var is15Vp = shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
                 var is15LikeSm =
-                    (/iPhone\s*15\b|iPhone15,4\b/i.test(ua) || is15Vp) &&
-                    !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,1|iPhone16,2/i.test(ua);
+                    (/iPhone\s*15\b|iPhone15,4\b|iPhone16,1\b|iPhone15Pro\b(?!Max)/i.test(ua) || is15Vp) &&
+                    !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,2/i.test(ua);
                 if (is15LikeSm) {
                     root.classList.add('app-ios-iphone15');
                     root.classList.add('app-top-safe-shell');
@@ -967,7 +967,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-ios-no-black" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260918-15pro-glass" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>

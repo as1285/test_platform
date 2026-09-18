@@ -47,6 +47,6 @@ describe('iPhone 14 Pro Max 收入纳税明细列表顶距', () => {
     expect(shuimingResult).toContain('if (shuimingChromeUnstable() || !(headerBottom > 0)) return');
     expect(shuimingResult).toContain("setProperty('margin-top', listTop + 'px', 'important')");
     expect(shuimingResult).toMatch(/isIphone15Wide \|\| isIphone16ProSeam \|\| isIphone11Seam/);
-    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
+    expect(shuimingResult).toContain('auth.js?v=20260918-15pro-glass');
   });
 });

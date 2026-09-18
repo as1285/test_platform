@@ -188,8 +188,21 @@ var CORE_MODELS = [
     platform: 'ios',
     family: 'apple',
     label: 'iPhone 15',
-    match: ['iPhone\\s*15\\b(?!\\s*Plus)(?!\\s*Pro\\s*Max)', 'iPhone15,4', 'iPhone16,1'],
+    match: [
+      'iPhone\\s*15\\b(?!\\s*Plus)(?!\\s*Pro\\s*Max)',
+      'iPhone15,4',
+      'iPhone16,1',
+      'iPhone15Pro\\b(?!Max)',
+      'iPhone\\s*15\\s*Pro\\b(?!\\s*Max)'
+    ],
     issues: [
+      {
+        page: 'chrome',
+        title: 'iOS 27 顶栏毛玻璃',
+        summary:
+          '15 Pro 硬件号 iPhone16,1，曾被误判成 15 Pro Max，顶栏不铺进状态栏，Liquid Glass 采到灰底发糊。按 15 同套 393 实底白/蓝。',
+        since: '2026-09-18'
+      },
       { page: 'shuiming', title: '扣缴义务人箭头贴字底', summary: '公司名行「>」偏下；底边与公司名同一水平线。', since: '2026-09-04' },
       {
         page: 'shuiming',
