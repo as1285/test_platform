@@ -1462,6 +1462,7 @@
       var root = document.documentElement;
       root.classList.add('app-ios-liquid-glass');
       root.classList.add('app-top-safe-shell');
+      root.classList.add('app-ios-unified-chrome');
       root.classList.remove('app-ios-status-outer');
       var plateColor = color || '';
       try {
@@ -4909,6 +4910,7 @@
       if (liquidGlassWebclip || isIosLiquidGlassOS()) {
         document.documentElement.classList.add('app-top-safe-shell');
         document.documentElement.classList.add('app-ios-liquid-glass');
+        document.documentElement.classList.add('app-ios-unified-chrome');
         document.documentElement.style.setProperty(
           '--app-shell-statusbar-top',
           IOS_DYNAMIC_ISLAND_INSET_PX + 'px',
@@ -5017,15 +5019,16 @@
       'html.app-ios-status-outer body.page-shuiming-result .page-root{isolation:auto !important;z-index:auto !important;}' +
       'html.app-ios-status-outer body.page-shuiming-result::before{content:none !important;display:none !important;}' +
       'html.platform-ios body.page-shuiming-result .shuiming-chrome-shield{background:#fff !important;}' +
+      /* 描述文件 WebClip：fixed 灰 shield 会被 iOS 26/27 采成顶部奶白毛玻璃，必须关掉 */
+      'html.app-ios-liquid-glass body.page-shuiming-result .shuiming-chrome-shield,html.app-ios-unified-chrome body.page-shuiming-result .shuiming-chrome-shield{display:none !important;height:0 !important;visibility:hidden !important;}' +
       'html.app-ios-iphone15 .ios-sticky-tint,html.app-ios-liquid-glass .ios-sticky-tint,html.app-ios-unified-chrome .ios-sticky-tint,html.app-ios-iphone15 #iosStickyTint,html.app-ios-liquid-glass #iosStickyTint,html.app-ios-unified-chrome #iosStickyTint{display:none !important;height:0 !important;margin:0 !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .page-root{isolation:auto !important;}' +
+      'html.app-ios-unified-chrome body.page-shuiming-result .page-root,html.app-ios-liquid-glass body.page-shuiming-result .page-root{isolation:auto !important;}' +
       'html.app-ios-header-hoisted:not(.app-ios-unified-chrome) body.page-shuiming-result .top-fixed{position:relative !important;z-index:140 !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-header-hoisted.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;left:auto !important;right:auto !important;height:auto !important;z-index:20 !important;background:#fff !important;overflow:visible !important;transform:none !important;-webkit-transform:none !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header,html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{position:relative !important;top:auto !important;left:auto !important;right:auto !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;transform:none !important;-webkit-transform:none !important;box-shadow:none !important;border:none !important;border-bottom:none !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,59px) !important;height:44px !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary,html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary{position:relative !important;top:auto !important;left:auto !important;right:auto !important;transform:none !important;-webkit-transform:none !important;background:#f5f6fa !important;padding:12px 0 10px !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .shuiming-chrome-shield{display:none !important;}' +
-      'html.app-ios-unified-chrome body.page-shuiming-result .list,html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list{padding-top:0 !important;margin-top:0 !important;background:#f5f6fa !important;}' +
+      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-header-hoisted.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;left:auto !important;right:auto !important;height:auto !important;z-index:20 !important;background:#fff !important;overflow:visible !important;transform:none !important;-webkit-transform:none !important;}' +
+      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{position:relative !important;top:auto !important;left:auto !important;right:auto !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;transform:none !important;-webkit-transform:none !important;box-shadow:none !important;border:none !important;border-bottom:none !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
+      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,59px) !important;height:44px !important;}' +
+      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary,html.app-ios-iphone15.app-top-safe-shell.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary{position:relative !important;top:auto !important;left:auto !important;right:auto !important;transform:none !important;-webkit-transform:none !important;background:#f5f6fa !important;padding:12px 0 10px !important;}' +
+      'html.app-ios-unified-chrome body.page-shuiming-result .list,html.app-ios-liquid-glass body.page-shuiming-result .list,html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list{padding-top:0 !important;margin-top:0 !important;background:#f5f6fa !important;}' +
       'html.app-ios-header-hoisted body.page-shuiming-result .top-fixed .header .back-btn{visibility:visible !important;}' +
       'html.app-ios-sticky-chrome body.page-shuiming-result .top-fixed .header::before{content:"" !important;visibility:visible !important;display:none !important;}' +
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass body.page-shuiming > .header,html.app-ios-unified-chrome body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
@@ -5051,7 +5054,9 @@
       var root = document.documentElement;
       if (root.classList.contains('app-ios-unified-chrome')) return true;
       if (root.classList.contains('app-ios-iphone15')) return true;
-      return isIosLiquidGlassWebClip() && isIPhone393x852Viewport();
+      /* 描述文件 WebClip / iOS 26+：必须走文档流 sticky 实白，否则 fixed shield 会被 Liquid Glass 采成奶白糊层 */
+      if (root.classList.contains('app-ios-liquid-glass')) return true;
+      return isIosLiquidGlassWebClip() || isIosLiquidGlassOS();
     } catch (e) {
       return false;
     }
@@ -5074,12 +5079,14 @@
       document.documentElement.classList.add('app-ios-sticky-chrome');
       if (
         document.documentElement.classList.contains('app-ios-iphone15') ||
-        (isIosLiquidGlassWebClip() && isIPhone393x852Viewport())
+        document.documentElement.classList.contains('app-ios-liquid-glass') ||
+        isIosLiquidGlassWebClip() ||
+        isIosLiquidGlassOS()
       ) {
         document.documentElement.classList.add('app-ios-unified-chrome');
       }
       injectIos27StickyStyles();
-      /* 15 / iOS 26+ WebClip：tint 是又一层 sticky，玻璃会重复采样，必须拿掉 */
+      /* 15 / iOS 26+ WebClip：tint 与 chrome-shield 是又一层 fixed，玻璃会重复采样奶白糊层，必须拿掉 */
       if (isIosUnifiedFlowChrome()) {
         hideIosStickyTintBar();
         return;

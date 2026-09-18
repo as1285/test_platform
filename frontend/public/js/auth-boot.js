@@ -897,10 +897,8 @@
   }
 
   /**
-   * iOS 26/27 Liquid Glass：社区结论是 CSS fixed 顶垫盖不住系统 topEdgeEffect，
-   * 反而会让状态栏保持透明毛玻璃。正确做法：
-   * 1) 关掉/不放 fixed 顶垫；2) sticky + 实色顶栏让系统采样成不透明白；
-   * 3) Cordova 原生 webView.scrollView.topEdgeEffect.isHidden = true（见 after_prepare hook）。
+   * iOS 26/27 描述文件 WebClip（standalone）：theme-color 已失效，系统采 sticky/fixed 顶边背景。
+   * 正确做法：关掉 fixed 灰 shield / 顶垫；顶栏 sticky + 实白，让状态栏采成不透明白。
    */
   function paintIos27LiquidGlassPlate() {
     try {
@@ -918,6 +916,7 @@
       root.classList.add('app-ios-client');
       root.classList.add('app-top-safe-shell');
       root.classList.add('app-ios-liquid-glass');
+      root.classList.add('app-ios-unified-chrome');
       root.classList.remove('app-ios-status-outer');
       root.style.setProperty('--app-shell-statusbar-top', '59px');
       var color = ios27StatusPlateColor();
@@ -930,22 +929,25 @@
         var st = document.createElement('style');
         st.id = 'ios27StatusPlateCss';
         st.textContent =
-          /* 去掉 fixed 顶垫：Safari/WKWebView 会采样它并保持顶部毛玻璃透明 */
-          '#ios27StatusPlate{display:none!important;height:0!important;visibility:hidden!important;pointer-events:none!important;}' +
+          '#ios27StatusPlate,#iosStickyTint,.shuiming-chrome-shield{display:none!important;height:0!important;visibility:hidden!important;pointer-events:none!important;}' +
           'html.app-ios-liquid-glass,html.app-ios-liquid-glass body{background-color:var(--ios27-status-plate,#ffffff)!important;}' +
           'html.app-ios-liquid-glass.app-top-safe-shell{--app-shell-statusbar-top:59px!important;}' +
-          /* sticky + 实白：系统采样后状态栏变不透明白，不再糊到标题 */
-          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed,' +
-          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
-          'html.app-ios-liquid-glass body.page-shuiming>.header{' +
-          'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
+          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed{' +
+          'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;z-index:20!important;' +
           '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
           'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
+          'position:relative!important;top:auto!important;left:auto!important;right:auto!important;' +
           'height:calc(44px + var(--app-shell-statusbar-top,59px))!important;' +
           'min-height:calc(44px + var(--app-shell-statusbar-top,59px))!important;' +
-          'padding:var(--app-shell-statusbar-top,59px) 16px 0!important;box-sizing:border-box!important;z-index:120!important;}' +
+          'padding:var(--app-shell-statusbar-top,59px) 16px 0!important;box-sizing:border-box!important;' +
+          'background:#fff!important;background-color:#fff!important;box-shadow:none!important;}' +
+          'html.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{' +
+          'position:relative!important;top:auto!important;left:auto!important;right:auto!important;background:#f5f6fa!important;}' +
+          'html.app-ios-liquid-glass body.page-shuiming-result .list{margin-top:0!important;padding-top:0!important;}' +
           'html.app-ios-liquid-glass body.page-shuiming>.header{' +
-          'padding-top:calc(14px + var(--app-shell-statusbar-top,59px))!important;z-index:20!important;}' +
+          'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
+          'padding-top:calc(14px + var(--app-shell-statusbar-top,59px))!important;z-index:20!important;' +
+          '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
           'html.app-ios-liquid-glass body.page-shuiming-result .header-title,' +
           'html.app-ios-liquid-glass body.page-shuiming .header-title{' +
           'color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;}';

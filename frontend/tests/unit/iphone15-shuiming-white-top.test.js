@@ -64,7 +64,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-edge');
+    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-webclip');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -143,14 +143,15 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     );
     expect(auth).toContain('position:relative !important;top:auto !important');
     expect(auth).toContain(
-      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-header-hoisted.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;'
+      'html.app-ios-unified-chrome body.page-shuiming-result .top-fixed,html.app-ios-liquid-glass body.page-shuiming-result .top-fixed,html.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-header-hoisted.app-ios-unified-chrome body.page-shuiming-result .top-fixed{position:sticky !important;top:0 !important;'
     );
     expect(auth).toContain('height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important');
     expect(auth).toContain('function resumeIosWhitePageChrome');
     expect(auth).toContain('function isIosUnifiedFlowChrome');
-    expect(auth).toContain('html.app-ios-unified-chrome body.page-shuiming-result .list,html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list{padding-top:0 !important;margin-top:0 !important;');
-    expect(auth).toContain('.shuiming-chrome-shield{display:none !important;}');
+    expect(auth).toContain('html.app-ios-unified-chrome body.page-shuiming-result .list,html.app-ios-liquid-glass body.page-shuiming-result .list,html.app-ios-unified-chrome.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .list{padding-top:0 !important;margin-top:0 !important;');
+    expect(auth).toContain('.shuiming-chrome-shield{display:none !important');
     expect(auth).toContain("classList.contains('app-ios-unified-chrome')) return");
+    expect(auth).toContain("classList.contains('app-ios-liquid-glass')) return true");
     expect(shuimingResult).toContain('id="iosStickyTint"');
     expect(shuimingResult).toContain('header.top≈0 是稳定态');
     expect(shuimingResult).toContain('margin-top:0 !important');
@@ -185,7 +186,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20260918-ios27-edge');
+    expect(shuiming).toContain('auth.js?v=20260918-ios27-webclip');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );
