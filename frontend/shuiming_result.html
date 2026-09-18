@@ -209,6 +209,13 @@
                 if (/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(u)) {
                     document.documentElement.classList.add('app-android-redmi-k70-ultra');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                } else if (
+                    /23113RKC6[CG]|2311DRK48[CGI]/i.test(u) ||
+                    (/(?:Redmi|Xiaomi|REDMI)[\s_-]*K70(?![\s_-]*(?:至尊|Ultra|Pro))/i.test(u) &&
+                        !/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM/i.test(u))
+                ) {
+                    document.documentElement.classList.add('app-android-redmi-k70');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (/24122RKC7[CG]|24127RK2CC|(?:Redmi|Xiaomi|REDMI)[\s_-]*K80[\s_-]*Pro|POCO[\s_-]*F7[\s_-]*Ultra/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
@@ -1618,6 +1625,26 @@
         html.app-android-xiaomi-13ultra body.page-shuiming-result .list-title,
         html.app-android-xiaomi-13ultra body.page-shuiming-result .list-date {
             font-size: 17px !important;
+        }
+
+        /*
+         * 红米 K70 标准版（23113RKC6C / 6.67" 3200×1440）：
+         * 与 13 Ultra 同档密度，安卓默认汇总两行白底偏矮（对照正版约矮 30px+）。
+         * 加高行高与灰缝；不含至尊 / Ultra。
+         */
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-shuiming-result .page-root {
+            --list-summary-pad: 92px;
+        }
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-shuiming-result .top-fixed .summary,
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra).app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            padding: 12px 0 10px !important;
+        }
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-shuiming-result .summary > .summary-item {
+            padding-top: 8px !important;
+            padding-bottom: 10px !important;
+        }
+        html.app-android-redmi-k70:not(.app-android-redmi-k70-ultra) body.page-shuiming-result .summary > .summary-item:last-of-type {
+            padding-bottom: 8px !important;
         }
 
         html.platform-android body.page-shuiming-result .sm-activate-card:not([hidden]) {

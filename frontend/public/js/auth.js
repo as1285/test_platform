@@ -4001,14 +4001,26 @@
   function setStatusBarStyleMeta(style) {
     try {
       var want = String(style || 'default');
-      /*
-       * iOS 27 Liquid Glass 根治：WebClip / 主屏 standalone 一律 default（不透明状态栏）。
-       * black-translucent 会让网页铺到系统状态栏底下，iOS 26/27 的玻璃材质对垫在
-       * 底下的内容做磨砂采样 → 顶部“奶白毛玻璃”，CSS 无法根除（磨砂是系统那层加的）。
-       * default 下系统把状态栏单独占一条、网页从其下方开始，底下无内容可采样 → 干净实色栏。
-       * 代价：蓝顶页不再“蓝到刘海”，蓝头上方会有一条系统实色栏（已与产品确认接受）。
-       */
       if (isIosStandaloneApp()) {
+        /*
+         * iOS 26/27 Liquid Glass 根治：仅新系统强制 default（不透明状态栏）。
+         * black-translucent 让网页铺到系统状态栏底下，iOS 26/27 的玻璃材质对垫在
+         * 底下的内容做磨砂采样 → 顶部“奶白毛玻璃”，CSS 无法根除。default 下系统单独
+         * 占状态栏、网页从其下方开始，无内容可采样 → 干净实色栏。旧系统（≤18）无此问题，
+         * 保留原“蓝到刘海”沉浸式效果不动。
+         */
+        if (getIOSMajorVersion() >= 26) {
+          upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
+          return;
+        }
+        var blueTop = '';
+        try {
+          blueTop = getImmersiveBlueTopColor() || '';
+        } catch (eBlue) {}
+        if (blueTop && want !== 'default') {
+          upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+          return;
+        }
         upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
         return;
       }
@@ -4066,11 +4078,11 @@
         return;
       }
       /*
-       * iOS 27 根治方案：WebClip / 主屏 standalone 已统一走 default 不透明状态栏，
+       * iOS 26/27 根治方案：新系统 standalone 走 default 不透明状态栏，
        * 系统单独占了状态栏、网页从其下方开始，env(safe-area-inset-top)=0 即真实值。
-       * 此时绝不能再兜底垫 59px（否则标题下方多一条空白/蓝带）。
+       * 此时绝不能再兜底垫 59px（否则标题下方多一条空白/蓝带）。旧系统不走此分支。
        */
-      if (isIosStandaloneApp() && !isCordovaTaxAppShell()) {
+      if (isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 26) {
         document.documentElement.classList.remove('app-ios-status-outer');
         document.documentElement.classList.remove('app-top-safe-shell');
         /* 内联 !important：压过所有 max(59px) 顶垫规则 */

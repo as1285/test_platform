@@ -22,13 +22,16 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(boot).toContain('paintIos27LiquidGlassPlate()');
   });
 
-  it('standalone 一律 default 状态栏、顶距 0（禁用 black-translucent 磨砂采样）', () => {
+  it('仅 iOS>=26 切 default、顶距 0；旧系统保留 black-translucent 蓝到刘海', () => {
     expect(auth).toContain('function setStatusBarStyleMeta');
     expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'default')");
-    expect(auth).not.toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent')");
+    // 旧系统分支仍保留 black-translucent
+    expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent')");
+    // default / 顶距清零仅在 iOS>=26 生效
+    expect(auth).toContain('getIOSMajorVersion() >= 26');
     expect(auth).toContain("'--app-shell-statusbar-top', '0px', 'important'");
-    expect(shouye).toContain('content="default"');
-    expect(shouye).not.toContain('content="black-translucent"');
+    // 启动文档静态 meta 保持 black-translucent（旧系统直用；新系统由 nginx 按 UA 改写成 default）
+    expect(shouye).toContain('content="black-translucent"');
   });
 
   it('auth.js 描述文件 WebClip 全机走 unified-chrome，关掉灰 shield', () => {
