@@ -39,7 +39,7 @@ describe('Android 收入纳税明细顶栏滑动不消失', () => {
     );
     expect(shuimingResult).toContain('function applyShuimingListTop');
     expect(shuimingResult).toContain('function lockAndroidShuimingPageScroll');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-list-lock');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260918-acepro-top');
   });
 
   it('页面样式对 Android 再锁页面并绝对铺列表', () => {

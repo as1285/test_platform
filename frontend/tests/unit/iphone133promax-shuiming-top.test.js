@@ -27,7 +27,7 @@ describe('iPhone 133 ProMaxx 收入纳税明细顶栏', () => {
     expect(shuimingResult).toContain('padding:47px 16px 0');
     expect(shuimingResult).toContain('top:47px');
     expect(shuimingResult).toContain("classList.remove('app-ios-status-outer')");
-    expect(shuimingResult).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
     expect(auth).toContain('html.app-ios-iphone133promax.app-ios-status-outer body.page-shuiming-result .top-fixed .header');
     expect(auth).toContain('padding:47px 16px 0');
   });
@@ -36,6 +36,6 @@ describe('iPhone 133 ProMaxx 收入纳税明细顶栏', () => {
     expect(shuiming).toContain('data-iphone133pm-shuiming-firstpaint');
     expect(shuiming).toContain('app-ios-iphone133promax');
     expect(shuiming).toContain('padding-top:calc(14px + 47px)');
-    expect(shuiming).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuiming).toContain('auth.js?v=20260917-ios-no-black');
   });
 });

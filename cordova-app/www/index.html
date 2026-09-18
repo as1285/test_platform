@@ -517,15 +517,26 @@
                 if (!plate) {
                     return;
                 }
-                var styleDefault = d && (d.style === 'default' || d.style === 'dark');
-                /* iOS 26 可能无视 overlays:false，白顶页一律在父文档铺实底白，
-                 * 让系统毛玻璃采到白而不是 iframe 灰底 */
-                if (styleDefault) {
-                    plate.style.display = 'block';
-                    plate.style.background = '#ffffff';
+                var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+                if (!isIos) {
+                    plate.style.display = 'none';
                     return;
                 }
-                plate.style.display = 'none';
+                var styleDefault = d && (d.style === 'default' || d.style === 'dark');
+                var barColor = String((d && d.color) || '').trim();
+                /* iOS 外置栏会落成黑框：父文档按页色铺实底，盖住 WKWebView 默认黑底 */
+                if (styleDefault) {
+                    plate.style.background = '#ffffff';
+                } else if (
+                    barColor &&
+                    barColor !== '#00000000' &&
+                    barColor.toLowerCase() !== 'transparent'
+                ) {
+                    plate.style.background = barColor;
+                } else {
+                    plate.style.background = '#4f90f3';
+                }
+                plate.style.display = 'block';
             }
 
             document.addEventListener('deviceready', function () {
@@ -552,9 +563,9 @@
                     applyStatusBarFromH5(pendingStatusBar);
                     return;
                 }
-                /* 对齐 8/1：默认透明沉浸，由 H5 蓝顶页再染顶色；勿默认实底黑 */
+                /* iOS 默认沉浸实底白，避免 #00000000 落成顶部黑框；H5 再染页色 */
                 StatusBar.overlaysWebView(true);
-                StatusBar.backgroundColorByHexString('#00000000');
+                StatusBar.backgroundColorByHexString('#ffffff');
                 StatusBar.styleDefault();
             });
 
@@ -571,7 +582,12 @@
                 try {
                     var styleDefault =
                         d.style === 'default' || d.style === 'dark';
+                    var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
                     var wantOverlay = d.overlays !== false;
+                    /* iOS 外置栏会落成黑框，一律沉浸 overlays=true */
+                    if (isIos) {
+                        wantOverlay = true;
+                    }
                     if (wantOverlay) {
                         StatusBar.overlaysWebView(true);
                     } else {

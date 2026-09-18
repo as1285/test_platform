@@ -62,7 +62,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -183,18 +183,18 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuiming).toContain('auth.js?v=20260917-ios-no-black');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );
   });
 
-  it('壳内白页外置状态栏，不依赖 iframe 里的 StatusBar', () => {
+  it('Cordova 白页不走外置黑框，仅 WebClip env≈0 才 status-outer', () => {
     const fn = auth.slice(
       auth.indexOf('function applyIPhone16ProPageChrome()'),
       auth.indexOf('function applyImmersiveNotchWhitePageChrome()')
     );
-    expect(fn).toContain('var useOuterBar = hasNativeBar || isCordovaTaxAppShell() || webclipOwnsBar');
+    expect(fn).toContain('var useOuterBar = webclipOwnsBar && !isCordovaTaxAppShell()');
     expect(fn).toContain('isIosStandaloneApp()');
     expect(fn).toContain('measureSafeAreaInsetTop() < 20 && !liquidGlassWebclip');
     expect(fn).toContain("overlays: !useOuterBar");
@@ -202,13 +202,14 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     expect(auth).toContain('function isIosLiquidGlassWebClip');
     expect(auth).toContain('getIOSMajorVersion() >= 26');
     expect(auth).toContain(
-      'html.app-ios-status-outer.app-cordova-shell.app-ios-client.app-top-safe-shell'
+      'html.app-ios-status-outer.app-cordova-shell.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:59px !important;}'
     );
-    expect(auth).toContain('--app-shell-statusbar-top:0px !important;');
-    expect(shuimingResult).toContain("overlays: false");
-    expect(shuiming).toContain("overlays: false");
+    expect(shuimingResult).toContain("overlays: true");
+    expect(shuiming).toContain("overlays: true");
     expect(shuimingResult).toContain("classList.add('app-ios-status-outer')");
     expect(shuiming).toContain("classList.add('app-ios-status-outer')");
+    expect(shuimingResult).toContain('standalone && !inIframe');
+    expect(shuiming).toContain('standalone && !inIframe');
     expect(shuimingResult).toContain('navigator.standalone === true');
     expect(shuiming).toContain('navigator.standalone === true');
     expect(shuimingResult).toContain("matchMedia('(display-mode: standalone)')");

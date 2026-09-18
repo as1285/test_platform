@@ -233,8 +233,26 @@
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-oneplus-acepro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    document.documentElement.style.setProperty('--shuiming-chrome-top', '40px');
+                    if (!document.querySelector('style[data-oneplus-acepro-result-firstpaint]')) {
+                        var aceProSt = document.createElement('style');
+                        aceProSt.setAttribute('data-oneplus-acepro-result-firstpaint', '1');
+                        aceProSt.textContent =
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;--shuiming-chrome-top:40px !important;}' +
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;z-index:140 !important;display:flex !important;align-items:flex-end !important;justify-content:center !important;visibility:visible !important;opacity:1 !important;-webkit-transform:translateZ(0) !important;transform:translateZ(0) !important;}' +
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;visibility:visible !important;opacity:1 !important;}' +
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .header-title{position:relative !important;z-index:3 !important;display:block !important;visibility:visible !important;opacity:1 !important;color:#000 !important;-webkit-text-fill-color:#000 !important;line-height:var(--header-height,48px) !important;height:var(--header-height,48px) !important;}' +
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;z-index:125 !important;}' +
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}' +
+                            'html.app-android-oneplus-acepro body.page-shuiming-result .shuiming-chrome-shield{z-index:90 !important;-webkit-transform:none !important;transform:none !important;}';
+                        (document.head || document.documentElement).appendChild(aceProSt);
+                    }
                 }
                 if (/PHP110|(?:OnePlus|一加)\s*Ace\s*2\s*V/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-ace2v');
@@ -811,7 +829,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260918-list-lock"></script>
+    <script src="/js/auth-boot.js?v=20260918-acepro-top"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -927,7 +945,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-14pm-list" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-ios-no-black" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -3147,6 +3165,51 @@
             margin-top: calc(var(--header-height, 48px) + 40px) !important;
         }
 
+        /*
+         * 一加 Ace Pro（PGP110 / ColorOS 15）：
+         * 顶栏白底占位在，返回/标题/批量申诉被合成层或 flex+padding 裁掉。
+         * 标题钉在状态栏下 48px 行，垫层勿盖过顶栏。
+         */
+        html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-android-oneplus-acepro.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header {
+            overflow: visible !important;
+            z-index: 140 !important;
+            display: flex !important;
+            align-items: flex-end !important;
+            justify-content: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            -webkit-transform: translateZ(0) !important;
+            transform: translateZ(0) !important;
+        }
+        html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-android-oneplus-acepro.app-android-immersive-white-top body.page-shuiming-result .top-fixed .header .header-title {
+            position: relative !important;
+            z-index: 3 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #000 !important;
+            -webkit-text-fill-color: #000 !important;
+            line-height: var(--header-height, 48px) !important;
+            height: var(--header-height, 48px) !important;
+        }
+        html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        html.app-android-oneplus-acepro body.page-shuiming-result .shuiming-chrome-shield,
+        html.app-android-oneplus-acepro.app-top-safe-shell body.page-shuiming-result .shuiming-chrome-shield {
+            z-index: 90 !important;
+            -webkit-transform: none !important;
+            transform: none !important;
+        }
+
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: 0;
             height: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
@@ -4170,6 +4233,70 @@
                             root.style.setProperty('--app-shell-statusbar-top', inset + 'px');
                             root.style.setProperty('--safe-top', inset + 'px');
                             root.style.setProperty('--shuiming-chrome-top', inset + 'px');
+                        }
+                    }
+                    var isAcePro =
+                        rootEl.classList.contains('app-android-oneplus-acepro') ||
+                        /PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(uaBlob);
+                    if (isAcePro) {
+                        rootEl.classList.add('app-android-oneplus-acepro');
+                        rootEl.classList.add('app-android-immersive-white-top');
+                        var aceInset = 40;
+                        var aceBarH = 48;
+                        header.style.setProperty('top', '0', 'important');
+                        header.style.setProperty('padding-top', aceInset + 'px', 'important');
+                        header.style.setProperty('height', aceBarH + aceInset + 'px', 'important');
+                        header.style.setProperty('min-height', aceBarH + aceInset + 'px', 'important');
+                        header.style.setProperty('box-sizing', 'border-box', 'important');
+                        header.style.setProperty('background', '#fff', 'important');
+                        header.style.setProperty('overflow', 'visible', 'important');
+                        header.style.setProperty('z-index', '140', 'important');
+                        header.style.setProperty('display', 'flex', 'important');
+                        header.style.setProperty('align-items', 'flex-end', 'important');
+                        header.style.setProperty('visibility', 'visible', 'important');
+                        header.style.setProperty('opacity', '1', 'important');
+                        var aceTitle = header.querySelector('.header-title');
+                        if (aceTitle) {
+                            aceTitle.style.setProperty('display', 'block', 'important');
+                            aceTitle.style.setProperty('visibility', 'visible', 'important');
+                            aceTitle.style.setProperty('opacity', '1', 'important');
+                            aceTitle.style.setProperty('color', '#000', 'important');
+                            aceTitle.style.setProperty('-webkit-text-fill-color', '#000', 'important');
+                            aceTitle.style.setProperty('line-height', aceBarH + 'px', 'important');
+                            aceTitle.style.setProperty('height', aceBarH + 'px', 'important');
+                            aceTitle.style.setProperty('position', 'relative', 'important');
+                            aceTitle.style.setProperty('z-index', '3', 'important');
+                        }
+                        var aceBack = header.querySelector('.back-btn');
+                        var aceRight = header.querySelector('.header-right');
+                        if (aceBack) {
+                            aceBack.style.setProperty('top', aceInset + 'px', 'important');
+                            aceBack.style.setProperty('height', aceBarH + 'px', 'important');
+                            aceBack.style.setProperty('display', 'flex', 'important');
+                            aceBack.style.setProperty('visibility', 'visible', 'important');
+                            aceBack.style.setProperty('opacity', '1', 'important');
+                        }
+                        if (aceRight) {
+                            aceRight.style.setProperty('top', aceInset + 'px', 'important');
+                            aceRight.style.setProperty('height', aceBarH + 'px', 'important');
+                            aceRight.style.setProperty('display', 'flex', 'important');
+                            aceRight.style.setProperty('visibility', 'visible', 'important');
+                            aceRight.style.setProperty('opacity', '1', 'important');
+                        }
+                        rootEl.style.setProperty('--app-shell-statusbar-top', aceInset + 'px');
+                        rootEl.style.setProperty('--android-status-inset', aceInset + 'px');
+                        rootEl.style.setProperty('--safe-top', aceInset + 'px');
+                        rootEl.style.setProperty('--shuiming-chrome-top', aceInset + 'px');
+                        if (root) {
+                            root.style.setProperty('--app-shell-statusbar-top', aceInset + 'px');
+                            root.style.setProperty('--safe-top', aceInset + 'px');
+                            root.style.setProperty('--shuiming-chrome-top', aceInset + 'px');
+                        }
+                        var aceShield = document.getElementById('shuimingChromeShield');
+                        if (aceShield) {
+                            aceShield.style.setProperty('z-index', '90', 'important');
+                            aceShield.style.setProperty('transform', 'none', 'important');
+                            aceShield.style.setProperty('-webkit-transform', 'none', 'important');
                         }
                     }
                 } catch (eForce) {}
@@ -5408,7 +5535,7 @@
         initTopFixedHeightObserver();
         resetShuimingScrollTop();
         syncTopFixedHeight();
-        /* auth.js defer 注入晚于首屏；多拍几次确保 Note11 顶栏下移生效 */
+        /* auth.js defer 注入晚于首屏；多拍几次确保 Note11 / Ace Pro 顶栏钉住 */
         setTimeout(syncTopFixedHeight, 0);
         setTimeout(syncTopFixedHeight, 120);
         setTimeout(syncTopFixedHeight, 400);

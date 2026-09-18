@@ -860,6 +860,29 @@
       } else if (cur) {
         root.style.setProperty('--shuiming-chrome-top', cur);
       }
+      /*
+       * Ace Pro（PGP110）：ColorOS 15 首屏常把「收入纳税明细」裁掉，只剩白顶。
+       * 页内脚本也会钉，这里再补一次，避免旧 HTML 缓存只拉到新 boot。
+       */
+      var acepro =
+        root.classList.contains('app-android-oneplus-acepro') ||
+        /PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(ua);
+      if (acepro && page === 'shuiming_result.html') {
+        root.classList.add('app-android-oneplus-acepro');
+        if (!document.querySelector('style[data-oneplus-acepro-result-firstpaint]')) {
+          var aceProSt = document.createElement('style');
+          aceProSt.setAttribute('data-oneplus-acepro-result-firstpaint', '1');
+          aceProSt.textContent =
+            'html.app-android-oneplus-acepro body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;--shuiming-chrome-top:40px !important;}' +
+            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;z-index:140 !important;display:flex !important;align-items:flex-end !important;justify-content:center !important;visibility:visible !important;opacity:1 !important;-webkit-transform:translateZ(0) !important;transform:translateZ(0) !important;}' +
+            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;visibility:visible !important;opacity:1 !important;}' +
+            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .header .header-title{position:relative !important;z-index:3 !important;display:block !important;visibility:visible !important;opacity:1 !important;color:#000 !important;-webkit-text-fill-color:#000 !important;line-height:var(--header-height,48px) !important;height:var(--header-height,48px) !important;}' +
+            'html.app-android-oneplus-acepro body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;z-index:125 !important;}' +
+            'html.app-android-oneplus-acepro body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}' +
+            'html.app-android-oneplus-acepro body.page-shuiming-result .shuiming-chrome-shield{z-index:90 !important;-webkit-transform:none !important;transform:none !important;}';
+          (document.head || document.documentElement).appendChild(aceProSt);
+        }
+      }
     } catch (ePaint) {}
   }
 

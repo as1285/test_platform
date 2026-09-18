@@ -17,11 +17,11 @@ describe('iPhone 13 Pro Max 收入纳税明细白顶栏', () => {
     expect(chrome).toContain("style: 'default'");
     expect(chrome).not.toContain("color: '#00000000'");
     expect(chrome).toContain('setTimeout(reapplyDark, 800)');
-    expect(chrome).toContain('13PM');
+    expect(chrome).toContain('Cordova 不再走外置栏');
   });
 
   it('明细页缓存戳与 iOS 顶白底盾牌在位', () => {
-    expect(shuimingResult).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
     expect(shuimingResult).toContain('html.platform-ios:not(.app-ios-status-outer) body.page-shuiming-result::before');
     expect(shuimingResult).toContain('428');
   });

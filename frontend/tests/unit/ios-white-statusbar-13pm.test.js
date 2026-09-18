@@ -16,7 +16,7 @@ describe('iOS 白顶栏状态栏（13PM 黑条）', () => {
     expect(fn).toContain("color: '#ffffff'");
     expect(fn).toContain("shell_bg: '#ffffff'");
     expect(fn).toContain("style: 'default'");
-    expect(fn).toContain('hasNativeBar || isCordovaTaxAppShell()');
+    expect(fn).toContain('webclipOwnsBar && !isCordovaTaxAppShell()');
     expect(fn).toContain('setTimeout(reapplyDark, 0)');
     expect(fn).toContain('setTimeout(reapplyDark, 80)');
     expect(fn).toContain('setTimeout(reapplyDark, 320)');
@@ -29,7 +29,7 @@ describe('iOS 白顶栏状态栏（13PM 黑条）', () => {
     /* 与两天前一致：428×926 命中 15 Plus 档，吃贴边样式 */
     expect(shuimingResult).toMatch(/long16 >= 926[\s\S]*long16 <= 936/);
     expect(shuimingResult).toContain('app-ios-iphone15promax');
-    expect(shuimingResult).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
   });
 
   it('Cordova 壳收到 default + 透明色时强制铺白', () => {

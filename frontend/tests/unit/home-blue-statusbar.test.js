@@ -36,10 +36,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     );
   });
 
-  it('Cordova 默认状态栏恢复 8/1 透明沉浸', () => {
-    expect(cordova).toContain("backgroundColorByHexString('#00000000')");
+  it('Cordova 默认状态栏沉浸实底白，避免透明色落成黑框', () => {
+    expect(cordova).toContain("backgroundColorByHexString('#ffffff')");
     expect(cordova).toContain('StatusBar.styleDefault()');
-    expect(cordova).toContain('对齐 8/1：默认透明沉浸');
+    expect(cordova).toContain('iOS 默认沉浸实底白');
+    expect(cordova).toContain('iOS 外置栏会落成黑框');
   });
 
   it('小米 14 首页顶条跟搜索蓝，黑条仅白顶栏页', () => {
@@ -62,11 +63,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260917-14pm-list');
+    expect(shuimingResult).toContain('auth.js?v=20260917-ios-no-black');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260917-14pro-blue-top');
+    expect(shouye).toContain('auth.js?v=20260917-ios-no-black');
   });
 
   it('iPhone 14 Pro 首页刘海垫搜索蓝，不留 Cordova 顶黑框', () => {
@@ -91,5 +92,7 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(fn).toContain('iPhone 11 / 14 Pro Max');
     expect(fn).toContain('overlaysWebView(true)');
     expect(fn).toContain('styleLightContent');
+    expect(fn).toContain('iOS 外置栏会落成顶部黑框');
+    expect(fn).toContain('wantOverlay = true');
   });
 });

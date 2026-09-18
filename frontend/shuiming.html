@@ -62,8 +62,12 @@
                     document.documentElement.classList.add('app-android-immersive-white-top');
                 }
                 if (/PGP110|CPH2413|CPH2415|CPH2417|(?:OnePlus|一加)[\s_-]*Ace[\s_-]*Pro(?![\s_-]*2)/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-oneplus-acepro');
                     document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
                 }
                 if (/PHP110|(?:OnePlus|一加)\s*Ace\s*2\s*V/i.test(u)) {
                     document.documentElement.classList.add('app-android-oneplus-ace2v');
@@ -317,6 +321,12 @@
                 try {
                     standalone = standalone || window.matchMedia('(display-mode: standalone)').matches;
                 } catch (e1) {}
+                var inIframe = false;
+                try {
+                    inIframe = window.top !== window.self;
+                } catch (eFr) {
+                    inIframe = true;
+                }
                 var iosMajor = 0;
                 var mIos = ua.match(/OS (\d+)[_.]/i);
                 if (mIos) iosMajor = parseInt(mIos[1], 10);
@@ -346,8 +356,10 @@
                     root.classList.add('app-top-safe-shell');
                     root.classList.add('app-ios-liquid-glass');
                     root.style.setProperty('--app-shell-statusbar-top', '59px');
-                } else if (standalone || /Cordova|tax-app-shell/i.test(ua)) {
+                } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua)) {
                     root.classList.add('app-ios-status-outer');
+                } else {
+                    root.classList.remove('app-ios-status-outer');
                 }
                 if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
                     var st = document.createElement('style');
@@ -367,7 +379,7 @@
                         source: 'tax-h5',
                         type: 'status-bar',
                         style: 'default',
-                        overlays: false,
+                        overlays: true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -376,7 +388,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260917-14pm-list" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260917-ios-no-black" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
