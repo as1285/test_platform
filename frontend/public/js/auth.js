@@ -1461,12 +1461,16 @@
       root.classList.remove('app-ios-status-outer');
       if (getIOSMajorVersion() >= 27) {
         /*
-         * iOS 27+ 根治：default 不透明状态栏，系统已占状态栏，顶距清零、不加 app-top-safe-shell，
-         * 否则 max(59px) 顶垫会让标题下方多一条空白。内联 !important 压过后注入样式表。
+         * iOS 27+：default 不透明状态栏；不加 app-top-safe-shell（避免再叠 max(59px)）。
+         * 顶距 = max(59px, env(safe-area-inset-top)) + 52px 渐隐带，避开系统玻璃采样区。
          */
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
-        root.style.setProperty('--app-shell-statusbar-top', '72px', 'important');
+        root.style.setProperty(
+          '--app-shell-statusbar-top',
+          'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)',
+          'important'
+        );
       } else {
         /* iOS 26：保持原有 59px 顶垫行为，不改动 */
         root.classList.add('app-top-safe-shell');
@@ -4087,8 +4091,12 @@
       if (isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 27) {
         document.documentElement.classList.remove('app-ios-status-outer');
         document.documentElement.classList.remove('app-top-safe-shell');
-        /* 内联 !important：压过所有 max(59px) 顶垫规则 */
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '72px', 'important');
+        /* 内联 !important：压过所有 max(59px) 顶垫规则；含玻璃渐隐带 */
+        document.documentElement.style.setProperty(
+          '--app-shell-statusbar-top',
+          'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)',
+          'important'
+        );
         return;
       }
       /* 描述文件 WebClip：env≈0 表示系统已经占了状态栏。
@@ -5088,17 +5096,75 @@
       'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,html.app-ios-liquid-glass body.page-shuiming > .content,html.app-ios-unified-chrome body.page-shuiming > .content{padding-top:0 !important;}' +
       /* iOS 27 15PM：不要再铺 fixed ::before 白垫（会维持毛玻璃透明）；靠 sticky 实白顶栏 */
       'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:none !important;display:none !important;}' +
-      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{position:sticky !important;top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}'
+      'html.app-ios-liquid-glass.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-liquid-glass.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{position:sticky !important;top:0 !important;height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;min-height:calc(44px + var(--app-shell-statusbar-top,59px)) !important;padding:var(--app-shell-statusbar-top,59px) 16px 0 !important;background:#fff !important;background-color:#fff !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}' +
+      /* —— iOS 27 收尾覆盖：压过上文 liquid-glass sticky，强制 inflow + 渐隐带顶距 —— */
+      ios27InflowOverrideCss()
+    );
+  }
+
+  /** iOS 27 明细页：根文档不滚 + 顶栏相对定位 + 渐隐带顶距（后注入，压过 sticky 规则）。 */
+  function ios27InflowOverrideCss() {
+    var pad = 'var(--app-shell-statusbar-top,111px)';
+    return (
+      'html.app-ios27{--app-shell-statusbar-top:calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
+      'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .page-root{' +
+      'display:flex!important;flex-direction:column!important;height:100dvh!important;max-height:100dvh!important;min-height:0!important;' +
+      'overflow:hidden!important;isolation:auto!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed{' +
+      'position:relative!important;top:auto!important;left:auto!important;right:auto!important;flex:0 0 auto!important;' +
+      'height:auto!important;background:#fff!important;z-index:2!important;transform:none!important;-webkit-transform:none!important;' +
+      '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header{' +
+      'position:relative!important;top:auto!important;' +
+      'height:calc(44px + ' + pad + ')!important;min-height:calc(44px + ' + pad + ')!important;' +
+      'padding:' + pad + ' 16px 0!important;box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;' +
+      '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .back-btn,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .header .header-right{' +
+      'top:' + pad + '!important;height:44px!important;display:flex!important;align-items:center!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .top-fixed .summary{' +
+      'position:relative!important;top:auto!important;background:#f5f6fa!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming-result .list{' +
+      'position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;' +
+      'flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;' +
+      'margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
+      '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming>.header{' +
+      'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
+      'padding-top:calc(14px + ' + pad + ')!important;z-index:20!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}'
     );
   }
 
   function injectIos27StickyStyles() {
     try {
-      if (document.getElementById('ios27StickyChromeCss')) return;
-      var st = document.createElement('style');
-      st.id = 'ios27StickyChromeCss';
+      var st = document.getElementById('ios27StickyChromeCss');
+      if (!st) {
+        st = document.createElement('style');
+        st.id = 'ios27StickyChromeCss';
+        (document.head || document.documentElement).appendChild(st);
+      }
       st.textContent = ios27StickyChromeCss();
-      (document.head || document.documentElement).appendChild(st);
+      var ov = document.getElementById('ios27InflowOverrideCss');
+      if (!ov) {
+        ov = document.createElement('style');
+        ov.id = 'ios27InflowOverrideCss';
+        (document.head || document.documentElement).appendChild(ov);
+      }
+      /* 独立后置样式表：保证排在 sticky 之后，且可重复刷新 */
+      if (getIOSMajorVersion() >= 27) {
+        ov.textContent = ios27InflowOverrideCss();
+      } else {
+        ov.textContent = '';
+      }
     } catch (e) {}
   }
 

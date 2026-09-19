@@ -8,29 +8,34 @@ const cordova = readFileSync(resolve(__dirname, '../../../cordova-app/www/index.
 const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
 
+const IOS27_TOP_PAD = 'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)';
+
 describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻璃', () => {
-  it('auth-boot 顶距清零、不加 app-top-safe-shell、关掉 fixed 顶垫/shield', () => {
+  it('auth-boot 渐隐带顶距、不加 app-top-safe-shell、关掉 fixed 顶垫/shield', () => {
     expect(boot).toContain('function paintIos27LiquidGlassPlate');
     expect(boot).toContain('function ios27StatusPlateColor');
     expect(boot).toContain("classList.add('app-ios-liquid-glass')");
     expect(boot).toContain("classList.add('app-ios-unified-chrome')");
     expect(boot).toContain("classList.remove('app-top-safe-shell')");
     expect(boot).toContain(".shuiming-chrome-shield{display:none!important");
-    expect(boot).toContain("'--app-shell-statusbar-top', '72px', 'important'");
+    expect(boot).toContain(IOS27_TOP_PAD);
     expect(boot).toContain("page === 'shouye.html'");
     expect(boot).toContain("return '#ffffff'");
     expect(boot).toContain('paintIos27LiquidGlassPlate()');
   });
 
-  it('仅 iOS>=26 切 default、顶距 0；旧系统保留 black-translucent 蓝到刘海', () => {
+  it('仅 iOS>=27 切 default + 渐隐带顶距；旧系统保留 black-translucent 蓝到刘海', () => {
     expect(auth).toContain('function setStatusBarStyleMeta');
     expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'default')");
     // 旧系统分支仍保留 black-translucent
     expect(auth).toContain("upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent')");
-    // default / 顶距清零仅在 iOS>=27 生效；iOS 26 保持原样
+    // default / 渐隐带顶距仅在 iOS>=27 生效；iOS 26 保持原样
     expect(auth).toContain('getIOSMajorVersion() >= 27');
     expect(auth).toContain("classList.add('app-ios27')");
-    expect(auth).toContain("'--app-shell-statusbar-top', '72px', 'important'");
+    expect(auth).toContain(IOS27_TOP_PAD);
+    expect(auth).toContain('function ios27InflowOverrideCss');
+    expect(auth).toContain('ios27InflowOverrideCss()');
+    expect(auth).toContain("id = 'ios27InflowOverrideCss'");
     // iOS 27 明细页 inflow：根文档不滚、列表内部滚动，消除顶部滚动边缘毛玻璃
     expect(boot).toContain('var isIos27Plus = major >= 27');
     expect(boot).toContain("classList.add('app-ios27')");
@@ -59,9 +64,9 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   });
 
   it('主页面已刷新缓存戳', () => {
-    expect(shouye).toContain('auth-boot.js?v=20260918-ios27-pad72');
-    expect(shouye).toContain('auth.js?v=20260918-ios27-pad72');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260918-ios27-pad72');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-pad72');
+    expect(shouye).toContain('auth-boot.js?v=20260919-ios27-pad111');
+    expect(shouye).toContain('auth.js?v=20260919-ios27-pad111');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260919-ios27-pad111');
+    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-pad111');
   });
 });

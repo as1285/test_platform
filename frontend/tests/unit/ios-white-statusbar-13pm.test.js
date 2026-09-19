@@ -29,7 +29,7 @@ describe('iOS 白顶栏状态栏（13PM 黑条）', () => {
     /* 与两天前一致：428×926 命中 15 Plus 档，吃贴边样式 */
     expect(shuimingResult).toMatch(/long16 >= 926[\s\S]*long16 <= 936/);
     expect(shuimingResult).toContain('app-ios-iphone15promax');
-    expect(shuimingResult).toContain('auth.js?v=20260918-ios27-pad72');
+    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-pad111');
   });
 
   it('Cordova 壳收到 default + 透明色时强制铺白', () => {
