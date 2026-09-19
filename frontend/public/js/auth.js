@@ -1462,13 +1462,13 @@
       if (getIOSMajorVersion() >= 27) {
         /*
          * iOS 27+：default 不透明状态栏；不加 app-top-safe-shell（避免再叠 max(59px)）。
-         * 顶距 = max(59px, env(safe-area-inset-top)) + 52px 渐隐带，避开系统玻璃采样区。
+         * 顶距 = env(safe-area-inset-top) + 56px 渐隐带；firstpaint 不得再打回 59px。
          */
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
         root.style.setProperty(
           '--app-shell-statusbar-top',
-          'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)',
+          'calc(env(safe-area-inset-top, 0px) + 56px)',
           'important'
         );
       } else {
@@ -4094,7 +4094,7 @@
         /* 内联 !important：压过所有 max(59px) 顶垫规则；含玻璃渐隐带 */
         document.documentElement.style.setProperty(
           '--app-shell-statusbar-top',
-          'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)',
+          'calc(env(safe-area-inset-top, 0px) + 56px)',
           'important'
         );
         return;
@@ -5104,9 +5104,9 @@
 
   /** iOS 27 明细页：根文档不滚 + 顶栏相对定位 + 渐隐带顶距（后注入，压过 sticky 规则）。 */
   function ios27InflowOverrideCss() {
-    var pad = 'var(--app-shell-statusbar-top,111px)';
+    var pad = 'var(--app-shell-statusbar-top,56px)';
     return (
-      'html.app-ios27{--app-shell-statusbar-top:calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)!important;}' +
+      'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
       'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .page-root{' +
@@ -5139,8 +5139,17 @@
       '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
       'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header,' +
       'html.app-ios27.app-ios-unified-chrome body.page-shuiming>.header{' +
-      'position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
-      'padding-top:calc(14px + ' + pad + ')!important;z-index:20!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}'
+      'position:relative!important;top:auto!important;flex:0 0 auto!important;background:#fff!important;background-color:#fff!important;' +
+      'padding-top:calc(14px + ' + pad + ')!important;z-index:20!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+      'html.app-ios27.app-ios-liquid-glass,html.app-ios27.app-ios-liquid-glass body.page-shuiming,' +
+      'html.app-ios27.app-ios-unified-chrome body.page-shuiming{' +
+      'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming,html.app-ios27.app-ios-unified-chrome body.page-shuiming{' +
+      'display:flex!important;flex-direction:column!important;background:#fff!important;}' +
+      'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.content,html.app-ios27.app-ios-unified-chrome body.page-shuiming>.content{' +
+      'flex:1 1 auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
+      '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
+      'html.app-ios27 .picker-overlay{top:calc(' + pad + ' + 44px)!important;background:rgba(0,0,0,0.45)!important;}'
     );
   }
 

@@ -933,13 +933,12 @@
          * 2) 明细页 inflow：根文档锁死不滚、列表内部滚动，杜绝系统从滚动文档采样成雾。
          * 3) 系统玻璃状态栏向下绘渐隐带（约 50pt），网页无法关闭；再叠加 viewport-fit=cover
          *    下 default 栏时 env(safe-area-inset-top) 常为 0、内容仍可能压在栏下的 WebKit 问题。
-         *    顶距用 max(59px, env(safe-area-inset-top))+52px：至少留出刘海高 + 渐隐带，
-         *    让标题/返回落在实色区。72px 实测仍可能落在渐隐带内。iOS 26 不走此分支。
+         *    顶距用 env(safe-area-inset-top)+56px（玻璃渐隐带）；firstpaint 不得再打回 59px。iOS 26 不走此分支。
          */
         root.classList.add('app-ios27');
         root.classList.remove('app-top-safe-shell');
         /* 内联 !important：胜过任何后注入的样式表 !important（max(59px) 顶垫规则） */
-        root.style.setProperty('--app-shell-statusbar-top', 'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)', 'important');
+        root.style.setProperty('--app-shell-statusbar-top', 'calc(env(safe-area-inset-top, 0px) + 56px)', 'important');
       } else {
         /* iOS 26：保持原有行为（黑透明沉浸 + 59px 顶垫 + sticky 实白顶栏） */
         root.classList.add('app-top-safe-shell');
@@ -960,7 +959,7 @@
           'color:#000!important;-webkit-text-fill-color:#000!important;opacity:1!important;filter:none!important;}';
         if (isIos27Plus) {
           css +=
-            'html.app-ios27.app-top-safe-shell,html.app-ios27{--app-shell-statusbar-top:calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)!important;}' +
+            'html.app-ios27.app-top-safe-shell,html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
             /* 明细页 inflow：根文档不滚，列表内部滚动 —— 消除 iOS 27 顶部滚动边缘毛玻璃 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result,html.app-ios27.app-ios-liquid-glass:has(body.page-shuiming-result){' +
             'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;position:relative!important;}' +
@@ -974,21 +973,28 @@
             /* 顶栏文字下移：避开 iOS 27 系统玻璃渐隐带（盖在纯白上不可见，盖在文字上才糊）。 */
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header{' +
             'position:relative!important;top:auto!important;' +
-            'height:calc(44px + var(--app-shell-statusbar-top,111px))!important;min-height:calc(44px + var(--app-shell-statusbar-top,111px))!important;' +
-            'padding:var(--app-shell-statusbar-top,111px) 16px 0!important;' +
+            'height:calc(44px + var(--app-shell-statusbar-top,56px))!important;min-height:calc(44px + var(--app-shell-statusbar-top,56px))!important;' +
+            'padding:var(--app-shell-statusbar-top,56px) 16px 0!important;' +
             'box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;' +
             '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .back-btn,' +
-            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,111px)!important;height:44px!important;display:flex!important;align-items:center!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top,56px)!important;height:44px!important;display:flex!important;align-items:center!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .top-fixed .summary{position:relative!important;top:auto!important;background:#f5f6fa!important;}' +
             'html.app-ios27.app-ios-liquid-glass body.page-shuiming-result .list{' +
             'position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;' +
             'flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;' +
             'margin-top:0!important;padding-top:0!important;overflow-x:hidden!important;overflow-y:auto!important;' +
             '-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;background:#f5f6fa!important;}' +
-            /* 其它白顶页（如查询页）：头部实白即可，无需垫刘海高 */
-            'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header{position:sticky!important;top:0!important;background:#fff!important;background-color:#fff!important;' +
-            'padding-top:calc(14px + var(--app-shell-statusbar-top,111px))!important;z-index:20!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}';
+            /* 查询页：根文档不滚 + 内容区内滚；遮罩勿盖住顶栏采样区 */
+            'html.app-ios27.app-ios-liquid-glass,html.app-ios27.app-ios-liquid-glass body.page-shuiming{' +
+            'height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming{display:flex!important;flex-direction:column!important;background:#fff!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.header{position:relative!important;top:auto!important;flex:0 0 auto!important;' +
+            'padding-top:calc(14px + var(--app-shell-statusbar-top,56px))!important;background:#fff!important;background-color:#fff!important;' +
+            'z-index:20!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+            'html.app-ios27.app-ios-liquid-glass body.page-shuiming>.content{flex:1 1 auto!important;min-height:0!important;' +
+            'overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
+            'html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,56px) + 44px)!important;background:rgba(0,0,0,0.45)!important;}';
         } else {
           /* iOS 26 原样：59px 顶垫 + sticky 实白顶栏 */
           css +=

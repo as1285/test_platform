@@ -8,7 +8,7 @@ const cordova = readFileSync(resolve(__dirname, '../../../cordova-app/www/index.
 const shouye = readFileSync(resolve(__dirname, '../../shouye.html'), 'utf8');
 const shuimingResult = readFileSync(resolve(__dirname, '../../shuiming_result.html'), 'utf8');
 
-const IOS27_TOP_PAD = 'calc(max(59px, env(safe-area-inset-top, 0px)) + 52px)';
+const IOS27_TOP_PAD = 'calc(env(safe-area-inset-top, 0px) + 56px)';
 
 describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻璃', () => {
   it('auth-boot 渐隐带顶距、不加 app-top-safe-shell、关掉 fixed 顶垫/shield', () => {
@@ -64,9 +64,24 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   });
 
   it('主页面已刷新缓存戳', () => {
-    expect(shouye).toContain('auth-boot.js?v=20260919-ios27-pad111');
-    expect(shouye).toContain('auth.js?v=20260919-ios27-pad111');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260919-ios27-pad111');
-    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-pad111');
+    expect(shouye).toContain('auth-boot.js?v=20260919-ios27-noblur');
+    expect(shouye).toContain('auth.js?v=20260919-ios27-noblur');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260919-ios27-noblur');
+    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-noblur');
+  });
+
+  it('shuiming firstpaint 不再在 iOS27 上打回 59px，且年份遮罩避开顶栏', () => {
+    const shuiming = readFileSync(resolve(__dirname, '../../shuiming.html'), 'utf8');
+    expect(shuiming).toContain("classList.add('app-ios27')");
+    expect(shuiming).toContain('iosMajor >= 27');
+    expect(shuiming).toContain(IOS27_TOP_PAD);
+    expect(shuiming).toContain('overlays: iosMajor >= 27 ? false : true');
+    expect(shuiming).toContain('html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,56px) + 44px)');
+    // 旧无条件 59px 赋值不得再出现在 liquidGlass 分支（已被 iOS27 分支取代）
+    expect(shuiming).not.toMatch(
+      /if \(liquidGlass\) \{[^}]*setProperty\('--app-shell-statusbar-top', '59px'\)/s
+    );
+    expect(shuimingResult).toContain("classList.add('app-ios27')");
+    expect(shuimingResult).toContain('overlays: iosMajor >= 27 ? false : true');
   });
 });

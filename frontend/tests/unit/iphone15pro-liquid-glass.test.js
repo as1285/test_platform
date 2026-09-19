@@ -50,7 +50,7 @@ describe('iPhone 15 Pro（iPhone16,1）走 15 档实底顶栏', () => {
     );
     expect(auth).toContain('content:none !important;display:none !important');
     expect(auth).toContain('position:sticky !important;top:0 !important');
-    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-pad111');
-    expect(shouye).toContain('auth.js?v=20260919-ios27-pad111');
+    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-noblur');
+    expect(shouye).toContain('auth.js?v=20260919-ios27-noblur');
   });
 });

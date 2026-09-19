@@ -310,7 +310,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260919-ios27-pad111"></script>
+    <script src="/js/auth-boot.js?v=20260919-ios27-noblur"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -354,17 +354,34 @@
                     !/iPhone\s*15\s*Plus|iPhone\s*15\s*Pro\s*Max|iPhone15,5|iPhone16,2/i.test(ua);
                 if (is15LikeSm) {
                     root.classList.add('app-ios-iphone15');
-                    root.classList.add('app-top-safe-shell');
                     root.classList.add('app-ios-unified-chrome');
+                    /* iOS 27 不加 app-top-safe-shell，避免和渐隐带顶距打架 */
+                    if (iosMajor < 27) root.classList.add('app-top-safe-shell');
                 }
                 if (liquidGlass && is15Vp) {
                     root.classList.add('app-ios-unified-chrome');
                 }
                 if (liquidGlass) {
                     root.classList.remove('app-ios-status-outer');
-                    root.classList.add('app-top-safe-shell');
                     root.classList.add('app-ios-liquid-glass');
-                    root.style.setProperty('--app-shell-statusbar-top', '59px');
+                    root.classList.add('app-ios-unified-chrome');
+                    if (iosMajor >= 27) {
+                        /*
+                         * 必须在 firstpaint（auth-boot 之后）继续维持 iOS 27 状态：
+                         * 旧逻辑会无条件加回 app-top-safe-shell 并把顶距打成 59px，
+                         * 清掉 auth-boot 的 !important 渐隐带顶距，顶部玻璃糊层复现。
+                         */
+                        root.classList.add('app-ios27');
+                        root.classList.remove('app-top-safe-shell');
+                        root.style.setProperty(
+                            '--app-shell-statusbar-top',
+                            'calc(env(safe-area-inset-top, 0px) + 56px)',
+                            'important'
+                        );
+                    } else {
+                        root.classList.add('app-top-safe-shell');
+                        root.style.setProperty('--app-shell-statusbar-top', '59px');
+                    }
                 } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua)) {
                     root.classList.add('app-ios-status-outer');
                 } else {
@@ -373,14 +390,27 @@
                 if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
                     var st = document.createElement('style');
                     st.setAttribute('data-ios-white-status-firstpaint', '1');
-                    st.textContent =
+                    var fpCss =
                         'html.platform-ios,html.platform-ios body.page-shuiming{background:#fff !important;background-image:linear-gradient(#fff, #fff) !important;background-size:100% 200px !important;background-repeat:no-repeat !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header{background:#fff !important;}' +
-                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass body.page-shuiming > .header,html.app-ios-unified-chrome body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
+                        'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header,html.app-ios-liquid-glass:not(.app-ios27) body.page-shuiming > .header,html.app-ios-unified-chrome:not(.app-ios27) body.page-shuiming > .header{position:sticky !important;top:0 !important;z-index:20 !important;border-bottom:none !important;box-shadow:0 8px 0 0 #f4f6f9 !important;padding-top:calc(14px + var(--app-shell-statusbar-top,59px)) !important;background:#fff !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .content,html.app-ios-liquid-glass body.page-shuiming > .content,html.app-ios-unified-chrome body.page-shuiming > .content{padding-top:0 !important;}' +
                         'html.app-ios-iphone15.app-top-safe-shell body.page-shuiming > .header::after,html.app-ios-liquid-glass body.page-shuiming > .header::after{content:none !important;display:none !important;}' +
                         'html.app-ios-unified-chrome #iosStickyTint.ios-sticky-tint,html.app-ios-iphone15 #iosStickyTint.ios-sticky-tint{display:none !important;height:0 !important;margin:0 !important;}' +
                         '#iosStickyTint.ios-sticky-tint{position:sticky;top:0;height:calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px);margin:0 0 calc(-1 * (var(--app-shell-statusbar-top, env(safe-area-inset-top, 59px)) + 56px));background:#fff;z-index:110;}';
+                    if (iosMajor >= 27) {
+                        fpCss +=
+                            'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
+                            'html.app-ios27,html.app-ios27 body.page-shuiming{height:100%!important;max-height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;background:#fff!important;}' +
+                            'html.app-ios27 body.page-shuiming{display:flex!important;flex-direction:column!important;}' +
+                            'html.app-ios27 body.page-shuiming > .header{position:relative!important;top:auto!important;flex:0 0 auto!important;z-index:20!important;' +
+                            'padding-top:calc(14px + var(--app-shell-statusbar-top,56px))!important;background:#fff!important;box-shadow:none!important;' +
+                            '-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}' +
+                            'html.app-ios27 body.page-shuiming > .content{flex:1 1 auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain!important;}' +
+                            /* 年份遮罩勿用全屏半透明黑：会被 iOS 27 玻璃采成顶部发黑糊带 */
+                            'html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,56px) + 44px)!important;background:rgba(0,0,0,0.45)!important;}';
+                    }
+                    st.textContent = fpCss;
                     (document.head || root).appendChild(st);
                 }
                 try {
@@ -388,7 +418,7 @@
                         source: 'tax-h5',
                         type: 'status-bar',
                         style: 'default',
-                        overlays: true,
+                        overlays: iosMajor >= 27 ? false : true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -397,7 +427,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260919-ios27-pad111" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260919-ios27-noblur" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
