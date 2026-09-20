@@ -34,9 +34,19 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
     expect(auth).toContain('!isIPhone14ProMaxAug15TopExempt()');
   });
 
-  it('15PM 机型打标时同样强制 Aug15 顶栏', () => {
+  it('白顶页 applyIPhone16ProPageChrome 对 Aug15 机型保持 black-translucent，不打 default/sticky tint', () => {
+    expect(auth).toContain('function applyIPhone16ProPageChrome');
     expect(auth).toMatch(
-      /if \(iosIPhone15ProMax && !iosIPhone14ProMax\) \{[\s\S]*?applyIPhone14ProMaxAug15TopChrome\(\)/
+      /function applyIPhone16ProPageChrome\(\)\s*\{[\s\S]*?isIPhone14ProMaxAug15TopExempt\(\)[\s\S]*?style: 'black-translucent'/
+    );
+    expect(auth).toMatch(
+      /function applyIPhone16ProPageChrome\(\)\s*\{[\s\S]*?isIPhone14ProMaxAug15TopExempt\(\)[\s\S]*?hideIosStickyTintBar\(\)/
+    );
+    expect(auth).toMatch(
+      /function setStatusBarStyleMeta\([\s\S]*?isIPhone14ProMaxAug15TopExempt\(\)[\s\S]*?black-translucent/
+    );
+    expect(auth).toMatch(
+      /function ensureIosStickyTintBar\(\)\s*\{[\s\S]*?isIPhone14ProMaxAug15TopExempt\(\)[\s\S]*?hideIosStickyTintBar\(\)/
     );
   });
 
@@ -85,9 +95,18 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
   });
 
   it('主页面缓存戳已刷新', () => {
-    expect(shuiming).toContain('auth-boot.js?v=20260920-15pm-aug15');
-    expect(shuiming).toContain('auth.js?v=20260920-15pm-aug15');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-aug15');
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-aug15');
+    expect(shuiming).toContain('auth-boot.js?v=20260920-15pm-xq-fix');
+    expect(shuiming).toContain('auth.js?v=20260920-15pm-xq-fix');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-xq-fix');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-xq-fix');
+  });
+
+  it('xiangqing 首屏即打 Aug15 顶栏，避免白顶页 default 双顶距', () => {
+    const xiangqing = readFileSync(resolve(__dirname, '../../xiangqing.html'), 'utf8');
+    expect(xiangqing).toContain('14/15 Pro Max Aug15：首屏即 59px');
+    expect(xiangqing).toContain("setProperty('--app-shell-statusbar-top', '59px', 'important')");
+    expect(xiangqing).toContain("classList.add('app-ios-iphone15promax')");
+    expect(xiangqing).toContain('auth-boot.js?v=20260920-15pm-xq-fix');
+    expect(xiangqing).toContain('auth.js?v=20260920-15pm-xq-fix');
   });
 });
