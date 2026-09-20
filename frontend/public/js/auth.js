@@ -1442,18 +1442,77 @@
     return m ? parseInt(m[1], 10) : 0;
   }
 
+  /**
+   * iPhone 14 Pro Max 顶栏例外：回退到约 8/15 的 black-translucent + 59px 顶垫，
+   * 不进入 iOS 27 liquid-glass / app-ios27 / inflow（海隆微分支）路径。仅本机型。
+   */
+  function isIPhone14ProMaxAug15TopExempt() {
+    try {
+      if (
+        document.documentElement &&
+        document.documentElement.classList.contains('app-ios-iphone14promax')
+      ) {
+        return true;
+      }
+    } catch (eCls) {}
+    try {
+      return typeof isIPhone14ProMaxClient === 'function' && isIPhone14ProMaxClient();
+    } catch (eFn) {
+      return false;
+    }
+  }
+
+  /** 强制 14PM 走 Aug15 顶栏：清掉 liquid-glass/ios27，垫 59px，meta 用 black-translucent。 */
+  function applyIPhone14ProMaxAug15TopChrome() {
+    try {
+      var root = document.documentElement;
+      root.classList.add('app-ios-client');
+      root.classList.add('app-ios-iphone14promax');
+      root.classList.add('app-top-safe-shell');
+      root.classList.remove('app-ios27');
+      root.classList.remove('app-ios-liquid-glass');
+      root.classList.remove('app-ios-unified-chrome');
+      root.classList.remove('app-ios-status-outer');
+      root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+      try {
+        upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+      } catch (eMeta) {
+        try {
+          var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          if (meta) {
+            meta.setAttribute('content', 'black-translucent');
+          }
+        } catch (eMeta2) {}
+      }
+      try {
+        var plateCss = document.getElementById('ios27StatusPlateCss');
+        if (plateCss && plateCss.parentNode) plateCss.parentNode.removeChild(plateCss);
+        var stickyCss = document.getElementById('ios27StickyChromeCss');
+        if (stickyCss && stickyCss.parentNode) stickyCss.parentNode.removeChild(stickyCss);
+        var inflowCss = document.getElementById('ios27InflowOverrideCss');
+        if (inflowCss && inflowCss.parentNode) inflowCss.parentNode.removeChild(inflowCss);
+      } catch (eCss) {}
+    } catch (eApply) {}
+  }
+
   /** iOS 26/27 描述文件 WebClip：系统栏仍叠在页上，不能当外置状态栏清零。 */
   function isIosLiquidGlassWebClip() {
+    if (isIPhone14ProMaxAug15TopExempt()) return false;
     return isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 26;
   }
 
-  /** iOS 26/27 全机（Cordova / WebClip / Safari）：Liquid Glass 与机型无关。 */
+  /** iOS 26/27 全机（Cordova / WebClip / Safari）：Liquid Glass 与机型无关（14PM 例外除外）。 */
   function isIosLiquidGlassOS() {
+    if (isIPhone14ProMaxAug15TopExempt()) return false;
     return isLikelyIOSViewportClient() && getIOSMajorVersion() >= 26;
   }
 
   function syncIos27StatusPlate(color) {
     try {
+      if (isIPhone14ProMaxAug15TopExempt()) {
+        applyIPhone14ProMaxAug15TopChrome();
+        return;
+      }
       if (!isIosLiquidGlassOS()) return;
       var root = document.documentElement;
       root.classList.add('app-ios-liquid-glass');
@@ -4127,7 +4186,8 @@
          * 占状态栏、网页从其下方开始，无内容可采样 → 干净实色栏。旧系统（≤18）无此问题，
          * 保留原“蓝到刘海”沉浸式效果不动。
          */
-        if (getIOSMajorVersion() >= 27) {
+        /* 14 Pro Max：保留 Aug15 black-translucent，不强制 iOS27 default */
+        if (getIOSMajorVersion() >= 27 && !isIPhone14ProMaxAug15TopExempt()) {
           upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
           return;
         }
@@ -4200,7 +4260,12 @@
        * 系统单独占了状态栏、网页从其下方开始，env(safe-area-inset-top)=0 即真实值。
        * 此时绝不能再兜底垫 59px（否则标题下方多一条空白/蓝带）。旧系统不走此分支。
        */
-      if (isIosStandaloneApp() && !isCordovaTaxAppShell() && getIOSMajorVersion() >= 27) {
+      if (
+        isIosStandaloneApp() &&
+        !isCordovaTaxAppShell() &&
+        getIOSMajorVersion() >= 27 &&
+        !isIPhone14ProMaxAug15TopExempt()
+      ) {
         document.documentElement.classList.remove('app-ios-status-outer');
         document.documentElement.classList.remove('app-top-safe-shell');
         /* 内联 !important：压过所有 max(59px) 顶垫规则；含玻璃渐隐带 */
@@ -4209,6 +4274,11 @@
           'calc(env(safe-area-inset-top, 0px) + 56px)',
           'important'
         );
+        return;
+      }
+      /* 14 Pro Max Aug15 例外：强制 59px 顶垫，跳过 iOS27 渐隐带 */
+      if (isIPhone14ProMaxAug15TopExempt()) {
+        applyIPhone14ProMaxAug15TopChrome();
         return;
       }
       /* 描述文件 WebClip：env≈0 表示系统已经占了状态栏。
@@ -5280,8 +5350,8 @@
         ov.id = 'ios27InflowOverrideCss';
         (document.head || document.documentElement).appendChild(ov);
       }
-      /* 独立后置样式表：保证排在 sticky 之后，且可重复刷新 */
-      if (getIOSMajorVersion() >= 27) {
+      /* 独立后置样式表：保证排在 sticky 之后，且可重复刷新；14PM 不进 inflow */
+      if (getIOSMajorVersion() >= 27 && !isIPhone14ProMaxAug15TopExempt()) {
         ov.textContent = ios27InflowOverrideCss();
       } else {
         ov.textContent = '';
@@ -6835,6 +6905,8 @@
       }
       if (iosIPhone14ProMax) {
         document.documentElement.classList.add('app-ios-iphone14promax');
+        /* 14PM 顶栏例外：清掉 liquid-glass/ios27，强制 Aug15 black-translucent + 59px */
+        applyIPhone14ProMaxAug15TopChrome();
         /* 首页 theme 必须跟搜索蓝，避免 html #f6f7fb 把刘海区刷成白顶 */
         if (!immersiveBlueTop) {
           upsertMeta('theme-color', APP_SHOUYE_BAR_BLUE);

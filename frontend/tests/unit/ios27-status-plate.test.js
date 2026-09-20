@@ -64,10 +64,10 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   });
 
   it('主页面已刷新缓存戳', () => {
-    expect(shouye).toContain('auth-boot.js?v=20260920-mi13u-revert');
-    expect(shouye).toContain('auth.js?v=20260920-mi13u-revert');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260920-mi13u-revert');
-    expect(shuimingResult).toContain('auth.js?v=20260920-mi13u-revert');
+    expect(shouye).toContain('auth-boot.js?v=20260920-14pm-aug15');
+    expect(shouye).toContain('auth.js?v=20260920-14pm-aug15');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260920-14pm-aug15');
+    expect(shuimingResult).toContain('auth.js?v=20260920-14pm-aug15');
   });
 
   it('shuiming firstpaint 不再在 iOS27 上打回 59px，且年份遮罩避开顶栏', () => {
@@ -75,13 +75,13 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
     expect(shuiming).toContain("classList.add('app-ios27')");
     expect(shuiming).toContain('iosMajor >= 27');
     expect(shuiming).toContain(IOS27_TOP_PAD);
-    expect(shuiming).toContain('overlays: iosMajor >= 27 ? false : true');
+    expect(shuiming).toContain('overlays: is14pmExempt ? true : iosMajor >= 27 ? false : true');
     expect(shuiming).toContain('html.app-ios27 .picker-overlay{top:calc(var(--app-shell-statusbar-top,56px) + 44px)');
     // 旧无条件 59px 赋值不得再出现在 liquidGlass 分支（已被 iOS27 分支取代）
     expect(shuiming).not.toMatch(
       /if \(liquidGlass\) \{[^}]*setProperty\('--app-shell-statusbar-top', '59px'\)/s
     );
     expect(shuimingResult).toContain("classList.add('app-ios27')");
-    expect(shuimingResult).toContain('overlays: iosMajor >= 27 ? false : true');
+    expect(shuimingResult).toContain('overlays: is14pmExempt ? true : iosMajor >= 27 ? false : true');
   });
 });

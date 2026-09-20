@@ -899,8 +899,96 @@
   }
 
   /**
+   * iPhone 14 Pro Max（430×932 / iPhone15,3）：顶栏回退到约 8/15 的
+   * black-translucent + 59px，不进入 liquid-glass / app-ios27 / inflow。
+   */
+  function isIPhone14ProMaxAug15TopExemptBoot() {
+    try {
+      var root = document.documentElement;
+      if (root.classList.contains('app-ios-iphone14promax')) return true;
+      var ua = String(navigator.userAgent || '');
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+      } catch (eStoredUa) {}
+      if (/iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua)) return true;
+      if (
+        /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua) ||
+        /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(ua)
+      ) {
+        return false;
+      }
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        sw = window.innerWidth ? Number(window.innerWidth) : 0;
+        sh = window.innerHeight ? Number(window.innerHeight) : 0;
+      }
+      if (!sw || !sh) return false;
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      var dpr = window.devicePixelRatio ? Number(window.devicePixelRatio) : 1;
+      if (dpr >= 2 && shortSide >= 700) {
+        shortSide = Math.round(shortSide / dpr);
+        longSide = Math.round(longSide / dpr);
+      }
+      if (shortSide >= 428 && shortSide <= 432 && longSide >= 928 && longSide <= 936) {
+        return true;
+      }
+      if (shortSide >= 426 && shortSide <= 430 && longSide >= 922 && longSide <= 930) {
+        var safeTop = 0;
+        try {
+          var probe = document.createElement('div');
+          probe.style.cssText =
+            'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+          (document.body || root).appendChild(probe);
+          safeTop = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
+          if (probe.parentNode) probe.parentNode.removeChild(probe);
+        } catch (eSafe) {}
+        return safeTop >= 54;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function applyIPhone14ProMaxAug15TopChromeBoot() {
+    try {
+      var root = document.documentElement;
+      root.classList.add('app-ios-client');
+      root.classList.add('app-ios-iphone14promax');
+      root.classList.add('app-ios-iphone-promax-font');
+      root.classList.add('app-top-safe-shell');
+      root.classList.remove('app-ios27');
+      root.classList.remove('app-ios-liquid-glass');
+      root.classList.remove('app-ios-unified-chrome');
+      root.classList.remove('app-ios-status-outer');
+      root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+      try {
+        var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        if (meta) {
+          meta.setAttribute('content', 'black-translucent');
+        } else {
+          meta = document.createElement('meta');
+          meta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+          meta.setAttribute('content', 'black-translucent');
+          (document.head || root).appendChild(meta);
+        }
+      } catch (eMeta) {}
+      try {
+        var plateCss = document.getElementById('ios27StatusPlateCss');
+        if (plateCss && plateCss.parentNode) plateCss.parentNode.removeChild(plateCss);
+      } catch (eCss) {}
+    } catch (eApply) {}
+  }
+
+  /**
    * iOS 26/27 描述文件 WebClip（standalone）：theme-color 已失效，系统采 sticky/fixed 顶边背景。
    * 正确做法：关掉 fixed 灰 shield / 顶垫；顶栏 sticky + 实白，让状态栏采成不透明白。
+   * 14 Pro Max 例外：不进 liquid-glass，走 Aug15 black-translucent + 59px。
    */
   function paintIos27LiquidGlassPlate() {
     try {
@@ -911,6 +999,10 @@
           navigator.platform === 'MacIntel' &&
           navigator.maxTouchPoints > 1);
       if (!ios) return;
+      if (isIPhone14ProMaxAug15TopExemptBoot()) {
+        applyIPhone14ProMaxAug15TopChromeBoot();
+        return;
+      }
       var m = ua.match(/OS (\d+)[_.]/i);
       var major = m ? parseInt(m[1], 10) : 0;
       if (major < 26) return;

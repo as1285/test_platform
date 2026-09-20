@@ -59,7 +59,7 @@ describe('iPhone 14 Pro Max 悬浮胶囊底栏', () => {
       expect(html, name).toContain('iPhone15,3');
       expect(html, name).toMatch(/auth\.js\?v=/);
     });
-    expect(pages.shouye).toContain('auth.js?v=20260920-mi13u-revert');
+    expect(pages.shouye).toContain('auth.js?v=20260920-14pm-aug15');
     expect(pages.shouye).toContain('nav.css?v=20260910-ios-14pm-fb1');
   });
 
