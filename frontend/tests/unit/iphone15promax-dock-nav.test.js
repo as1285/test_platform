@@ -40,7 +40,7 @@ describe('iPhone 15 Pro Max docked bottom nav', () => {
   it('first-paints the docked tab pages so the capsule does not flash', () => {
     Object.entries(pages).forEach(([name, html]) => {
       expect(html, name).toContain('app-ios-iphone15promax');
-      expect(html, name).toMatch(/auth\.js\?v=2026091/);
+      expect(html, name).toMatch(/auth\.js\?v=202609/);
       expect(UA_RE.test(html), name).toBe(true);
     });
   });

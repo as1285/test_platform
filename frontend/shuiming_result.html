@@ -860,7 +860,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-14pm-aug15"></script>
+    <script src="/js/auth-boot.js?v=20260920-15pm-aug15"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -889,10 +889,14 @@
                 var iosMajor = 0;
                 var mIos = ua.match(/OS (\d+)[_.]/i);
                 if (mIos) iosMajor = parseInt(mIos[1], 10);
-                /* 14 Pro Max：不进 liquid-glass / app-ios27 / inflow，保持 Aug15 59px */
+                /* 14/15 Pro Max：不进 liquid-glass / app-ios27 / inflow，保持 Aug15 59px */
+                var is15pmUa = /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua);
+                var is14pmUa = /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
                 var is14pmExempt =
                     root.classList.contains('app-ios-iphone14promax') ||
-                    /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
+                    root.classList.contains('app-ios-iphone15promax') ||
+                    is14pmUa ||
+                    is15pmUa;
                 var liquidGlass = iosMajor >= 26 && !is14pmExempt;
                 var shortSide = 0;
                 var longSide = 0;
@@ -908,13 +912,18 @@
                     shortSide <= 432 &&
                     longSide >= 928 &&
                     longSide <= 936 &&
-                    !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua)
+                    !/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(ua)
                 ) {
                     is14pmExempt = true;
                     liquidGlass = false;
                 }
                 if (is14pmExempt) {
-                    root.classList.add('app-ios-iphone14promax');
+                    if (is15pmUa || root.classList.contains('app-ios-iphone15promax')) {
+                        root.classList.add('app-ios-iphone15promax');
+                        root.classList.remove('app-ios-iphone14promax');
+                    } else {
+                        root.classList.add('app-ios-iphone14promax');
+                    }
                     root.classList.add('app-top-safe-shell');
                     root.classList.remove('app-ios27');
                     root.classList.remove('app-ios-liquid-glass');
@@ -1028,7 +1037,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-14pm-aug15" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260920-15pm-aug15" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>

@@ -899,13 +899,18 @@
   }
 
   /**
-   * iPhone 14 Pro Max（430×932 / iPhone15,3）：顶栏回退到约 8/15 的
+   * iPhone 14/15 Pro Max（430×932 / iPhone15,3 / iPhone16,2）：顶栏回退到约 8/15 的
    * black-translucent + 59px，不进入 liquid-glass / app-ios27 / inflow。
    */
   function isIPhone14ProMaxAug15TopExemptBoot() {
     try {
       var root = document.documentElement;
-      if (root.classList.contains('app-ios-iphone14promax')) return true;
+      if (
+        root.classList.contains('app-ios-iphone14promax') ||
+        root.classList.contains('app-ios-iphone15promax')
+      ) {
+        return true;
+      }
       var ua = String(navigator.userAgent || '');
       try {
         ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
@@ -914,10 +919,10 @@
         ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
       } catch (eStoredUa) {}
       if (/iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua)) return true;
-      if (
-        /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua) ||
-        /iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(ua)
-      ) {
+      if (/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua)) {
+        return true;
+      }
+      if (/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b|iPhone\s*17\s*Pro\s*Max|iPhone18,2\b/i.test(ua)) {
         return false;
       }
       var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
@@ -955,11 +960,34 @@
     }
   }
 
+  function isAug15TopExemptFifteenPromaxBoot() {
+    try {
+      var root = document.documentElement;
+      if (root.classList.contains('app-ios-iphone15promax')) return true;
+      var ua = String(navigator.userAgent || '');
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
+      } catch (eModel) {}
+      try {
+        ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || '');
+      } catch (eStoredUa) {}
+      return /iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua);
+    } catch (e) {
+      return false;
+    }
+  }
+
   function applyIPhone14ProMaxAug15TopChromeBoot() {
     try {
       var root = document.documentElement;
+      var is15 = isAug15TopExemptFifteenPromaxBoot();
       root.classList.add('app-ios-client');
-      root.classList.add('app-ios-iphone14promax');
+      if (is15) {
+        root.classList.add('app-ios-iphone15promax');
+        root.classList.remove('app-ios-iphone14promax');
+      } else {
+        root.classList.add('app-ios-iphone14promax');
+      }
       root.classList.add('app-ios-iphone-promax-font');
       root.classList.add('app-top-safe-shell');
       root.classList.remove('app-ios27');
@@ -988,7 +1016,7 @@
   /**
    * iOS 26/27 描述文件 WebClip（standalone）：theme-color 已失效，系统采 sticky/fixed 顶边背景。
    * 正确做法：关掉 fixed 灰 shield / 顶垫；顶栏 sticky + 实白，让状态栏采成不透明白。
-   * 14 Pro Max 例外：不进 liquid-glass，走 Aug15 black-translucent + 59px。
+   * 14/15 Pro Max 例外：不进 liquid-glass，走 Aug15 black-translucent + 59px。
    */
   function paintIos27LiquidGlassPlate() {
     try {

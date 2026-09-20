@@ -64,10 +64,10 @@ describe('iOS 27 描述文件 WebClip：default 不透明状态栏根治毛玻�
   });
 
   it('主页面已刷新缓存戳', () => {
-    expect(shouye).toContain('auth-boot.js?v=20260920-14pm-aug15');
-    expect(shouye).toContain('auth.js?v=20260920-14pm-aug15');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260920-14pm-aug15');
-    expect(shuimingResult).toContain('auth.js?v=20260920-14pm-aug15');
+    expect(shouye).toContain('auth-boot.js?v=20260920-15pm-aug15');
+    expect(shouye).toContain('auth.js?v=20260920-15pm-aug15');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-aug15');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-aug15');
   });
 
   it('shuiming firstpaint 不再在 iOS27 上打回 59px，且年份遮罩避开顶栏', () => {
