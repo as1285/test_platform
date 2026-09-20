@@ -1443,31 +1443,61 @@
   }
 
   /**
-   * iPhone 14 Pro Max 顶栏例外：回退到约 8/15 的 black-translucent + 59px 顶垫，
-   * 不进入 iOS 27 liquid-glass / app-ios27 / inflow（海隆微分支）路径。仅本机型。
+   * iPhone 14/15 Pro Max 顶栏例外：回退到约 8/15 的 black-translucent + 59px 顶垫，
+   * 不进入 iOS 27 liquid-glass / app-ios27 / inflow（海隆微分支）路径。
+   * 函数名保留 14PM 以便既有调用点兼容；判定已覆盖 15 Plus / 15 Pro Max。
    */
   function isIPhone14ProMaxAug15TopExempt() {
     try {
+      if (document.documentElement) {
+        var cls = document.documentElement.classList;
+        if (cls.contains('app-ios-iphone14promax') || cls.contains('app-ios-iphone15promax')) {
+          return true;
+        }
+      }
+    } catch (eCls) {}
+    try {
+      if (typeof isIPhone14ProMaxClient === 'function' && isIPhone14ProMaxClient()) {
+        return true;
+      }
+    } catch (e14) {}
+    try {
+      if (typeof isIPhone15PlusProMaxLikeClient === 'function' && isIPhone15PlusProMaxLikeClient()) {
+        return true;
+      }
+    } catch (e15) {}
+    return false;
+  }
+
+  /** 是否应按 15PM class 打标（勿误打成 14promax，以免 dock/字体规则串机型）。 */
+  function isAug15TopExemptFifteenPromax() {
+    try {
       if (
         document.documentElement &&
-        document.documentElement.classList.contains('app-ios-iphone14promax')
+        document.documentElement.classList.contains('app-ios-iphone15promax')
       ) {
         return true;
       }
     } catch (eCls) {}
     try {
-      return typeof isIPhone14ProMaxClient === 'function' && isIPhone14ProMaxClient();
+      return typeof isIPhone15PlusProMaxLikeClient === 'function' && isIPhone15PlusProMaxLikeClient();
     } catch (eFn) {
       return false;
     }
   }
 
-  /** 强制 14PM 走 Aug15 顶栏：清掉 liquid-glass/ios27，垫 59px，meta 用 black-translucent。 */
+  /** 强制 14/15PM 走 Aug15 顶栏：清掉 liquid-glass/ios27，垫 59px，meta 用 black-translucent。 */
   function applyIPhone14ProMaxAug15TopChrome() {
     try {
       var root = document.documentElement;
+      var is15 = isAug15TopExemptFifteenPromax();
       root.classList.add('app-ios-client');
-      root.classList.add('app-ios-iphone14promax');
+      if (is15) {
+        root.classList.add('app-ios-iphone15promax');
+        root.classList.remove('app-ios-iphone14promax');
+      } else {
+        root.classList.add('app-ios-iphone14promax');
+      }
       root.classList.add('app-top-safe-shell');
       root.classList.remove('app-ios27');
       root.classList.remove('app-ios-liquid-glass');
@@ -6955,6 +6985,8 @@
       }
       if (iosIPhone15ProMax && !iosIPhone14ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
+        /* 15PM 顶栏例外：同 14PM，清掉 liquid-glass/ios27，强制 Aug15 black-translucent + 59px */
+        applyIPhone14ProMaxAug15TopChrome();
         /* 15 Pro Max 首页：状态栏须与搜索顶栏同蓝，避免白条接缝 */
         upsertMeta('theme-color', '#2c80f4');
         upsertMeta('msapplication-navbutton-color', '#2c80f4');
