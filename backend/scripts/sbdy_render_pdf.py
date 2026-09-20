@@ -489,6 +489,8 @@ def collect_text_blob(p, months, auth_code):
         '浙江省社会保险参保证明（个人专用）',
         '共%d页，第1页' % page_n,
         '出具证明前%d个月缴费情况' % resolve_window_months(p),
+        # 续页标题「…（续）」依赖此字；漏进子集时第 2 页会显示方框/乱码
+        '（续）',
         '参加社会保险基本情况',
         '养老保险工伤保险失业保险',
         BOLD_LABEL_CHARS,
@@ -877,6 +879,8 @@ def collect_linian_blob(p, year_rows, auth_code):
         '共1页，第1页',
         '姓名社会保障号参保状态性别证件类型证件号码累计缴费',
         '历年缴费清单参保地年度缴费起止时间月缴费基数（元）参保单位名称备注',
+        # 续页标题「历年缴费清单（续）」；漏字会导致第 2 页表头旁出现方框
+        '（续）',
         '（盖章）打印时间：',
         '本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
         '本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：',
@@ -994,7 +998,7 @@ def render_linian(payload, auth_code, qr_url, out_path):
     subset_body = make_subset_font(full_body, blob, prefix='sbdy_linian_body_')
     bold_blob = (
         LINIAN_TITLE
-        + '姓名社会保障号参保状态性别证件类型证件号码累计缴费历年缴费清单'
+        + '姓名社会保障号参保状态性别证件类型证件号码累计缴费历年缴费清单（续）'
         + '参保地年度缴费起止时间月缴费基数（元）参保单位名称备注（盖章）'
         + '0123456789（）()-—'
         + ''.join('共%d页，第%d页' % (total_pages, n + 1) for n in range(total_pages))
@@ -1194,6 +1198,7 @@ def render(payload, auth_code, qr_url, out_path):
         '浙江省社会保险参保证明（个人专用）'
         + BOLD_LABEL_CHARS
         + section_title
+        + '（续）'
         + str(p.get('period_label') or '')
         + '0123456789（）()-—'
         + ''.join('共%d页，第%d页' % (total_pages, i + 1) for i in range(total_pages))
