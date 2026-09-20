@@ -860,7 +860,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-mi13u-revert"></script>
+    <script src="/js/auth-boot.js?v=20260920-14pm-aug15"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -889,7 +889,11 @@
                 var iosMajor = 0;
                 var mIos = ua.match(/OS (\d+)[_.]/i);
                 if (mIos) iosMajor = parseInt(mIos[1], 10);
-                var liquidGlass = iosMajor >= 26;
+                /* 14 Pro Max：不进 liquid-glass / app-ios27 / inflow，保持 Aug15 59px */
+                var is14pmExempt =
+                    root.classList.contains('app-ios-iphone14promax') ||
+                    /iPhone\s*14\s*Pro\s*Max|iPhone15,3\b/i.test(ua);
+                var liquidGlass = iosMajor >= 26 && !is14pmExempt;
                 var shortSide = 0;
                 var longSide = 0;
                 try {
@@ -898,6 +902,25 @@
                     shortSide = Math.min(sw, sh);
                     longSide = Math.max(sw, sh);
                 } catch (eSz) {}
+                if (
+                    !is14pmExempt &&
+                    shortSide >= 428 &&
+                    shortSide <= 432 &&
+                    longSide >= 928 &&
+                    longSide <= 936 &&
+                    !/iPhone\s*15\s*Pro\s*Max|iPhone\s*15\s*Plus|iPhone16,2\b|iPhone15,5\b/i.test(ua)
+                ) {
+                    is14pmExempt = true;
+                    liquidGlass = false;
+                }
+                if (is14pmExempt) {
+                    root.classList.add('app-ios-iphone14promax');
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.remove('app-ios27');
+                    root.classList.remove('app-ios-liquid-glass');
+                    root.classList.remove('app-ios-unified-chrome');
+                    root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+                }
                 var is15Vp = shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
                 var is15LikeSm =
                     (/iPhone\s*15\b|iPhone15,4\b|iPhone16,1\b|iPhone15Pro\b(?!Max)/i.test(ua) || is15Vp) &&
@@ -930,7 +953,7 @@
                         root.classList.add('app-top-safe-shell');
                         root.style.setProperty('--app-shell-statusbar-top', '59px');
                     }
-                } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua)) {
+                } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua) && !is14pmExempt) {
                     root.classList.add('app-ios-status-outer');
                 } else {
                     root.classList.remove('app-ios-status-outer');
@@ -958,7 +981,7 @@
                         'html.app-ios-status-outer.app-ios-iphone15.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn{color: #1e6fff !important;top:auto !important;}' +
                         '.top-fixed .header::before{content:"";visibility: visible !important;}' +
                         'html.app-ios-header-hoisted .top-fixed .header{transform: none !important;}';
-                    if (iosMajor >= 27) {
+                    if (iosMajor >= 27 && !is14pmExempt) {
                         fpCss +=
                             'html.app-ios27{--app-shell-statusbar-top:calc(env(safe-area-inset-top, 0px) + 56px)!important;}' +
                             'html.app-ios27,html.app-ios27 body.page-shuiming-result,html.app-ios27:has(body.page-shuiming-result){' +
@@ -978,8 +1001,8 @@
                     window.parent.postMessage({
                         source: 'tax-h5',
                         type: 'status-bar',
-                        style: 'default',
-                        overlays: iosMajor >= 27 ? false : true,
+                        style: is14pmExempt ? 'black-translucent' : 'default',
+                        overlays: is14pmExempt ? true : iosMajor >= 27 ? false : true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -1005,7 +1028,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-mi13u-revert" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260920-14pm-aug15" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
