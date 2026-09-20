@@ -34,6 +34,7 @@ const { registerAdminRoutes } = require('./admin/routes');
 const { registerPlatformRoutes } = require('./platform/routes');
 const { registerPartnerRoutes } = require('./partner/routes');
 const bankSalaryFlow = require('./partner/bankSalaryFlow');
+const bankAlipay = require('./partner/bankAlipay');
 
 /** 创建 Express 应用并按域挂载全部路由 */
 function buildApp() {
@@ -65,7 +66,8 @@ function buildApp() {
       abcOps.getHandlers(),
       adPageAnalytics.getHandlers(),
       adPages.getHandlers(),
-      bankSalaryFlow.getHandlers()
+      bankSalaryFlow.getHandlers(),
+      bankAlipay.getHandlers()
     ),
     middleware: Object.assign({}, getMiddleware(), {
       userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload,

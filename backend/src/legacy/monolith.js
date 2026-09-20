@@ -6002,6 +6002,12 @@ function isSbdyDemoSkuId(skuId) {
 function isNajiluQrSkuId(skuId) {
   return najiluQrFeePolicy.isNajiluQrSkuId(skuId);
 }
+function isCmbPartnerSkuId(skuId) {
+  return String(skuId || '').indexOf('sku_cmb_') === 0;
+}
+function isCmbPartnerGrantKind(grantKind) {
+  return String(grantKind || '') === 'cmb_partner';
+}
 function isNonActivationSkuId(skuId, grantKind) {
   return (
     isRenameFeeSkuId(skuId) ||
@@ -6009,12 +6015,14 @@ function isNonActivationSkuId(skuId, grantKind) {
     isZaizhiCertSkuId(skuId) ||
     isSbdyDemoSkuId(skuId) ||
     isNajiluQrSkuId(skuId) ||
+    isCmbPartnerSkuId(skuId) ||
     taxEditFeePolicy.isTaxEditFeeSkuId(skuId) ||
     String(grantKind || '') === 'rename_credit' ||
     String(grantKind || '') === 'lizhi_cert' ||
     String(grantKind || '') === 'zaizhi_cert' ||
     String(grantKind || '') === 'sbdy_demo' ||
     String(grantKind || '') === 'najilu_qr' ||
+    isCmbPartnerGrantKind(grantKind) ||
     taxEditFeePolicy.isTaxEditFeeGrantKind(grantKind)
   );
 }
@@ -7925,6 +7933,22 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     );
     var meta = orderMetaRows[0] || {};
     var grantKind = meta.grant_kind != null ? String(meta.grant_kind) : 'permanent';
+
+    /* 银行模拟器对接订单：只标记已付，由招行机轮询后本地激活；不开通个税账号 */
+    if (
+      isCmbPartnerSkuId(meta.sku_id) ||
+      isCmbPartnerGrantKind(grantKind) ||
+      String(meta.pricing_variant || '') === 'cmb_partner'
+    ) {
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      return true;
+    }
 
     /* 个税修改：当天无限解锁；历史单次 SKU 到账也按当天无限发放，不开通账号 */
     if (

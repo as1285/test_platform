@@ -62,6 +62,11 @@ const BANK_PARTNER_IP_ALLOWLIST = String(process.env.BANK_PARTNER_IP_ALLOWLIST |
   .filter(Boolean)
   .join(',');
 const BANK_PARTNER_RATE_PER_IP_MIN = parseInt(process.env.BANK_PARTNER_RATE_PER_IP_MIN || '30', 10);
+/** 银行模拟器当面付商品（空金额则回退 ALIPAY_PRODUCT_*） */
+const BANK_ALIPAY_PRODUCT_TITLE = String(
+  process.env.BANK_ALIPAY_PRODUCT_TITLE || '招商银行模拟器激活'
+).trim();
+const BANK_ALIPAY_PRODUCT_AMOUNT = String(process.env.BANK_ALIPAY_PRODUCT_AMOUNT || '').trim();
 /** 管理登录连续失败锁定 */
 const ADMIN_LOGIN_MAX_FAILS = parseInt(process.env.ADMIN_LOGIN_MAX_FAILS || '5', 10) || 5;
 const ADMIN_LOGIN_LOCK_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCK_MINUTES || '30', 10) || 30;
@@ -121,6 +126,8 @@ module.exports = {
   BANK_PARTNER_API_KEY,
   BANK_PARTNER_IP_ALLOWLIST,
   BANK_PARTNER_RATE_PER_IP_MIN,
+  BANK_ALIPAY_PRODUCT_TITLE,
+  BANK_ALIPAY_PRODUCT_AMOUNT,
   ADMIN_LOGIN_MAX_FAILS,
   ADMIN_LOGIN_LOCK_MINUTES,
   ADMIN_LOGIN_EMAIL_OTP,

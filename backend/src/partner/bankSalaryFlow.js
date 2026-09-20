@@ -380,6 +380,8 @@ module.exports = {
   getHandlers,
   handleBankPartnerHealth,
   handleBankSalaryFlowPost,
+  requirePartnerAuth,
+  clean,
   mapRecordsToTransactions,
   isSalaryLike,
   paydayIso,
