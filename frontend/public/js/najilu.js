@@ -1167,12 +1167,67 @@
     return h;
   }
 
-  function drawCertificateTitleFallback(ctx, centerX, certTitleFont) {
+  function drawCertificateTitleFallback(ctx, centerX, certTitleFont, isContinuation) {
     drawText(ctx, '◉', centerX, 72, { size: 40, color: '#b92828', align: 'center' });
     drawText(ctx, '中华人民共和国', centerX, 138, { size: 26, align: 'center', font: certTitleFont });
-    drawText(ctx, '个人所得税纳税记录', centerX, 166, { size: 30, align: 'center', font: certTitleFont });
-    drawText(ctx, '（原《税收完税证明》）', centerX, 188, { size: 16, align: 'center', font: certTitleFont });
-    return 188;
+    drawText(
+      ctx,
+      isContinuation ? '个人所得税纳税记录（续）' : '个人所得税纳税记录',
+      centerX,
+      166,
+      { size: 30, align: 'center', font: certTitleFont }
+    );
+    if (!isContinuation) {
+      drawText(ctx, '（原《税收完税证明》）', centerX, 188, { size: 16, align: 'center', font: certTitleFont });
+      return 188;
+    }
+    return 166;
+  }
+
+  /**
+   * 续页页眉：国徽仍用首页素材顶部，标题改为「…（续）」，无「原完税证明」副标题。
+   * 纳税人信息区与表头列与首页一致；右上角不放二维码。
+   */
+  function drawTaxRecordContinuationHeader(ctx, headerImg, centerX, topY, targetW) {
+    var certTitleFont = CERT_BODY_FONT;
+    if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) {
+      return drawCertificateTitleFallback(ctx, centerX, certTitleFont, true);
+    }
+    var maxW = headerImg.naturalWidth * CERT_RENDER_SCALE;
+    var w = Math.min(targetW || headerImg.naturalWidth, maxW);
+    /* 原图约 305×177：上半为国徽，约 48% 高度 */
+    var emblemRatio = 0.48;
+    var srcH = headerImg.naturalHeight * emblemRatio;
+    var emblemH = (w / headerImg.naturalWidth) * srcH;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    ctx.drawImage(
+      headerImg,
+      0,
+      0,
+      headerImg.naturalWidth,
+      srcH,
+      centerX - w / 2,
+      topY,
+      w,
+      emblemH
+    );
+    ctx.restore();
+    var textY0 = topY + emblemH + 10;
+    drawText(ctx, '中华人民共和国', centerX, textY0, {
+      size: 26,
+      align: 'center',
+      font: certTitleFont
+    });
+    drawText(ctx, '个人所得税纳税记录（续）', centerX, textY0 + 32, {
+      size: 30,
+      align: 'center',
+      font: certTitleFont
+    });
+    return textY0 + 32 - topY;
   }
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
@@ -1230,11 +1285,13 @@
 
     function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg) {
       var isLastPage = pageNum === pageCount;
+      var isFirstPage = pageNum === 1;
       var rows = pageRows;
       var width = 1240;
       var rowH = CERT_TABLE_ROW_H;
       var certTitleFont = CERT_BODY_FONT;
       var certHeaderTop = 8;
+      /* 续页与首页共用同一表头占位高度，纳税人信息/表格列起点与首页一致 */
       var headerBlockH = taxRecordHeaderDisplayHeight(headerImg, CERT_HEADER_DISPLAY_W);
       var certInfoY0 = headerBlockH
         ? certHeaderTop + headerBlockH + 12
@@ -1270,23 +1327,34 @@
         size: 16,
         font: certTitleFont
       });
-      if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
-        drawCertificateTitleFallback(ctx, width / 2, certTitleFont);
+      if (isFirstPage) {
+        if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
+          drawCertificateTitleFallback(ctx, width / 2, certTitleFont, false);
+        }
+        /* 仅首页右上角二维码 + 查询验证码；续页不画码，表头字段与首页一致 */
+        drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
+        drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
+        drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
+          size: 26,
+          align: 'center',
+          color: '#222',
+          font: 'sans-serif'
+        });
+        drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
+          size: 26,
+          align: 'center',
+          color: '#222',
+          font: 'sans-serif'
+        });
+      } else {
+        drawTaxRecordContinuationHeader(
+          ctx,
+          headerImg,
+          width / 2,
+          certHeaderTop,
+          CERT_HEADER_DISPLAY_W
+        );
       }
-      drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
-      drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
-      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
-        size: 26,
-        align: 'center',
-        color: '#222',
-        font: 'sans-serif'
-      });
-      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
-        size: 26,
-        align: 'center',
-        color: '#222',
-        font: 'sans-serif'
-      });
 
       var name = app.user && app.user.real_name ? app.user.real_name : '';
       var rawTaxId = app.user && app.user.tax_id ? app.user.tax_id : '';
