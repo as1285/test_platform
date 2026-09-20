@@ -34,12 +34,14 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
     expect(auth).toContain('!isIPhone14ProMaxAug15TopExempt()');
   });
 
-  it('Aug15 在 iOS27+env≈0 时顶距清零，避免系统占栏后再垫 59px', () => {
+  it('Aug15 在 env≈0 时顶距清零（不限 iOS27），避免系统占栏后再垫 59px', () => {
     expect(auth).toContain('function measureAug15SafeAreaTopPx');
     expect(auth).toContain('systemOwnsBar');
+    expect(auth).toContain('!cordovaShell && safeTop >= 0 && safeTop < 20');
     expect(auth).toContain("setProperty('--app-shell-statusbar-top', '0px', 'important')");
     expect(auth).toContain("classList.add('app-ios-status-outer')");
     expect(boot).toContain('systemOwnsBar');
+    expect(boot).toContain('!cordovaShell && safeTop < 20');
     expect(boot).toContain("setProperty('--app-shell-statusbar-top', '0px', 'important')");
   });
 
@@ -66,17 +68,18 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
     expect(boot).toContain("classList.remove('app-ios-iphone14promax')");
   });
 
-  it('shuiming firstpaint 对 14/15PM 不打 app-ios27 / liquid-glass，overlays 保持 true', () => {
+  it('shuiming firstpaint 对 14/15PM 不打 app-ios27 / liquid-glass，按 env 决定 overlays', () => {
     expect(shuiming).toContain('var is14pmExempt');
     expect(shuiming).toContain('var is15pmUa');
     expect(shuiming).toContain('liquidGlass = iosMajor >= 26 && !is14pmExempt');
-    expect(shuiming).toContain("style: is14pmExempt && iosMajor < 27 ? 'black-translucent' : 'default'");
-    expect(shuiming).toContain('overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true');
+    expect(shuiming).toContain('aug15SystemOwnsBar');
+    expect(shuiming).toContain('? !aug15SystemOwnsBar');
     expect(shuiming).toContain("classList.add('app-ios-iphone15promax')");
     expect(shuimingResult).toContain('var is14pmExempt');
     expect(shuimingResult).toContain('var is15pmUa');
     expect(shuimingResult).toContain('liquidGlass = iosMajor >= 26 && !is14pmExempt');
-    expect(shuimingResult).toContain("style: is14pmExempt && iosMajor < 27 ? 'black-translucent' : 'default'");
+    expect(shuimingResult).toContain('aug15SystemOwnsBar');
+    expect(shuimingResult).toContain('? !aug15SystemOwnsBar');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15promax')");
   });
 
@@ -98,26 +101,28 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
   });
 
   it('主页面缓存戳已刷新', () => {
-    expect(shuiming).toContain('auth-boot.js?v=20260920-15pm-list-outer');
-    expect(shuiming).toContain('auth.js?v=20260920-15pm-list-outer');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-list-outer');
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shuiming).toContain('auth-boot.js?v=20260920-15pm-env0');
+    expect(shuiming).toContain('auth.js?v=20260920-15pm-env0');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-env0');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-env0');
   });
 
-  it('xiangqing 首屏按 iOS27/env 决定 0 或 59，避免双顶距', () => {
+  it('xiangqing 首屏按 env≈0 决定 0 或 59，避免双顶距', () => {
     const xiangqing = readFileSync(resolve(__dirname, '../../xiangqing.html'), 'utf8');
     expect(xiangqing).toContain('系统占栏时顶距 0');
+    expect(xiangqing).toContain('safeTop < 20 && !/Cordova|tax-app-shell/i.test(ua)');
     expect(xiangqing).toContain("setProperty('--app-shell-statusbar-top', '0px', 'important')");
     expect(xiangqing).toContain("classList.add('app-ios-status-outer')");
     expect(xiangqing).toContain("classList.add('app-ios-iphone15promax')");
     expect(xiangqing).toContain('html.app-ios-status-outer body.page-xiangqing');
-    expect(xiangqing).toContain('auth-boot.js?v=20260920-15pm-list-outer');
-    expect(xiangqing).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(xiangqing).toContain('auth-boot.js?v=20260920-15pm-env0');
+    expect(xiangqing).toContain('auth.js?v=20260920-15pm-env0');
   });
 
-  it('shuiming_result 列表页 iOS27 占栏时保留 status-outer 且顶距清零', () => {
+  it('shuiming_result 列表页系统占栏时保留 status-outer 且顶距清零', () => {
     expect(shuimingResult).toContain('aug15SystemOwnsBar');
     expect(shuimingResult).toContain('!(is14pmExempt && aug15SystemOwnsBar)');
+    expect(shuimingResult).toContain('aug15SafeTop < 20 && !/Cordova|tax-app-shell/i.test(ua)');
     expect(shuimingResult).toContain(
       'html.app-ios-status-outer.app-ios-iphone15promax body.page-shuiming-result .top-fixed .header'
     );

@@ -679,11 +679,6 @@
                         document.documentElement.classList.add('app-ios-iphone14promax');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
                         document.documentElement.classList.add('app-ios-client');
-                        var iosMaj14 = 0;
-                        try {
-                            var m14ios = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
-                            if (m14ios) iosMaj14 = parseInt(m14ios[1], 10);
-                        } catch (e14ios) {}
                         var safe14 = 0;
                         try {
                             var p14 = document.createElement('div');
@@ -693,7 +688,8 @@
                             safe14 = parseFloat(window.getComputedStyle(p14).paddingTop) || 0;
                             if (p14.parentNode) p14.parentNode.removeChild(p14);
                         } catch (e14safe) {}
-                        if (iosMaj14 >= 27 && safe14 < 20) {
+                        /* env≈0：系统已占栏，勿预加 safe-shell（不限 iOS 大版本） */
+                        if (safe14 < 20 && !/Cordova|tax-app-shell/i.test(String(navigator.userAgent || ''))) {
                             document.documentElement.classList.remove('app-top-safe-shell');
                             document.documentElement.classList.add('app-ios-status-outer');
                             document.documentElement.style.setProperty(
@@ -747,12 +743,7 @@
                     if (is15pmLike) {
                         document.documentElement.classList.add('app-ios-iphone15promax');
                         document.documentElement.classList.add('app-ios-iphone-promax-font');
-                        /* iOS27+ env≈0 时勿预加 safe-shell，否则标题会被 top:59 顶出大块空白 */
-                        var iosMaj15 = 0;
-                        try {
-                            var m15ios = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
-                            if (m15ios) iosMaj15 = parseInt(m15ios[1], 10);
-                        } catch (e15ios) {}
+                        /* env≈0 时勿预加 safe-shell，否则标题会被 top:59 顶出大块空白 */
                         var safe15 = 0;
                         try {
                             var p15 = document.createElement('div');
@@ -762,7 +753,7 @@
                             safe15 = parseFloat(window.getComputedStyle(p15).paddingTop) || 0;
                             if (p15.parentNode) p15.parentNode.removeChild(p15);
                         } catch (e15safe) {}
-                        if (iosMaj15 >= 27 && safe15 < 20) {
+                        if (safe15 < 20 && !/Cordova|tax-app-shell/i.test(String(navigator.userAgent || ''))) {
                             document.documentElement.classList.remove('app-top-safe-shell');
                             document.documentElement.classList.add('app-ios-status-outer');
                             document.documentElement.style.setProperty(
@@ -909,7 +900,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-list-outer"></script>
+    <script src="/js/auth-boot.js?v=20260920-15pm-env0"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -975,8 +966,9 @@
                     aug15SafeTop = parseFloat(window.getComputedStyle(augProbe).paddingTop) || 0;
                     if (augProbe.parentNode) augProbe.parentNode.removeChild(augProbe);
                 } catch (eAugSafe) {}
-                /* iOS27+ 系统已占栏（env≈0）：顶距 0；勿再垫 59 造成标题上大块空白 */
-                var aug15SystemOwnsBar = iosMajor >= 27 && aug15SafeTop < 20;
+                /* 系统已占栏（env≈0）：顶距 0；勿再垫 59（不限 iOS 大版本；Cordova 除外） */
+                var aug15SystemOwnsBar =
+                    aug15SafeTop < 20 && !/Cordova|tax-app-shell/i.test(ua);
                 if (is14pmExempt) {
                     if (is15pmUa || root.classList.contains('app-ios-iphone15promax')) {
                         root.classList.add('app-ios-iphone15promax');
@@ -1078,8 +1070,18 @@
                     window.parent.postMessage({
                         source: 'tax-h5',
                         type: 'status-bar',
-                        style: is14pmExempt && iosMajor < 27 ? 'black-translucent' : 'default',
-                        overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true,
+                        style: is14pmExempt
+                            ? aug15SystemOwnsBar
+                                ? 'default'
+                                : 'black-translucent'
+                            : iosMajor >= 27
+                              ? 'default'
+                              : 'black-translucent',
+                        overlays: is14pmExempt
+                            ? !aug15SystemOwnsBar
+                            : iosMajor >= 27
+                              ? false
+                              : true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -1105,7 +1107,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-15pm-list-outer" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260920-15pm-env0" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>

@@ -35,7 +35,7 @@ describe('iOS 全机去掉顶部黑框', () => {
     );
     expect(shouye).toContain('html.app-ios-client.app-top-safe-shell:has(body.page-shouye)');
     expect(shouye).toContain('background-color: #4f90f3 !important');
-    expect(shouye).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shouye).toContain('auth.js?v=20260920-15pm-env0');
   });
 
   it('我的 / 办查 iOS html 实底顶蓝', () => {
@@ -54,12 +54,12 @@ describe('iOS 全机去掉顶部黑框', () => {
     expect(cordova).toContain("backgroundColorByHexString('#ffffff')");
   });
 
-  it('白页首屏 Cordova/iframe 不再打 status-outer，overlays 为 true', () => {
+  it('白页首屏 Cordova/iframe 不再打 status-outer，overlays 按 env 占栏', () => {
     expect(shuiming).toContain('standalone && !inIframe');
     expect(shuimingResult).toContain('standalone && !inIframe');
-    expect(shuiming).toContain('overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true');
-    expect(shuimingResult).toContain('overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true');
-    expect(shuiming).toContain('auth.js?v=20260920-15pm-list-outer');
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shuiming).toContain('? !aug15SystemOwnsBar');
+    expect(shuimingResult).toContain('? !aug15SystemOwnsBar');
+    expect(shuiming).toContain('auth.js?v=20260920-15pm-env0');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-env0');
   });
 });

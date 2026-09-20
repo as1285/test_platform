@@ -1506,7 +1506,8 @@
   /**
    * 强制 14/15PM 走开 liquid-glass/ios27。
    * - 沉浸 black-translucent（env≥40）：垫 59px。
-   * - iOS27+ 系统已占栏（env≈0，WebClip default）：顶距必须 0，否则标题上方空一大条白。
+   * - 系统已占栏（env≈0，WebClip default；不限 iOS 大版本）：顶距必须 0，否则标题上方空一大条白。
+   * Cordova iframe env 常假 0，仍走 59px 沉浸。
    */
   function applyIPhone14ProMaxAug15TopChrome() {
     try {
@@ -1522,12 +1523,12 @@
       root.classList.remove('app-ios27');
       root.classList.remove('app-ios-liquid-glass');
       root.classList.remove('app-ios-unified-chrome');
-      var iosMajor = 0;
-      try {
-        iosMajor = getIOSMajorVersion();
-      } catch (eVer) {}
       var safeTop = measureAug15SafeAreaTopPx();
-      var systemOwnsBar = iosMajor >= 27 && safeTop >= 0 && safeTop < 20;
+      var cordovaShell = false;
+      try {
+        cordovaShell = isCordovaTaxAppShell();
+      } catch (eCv) {}
+      var systemOwnsBar = !cordovaShell && safeTop >= 0 && safeTop < 20;
       if (systemOwnsBar) {
         root.classList.remove('app-top-safe-shell');
         root.classList.add('app-ios-status-outer');
@@ -5219,7 +5220,7 @@
         var buildAugBarOpts = function () {
           var owns =
             document.documentElement.classList.contains('app-ios-status-outer') ||
-            (getIOSMajorVersion() >= 27 && measureAug15SafeAreaTopPx() < 20);
+            (!isCordovaTaxAppShell() && measureAug15SafeAreaTopPx() < 20);
           return owns
             ? {
                 style: 'default',
@@ -5598,7 +5599,7 @@
         hideIosStickyTintBar();
         var owns =
           document.documentElement.classList.contains('app-ios-status-outer') ||
-          (getIOSMajorVersion() >= 27 && measureAug15SafeAreaTopPx() < 20);
+          (!isCordovaTaxAppShell() && measureAug15SafeAreaTopPx() < 20);
         requestShellStatusBar(
           owns
             ? {

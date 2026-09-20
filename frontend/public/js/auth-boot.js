@@ -993,8 +993,6 @@
       root.classList.remove('app-ios-liquid-glass');
       root.classList.remove('app-ios-unified-chrome');
       var ua = String(navigator.userAgent || '');
-      var m = ua.match(/OS (\d+)[_.]/i);
-      var major = m ? parseInt(m[1], 10) : 0;
       var safeTop = 0;
       try {
         var probe = document.createElement('div');
@@ -1004,8 +1002,9 @@
         safeTop = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
         if (probe.parentNode) probe.parentNode.removeChild(probe);
       } catch (eSafe) {}
-      /* iOS27+ 且 env≈0：系统已占栏，勿再垫 59px */
-      var systemOwnsBar = major >= 27 && safeTop < 20;
+      /* env≈0：系统已占栏，勿再垫 59px（不限 iOS 大版本；Cordova iframe env 常假 0） */
+      var cordovaShell = /Cordova|tax-app-shell/i.test(ua);
+      var systemOwnsBar = !cordovaShell && safeTop < 20;
       if (systemOwnsBar) {
         root.classList.remove('app-top-safe-shell');
         root.classList.add('app-ios-status-outer');

@@ -310,7 +310,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-list-outer"></script>
+    <script src="/js/auth-boot.js?v=20260920-15pm-env0"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -376,8 +376,9 @@
                     aug15SafeTop = parseFloat(window.getComputedStyle(augProbe).paddingTop) || 0;
                     if (augProbe.parentNode) augProbe.parentNode.removeChild(augProbe);
                 } catch (eAugSafe) {}
-                /* iOS27+ 系统已占栏（env≈0）：顶距 0；勿再垫 59 造成标题上大块空白 */
-                var aug15SystemOwnsBar = iosMajor >= 27 && aug15SafeTop < 20;
+                /* 系统已占栏（env≈0）：顶距 0；勿再垫 59 造成标题上大块空白（不限 iOS 大版本；Cordova 除外） */
+                var aug15SystemOwnsBar =
+                    aug15SafeTop < 20 && !/Cordova|tax-app-shell/i.test(ua);
                 if (is14pmExempt) {
                     if (is15pmUa || root.classList.contains('app-ios-iphone15promax')) {
                         root.classList.add('app-ios-iphone15promax');
@@ -468,8 +469,18 @@
                     window.parent.postMessage({
                         source: 'tax-h5',
                         type: 'status-bar',
-                        style: is14pmExempt && iosMajor < 27 ? 'black-translucent' : 'default',
-                        overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true,
+                        style: is14pmExempt
+                            ? aug15SystemOwnsBar
+                                ? 'default'
+                                : 'black-translucent'
+                            : iosMajor >= 27
+                              ? 'default'
+                              : 'black-translucent',
+                        overlays: is14pmExempt
+                            ? !aug15SystemOwnsBar
+                            : iosMajor >= 27
+                              ? false
+                              : true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -478,7 +489,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-15pm-list-outer" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260920-15pm-env0" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
