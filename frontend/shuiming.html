@@ -310,7 +310,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-no-double"></script>
+    <script src="/js/auth-boot.js?v=20260920-15pm-list-outer"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -367,6 +367,17 @@
                     is14pmExempt = true;
                     liquidGlass = false;
                 }
+                var aug15SafeTop = 0;
+                try {
+                    var augProbe = document.createElement('div');
+                    augProbe.style.cssText =
+                        'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+                    (document.body || root).appendChild(augProbe);
+                    aug15SafeTop = parseFloat(window.getComputedStyle(augProbe).paddingTop) || 0;
+                    if (augProbe.parentNode) augProbe.parentNode.removeChild(augProbe);
+                } catch (eAugSafe) {}
+                /* iOS27+ 系统已占栏（env≈0）：顶距 0；勿再垫 59 造成标题上大块空白 */
+                var aug15SystemOwnsBar = iosMajor >= 27 && aug15SafeTop < 20;
                 if (is14pmExempt) {
                     if (is15pmUa || root.classList.contains('app-ios-iphone15promax')) {
                         root.classList.add('app-ios-iphone15promax');
@@ -377,7 +388,7 @@
                     root.classList.remove('app-ios27');
                     root.classList.remove('app-ios-liquid-glass');
                     root.classList.remove('app-ios-unified-chrome');
-                    if (iosMajor >= 27) {
+                    if (aug15SystemOwnsBar) {
                         root.classList.remove('app-top-safe-shell');
                         root.classList.add('app-ios-status-outer');
                         root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
@@ -423,7 +434,8 @@
                     }
                 } else if (standalone && !inIframe && !/Cordova|tax-app-shell/i.test(ua) && !is14pmExempt) {
                     root.classList.add('app-ios-status-outer');
-                } else {
+                } else if (!(is14pmExempt && aug15SystemOwnsBar)) {
+                    /* 14/15PM 系统占栏时保留 status-outer，禁止被 else 清掉 */
                     root.classList.remove('app-ios-status-outer');
                 }
                 if (!document.querySelector('style[data-ios-white-status-firstpaint]')) {
@@ -466,7 +478,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-15pm-no-double" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260920-15pm-list-outer" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
