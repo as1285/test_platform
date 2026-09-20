@@ -46,7 +46,7 @@ describe('iPhone 16 Pro Max on iOS 26 login chrome', () => {
     expect(shuimingResult).toContain('app-ios-iphone16promax');
     expect(shuimingResult).toContain('app-ios-promax-wide');
     expect(shuimingResult).toContain('tax_ios_promax_wide_v1');
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-env0');
     expect(shuimingResult).toContain('tax_device_model_v1');
     expect(shuimingResult).toMatch(/short16 >= 428/);
     expect(shuimingResult).toContain('@media screen and (min-width: 414px)');

@@ -70,10 +70,10 @@ describe('vivo S15 status-bar inset', () => {
       expect(html, name).toContain('app-android-immersive-white-top');
     });
     expect(pages.shuimingResult).toContain('data-vivos15-result-firstpaint');
-    expect(pages.shuimingResult).toContain('auth.js?v=20260920-15pm-list-outer');
-    expect(pages.shuiming).toContain('auth.js?v=20260920-15pm-list-outer');
-    expect(pages.xiangqing).toContain('auth.js?v=20260920-15pm-list-outer');
-    expect(pages.shouye).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(pages.shuimingResult).toContain('auth.js?v=20260920-15pm-env0');
+    expect(pages.shuiming).toContain('auth.js?v=20260920-15pm-env0');
+    expect(pages.xiangqing).toContain('auth.js?v=20260920-15pm-env0');
+    expect(pages.shouye).toContain('auth.js?v=20260920-15pm-env0');
     expect(pages.mine).toContain('auth.js?v=20260919-note13pro-mine');
     expect(pages.mine).toContain('auth-boot.js?v=20260919-note13pro-mine');
   });

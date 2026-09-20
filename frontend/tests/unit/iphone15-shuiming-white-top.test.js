@@ -64,7 +64,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('结果页首屏打标并铺实底白，避免毛玻璃透出列表', () => {
     expect(shuimingResult).toContain('data-iphone15-result-firstpaint');
     expect(shuimingResult).toContain("classList.add('app-ios-iphone15')");
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-env0');
     expect(shuimingResult).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming-result .top-fixed .header'
     );
@@ -186,7 +186,7 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
   it('筛选页首屏也打 15 标并铺白顶', () => {
     expect(shuiming).toContain('is15LikeSm');
     expect(shuiming).toContain("classList.add('app-ios-iphone15')");
-    expect(shuiming).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shuiming).toContain('auth.js?v=20260920-15pm-env0');
     expect(shuiming).toContain(
       'html.app-ios-iphone15.app-top-safe-shell:not(.app-ios-status-outer) body.page-shuiming > .header'
     );
@@ -207,12 +207,8 @@ describe('iPhone 15 收入纳税明细实底白顶栏', () => {
     expect(auth).toContain(
       'html.app-ios-status-outer.app-cordova-shell.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:59px !important;}'
     );
-    expect(shuimingResult).toContain(
-      "overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true"
-    );
-    expect(shuiming).toContain(
-      "overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true"
-    );
+    expect(shuimingResult).toContain('? !aug15SystemOwnsBar');
+    expect(shuiming).toContain('? !aug15SystemOwnsBar');
     expect(shuimingResult).toContain("classList.add('app-ios-status-outer')");
     expect(shuiming).toContain("classList.add('app-ios-status-outer')");
     expect(shuimingResult).toContain('standalone && !inIframe');
