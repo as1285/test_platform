@@ -4421,26 +4421,19 @@
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
-      /* 一加 Ace 2V / 小米 14 外置黑条；K70 标准版与小米 13 Ultra 全页黑条。勿把头图蓝铺进状态栏 */
+      /* 一加 Ace 2V / 小米 14 外置黑条；K70 标准版全页黑条。勿把头图蓝铺进状态栏 */
       var k70StdBlackBar = false;
-      var mi13uBlackBar = false;
       try {
         k70StdBlackBar =
           isRedmiK70StandardClient() ||
           (document.documentElement.classList.contains('app-android-redmi-k70') &&
             !document.documentElement.classList.contains('app-android-redmi-k70-ultra'));
       } catch (eK70Bar) {}
-      try {
-        mi13uBlackBar =
-          isXiaomi13UltraClient() ||
-          document.documentElement.classList.contains('app-android-xiaomi-13ultra');
-      } catch (e13uBar) {}
       if (
-        (isLikelyAndroidViewportClient() || k70StdBlackBar || mi13uBlackBar) &&
+        (isLikelyAndroidViewportClient() || k70StdBlackBar) &&
         (isOnePlusAce2VClient() ||
           isXiaomi14LikeClient() ||
           k70StdBlackBar ||
-          mi13uBlackBar ||
           document.documentElement.classList.contains('app-android-xiaomi-14') ||
           document.documentElement.classList.contains('app-cordova-xiaomi-23127'))
       ) {
@@ -4456,7 +4449,7 @@
         };
         requestShellStatusBar(k70BlackOpts);
         /* HyperOS 常把图标刷回深色；浅色图标多钉几次，避免黑底盖住时间/电量 */
-        if (k70StdBlackBar || mi13uBlackBar) {
+        if (k70StdBlackBar) {
           var reapplyK70Light = function () {
             requestShellStatusBar(k70BlackOpts);
           };
@@ -5428,17 +5421,14 @@
       if (!isWhitePage) {
         return;
       }
-      /* 红米 K70 标准版 / 小米 13 Ultra：全页黑状态栏（对齐小米 14），勿走白顶沉浸 */
+      /* 红米 K70 标准版：全页黑状态栏（对齐小米 14），勿走白顶沉浸 */
       var redmiK70StdPaintedBar =
         isRedmiK70StandardClient() ||
         (root.classList.contains('app-android-redmi-k70') &&
           !root.classList.contains('app-android-redmi-k70-ultra'));
-      var mi13uPaintedBar =
-        isXiaomi13UltraClient() || root.classList.contains('app-android-xiaomi-13ultra');
-      if (redmiK70StdPaintedBar || mi13uPaintedBar) {
+      if (redmiK70StdPaintedBar) {
         try {
-          if (redmiK70StdPaintedBar) root.classList.add('app-android-redmi-k70');
-          if (mi13uPaintedBar) root.classList.add('app-android-xiaomi-13ultra');
+          root.classList.add('app-android-redmi-k70');
           root.classList.remove('app-android-immersive-white-top');
           root.classList.remove('app-android-white-page-outer');
           root.style.setProperty('--app-shell-statusbar-top', '40px');
@@ -7040,7 +7030,6 @@
           'html.app-android-xiaomi-mix-fold.app-top-safe-shell{--app-shell-statusbar-top:40px !important;}' +
           'html.app-android-xiaomi-13.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-13ultra.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
-          'html.app-android-xiaomi-13ultra.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,40px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
           'html.app-android-xiaomi-13pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-14pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-xiaomi-15pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
@@ -7182,7 +7171,6 @@
            */
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{--shouye-status-inset:40px;--app-shell-statusbar-top:var(--shouye-status-inset) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
-          'html.app-android-xiaomi-13ultra.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body:not(.page-shouye) .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
@@ -7519,7 +7507,6 @@
           /* 压过后续机型特例：Android 首页统一顶距（Pura70 Cordova 除外） */
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{--shouye-status-inset:40px;--app-shell-statusbar-top:var(--shouye-status-inset) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
-          'html.app-android-xiaomi-13ultra.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           /*

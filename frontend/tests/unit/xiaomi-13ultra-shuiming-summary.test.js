@@ -48,9 +48,8 @@ describe('小米 13 Ultra 收入纳税明细汇总加高', () => {
   it('沉浸白顶栏打上 13ultra class，不走 mi-family 外置黑条', () => {
     expect(auth).toContain("classList.add('app-android-xiaomi-13ultra')");
     expect(auth).toContain('html.app-android-xiaomi-13ultra.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}');
-    expect(auth).toContain('html.app-android-xiaomi-13ultra.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,40px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}');
-    expect(auth).toContain('var mi13uBlackBar =');
-    expect(auth).toContain('if (k70StdBlackBar || mi13uBlackBar)');
+    expect(auth).not.toContain('html.app-android-xiaomi-13ultra.app-top-safe-shell::before');
+    expect(auth).not.toContain('var mi13uBlackBar');
     expect(auth).toContain('!xiaomi13UltraClient &&');
     expect(auth).toContain('isXiaomi13UltraClient() ||');
   });

@@ -21,7 +21,7 @@ describe('iPhone 13 Pro Max 收入纳税明细白顶栏', () => {
   });
 
   it('明细页缓存戳与 iOS 顶白底盾牌在位', () => {
-    expect(shuimingResult).toContain('auth.js?v=20260920-mi13u-black');
+    expect(shuimingResult).toContain('auth.js?v=20260920-mi13u-revert');
     expect(shuimingResult).toContain('html.platform-ios:not(.app-ios-status-outer) body.page-shuiming-result::before');
     expect(shuimingResult).toContain('428');
   });
