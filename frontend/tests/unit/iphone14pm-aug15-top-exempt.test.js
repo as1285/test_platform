@@ -98,10 +98,10 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
   });
 
   it('主页面缓存戳已刷新', () => {
-    expect(shuiming).toContain('auth-boot.js?v=20260920-15pm-no-double');
-    expect(shuiming).toContain('auth.js?v=20260920-15pm-no-double');
-    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-no-double');
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-no-double');
+    expect(shuiming).toContain('auth-boot.js?v=20260920-15pm-list-outer');
+    expect(shuiming).toContain('auth.js?v=20260920-15pm-list-outer');
+    expect(shuimingResult).toContain('auth-boot.js?v=20260920-15pm-list-outer');
+    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-list-outer');
   });
 
   it('xiangqing 首屏按 iOS27/env 决定 0 或 59，避免双顶距', () => {
@@ -111,7 +111,24 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
     expect(xiangqing).toContain("classList.add('app-ios-status-outer')");
     expect(xiangqing).toContain("classList.add('app-ios-iphone15promax')");
     expect(xiangqing).toContain('html.app-ios-status-outer body.page-xiangqing');
-    expect(xiangqing).toContain('auth-boot.js?v=20260920-15pm-no-double');
-    expect(xiangqing).toContain('auth.js?v=20260920-15pm-no-double');
+    expect(xiangqing).toContain('auth-boot.js?v=20260920-15pm-list-outer');
+    expect(xiangqing).toContain('auth.js?v=20260920-15pm-list-outer');
+  });
+
+  it('shuiming_result 列表页 iOS27 占栏时保留 status-outer 且顶距清零', () => {
+    expect(shuimingResult).toContain('aug15SystemOwnsBar');
+    expect(shuimingResult).toContain('!(is14pmExempt && aug15SystemOwnsBar)');
+    expect(shuimingResult).toContain(
+      'html.app-ios-status-outer.app-ios-iphone15promax body.page-shuiming-result .top-fixed .header'
+    );
+    expect(shuimingResult).toContain('top: 0 !important');
+    expect(shuiming).toContain('aug15SystemOwnsBar');
+    expect(shuiming).toContain('!(is14pmExempt && aug15SystemOwnsBar)');
+    expect(auth).toContain(
+      'html.app-ios-status-outer.app-ios-iphone15promax body.page-shuiming-result .top-fixed .header'
+    );
+    expect(auth).toContain(
+      'html.app-ios-iphone15promax.app-top-safe-shell:not(.app-ios-status-outer)'
+    );
   });
 });
