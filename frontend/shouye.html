@@ -194,11 +194,30 @@
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-honor-magic6pro');
                 }
+                /* 小米 13 Ultra：正版个税顶部黑框，须先于 13 的 13\b 判断 */
+                if (/2304FPN6|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-xiaomi-13ultra');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--shouye-status-inset', '40px');
+                    if (!document.getElementById('xiaomi13ultraBlackBarFirstPaint')) {
+                        var u13fp = document.createElement('style');
+                        u13fp.id = 'xiaomi13ultraBlackBarFirstPaint';
+                        u13fp.setAttribute('data-xiaomi13ultra-black-firstpaint', '1');
+                        u13fp.textContent =
+                            'html.app-android-xiaomi-13ultra.app-top-safe-shell{--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--shouye-status-inset:40px!important;}' +
+                            'html.app-android-xiaomi-13ultra.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                            'html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shouye::before{background-color:#000!important;background-image:none!important;}';
+                        document.head.appendChild(u13fp);
+                    }
+                }
                 /* 小米 13 / 13 Pro：Android 通用 2.55 分栏会把 a6 入口卡撑大，提前打标供 CSS 压回 */
                 if (/2210132[CGEI]|(?:Xiaomi|Mi|小米)[\s_-]*13[\s_-]*Pro/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-xiaomi-13pro');
-                } else if (/2211133[CGI]|(?:Xiaomi|Mi|小米)[\s_-]*13\b/i.test(u)) {
+                } else if (/2211133[CGI]|(?:Xiaomi|Mi|小米)[\s_-]*13\b(?![\s_-]*Ultra)/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-xiaomi-13');
                 }
@@ -258,8 +277,8 @@
             } catch (eRpx) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260919-ios27-noblur"></script>
-    <script src="/js/auth.js?v=20260919-ios27-noblur" defer fetchpriority="low"></script>
+    <script src="/js/auth-boot.js?v=20260920-mi13u-black"></script>
+    <script src="/js/auth.js?v=20260920-mi13u-black" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -441,6 +460,16 @@
         html.app-android-oneplus-ace6.app-top-safe-shell body.page-shouye {
             --shouye-status-inset: 40px;
             --app-shell-statusbar-top: 40px !important;
+        }
+
+        /* 小米 13 Ultra：正版个税顶部黑框，勿把搜索蓝铺进状态栏 */
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 40px;
+            --app-shell-statusbar-top: 40px !important;
+        }
+        html.app-android-xiaomi-13ultra.app-top-safe-shell body.page-shouye::before {
+            background-color: #000 !important;
+            background-image: none !important;
         }
 
         /* vivo S15：正版个税顶部黑框，勿把搜索蓝铺进状态栏 */

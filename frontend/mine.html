@@ -652,8 +652,8 @@
             } catch (ePad) {}
         })();
     </script>
-    <script src="/js/auth-boot.js?v=20260919-ios27-noblur"></script>
-    <script src="/js/auth.js?v=20260919-ios27-noblur" defer fetchpriority="low"></script>
+    <script src="/js/auth-boot.js?v=20260920-note13pro-mine"></script>
+    <script src="/js/auth.js?v=20260920-note13pro-mine" defer fetchpriority="low"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -2086,6 +2086,29 @@
 
         html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after {
             font-size: 10px;
+        }
+
+        /*
+         * 红米 Note 13 Pro：底图保持 100% auto，不要压进 1180 定高。
+         * 压扁后税号贴白区，【添加】【2家】【1张】会相对图标下飘。
+         * 税号再上移 8rpx，和白区稍微分开。
+         */
+        html.app-android-redmi-note13-pro body.page-mine .mine-ov-tax {
+            top: calc(430 * var(--mine-rpx)) !important;
+        }
+        html.app-android-redmi-note13-pro body.page-mine .mine-e1-canvas,
+        html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas {
+            background-size: 100% auto !important;
+            background-position: top center !important;
+            height: auto !important;
+            max-height: none !important;
+            aspect-ratio: 750 / 1180 !important;
+            overflow: hidden !important;
+        }
+        html.app-android-redmi-note13-pro body.page-mine .mine-e1-layer,
+        html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer {
+            top: 0 !important;
+            padding-bottom: calc(1180 / 750 * 100%) !important;
         }
 
         /* 华为 TAS-AN00（Mate 30 等，Android 12 Cordova）：个人信息卡姓名小两号 */

@@ -26,7 +26,7 @@ describe('iPhone 12 纳税明细首条不被汇总挡住', () => {
     expect(shuimingResult).toContain('isIphone12Seam');
     expect(shuimingResult).toContain('html.app-ios-iphone12pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary');
     expect(shuimingResult).toContain('background: #f5f6fa !important');
-    expect(shuimingResult).toContain('auth.js?v=20260919-ios27-noblur');
+    expect(shuimingResult).toContain('auth.js?v=20260920-mi13u-black');
   });
 
   it('首屏 iPhone13 判定排除 12 系列硬件号', () => {
