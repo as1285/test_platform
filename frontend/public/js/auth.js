@@ -4421,19 +4421,26 @@
     if (!topColor) return;
     try {
       var pageBg = shellBg || '#f5f6fa';
-      /* 一加 Ace 2V / 小米 14 外置黑条；K70 标准版全页黑条。勿把头图蓝铺进状态栏 */
+      /* 一加 Ace 2V / 小米 14 外置黑条；K70 标准版与小米 13 Ultra 全页黑条。勿把头图蓝铺进状态栏 */
       var k70StdBlackBar = false;
+      var mi13uBlackBar = false;
       try {
         k70StdBlackBar =
           isRedmiK70StandardClient() ||
           (document.documentElement.classList.contains('app-android-redmi-k70') &&
             !document.documentElement.classList.contains('app-android-redmi-k70-ultra'));
       } catch (eK70Bar) {}
+      try {
+        mi13uBlackBar =
+          isXiaomi13UltraClient() ||
+          document.documentElement.classList.contains('app-android-xiaomi-13ultra');
+      } catch (e13uBar) {}
       if (
-        (isLikelyAndroidViewportClient() || k70StdBlackBar) &&
+        (isLikelyAndroidViewportClient() || k70StdBlackBar || mi13uBlackBar) &&
         (isOnePlusAce2VClient() ||
           isXiaomi14LikeClient() ||
           k70StdBlackBar ||
+          mi13uBlackBar ||
           document.documentElement.classList.contains('app-android-xiaomi-14') ||
           document.documentElement.classList.contains('app-cordova-xiaomi-23127'))
       ) {
@@ -4449,7 +4456,7 @@
         };
         requestShellStatusBar(k70BlackOpts);
         /* HyperOS 常把图标刷回深色；浅色图标多钉几次，避免黑底盖住时间/电量 */
-        if (k70StdBlackBar) {
+        if (k70StdBlackBar || mi13uBlackBar) {
           var reapplyK70Light = function () {
             requestShellStatusBar(k70BlackOpts);
           };
@@ -5421,14 +5428,17 @@
       if (!isWhitePage) {
         return;
       }
-      /* 红米 K70 标准版：全页黑状态栏（对齐小米 14），勿走白顶沉浸 */
+      /* 红米 K70 标准版 / 小米 13 Ultra：全页黑状态栏（对齐小米 14），勿走白顶沉浸 */
       var redmiK70StdPaintedBar =
         isRedmiK70StandardClient() ||
         (root.classList.contains('app-android-redmi-k70') &&
           !root.classList.contains('app-android-redmi-k70-ultra'));
-      if (redmiK70StdPaintedBar) {
+      var mi13uPaintedBar =
+        isXiaomi13UltraClient() || root.classList.contains('app-android-xiaomi-13ultra');
+      if (redmiK70StdPaintedBar || mi13uPaintedBar) {
         try {
-          root.classList.add('app-android-redmi-k70');
+          if (redmiK70StdPaintedBar) root.classList.add('app-android-redmi-k70');
+          if (mi13uPaintedBar) root.classList.add('app-android-xiaomi-13ultra');
           root.classList.remove('app-android-immersive-white-top');
           root.classList.remove('app-android-white-page-outer');
           root.style.setProperty('--app-shell-statusbar-top', '40px');
