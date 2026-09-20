@@ -4208,6 +4208,11 @@
   function setStatusBarStyleMeta(style) {
     try {
       var want = String(style || 'default');
+      /* 14/15PM Aug15：白顶页也必须保持 black-translucent，禁止被 default 打回导致双顶距 */
+      if (isIPhone14ProMaxAug15TopExempt()) {
+        upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+        return;
+      }
       if (isIosStandaloneApp()) {
         /*
          * iOS 26/27 Liquid Glass 根治：仅新系统强制 default（不透明状态栏）。
@@ -4216,7 +4221,7 @@
          * 占状态栏、网页从其下方开始，无内容可采样 → 干净实色栏。旧系统（≤18）无此问题，
          * 保留原“蓝到刘海”沉浸式效果不动。
          */
-        /* 14 Pro Max：保留 Aug15 black-translucent，不强制 iOS27 default */
+        /* 14/15 Pro Max：保留 Aug15 black-translucent，不强制 iOS27 default */
         if (getIOSMajorVersion() >= 27 && !isIPhone14ProMaxAug15TopExempt()) {
           upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
           return;
@@ -5154,6 +5159,44 @@
       if (!isIosWhiteStatusPage()) {
         return;
       }
+      /*
+       * 14/15PM Aug15：详情/筛选白顶页绝不能再走 default + sticky tint。
+       * 否则系统已占状态栏（default）再叠 59px safe-shell → 标题上下各空一大条白缝。
+       */
+      if (isIPhone14ProMaxAug15TopExempt()) {
+        applyIPhone14ProMaxAug15TopChrome();
+        upsertMeta('theme-color', '#ffffff');
+        upsertMeta('msapplication-navbutton-color', '#ffffff');
+        upsertMeta('color-scheme', 'light');
+        try {
+          document.documentElement.style.colorScheme = 'light';
+          if (document.body) document.body.style.colorScheme = 'light';
+        } catch (eCsAug) {}
+        try {
+          hideIosStickyTintBar();
+        } catch (eHideAug) {}
+        var augBarOpts = {
+          style: 'black-translucent',
+          overlays: true,
+          color: '#ffffff',
+          paint_shell: true,
+          shell_bg: '#ffffff'
+        };
+        requestShellStatusBar(augBarOpts);
+        paintIosWhiteStatusRoot();
+        var reapplyAug15 = function () {
+          applyIPhone14ProMaxAug15TopChrome();
+          requestShellStatusBar(augBarOpts);
+          try {
+            hideIosStickyTintBar();
+          } catch (eHide2) {}
+        };
+        setTimeout(reapplyAug15, 0);
+        setTimeout(reapplyAug15, 80);
+        setTimeout(reapplyAug15, 320);
+        setTimeout(reapplyAug15, 800);
+        return;
+      }
       upsertMeta('theme-color', '#ffffff');
       upsertMeta('msapplication-navbutton-color', '#ffffff');
       upsertMeta('color-scheme', 'light');
@@ -5416,6 +5459,11 @@
   function ensureIosStickyTintBar() {
     try {
       if (!isLikelyIOSViewportClient() || !isIosWhiteStatusPage()) return;
+      /* Aug15 机型：sticky tint 高度 = 顶垫+56，会在详情页标题上下再空出白缝 */
+      if (isIPhone14ProMaxAug15TopExempt()) {
+        hideIosStickyTintBar();
+        return;
+      }
       document.documentElement.classList.add('app-ios-sticky-chrome');
       if (
         document.documentElement.classList.contains('app-ios-iphone15') ||
@@ -5490,6 +5538,19 @@
     /* 后台杀掉 / bfcache 回来后 Liquid Glass 会重新采样，必须再铺白并轻推滚动 */
     try {
       if (!isLikelyIOSViewportClient() || !isIosWhiteStatusPage()) return;
+      if (isIPhone14ProMaxAug15TopExempt()) {
+        applyIPhone14ProMaxAug15TopChrome();
+        paintIosWhiteStatusRoot();
+        hideIosStickyTintBar();
+        requestShellStatusBar({
+          style: 'black-translucent',
+          overlays: true,
+          color: '#ffffff',
+          paint_shell: true,
+          shell_bg: '#ffffff'
+        });
+        return;
+      }
       paintIosWhiteStatusRoot();
       if (isIosUnifiedFlowChrome()) {
         document.documentElement.classList.add('app-ios-unified-chrome');
