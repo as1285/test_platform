@@ -1486,7 +1486,28 @@
     }
   }
 
-  /** 强制 14/15PM 走 Aug15 顶栏：清掉 liquid-glass/ios27，垫 59px，meta 用 black-translucent。 */
+  /** 读取 env(safe-area-inset-top)；body 未就绪时可能为 0。 */
+  function measureAug15SafeAreaTopPx() {
+    try {
+      var host = document.body || document.documentElement;
+      if (!host) return -1;
+      var probe = document.createElement('div');
+      probe.style.cssText =
+        'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+      host.appendChild(probe);
+      var v = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
+      if (probe.parentNode) probe.parentNode.removeChild(probe);
+      return v;
+    } catch (e) {
+      return -1;
+    }
+  }
+
+  /**
+   * 强制 14/15PM 走开 liquid-glass/ios27。
+   * - 沉浸 black-translucent（env≥40）：垫 59px。
+   * - iOS27+ 系统已占栏（env≈0，WebClip default）：顶距必须 0，否则标题上方空一大条白。
+   */
   function applyIPhone14ProMaxAug15TopChrome() {
     try {
       var root = document.documentElement;
@@ -1498,21 +1519,33 @@
       } else {
         root.classList.add('app-ios-iphone14promax');
       }
-      root.classList.add('app-top-safe-shell');
       root.classList.remove('app-ios27');
       root.classList.remove('app-ios-liquid-glass');
       root.classList.remove('app-ios-unified-chrome');
-      root.classList.remove('app-ios-status-outer');
-      root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+      var iosMajor = 0;
       try {
-        upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
-      } catch (eMeta) {
+        iosMajor = getIOSMajorVersion();
+      } catch (eVer) {}
+      var safeTop = measureAug15SafeAreaTopPx();
+      var systemOwnsBar = iosMajor >= 27 && safeTop >= 0 && safeTop < 20;
+      if (systemOwnsBar) {
+        root.classList.remove('app-top-safe-shell');
+        root.classList.add('app-ios-status-outer');
+        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+      } else {
+        root.classList.add('app-top-safe-shell');
+        root.classList.remove('app-ios-status-outer');
+        root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
         try {
-          var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-          if (meta) {
-            meta.setAttribute('content', 'black-translucent');
-          }
-        } catch (eMeta2) {}
+          upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+        } catch (eMeta) {
+          try {
+            var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+            if (meta) {
+              meta.setAttribute('content', 'black-translucent');
+            }
+          } catch (eMeta2) {}
+        }
       }
       try {
         var plateCss = document.getElementById('ios27StatusPlateCss');
@@ -4208,9 +4241,18 @@
   function setStatusBarStyleMeta(style) {
     try {
       var want = String(style || 'default');
-      /* 14/15PM Aug15：白顶页也必须保持 black-translucent，禁止被 default 打回导致双顶距 */
+      /* 14/15PM Aug15：按实际是否沉浸选 meta，禁止在系统已占栏时强推 black-translucent 再垫 59 */
       if (isIPhone14ProMaxAug15TopExempt()) {
-        upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+        var augSafe = -1;
+        try {
+          augSafe = measureAug15SafeAreaTopPx();
+        } catch (eSafeMeta) {}
+        var augOwns =
+          getIOSMajorVersion() >= 27 && augSafe >= 0 && augSafe < 20;
+        upsertMeta(
+          'apple-mobile-web-app-status-bar-style',
+          augOwns ? 'default' : 'black-translucent'
+        );
         return;
       }
       if (isIosStandaloneApp()) {
@@ -5160,8 +5202,7 @@
         return;
       }
       /*
-       * 14/15PM Aug15：详情/筛选白顶页绝不能再走 default + sticky tint。
-       * 否则系统已占状态栏（default）再叠 59px safe-shell → 标题上下各空一大条白缝。
+       * 14/15PM Aug15：按 env 决定沉浸 59px 或系统占栏顶距 0，禁止 default+59 双顶距。
        */
       if (isIPhone14ProMaxAug15TopExempt()) {
         applyIPhone14ProMaxAug15TopChrome();
@@ -5175,18 +5216,31 @@
         try {
           hideIosStickyTintBar();
         } catch (eHideAug) {}
-        var augBarOpts = {
-          style: 'black-translucent',
-          overlays: true,
-          color: '#ffffff',
-          paint_shell: true,
-          shell_bg: '#ffffff'
+        var buildAugBarOpts = function () {
+          var owns =
+            document.documentElement.classList.contains('app-ios-status-outer') ||
+            (getIOSMajorVersion() >= 27 && measureAug15SafeAreaTopPx() < 20);
+          return owns
+            ? {
+                style: 'default',
+                overlays: false,
+                color: '#ffffff',
+                paint_shell: true,
+                shell_bg: '#ffffff'
+              }
+            : {
+                style: 'black-translucent',
+                overlays: true,
+                color: '#ffffff',
+                paint_shell: true,
+                shell_bg: '#ffffff'
+              };
         };
-        requestShellStatusBar(augBarOpts);
+        requestShellStatusBar(buildAugBarOpts());
         paintIosWhiteStatusRoot();
         var reapplyAug15 = function () {
           applyIPhone14ProMaxAug15TopChrome();
-          requestShellStatusBar(augBarOpts);
+          requestShellStatusBar(buildAugBarOpts());
           try {
             hideIosStickyTintBar();
           } catch (eHide2) {}
@@ -5542,13 +5596,26 @@
         applyIPhone14ProMaxAug15TopChrome();
         paintIosWhiteStatusRoot();
         hideIosStickyTintBar();
-        requestShellStatusBar({
-          style: 'black-translucent',
-          overlays: true,
-          color: '#ffffff',
-          paint_shell: true,
-          shell_bg: '#ffffff'
-        });
+        var owns =
+          document.documentElement.classList.contains('app-ios-status-outer') ||
+          (getIOSMajorVersion() >= 27 && measureAug15SafeAreaTopPx() < 20);
+        requestShellStatusBar(
+          owns
+            ? {
+                style: 'default',
+                overlays: false,
+                color: '#ffffff',
+                paint_shell: true,
+                shell_bg: '#ffffff'
+              }
+            : {
+                style: 'black-translucent',
+                overlays: true,
+                color: '#ffffff',
+                paint_shell: true,
+                shell_bg: '#ffffff'
+              }
+        );
         return;
       }
       paintIosWhiteStatusRoot();

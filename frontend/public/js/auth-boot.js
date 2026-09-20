@@ -989,23 +989,43 @@
         root.classList.add('app-ios-iphone14promax');
       }
       root.classList.add('app-ios-iphone-promax-font');
-      root.classList.add('app-top-safe-shell');
       root.classList.remove('app-ios27');
       root.classList.remove('app-ios-liquid-glass');
       root.classList.remove('app-ios-unified-chrome');
-      root.classList.remove('app-ios-status-outer');
-      root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+      var ua = String(navigator.userAgent || '');
+      var m = ua.match(/OS (\d+)[_.]/i);
+      var major = m ? parseInt(m[1], 10) : 0;
+      var safeTop = 0;
       try {
-        var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-        if (meta) {
-          meta.setAttribute('content', 'black-translucent');
-        } else {
-          meta = document.createElement('meta');
-          meta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-          meta.setAttribute('content', 'black-translucent');
-          (document.head || root).appendChild(meta);
-        }
-      } catch (eMeta) {}
+        var probe = document.createElement('div');
+        probe.style.cssText =
+          'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+        (document.body || root).appendChild(probe);
+        safeTop = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
+        if (probe.parentNode) probe.parentNode.removeChild(probe);
+      } catch (eSafe) {}
+      /* iOS27+ 且 env≈0：系统已占栏，勿再垫 59px */
+      var systemOwnsBar = major >= 27 && safeTop < 20;
+      if (systemOwnsBar) {
+        root.classList.remove('app-top-safe-shell');
+        root.classList.add('app-ios-status-outer');
+        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+      } else {
+        root.classList.add('app-top-safe-shell');
+        root.classList.remove('app-ios-status-outer');
+        root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+        try {
+          var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          if (meta) {
+            meta.setAttribute('content', 'black-translucent');
+          } else {
+            meta = document.createElement('meta');
+            meta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+            meta.setAttribute('content', 'black-translucent');
+            (document.head || root).appendChild(meta);
+          }
+        } catch (eMeta) {}
+      }
       try {
         var plateCss = document.getElementById('ios27StatusPlateCss');
         if (plateCss && plateCss.parentNode) plateCss.parentNode.removeChild(plateCss);

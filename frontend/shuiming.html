@@ -310,7 +310,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-xq-fix"></script>
+    <script src="/js/auth-boot.js?v=20260920-15pm-no-double"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -374,11 +374,18 @@
                     } else {
                         root.classList.add('app-ios-iphone14promax');
                     }
-                    root.classList.add('app-top-safe-shell');
                     root.classList.remove('app-ios27');
                     root.classList.remove('app-ios-liquid-glass');
                     root.classList.remove('app-ios-unified-chrome');
-                    root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+                    if (iosMajor >= 27) {
+                        root.classList.remove('app-top-safe-shell');
+                        root.classList.add('app-ios-status-outer');
+                        root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+                    } else {
+                        root.classList.add('app-top-safe-shell');
+                        root.classList.remove('app-ios-status-outer');
+                        root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+                    }
                 }
                 var is15Vp = shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
                 var is15LikeSm =
@@ -449,8 +456,8 @@
                     window.parent.postMessage({
                         source: 'tax-h5',
                         type: 'status-bar',
-                        style: is14pmExempt ? 'black-translucent' : 'default',
-                        overlays: is14pmExempt ? true : iosMajor >= 27 ? false : true,
+                        style: is14pmExempt && iosMajor < 27 ? 'black-translucent' : 'default',
+                        overlays: is14pmExempt ? (iosMajor < 27) : iosMajor >= 27 ? false : true,
                         color: '#ffffff',
                         paint_shell: true,
                         shell_bg: '#ffffff'
@@ -459,7 +466,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-15pm-xq-fix" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260920-15pm-no-double" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>

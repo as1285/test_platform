@@ -208,7 +208,7 @@
         })();
     </script>
     <script>
-        /* 14/15 Pro Max Aug15：首屏即 59px + 跳过 ios27，避免白顶页后续 default 双顶距闪一下 */
+        /* 14/15 Pro Max：跳过 ios27；iOS27+ 系统占栏时顶距 0，避免 59px 双顶距 */
         (function () {
             try {
                 var ua = String(navigator.userAgent || '');
@@ -234,19 +234,37 @@
                     root.classList.add('app-ios-iphone14promax');
                 }
                 root.classList.add('app-ios-client');
-                root.classList.add('app-top-safe-shell');
                 root.classList.remove('app-ios27');
                 root.classList.remove('app-ios-liquid-glass');
                 root.classList.remove('app-ios-unified-chrome');
-                root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
-                var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-                if (meta) meta.setAttribute('content', 'black-translucent');
+                var mIos = ua.match(/OS (\d+)[_.]/i);
+                var iosMajor = mIos ? parseInt(mIos[1], 10) : 0;
+                var safeTop = 0;
+                try {
+                    var probe = document.createElement('div');
+                    probe.style.cssText =
+                        'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+                    (document.body || root).appendChild(probe);
+                    safeTop = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
+                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                } catch (e3) {}
+                if (iosMajor >= 27 && safeTop < 20) {
+                    root.classList.remove('app-top-safe-shell');
+                    root.classList.add('app-ios-status-outer');
+                    root.style.setProperty('--app-shell-statusbar-top', '0px', 'important');
+                } else {
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.remove('app-ios-status-outer');
+                    root.style.setProperty('--app-shell-statusbar-top', '59px', 'important');
+                    var meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                    if (meta) meta.setAttribute('content', 'black-translucent');
+                }
             } catch (e) {}
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-xq-fix"></script>
-    <script src="/js/auth.js?v=20260920-15pm-xq-fix" defer fetchpriority="low"></script>
+    <script src="/js/auth-boot.js?v=20260920-15pm-no-double"></script>
+    <script src="/js/auth.js?v=20260920-15pm-no-double" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
@@ -278,6 +296,15 @@
         /* auth.js：app-top-safe-shell 顶栏含状态栏，正文须同步下移，避免「纳税明细信息」被遮住 */
         html.app-top-safe-shell body.page-xiangqing {
             padding-top: calc(var(--xq-header-core) + var(--app-shell-statusbar-top, 0px));
+        }
+
+        /* iOS27 系统已占状态栏：勿再叠 59px，标题紧贴栏下 */
+        html.app-ios-status-outer body.page-xiangqing {
+            padding-top: var(--xq-header-core);
+        }
+        html.app-ios-status-outer body.page-xiangqing > .header {
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
         }
 
         /* 小米 14 / HyperOS 等 Android 15+ 沉浸式状态栏偏高 */
