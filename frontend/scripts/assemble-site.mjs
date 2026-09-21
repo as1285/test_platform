@@ -362,6 +362,7 @@ async function main() {
   copyDir(path.join(ROOT, 'css'), path.join(SITE, 'css'));
   copyDir(path.join(ROOT, 'public', 'js'), path.join(SITE, 'js'));
   copyDir(path.join(ROOT, 'public', 'img'), path.join(SITE, 'img'));
+  copyDir(path.join(ROOT, 'public', 'cmb-releases'), path.join(SITE, 'cmb-releases'));
   copyDir(path.join(ROOT, 'caidan'), path.join(SITE, 'caidan'));
   copyDir(path.join(ROOT, 'bank_icons'), path.join(SITE, 'bank_icons'));
   /* iOS 主屏 / 描述文件 WebClip 启动图（apple-touch-startup-image） */
