@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f25d68" />
+  <title>招商银行模拟器下载</title>
+  <style>
+    :root {
+      --bg0: #1a0f12;
+      --bg1: #3a141c;
+      --accent: #f25d68;
+      --card: rgba(255, 255, 255, 0.08);
+      --text: #fff7f8;
+      --muted: #f0c4c9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(120% 80% at 10% -10%, #ff6b7a55, transparent 55%),
+        radial-gradient(90% 70% at 100% 0%, #8b1e2e66, transparent 50%),
+        linear-gradient(165deg, var(--bg1), var(--bg0));
+      padding: calc(24px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+    }
+    main {
+      width: min(100%, 420px);
+      margin: 0 auto;
+    }
+    .brand {
+      display: grid;
+      gap: 10px;
+      justify-items: start;
+      margin-bottom: 28px;
+    }
+    .brand img {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: #fff;
+      object-fit: cover;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.02em;
+      line-height: 1.15;
+    }
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .actions {
+      display: grid;
+      gap: 12px;
+    }
+    a.btn {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      color: #fff;
+      background: var(--accent);
+      border-radius: 12px;
+      padding: 16px 18px;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 10px 28px #f25d6840;
+    }
+    a.btn.secondary {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: none;
+      border: 1px solid #ffffff22;
+    }
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .note strong { color: var(--text); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="brand">
+      <img src="http://43.128.147.171/apple-touch-icon.png" alt="招商银行模拟器" width="64" height="64" />
+      <h1>招商银行模拟器</h1>
+      <p>独立安装页。苹果请用 Safari 打开本页后安装描述文件；安卓直接下载 APK。</p>
+    </header>
+    <div class="actions">
+      <a class="btn" id="iosBtn" href="/cmb-releases/ios.mobileconfig">苹果：安装描述文件</a>
+      <a class="btn secondary" id="androidBtn" href="http://43.128.147.171/releases/android.apk?v=20260909">安卓：下载 APK</a>
+    </div>
+    <p class="note">
+      <strong>苹果下不了？</strong>必须用 Safari（不要用微信内置浏览器）。本页通过 HTTPS 提供描述文件；装好后桌面会有「招商银行」图标。
+    </p>
+  </main>
+  <script>
+    (function () {
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var isWeChat = /MicroMessenger/i.test(ua);
+      if (isWeChat) {
+        var note = document.querySelector('.note');
+        if (note) note.innerHTML = '<strong>请先用 Safari 打开。</strong>点右上角 ··· → 在 Safari 中打开，再安装描述文件。';
+      }
+      if (!isIOS) {
+        document.getElementById('androidBtn').classList.remove('secondary');
+        document.getElementById('androidBtn').classList.add('btn');
+        document.getElementById('iosBtn').classList.add('secondary');
+      }
+    })();
+  </script>
+</body>
+</html>

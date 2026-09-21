@@ -659,7 +659,7 @@ mustInclude(
 );
 mustInclude(
   'frontend/install_guide.html',
-  ['http://43.128.147.171/download', '下载招商银行模拟器'],
+  ['cmb-download.html', '下载招商银行模拟器'],
   'install guide CMB simulator download page'
 );
 mustExclude(
