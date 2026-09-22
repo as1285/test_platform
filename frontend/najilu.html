@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth-boot.js?v=20260920-15pm-env0"></script>
+    <script src="/js/auth-boot.js?v=20260921-mi15-back"></script>
     <script src="/js/auth.js?v=20260905-qr-guide" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>纳税记录开具</title>
@@ -541,6 +541,20 @@
             display: none;
         }
 
+        button.back-btn,
+        button.header-close-btn,
+        button.preview-close-btn,
+        button.preview-album-btn {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        button.back-btn {
+            border: none;
+            background: transparent;
+            padding: 0;
+        }
+
         .header-close-btn {
             position: absolute;
             right: 14px;
@@ -882,7 +896,7 @@
 
     <script src="/js/tax-year.js?v=20260816-year-from-2019"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260920-page2-noqr"></script>
+    <script src="/js/najilu.js?v=20260922-preview-close"></script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
 </html>

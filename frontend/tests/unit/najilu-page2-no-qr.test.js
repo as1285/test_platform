@@ -41,6 +41,6 @@ describe('纳税记录续页：无二维码、表头同首页', () => {
   });
 
   it('缓存戳已刷新', () => {
-    expect(najiluHtml).toContain('najilu.js?v=20260920-page2-noqr');
+    expect(najiluHtml).toContain('najilu.js?v=20260922-preview-close');
   });
 });

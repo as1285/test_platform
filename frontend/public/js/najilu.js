@@ -1171,21 +1171,33 @@
     );
   }
 
-  function previewConsultHref() {
-    return 'consult.html?tab=records';
+  /** 预览关闭必须回到申请记录。iOS 同页改 query 会把历史替换掉，history.back 会落到咨询导入页。 */
+  var PREVIEW_BACK_HREF = 'najilu.html?view=records';
+
+  function goBackFromPreview(e) {
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    window.location.replace(PREVIEW_BACK_HREF);
+  }
+
+  function bindPreviewCloseButtons() {
+    ['btnPreviewHeaderBack', 'btnPreviewHeaderClose', 'btnPreviewClose'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.getAttribute('data-back-bound') === '1') return;
+      el.setAttribute('data-back-bound', '1');
+      el.addEventListener('click', goBackFromPreview, true);
+    });
   }
 
   function renderPreviewDetailHeader() {
-    var consultHref = previewConsultHref();
     return (
       '<div class="header header--detail">' +
-      '<a href="' +
-      consultHref +
-      '" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
+      '<button type="button" id="btnPreviewHeaderBack" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></button>' +
       '<span class="header-title">纳税记录详情</span>' +
-      '<a href="' +
-      consultHref +
-      '" class="header-close-btn">关闭</a>' +
+      '<button type="button" id="btnPreviewHeaderClose" class="header-close-btn">关闭</button>' +
       '</div>'
     );
   }
@@ -2647,6 +2659,7 @@
     if (!app) {
       document.body.innerHTML =
         renderPreviewDetailHeader() + '<div class="empty-records">申请记录不存在</div>';
+      bindPreviewCloseButtons();
       return;
     }
     var previewUrls = [];
@@ -2659,21 +2672,19 @@
       '<div class="preview-pager" id="previewPager" hidden></div>' +
       '</div>' +
       '<div class="preview-footer preview-footer--split">' +
-      '<a class="preview-album-btn" id="btnAddToAlbum" href="consult.html?tab=records">添加到相册</a>' +
-      '<a class="preview-close-btn" id="btnPreviewCloseConsult" href="consult.html?tab=records">关闭</a>' +
+      '<button type="button" class="preview-album-btn" id="btnAddToAlbum">添加到相册</button>' +
+      '<button type="button" class="preview-close-btn" id="btnPreviewClose">关闭</button>' +
       '</div></div>';
+    bindPreviewCloseButtons();
     var btnAlbum = document.getElementById('btnAddToAlbum');
     if (btnAlbum) {
       btnAlbum.onclick = function (e) {
         e.preventDefault();
-        var goConsult = function () {
-          window.location.href = previewConsultHref();
-        };
         if (!previewUrls.length || !previewApp) {
-          goConsult();
+          shareCertificateImages([], null);
           return;
         }
-        Promise.resolve(shareCertificateImages(previewUrls, previewApp)).then(goConsult, goConsult);
+        shareCertificateImages(previewUrls, previewApp);
       };
     }
     applicationWithCurrentData(app)
