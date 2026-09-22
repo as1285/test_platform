@@ -167,6 +167,14 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
+                if (/SHARK[\s_-]*PRS-A0|\bPRS-A0\b|(?:Black\s*Shark|BlackShark|黑鲨)[\s_-]*4S\b/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-blackshark-4s');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.classList.remove('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                }
                 if (/PGCM10|\bK9x\b/i.test(u)) {
                     document.documentElement.classList.add('app-android-oppo-k9x');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -376,6 +384,26 @@
         html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing > .header {
             padding-top: calc(10px + 40px) !important;
+        }
+
+        html.app-android-blackshark-4s.app-top-safe-shell::before {
+            content: "";
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 40px;
+            background: #000;
+            z-index: 2147483000;
+            pointer-events: none;
+        }
+        html.app-android-blackshark-4s body.page-xiangqing {
+            --app-shell-statusbar-top: 40px;
+            padding-top: calc(var(--xq-header-core) + 40px);
+        }
+        html.app-android-blackshark-4s body.page-xiangqing > .header {
+            padding-top: calc(10px + 40px) !important;
+            background: #fff !important;
         }
 
         .header {

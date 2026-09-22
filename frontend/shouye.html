@@ -243,6 +243,23 @@
                         document.head.appendChild(s15Fp);
                     }
                 }
+                if (/SHARK[\s_-]*PRS-A0|\bPRS-A0\b|(?:Black\s*Shark|BlackShark|黑鲨)[\s_-]*4S\b/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('app-android-blackshark-4s');
+                    document.documentElement.classList.add('app-top-safe-shell');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--shouye-status-inset', '40px');
+                    if (!document.getElementById('blackshark4sBlackBarFirstPaint')) {
+                        var bsFp = document.createElement('style');
+                        bsFp.id = 'blackshark4sBlackBarFirstPaint';
+                        bsFp.textContent =
+                            'html.app-android-blackshark-4s.app-top-safe-shell{--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--shouye-status-inset:40px!important;}' +
+                            'html.app-android-blackshark-4s.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                            'html.app-android-blackshark-4s.app-top-safe-shell body.page-shouye::before{background-color:#000!important;background-image:none!important;height:40px!important;z-index:2147483000!important;}';
+                        document.head.appendChild(bsFp);
+                    }
+                }
             } catch (e0) {}
             /* ColorOS / ArkWeb 的 100vw 常宽于画布，首页 rpx 按实测 clientWidth 锁，避免撑宽卡顿 */
             try {
@@ -451,6 +468,29 @@
         html.app-android-vivo-s15.app-top-safe-shell body.page-shouye::before {
             background-color: #000 !important;
             background-image: none !important;
+        }
+
+        /* 黑鲨 4S：首页系统栏黑框，搜索蓝从黑框下开始 */
+        html.app-android-blackshark-4s.app-top-safe-shell body.page-shouye {
+            --shouye-status-inset: 40px;
+            --app-shell-statusbar-top: 40px !important;
+        }
+        html.app-android-blackshark-4s.app-top-safe-shell::before {
+            content: "";
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 40px;
+            background: #000;
+            z-index: 2147483000;
+            pointer-events: none;
+        }
+        html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before {
+            background-color: #000 !important;
+            background-image: none !important;
+            height: 40px !important;
+            z-index: 2147483000 !important;
         }
 
         /*

@@ -184,6 +184,21 @@
                     try {
                         blob += ' ' + String(localStorage.getItem('tax_device_model_v1') || '');
                     } catch (eModel) {}
+                    if (/SHARK[\s_-]*PRS-A0|\bPRS-A0\b|(?:Black\s*Shark|BlackShark|黑鲨)[\s_-]*4S\b/i.test(blob)) {
+                        var bsRoot = document.documentElement;
+                        bsRoot.classList.add('app-android-client');
+                        bsRoot.classList.add('app-android-blackshark-4s');
+                        bsRoot.classList.add('app-top-safe-shell');
+                        bsRoot.style.setProperty('--app-shell-statusbar-top', '40px');
+                        bsRoot.style.setProperty('--android-status-inset', '40px');
+                        if (!document.getElementById('blackshark4sBlackBarFirstPaint')) {
+                            var bsFp = document.createElement('style');
+                            bsFp.id = 'blackshark4sBlackBarFirstPaint';
+                            bsFp.textContent = 'html.app-android-blackshark-4s.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}';
+                            document.head.appendChild(bsFp);
+                        }
+                        return;
+                    }
                     if (/2407FPN8E[GR]|2407FRK8EC|XIG06|A402XM|(?:Redmi|Xiaomi|REDMI)[\s_-]*K70[\s_-]*(?:至尊|Ultra)/i.test(blob)) {
                         return;
                     }
