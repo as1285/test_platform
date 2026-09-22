@@ -11,7 +11,7 @@ describe('红米 Note 13 Pro 我的页税号与三宫格', () => {
     expect(auth).toContain('pinRedmiNote13ProMineE1Layout()');
     expect(auth).toContain(':not(.app-android-redmi-note13-pro)');
     expect(auth).toContain("canvasN13.style.setProperty('background-size', '100% auto', 'important')");
-    expect(auth).toContain("canvasN13.style.setProperty('aspect-ratio', '750 / 1180', 'important')");
+    expect(auth).toContain("canvasN13.style.setProperty('aspect-ratio', '750 / 1242', 'important')");
     expect(auth).toMatch(
       /function isHyperOs2MineE1SmClient\(\) \{[\s\S]{0,1200}isRedmiNote13ProClient\(\)/
     );
@@ -24,7 +24,7 @@ describe('红米 Note 13 Pro 我的页税号与三宫格', () => {
     expect(auth).toContain('top:calc(430 * var(--mine-rpx)) !important');
     expect(mine).toContain('top: calc(430 * var(--mine-rpx)) !important');
     expect(mine).toContain('background-size: 100% auto !important');
-    expect(mine).toContain('aspect-ratio: 750 / 1180 !important');
+    expect(mine).toContain('aspect-ratio: 750 / 1242 !important');
     expect(mine).not.toMatch(
       /html\.app-android-redmi-note13-pro body\.page-mine \.mine-e1-pill[\s\S]{0,80}top:/
     );

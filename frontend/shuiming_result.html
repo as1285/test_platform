@@ -900,7 +900,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-env0"></script>
+    <script src="/js/auth-boot.js?v=20260921-mi15-back"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -1107,7 +1107,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260920-15pm-env0" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260921-mi15-back" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -2135,8 +2135,8 @@
             font-weight: 400;
             color: #333;
             line-height: 1.18;
-            /* 官方个税 App：日期末位对齐汇总税额小数点，右侧留出「xx元」宽 */
-            margin-right: var(--list-date-inset, 2.15em);
+            /* 日期右缘靠近卡片右边：按税额小数段实测后再收 12px，避免离最右侧过宽 */
+            margin-right: var(--list-date-inset, 1.4em);
         }
 
         .list-row {
@@ -4406,11 +4406,11 @@
         }
 
         /*
-         * 日期右缘对齐汇总「5946.01元」的小数点：--list-date-inset 由 JS 按税额小数位实测。
-         * 选择器带 #recordList，压过 15/16/17 等机型把 .list-date 贴边的 margin-right:0。
+         * 日期到卡片最右侧的距离：按汇总税额小数段（如「22元」）实测后再收 12px。
+         * 整段「xx元」会把日期顶得离右边过远。选择器带 #recordList，压过机型贴边的 margin-right:0。
          */
         body.page-shuiming-result #recordList .list-date {
-            margin-right: var(--list-date-inset, 2.15em) !important;
+            margin-right: var(--list-date-inset, 1.4em) !important;
         }
 
     </style>
@@ -5649,8 +5649,8 @@
         }
 
         /**
-         * 把列表日期往左收到与汇总税额小数点同一竖线（官方个税 App / iPhone 15 Pro / Turbo 4 Pro）。
-         * 右侧空隙 = #taxTotal 小数点后（如「01元」）的实测宽度。
+         * 列表日期右侧留白：按汇总税额小数段（如「01元」）实测，再收 12px，
+         * 让日期更靠近卡片最右侧，避免整段「xx元」把日期顶得太靠左。
          */
         function syncListDateToSummaryDecimal() {
             var tax = document.getElementById('taxTotal');
@@ -5674,6 +5674,7 @@
             var w = probe.getBoundingClientRect().width;
             if (probe.parentNode) probe.parentNode.removeChild(probe);
             if (!(w > 0) || !isFinite(w)) return;
+            w = Math.max(8, w - 12);
             document.documentElement.style.setProperty('--list-date-inset', (Math.round(w * 100) / 100) + 'px');
         }
 

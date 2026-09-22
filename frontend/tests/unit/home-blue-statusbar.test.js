@@ -63,11 +63,11 @@ describe('首页蓝顶栏 / 纳税明细顶白底', () => {
     expect(shuimingResult).toContain('background: #fff');
     expect(shuimingResult).toContain('overscroll-behavior-y: none');
     expect(shuimingResult).toContain('width: 4px');
-    expect(shuimingResult).toContain('auth.js?v=20260920-15pm-env0');
+    expect(shuimingResult).toContain('auth.js?v=20260921-mi15-back');
   });
 
   it('首页脚本缓存戳已刷新', () => {
-    expect(shouye).toContain('auth.js?v=20260920-15pm-env0');
+    expect(shouye).toContain('auth.js?v=20260921-mi15-back');
   });
 
   it('iPhone 14 Pro 首页刘海垫搜索蓝，不留 Cordova 顶黑框', () => {

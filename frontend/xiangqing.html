@@ -208,6 +208,25 @@
         })();
     </script>
     <script>
+        /* iPhone 17 系列：首屏就打 class，避免 auth.js defer 之前详情顶栏按渐隐带撑出空白 */
+        (function () {
+            try {
+                var ua = String(navigator.userAgent || '');
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                if (/iPhone\s*Air\b|iPhone18,4\b/i.test(ua)) return;
+                var root = document.documentElement;
+                if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(ua)) {
+                    root.classList.add('app-ios-iphone17promax');
+                    root.classList.add('app-ios-client');
+                } else if (/iPhone\s*17(?:\s*Pro)?\b|iPhone18,1\b|iPhone18,3\b|iPhone19,1\b/i.test(ua)) {
+                    root.classList.add('app-ios-iphone17pro');
+                    root.classList.add('app-ios-client');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script>
         /* 14/15 Pro Max：跳过 ios27；系统占栏时顶距 0（env≈0，不限 iOS 大版本），避免 59px 双顶距 */
         (function () {
             try {
@@ -263,8 +282,8 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260920-15pm-env0"></script>
-    <script src="/js/auth.js?v=20260920-15pm-env0" defer fetchpriority="low"></script>
+    <script src="/js/auth-boot.js?v=20260921-mi15-back"></script>
+    <script src="/js/auth.js?v=20260921-mi15-back" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
@@ -296,6 +315,17 @@
         /* auth.js：app-top-safe-shell 顶栏含状态栏，正文须同步下移，避免「纳税明细信息」被遮住 */
         html.app-top-safe-shell body.page-xiangqing {
             padding-top: calc(var(--xq-header-core) + var(--app-shell-statusbar-top, 0px));
+        }
+
+        /*
+         * 详情页固定白顶栏不需要列表页那条 sticky 顶垫。
+         * 它的高度是顶距 + 56px，负外边距在部分 iOS 上不生效，标题下会空出一块白。
+         */
+        body.page-xiangqing #iosStickyTint {
+            display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         /* iOS27 系统已占状态栏：勿再叠 59px，标题紧贴栏下 */
@@ -418,6 +448,27 @@
             padding: 11px 0;
         }
 
+        /* 汇总区只保留两行金额，避免首行被撑出大块空白 */
+        .xq-section[aria-labelledby="secSummary"] .section-title {
+            padding: 8px 16px 2px;
+        }
+
+        .xq-section[aria-labelledby="secSummary"] .info-row {
+            align-items: center;
+            margin: 0;
+            padding: 8px 0;
+            min-height: 0;
+            height: auto;
+        }
+
+        .xq-section[aria-labelledby="secSummary"] .info-label,
+        .xq-section[aria-labelledby="secSummary"] .info-value {
+            line-height: 22px;
+            white-space: nowrap;
+            max-height: 22px;
+            overflow: hidden;
+        }
+
         .info-label {
             font-size: 15px;
             color: #666;
@@ -460,10 +511,10 @@
             max-width: none;
         }
 
-        /* 主管税务机关：正版整段单行（含「税务局」），不按 12 字拆行 */
+        /* 主管税务机关：正版放不下时在取值里另起一行（如「开」后回车），不截断 */
         .info-row--tax-authority {
-            align-items: center;
-            gap: 6px;
+            align-items: flex-start;
+            gap: 12px;
         }
 
         .info-row--tax-authority .info-label {
@@ -474,10 +525,13 @@
             flex: 1 1 auto;
             max-width: none;
             line-height: 1.45;
-            font-size: 14px;
-            letter-spacing: -0.2px;
-            word-break: keep-all;
-            white-space: nowrap;
+            font-size: 15px;
+            letter-spacing: normal;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
         }
 
         .info-value.amount-value,
@@ -1034,6 +1088,57 @@
 
         initBackLink();
         loadData();
+
+        /*
+         * iPhone 17：系统已经把页面放在状态栏下面，但 env(safe-area-inset-top) 仍有一百多像素。
+         * 正文若再加这段，标题和「纳税明细信息」之间就会空出一块白。
+         * 量到空隙后把 body 顶距收到顶栏真实高度，保留 10px 灰缝。
+         */
+        function closeXiangqingTopGap() {
+            var body = document.body;
+            if (!body || !body.classList.contains('page-xiangqing')) return;
+            var header = document.querySelector('body.page-xiangqing > .header');
+            var title = header && header.querySelector('.header-title');
+            var section = document.querySelector('body.page-xiangqing > .xq-section');
+            var firstRow = section && section.querySelector('.info-row');
+            if (!header || !title || !section || !firstRow) return;
+            var tint = document.getElementById('iosStickyTint');
+            if (tint) {
+                tint.style.setProperty('display', 'none', 'important');
+                tint.style.setProperty('height', '0px', 'important');
+                tint.style.setProperty('margin', '0px', 'important');
+            }
+            header.style.setProperty('height', 'auto', 'important');
+            header.style.setProperty('min-height', '0px', 'important');
+            header.style.setProperty('padding-bottom', '8px', 'important');
+            var seam = 10;
+            var titleBottom = title.getBoundingClientRect().bottom;
+            var rowTop = firstRow.getBoundingClientRect().top;
+            var extra = rowTop - titleBottom - seam - 28;
+            var pad = parseFloat(window.getComputedStyle(body).paddingTop) || 0;
+            var headerH = Math.ceil(header.getBoundingClientRect().height);
+            if (extra > 8) {
+                var nextPad = Math.max(headerH, Math.round(pad - extra));
+                body.style.setProperty('padding-top', nextPad + 'px', 'important');
+            } else if (pad > headerH + seam + 8) {
+                body.style.setProperty('padding-top', (headerH + seam) + 'px', 'important');
+            }
+            section.style.setProperty('margin-top', '10px', 'important');
+        }
+        function scheduleXiangqingTopGap() {
+            closeXiangqingTopGap();
+            if (window.requestAnimationFrame) requestAnimationFrame(closeXiangqingTopGap);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', scheduleXiangqingTopGap);
+        } else {
+            scheduleXiangqingTopGap();
+        }
+        window.addEventListener('pageshow', scheduleXiangqingTopGap);
+        setTimeout(closeXiangqingTopGap, 50);
+        setTimeout(closeXiangqingTopGap, 300);
+        setTimeout(closeXiangqingTopGap, 800);
+        setTimeout(closeXiangqingTopGap, 1200);
     </script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>

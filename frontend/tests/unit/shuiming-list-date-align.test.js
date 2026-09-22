@@ -18,7 +18,7 @@ function loadAlignFns() {
   );
 }
 
-describe('收入纳税明细：工资薪金日期对齐汇总税额小数点', () => {
+describe('收入纳税明细：日期右侧留白按税额小数段再收 12px', () => {
   beforeEach(() => {
     document.documentElement.style.removeProperty('--list-date-inset');
     document.body.innerHTML =
@@ -48,7 +48,7 @@ describe('收入纳税明细：工资薪金日期对齐汇总税额小数点', (
     };
     try {
       window.syncListDateToSummaryDecimal();
-      expect(document.documentElement.style.getPropertyValue('--list-date-inset')).toBe('28.5px');
+      expect(document.documentElement.style.getPropertyValue('--list-date-inset')).toBe('16.5px');
     } finally {
       proto.getBoundingClientRect = orig;
     }

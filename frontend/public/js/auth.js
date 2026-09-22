@@ -3517,7 +3517,7 @@
   /** Android @sm：裁到菜单下缘（含 iQOO 13/15）。小米 HyperOS 2 / Mate 60 / Ace Pro 另走 lock。 */
   function androidMineE1TailCropCss() {
       var cropSel =
-      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine';
+      'html.app-android-mine-e1-sm:not(.app-android-mine-e1-plainimg):not(.app-android-xiaomi-14pro):not(.app-android-xiaomi-15):not(.app-android-xiaomi-15pro):not(.app-android-huawei-mate60):not(.app-android-huawei-p40pro):not(.app-android-oneplus-acepro):not(.app-android-hinova9se):not(.app-mine-black-status):not(.app-android-redmi-k70):not(.app-android-xiaomi-13ultra):not(.app-android-redmi-note13-pro):not(.app-android-oppo-reno10):not(.app-android-huawei-matepad115s) body.page-mine';
     var imgSel =
       cropSel + ' .mine-e1-canvas > img,' +
       cropSel + ' .mine-e1-canvas > #headerImg';
@@ -3785,8 +3785,8 @@
       }
       /*
        * 红米 Note 13 Pro（MIUI 14）也会带上 app-android-mine-e1-sm。
-       * 若跟 HyperOS 2 走 background-size:100% 100%，1242 高的底图被压进 1180 画布，
-       * 税号贴到白区上沿，三宫格胶囊相对「家庭成员」下飘。
+       * 画布跟底图 1242 高，不要裁成 1180，否则「关于&更新」图标下沿被退出登录盖住。
+       * 也不要 background-size:100% 100% 压扁，否则税号贴白区、三宫格胶囊下飘。
        */
       if (
         isRedmiNote13ProClient() ||
@@ -3810,7 +3810,7 @@
           canvasN13.style.setProperty('background-position', 'top center', 'important');
           canvasN13.style.setProperty('background-repeat', 'no-repeat', 'important');
           canvasN13.style.setProperty('background-color', '#f5f6fa', 'important');
-          canvasN13.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+          canvasN13.style.setProperty('aspect-ratio', '750 / 1242', 'important');
           canvasN13.style.setProperty('height', 'auto', 'important');
           canvasN13.style.setProperty('max-height', 'none', 'important');
           canvasN13.style.setProperty('overflow', 'hidden', 'important');
@@ -3857,7 +3857,7 @@
         canvas.style.setProperty('width', '100%', 'important');
         canvas.style.setProperty('height', 'auto', 'important');
         canvas.style.setProperty('max-height', 'none', 'important');
-        canvas.style.setProperty('aspect-ratio', '750 / 1180', 'important');
+        canvas.style.setProperty('aspect-ratio', '750 / 1242', 'important');
         canvas.style.setProperty('overflow', 'hidden', 'important');
         canvas.style.setProperty('background-size', '100% auto', 'important');
         canvas.style.setProperty('background-position', 'top center', 'important');
@@ -3874,7 +3874,7 @@
       }
       if (layer) {
         layer.style.setProperty('top', '0', 'important');
-        layer.style.setProperty('padding-bottom', 'calc(1180 / 750 * 100%)', 'important');
+        layer.style.setProperty('padding-bottom', 'calc(1242 / 750 * 100%)', 'important');
       }
       /* 税号上移 8rpx，和下面白区再拉开一点；胶囊保持 688，对齐未压扁的底图 */
       if (document.body && document.body.classList.contains('page-mine')) {
@@ -6769,9 +6769,19 @@
           },
           { href: 'splash_screen.png?v=20260731-webclip', media: '(orientation: portrait)' }
         ];
-        startups.forEach(function (s) {
-          upsertLink('apple-touch-startup-image', s.href, { media: s.media });
-        });
+        /* iOS「添加到主屏幕」启动图。小米 15 的 HyperOS 会把 portrait 启动图当成每次返回的过场，不要注入。 */
+        if (!isXiaomi15Client()) {
+          startups.forEach(function (s) {
+            upsertLink('apple-touch-startup-image', s.href, { media: s.media });
+          });
+        } else {
+          try {
+            var splashLinks = document.head.querySelectorAll('link[rel="apple-touch-startup-image"]');
+            for (var si = 0; si < splashLinks.length; si++) {
+              if (splashLinks[si].parentNode) splashLinks[si].parentNode.removeChild(splashLinks[si]);
+            }
+          } catch (eSplashRm) {}
+        }
       })();
       if (immersiveBlueTop) {
         applyImmersiveBlueStatusBar(immersiveBlueTop);
@@ -7562,8 +7572,8 @@
           'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after{font-size:10px !important;}' +
           /* 底图勿 100% 100% 压扁，否则税号贴白区、三宫格胶囊下飘；税号再上移 8rpx */
           'html.app-android-redmi-note13-pro body.page-mine .mine-ov-tax{top:calc(430 * var(--mine-rpx)) !important;}' +
-          'html.app-android-redmi-note13-pro body.page-mine .mine-e1-canvas,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{background-size:100% auto !important;background-position:top center !important;height:auto !important;max-height:none !important;aspect-ratio:750 / 1180 !important;overflow:hidden !important;}' +
-          'html.app-android-redmi-note13-pro body.page-mine .mine-e1-layer,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0 !important;padding-bottom:calc(1180 / 750 * 100%) !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .mine-e1-canvas,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{background-size:100% auto !important;background-position:top center !important;height:auto !important;max-height:none !important;aspect-ratio:750 / 1242 !important;overflow:hidden !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .mine-e1-layer,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0 !important;padding-bottom:calc(1242 / 750 * 100%) !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;left:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
@@ -8597,7 +8607,42 @@
     document.body.appendChild(box);
   }
 
+  /**
+   * 小米 15：点「返回」不要整页跳转。整页加载会先闪个人所得税启动图。
+   * 有历史记录时直接 history.back，走上一页缓存。
+   */
+  function bindXiaomi15BackWithoutSplash() {
+    if (!isXiaomi15Client()) return;
+    if (window.__xiaomi15BackBound) return;
+    window.__xiaomi15BackBound = true;
+    document.addEventListener(
+      'click',
+      function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest) return;
+        var back = t.closest('a.back-btn, button.back-btn, .back-btn');
+        if (!back) return;
+        var canBack = false;
+        try {
+          var ref = String(document.referrer || '');
+          canBack = window.history.length > 1 && (!ref || ref.indexOf(location.host) >= 0);
+        } catch (e0) {}
+        if (!canBack) return;
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        try {
+          if (typeof window.forceHidePageLoading === 'function') window.forceHidePageLoading();
+        } catch (e1) {}
+        try {
+          window.history.back();
+        } catch (e2) {}
+      },
+      true
+    );
+  }
+
   showIosWebClipLaunchSplash();
+  bindXiaomi15BackWithoutSplash();
   /* 首屏只打安全区 class，大段 OEM 样式放到首帧后再跑，避免挡住安卓首绘 */
   markViewportChromeClasses();
   function refreshMobilePageChrome() {
