@@ -122,6 +122,26 @@
                             }
                         } catch (e14p) {}
                     }
+                    /* iOS 26 的 393×852（iPhone 16 等）：系统栏已占位，首页勿再叠 59px */
+                    var iosMajorHome = 0;
+                    try {
+                        var umHome = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
+                        iosMajorHome = umHome ? parseInt(umHome[1], 10) : 0;
+                    } catch (eIosHome) {}
+                    if (iosMajorHome === 26 && !ip14pm && !ip15pm) {
+                        try {
+                            var sw26 = Math.min(screen.width || 0, screen.height || 0);
+                            var sh26 = Math.max(screen.width || 0, screen.height || 0);
+                            var dpr26 = window.devicePixelRatio || 1;
+                            if (dpr26 >= 2 && sw26 >= 700) {
+                                sw26 = Math.round(sw26 / dpr26);
+                                sh26 = Math.round(sh26 / dpr26);
+                            }
+                            if (sw26 >= 390 && sw26 <= 396 && sh26 >= 848 && sh26 <= 856) {
+                                document.documentElement.classList.add('app-ios26-island-home');
+                            }
+                        } catch (e26) {}
+                    }
                     if (ip14pro) {
                         document.documentElement.classList.add('app-ios-iphone14pro');
                         document.documentElement.style.setProperty('--app-shell-statusbar-top', '59px');
@@ -254,9 +274,10 @@
                         var bsFp = document.createElement('style');
                         bsFp.id = 'blackshark4sBlackBarFirstPaint';
                         bsFp.textContent =
+                            'html.app-android-blackshark-4s{color-scheme:dark!important;}html.app-android-blackshark-4s body{color-scheme:light!important;}' +
                             'html.app-android-blackshark-4s.app-top-safe-shell{--app-shell-statusbar-top:40px!important;--android-status-inset:40px!important;--shouye-status-inset:40px!important;}' +
-                            'html.app-android-blackshark-4s.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
-                            'html.app-android-blackshark-4s.app-top-safe-shell body.page-shouye::before{background-color:#000!important;background-image:none!important;height:40px!important;z-index:2147483000!important;}';
+                            'html.app-android-blackshark-4s.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:180!important;pointer-events:none!important;}' +
+                            'html.app-android-blackshark-4s.app-top-safe-shell body.page-shouye::before{background-color:#000!important;background-image:none!important;height:40px!important;z-index:180!important;}';
                         document.head.appendChild(bsFp);
                     }
                 }
@@ -483,14 +504,20 @@
             top: 0;
             height: 40px;
             background: #000;
-            z-index: 2147483000;
+            z-index: 180;
             pointer-events: none;
+        }
+        html.app-android-blackshark-4s {
+            color-scheme: dark !important;
+        }
+        html.app-android-blackshark-4s body {
+            color-scheme: light !important;
         }
         html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before {
             background-color: #000 !important;
             background-image: none !important;
             height: 40px !important;
-            z-index: 2147483000 !important;
+            z-index: 180 !important;
         }
 
         /*
@@ -606,6 +633,17 @@
         html.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             padding-top: 59px !important;
             background-color: #4f90f3 !important;
+        }
+        /* iOS 26 + 393×852：系统已把网页放在灵动岛下，再垫 59px 会多出一整条蓝。ahead 自带约 15px 蓝，上移裁掉。 */
+        html.app-ios26-island-home.app-ios-liquid-glass.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-ios26-island-home.app-ios-iphone15.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-ios26-island-home.app-ios-iphone14pro.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 0 !important;
+        }
+        html.app-ios26-island-home.app-ios-liquid-glass body.page-shouye .sy-apk-ahead,
+        html.app-ios26-island-home.app-ios-iphone15 body.page-shouye .sy-apk-ahead,
+        html.app-ios26-island-home.app-ios-iphone14pro body.page-shouye .sy-apk-ahead {
+            margin-top: -14px !important;
         }
 
         .sy-ahead-hit {

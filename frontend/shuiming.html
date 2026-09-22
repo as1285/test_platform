@@ -130,6 +130,7 @@
                     document.documentElement.classList.remove('app-android-immersive-white-top');
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('color-scheme', 'dark', 'important');
                 }
                 if (/PGCM10|\bK9x\b/i.test(u)) {
                     document.documentElement.classList.add('app-android-oppo-k9x');
@@ -671,8 +672,14 @@
             top: 0;
             height: 40px;
             background: #000;
-            z-index: 2147483000;
+            z-index: 180;
             pointer-events: none;
+        }
+        html.app-android-blackshark-4s {
+            color-scheme: dark !important;
+        }
+        html.app-android-blackshark-4s body {
+            color-scheme: light !important;
         }
         html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shuiming > .header {
             padding-top: calc(12px + 40px) !important;

@@ -34,8 +34,12 @@ describe('黑鲨 4S 白顶栏顶部黑框', () => {
     expect(auth).toMatch(
       /html\.app-android-blackshark-4s\.app-top-safe-shell::before\{[^}]*background:#000/
     );
+    expect(auth).toContain('html.app-android-blackshark-4s{color-scheme:dark !important;}');
     expect(auth).toContain(
-      'html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;height:40px !important;z-index:2147483000 !important;}'
+      'html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;height:40px !important;z-index:180 !important;}'
+    );
+    expect(auth).not.toMatch(
+      /html\.app-android-blackshark-4s[^\{]{0,160}z-index:2147483000/
     );
     const whiteFn = auth.slice(
       auth.indexOf('function applyImmersiveNotchWhitePageChrome'),

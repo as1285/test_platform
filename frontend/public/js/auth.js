@@ -4614,7 +4614,12 @@
       if (blackSharkBlackBar) {
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
+        upsertMeta('color-scheme', 'dark');
         setStatusBarStyleMeta('black');
+        try {
+          document.documentElement.style.setProperty('color-scheme', 'dark', 'important');
+          if (document.body) document.body.style.setProperty('color-scheme', 'light', 'important');
+        } catch (eBsScheme) {}
         var bsBlueOpts = {
           style: 'light',
           overlays: true,
@@ -5988,7 +5993,12 @@
         } catch (eBs4sInset) {}
         upsertMeta('theme-color', '#000000');
         upsertMeta('msapplication-navbutton-color', '#000000');
+        upsertMeta('color-scheme', 'dark');
         setStatusBarStyleMeta('black');
+        try {
+          root.style.setProperty('color-scheme', 'dark', 'important');
+          if (body) body.style.setProperty('color-scheme', 'light', 'important');
+        } catch (eBsScheme2) {}
         var bs4sOpts = {
           style: 'light',
           overlays: true,
@@ -7016,7 +7026,9 @@
         try {
           upsertMeta('theme-color', '#000000');
           upsertMeta('msapplication-navbutton-color', '#000000');
+          upsertMeta('color-scheme', 'dark');
           setStatusBarStyleMeta('black');
+          document.documentElement.style.setProperty('color-scheme', 'dark', 'important');
           requestShellStatusBar({
             style: 'light',
             overlays: true,
@@ -7252,6 +7264,10 @@
       if (iosIPhone15) {
         document.documentElement.classList.add('app-ios-iphone15');
         document.documentElement.classList.add('app-ios-unified-chrome');
+        /* iOS 26 标准 393×852（iPhone 16）：首页系统栏已外置，不再叠 59px 蓝带 */
+        if (getIOSMajorVersion() === 26 && isIPhone393x852Viewport()) {
+          document.documentElement.classList.add('app-ios26-island-home');
+        }
       }
       if (iosIPhone15ProMax && !iosIPhone14ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
@@ -7407,9 +7423,11 @@
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming)::before,' +
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming-result)::before,' +
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
-          /* 黑鲨 4S：全页顶部系统栏 40px 黑框（首页蓝、待办、我的、白顶栏都盖住） */
+          /* 黑鲨 4S：黑框留在网页层，z-index 压过白顶栏即可，勿盖住系统时间。html 用 dark 让状态栏出白字，正文仍是浅色 */
+          'html.app-android-blackshark-4s{color-scheme:dark !important;}' +
+          'html.app-android-blackshark-4s body{color-scheme:light !important;}' +
           'html.app-android-blackshark-4s.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;--shouye-status-inset:40px !important;}' +
-          'html.app-android-blackshark-4s.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:40px !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+          'html.app-android-blackshark-4s.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:40px !important;background:#000 !important;z-index:180 !important;pointer-events:none !important;}' +
           /* 红米 K70 标准版：全页黑条 40px（白顶页 + 我的）；蓝顶首页勿再叠黑 */
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra){--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra):has(body.page-shuiming)::before,' +
@@ -7758,6 +7776,8 @@
           /* iOS 全机型首页：状态栏安全区铺蓝 + 搜索条同色，消除白边接缝（勿按型号枚举） */
           'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:none !important;z-index:998 !important;pointer-events:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,env(safe-area-inset-top,48px))) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
+          'html.app-ios26-island-home.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
+          'html.app-ios26-island-home body.page-shouye .sy-apk-ahead{margin-top:-14px !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;}' +
           'html.app-ios-client.app-top-safe-shell:has(body.page-shouye){background-color:#4f90f3 !important;background-image:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;min-height:100vh !important;height:auto !important;}' +
@@ -7904,7 +7924,7 @@
           /* 压过后续机型特例：Android 首页统一顶距（Pura70 Cordova 除外） */
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{--shouye-status-inset:40px;--app-shell-statusbar-top:var(--shouye-status-inset) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
-          'html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;height:40px !important;z-index:2147483000 !important;}' +
+          'html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;height:40px !important;z-index:180 !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           /*

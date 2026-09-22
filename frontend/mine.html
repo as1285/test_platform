@@ -194,7 +194,7 @@
                         if (!document.getElementById('blackshark4sBlackBarFirstPaint')) {
                             var bsFp = document.createElement('style');
                             bsFp.id = 'blackshark4sBlackBarFirstPaint';
-                            bsFp.textContent = 'html.app-android-blackshark-4s.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}';
+                            bsFp.textContent = 'html.app-android-blackshark-4s{color-scheme:dark!important;}html.app-android-blackshark-4s body{color-scheme:light!important;}html.app-android-blackshark-4s.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;background:#000!important;z-index:180!important;pointer-events:none!important;}';
                             document.head.appendChild(bsFp);
                         }
                         return;
