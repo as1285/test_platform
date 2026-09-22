@@ -280,6 +280,27 @@
                         (document.head || document.documentElement).appendChild(ace6St);
                     }
                 }
+                if (/SM-S918|Galaxy\s*S23\s*Ultra|S23[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-samsung-s23u');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                    if (!document.querySelector('style[data-samsung-s23u-result-firstpaint]')) {
+                        var s23uSt = document.createElement('style');
+                        s23uSt.setAttribute('data-samsung-s23u-result-firstpaint', '1');
+                        s23uSt.textContent =
+                            'html.app-android-samsung-s23u body.page-shuiming-result .page-root{--safe-top:40px !important;--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
+                            'html.app-android-samsung-s23u body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + 40px) !important;min-height:calc(var(--header-height,48px) + 40px) !important;padding:40px 16px 0 !important;box-sizing:border-box !important;background:#fff !important;overflow:visible !important;z-index:120 !important;}' +
+                            'html.app-android-samsung-s23u body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-samsung-s23u body.page-shuiming-result .top-fixed .header .header-right{top:40px !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+                            'html.app-android-samsung-s23u body.page-shuiming-result .top-fixed .header .header-title{visibility:visible !important;opacity:1 !important;}' +
+                            'html.app-android-samsung-s23u body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + 40px) !important;z-index:125 !important;}' +
+                            'html.app-android-samsung-s23u body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + 40px) !important;}';
+                        (document.head || document.documentElement).appendChild(s23uSt);
+                    }
+                }
                 if (/PJD110|CPH2573|CPH2581|CPH2583|(?:OnePlus|一加)[\s_-]*12(?![\s_-]*R)(?![A-Za-z0-9])/i.test(u)) {
                     document.documentElement.classList.add('app-android-client');
                     document.documentElement.classList.add('app-android-oneplus-12');
@@ -1799,6 +1820,23 @@
         /* 13 Ultra：工资薪金 / 日期默认 15/16 比正版小一档 */
         html.app-android-xiaomi-13ultra body.page-shuiming-result .list-title,
         html.app-android-xiaomi-13ultra body.page-shuiming-result .list-date {
+            font-size: 17px !important;
+        }
+        /* S23 Ultra（385×824@3.75）：列表字比默认 15/16 小一档，标题对齐筛选页 */
+        html.app-android-samsung-s23u body.page-shuiming-result .list-title,
+        html.app-android-samsung-s23u body.page-shuiming-result .list-date {
+            font-size: 17px !important;
+        }
+        html.app-android-samsung-s23u body.page-shuiming-result .list-label,
+        html.app-android-samsung-s23u body.page-shuiming-result .list-company {
+            font-size: 16px !important;
+        }
+        html.app-android-samsung-s23u body.page-shuiming-result .header-title {
+            font-size: 18px !important;
+            font-weight: 500 !important;
+        }
+        html.app-android-samsung-s23u body.page-shuiming-result .back-btn,
+        html.app-android-samsung-s23u body.page-shuiming-result .header-right {
             font-size: 17px !important;
         }
 

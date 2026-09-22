@@ -98,6 +98,16 @@
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                     document.documentElement.style.setProperty('--safe-top', '40px');
                 }
+                /* 三星 S23 Ultra（SM-S9180）：打孔盖住 WebView，首帧先留 40px，避免标题压进时间栏 */
+                if (/SM-S918|Galaxy\s*S23\s*Ultra|S23[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-samsung-s23u');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
                 if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -679,7 +689,9 @@
         html.app-android-huawei-nova13 body.page-shuiming > .header,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .header,
         html.app-android-immersive-white-top body.page-shuiming > .header,
-        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .header {
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .header,
+        html.app-android-samsung-s23u body.page-shuiming > .header,
+        html.app-android-samsung-s23u.app-top-safe-shell body.page-shuiming > .header {
             padding-top: calc(12px + 40px) !important;
         }
         html.app-android-xiaomi-15 body.page-shuiming > .content,
@@ -707,7 +719,9 @@
         html.app-android-huawei-nova13 body.page-shuiming > .content,
         html.app-android-huawei-nova13.app-top-safe-shell body.page-shuiming > .content,
         html.app-android-immersive-white-top body.page-shuiming > .content,
-        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .content {
+        html.app-android-immersive-white-top.app-top-safe-shell body.page-shuiming > .content,
+        html.app-android-samsung-s23u body.page-shuiming > .content,
+        html.app-android-samsung-s23u.app-top-safe-shell body.page-shuiming > .content {
             padding-top: calc(44px + 40px) !important;
         }
 
@@ -796,6 +810,36 @@
             font-size: 17px;
         }
         html.app-ios-iphone14promax body.page-shuiming .year-value {
+            font-size: 18px;
+        }
+        /*
+         * 三星 S23 Ultra（SM-S9180 / 385×824@3.75）：
+         * 默认 15/16/17 比正版个税筛选页小一档，系统中文走 Roboto / Noto。
+         */
+        html.app-android-samsung-s23u body.page-shuiming {
+            font-family: Roboto, 'Noto Sans CJK SC', 'Noto Sans SC', 'Droid Sans Fallback', sans-serif;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .header-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .back-btn {
+            font-size: 17px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .form-section-card-title {
+            font-size: 17px;
+            line-height: 23px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .year-label,
+        html.app-android-samsung-s23u body.page-shuiming .year-value,
+        html.app-android-samsung-s23u body.page-shuiming .type-text {
+            font-size: 18px;
+            line-height: 24px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .type-toggle {
+            font-size: 16px;
+        }
+        html.app-android-samsung-s23u body.page-shuiming .query-btn {
             font-size: 18px;
         }
         

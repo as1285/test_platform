@@ -829,10 +829,13 @@
       if (!inApp) {
         return;
       }
+      /* S23 Ultra 打孔盖住 WebView，不能跟其它三星外置状态栏一起跳过首屏顶距 */
+      var samsungS23Ultra = /SM-S918|S23[\s_-]*Ultra/i.test(ua);
+      var samsungOuterBar = /Samsung|SM-[A-Z]\d{3}|Galaxy/i.test(ua) && !samsungS23Ultra;
       if (
         /PHJ110|OPPO\s*A58|Find\s*X\s*9|CPH2797|CPH2791|CPH2841|CPH2873|PLJ110|PLG110|PMA110|PME110|OPG07/i.test(ua) ||
         /FLC-AN00|FLC-AN10|FCP-AN00|FCP-AN10|Magic\s*Vs3|MagicVS3/i.test(ua) ||
-        /Samsung|SM-[A-Z]\d{3}|Galaxy/i.test(ua) ||
+        samsungOuterBar ||
         /HBN-AL00|HBN-AL80|HBN-AL10|Pura\s*70|Pura70|ADY-AL00|ADY-AL80/i.test(ua) ||
         /23127PN0CC|23127PN0CG|23127PN\b/i.test(ua)
       ) {

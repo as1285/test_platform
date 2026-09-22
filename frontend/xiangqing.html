@@ -144,6 +144,15 @@
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                     document.documentElement.style.setProperty('--safe-top', '40px');
                 }
+                if (/SM-S918|Galaxy\s*S23\s*Ultra|S23[\s_-]*Ultra/i.test(u)) {
+                    document.documentElement.classList.add('app-android-client');
+                    document.documentElement.classList.add('platform-android');
+                    document.documentElement.classList.add('app-android-samsung-s23u');
+                    document.documentElement.classList.add('app-android-immersive-white-top');
+                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
+                    document.documentElement.style.setProperty('--android-status-inset', '40px');
+                    document.documentElement.style.setProperty('--safe-top', '40px');
+                }
                 if (/PHW110|CPH2531|CPH2525|PFGM00|A93s/i.test(u) || (/(?:OPPO\s*)?Reno\s*10\s*5G/i.test(u) && !/Reno\s*10\s*Pro/i.test(u))) {
                     document.documentElement.classList.add('app-android-oppo-reno10');
                     document.documentElement.classList.add('app-android-immersive-white-top');
