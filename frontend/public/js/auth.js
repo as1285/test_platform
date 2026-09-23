@@ -11877,7 +11877,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260923-fill-tap';
+      s.src = '/js/conversion-guide.js?v=20260923-fill-tap2';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
@@ -12006,7 +12006,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260916-android-tab';
+    s.src = '/js/tab-shell.js?v=20260923-fill-tap2';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);

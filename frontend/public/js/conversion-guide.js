@@ -483,11 +483,30 @@
       } catch (eOn) {}
       syncTaxEditModeClass();
     }
+    var dest;
     if (!hasTaxRecords()) {
-      window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
-      return;
+      dest = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
+    } else {
+      dest = 'consult.html?tab=records';
     }
-    window.location.href = 'consult.html?tab=records';
+    try {
+      if (typeof window.appendSalesChannelToUrl === 'function') {
+        dest = window.appendSalesChannelToUrl(dest);
+      }
+    } catch (eAppend) {}
+    try {
+      if (typeof window.assignTopLocation === 'function') {
+        window.assignTopLocation(dest);
+        return;
+      }
+    } catch (eTopFn) {}
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.assign(dest);
+        return;
+      }
+    } catch (eTop) {}
+    window.location.assign(dest);
   }
 
   function bindMineFillDataBtn() {

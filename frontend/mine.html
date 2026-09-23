@@ -3200,7 +3200,13 @@
 <body class="page-mine tax-app-shell has-bottom-nav">
     <!-- 激活 / 填写：挂在 body 下，避免 mine-stack / e1 叠层在 Android WebView 抢走点击 -->
     <button type="button" class="mine-activate-btn header-activate-btn" id="mineActivateBtn" aria-label="激活账号">激活</button>
-    <button type="button" class="mine-fill-data-btn" id="mineFillDataBtn" aria-label="填写个税数据">填写数据</button>
+    <button
+        type="button"
+        class="mine-fill-data-btn"
+        id="mineFillDataBtn"
+        aria-label="填写个税数据"
+        onclick="return window.__mineFillDataClick && window.__mineFillDataClick(event)"
+    >填写数据</button>
     <div class="mine-stack">
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
         <div class="mine-e1-canvas" id="mineE1Canvas">
@@ -5134,22 +5140,58 @@
             if (mineFillDataBtn && mineFillDataBtn.getAttribute('data-mine-fill-bound') !== '1') {
                 mineFillDataBtn.setAttribute('data-mine-fill-bound', '1');
                 var mineFillDataArmed = false;
+                function enableTaxEditForFillNav() {
+                    try {
+                        localStorage.removeItem('cg_tax_edit_mode');
+                    } catch (eOn) {}
+                    try {
+                        document.documentElement.classList.remove('cg-tax-edit-off');
+                    } catch (eCls) {}
+                }
+                function assignFillDataUrl(url) {
+                    var dest = String(url || 'consult.html?tab=records');
+                    try {
+                        if (typeof window.appendSalesChannelToUrl === 'function') {
+                            dest = window.appendSalesChannelToUrl(dest);
+                        }
+                    } catch (eAppend) {}
+                    try {
+                        if (typeof window.assignTopLocation === 'function') {
+                            window.assignTopLocation(dest);
+                            return;
+                        }
+                    } catch (eTopFn) {}
+                    try {
+                        if (window.top && window.top !== window) {
+                            window.top.location.assign(dest);
+                            return;
+                        }
+                    } catch (eTop) {}
+                    window.location.assign(dest);
+                }
                 function goMineFillDataFromPage(e) {
                     if (e) {
                         if (e.preventDefault) e.preventDefault();
                         if (e.stopPropagation) e.stopPropagation();
                     }
+                    /* 必须先开编辑：否则 consult 守卫会静默 replace 回 mine，表现为「点不进去」 */
+                    enableTaxEditForFillNav();
                     try {
                         if (
                             window.ConversionGuide &&
                             typeof window.ConversionGuide.goMineFillData === 'function'
                         ) {
                             window.ConversionGuide.goMineFillData();
-                            return;
+                            return false;
                         }
                     } catch (eCg) {}
-                    window.location.href = 'consult.html?tab=records';
+                    /* WebView 上部分机型需推迟跳转，否则 touchend preventDefault 后不导航 */
+                    setTimeout(function () {
+                        assignFillDataUrl('consult.html?tab=records');
+                    }, 0);
+                    return false;
                 }
+                window.__mineFillDataClick = goMineFillDataFromPage;
                 mineFillDataBtn.addEventListener(
                     'touchend',
                     function (e) {

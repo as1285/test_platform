@@ -46,7 +46,7 @@ describe('我的页激活按钮下方填写数据', () => {
     expect(guideSrc).toContain('toggleMineFillDataBtn()');
     expect(guideSrc).toContain('function bindMineFillDataBtn');
     expect(guideSrc).toContain('goMineFillData()');
-    expect(auth).toContain('conversion-guide.js?v=20260923-fill-tap');
+    expect(auth).toContain('conversion-guide.js?v=20260923-fill-tap2');
     expect(auth).toContain('var(--mine-fill-data-gap,44px)');
     expect(auth).not.toContain('.mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;left:18px !important;');
   });

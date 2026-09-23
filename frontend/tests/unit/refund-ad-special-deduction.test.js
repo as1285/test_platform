@@ -161,7 +161,7 @@ describe('special deduction refund estimate + force dialog removed', () => {
     expect(guideSrc).not.toContain('cg-refund-force-overlay');
     expect(guideSrc).not.toContain('cgRefundForceGo');
     expect(guideSrc).not.toContain('track_refund_ad_after_tax_show');
-    expect(authSrc).toContain('conversion-guide.js?v=20260923-fill-tap');
+    expect(authSrc).toContain('conversion-guide.js?v=20260923-fill-tap2');
   });
 
   it('uses comprehensive IIT brackets and caps refund by tax paid', () => {
