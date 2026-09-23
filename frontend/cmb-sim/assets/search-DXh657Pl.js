@@ -1,0 +1,1 @@
+var e=`/cmb-sim/reference/community/search.png`;export{e as t};

@@ -1,0 +1,1 @@
+var e=`/cmb-sim/reference/wealth/wenjian.jpg`;export{e as t};
