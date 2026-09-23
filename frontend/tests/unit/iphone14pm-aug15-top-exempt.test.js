@@ -102,9 +102,9 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
 
   it('主页面缓存戳已刷新', () => {
     expect(shuiming).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(shuiming).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(shuiming).toContain('auth.js?v=20260923-honor-x20');
     expect(shuimingResult).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(shuimingResult).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(shuimingResult).toContain('auth.js?v=20260923-honor-x20');
   });
 
   it('xiangqing 首屏按 env≈0 决定 0 或 59，避免双顶距', () => {
@@ -116,7 +116,7 @@ describe('iPhone 14/15 Pro Max：顶栏回退 Aug15（black-translucent + 59px�
     expect(xiangqing).toContain("classList.add('app-ios-iphone15promax')");
     expect(xiangqing).toContain('html.app-ios-status-outer body.page-xiangqing');
     expect(xiangqing).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(xiangqing).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(xiangqing).toContain('auth.js?v=20260923-honor-x20');
   });
 
   it('shuiming_result 列表页系统占栏时保留 status-outer 且顶距清零', () => {

@@ -25,7 +25,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(shouye).toMatch(
       /html\.app-ios-iphone14promax \.sy-apk-marquee[\s\S]{0,160}font-weight:\s*500/
     );
-    expect(shouye).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(shouye).toContain('auth.js?v=20260923-honor-x20');
   });
 
   it('收入纳税明细首屏打 14promax + promax-font，正文对齐 16 Pro Max', () => {
@@ -49,7 +49,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(shuimingResult).toMatch(
       /html\.app-ios-iphone14promax\.app-ios-iphone-promax-font body\.page-shuiming-result \.list-value \{[\s\S]{0,40}font-size:\s*17px/
     );
-    expect(shuimingResult).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(shuimingResult).toContain('auth.js?v=20260923-honor-x20');
   });
 
   it('年度选择页首屏打 14promax，并放大标题/年度行', () => {
@@ -58,7 +58,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(shuiming).toMatch(
       /html\.app-ios-iphone14promax body\.page-shuiming \.year-value \{[\s\S]{0,40}font-size:\s*18px/
     );
-    expect(shuiming).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(shuiming).toContain('auth.js?v=20260923-honor-x20');
   });
 
   it('我的页 14 Pro Max 单独回退到 9/1 底图，隐藏 HTML 胶囊避免叠字', () => {
@@ -69,7 +69,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(mine).not.toContain('class="mine-e1-shortcut-mask"');
     expect(mine).not.toContain('mine-e1-label-family');
     expect(mine).toContain('html[data-mine-14pm-plain] body.page-mine .mine-e1-pill');
-    expect(mine).toContain('auth.js?v=20260923-fill-data');
+    expect(mine).toContain('auth.js?v=20260923-honor-x20');
     expect(auth).toContain('html[data-mine-14pm-plain] body.page-mine .mine-e1-pill{visibility:hidden!important;opacity:0!important;}');
     expect(auth).toContain('safeTop >= 54');
     expect(auth).not.toContain('top:calc(748 * var(--mine-rpx))');
@@ -87,6 +87,6 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
       /html\.app-ios-iphone14promax body\.page-login \.form-label,[\s\S]{0,80}font-size:\s*17px/
     );
     expect(login).toContain('max-width: 390px');
-    expect(login).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(login).toContain('auth.js?v=20260923-honor-x20');
   });
 });

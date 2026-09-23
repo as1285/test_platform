@@ -279,7 +279,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
-    <script src="/js/auth.js?v=20260923-bs4s-restore" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260923-honor-x20" defer fetchpriority="low"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js" defer></script>
@@ -288,6 +288,37 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#4f90f3">
+    <script>
+        (function () {
+            try {
+                var u = String(navigator.userAgent || '');
+                try { u += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (e0) {}
+                try { u += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (e1) {}
+                var x20 = /NTN-AN20/i.test(u) || (/(?:荣耀|HONOR|Honor)[\s_-]*X20\b/i.test(u) && !/X20[\s_-]*(?:SE|Plus|Pro)/i.test(u));
+                if (!x20) return;
+                var root = document.documentElement;
+                root.classList.add('app-android-client');
+                root.classList.add('app-android-honor-x20');
+                root.classList.add('app-top-safe-shell');
+                root.style.setProperty('--app-shell-statusbar-top', '32px');
+                root.style.setProperty('--android-status-inset', '32px');
+                root.style.setProperty('--shouye-status-inset', '32px');
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', '#000000');
+                if (!document.getElementById('honorX20BlackBarFirstPaint')) {
+                    var st = document.createElement('style');
+                    st.id = 'honorX20BlackBarFirstPaint';
+                    st.textContent =
+                        'html.app-android-honor-x20.app-top-safe-shell{--app-shell-statusbar-top:32px!important;--android-status-inset:32px!important;--shouye-status-inset:32px!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell::before{content:""!important;position:fixed!important;left:0!important;right:0!important;top:0!important;height:32px!important;background:#000!important;z-index:2147483000!important;pointer-events:none!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell body.page-shouye{--shouye-status-inset:32px!important;--app-shell-statusbar-top:32px!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell body.page-shouye::before{height:32px!important;background:#000!important;background-image:none!important;}' +
+                        'html.app-android-honor-x20.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:32px!important;}';
+                    (document.head || root).appendChild(st);
+                }
+            } catch (eX20) {}
+        })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

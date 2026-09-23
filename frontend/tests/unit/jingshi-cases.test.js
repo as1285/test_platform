@@ -54,7 +54,7 @@ describe('homepage 查看更多 opens 警示案例专题', () => {
     expect(jingshi).toContain('auth-boot.js?v=20260905-no-home-refund');
     expect(jingshi).toContain('auth.js?v=20260905-no-home-refund');
     expect(shouye).toContain('auth-boot.js?v=20260923-bs4s-restore');
-    expect(shouye).toContain('auth.js?v=20260923-bs4s-restore');
+    expect(shouye).toContain('auth.js?v=20260923-honor-x20');
     expect(shouye).toContain('nav.css?v=20260910-ios-14pm-fb1');
   });
 

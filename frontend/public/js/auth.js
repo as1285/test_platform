@@ -2339,6 +2339,22 @@
   }
 
   /**
+   * 荣耀 X20（NTN-AN20 / Magic UI 6.1 / Android 12）。
+   * 正版个税是系统黑状态栏 + 白字时间电量，蓝内容从栏下开始。
+   * 勿匹配 X20 SE / Plus / Pro。
+   */
+  function isHonorX20Client() {
+    var ua = clientUaBlob();
+    if (/NTN-AN20/i.test(ua)) {
+      return true;
+    }
+    if (/X20[\s_-]*(?:SE|Plus|Pro)/i.test(ua)) {
+      return false;
+    }
+    return /(?:荣耀|HONOR|Honor)[\s_-]*X20\b/i.test(ua);
+  }
+
+  /**
    * 荣耀 Magic5 Pro 物理屏 1312×2848。
    * UA 精简后常无 PGT，用分辨率兜底（screen 可能是 CSS 像素或物理像素）。
    */
@@ -4587,6 +4603,34 @@
           (document.documentElement.classList.contains('app-android-redmi-k70') &&
             !document.documentElement.classList.contains('app-android-redmi-k70-ultra'));
       } catch (eK70Bar) {}
+      /* 荣耀 X20：系统栏黑底白字，页内只垫同高黑条，不画时间电量 */
+      var honorX20BlackBar = false;
+      try {
+        honorX20BlackBar =
+          isHonorX20Client() ||
+          document.documentElement.classList.contains('app-android-honor-x20');
+      } catch (eHonorX20Bar) {}
+      if (honorX20BlackBar) {
+        upsertMeta('theme-color', '#000000');
+        upsertMeta('msapplication-navbutton-color', '#000000');
+        setStatusBarStyleMeta('black');
+        var honorX20Opts = {
+          style: 'light',
+          overlays: true,
+          color: '#000000',
+          paint_shell: true,
+          shell_bg: pageBg
+        };
+        requestShellStatusBar(honorX20Opts);
+        var reapplyHonorX20Light = function () {
+          requestShellStatusBar(honorX20Opts);
+        };
+        setTimeout(reapplyHonorX20Light, 0);
+        setTimeout(reapplyHonorX20Light, 80);
+        setTimeout(reapplyHonorX20Light, 320);
+        setTimeout(reapplyHonorX20Light, 800);
+        return;
+      }
       if (
         (isLikelyAndroidViewportClient() || k70StdBlackBar) &&
         (isOnePlusAce2VClient() ||
@@ -6516,6 +6560,10 @@
       if (honorMagic6ProClient) {
         androidClient = true;
       }
+      var honorX20Client = isHonorX20Client();
+      if (honorX20Client) {
+        androidClient = true;
+      }
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
@@ -6691,7 +6739,7 @@
        * iOS 仍用顶色 + translucent，本分支不改 iOS。
        */
       var rootChromeBg =
-        cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient
+        cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient || honorX20Client
           ? '#000000'
           : immersiveBlueTop
             ? immersiveBlueTop
@@ -6846,6 +6894,8 @@
                 ? '48px'
               : redmiK70StdClient
                 ? '40px'
+              : honorX20Client
+                ? '32px'
               : samsungS23UltraClient
                 ? '40px'
               : androidOuterStatusBar ||
@@ -6898,6 +6948,14 @@
       if (honorMagic6ProClient) {
         document.documentElement.classList.add('app-android-client');
         document.documentElement.classList.add('app-android-honor-magic6pro');
+      }
+      if (honorX20Client) {
+        document.documentElement.classList.add('app-android-client');
+        document.documentElement.classList.add('app-android-honor-x20');
+        document.documentElement.classList.add('app-top-safe-shell');
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '32px');
+        document.documentElement.style.setProperty('--android-status-inset', '32px');
+        document.documentElement.style.setProperty('--shouye-status-inset', '32px');
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');
@@ -7799,6 +7857,13 @@
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
+          /* 荣耀 X20：系统黑栏 + 白字，蓝内容从 32px 下开始，不画时间电量 */
+          'html.app-android-client.app-android-honor-x20.app-top-safe-shell{--app-shell-statusbar-top:32px !important;--android-status-inset:32px !important;--shouye-status-inset:32px !important;}' +
+          'html.app-android-client.app-android-honor-x20.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:32px !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
+          'html.app-android-client.app-android-honor-x20.app-top-safe-shell body.page-shouye{--shouye-status-inset:32px !important;--app-shell-statusbar-top:32px !important;}' +
+          'html.app-android-client.app-android-honor-x20.app-top-safe-shell body.page-shouye::before{height:32px !important;background-color:#000 !important;background-image:none !important;}' +
+          'html.app-android-client.app-android-honor-x20.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:32px !important;}' +
+          'html.app-android-honor-x20 body.page-shouye,html.app-android-honor-x20 body.page-daiban,html.app-android-honor-x20 body.page-bancha,html.app-android-honor-x20 body.page-message,html.app-android-honor-x20 body.page-mine{--bottom-nav-bottom:18px !important;--bottom-nav-gap:18px !important;--bottom-nav-clearance:calc(54px + 18px + 16px) !important;}' +
           /*
            * OPPO/ColorOS（含 A58 PHJ110）外置状态栏：WebView 已在系统栏下方，
            * 首页勿再强制 40px，否则搜索条上方大块空蓝（一加 13 沉浸除外）。
