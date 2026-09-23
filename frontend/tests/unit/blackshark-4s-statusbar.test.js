@@ -55,10 +55,8 @@ describe('黑鲨 4S 白顶栏顶部黑框', () => {
     expect(blueFn).toContain('isBlackShark4SClient()');
     expect(blueFn).toContain("color: '#000000'");
     expect(blueFn).toContain('overlays: true');
-    expect(auth).toContain('function ensureBlackSharkStatusReadout()');
-    expect(auth).toContain("bar.id = 'bs4s-sysbar'");
-    expect(auth).toContain('navigator.getBattery');
-    expect(blueFn).toContain('ensureBlackSharkStatusReadout()');
+    expect(auth).not.toContain('bs4s-sysbar');
+    expect(auth).not.toContain('ensureBlackSharkStatusReadout');
   });
 
   it('first-paints home and the other tabs so the status bar is black before auth.js', () => {
