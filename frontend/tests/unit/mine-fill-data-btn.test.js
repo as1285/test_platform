@@ -45,7 +45,11 @@ describe('我的页激活按钮下方填写数据', () => {
     expect(guideSrc).toContain('goMineFillData()');
     expect(auth).toContain('conversion-guide.js?v=20260923-fill-data');
     expect(auth).toContain('var(--mine-fill-data-gap,44px)');
-    expect(auth).not.toContain('.mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;left:18px !important;');
+    expect(mine).toContain('left: 16px;');
+    expect(mine).toContain('right: auto;');
+    expect(auth).toContain('left:16px !important;right:auto !important;');
+    expect(auth).toContain('left:18px !important;right:auto !important;');
+    expect(auth).not.toContain('.mine-fill-data-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px) + var(--mine-fill-data-gap,44px)) !important;right:16px !important;');
   });
 });
 

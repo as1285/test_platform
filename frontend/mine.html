@@ -653,7 +653,7 @@
         })();
     </script>
     <script src="/js/auth-boot.js?v=20260919-bs4s-restore"></script>
-    <script src="/js/auth.js?v=20260923-honor-x20" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260923-fill-left" defer fetchpriority="low"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -756,7 +756,7 @@
             --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             /* 右上角激活按钮：相对状态栏下移，避开刘海 */
             --mine-activate-btn-top-offset: 10px;
-            /* 填写数据在激活按钮正下方；激活隐藏后顶到同一位置 */
+            /* 填写数据在左侧，与激活按钮同一行高；激活隐藏后顶到左上同一位置 */
             --mine-fill-data-gap: 44px;
         }
         body.page-mine.mine-account-active {
@@ -812,7 +812,7 @@
             right: 14px;
         }
 
-        /* 右上角「填写数据」：固定在激活按钮正下方（高于 e1 画布，避免 Android 点不中） */
+        /* 左上角「填写数据」：与右侧激活按钮同一高度（高于 e1 画布，避免 Android 点不中） */
         .mine-fill-data-btn {
             position: fixed;
             height: 36px;
@@ -833,8 +833,8 @@
             padding: 0 16px;
             z-index: 10060;
             pointer-events: auto;
-            right: 16px;
-            left: auto;
+            left: 16px;
+            right: auto;
             top: calc(
                 var(--mine-activate-btn-top-offset, 10px) + var(--mine-top-bleed, 0px) +
                     var(--mine-fill-data-gap, 44px)
@@ -859,8 +859,8 @@
                     var(--app-cordova-statusbar-chrome, 40px) +
                     var(--mine-fill-data-gap, 44px)
             );
-            right: 14px;
-            left: auto;
+            left: 14px;
+            right: auto;
         }
 
         .mine-e1-canvas {

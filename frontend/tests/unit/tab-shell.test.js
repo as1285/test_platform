@@ -87,7 +87,7 @@ describe('tab shell (bottom nav cache)', () => {
     expect(tabShell).toContain(
       'html.app-ios-iphone14promax[data-tab-shell="1"] #tab-shell-stage.tab-shell-stage-active{background:#1677ff}'
     );
-    expect(auth).toContain('tab-shell.js?v=20260916-android-warm');
+    expect(auth).toContain('tab-shell.js?v=20260923-fill-left');
   });
 
   it('tab-shell host scrubs iframe bottom nav (iOS frameElement null)', () => {
