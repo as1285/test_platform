@@ -25,6 +25,9 @@ describe('我的页激活按钮下方填写数据', () => {
     expect(mine).toContain('class="mine-fill-data-btn"');
     expect(mine).toContain('填写数据');
     expect(mine).toContain('.mine-fill-data-btn');
+    expect(mine).toContain('z-index: 10060');
+    expect(mine).toContain('data-mine-fill-bound');
+    expect(mine).toContain("getElementById('mineFillDataBtn')");
     expect(mine).toContain('--mine-fill-data-gap: 44px');
     expect(mine).toContain('body.page-mine.mine-account-active');
     const activateAt = mine.indexOf('id="mineActivateBtn"');
@@ -43,7 +46,7 @@ describe('我的页激活按钮下方填写数据', () => {
     expect(guideSrc).toContain('toggleMineFillDataBtn()');
     expect(guideSrc).toContain('function bindMineFillDataBtn');
     expect(guideSrc).toContain('goMineFillData()');
-    expect(auth).toContain('conversion-guide.js?v=20260923-fill-data');
+    expect(auth).toContain('conversion-guide.js?v=20260923-fill-tap');
     expect(auth).toContain('var(--mine-fill-data-gap,44px)');
     expect(auth).not.toContain('.mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;left:18px !important;');
   });

@@ -492,7 +492,12 @@
 
   function bindMineFillDataBtn() {
     var btn = document.getElementById('mineFillDataBtn');
+    /* mine.html 已本页绑定（含 Android touchend）；勿重复跳转 */
     if (!btn || btn.getAttribute('data-cg-fill-bound') === '1') return;
+    if (btn.getAttribute('data-mine-fill-bound') === '1') {
+      btn.setAttribute('data-cg-fill-bound', '1');
+      return;
+    }
     btn.setAttribute('data-cg-fill-bound', '1');
     btn.addEventListener('click', function (e) {
       if (e && e.preventDefault) e.preventDefault();
