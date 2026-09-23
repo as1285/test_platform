@@ -1,0 +1,1 @@
+var e=`/cmb-sim/reference/user/wechat.png`;export{e as t};
