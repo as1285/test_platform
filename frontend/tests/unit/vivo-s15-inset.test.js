@@ -74,7 +74,7 @@ describe('vivo S15 status-bar inset', () => {
     expect(pages.shuiming).toContain('auth.js?v=20260923-bs4s-restore');
     expect(pages.xiangqing).toContain('auth.js?v=20260923-bs4s-restore');
     expect(pages.shouye).toContain('auth.js?v=20260923-bs4s-restore');
-    expect(pages.mine).toContain('auth.js?v=20260919-bs4s-restore');
+    expect(pages.mine).toContain('auth.js?v=20260923-fill-data');
     expect(pages.mine).toContain('auth-boot.js?v=20260919-bs4s-restore');
   });
 });

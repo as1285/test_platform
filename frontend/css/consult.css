@@ -102,6 +102,24 @@ html.app-ios-iphone15promax body.page-consult {
 .back-link:active { opacity: 0.6; }
 .header .back-link span { font-size: 13px; }
 
+.consult-fill-entry-toggle {
+    justify-self: end;
+    grid-column: 3;
+    border: none;
+    background: transparent;
+    color: #1658dc;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1.2;
+    padding: 8px 0 8px 8px;
+    min-height: 44px;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+.consult-fill-entry-toggle:active { opacity: 0.6; }
+
 /* ===== Tab 导航 ===== */
 .tabs {
     display: flex;

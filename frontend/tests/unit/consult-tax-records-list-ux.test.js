@@ -60,7 +60,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="btnTaxRecordsManage"');
     expect(html).toContain('id="taxRecordsManageHint"');
     expect(html).toContain('tax-records-manage-toolbar');
-    expect(html).toContain('consult.css?v=20260914-manage-menu');
+    expect(html).toContain('consult.css?v=20260923-fill-entry');
     expect(html).toContain('consult-records.js?v=20260914-manage-menu');
     expect(html).toContain('consult-batch-tax.js?v=20260914-tax-manage');
     expect(html).toContain('id="btnTaxRecordsRefill"');
@@ -73,7 +73,7 @@ describe('consult 税务记录列表：点卡片编辑 + 管理态删除', () =>
     expect(html).toContain('id="btnTaxStartScreenshot"');
     expect(html).toContain('id="batchTaxCollapseBtn"');
     expect(html).toContain('id="batch_submit_employments_btn"');
-    expect(html).not.toContain('id="consultFillEntryToggle"');
+    expect(html).toContain('id="consultFillEntryToggle"');
     expect(html).toContain('consult-core.js?v=20260907-no-fillbtn');
   });
 

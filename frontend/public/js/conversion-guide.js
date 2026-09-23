@@ -490,9 +490,28 @@
     window.location.href = 'consult.html?tab=records';
   }
 
+  function bindMineFillDataBtn() {
+    var btn = document.getElementById('mineFillDataBtn');
+    if (!btn || btn.getAttribute('data-cg-fill-bound') === '1') return;
+    btn.setAttribute('data-cg-fill-bound', '1');
+    btn.addEventListener('click', function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
+      goMineFillData();
+    });
+  }
+
   function bindConsultFillEntryToggle() {
     if (currentPage() !== 'consult.html') return;
     syncConsultFillEntryToggleLabel();
+    var btn = document.getElementById('consultFillEntryToggle');
+    if (!btn || btn.getAttribute('data-cg-fill-bound') === '1') return;
+    btn.setAttribute('data-cg-fill-bound', '1');
+    btn.addEventListener('click', function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
+      toggleMineFillDataBtn();
+    });
   }
 
   function goManageTaxRecords() {
@@ -1342,6 +1361,7 @@
     syncScreenshotModeClass();
     syncTaxEditModeClass();
     syncMineFillDataBtnClass();
+    bindMineFillDataBtn();
     bindConsultFillEntryToggle();
     initTaxEditPageGuard();
 

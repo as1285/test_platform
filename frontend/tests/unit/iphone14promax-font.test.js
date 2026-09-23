@@ -69,7 +69,7 @@ describe('iPhone 14 Pro Max 首页通知条 / 纳税明细字号', () => {
     expect(mine).not.toContain('class="mine-e1-shortcut-mask"');
     expect(mine).not.toContain('mine-e1-label-family');
     expect(mine).toContain('html[data-mine-14pm-plain] body.page-mine .mine-e1-pill');
-    expect(mine).toContain('auth.js?v=20260919-bs4s-restore');
+    expect(mine).toContain('auth.js?v=20260923-fill-data');
     expect(auth).toContain('html[data-mine-14pm-plain] body.page-mine .mine-e1-pill{visibility:hidden!important;opacity:0!important;}');
     expect(auth).toContain('safeTop >= 54');
     expect(auth).not.toContain('top:calc(748 * var(--mine-rpx))');
