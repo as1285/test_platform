@@ -483,16 +483,40 @@
       } catch (eOn) {}
       syncTaxEditModeClass();
     }
+    var dest;
     if (!hasTaxRecords()) {
-      window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
-      return;
+      dest = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
+    } else {
+      dest = 'consult.html?tab=records';
     }
-    window.location.href = 'consult.html?tab=records';
+    try {
+      if (typeof window.appendSalesChannelToUrl === 'function') {
+        dest = window.appendSalesChannelToUrl(dest);
+      }
+    } catch (eAppend) {}
+    try {
+      if (typeof window.assignTopLocation === 'function') {
+        window.assignTopLocation(dest);
+        return;
+      }
+    } catch (eTopFn) {}
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.assign(dest);
+        return;
+      }
+    } catch (eTop) {}
+    window.location.assign(dest);
   }
 
   function bindMineFillDataBtn() {
     var btn = document.getElementById('mineFillDataBtn');
+    /* mine.html 已本页绑定（含 Android touchend）；勿重复跳转 */
     if (!btn || btn.getAttribute('data-cg-fill-bound') === '1') return;
+    if (btn.getAttribute('data-mine-fill-bound') === '1') {
+      btn.setAttribute('data-cg-fill-bound', '1');
+      return;
+    }
     btn.setAttribute('data-cg-fill-bound', '1');
     btn.addEventListener('click', function (e) {
       if (e && e.preventDefault) e.preventDefault();

@@ -7656,7 +7656,7 @@
           'html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText{white-space:nowrap !important;letter-spacing:-0.02em !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn{font-size:10.5px !important;padding:4px 8px 4px 10px !important;}' +
           'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;right:18px !important;z-index:500 !important;}' +
-          'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px) + var(--mine-fill-data-gap,44px)) !important;right:18px !important;left:auto !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px) + var(--mine-fill-data-gap,44px)) !important;right:18px !important;left:auto !important;z-index:10060 !important;}' +
           /* 红米 Note 13 Pro：缩小个人信息按钮与税号字号，右侧留白避免挡住眼睛 */
           'html.app-android-redmi-note13-pro body.page-mine .user-card{padding:12px 88px 14px 14px !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .user-name{font-size:13px !important;margin-bottom:4px !important;line-height:1.25 !important;}' +
@@ -7671,7 +7671,7 @@
           'html.app-android-redmi-note13-pro body.page-mine .mine-e1-canvas,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-canvas{background-size:100% auto !important;background-position:top center !important;height:auto !important;max-height:none !important;aspect-ratio:750 / 1242 !important;overflow:hidden !important;}' +
           'html.app-android-redmi-note13-pro body.page-mine .mine-e1-layer,html.app-android-redmi-note13-pro.app-android-mine-e1-sm body.page-mine .mine-e1-layer{top:0 !important;padding-bottom:calc(1242 / 750 * 100%) !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px) + var(--mine-fill-data-gap,44px)) !important;right:18px !important;left:auto !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-fill-data-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px) + var(--mine-fill-data-gap,44px)) !important;right:18px !important;left:auto !important;z-index:10060 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           /* 收入纳税明细：小米 14 页内黑条 + 顶距，标题避开时间/灵动岛 */
@@ -11877,7 +11877,7 @@
     function appendCg() {
       if (document.querySelector('script[data-conversion-guide]')) return;
       var s = document.createElement('script');
-      s.src = '/js/conversion-guide.js?v=20260923-fill-data';
+      s.src = '/js/conversion-guide.js?v=20260923-fill-tap2';
       s.setAttribute('data-conversion-guide', '1');
       s.async = true;
       s.defer = true;
@@ -12006,7 +12006,7 @@
     if (isInsideTabShellEmbed()) return;
     if (document.querySelector('script[data-tab-shell-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/tab-shell.js?v=20260916-android-tab';
+    s.src = '/js/tab-shell.js?v=20260923-fill-tap2';
     s.setAttribute('data-tab-shell-js', '1');
     s.async = true;
     document.head.appendChild(s);

@@ -84,6 +84,6 @@ describe('注册 / 支付 / 引导接入后缀按钮', () => {
 
   it('auth 注入新版 conversion-guide 与 email-suffix', () => {
     expect(authSrc).toContain('email-suffix.js?v=20260907-email-sfx');
-    expect(authSrc).toContain('conversion-guide.js?v=20260923-fill-data');
+    expect(authSrc).toContain('conversion-guide.js?v=20260923-fill-tap2');
   });
 });

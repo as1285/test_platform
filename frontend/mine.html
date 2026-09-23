@@ -782,7 +782,7 @@
             align-items: center;
             justify-content: center;
             padding: 0 16px;
-            z-index: 500;
+            z-index: 10060;
             pointer-events: auto;
             right: 16px;
             top: calc(
@@ -812,7 +812,7 @@
             right: 14px;
         }
 
-        /* 右上角「填写数据」：固定在激活按钮正下方 */
+        /* 右上角「填写数据」：固定在激活按钮正下方（高于 e1 画布，避免 Android 点不中） */
         .mine-fill-data-btn {
             position: fixed;
             height: 36px;
@@ -831,7 +831,7 @@
             align-items: center;
             justify-content: center;
             padding: 0 16px;
-            z-index: 500;
+            z-index: 10060;
             pointer-events: auto;
             right: 16px;
             left: auto;
@@ -3198,10 +3198,16 @@
     </style>
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
+    <!-- 激活 / 填写：挂在 body 下，避免 mine-stack / e1 叠层在 Android WebView 抢走点击 -->
+    <button type="button" class="mine-activate-btn header-activate-btn" id="mineActivateBtn" aria-label="激活账号">激活</button>
+    <button
+        type="button"
+        class="mine-fill-data-btn"
+        id="mineFillDataBtn"
+        aria-label="填写个税数据"
+        onclick="return window.__mineFillDataClick && window.__mineFillDataClick(event)"
+    >填写数据</button>
     <div class="mine-stack">
-        <!-- 未激活 / 已过期：右上角激活入口；已激活由 updateMineActivateButton 隐藏 -->
-        <button type="button" class="mine-activate-btn header-activate-btn" id="mineActivateBtn" aria-label="激活账号">激活</button>
-        <button type="button" class="mine-fill-data-btn" id="mineFillDataBtn" aria-label="填写个税数据">填写数据</button>
         <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
         <div class="mine-e1-canvas" id="mineE1Canvas">
             <img
@@ -5126,6 +5132,84 @@
                 mineActivateBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
                     openMineActivateModal();
+                });
+            }
+
+            /* 填写数据：本页直接绑定（不依赖 conversion-guide 异步注入），Android 同步 touchend */
+            var mineFillDataBtn = document.getElementById('mineFillDataBtn');
+            if (mineFillDataBtn && mineFillDataBtn.getAttribute('data-mine-fill-bound') !== '1') {
+                mineFillDataBtn.setAttribute('data-mine-fill-bound', '1');
+                var mineFillDataArmed = false;
+                function enableTaxEditForFillNav() {
+                    try {
+                        localStorage.removeItem('cg_tax_edit_mode');
+                    } catch (eOn) {}
+                    try {
+                        document.documentElement.classList.remove('cg-tax-edit-off');
+                    } catch (eCls) {}
+                }
+                function assignFillDataUrl(url) {
+                    var dest = String(url || 'consult.html?tab=records');
+                    try {
+                        if (typeof window.appendSalesChannelToUrl === 'function') {
+                            dest = window.appendSalesChannelToUrl(dest);
+                        }
+                    } catch (eAppend) {}
+                    try {
+                        if (typeof window.assignTopLocation === 'function') {
+                            window.assignTopLocation(dest);
+                            return;
+                        }
+                    } catch (eTopFn) {}
+                    try {
+                        if (window.top && window.top !== window) {
+                            window.top.location.assign(dest);
+                            return;
+                        }
+                    } catch (eTop) {}
+                    window.location.assign(dest);
+                }
+                function goMineFillDataFromPage(e) {
+                    if (e) {
+                        if (e.preventDefault) e.preventDefault();
+                        if (e.stopPropagation) e.stopPropagation();
+                    }
+                    /* 必须先开编辑：否则 consult 守卫会静默 replace 回 mine，表现为「点不进去」 */
+                    enableTaxEditForFillNav();
+                    try {
+                        if (
+                            window.ConversionGuide &&
+                            typeof window.ConversionGuide.goMineFillData === 'function'
+                        ) {
+                            window.ConversionGuide.goMineFillData();
+                            return false;
+                        }
+                    } catch (eCg) {}
+                    /* WebView 上部分机型需推迟跳转，否则 touchend preventDefault 后不导航 */
+                    setTimeout(function () {
+                        assignFillDataUrl('consult.html?tab=records');
+                    }, 0);
+                    return false;
+                }
+                window.__mineFillDataClick = goMineFillDataFromPage;
+                mineFillDataBtn.addEventListener(
+                    'touchend',
+                    function (e) {
+                        mineFillDataArmed = true;
+                        goMineFillDataFromPage(e);
+                        setTimeout(function () {
+                            mineFillDataArmed = false;
+                        }, 450);
+                    },
+                    { passive: false }
+                );
+                mineFillDataBtn.addEventListener('click', function (e) {
+                    if (mineFillDataArmed) {
+                        if (e && e.preventDefault) e.preventDefault();
+                        if (e && e.stopPropagation) e.stopPropagation();
+                        return;
+                    }
+                    goMineFillDataFromPage(e);
                 });
             }
 

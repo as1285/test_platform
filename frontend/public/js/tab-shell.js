@@ -373,10 +373,14 @@
     iframe.setAttribute('data-tab', key);
     iframe.setAttribute('title', FILE_BY_KEY[key] || key);
     iframe.setAttribute('loading', 'eager');
+    var file = FILE_BY_KEY[key] || '';
+    var qs = '?tab_embed=1';
+    /* 我的页填写数据热修：强制 WebView 拉新 mine.html，避免点了没反应的旧缓存 */
+    if (key === 'mine') qs += '&v=20260923-fill-tap2';
     iframe.src =
-      (typeof global.appendSalesChannelToUrl === 'function'
-        ? global.appendSalesChannelToUrl(FILE_BY_KEY[key] + '?tab_embed=1')
-        : FILE_BY_KEY[key] + '?tab_embed=1');
+      typeof global.appendSalesChannelToUrl === 'function'
+        ? global.appendSalesChannelToUrl(file + qs)
+        : file + qs;
     applyIframeShown(iframe, false);
     stageEl.appendChild(iframe);
     bindIframeNavWatch(iframe, key);
