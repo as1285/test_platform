@@ -1133,6 +1133,72 @@
     return /(?:Black\s*Shark|BlackShark|黑鲨)[\s_-]*4S\b/i.test(ua);
   }
 
+  /**
+   * JOYUI 黑底仍用深色系统图标，时间和电量会消失。
+   * 在页内黑条上补白字时间；电量走 Battery API，读不到就不显示数字。
+   */
+  function ensureBlackSharkStatusReadout() {
+    try {
+      if (!document.getElementById('bs4s-sysbar-style')) {
+        var st = document.createElement('style');
+        st.id = 'bs4s-sysbar-style';
+        st.textContent =
+          'html.app-android-blackshark-4s #bs4s-sysbar{position:fixed!important;left:0!important;right:0!important;top:0!important;height:40px!important;z-index:190!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 14px!important;box-sizing:border-box!important;color:#fff!important;font-family:Roboto,"Noto Sans SC",sans-serif!important;font-size:14px!important;font-weight:500!important;line-height:1!important;pointer-events:none!important;background:transparent!important;}' +
+          'html.app-android-blackshark-4s #bs4s-sysbar .bs4s-bat{display:none;align-items:center;gap:4px;}' +
+          'html.app-android-blackshark-4s #bs4s-sysbar .bs4s-pct{font-size:12px;letter-spacing:0;}' +
+          'html.app-android-blackshark-4s #bs4s-sysbar .bs4s-ico{display:inline-block;width:22px;height:11px;border:1.5px solid #fff;border-radius:2px;box-sizing:border-box;position:relative;}' +
+          'html.app-android-blackshark-4s #bs4s-sysbar .bs4s-ico::before{content:"";position:absolute;left:1px;top:1px;bottom:1px;width:var(--bs4s-fill,0%);background:#fff;border-radius:1px;}' +
+          'html.app-android-blackshark-4s #bs4s-sysbar .bs4s-ico::after{content:"";position:absolute;right:-3px;top:2px;width:2px;height:5px;background:#fff;border-radius:0 1px 1px 0;}';
+        (document.head || document.documentElement).appendChild(st);
+      }
+      var bar = document.getElementById('bs4s-sysbar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'bs4s-sysbar';
+        bar.setAttribute('aria-hidden', 'true');
+        bar.innerHTML =
+          '<span class="bs4s-time"></span><span class="bs4s-bat"><span class="bs4s-pct"></span><i class="bs4s-ico"></i></span>';
+        document.documentElement.appendChild(bar);
+      }
+      var tick = function () {
+        var el = bar.querySelector('.bs4s-time');
+        if (!el) return;
+        var d = new Date();
+        var m = d.getMinutes();
+        el.textContent = d.getHours() + ':' + (m < 10 ? '0' : '') + m;
+      };
+      tick();
+      if (!window.__bs4sClock) {
+        window.__bs4sClock = setInterval(tick, 15000);
+      }
+      if (!window.__bs4sBatStarted) {
+        window.__bs4sBatStarted = true;
+        var paintBat = function (level) {
+          var pct = bar.querySelector('.bs4s-pct');
+          var ico = bar.querySelector('.bs4s-ico');
+          var bat = bar.querySelector('.bs4s-bat');
+          if (!pct || !bat || level == null || isNaN(level)) return;
+          var n = Math.max(0, Math.min(100, Math.round(Number(level) * 100)));
+          pct.textContent = String(n);
+          if (ico) ico.style.setProperty('--bs4s-fill', n + '%');
+          bat.style.display = 'flex';
+        };
+        if (typeof navigator.getBattery === 'function') {
+          navigator.getBattery().then(function (b) {
+            var apply = function () {
+              paintBat(b.level);
+            };
+            apply();
+            try {
+              b.addEventListener('levelchange', apply);
+              b.addEventListener('chargingchange', apply);
+            } catch (eLv) {}
+          }).catch(function () {});
+        }
+      }
+    } catch (eBsReadout) {}
+  }
+
   /** 小米/红米/HyperOS 系：首页顶栏按「状态栏在 WebView 外」处理 */
   function isXiaomiHyperOsFamilyClient() {
     var ua = navigator.userAgent || '';
@@ -4635,6 +4701,7 @@
         setTimeout(reapplyBsBlue, 80);
         setTimeout(reapplyBsBlue, 320);
         setTimeout(reapplyBsBlue, 800);
+        ensureBlackSharkStatusReadout();
         return;
       }
       if (
@@ -6014,6 +6081,7 @@
         setTimeout(reapplyBs4sLight, 80);
         setTimeout(reapplyBs4sLight, 320);
         setTimeout(reapplyBs4sLight, 800);
+        ensureBlackSharkStatusReadout();
         return;
       }
       var cordovaShell = root.classList.contains('app-cordova-shell');
@@ -7036,6 +7104,7 @@
             paint_shell: true,
             shell_bg: '#f5f6fa'
           });
+          ensureBlackSharkStatusReadout();
         } catch (eBs4sBar) {}
       }
       if (cordovaXiaomi23127) {
