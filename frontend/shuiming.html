@@ -122,16 +122,6 @@
                     document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
                     document.documentElement.style.setProperty('--android-status-inset', '40px');
                 }
-                /* 黑鲨 4S：白顶栏首帧先铺 40px 黑框，避免系统栏白底闪一下 */
-                if (/SHARK[\s_-]*PRS-A0|\bPRS-A0\b|(?:Black\s*Shark|BlackShark|黑鲨)[\s_-]*4S\b/i.test(u)) {
-                    document.documentElement.classList.add('app-android-client');
-                    document.documentElement.classList.add('app-android-blackshark-4s');
-                    document.documentElement.classList.add('app-top-safe-shell');
-                    document.documentElement.classList.remove('app-android-immersive-white-top');
-                    document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-                    document.documentElement.style.setProperty('--android-status-inset', '40px');
-                    document.documentElement.style.setProperty('color-scheme', 'dark', 'important');
-                }
                 if (/PGCM10|\bK9x\b/i.test(u)) {
                     document.documentElement.classList.add('app-android-oppo-k9x');
                     document.documentElement.classList.add('app-android-immersive-white-top');
@@ -330,7 +320,7 @@
         })();
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
-    <script src="/js/auth-boot.js?v=20260923-bs4s-noclock"></script>
+    <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
     <meta name="theme-color" content="#ffffff">
     <script>
         (function () {
@@ -509,7 +499,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260923-bs4s-noclock" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260923-bs4s-restore" defer fetchpriority="low"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -661,32 +651,6 @@
             padding-top: calc(12px + var(--app-shell-statusbar-top, 0px)) !important;
             padding-bottom: 12px !important;
             top: 0 !important;
-        }
-
-        /* 黑鲨 4S：系统栏铺黑，标题从黑框下开始 */
-        html.app-android-blackshark-4s.app-top-safe-shell::before {
-            content: "";
-            position: fixed;
-            left: 0;
-            right: 0;
-            top: 0;
-            height: 40px;
-            background: #000;
-            z-index: 180;
-            pointer-events: none;
-        }
-        html.app-android-blackshark-4s {
-            color-scheme: dark !important;
-        }
-        html.app-android-blackshark-4s body {
-            color-scheme: light !important;
-        }
-        html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shuiming > .header {
-            padding-top: calc(12px + 40px) !important;
-            background: #fff !important;
-        }
-        html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shuiming > .content {
-            padding-top: calc(44px + 40px) !important;
         }
 
         html.platform-android body.page-shuiming > .content,

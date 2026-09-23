@@ -869,10 +869,6 @@
     if (isVivoS15Client()) {
       return false;
     }
-    /* 黑鲨 4S：白顶栏页内黑框，不能当外置清零 */
-    if (isBlackShark4SClient()) {
-      return false;
-    }
     /* 魅族 20 Pro：Flyme Cordova 沉浸压栏，白顶栏须留顶距 */
     if (isMeizu20ProClient()) {
       return false;
@@ -1118,19 +1114,6 @@
       return true;
     }
     return /(?:Xiaomi|Mi|小米)[\s_-]*14(?![\s_-]*(?:Pro|Ultra))/i.test(ua);
-  }
-
-  /**
-   * 黑鲨 4S（SHARK PRS-A0，JOYUI 13 / MIUI 13，2400×1080）。
-   * 白顶栏页系统栏是白底，正版个税是顶部黑框。页内铺 40px 黑垫。
-   * 勿匹配黑鲨 4 / 4 Pro / 5（KSR-A0、PAR-A0 等）。
-   */
-  function isBlackShark4SClient() {
-    var ua = clientUaBlob();
-    if (/SHARK[\s_-]*PRS-A0|\bPRS-A0\b/i.test(ua)) {
-      return true;
-    }
-    return /(?:Black\s*Shark|BlackShark|黑鲨)[\s_-]*4S\b/i.test(ua);
   }
 
   /** 小米/红米/HyperOS 系：首页顶栏按「状态栏在 WebView 外」处理 */
@@ -4604,39 +4587,6 @@
           (document.documentElement.classList.contains('app-android-redmi-k70') &&
             !document.documentElement.classList.contains('app-android-redmi-k70-ultra'));
       } catch (eK70Bar) {}
-      /* 黑鲨 4S：蓝顶页系统栏也铺黑，搜索/头图从黑框下开始。overlays 保持沉浸，避免再叠一条空白 */
-      var blackSharkBlackBar = false;
-      try {
-        blackSharkBlackBar =
-          isBlackShark4SClient() ||
-          document.documentElement.classList.contains('app-android-blackshark-4s');
-      } catch (eBsBar) {}
-      if (blackSharkBlackBar) {
-        upsertMeta('theme-color', '#000000');
-        upsertMeta('msapplication-navbutton-color', '#000000');
-        upsertMeta('color-scheme', 'dark');
-        setStatusBarStyleMeta('black');
-        try {
-          document.documentElement.style.setProperty('color-scheme', 'dark', 'important');
-          if (document.body) document.body.style.setProperty('color-scheme', 'light', 'important');
-        } catch (eBsScheme) {}
-        var bsBlueOpts = {
-          style: 'light',
-          overlays: true,
-          color: '#000000',
-          paint_shell: true,
-          shell_bg: pageBg
-        };
-        requestShellStatusBar(bsBlueOpts);
-        var reapplyBsBlue = function () {
-          requestShellStatusBar(bsBlueOpts);
-        };
-        setTimeout(reapplyBsBlue, 0);
-        setTimeout(reapplyBsBlue, 80);
-        setTimeout(reapplyBsBlue, 320);
-        setTimeout(reapplyBsBlue, 800);
-        return;
-      }
       if (
         (isLikelyAndroidViewportClient() || k70StdBlackBar) &&
         (isOnePlusAce2VClient() ||
@@ -5973,49 +5923,6 @@
         });
         return;
       }
-      /* 黑鲨 4S：白顶栏页内 40px 黑框 + 浅色系统字。JOYUI 常忽略外置黑条，overlays 交给页内黑垫 */
-      var blackShark4sPaintedBar =
-        isBlackShark4SClient() || root.classList.contains('app-android-blackshark-4s');
-      if (blackShark4sPaintedBar) {
-        try {
-          root.classList.add('app-android-client');
-          root.classList.add('app-android-blackshark-4s');
-          root.classList.add('app-top-safe-shell');
-          root.classList.remove('app-android-white-page-outer');
-          root.classList.remove('app-android-immersive-white-top');
-          root.classList.remove('app-android-mi-family');
-          root.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-          root.style.setProperty('--android-status-inset', '40px', 'important');
-          if (body) {
-            body.style.setProperty('--app-shell-statusbar-top', '40px', 'important');
-            body.style.setProperty('--android-status-inset', '40px', 'important');
-          }
-        } catch (eBs4sInset) {}
-        upsertMeta('theme-color', '#000000');
-        upsertMeta('msapplication-navbutton-color', '#000000');
-        upsertMeta('color-scheme', 'dark');
-        setStatusBarStyleMeta('black');
-        try {
-          root.style.setProperty('color-scheme', 'dark', 'important');
-          if (body) body.style.setProperty('color-scheme', 'light', 'important');
-        } catch (eBsScheme2) {}
-        var bs4sOpts = {
-          style: 'light',
-          overlays: true,
-          color: '#000000',
-          paint_shell: true,
-          shell_bg: '#f5f6fa'
-        };
-        requestShellStatusBar(bs4sOpts);
-        var reapplyBs4sLight = function () {
-          requestShellStatusBar(bs4sOpts);
-        };
-        setTimeout(reapplyBs4sLight, 0);
-        setTimeout(reapplyBs4sLight, 80);
-        setTimeout(reapplyBs4sLight, 320);
-        setTimeout(reapplyBs4sLight, 800);
-        return;
-      }
       var cordovaShell = root.classList.contains('app-cordova-shell');
       var outerStatusBar = isAndroidOuterStatusBarClient();
       var needsOuterBar =
@@ -6610,7 +6517,6 @@
         androidClient = true;
       }
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
-      var blackShark4sClient = androidClient && isBlackShark4SClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
       var redmiNote13Pro = androidClient && isRedmiNote13ProClient();
@@ -6632,7 +6538,6 @@
       var xiaomiHyperOsFamily =
         androidClient &&
         isXiaomiHyperOsFamilyClient() &&
-        !blackShark4sClient &&
         !xiaomiMixFoldClient &&
         !xiaomi13Client &&
         !xiaomi13UltraClient &&
@@ -6713,7 +6618,6 @@
         androidClient &&
         isAndroidOuterStatusBarClient() &&
         !xiaomi14Client &&
-        !blackShark4sClient &&
         !xiaomiMixFoldClient &&
         !xiaomi13Client &&
         !xiaomi13UltraClient &&
@@ -6787,7 +6691,7 @@
        * iOS 仍用顶色 + translucent，本分支不改 iOS。
        */
       var rootChromeBg =
-        cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient || blackShark4sClient
+        cordovaXiaomi23127 || xiaomi14Client || redmiK70StdClient
           ? '#000000'
           : immersiveBlueTop
             ? immersiveBlueTop
@@ -6940,8 +6844,6 @@
               ? '36px'
               : xiaomi14Client || cordovaXiaomi23127
                 ? '48px'
-              : blackShark4sClient
-                ? '40px'
               : redmiK70StdClient
                 ? '40px'
               : samsungS23UltraClient
@@ -7012,31 +6914,6 @@
             shell_bg: '#f5f6fa'
           });
         } catch (eMi14Bar) {}
-      }
-      if (blackShark4sClient) {
-        document.documentElement.classList.add('app-android-client');
-        document.documentElement.classList.add('app-android-blackshark-4s');
-        document.documentElement.classList.add('app-top-safe-shell');
-        document.documentElement.classList.remove('app-android-mi-family');
-        document.documentElement.classList.remove('app-android-immersive-white-top');
-        document.documentElement.classList.remove('app-android-white-page-outer');
-        document.documentElement.style.setProperty('--app-shell-statusbar-top', '40px');
-        document.documentElement.style.setProperty('--android-status-inset', '40px');
-        document.documentElement.style.setProperty('--shouye-status-inset', '40px');
-        try {
-          upsertMeta('theme-color', '#000000');
-          upsertMeta('msapplication-navbutton-color', '#000000');
-          upsertMeta('color-scheme', 'dark');
-          setStatusBarStyleMeta('black');
-          document.documentElement.style.setProperty('color-scheme', 'dark', 'important');
-          requestShellStatusBar({
-            style: 'light',
-            overlays: true,
-            color: '#000000',
-            paint_shell: true,
-            shell_bg: '#f5f6fa'
-          });
-        } catch (eBs4sBar) {}
       }
       if (cordovaXiaomi23127) {
         document.documentElement.classList.add('app-cordova-xiaomi-23127');
@@ -7423,11 +7300,6 @@
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming)::before,' +
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-shuiming-result)::before,' +
           'html.app-android-xiaomi-14.app-top-safe-shell:has(body.page-xiangqing)::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,48px) !important;background:#000 !important;z-index:2147483000 !important;pointer-events:none !important;}' +
-          /* 黑鲨 4S：黑框留在网页层，z-index 压过白顶栏即可，勿盖住系统时间。html 用 dark 让状态栏出白字，正文仍是浅色 */
-          'html.app-android-blackshark-4s{color-scheme:dark !important;}' +
-          'html.app-android-blackshark-4s body{color-scheme:light !important;}' +
-          'html.app-android-blackshark-4s.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;--shouye-status-inset:40px !important;}' +
-          'html.app-android-blackshark-4s.app-top-safe-shell::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:40px !important;background:#000 !important;z-index:180 !important;pointer-events:none !important;}' +
           /* 红米 K70 标准版：全页黑条 40px（白顶页 + 我的）；蓝顶首页勿再叠黑 */
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra){--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
           'html.app-android-redmi-k70.app-top-safe-shell:not(.app-android-redmi-k70-ultra):has(body.page-shuiming)::before,' +
@@ -7473,7 +7345,6 @@
           'html.app-android-vivo-x200pro.app-top-safe-shell,' +
           'html.app-android-vivo-x90.app-top-safe-shell,' +
           'html.app-android-vivo-s15.app-top-safe-shell,' +
-          'html.app-android-blackshark-4s.app-top-safe-shell,' +
           'html.app-android-redmi-k70-ultra.app-top-safe-shell,' +
           'html.app-android-xiaomi-15.app-top-safe-shell,' +
           'html.app-android-redmi-k80pro.app-top-safe-shell{--app-shell-statusbar-top:40px !important;--android-status-inset:40px !important;}' +
@@ -7924,7 +7795,6 @@
           /* 压过后续机型特例：Android 首页统一顶距（Pura70 Cordova 除外） */
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye{--shouye-status-inset:40px;--app-shell-statusbar-top:var(--shouye-status-inset) !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;z-index:998 !important;pointer-events:none !important;}' +
-          'html.app-android-blackshark-4s.app-android-client.app-top-safe-shell body.page-shouye::before{background-color:#000 !important;background-image:none !important;height:40px !important;z-index:180 !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:var(--shouye-status-inset,40px) !important;background-color:rgb(var(--shouye-top-bar-rgb,79, 144, 243)) !important;background-image:url(/img/home/apk-home-header-bg.png) !important;background-size:100% auto !important;background-position:top center !important;background-repeat:no-repeat !important;box-shadow:none !important;}' +
           'html.app-android-client.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,92px) !important;}' +
           /*
