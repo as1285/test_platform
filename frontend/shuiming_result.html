@@ -5,6 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <link rel="stylesheet" href="/css/device-tokens.css?v=20260906-16pro-std">
     <script>
+        /* iPhone 13 Pro Max（iPhone14,3，428×926 刘海约 47px）首屏打标：
+         * 白顶栏需让出刘海，深色状态栏文字画在白底上。auth.js defer 之前先落 class + CSS 变量。 */
+        (function () {
+            try {
+                var ua = String(navigator.userAgent || '');
+                try { ua += ' ' + String(localStorage.getItem('tax_device_model_v1') || ''); } catch (eM) {}
+                try { ua += ' ' + String(localStorage.getItem('tax_device_ua_v1') || ''); } catch (eUa) {}
+                if (/iPhone\s*13\s*Pro\s*Max|iPhone14,3\b|iPhone\s*14\s*Plus|iPhone14,8\b/i.test(ua)) {
+                    var root = document.documentElement;
+                    root.classList.add('app-ios-client');
+                    root.classList.add('app-ios-iphone13promax');
+                    root.classList.add('app-top-safe-shell');
+                    root.classList.remove('app-ios-status-outer');
+                    root.style.setProperty('--app-shell-statusbar-top', '47px', 'important');
+                    root.style.setProperty('--safe-top', '47px', 'important');
+                } else {
+                    var sw = 0, sh = 0;
+                    try {
+                        sw = Number((window.screen && window.screen.width) || window.innerWidth || 0);
+                        sh = Number((window.screen && window.screen.height) || window.innerHeight || 0);
+                    } catch (eVp) {}
+                    var shortSide = Math.min(sw, sh);
+                    var longSide = Math.max(sw, sh);
+                    if (shortSide >= 426 && shortSide <= 430 && longSide >= 922 && longSide <= 930 &&
+                        !/iPhone\s*14\s*Pro\s*Max|iPhone15,3\b|iPhone\s*15\s*Pro\s*Max|iPhone15,5\b|iPhone16,2\b|iPhone\s*16\s*Pro\s*Max|iPhone17,2\b/i.test(ua)) {
+                        var root2 = document.documentElement;
+                        root2.classList.add('app-ios-client');
+                        root2.classList.add('app-ios-iphone13promax');
+                        root2.classList.add('app-top-safe-shell');
+                        root2.classList.remove('app-ios-status-outer');
+                        root2.style.setProperty('--app-shell-statusbar-top', '47px', 'important');
+                        root2.style.setProperty('--safe-top', '47px', 'important');
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script>
         (function () {
             try {
                 if (localStorage.getItem('account_active') === '1') {
@@ -1128,7 +1166,7 @@
             else document.addEventListener('DOMContentLoaded', hoistIos27ResultChrome);
         })();
     </script>
-    <script src="/js/auth.js?v=20260923-honor-x20" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260924-13pm-result" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260901-help-icon-light">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope=".page-root"></script>
@@ -4451,6 +4489,58 @@
             margin-right: var(--list-date-inset, 1.4em) !important;
         }
 
+        /*
+         * iPhone 13 Pro Max（iPhone14,3，428×926，刘海约 47px）：
+         * 白顶栏需下移让出刘海，让系统深色时间/信号画在白底上。
+         * 选择器重复 app-ios-iphone13promax 抬高特异性，压过 auth.js 里
+         * app-top-safe-shell 兜底 env(safe-area-inset-top,0px) 的 !important 规则。
+         */
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .page-root {
+            --header-height: 48px !important;
+            --safe-top: 47px !important;
+            --app-shell-statusbar-top: 47px !important;
+            --shuiming-chrome-top: 47px !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .top-fixed .header {
+            top: 0 !important;
+            height: calc(48px + 47px) !important;
+            min-height: calc(48px + 47px) !important;
+            padding: 47px 16px 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            box-shadow: 0 12px 0 0 #f5f6fa !important;
+            z-index: 120 !important;
+            align-items: center !important;
+            overflow: visible !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .top-fixed .header .header-right {
+            top: 47px !important;
+            height: 48px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .top-fixed .header .header-title {
+            position: relative !important;
+            z-index: 2 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: #000 !important;
+            line-height: 48px !important;
+            height: 48px !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .top-fixed .summary {
+            top: calc(48px + 47px) !important;
+            background: #f5f6fa !important;
+            padding: 12px 0 10px !important;
+            box-sizing: border-box !important;
+            z-index: 125 !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax.app-ios-iphone13promax body.page-shuiming-result .list {
+            margin-top: calc(48px + 47px) !important;
+        }
+
     </style>
 </head>
 <body class="page-shuiming-result">
@@ -6286,6 +6376,77 @@
                 setTimeout(removeChip, 2500);
             }
         })();
+
+        /*
+         * iPhone 13 Pro Max 刘海约 47px：钉住白顶栏下移 + 深色状态栏 + 白底 + overlays true。
+         * 多次重设（0/80/300/800/1600/3000ms + pageshow），防 auth.js / syncTopFixedHeight /
+         * closeXiangqingTopGap 类收空隙逻辑把顶距收回去。参考 xiangqing.html 同名实现。
+         */
+        function pinIPhone13ProMaxStatusBar() {
+            try {
+                var root = document.documentElement;
+                if (!root.classList.contains('app-ios-iphone13promax')) return;
+                root.classList.add('app-ios-client');
+                root.classList.add('app-top-safe-shell');
+                root.classList.remove('app-ios-status-outer');
+                root.style.setProperty('--app-shell-statusbar-top', '47px', 'important');
+                root.style.setProperty('--safe-top', '47px', 'important');
+                var pageRoot = document.querySelector('body.page-shuiming-result .page-root');
+                if (pageRoot) {
+                    pageRoot.style.setProperty('--app-shell-statusbar-top', '47px', 'important');
+                    pageRoot.style.setProperty('--safe-top', '47px', 'important');
+                    pageRoot.style.setProperty('--shuiming-chrome-top', '47px', 'important');
+                    pageRoot.style.setProperty('--header-height', '48px', 'important');
+                }
+                var header = document.querySelector('body.page-shuiming-result .top-fixed .header') ||
+                    document.querySelector('body.page-shuiming-result .header');
+                if (header) {
+                    header.style.setProperty('top', '0px', 'important');
+                    header.style.setProperty('height', 'calc(48px + 47px)', 'important');
+                    header.style.setProperty('min-height', 'calc(48px + 47px)', 'important');
+                    header.style.setProperty('padding', '47px 16px 0', 'important');
+                    header.style.setProperty('box-sizing', 'border-box', 'important');
+                    header.style.setProperty('background', '#fff', 'important');
+                    header.style.setProperty('z-index', '120', 'important');
+                    var back = header.querySelector('.back-btn');
+                    var right = header.querySelector('.header-right');
+                    if (back) {
+                        back.style.setProperty('top', '47px', 'important');
+                        back.style.setProperty('height', '48px', 'important');
+                        back.style.setProperty('display', 'flex', 'important');
+                        back.style.setProperty('align-items', 'center', 'important');
+                    }
+                    if (right) {
+                        right.style.setProperty('top', '47px', 'important');
+                        right.style.setProperty('height', '48px', 'important');
+                        right.style.setProperty('display', 'flex', 'important');
+                        right.style.setProperty('align-items', 'center', 'important');
+                    }
+                }
+                /* 通知 Cordova 父壳：深色状态栏文字 + 白底 + 沉浸（不画外置黑框） */
+                try {
+                    parent.postMessage({
+                        source: 'tax-h5',
+                        type: 'status-bar',
+                        style: 'default',
+                        overlays: true,
+                        color: '#ffffff',
+                        paint_shell: false,
+                        shell_bg: '#ffffff'
+                    }, '*');
+                } catch (ePost) {}
+                /* 同步汇总/列表顶距，避免 syncTopFixedHeight 用错顶栏高度 */
+                try {
+                    if (typeof syncTopFixedHeight === 'function') syncTopFixedHeight();
+                } catch (eSync) {}
+            } catch (e) {}
+        }
+        if (document.documentElement.classList.contains('app-ios-iphone13promax')) {
+            [0, 80, 300, 800, 1600, 3000].forEach(function (ms) {
+                setTimeout(pinIPhone13ProMaxStatusBar, ms);
+            });
+            window.addEventListener('pageshow', pinIPhone13ProMaxStatusBar);
+        }
     </script>
     <script src="/js/watermark.js?v=20260831-m60home"></script>
 </body>
