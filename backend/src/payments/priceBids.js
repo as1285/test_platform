@@ -338,13 +338,18 @@ function createPriceBids(deps) {
       e3.statusCode = 400;
       throw e3;
     }
-    if (num < cfg.min_amount) {
-      var e4 = new Error('出价不能低于 ' + cfg.min_amount + ' 元');
+    var listAmount = Number(sku.amount);
+    /* 全局最低价不低于本档现价时，该档无法再往下出价；只要求低于现价 */
+    var effectiveMin = Number(cfg.min_amount) || 0;
+    if (isFinite(listAmount) && listAmount > 0 && effectiveMin >= listAmount) {
+      effectiveMin = 0;
+    }
+    if (effectiveMin > 0 && num < effectiveMin) {
+      var e4 = new Error('出价不能低于 ' + effectiveMin + ' 元');
       e4.statusCode = 400;
-      e4.floor_hint = String(cfg.min_amount);
+      e4.floor_hint = String(effectiveMin);
       throw e4;
     }
-    var listAmount = Number(sku.amount);
     if (isFinite(listAmount) && num >= listAmount) {
       var e5 = new Error('出价已不低于现价 ¥' + sku.amount + '，直接购买即可');
       e5.statusCode = 400;
