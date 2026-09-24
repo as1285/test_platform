@@ -6,6 +6,7 @@ const {
   paydayIso,
   ymToIndex,
   ipAllowed,
+  isListedPartnerIp,
   parseAllowlist,
   timingSafeEqualStr,
   extractApiKey,
@@ -95,6 +96,11 @@ describe('bankSalaryFlow auth helpers', () => {
     expect(ipAllowed('172.18.0.1', list)).toBe(true);
     expect(ipAllowed('1.1.1.1', list)).toBe(false);
     expect(ipAllowed('1.1.1.1', [])).toBe(true);
+    expect(isListedPartnerIp('43.128.147.171', '43.128.147.171')).toBe(true);
+    expect(isListedPartnerIp('::ffff:43.128.147.171', '43.128.147.171')).toBe(true);
+    expect(isListedPartnerIp('1.1.1.1', '43.128.147.171')).toBe(false);
+    expect(isListedPartnerIp('1.1.1.1', '')).toBe(false);
+    expect(isListedPartnerIp('127.0.0.1', '')).toBe(false);
   });
 
   it('compares secrets without throwing on length mismatch', () => {

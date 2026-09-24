@@ -22,6 +22,7 @@ const opsStatsReport = require('../../opsStatsReport');
 const alipay = require('../../alipay');
 const { inferBankNameFromCardNo } = require('../../bank_card_bins');
 const config = require('../shared/config');
+const { isListedPartnerIp } = require('../partner/bankSalaryFlow');
 const signedAssets = require('../shared/signedAssets');
 const sharedDb = require('../shared/db');
 const waitForMysql = require('../shared/waitForMysql');
@@ -2642,9 +2643,12 @@ function sendRateLimited(res, result, msg) {
   return res.status(429).json({ code: 429, msg: msg || '请求过于频繁，请稍后再试', retry_after_ms: retryMs });
 }
 
-/** 检查登录业务限流（Redis 优先） */
+/** 检查登录业务限流（Redis 优先）。银行模拟器白名单 IP 批量登录，不计入 IP/账号限额。 */
 async function checkLoginBusinessRate(req, username) {
   var ip = getClientIp(req) || 'unknown';
+  if (isListedPartnerIp(ip, config.BANK_PARTNER_IP_ALLOWLIST)) {
+    return { ok: true, backend: 'bank_partner_exempt' };
+  }
   var byIp = await consumeRateLimit('login-ip', ip, LOGIN_RATE_PER_IP_MIN, 60 * 1000);
   if (!byIp.ok) return byIp;
   if (username) {
@@ -22952,6 +22956,49 @@ async function handleAdminAnalyticsOverview(req, res) {
          GROUP BY uda.activity_date ORDER BY uda.activity_date ASC`,
         actPf.params
       );
+      var sameClock = null;
+      try {
+        const [clockRows] = await conn.execute(
+          `SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 8 HOUR), '%H:%i') AS as_of_bj,
+                  CURDATE() AS today_d,
+                  DATE_SUB(CURDATE(), INTERVAL 1 DAY) AS yday_d,
+                  (SELECT COUNT(DISTINCT ${ipKeySql})
+                     FROM user_daily_activity uda
+                    WHERE uda.activity_date = CURDATE()) AS today_cnt,
+                  (SELECT COUNT(DISTINCT ${ipKeySql})
+                     FROM user_daily_activity uda
+                    WHERE uda.activity_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                      AND EXISTS (
+                        SELECT 1 FROM user_page_events p
+                         WHERE p.username = uda.username
+                           AND p.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                           AND p.created_at < DATE_SUB(NOW(), INTERVAL 1 DAY)
+                        UNION ALL
+                        SELECT 1 FROM user_login_events e
+                         WHERE e.username = uda.username
+                           AND e.ok = 1
+                           AND e.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                           AND e.created_at < DATE_SUB(NOW(), INTERVAL 1 DAY)
+                      )) AS yday_cnt`
+        );
+        if (clockRows && clockRows[0]) {
+          var cr = clockRows[0];
+          var todayN = Number(cr.today_cnt) || 0;
+          var ydayN = Number(cr.yday_cnt) || 0;
+          sameClock = {
+            as_of: cr.as_of_bj != null ? String(cr.as_of_bj) : '',
+            today_date:
+              cr.today_d instanceof Date ? cr.today_d.toISOString().slice(0, 10) : String(cr.today_d).slice(0, 10),
+            yesterday_date:
+              cr.yday_d instanceof Date ? cr.yday_d.toISOString().slice(0, 10) : String(cr.yday_d).slice(0, 10),
+            today: todayN,
+            yesterday: ydayN,
+            vs_pct: ydayN > 0 ? Math.round((todayN / ydayN) * 100) : null
+          };
+        }
+      } catch (eClock) {
+        console.error('analytics same clock', eClock);
+      }
       var loginProbeExcl = sqlExcludeInternalLoginProbeUsernames('username');
       const [loginRows] = await conn.execute(
         `SELECT DATE(created_at) AS d,
@@ -22994,7 +23041,8 @@ async function handleAdminAnalyticsOverview(req, res) {
             fail_reasons: failReasonRows.map(function (r) {
               var k = r.reason_key != null ? String(r.reason_key) : 'unknown_error';
               return { reason_key: k, reason_label: userLoginReasonLabel(k), cnt: Number(r.cnt || 0) };
-            })
+            }),
+            same_clock: sameClock
           },
           conversionAnalyticsPeriodMeta(period)
         )

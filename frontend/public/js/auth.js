@@ -5248,12 +5248,39 @@
    * Cordova 不再走外置栏（会落成顶部黑框）；页内铺白盖住刘海。
    * 不按 14/16/17 分档，12 Pro（390×844 刘海）同样需要。
    */
+  /**
+   * iPhone 13 Pro Max 刘海约 47px。白顶栏若用浅色状态栏，时间和信号会看不见。
+   * 顶距让出刘海，状态栏用深色文字，且不要用壳层白块盖住系统图标。
+   */
+  function applyIPhone13ProMaxNotchStatusBar() {
+    var root = document.documentElement;
+    root.classList.add('app-ios-client');
+    root.classList.add('app-ios-iphone13promax');
+    root.classList.add('app-top-safe-shell');
+    root.classList.remove('app-ios-status-outer');
+    root.style.setProperty('--app-shell-statusbar-top', '47px', 'important');
+    try {
+      setStatusBarStyleMeta('default');
+    } catch (eMeta) {}
+    requestShellStatusBar({
+      style: 'default',
+      overlays: true,
+      color: '#ffffff',
+      paint_shell: false,
+      shell_bg: '#ffffff'
+    });
+  }
+
   function applyIPhone16ProPageChrome() {
     try {
       if (!isLikelyIOSViewportClient()) {
         return;
       }
       if (!isIosWhiteStatusPage()) {
+        return;
+      }
+      if (isIPhone13ProMaxClient()) {
+        applyIPhone13ProMaxNotchStatusBar();
         return;
       }
       /*

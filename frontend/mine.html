@@ -756,11 +756,12 @@
             --mine-top-bleed: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             /* 右上角激活按钮：相对状态栏下移，避开刘海 */
             --mine-activate-btn-top-offset: 10px;
-            /* 填写数据在左侧，与激活按钮同一行高；激活隐藏后顶到左上同一位置 */
+            /* 未激活：填写数据在左侧激活按钮下方 */
             --mine-fill-data-gap: 44px;
         }
+        /* 已激活没有右侧激活按钮，填写数据单独下移，避开状态栏时间 */
         body.page-mine.mine-account-active {
-            --mine-fill-data-gap: 0px;
+            --mine-fill-data-gap: 36px;
         }
 
         /* 右上角「激活」：固定定位避免被 e1 叠层挡住 */

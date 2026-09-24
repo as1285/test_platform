@@ -217,6 +217,7 @@ function onSubmitRecord(e) {
         o.id = editId;
     }
     var usedManualTax = taxReportedWasManuallyChanged();
+    var forcedCumulativeTax = false;
     window.__recordSaveInFlight = true;
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -225,7 +226,13 @@ function onSubmitRecord(e) {
     /* 优先用内存缓存算税，避免保存前再打一轮 records */
     apiFetchRecords({ force: false })
         .then(function (list) {
-            if (usedManualTax) {
+            /* 与前面月份同一公司：忽略手填税额，按累计预扣。公司名不同才保留手填、按新单位起算。 */
+            if (hasPriorSameCompanyWageRecord(o, list)) {
+                usedManualTax = false;
+                forcedCumulativeTax = true;
+                o.tax_reported = computeSingleRecordTaxReported(o, list);
+                document.getElementById('f_tax_reported').value = o.tax_reported;
+            } else if (usedManualTax) {
                 o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
                 document.getElementById('f_tax_reported').value = o.tax_reported;
             } else {
@@ -271,7 +278,11 @@ function onSubmitRecord(e) {
                     return;
                 }
             }
-            var taxMsg = usedManualTax ? '' : '（已重算税额）';
+            var taxMsg = forcedCumulativeTax
+                ? '（与前面是同一公司，已按累计预扣计税）'
+                : usedManualTax
+                  ? ''
+                  : '（已重算税额）';
             showMsg((editId ? '记录已更新' : '记录已添加') + taxMsg, true);
         })
         .catch(function (err) {

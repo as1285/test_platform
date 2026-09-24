@@ -2454,27 +2454,82 @@ function taxesMapFromMonthTaxableEntries(monthEntries) {
     return taxMap;
 }
 
-/** 是否与目标记录同年同单位（排除年终奖小类）。 */
-function recordMatchesSingleTaxCohort(rec, record) {
-    var year = parseInt(record.year, 10);
-    if (parseInt(rec.year, 10) !== year) {
-        return false;
-    }
+/** 公司名比较：去首尾空白，中间空白压成一格。 */
+function normalizeConsultCompanyName(name) {
+    return String(name || '')
+        .trim()
+        .replace(/\s+/g, ' ');
+}
+
+/** 工资薪金（不含年终奖、解除补偿），可纳入累计预扣。 */
+function isCumulativeWageRecord(rec) {
     if (String(rec.income_subtype || '').trim() === '全年一次性奖金收入') {
         return false;
     }
     if (isSeveranceCompensationSubtype(rec.income_subtype)) {
         return false;
     }
+    return true;
+}
+
+/**
+ * 同年、当前月之前，是否已有同一公司名的工资记录。
+ * 公司名相同则必须接着累计预扣；公司名不同才允许按新单位重新起算。
+ */
+function hasPriorSameCompanyWageRecord(record, allRecords) {
+    var company = normalizeConsultCompanyName(record.company_name);
+    if (!company) {
+        return false;
+    }
+    var year = parseInt(record.year, 10);
+    var month = parseInt(record.month, 10);
+    if (!year || !month) {
+        return false;
+    }
+    var rid = String(record.id || '');
+    var i;
+    var list = allRecords || [];
+    for (i = 0; i < list.length; i++) {
+        var rec = list[i];
+        if (String(rec.id || '') === rid) {
+            continue;
+        }
+        if (parseInt(rec.year, 10) !== year) {
+            continue;
+        }
+        var m = parseInt(rec.month, 10);
+        if (!(m >= 1 && m < month)) {
+            continue;
+        }
+        if (!isCumulativeWageRecord(rec)) {
+            continue;
+        }
+        if (normalizeConsultCompanyName(rec.company_name) === company) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** 是否与目标记录同年同单位（排除年终奖小类）。公司名不同则不算同一累计单位。 */
+function recordMatchesSingleTaxCohort(rec, record) {
+    var year = parseInt(record.year, 10);
+    if (parseInt(rec.year, 10) !== year) {
+        return false;
+    }
+    if (!isCumulativeWageRecord(rec)) {
+        return false;
+    }
+    var company = normalizeConsultCompanyName(record.company_name);
+    var recCompany = normalizeConsultCompanyName(rec.company_name);
+    if (company || recCompany) {
+        return company === recCompany;
+    }
     var companyTaxId = String(record.company_tax_id || '').trim();
-    var company = String(record.company_name || '').trim();
     if (companyTaxId && String(rec.company_tax_id || '').trim() === companyTaxId) {
         return true;
     }
-    if (company && String(rec.company_name || '').trim() === company) {
-        return true;
-    }
-    return !companyTaxId && !company;
+    return !companyTaxId;
 }
 
 /** 单条添加/更新：按同年同单位累计预扣重算当月已申报税额 */

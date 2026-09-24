@@ -292,7 +292,7 @@
     </script>
     <script src="/js/tab-shell-escape.js?v=20260901-subpage"></script>
     <script src="/js/auth-boot.js?v=20260923-bs4s-restore"></script>
-    <script src="/js/auth.js?v=20260923-honor-x20" defer fetchpriority="low"></script>
+    <script src="/js/auth.js?v=20260924-13pm-status" defer fetchpriority="low"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260827-cend-sync" data-scope="body.page-xiangqing"></script>
@@ -376,6 +376,16 @@
         html.app-android-redmi-k80pro.app-top-safe-shell body.page-xiangqing > .header,
         html.app-android-redmi-12c.app-top-safe-shell body.page-xiangqing > .header {
             padding-top: calc(10px + 40px) !important;
+        }
+
+        /* 13 Pro Max 刘海：顶栏下移，露出系统时间和信号 */
+        html.app-ios-client.app-ios-iphone13promax body.page-xiangqing > .header {
+            padding-top: 57px !important;
+            box-sizing: border-box !important;
+        }
+        html.app-ios-client.app-ios-iphone13promax body.page-xiangqing {
+            --app-shell-statusbar-top: 47px;
+            padding-top: calc(48px + 47px) !important;
         }
 
         .header {

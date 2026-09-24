@@ -2107,6 +2107,8 @@
             var dauTbody = document.getElementById('analyticsDauTbody');
             var loginTbody = document.getElementById('analyticsLoginTbody');
             var reasonTbody = document.getElementById('analyticsLoginReasonTbody');
+            var sameClockEl = document.getElementById('analyticsDauSameClock');
+            if (sameClockEl) sameClockEl.textContent = '';
             if (dauTbody) dauTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             if (loginTbody) loginTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             if (reasonTbody) reasonTbody.innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
@@ -2136,6 +2138,21 @@
                         });
                         if (dauTbody) {
                             dauTbody.innerHTML = dh || '<tr><td colspan="3">暂无数据</td></tr>';
+                        }
+                        if (sameClockEl && ov.data.same_clock) {
+                            var sc = ov.data.same_clock;
+                            var pct =
+                                sc.vs_pct == null ? '—' : String(sc.vs_pct) + '%';
+                            sameClockEl.textContent =
+                                '截至 ' +
+                                (sc.as_of || '现在') +
+                                '（北京时间）：今天 ' +
+                                sc.today +
+                                '，昨天同时点 ' +
+                                sc.yesterday +
+                                '（' +
+                                pct +
+                                '）。表中昨天是全天，今天只到当前时刻。';
                         }
                     } else if (dauTbody) {
                         dauTbody.innerHTML =

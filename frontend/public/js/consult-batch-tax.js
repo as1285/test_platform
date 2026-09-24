@@ -3112,10 +3112,55 @@ function loadBatchEmploymentsFromExistingRecords(scrollFromList) {
 }
 
 // === 组装月薪写入与确认文案 ===
-/** 由就业段展开月薪写入项并累计预扣税额。 */
-function buildBatchEmploymentWrites(employments) {
+/**
+ * 已有记录里、公司名相同且不在本次写入月份中的应纳税所得额。
+ * 公司名不同的不并入，本次从 0 重新累计。
+ */
+function priorSameCompanyTaxableMonths(existingRecords, company, skipByYear, excludeIds) {
+    var name = normalizeConsultCompanyName(company);
+    if (!name) {
+        return [];
+    }
+    var excluded = {};
+    (excludeIds || []).forEach(function (id) {
+        excluded[String(id)] = true;
+    });
+    var byKey = {};
+    (existingRecords || []).forEach(function (rec) {
+        if (excluded[String(rec.id || '')]) {
+            return;
+        }
+        if (!isCumulativeWageRecord(rec)) {
+            return;
+        }
+        if (normalizeConsultCompanyName(rec.company_name) !== name) {
+            return;
+        }
+        var year = parseInt(rec.year, 10);
+        var month = parseInt(rec.month, 10);
+        if (!year || !(month >= 1 && month <= 12)) {
+            return;
+        }
+        if (skipByYear[year] && skipByYear[year][month]) {
+            return;
+        }
+        var key = year + '-' + month;
+        var taxable = monthlyTaxableFromRecord(rec);
+        if (!byKey[key]) {
+            byKey[key] = { year: year, month: month, taxable: 0 };
+        }
+        byKey[key].taxable = round2(byKey[key].taxable + taxable);
+    });
+    return Object.keys(byKey).map(function (key) {
+        return byKey[key];
+    });
+}
+
+/** 由就业段展开月薪写入项并累计预扣税额。同一公司名会接上已有月份。 */
+function buildBatchEmploymentWrites(employments, existingRecords, excludeIds) {
     var writes = [];
     var taxSumSalary = 0;
+    var continuedPrior = false;
     var ei;
     for (ei = 0; ei < employments.length; ei++) {
         var emp = employments[ei];
@@ -3139,7 +3184,26 @@ function buildBatchEmploymentWrites(employments) {
             }
             monthEntries.push({ year: ym0.year, month: ym0.month, salary: sal0 });
         }
-        var taxMap = taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableForEmp);
+        var skipByYear = {};
+        for (mi = 0; mi < monthEntries.length; mi++) {
+            var sk = monthEntries[mi];
+            if (!skipByYear[sk.year]) {
+                skipByYear[sk.year] = {};
+            }
+            skipByYear[sk.year][sk.month] = true;
+        }
+        var taxableEntries = monthEntries.map(function (ent) {
+            return {
+                year: ent.year,
+                month: ent.month,
+                taxable: monthlyTaxableForEmp(ent.salary)
+            };
+        });
+        var prior = priorSameCompanyTaxableMonths(existingRecords, emp.company, skipByYear, excludeIds);
+        if (prior.length) {
+            continuedPrior = true;
+        }
+        var taxMap = taxesMapFromMonthTaxableEntries(taxableEntries.concat(prior));
         for (mi = 0; mi < monthEntries.length; mi++) {
             var ent = monthEntries[mi];
             var k = ent.year + '-' + pad2(ent.month);
@@ -3171,7 +3235,7 @@ function buildBatchEmploymentWrites(employments) {
         if (a.month !== b.month) return a.month - b.month;
         return a.empIdx - b.empIdx;
     });
-    return { writes: writes, taxSumSalary: taxSumSalary };
+    return { writes: writes, taxSumSalary: taxSumSalary, continuedPrior: continuedPrior };
 }
 
 /** 生成确认框中各段工作经历摘要行。 */
@@ -5548,17 +5612,21 @@ function batchAddEmploymentTaxRecords() {
     var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
     var base = formObjectFromInputs();
     delete base.id;
-    var built = buildBatchEmploymentWrites(employments);
-    var writes = built.writes;
-    var taxSumSalary = built.taxSumSalary;
+    var writes = [];
     var bonusTaxSum = sumEmploymentBonusTax(employments);
     var severanceTaxSum = sumEmploymentSeveranceTax(employments);
-    var totalTax = round2(taxSumSalary + bonusTaxSum + severanceTaxSum);
     var lines = buildBatchConfirmLines(employments);
     var bonusLine = buildBatchBonusConfirmText(employments);
     var severanceLine = buildBatchSeveranceConfirmText(employments);
     apiFetchRecords()
         .then(function (existingList) {
+            var built = buildBatchEmploymentWrites(employments, existingList);
+            writes = built.writes;
+            var taxSumSalary = built.taxSumSalary;
+            var totalTax = round2(taxSumSalary + bonusTaxSum + severanceTaxSum);
+            var cumNote = built.continuedPrior
+                ? '（与前面同一公司的月份继续累计预扣；公司名不同则从本次重新起算）'
+                : '（同一经历内按自然年度分段累计预扣）';
             var examplePlan = planBatchExampleRecordDeletion(employments, existingList);
             var exampleDeleteLine =
                 examplePlan.count > 0
@@ -5574,7 +5642,7 @@ function batchAddEmploymentTaxRecords() {
             var msgParts = exampleOneClick
                 ? ['将生成今年至今的示例工资记录，可随时改或删除。是否继续？']
                 : [
-                    '将为以下工作经历写入工资薪金记录（同一经历内按自然年度分段累计预扣）：',
+                    '将为以下工作经历写入工资薪金记录' + cumNote + '：',
                     lines.join('\n'),
                     '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
                     bonusLine,
@@ -5668,7 +5736,12 @@ function batchUpdateEmploymentTaxRecords() {
     var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
     var base = formObjectFromInputs();
     delete base.id;
-    var built = buildBatchEmploymentWrites(employments);
+    var excludeIds = batchTaxEditMode.scopeIds.slice();
+    var built = buildBatchEmploymentWrites(
+        employments,
+        window.__consultRecordsCache || [],
+        excludeIds
+    );
     var writes = built.writes;
     var taxSumSalary = built.taxSumSalary;
     var bonusChanged = batchBonusWasManuallyChanged();

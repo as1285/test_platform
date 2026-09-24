@@ -71,6 +71,18 @@ function isPrivateOrLocalIp(ip) {
   return false;
 }
 
+/** 白名单非空且 IP 明确命中才算银行模拟器来源。空名单不放行（与 ipAllowed 相反）。 */
+function isListedPartnerIp(ip, allowlistRaw) {
+  var list = Array.isArray(allowlistRaw) ? allowlistRaw : parseAllowlist(allowlistRaw);
+  if (!list.length) return false;
+  var v = String(ip || '').replace(/^::ffff:/, '').trim();
+  if (!v) return false;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] === v) return true;
+  }
+  return false;
+}
+
 function ipAllowed(ip, allowlist) {
   if (!allowlist || !allowlist.length) return true;
   var v = String(ip || '').replace(/^::ffff:/, '');
@@ -387,6 +399,7 @@ module.exports = {
   paydayIso,
   ymToIndex,
   ipAllowed,
+  isListedPartnerIp,
   isPrivateOrLocalIp,
   parseAllowlist,
   timingSafeEqualStr,
