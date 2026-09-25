@@ -7,7 +7,7 @@ alwaysApply: true
 
 用户已确认：**以后所有修改都要合进 `lkj` 并部署上线**，不要停在功能分支 / 草稿 PR。
 
-「合进去」= 合进主开发分支 **`lkj`**（线上 `lkj.qiyun888.top`）。
+「合进去」= 合进主开发分支 **`lkj`**（线上 `https://lkj.qiyun888.top`，新服务器 `root@103.106.188.166`，目录 `/root/test_platform`）。
 
 ## 完成标准（回复用户之前必须做完）
 
@@ -15,7 +15,7 @@ alwaysApply: true
 
 1. **提交并推送**当前工作分支（可仍是 `cursor/...-e04c`）
 2. **合进 `lkj`**：将 PR 标为可评审后 **merge**（或等价地把提交推进 `origin/lkj`）；**禁止**只开草稿 PR 就结束任务
-3. **部署**：在服务器拉 `lkj` 最新并跑 `./scripts/deploy.sh`（或 `ssh lkj 'cd /root/test_platform && git pull --ff-only origin lkj && ./scripts/deploy.sh'`）
+3. **部署到新服务器**：`ssh lkj 'cd /root/test_platform && ./scripts/pull-and-deploy.sh'`（详见 `auto-deploy.mdc`；目标 IP `103.106.188.166`，不要用旧机）
 4. 向用户说明：已合入 `lkj` + 已部署（可附 commit / 站点）
 
 与 `git-commit-after-changes.mdc`、`auto-deploy.mdc` 一致：先提交推送 → 合进 `lkj` → 再部署。
