@@ -837,7 +837,7 @@
                         <div class="form-group">
                             <label>已申报税额</label>
                             <input type="number" step="0.01" name="tax_reported" id="f_tax_reported" value="0.00">
-                            <p class="hint" style="margin:6px 0 0;">与前面月份同一公司时按累计预扣计税。要按新单位重新起算，公司名须与前面不同。</p>
+                            <p class="hint" style="margin:6px 0 0;">与前面月份同一公司且未改税额时按累计预扣计税；手改税额以填写为准。要按新单位重新起算，公司名须与前面不同。</p>
                         </div>
                     </div>
 
@@ -1034,10 +1034,10 @@
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <!-- 咨询业务脚本：付费墙 → 页签/表单 → 批量生成 → 列表/回收站 -->
     <script defer src="/js/consult-tax-edit-pay.js?v=20260827-peer-and-cfg"></script>
-    <script defer src="/js/consult-core.js?v=20260924-cumtax"></script>
+    <script defer src="/js/consult-core.js?v=20260925-manual-tax"></script>
     <script defer src="/js/consult-batch-tax.js?v=20260924-cumtax"></script>
     <script defer src="/js/tax-record-order.js?v=20260911-same-month"></script>
-    <script defer src="/js/consult-records.js?v=20260924-cumtax"></script>
+    <script defer src="/js/consult-records.js?v=20260925-manual-tax"></script>
     <script>
     (function () {
         function bindRefundAdEntry(id, source) {

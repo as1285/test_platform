@@ -216,6 +216,10 @@ function onSubmitRecord(e) {
     } else {
         o.id = editId;
     }
+    /* 收入改了且本期收入仍跟旧收入一致时，同步本期收入，避免只改了收入却看起来没更新 */
+    if (typeof syncIncomeThisPeriodIfNeeded === 'function') {
+        syncIncomeThisPeriodIfNeeded(o);
+    }
     var usedManualTax = taxReportedWasManuallyChanged();
     var forcedCumulativeTax = false;
     window.__recordSaveInFlight = true;
@@ -226,14 +230,17 @@ function onSubmitRecord(e) {
     /* 优先用内存缓存算税，避免保存前再打一轮 records */
     apiFetchRecords({ force: false })
         .then(function (list) {
-            /* 与前面月份同一公司：忽略手填税额，按累计预扣。公司名不同才保留手填、按新单位起算。 */
-            if (hasPriorSameCompanyWageRecord(o, list)) {
-                usedManualTax = false;
+            /*
+             * 手改税额优先保留（单独编辑同时改收入+纳税时，不能被累计预扣覆盖）。
+             * 未手改且与前面月份同一公司：按累计预扣重算。
+             * 公司名不同 / 无前序月份：未手改则公式重算，手改则保留。
+             */
+            if (usedManualTax) {
+                o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
+                document.getElementById('f_tax_reported').value = o.tax_reported;
+            } else if (hasPriorSameCompanyWageRecord(o, list)) {
                 forcedCumulativeTax = true;
                 o.tax_reported = computeSingleRecordTaxReported(o, list);
-                document.getElementById('f_tax_reported').value = o.tax_reported;
-            } else if (usedManualTax) {
-                o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
                 document.getElementById('f_tax_reported').value = o.tax_reported;
             } else {
                 o.tax_reported = computeSingleRecordTaxReported(o, list);

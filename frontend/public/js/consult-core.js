@@ -701,9 +701,10 @@ function formObjectFromInputs() {
     };
 }
 
-// === 已申报税额手改追踪 ===
+// === 已申报税额手改追踪 / 收入加载快照 ===
 var taxReportedManualEdit = false;
 var taxReportedLoadedValue = null;
+var incomeLoadedValue = null;
 
 /** 税额比较键：两位小数字符串。 */
 function taxAmountKey(v) {
@@ -718,6 +719,7 @@ function taxAmountKey(v) {
 function resetTaxReportedManualEditFlag() {
     taxReportedManualEdit = false;
     taxReportedLoadedValue = null;
+    incomeLoadedValue = null;
 }
 
 /** 判断用户是否手改过已申报税额（相对加载值）。 */
@@ -734,18 +736,58 @@ function taxReportedWasManuallyChanged() {
     return cur !== loaded;
 }
 
-/** 监听 #f_tax_reported 标记为手改（只初始化一次）。 */
+/**
+ * 收入已改且本期收入仍与加载时收入一致（或为空）时，把本期收入同步为新收入。
+ * 单独编辑只改「收入」时，避免明细里本期收入仍是旧值。
+ * 副作用：可能改 #f_income_this_period 与 record.income_this_period。
+ */
+function syncIncomeThisPeriodIfNeeded(record) {
+    if (!record) {
+        return record;
+    }
+    var incomeEl = document.getElementById('f_income');
+    var periodEl = document.getElementById('f_income_this_period');
+    if (!incomeEl || !periodEl) {
+        return record;
+    }
+    var incomeKey = taxAmountKey(incomeEl.value);
+    var periodKey = taxAmountKey(periodEl.value);
+    var loadedIncomeKey = incomeLoadedValue != null ? taxAmountKey(incomeLoadedValue) : null;
+    record.income = incomeKey;
+    if (loadedIncomeKey != null && incomeKey !== loadedIncomeKey) {
+        if (periodKey === loadedIncomeKey || periodKey === '0.00') {
+            periodEl.value = incomeKey;
+            record.income_this_period = incomeKey;
+        }
+    }
+    return record;
+}
+
+/** 监听 #f_tax_reported 标记为手改；收入变更时尝试同步本期收入（只初始化一次）。 */
 function initTaxReportedManualEditTracking() {
     if (window.__taxReportedManualEditInited) return;
     window.__taxReportedManualEditInited = true;
     var el = document.getElementById('f_tax_reported');
-    if (!el) return;
-    function markManual() {
-        taxReportedManualEdit = true;
+    if (el) {
+        function markManual() {
+            taxReportedManualEdit = true;
+        }
+        el.addEventListener('input', markManual);
+        el.addEventListener('change', markManual);
+        el.addEventListener('blur', markManual);
     }
-    el.addEventListener('input', markManual);
-    el.addEventListener('change', markManual);
-    el.addEventListener('blur', markManual);
+    var incomeEl = document.getElementById('f_income');
+    if (incomeEl) {
+        function onIncomeMaybeSync() {
+            var stub = {
+                income: incomeEl.value,
+                income_this_period: (document.getElementById('f_income_this_period') || {}).value
+            };
+            syncIncomeThisPeriodIfNeeded(stub);
+        }
+        incomeEl.addEventListener('change', onIncomeMaybeSync);
+        incomeEl.addEventListener('blur', onIncomeMaybeSync);
+    }
 }
 
 // === 表单读写 / 专项扣除合计 ===
@@ -777,7 +819,8 @@ function applyToForm(r) {
     document.getElementById('f_report_channel').value = r.report_channel || '其他';
     document.getElementById('f_report_date').value = r.report_date || '';
     document.getElementById('f_tax_period').value = r.tax_period || '';
-    document.getElementById('f_income').value = r.income != null ? r.income : '0.00';
+    incomeLoadedValue = r.income != null ? String(r.income) : '0.00';
+    document.getElementById('f_income').value = incomeLoadedValue;
     taxReportedLoadedValue = r.tax_reported != null ? String(r.tax_reported) : '0.00';
     document.getElementById('f_tax_reported').value = taxReportedLoadedValue;
     document.getElementById('f_income_this_period').value = r.income_this_period != null ? r.income_this_period : '0.00';
