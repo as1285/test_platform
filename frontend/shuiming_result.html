@@ -1378,6 +1378,12 @@
             display: none !important;
         }
 
+        body.page-shuiming-result .page-root,
+        body.page-shuiming-result .list {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
         html::-webkit-scrollbar,
         body::-webkit-scrollbar,
         body.page-shuiming-result::-webkit-scrollbar,
@@ -1390,7 +1396,7 @@
             background: transparent !important;
         }
 
-        /* 正版风格滚动拉手：细灰条；仅滑动出现；高度约 72–110px；活动区在汇总下方 */
+        /* 正版风格滚动拉手：细灰条；仅手指滑动出现；高度约 72–110px；活动区在汇总下方 */
         .sm-scroll-thumb {
             position: fixed;
             right: 1.5px;
@@ -1407,6 +1413,14 @@
         }
         .sm-scroll-thumb.is-visible {
             opacity: 1;
+        }
+        /* 长截图 / 截屏模式：系统滚动会拼出一条通栏「滚动条」，必须藏掉拉手 */
+        html.cg-capture-hide .sm-scroll-thumb,
+        html.cg-screenshot-mode .sm-scroll-thumb,
+        html.sm-longshot-hide-thumb .sm-scroll-thumb {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            display: none !important;
         }
 
 
@@ -6118,7 +6132,7 @@
             window.visualViewport.addEventListener('resize', syncListDateToSummaryDecimal);
         }
 
-        /* 正版短拉手：仅滑动出现；活动区从汇总底到屏底。
+        /* 正版短拉手：仅手指滑动出现（勿绑纯 scroll——长截图系统连滚会拼出右侧通栏）。
            汇总两行固定；不做顶部下拉位移，避免汇总下露出白/灰空条。 */
         (function initSmShortScrollThumb() {
             var MIN_H = 72;
@@ -6132,6 +6146,7 @@
             var hideTimer = null;
             var ticking = false;
             var wantShow = false;
+            var fingerActive = false;
 
             function listScroller() {
                 if (!isAndroidShuimingClient()) return null;
@@ -6163,8 +6178,25 @@
                 return EDGE;
             }
 
+            function hideThumbNow() {
+                wantShow = false;
+                fingerActive = false;
+                thumb.classList.remove('is-visible');
+                if (hideTimer) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+            }
+
             function place() {
                 ticking = false;
+                if (document.documentElement.classList.contains('cg-capture-hide') ||
+                    document.documentElement.classList.contains('cg-screenshot-mode') ||
+                    document.documentElement.classList.contains('sm-longshot-hide-thumb') ||
+                    document.hidden) {
+                    hideThumbNow();
+                    return;
+                }
                 var doc = document.documentElement;
                 var list = listScroller();
                 var scrollTop = pageScrollTop();
@@ -6189,22 +6221,39 @@
                 if (y > trackBottom - thumbH) y = trackBottom - thumbH;
                 thumb.style.height = thumbH + 'px';
                 thumb.style.transform = 'translate3d(0,' + Math.round(y) + 'px,0)';
-                if (wantShow) {
+                if (wantShow && fingerActive) {
                     thumb.classList.add('is-visible');
                     if (hideTimer) clearTimeout(hideTimer);
                     hideTimer = setTimeout(function () {
                         thumb.classList.remove('is-visible');
                         wantShow = false;
                     }, HIDE_MS);
+                } else {
+                    thumb.classList.remove('is-visible');
                 }
             }
 
             function onScroll() {
-                wantShow = true;
+                /* 只更新位置；长截图系统 scroll 不得把拉手标成可见 */
                 if (!ticking) {
                     ticking = true;
                     requestAnimationFrame(place);
                 }
+            }
+
+            function onFingerScroll() {
+                fingerActive = true;
+                wantShow = true;
+                onScroll();
+            }
+
+            function onFingerEnd() {
+                fingerActive = false;
+                if (hideTimer) clearTimeout(hideTimer);
+                hideTimer = setTimeout(function () {
+                    thumb.classList.remove('is-visible');
+                    wantShow = false;
+                }, HIDE_MS);
             }
 
             function onResize() {
@@ -6214,15 +6263,42 @@
                 }
             }
 
+            function onCaptureSignal() {
+                try {
+                    document.documentElement.classList.add('sm-longshot-hide-thumb');
+                } catch (e0) {}
+                hideThumbNow();
+                setTimeout(function () {
+                    try {
+                        document.documentElement.classList.remove('sm-longshot-hide-thumb');
+                    } catch (e1) {}
+                }, 8000);
+            }
+
             window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('touchmove', onScroll, { passive: true });
+            window.addEventListener('touchstart', onFingerScroll, { passive: true });
+            window.addEventListener('touchmove', onFingerScroll, { passive: true });
+            window.addEventListener('touchend', onFingerEnd, { passive: true });
+            window.addEventListener('touchcancel', onFingerEnd, { passive: true });
             window.addEventListener('resize', onResize, { passive: true });
+            window.addEventListener('blur', onCaptureSignal);
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) onCaptureSignal();
+            });
+            ['user-capture-screen', 'screenshot', 'screenrecordstart', 'screen-capture'].forEach(function (name) {
+                try {
+                    window.addEventListener(name, onCaptureSignal);
+                } catch (eEv) {}
+            });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', onResize, { passive: true });
             }
             var listEl = document.getElementById('recordList');
             if (listEl) {
                 listEl.addEventListener('scroll', onScroll, { passive: true });
+                listEl.addEventListener('touchstart', onFingerScroll, { passive: true });
+                listEl.addEventListener('touchmove', onFingerScroll, { passive: true });
+                listEl.addEventListener('touchend', onFingerEnd, { passive: true });
             }
         })();
 
