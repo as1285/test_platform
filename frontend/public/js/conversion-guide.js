@@ -905,7 +905,11 @@
       SCREENSHOT_MODE_CLASS +
       ' #cg-mine-task-card,html.' +
       SCREENSHOT_MODE_CLASS +
-      ' #cg-shouye-retention{display:none!important}' +
+      ' #cg-shouye-retention,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' .sm-scroll-thumb,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' .sm-scroll-thumb{display:none!important}' +
       'html.' +
       SCREENSHOT_MODE_CLASS +
       ' #cg-value-action-bar,html.' +
